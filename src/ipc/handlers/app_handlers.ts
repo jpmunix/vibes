@@ -961,9 +961,22 @@ export function registerAppHandlers() {
 
       // Delete app from database
       try {
+        // Manual cascade for tables without FK onDelete (prevent orphan data)
+        await db.delete(remoteSchema.memories)
+          .where(eq(remoteSchema.memories.appId, appId));
+        await db.delete(remoteSchema.memoryTelemetry)
+          .where(eq(remoteSchema.memoryTelemetry.appId, appId));
+        await db.delete(remoteSchema.memoryPipelineLogs)
+          .where(eq(remoteSchema.memoryPipelineLogs.appId, appId));
+        await db.delete(remoteSchema.userPreferences)
+          .where(and(
+            eq(remoteSchema.userPreferences.userId, context.userId),
+            eq(remoteSchema.userPreferences.appId, appId),
+          ));
+
+        // Delete the app row (chats, versions, todos, etc. cascade via FK)
         await db.delete(remoteSchema.apps)
           .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
-        // Note: Associated chats will cascade delete
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
         throw new Error(`Failed to delete app from database: ${error.message}`);

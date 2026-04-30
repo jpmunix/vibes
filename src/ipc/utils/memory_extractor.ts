@@ -20,6 +20,7 @@ import type { MemoryEntry } from "../types/memory";
 import { getEffectivePrompt } from "../../prompts";
 import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
+import { debugLog } from "./memory_debug_log";
 
 const logger = log.scope("memory_extractor");
 
@@ -113,6 +114,7 @@ export async function extractMemoriesFromChatCycle(params: {
         // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
         const guardianResult = shouldProcessInteraction(userPrompt, cleanResponse);
         if (!guardianResult.allowed) {
+            debugLog("WriteGuardian", `❌ Rejected: ${guardianResult.reason}`, { promptExcerpt: userPrompt.slice(0, 80) });
             logTelemetry({ userId, appId, action: "skipped_trivial", reason: `Guardian: ${guardianResult.reason}` });
             logPipelineCall({
                 userId, appId, chatId,
@@ -131,6 +133,8 @@ export async function extractMemoriesFromChatCycle(params: {
             });
             return [];
         }
+
+        debugLog("WriteGuardian", `✅ Approved`, { promptLength: userPrompt.length.toString(), responseLength: cleanResponse.length.toString() });
 
         // Guardian approved — log for accept/reject ratio analysis
         logPipelineCall({

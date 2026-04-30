@@ -1512,31 +1512,6 @@ export async function handleOpenCodeStream(
                     } else {
                         logger.info(`${LP} AGENTS.md already exists, skipping init`);
                     }
-                }
-
-                // ── Memory Bootstrap (cold start, fire-and-forget) ──
-                // Only runs once when an app has 0 memories and significant DNA
-                try {
-                    const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
-                    const bootstrapSettings = readSettings();
-                    const bootstrapUserId = bootstrapSettings.userId;
-                    if (bootstrapUserId && updatedChat?.app?.id) {
-                        const needs = await needsBootstrap(updatedChat.app.id, bootstrapUserId);
-                        if (needs) {
-                            logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${updatedChat.app.id}`);
-                            runMemoryBootstrap({
-                                appId: updatedChat.app.id,
-                                userId: bootstrapUserId,
-                                projectDir,
-                                initWasLaunched: !hasAgentsMd,
-                            }).catch((err: any) => {
-                                logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
-                            });
-                        }
-                    }
-                } catch (bootstrapErr: any) {
-                    logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${bootstrapErr.message}`);
-                }
             }
 
         } catch (error: any) {
@@ -1544,6 +1519,44 @@ export async function handleOpenCodeStream(
             logger.error(`${LP} ${errorMsg}`);
             return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
         }
+    }
+
+    // ── Memory Bootstrap (cold start, fire-and-forget) ──
+    // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
+    // This ensures that if the first prompt found an empty project (no configs),
+    // subsequent prompts will re-check once the agent generates files.
+    try {
+        const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+        const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
+        const bootstrapSettings = readSettings();
+        const bootstrapUserId = bootstrapSettings.userId;
+        if (bootstrapUserId && updatedChat?.app?.id) {
+            const appName = updatedChat.app?.name || `app_${updatedChat.app.id}`;
+            setDebugContext(appName, updatedChat.app.id);
+            debugLog("Trigger", `Bootstrap check`, {
+                appId: String(updatedChat.app.id),
+                appName,
+                projectDir,
+            });
+            const needs = await needsBootstrap(updatedChat.app.id, bootstrapUserId);
+            if (needs) {
+                debugLog("Trigger", `🧬 Bootstrap TRIGGERED — launching fire-and-forget`);
+                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${updatedChat.app.id}`);
+                runMemoryBootstrap({
+                    appId: updatedChat.app.id,
+                    userId: bootstrapUserId,
+                    projectDir,
+                    appName,
+                }).catch((err: any) => {
+                    debugLog("Trigger", `❌ Bootstrap FAILED`, { error: err.message });
+                    logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
+                });
+            } else {
+                debugLog("Trigger", `⏭️ Bootstrap skipped — app already has memories`);
+            }
+        }
+    } catch (bootstrapErr: any) {
+        logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`);
     }
 
     // Instructions were already set BEFORE session.create (see above).

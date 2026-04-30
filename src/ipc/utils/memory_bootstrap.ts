@@ -22,6 +22,7 @@ import { handleAdd } from "./memory_extractor";
 import { logPipelineCall } from "./memory_telemetry";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import type { MemoryEntry } from "../types/memory";
+import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext } from "./memory_debug_log";
 
 const logger = log.scope("memory_bootstrap");
 
@@ -33,10 +34,7 @@ interface ProjectDNA {
     hasSignificantContent: boolean;
     configFiles: string[];
     configSnippets: Record<string, string>;
-    agentsMd?: string;
-    designTokens?: string;
     directoryTree: string;
-    envKeys?: string[];
 }
 
 interface BootstrapResult {
@@ -60,7 +58,7 @@ const CONFIG_FILES: { file: string; maxBytes: number }[] = [
     { file: "tsconfig.json", maxBytes: 800 },
     { file: "docker-compose.yml", maxBytes: 800 },
     { file: "docker-compose.yaml", maxBytes: 800 },
-    { file: ".env.example", maxBytes: 500 },
+    // .env.example removed — integrations inject env vars; agent can read the file itself
 ];
 
 const CONFIG_GLOBS: { pattern: RegExp; maxBytes: number }[] = [
@@ -114,31 +112,23 @@ function getDirectoryTree(dir: string, maxDepth = 2, prefix = ""): string {
     return lines.join("\n");
 }
 
-function processEnvExample(content: string): string[] {
-    return content.split("\n")
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith("#"))
-        .map(line => line.split("=")[0].trim())
-        .filter(Boolean);
-}
 
 export async function collectProjectDNA(
     projectDir: string,
-    opts?: { waitForAgentsMd?: boolean },
 ): Promise<ProjectDNA> {
     const configSnippets: Record<string, string> = {};
     const configFiles: string[] = [];
+
+    debugSection("collectProjectDNA");
+    debugLog("DNA", `Starting scan`, { dir: projectDir });
 
     // 1. Read exact-name config files
     for (const { file, maxBytes } of CONFIG_FILES) {
         const content = readFileSafe(path.join(projectDir, file), maxBytes);
         if (content) {
             configFiles.push(file);
-            if (file === ".env.example") {
-                configSnippets[file] = `Keys: ${processEnvExample(content).join(", ")}`;
-            } else {
-                configSnippets[file] = content;
-            }
+            configSnippets[file] = content;
+            debugLog("DNA", `✅ Found config: ${file}`, { size: `${content.length} bytes` });
         }
     }
 
@@ -152,75 +142,34 @@ export async function collectProjectDNA(
                     if (content) {
                         configFiles.push(entry);
                         configSnippets[entry] = content;
+                        debugLog("DNA", `✅ Found glob config: ${entry}`, { size: `${content.length} bytes` });
                     }
                 }
             }
         }
     } catch { /* ignore */ }
 
-    // 3. AGENTS.md — with optional polling
-    let agentsMd: string | undefined;
-    const agentsMdPaths = [
-        path.join(projectDir, "AGENTS.md"),
-        path.join(projectDir, ".opencode", "AGENTS.md"),
-    ];
+    debugLog("DNA", `Config scan complete`, { found: configFiles.length.toString(), files: configFiles.join(", ") });
 
-    if (opts?.waitForAgentsMd) {
-        let waited = 0;
-        const MAX_WAIT = 15_000;
-        const INTERVAL = 2_000;
-        while (waited < MAX_WAIT) {
-            const found = agentsMdPaths.find(p => fs.existsSync(p));
-            if (found) break;
-            await new Promise(r => setTimeout(r, INTERVAL));
-            waited += INTERVAL;
-        }
-        if (waited >= MAX_WAIT) {
-            logger.info("[Bootstrap] AGENTS.md not found after 15s — proceeding without it");
-        }
-    }
+    // AGENTS.md — NOT collected (OpenCode injects it natively into the agent context)
+    // DESIGN.md — NOT collected (injected as contextInstruction on first message)
+    // .env.example — NOT collected (integrations inject env vars; agent can read it)
 
-    for (const p of agentsMdPaths) {
-        const content = readFileSafe(p, 4096);
-        if (content) {
-            agentsMd = content;
-            break;
-        }
-    }
-
-    // 4. DESIGN.md front-matter (tokens)
-    let designTokens: string | undefined;
-    const designMdPaths = [
-        path.join(projectDir, "docs", "DESIGN.md"),
-        path.join(projectDir, "DESIGN.md"),
-    ];
-    for (const p of designMdPaths) {
-        const content = readFileSafe(p, 1500);
-        if (content) {
-            // Extract just the YAML front-matter (first --- block)
-            const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-            designTokens = fmMatch ? fmMatch[1] : content.slice(0, 500);
-            break;
-        }
-    }
-
-    // 5. Directory tree
+    // 3. Directory tree
     const directoryTree = getDirectoryTree(projectDir, 2);
+    debugLog("DNA", `Directory tree collected`, { lines: directoryTree.split("\n").length.toString() });
 
-    // 6. .env.example keys
-    const envContent = readFileSafe(path.join(projectDir, ".env.example"), 500);
-    const envKeys = envContent ? processEnvExample(envContent) : undefined;
-
-    const hasSignificantContent = configFiles.length > 0 || !!agentsMd;
+    const hasSignificantContent = configFiles.length > 0;
+    debugLog("DNA", `Scan result: hasSignificantContent=${hasSignificantContent}`, {
+        configs: configFiles.length.toString(),
+        treeLines: directoryTree.split("\n").length.toString(),
+    });
 
     return {
         hasSignificantContent,
         configFiles,
         configSnippets,
-        agentsMd,
-        designTokens,
         directoryTree,
-        envKeys,
     };
 }
 
@@ -243,33 +192,12 @@ function formatDNAForLLM(dna: ProjectDNA): string {
         }
     }
 
-    // AGENTS.md
-    if (dna.agentsMd) {
-        parts.push("## AGENTS.md (Project Documentation)");
-        parts.push(dna.agentsMd);
-        parts.push("");
-    }
-
-    // DESIGN.md tokens
-    if (dna.designTokens) {
-        parts.push("## DESIGN.md (Design Tokens)");
-        parts.push(dna.designTokens);
-        parts.push("");
-    }
-
     // Directory structure
     if (dna.directoryTree) {
         parts.push("## Directory Structure (top 2 levels)");
         parts.push("```");
         parts.push(dna.directoryTree);
         parts.push("```");
-        parts.push("");
-    }
-
-    // Env keys
-    if (dna.envKeys && dna.envKeys.length > 0) {
-        parts.push("## Environment Variables (keys only)");
-        parts.push(dna.envKeys.join(", "));
         parts.push("");
     }
 
@@ -295,7 +223,12 @@ async function bootstrapFromDNA(params: {
     const onboardingPrompt = getEffectivePrompt("memory_onboarding", settings);
     const userMessage = formatDNAForLLM(dna);
 
-    logger.info(`[Bootstrap] Phase 1 (DNA): ${dna.configFiles.length} configs, agentsMd=${!!dna.agentsMd}, payload=${userMessage.length} chars`);
+    debugSection("Phase 1: bootstrapFromDNA");
+    debugLog("Phase1", `Starting`, { model, configs: dna.configFiles.length.toString(), payloadSize: `${userMessage.length} chars` });
+    debugCodeBlock("System Prompt (memory_onboarding)", onboardingPrompt);
+    debugCodeBlock("User Message (formatted DNA)", userMessage);
+
+    logger.info(`[Bootstrap] Phase 1 (DNA): ${dna.configFiles.length} configs, payload=${userMessage.length} chars`);
 
     const t0 = Date.now();
     let rawContent: string;
@@ -313,6 +246,7 @@ async function bootstrapFromDNA(params: {
         });
         rawContent = data.choices?.[0]?.message?.content?.trim() || "";
     } catch (err: any) {
+        debugLog("Phase1", `❌ LLM call FAILED`, { error: err.message, durationMs: `${Date.now() - t0}ms` });
         logger.warn(`[Bootstrap] Phase 1 LLM call failed: ${err.message}`);
         logPipelineCall({
             userId, appId,
@@ -329,7 +263,10 @@ async function bootstrapFromDNA(params: {
 
     const durationMs = Date.now() - t0;
 
+    debugLog("Phase1", `LLM responded`, { durationMs: `${durationMs}ms`, responseSize: `${rawContent.length} chars` });
+
     if (!rawContent) {
+        debugLog("Phase1", `⚠️ Empty response from LLM`);
         logPipelineCall({
             userId, appId,
             stage: "bootstrap-dna", model,
@@ -341,12 +278,15 @@ async function bootstrapFromDNA(params: {
         return [];
     }
 
+    debugCodeBlock("LLM Raw Response", rawContent, "json");
+
     // Parse operations
     let operations: any[];
     try {
         const parsed = JSON.parse(rawContent);
         operations = parsed.operations || [];
     } catch {
+        debugLog("Phase1", `❌ JSON parse FAILED`, { excerpt: rawContent.slice(0, 200) });
         logger.warn(`[Bootstrap] Phase 1 JSON parse failed: ${rawContent.slice(0, 200)}`);
         logPipelineCall({
             userId, appId,
@@ -378,15 +318,24 @@ async function bootstrapFromDNA(params: {
     const persistedKeys: string[] = [];
     const persisted: MemoryEntry[] = [];
 
+    debugLog("Phase1", `Processing ${operations.length} operations`, { existingMemories: existingRows.length.toString() });
+
     for (const op of operations.slice(0, 15)) {
         try {
-            if (op.action !== "add") continue;
+            if (op.action !== "add") {
+                debugLog("Phase1", `⏭️ Skipping op (action=${op.action})`, { key: op.key || "?" });
+                continue;
+            }
             const result = await handleAdd(op, db, existingRows, userId, appId, 0, now, VALID_TYPES);
             if (result) {
                 persisted.push(result);
                 if (result.key) persistedKeys.push(result.key);
+                debugLog("Phase1", `✅ Persisted: [${op.type}] ${op.key}`, { content: op.content?.slice(0, 100), importance: String(op.importance) });
+            } else {
+                debugLog("Phase1", `⚠️ handleAdd returned null for ${op.key}`, { type: op.type });
             }
         } catch (err: any) {
+            debugLog("Phase1", `❌ Op failed: ${op.key}`, { error: err.message });
             logger.warn(`[Bootstrap] Phase 1 op failed: ${err.message}`);
         }
     }
@@ -402,8 +351,6 @@ async function bootstrapFromDNA(params: {
             operations,
             meta: {
                 configFilesFound: dna.configFiles,
-                hasAgentsMd: !!dna.agentsMd,
-                hasDesignMd: !!dna.designTokens,
                 dnaPayloadSize: userMessage.length,
                 inputTokensEstimate: Math.ceil(userMessage.length / 4),
                 operationsGenerated: operations.length,
@@ -414,6 +361,13 @@ async function bootstrapFromDNA(params: {
         durationMs,
         success: true,
     });
+
+    debugLog("Phase1", `✅ Phase 1 COMPLETE`, {
+        memoriesCreated: persisted.length.toString(),
+        keys: persistedKeys.join(", "),
+        durationMs: `${durationMs}ms`,
+    });
+    debugList("Phase 1 — Persisted Keys", persistedKeys);
 
     logger.info(`[Bootstrap] Phase 1 complete: ${persisted.length} memories created from ${dna.configFiles.length} configs (${durationMs}ms)`);
     return persistedKeys;
@@ -431,21 +385,27 @@ async function bootstrapFromExplore(params: {
 }): Promise<number> {
     const { appId, userId, projectDir, existingKeys } = params;
 
+    debugSection("Phase 2: bootstrapFromExplore");
+
     // Dynamically import to avoid circular dependency at module load
     let getOpenCodeClientInstance: () => any;
     try {
         const adapter = await import("../handlers/opencode_adapter");
         getOpenCodeClientInstance = (adapter as any).getOpenCodeClientInstance;
     } catch {
+        debugLog("Phase2", `❌ Skipped: opencode_adapter not importable`);
         logger.warn("[Bootstrap] Phase 2 skipped: opencode_adapter not available");
         return 0;
     }
 
     const client = getOpenCodeClientInstance?.();
     if (!client) {
+        debugLog("Phase2", `❌ Skipped: no OpenCode client instance`);
         logger.warn("[Bootstrap] Phase 2 skipped: no OpenCode client instance");
         return 0;
     }
+
+    debugLog("Phase2", `✅ OpenCode client available`);
 
     const existingKeysBlock = existingKeys.length > 0
         ? `\n\nYa se extrajeron estas keys en la Fase 1 (NO las repitas): ${existingKeys.join(", ")}`
@@ -473,6 +433,9 @@ async function bootstrapFromExplore(params: {
         existingKeysBlock,
     ].join("\n");
 
+    debugCodeBlock("Explore Prompt", explorePrompt);
+    debugLog("Phase2", `Sending to Explore agent`, { existingKeysToSkip: existingKeys.join(", ") || "(none)" });
+
     const t0 = Date.now();
     let rawResponse = "";
 
@@ -480,6 +443,7 @@ async function bootstrapFromExplore(params: {
         // Create a temporary session for explore
         const session = await client.session.create({});
         const sessionId = session.id;
+        debugLog("Phase2", `Session created`, { sessionId: String(sessionId) });
 
         // Use the explore agent for read-only codebase navigation
         const result = await client.chat.prompt({
@@ -495,9 +459,13 @@ async function bootstrapFromExplore(params: {
             rawResponse = result;
         }
 
+        debugLog("Phase2", `Explore agent responded`, { responseSize: `${rawResponse.length} chars`, durationMs: `${Date.now() - t0}ms` });
+        debugCodeBlock("Explore Agent Response", rawResponse);
+
         // Try to clean up session
         try { await client.session.delete({ id: sessionId }); } catch { /* ignore */ }
     } catch (err: any) {
+        debugLog("Phase2", `❌ Explore agent FAILED`, { error: err.message, durationMs: `${Date.now() - t0}ms` });
         logger.warn(`[Bootstrap] Phase 2 Explore agent failed: ${err.message}`);
         logPipelineCall({
             userId, appId,
@@ -519,12 +487,17 @@ async function bootstrapFromExplore(params: {
         if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
             operations = parsed.operations || [];
+            debugLog("Phase2", `JSON extracted: ${operations.length} operations`);
+        } else {
+            debugLog("Phase2", `⚠️ No JSON block found in response`);
         }
     } catch {
+        debugLog("Phase2", `❌ JSON parse failed from explore response`);
         logger.info("[Bootstrap] Phase 2: could not parse JSON from explore response");
     }
 
     if (operations.length === 0) {
+        debugLog("Phase2", `⚠️ 0 operations — nothing to persist`);
         logPipelineCall({
             userId, appId,
             stage: "bootstrap-explore",
@@ -551,13 +524,26 @@ async function bootstrapFromExplore(params: {
     const now = new Date();
     let persistedCount = 0;
 
+    debugLog("Phase2", `Processing ${operations.length} operations`, { existingMemories: existingRows.length.toString() });
+
     for (const op of operations.slice(0, 15)) {
         try {
-            if (op.action !== "add") continue;
+            if (op.action !== "add") {
+                debugLog("Phase2", `⏭️ Skipping (action=${op.action})`, { key: op.key || "?" });
+                continue;
+            }
             // Skip keys already bootstrapped in Phase 1
-            if (op.key && existingKeys.includes(op.key)) continue;
+            if (op.key && existingKeys.includes(op.key)) {
+                debugLog("Phase2", `⏭️ Skipping (Phase 1 duplicate): ${op.key}`);
+                continue;
+            }
             const result = await handleAdd(op, db, existingRows, userId, appId, 0, now, VALID_TYPES);
-            if (result) persistedCount++;
+            if (result) {
+                persistedCount++;
+                debugLog("Phase2", `✅ Persisted: [${op.type}] ${op.key}`, { content: op.content?.slice(0, 100) });
+            } else {
+                debugLog("Phase2", `⚠️ handleAdd returned null for ${op.key}`);
+            }
         } catch (err: any) {
             logger.warn(`[Bootstrap] Phase 2 op failed: ${err.message}`);
         }
@@ -579,6 +565,8 @@ async function bootstrapFromExplore(params: {
         resultCount: persistedCount, durationMs, success: true,
     });
 
+    debugLog("Phase2", `✅ Phase 2 COMPLETE`, { memoriesCreated: persistedCount.toString(), durationMs: `${durationMs}ms` });
+
     logger.info(`[Bootstrap] Phase 2 complete: ${persistedCount} memories from Explore agent (${durationMs}ms)`);
     return persistedCount;
 }
@@ -595,44 +583,65 @@ export async function runMemoryBootstrap(params: {
     appId: number;
     userId: string;
     projectDir: string;
-    initWasLaunched: boolean;
+    appName?: string;
 }): Promise<BootstrapResult> {
-    const { appId, userId, projectDir, initWasLaunched } = params;
+    const { appId, userId, projectDir } = params;
 
-    logger.info(`[Bootstrap] Starting for appId=${appId} dir="${projectDir}" initWasLaunched=${initWasLaunched}`);
+    // Initialize debug context
+    setDebugContext(params.appName || `app_${appId}`, appId);
+    debugSessionStart({
+        projectDir,
+        userId: userId.slice(0, 8) + "...",
+    });
+    debugSection("Orchestrator: runMemoryBootstrap");
+
+    logger.info(`[Bootstrap] Starting for appId=${appId} dir="${projectDir}"`);
 
     if (!hasOpenRouterApiKey()) {
+        debugLog("Orchestrator", `❌ ABORT: No OpenRouter API key`);
         logger.warn("[Bootstrap] No OpenRouter API key — skipping");
         return { phase1Count: 0, phase2Count: 0 };
     }
 
     const settings = readSettings();
     if (settings.memoriesEnabled === false) {
+        debugLog("Orchestrator", `❌ ABORT: Memories disabled in settings`);
         logger.info("[Bootstrap] Memories disabled — skipping");
         return { phase1Count: 0, phase2Count: 0 };
     }
 
+    debugLog("Orchestrator", `Guards passed — starting DNA collection`);
+
     // Phase 1: DNA
-    const dna = await collectProjectDNA(projectDir, {
-        waitForAgentsMd: initWasLaunched,
-    });
+    const dna = await collectProjectDNA(projectDir);
 
     if (!dna.hasSignificantContent) {
+        debugLog("Orchestrator", `❌ ABORT: No significant DNA (empty project)`, { configFiles: "0" });
         logger.info("[Bootstrap] No significant DNA found — skipping (empty project)");
         return { phase1Count: 0, phase2Count: 0 };
     }
 
+    debugLog("Orchestrator", `DNA collected — launching Phase 1`);
     const phase1Keys = await bootstrapFromDNA({ appId, userId, dna });
 
     // Phase 2: Explore (non-fatal)
+    debugLog("Orchestrator", `Phase 1 done (${phase1Keys.length} keys) — launching Phase 2`);
     let phase2Count = 0;
     try {
         phase2Count = await bootstrapFromExplore({
             appId, userId, projectDir, existingKeys: phase1Keys,
         });
     } catch (err: any) {
+        debugLog("Orchestrator", `⚠️ Phase 2 failed (non-fatal)`, { error: err.message });
         logger.warn(`[Bootstrap] Phase 2 (Explore) failed (non-fatal): ${err.message}`);
     }
+
+    debugSection("Bootstrap Summary");
+    debugLog("Orchestrator", `🏁 COMPLETE`, {
+        phase1: phase1Keys.length.toString(),
+        phase2: phase2Count.toString(),
+        total: (phase1Keys.length + phase2Count).toString(),
+    });
 
     logger.info(`[Bootstrap] Complete: Phase 1=${phase1Keys.length}, Phase 2=${phase2Count}`);
     return { phase1Count: phase1Keys.length, phase2Count };
@@ -655,7 +664,9 @@ export async function needsBootstrap(appId: number, userId: string): Promise<boo
                 ),
             )
             .limit(1);
-        return rows.length === 0;
+        const needs = rows.length === 0;
+        debugLog("Guard", `needsBootstrap(appId=${appId})`, { activeMemories: rows.length.toString(), result: needs ? "YES → will bootstrap" : "NO → skip" });
+        return needs;
     } catch {
         return false;
     }

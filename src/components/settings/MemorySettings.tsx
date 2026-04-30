@@ -1018,7 +1018,7 @@ export function MemorySettings() {
 
       {/* ⚙️ Model selector — Synthesizer (writes) */}
       <SettingRow
-        label="Modelo de síntesis"
+        label="Modelo de generación"
         description="Modelo capaz que analiza conversaciones y gestiona memorias (add/update/merge)"
         control={<MemoryExtractionModelSelector />}
       />

@@ -2,7 +2,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "qwen/qwen3-coder";
 
 /**
  * Model selector for the memory synthesis (generator) pipeline.
@@ -44,7 +44,7 @@ export function MemoryExtractionModelSelector() {
                 {
                     value: DEFAULT_MODEL,
                     label:
-                        defaultModelInList?.displayName || "Gemini 2.5 Flash",
+                        defaultModelInList?.displayName || "Qwen3 Coder",
                     description: defaultModelInList ? undefined : "Modelo predeterminado",
                 },
             ]}

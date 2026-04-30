@@ -63,7 +63,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Memory system (enabled by default)
   memoriesEnabled: true,
   memoriesAutoExtract: true,
-  memoriesSynthesisModelV2: "google/gemini-2.5-flash",
+  memoriesSynthesisModelV2: "qwen/qwen3-coder",
+  memoriesRouterModelV2: "google/gemini-3-flash-preview",
   // Web search — enabled by default so the model can search when needed
   enableWebSearch: true,
   // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)
@@ -509,6 +510,25 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v8 reasoning effort simplification:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v9 memory model defaults ──
+    // Hard migration: force memory models to qwen3-coder (synthesis) and gemini-3-flash (selection).
+    if (!(validatedSettings as any)._migrations?.v9_memory_model_defaults) {
+      const migratedSettings = {
+        ...validatedSettings,
+        memoriesSynthesisModelV2: "qwen/qwen3-coder",
+        memoriesRouterModelV2: "google/gemini-3-flash-preview",
+        _migrations: { ...(validatedSettings as any)._migrations, v9_memory_model_defaults: true },
+      };
+      logger.info("[Migration] Applied v9 memory model defaults (hard)");
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v9 memory model defaults:", e);
       }
       return migratedSettings as UserSettings;
     }

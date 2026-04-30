@@ -351,7 +351,6 @@ export function registerMemoryHandlers(): void {
             appId: params.appId,
             userId,
             projectDir: app.path,
-            initWasLaunched: false,
         });
 
         return result;

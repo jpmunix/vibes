@@ -2,7 +2,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
+const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
 /**
  * Model selector for the memory Router (selection/classification).
@@ -44,7 +44,7 @@ export function MemorySelectionModelSelector() {
                 {
                     value: DEFAULT_MODEL,
                     label:
-                        defaultModelInList?.displayName || "Gemini 2.5 Flash Lite",
+                        defaultModelInList?.displayName || "Gemini 3 Flash Preview",
                     description: defaultModelInList ? undefined : "Modelo ultraligero para clasificación",
                 },
             ]}

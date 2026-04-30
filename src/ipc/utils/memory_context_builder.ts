@@ -20,6 +20,7 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { shouldInjectMemories } from "./memory_guardian";
 import { getEffectivePrompt } from "../../prompts";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
+import { debugLog } from "./memory_debug_log";
 
 const logger = log.scope("memory_context");
 
@@ -34,7 +35,7 @@ const ROUTER_INPUT_LIMIT = 300;
 const DEFAULT_MAX_SELECTION = 10;
 
 /** Default model for memory selection (ultralight) */
-const DEFAULT_SELECTION_MODEL = "google/gemini-2.5-flash-lite";
+const DEFAULT_SELECTION_MODEL = "google/gemini-3-flash-preview";
 
 /** Type labels for formatted output */
 const TYPE_LABELS: Record<string, string> = {
@@ -85,9 +86,11 @@ export async function buildMemoryContext(
         if (userPrompt) {
             const injectionGuard = shouldInjectMemories(userPrompt);
             if (!injectionGuard.allowed) {
+                debugLog("InjectionGuard", `❌ Rejected: ${injectionGuard.reason}`, { promptExcerpt: userPrompt.slice(0, 80) });
                 logger.info(`[Memory] Skipped injection: ${injectionGuard.reason}`);
                 return EMPTY_RESULT;
             }
+            debugLog("InjectionGuard", `✅ Approved`, { promptLength: userPrompt.length.toString() });
         }
 
         const db = getRemoteDb();
@@ -117,7 +120,11 @@ export async function buildMemoryContext(
             )
             .limit(ROUTER_INPUT_LIMIT);
 
-        if (rows.length === 0) return EMPTY_RESULT;
+        if (rows.length === 0) {
+            debugLog("Router", `No active memories found for appId=${appId}`);
+            return EMPTY_RESULT;
+        }
+        debugLog("Router", `Loaded memory pool`, { candidates: rows.length.toString(), maxSelection: maxSelection.toString() });
 
         // 2. If we have a prompt AND an API key, use the LLM Router
         let selectedRows = rows;
@@ -318,6 +325,7 @@ async function routerSelect(
         });
 
         if (selectedIds.length === 0) {
+            debugLog("Router", `Router selected 0 memories`);
             logger.info("[Memory] Router selected 0 memories");
             return [];
         }
@@ -329,6 +337,10 @@ async function routerSelect(
             .filter(id => memoryMap.has(id))
             .map(id => memoryMap.get(id)!);
 
+        debugLog("Router", `✅ Router selected ${selected.length}/${memories.length}`, {
+            ids: selectedIds.join(", "),
+            keys: selected.map(s => s.key || "?").join(", "),
+        });
         logger.info(`[Memory] Router selected ${selected.length}/${memories.length} memories: [${selectedIds.join(", ")}]`);
         return selected;
 
