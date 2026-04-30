@@ -69,7 +69,6 @@ import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { Database } from "@/components/ui/icons";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
