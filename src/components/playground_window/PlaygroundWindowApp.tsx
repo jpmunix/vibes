@@ -36,6 +36,9 @@ import {
     Trash2,
     FolderOpen,
     Pencil,
+    Merge,
+    Download,
+    FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -71,6 +74,7 @@ import {
 } from "@/components/ui/command";
 import { Check } from "@/components/ui/icons";
 import { ModelItemContent } from "@/components/ModelItemContent";
+import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 
 import "@/styles/globals.css";
 
@@ -91,6 +95,7 @@ interface ModelResult {
     outputTokens?: number;
     durationMs: number;
     error?: boolean;
+    timeout?: boolean;
 }
 
 // ─── Smart content renderer ──────────────────────────────────────────────────
@@ -165,6 +170,28 @@ function ResponseContent({ text }: { text: string }) {
     return <div className="playground-prose whitespace-pre-wrap">{text}</div>;
 }
 
+// ─── Memory count helper ─────────────────────────────────────────────────────
+
+function getMemoryCount(text: string): number | null {
+    try {
+        let raw = text.trim();
+        raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
+        const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        if (fenceMatch) raw = fenceMatch[1].trim();
+        if (!raw.startsWith("{") && !raw.startsWith("[")) {
+            const objMatch = raw.match(/(\{[\s\S]*\})/);
+            const arrMatch = raw.match(/(\[[\s\S]*\])/);
+            raw = objMatch?.[1] || arrMatch?.[1] || raw;
+        }
+        const parsed = JSON.parse(raw);
+        const operations = parsed.operations || parsed.memories || (Array.isArray(parsed) ? parsed : null);
+        if (!operations || !Array.isArray(operations)) return null;
+        return operations.length;
+    } catch {
+        return null;
+    }
+}
+
 // ─── Memory result card (for Memorias view mode) ─────────────────────────────
 
 function MemoryResponseContent({ text }: { text: string }) {
@@ -229,7 +256,7 @@ function MemoryResponseContent({ text }: { text: string }) {
 
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
-function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode }: {
+function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode, exportChecked, onExportToggle }: {
     result: ModelResult;
     collapsed: boolean;
     rank?: number;
@@ -237,20 +264,51 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
     onRetry?: () => void;
     isRetrying?: boolean;
     viewMode: 'raw' | 'memorias';
+    exportChecked?: boolean;
+    onExportToggle?: () => void;
 }) {
+    const isTimeout = result.timeout;
+    const memoryCount = viewMode === 'memorias' && !result.error ? getMemoryCount(result.text) : null;
+    const canExpand = !isTimeout;
+
     return (
-        <div className="playground-result-card">
-            <div className="playground-result-header" onClick={onToggle} style={{ cursor: 'pointer' }}>
+        <div className={cn("playground-result-card", isTimeout && "border-destructive/30 bg-destructive/5")}>
+            <div
+                className={cn("playground-result-header", !canExpand && "cursor-default")}
+                onClick={canExpand ? onToggle : undefined}
+                style={{ cursor: canExpand ? 'pointer' : 'default' }}
+            >
+                {onExportToggle != null && (
+                    <input
+                        type="checkbox"
+                        checked={exportChecked}
+                        onChange={(e) => { e.stopPropagation(); onExportToggle(); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0 w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+                    />
+                )}
                 {rank != null && (
                     <span className={`playground-rank ${rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : ''}`}>
                         #{rank}
                     </span>
                 )}
-                <h3 className="typo-label !text-sm font-semibold truncate flex-1">
+                <h3 className={cn("typo-label !text-sm font-semibold truncate flex-1", isTimeout && "text-destructive")}>
                     {result.modelDisplayName}
                 </h3>
                 <div className="flex items-center gap-3 shrink-0">
-                    <span className="flex items-center gap-1 typo-caption text-muted-foreground">
+                    {/* Memory count badge (memorias mode, collapsed) */}
+                    {viewMode === 'memorias' && memoryCount != null && collapsed && (
+                        <span className="typo-caption text-primary/70">
+                            {memoryCount} mem{memoryCount !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                    {/* Char count */}
+                    {!result.error && collapsed && (
+                        <span className="typo-caption text-muted-foreground">
+                            ◇ {result.text.length}
+                        </span>
+                    )}
+                    <span className={cn("flex items-center gap-1 typo-caption", isTimeout ? "text-destructive" : "text-muted-foreground")}>
                         <Clock size={12} className="opacity-60" />
                         {(result.durationMs / 1000).toFixed(2)}s
                     </span>
@@ -260,11 +318,16 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
                             {result.inputTokens ?? "?"}→{result.outputTokens ?? "?"}
                         </span>
                     )}
-                    <ChevronDown
-                        size={14}
-                        className="text-muted-foreground transition-transform duration-200"
-                        style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)' }}
-                    />
+                    {canExpand && (
+                        <ChevronDown
+                            size={14}
+                            className="text-muted-foreground transition-transform duration-200"
+                            style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)' }}
+                        />
+                    )}
+                    {isTimeout && (
+                        <AlertCircle size={14} className="text-destructive" />
+                    )}
                     {onRetry && (
                         <button
                             type="button"
@@ -278,7 +341,7 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
                     )}
                 </div>
             </div>
-            {!collapsed && (
+            {canExpand && !collapsed && (
                 <div className="playground-result-body">
                     {result.error ? (
                         <div className="flex items-center gap-2 text-destructive">
@@ -322,12 +385,15 @@ function PlaygroundPanel() {
     const searchRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const cancelledRef = useRef(false);
+    const skipCurrentRef = useRef(false);
     const userScrolledRef = useRef(false);
     const [inputCollapsed, setInputCollapsed] = useState(false);
     // Snapshot of selectedModels at the moment the popover closes — used for sorting
     const [pickerSnapshot, setPickerSnapshot] = useState<string[]>([]);
     const [autoCollapse, setAutoCollapse] = useState(true);
     // Preset management
+    const presets = usePlaygroundPresets();
+    const modelSets = presets.modelPresets;
     const [activePresetName, setActivePresetName] = useState<string | null>(null);
     const [presetMenuOpen, setPresetMenuOpen] = useState(false);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -336,8 +402,31 @@ function PlaygroundPanel() {
     const [pendingDeletePreset, setPendingDeletePreset] = useState<string | null>(null);
     const [pendingRenamePreset, setPendingRenamePreset] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState("");
+    const [exportSelection, setExportSelection] = useState<Set<string>>(new Set());
+    // Prompt presets
+    const [activePromptPreset, setActivePromptPreset] = useState<string | null>(null);
+    const [promptPresetMenuOpen, setPromptPresetMenuOpen] = useState(false);
+    const [promptSaveDialogOpen, setPromptSaveDialogOpen] = useState(false);
+    const [promptSaveName, setPromptSaveName] = useState("");
+    const [pendingDeletePromptPreset, setPendingDeletePromptPreset] = useState<string | null>(null);
+    const [pendingRenamePromptPreset, setPendingRenamePromptPreset] = useState<string | null>(null);
+    const [promptRenameValue, setPromptRenameValue] = useState("");
 
-    const modelSets = useMemo(() => settings?.playgroundModelSets || [], [settings?.playgroundModelSets]);
+    // One-shot migration from settings JSON → user_preferences DB
+    useEffect(() => {
+        if (!presets.loaded || !settings) return;
+        const legacy = settings.playgroundModelSets as any;
+        if (legacy && Array.isArray(legacy) && legacy.length > 0 && presets.modelPresets.length === 0) {
+            presets.migrateFromSettings(legacy).then(migrated => {
+                if (migrated) {
+                    // Clean up settings JSON
+                    const { playgroundModelSets, ...rest } = settings as any;
+                    updateSettings(rest);
+                    console.log('[Playground] Migrated model presets to DB, cleaned settings');
+                }
+            });
+        }
+    }, [presets.loaded]);
 
     // Load models from IPC
     useEffect(() => {
@@ -530,25 +619,50 @@ function PlaygroundPanel() {
         setExpandedCards(new Set());
         setCurrentModelIndex(0);
         cancelledRef.current = false;
+        skipCurrentRef.current = false;
         userScrolledRef.current = false;
         setInputCollapsed(true);
+
+        const MODEL_TIMEOUT_MS = 15_000;
 
         for (let i = 0; i < activeModels.length; i++) {
             if (cancelledRef.current) break;
 
             setCurrentModelIndex(i);
+            skipCurrentRef.current = false;
             const modelApiName = activeModels[i];
             const modelDisplayName = modelDisplayNameMap.get(modelApiName) || modelApiName;
 
             const startTime = performance.now();
             let durationMs = 0;
             try {
-                const response = await ipc.misc.playgroundCompletion({
-                    model: modelApiName,
-                    prompt: prompt.trim(),
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error("__TIMEOUT__")), MODEL_TIMEOUT_MS);
                 });
 
-                if (cancelledRef.current) break;
+                const response = await Promise.race([
+                    ipc.misc.playgroundCompletion({
+                        model: modelApiName,
+                        prompt: prompt.trim(),
+                    }),
+                    timeoutPromise,
+                ]);
+
+                if (cancelledRef.current || skipCurrentRef.current) {
+                    if (skipCurrentRef.current) {
+                        durationMs = performance.now() - startTime;
+                        setResults(prev => [...prev, {
+                            modelApiName,
+                            modelDisplayName,
+                            text: "Modelo omitido por el usuario",
+                            durationMs,
+                            error: true,
+                        }]);
+                        setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
+                        continue;
+                    }
+                    break;
+                }
 
                 durationMs = performance.now() - startTime;
 
@@ -564,26 +678,30 @@ function PlaygroundPanel() {
                 if (cancelledRef.current) break;
 
                 durationMs = performance.now() - startTime;
+                const isTimeout = error?.message === "__TIMEOUT__";
                 setResults(prev => [...prev, {
                     modelApiName,
                     modelDisplayName,
-                    text: error?.message || String(error),
+                    text: isTimeout ? "Tiempo límite superado (15s)" : (error?.message || String(error)),
                     durationMs,
                     error: true,
+                    timeout: isTimeout,
                 }]);
             }
 
             // Update chip times after each model completes
             setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
 
-            // Auto-collapse previous result when a new one arrives
-            if (autoCollapse && i > 0) {
-                const prevApiName = activeModels[i - 1];
-                const prevKey = `${prevApiName}-${i - 1}`;
-                setExpandedCards(prev => { const s = new Set(prev); s.delete(prevKey); return s; });
-            }
-            // Expand the just-completed result
-            {
+            // Auto-collapse: when ON, collapse ALL cards (never expand)
+            // When OFF, collapse previous and expand current
+            if (autoCollapse) {
+                setExpandedCards(new Set());
+            } else {
+                if (i > 0) {
+                    const prevApiName = activeModels[i - 1];
+                    const prevKey = `${prevApiName}-${i - 1}`;
+                    setExpandedCards(prev => { const s = new Set(prev); s.delete(prevKey); return s; });
+                }
                 const thisKey = `${modelApiName}-${i}`;
                 setExpandedCards(prev => new Set(prev).add(thisKey));
             }
@@ -618,6 +736,14 @@ function PlaygroundPanel() {
         } catch { /* ignore */ }
     }, []);
 
+    // Skip the current model (continue to next)
+    const handleSkipCurrent = useCallback(async () => {
+        skipCurrentRef.current = true;
+        try {
+            await ipc.misc.playgroundCancel({});
+        } catch { /* ignore */ }
+    }, []);
+
     // Toggle expand/collapse for a single result card
     const toggleCard = useCallback((key: string) => {
         setExpandedCards(prev => {
@@ -643,16 +769,14 @@ function PlaygroundPanel() {
         ta.style.height = `${Math.min(ta.scrollHeight, 720)}px`;
     }, []);
 
-    // ── Preset management ────────────────────────────────────────────────
+    // ── Model preset management (via DB) ──────────────────────────────────
     const handleSavePreset = useCallback(async (name: string) => {
         if (!name.trim() || selectedModels.length === 0) return;
-        const existing = modelSets.filter(s => s.name !== name.trim());
-        const updated = [...existing, { name: name.trim(), models: [...selectedModels] }];
-        await updateSettings({ playgroundModelSets: updated } as any);
+        await presets.saveModelPreset(name.trim(), [...selectedModels]);
         setActivePresetName(name.trim());
         setSaveDialogOpen(false);
         setSaveAsName("");
-    }, [selectedModels, modelSets, updateSettings]);
+    }, [selectedModels, presets]);
 
     const handleLoadPreset = useCallback((name: string) => {
         const preset = modelSets.find(s => s.name === name);
@@ -663,19 +787,77 @@ function PlaygroundPanel() {
     }, [modelSets]);
 
     const handleDeletePreset = useCallback(async (name: string) => {
-        const updated = modelSets.filter(s => s.name !== name);
-        await updateSettings({ playgroundModelSets: updated } as any);
+        await presets.deleteModelPreset(name);
         if (activePresetName === name) setActivePresetName(null);
-    }, [modelSets, updateSettings, activePresetName]);
+    }, [presets, activePresetName]);
 
     const handleRenamePreset = useCallback(async (oldName: string, newName: string) => {
         if (!newName.trim() || newName.trim() === oldName) return;
-        const updated = modelSets.map(s => s.name === oldName ? { ...s, name: newName.trim() } : s);
-        await updateSettings({ playgroundModelSets: updated } as any);
+        await presets.renameModelPreset(oldName, newName.trim());
         if (activePresetName === oldName) setActivePresetName(newName.trim());
         setPendingRenamePreset(null);
         setRenameValue("");
-    }, [modelSets, updateSettings, activePresetName]);
+    }, [presets, activePresetName]);
+
+    const handleMergePreset = useCallback((name: string) => {
+        const preset = modelSets.find(s => s.name === name);
+        if (!preset) return;
+        const merged = [...new Set([...selectedModels, ...preset.models])];
+        setSelectedModels(merged);
+        setDisabledModels(new Set());
+        setActivePresetName(name);
+    }, [modelSets, selectedModels]);
+
+    const handleExportMarkdown = useCallback(() => {
+        const toExport = displayResults.filter(r => exportSelection.has(`${r.modelApiName}`));
+        if (toExport.length === 0) return;
+
+        const lines: string[] = [
+            `# Playground — Comparativa de modelos`,
+            ``,
+            `**Fecha:** ${new Date().toLocaleString("es-ES")}`,
+            `**Prompt:**`,
+            '```',
+            prompt,
+            '```',
+            `**Modo:** ${viewMode === 'memorias' ? 'Memorias' : 'Raw'}`,
+            `**Orden:** ${sortMode}`,
+            ``,
+            `---`,
+            ``,
+        ];
+
+        toExport.forEach((r, idx) => {
+            lines.push(`## ${idx + 1}. ${r.modelDisplayName}`);
+            lines.push(``);
+            lines.push(`| Métrica | Valor |`);
+            lines.push(`|---|---|`);
+            lines.push(`| Tiempo | ${(r.durationMs / 1000).toFixed(2)}s |`);
+            if (r.inputTokens != null) lines.push(`| Tokens entrada | ${r.inputTokens} |`);
+            if (r.outputTokens != null) lines.push(`| Tokens salida | ${r.outputTokens} |`);
+            lines.push(`| Caracteres | ${r.text.length} |`);
+            lines.push(``);
+            if (r.error) {
+                lines.push(`> ⚠️ Error: ${r.text}`);
+            } else {
+                lines.push('```');
+                lines.push(r.text);
+                lines.push('```');
+            }
+            lines.push(``);
+            lines.push(`---`);
+            lines.push(``);
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `playground_${new Date().toISOString().slice(0, 10)}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportSelection(new Set());
+    }, [displayResults, exportSelection, prompt, viewMode, sortMode]);
 
     // Detect if current selection differs from active preset
     const presetIsDirty = useMemo(() => {
@@ -1098,7 +1280,7 @@ function PlaygroundPanel() {
                                 <ChevronDown size={13} className="opacity-50 shrink-0" />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="min-w-[260px]">
+                        <DropdownMenuContent align="start" className="min-w-[520px]">
                             {/* Deselect option */}
                             {activePresetName && (
                                 <>
@@ -1152,6 +1334,18 @@ function PlaygroundPanel() {
                                                 title="Renombrar preset"
                                             >
                                                 <Pencil size={11} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMergePreset(set.name);
+                                                    setPresetMenuOpen(false);
+                                                }}
+                                                title={`Fusionar "${set.name}" con la selección actual`}
+                                            >
+                                                <Merge size={11} />
                                             </button>
                                             <button
                                                 type="button"
@@ -1460,7 +1654,7 @@ function PlaygroundPanel() {
                     </button>
                 </div>
 
-                {/* ── Row 3: Collapsible prompt ── */}
+                {/* ── Row 3: Collapsible prompt + Prompt Presets ── */}
                 <div
                     className="playground-collapse-header"
                     onClick={() => setInputCollapsed(c => !c)}
@@ -1475,6 +1669,138 @@ function PlaygroundPanel() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                         {isRunning && <Loader2 size={14} className="animate-spin text-primary" />}
+
+                        {/* Prompt preset dropdown */}
+                        <DropdownMenu open={promptPresetMenuOpen} onOpenChange={setPromptPresetMenuOpen}>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-2.5 py-1 typo-select rounded-lg border transition-colors",
+                                        activePromptPreset
+                                            ? "border-primary/30 bg-primary/5 text-primary"
+                                            : "border-border/40 bg-background text-muted-foreground hover:bg-muted/50"
+                                    )}
+                                    onClick={(e) => { e.stopPropagation(); setPromptPresetMenuOpen(o => !o); }}
+                                    title="Presets de prompt"
+                                >
+                                    <FileText size={12} />
+                                    {activePromptPreset
+                                        ? <span className="max-w-[120px] truncate">{activePromptPreset}</span>
+                                        : "Prompts"}
+                                    <ChevronDown size={11} className="opacity-50 shrink-0" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[360px]" onClick={(e) => e.stopPropagation()}>
+                                {/* Deselect */}
+                                {activePromptPreset && (
+                                    <>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer py-2 text-muted-foreground"
+                                            onSelect={() => {
+                                                setActivePromptPreset(null);
+                                                setPromptPresetMenuOpen(false);
+                                            }}
+                                        >
+                                            <X size={13} className="mr-2 opacity-60" />
+                                            Ninguno
+                                        </DropdownMenuItem>
+                                        <div className="h-px bg-border/50 my-1" />
+                                    </>
+                                )}
+
+                                {/* Save current */}
+                                {prompt.trim() && (
+                                    <>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer py-2 text-primary"
+                                            onSelect={(e) => {
+                                                e.preventDefault();
+                                                setPromptSaveName("");
+                                                setPromptSaveDialogOpen(true);
+                                                setPromptPresetMenuOpen(false);
+                                            }}
+                                        >
+                                            <Plus size={13} className="mr-2" />
+                                            Guardar prompt actual
+                                        </DropdownMenuItem>
+                                        <div className="h-px bg-border/50 my-1" />
+                                    </>
+                                )}
+
+                                {presets.promptPresets.length === 0 ? (
+                                    <div className="py-3 px-4 text-center typo-caption text-muted-foreground">
+                                        Sin presets de prompt
+                                    </div>
+                                ) : (
+                                    presets.promptPresets.map(pp => (
+                                        <DropdownMenuItem
+                                            key={pp.name}
+                                            className={cn(
+                                                "cursor-pointer py-2.5 flex items-center justify-between gap-2",
+                                                activePromptPreset === pp.name && "bg-primary/10 font-semibold"
+                                            )}
+                                            onSelect={(e) => {
+                                                e.preventDefault();
+                                                setPrompt(pp.prompt);
+                                                setActivePromptPreset(pp.name);
+                                                setPromptPresetMenuOpen(false);
+                                            }}
+                                        >
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="truncate">{pp.name}</span>
+                                                <span className="typo-micro text-muted-foreground truncate">
+                                                    {pp.prompt.slice(0, 60)}{pp.prompt.length > 60 ? '…' : ''}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-0.5 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPendingRenamePromptPreset(pp.name);
+                                                        setPromptRenameValue(pp.name);
+                                                        setPromptPresetMenuOpen(false);
+                                                    }}
+                                                    title="Renombrar"
+                                                >
+                                                    <Pencil size={11} />
+                                                </button>
+                                                {prompt.trim() && (
+                                                    <button
+                                                        type="button"
+                                                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            presets.updatePromptPreset(pp.name, prompt);
+                                                            setActivePromptPreset(pp.name);
+                                                            setPromptPresetMenuOpen(false);
+                                                        }}
+                                                        title={`Sobreescribir "${pp.name}" con el prompt actual`}
+                                                    >
+                                                        <Save size={11} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPendingDeletePromptPreset(pp.name);
+                                                        setPromptPresetMenuOpen(false);
+                                                    }}
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    ))
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <ChevronRight
                             size={16}
                             className={cn(
@@ -1498,6 +1824,111 @@ function PlaygroundPanel() {
                 )}
             </div>
 
+            {/* ── Prompt Preset Dialogs ── */}
+
+            {/* Save prompt dialog */}
+            <AlertDialog open={promptSaveDialogOpen} onOpenChange={setPromptSaveDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Guardar prompt como preset</AlertDialogTitle>
+                        <AlertDialogDescription>Dale un nombre al preset para guardarlo.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <input
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground typo-body"
+                        value={promptSaveName}
+                        onChange={(e) => setPromptSaveName(e.target.value)}
+                        placeholder="Nombre del preset…"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && promptSaveName.trim()) {
+                                presets.savePromptPreset(promptSaveName.trim(), prompt);
+                                setActivePromptPreset(promptSaveName.trim());
+                                setPromptSaveDialogOpen(false);
+                                setPromptSaveName("");
+                            }
+                        }}
+                        autoFocus
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={!promptSaveName.trim()}
+                            onClick={() => {
+                                presets.savePromptPreset(promptSaveName.trim(), prompt);
+                                setActivePromptPreset(promptSaveName.trim());
+                                setPromptSaveDialogOpen(false);
+                                setPromptSaveName("");
+                            }}
+                        >
+                            Guardar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Rename prompt preset dialog */}
+            <AlertDialog open={!!pendingRenamePromptPreset} onOpenChange={(open) => { if (!open) setPendingRenamePromptPreset(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Renombrar preset de prompt</AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <input
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground typo-body"
+                        value={promptRenameValue}
+                        onChange={(e) => setPromptRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && promptRenameValue.trim() && pendingRenamePromptPreset) {
+                                presets.renamePromptPreset(pendingRenamePromptPreset, promptRenameValue.trim());
+                                if (activePromptPreset === pendingRenamePromptPreset) setActivePromptPreset(promptRenameValue.trim());
+                                setPendingRenamePromptPreset(null);
+                            }
+                        }}
+                        autoFocus
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={!promptRenameValue.trim()}
+                            onClick={() => {
+                                if (pendingRenamePromptPreset) {
+                                    presets.renamePromptPreset(pendingRenamePromptPreset, promptRenameValue.trim());
+                                    if (activePromptPreset === pendingRenamePromptPreset) setActivePromptPreset(promptRenameValue.trim());
+                                    setPendingRenamePromptPreset(null);
+                                }
+                            }}
+                        >
+                            Renombrar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete prompt preset dialog */}
+            <AlertDialog open={!!pendingDeletePromptPreset} onOpenChange={(open) => { if (!open) setPendingDeletePromptPreset(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminar preset de prompt</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            ¿Eliminar <strong>"{pendingDeletePromptPreset}"</strong>? Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                if (pendingDeletePromptPreset) {
+                                    presets.deletePromptPreset(pendingDeletePromptPreset);
+                                    if (activePromptPreset === pendingDeletePromptPreset) setActivePromptPreset(null);
+                                    setPendingDeletePromptPreset(null);
+                                }
+                            }}
+                        >
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* ── Results ── */}
             <div className="playground-results">
                 {displayResults.map((result, i) => {
@@ -1513,18 +1944,62 @@ function PlaygroundPanel() {
                             onRetry={runFinished && !isRunning ? () => handleRetryModel(result.modelApiName) : undefined}
                             isRetrying={retryingModel === result.modelApiName}
                             viewMode={viewMode}
+                            exportChecked={runFinished ? exportSelection.has(result.modelApiName) : undefined}
+                            onExportToggle={runFinished ? () => {
+                                setExportSelection(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(result.modelApiName)) next.delete(result.modelApiName);
+                                    else next.add(result.modelApiName);
+                                    return next;
+                                });
+                            } : undefined}
                         />
                     );
                 })}
+
+                {/* Export bar */}
+                {runFinished && exportSelection.size > 0 && (
+                    <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-primary/20 bg-primary/5">
+                        <span className="typo-caption text-primary">
+                            {exportSelection.size} resultado{exportSelection.size !== 1 ? 's' : ''} seleccionado{exportSelection.size !== 1 ? 's' : ''}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                className="typo-select text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => setExportSelection(new Set())}
+                            >
+                                Limpiar
+                            </button>
+                            <button
+                                type="button"
+                                className="flex items-center gap-1.5 px-3 py-1.5 typo-select bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                                onClick={handleExportMarkdown}
+                            >
+                                <Download size={13} />
+                                Exportar .md
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Running indicator */}
                 {isRunning && currentModelIndex >= 0 && currentModelIndex < activeModels.length && (
                     <div className="playground-running">
                         <Loader2 size={16} className="animate-spin" />
-                        <span>
+                        <span className="flex-1">
                             Ejecutando <strong>{modelDisplayNameMap.get(activeModels[currentModelIndex]) || activeModels[currentModelIndex]}</strong>
                             {" "}({currentModelIndex + 1}/{activeModels.length})
                         </span>
+                        <button
+                            type="button"
+                            className="flex items-center gap-1 px-2 py-1 typo-micro rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            onClick={handleSkipCurrent}
+                            title="Omitir este modelo"
+                        >
+                            <StopCircle size={11} />
+                            Omitir
+                        </button>
                     </div>
                 )}
 
