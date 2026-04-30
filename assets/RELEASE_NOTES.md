@@ -7,7 +7,7 @@ Nuevo **sistema de memoria por proyecto**: mientras trabajas, la IA extrae autom
 
 ## Playground: compara modelos en paralelo
 
-Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y comparar velocidad, tamaño de respuesta y calidad lado a lado. Selecciona los modelos desde un picker integrado, ordena los resultados por tiempo o longitud, reintenta modelos individuales y cancela peticiones en vuelo. Accesible desde **Ajustes → OpenRouter**.
+Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y comparar velocidad, tamaño de respuesta y calidad lado a lado. Puedes guardar **presets de modelos** para cambiar de batería con un clic, probar cómo responden distintos modelos al sistema de memorias, activar **auto-colapso** para que los resultados anteriores se plieguen solos y reintentar modelos individuales sin relanzar todo. Accesible desde **Ajustes → OpenRouter**.
 
 ## Ajusta el tamaño de cada zona
 

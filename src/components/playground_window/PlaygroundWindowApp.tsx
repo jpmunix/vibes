@@ -32,6 +32,10 @@ import {
     RefreshCw,
     StopCircle,
     ChevronsDownUp,
+    Save,
+    Trash2,
+    FolderOpen,
+    Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -269,6 +273,7 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
 // ─── Main Playground Panel ───────────────────────────────────────────────────
 
 function PlaygroundPanel() {
+    const { settings, updateSettings } = useSettings();
     const [prompt, setPrompt] = useState("");
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
     const [disabledModels, setDisabledModels] = useState<Set<string>>(new Set());
@@ -296,6 +301,14 @@ function PlaygroundPanel() {
     // Snapshot of selectedModels at the moment the popover closes — used for sorting
     const [pickerSnapshot, setPickerSnapshot] = useState<string[]>([]);
     const [autoCollapse, setAutoCollapse] = useState(true);
+    // Preset management
+    const [activePresetName, setActivePresetName] = useState<string | null>(null);
+    const [presetMenuOpen, setPresetMenuOpen] = useState(false);
+    const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [saveAsName, setSaveAsName] = useState("");
+    const [saveMode, setSaveMode] = useState<'new' | 'update'>('new');
+
+    const modelSets = useMemo(() => settings?.playgroundModelSets || [], [settings?.playgroundModelSets]);
 
     // Load models from IPC
     useEffect(() => {
@@ -600,6 +613,41 @@ function PlaygroundPanel() {
         ta.style.height = 'auto';
         ta.style.height = `${Math.min(ta.scrollHeight, 720)}px`;
     }, []);
+
+    // ── Preset management ────────────────────────────────────────────────
+    const handleSavePreset = useCallback(async (name: string) => {
+        if (!name.trim() || selectedModels.length === 0) return;
+        const existing = modelSets.filter(s => s.name !== name.trim());
+        const updated = [...existing, { name: name.trim(), models: [...selectedModels] }];
+        await updateSettings({ playgroundModelSets: updated } as any);
+        setActivePresetName(name.trim());
+        setSaveDialogOpen(false);
+        setSaveAsName("");
+    }, [selectedModels, modelSets, updateSettings]);
+
+    const handleLoadPreset = useCallback((name: string) => {
+        const preset = modelSets.find(s => s.name === name);
+        if (!preset) return;
+        setSelectedModels(preset.models);
+        setDisabledModels(new Set());
+        setActivePresetName(name);
+    }, [modelSets]);
+
+    const handleDeletePreset = useCallback(async (name: string) => {
+        const updated = modelSets.filter(s => s.name !== name);
+        await updateSettings({ playgroundModelSets: updated } as any);
+        if (activePresetName === name) setActivePresetName(null);
+    }, [modelSets, updateSettings, activePresetName]);
+
+    // Detect if current selection differs from active preset
+    const presetIsDirty = useMemo(() => {
+        if (!activePresetName) return false;
+        const preset = modelSets.find(s => s.name === activePresetName);
+        if (!preset) return false;
+        if (preset.models.length !== selectedModels.length) return true;
+        const set = new Set(preset.models);
+        return selectedModels.some(m => !set.has(m));
+    }, [activePresetName, selectedModels, modelSets]);
 
     return (
         <div ref={resultsRef} className="playground-scroll-root">
@@ -987,6 +1035,138 @@ function PlaygroundPanel() {
                             </span>
                         );
                     })}
+                </div>
+
+                {/* ── Preset bar ── */}
+                <div className="playground-toolbar" style={{ borderTop: 'none', paddingTop: 0 }}>
+                    {/* Preset loader dropdown */}
+                    <DropdownMenu open={presetMenuOpen} onOpenChange={setPresetMenuOpen}>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors",
+                                    activePresetName
+                                        ? "border-primary/30 bg-primary/5 text-primary"
+                                        : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground"
+                                )}
+                                disabled={isRunning}
+                            >
+                                <FolderOpen size={14} className="shrink-0" />
+                                <span className="truncate max-w-[160px]">
+                                    {activePresetName || "Presets"}
+                                </span>
+                                {presetIsDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                                <ChevronDown size={13} className="opacity-50 shrink-0" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[260px]">
+                            {modelSets.length === 0 ? (
+                                <div className="py-3 px-4 text-center typo-caption text-muted-foreground">
+                                    Sin presets guardados
+                                </div>
+                            ) : (
+                                modelSets.map(set => (
+                                    <DropdownMenuItem
+                                        key={set.name}
+                                        className={cn(
+                                            "cursor-pointer py-2.5 flex items-center justify-between gap-2",
+                                            activePresetName === set.name && "bg-primary/10 font-semibold"
+                                        )}
+                                        onSelect={(e) => {
+                                            e.preventDefault();
+                                            handleLoadPreset(set.name);
+                                            setPresetMenuOpen(false);
+                                        }}
+                                    >
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="truncate">{set.name}</span>
+                                            <span className="typo-micro text-muted-foreground truncate">
+                                                {set.models.length} modelo{set.models.length !== 1 ? 's' : ''}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeletePreset(set.name);
+                                            }}
+                                            title="Eliminar preset"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </DropdownMenuItem>
+                                ))
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Save / Update buttons */}
+                    {selectedModels.length > 0 && (
+                        <>
+                            {/* Update current preset (only if dirty) */}
+                            {activePresetName && presetIsDirty && (
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border border-primary/30 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
+                                    onClick={() => handleSavePreset(activePresetName)}
+                                    title={`Actualizar "${activePresetName}"`}
+                                >
+                                    <Pencil size={13} />
+                                    Actualizar
+                                </button>
+                            )}
+                            {/* Save as new */}
+                            <Popover open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground"
+                                        title="Guardar selección como preset"
+                                    >
+                                        <Save size={13} />
+                                        {activePresetName ? "Guardar como…" : "Guardar"}
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="start" className="w-[280px] p-3" sideOffset={8}>
+                                    <div className="space-y-2">
+                                        <p className="typo-caption font-medium">Nombre del preset</p>
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-1.5 typo-body text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                            placeholder="Ej: Modelos benchmark..."
+                                            value={saveAsName}
+                                            onChange={e => setSaveAsName(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === "Enter" && saveAsName.trim()) {
+                                                    handleSavePreset(saveAsName);
+                                                }
+                                            }}
+                                            autoFocus
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                type="button"
+                                                className="px-3 py-1.5 typo-select text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                                                onClick={() => { setSaveDialogOpen(false); setSaveAsName(""); }}
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="px-3 py-1.5 typo-select bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40"
+                                                disabled={!saveAsName.trim()}
+                                                onClick={() => handleSavePreset(saveAsName)}
+                                            >
+                                                Guardar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </>
+                    )}
                 </div>
 
                 {/* ── Row 2: Options bar ── */}

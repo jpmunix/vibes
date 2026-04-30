@@ -504,6 +504,11 @@ export const UserSettingsSchema = z
         isMaximized: z.boolean().optional(),
       })
       .optional(),
+    // Playground — saved model presets
+    playgroundModelSets: z.array(z.object({
+      name: z.string(),
+      models: z.array(z.string()),
+    })).optional(),
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
