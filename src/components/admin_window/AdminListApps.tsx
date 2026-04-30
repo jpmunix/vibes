@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ipc } from "@/ipc/types";
 import type { AdminUser } from "@/ipc/types/admin";
+import { LanguageBadge } from "@/components/LanguageBadge";
 import {
     Loader2,
     ChevronRight,
@@ -137,20 +138,7 @@ export function AdminListApps() {
                                                     <h4 className="typo-label truncate">
                                                         {app.name}
                                                     </h4>
-                                                    {(app.primaryLanguage || app.projectType) && (
-                                                        <div className="flex items-center gap-1.5 mt-1">
-                                                            {app.primaryLanguage && (
-                                                                <span className="px-1.5 py-0.5 text-[10px] rounded bg-accent text-muted-foreground uppercase tracking-wider">
-                                                                    {app.primaryLanguage}
-                                                                </span>
-                                                            )}
-                                                            {app.projectType && (
-                                                                <span className="px-1.5 py-0.5 text-[10px] rounded bg-accent text-muted-foreground">
-                                                                    {app.projectType}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <LanguageBadge language={app.primaryLanguage} />
                                                 </div>
                                                 <ChevronRight
                                                     className="size-5 text-muted-foreground/50 shrink-0"
