@@ -271,65 +271,149 @@ export function registerAdminHandlers(): void {
         return { usersSettings };
     });
 
-    // ─── GET KNOWLEDGE STATS ────────────────────────────────────────────
-    createTypedHandler(adminContracts.getKnowledgeStats, async (_event, _input, context) => {
+    // ─── ADMIN MEMORY STATS (per user, per app) ─────────────────────────
+    createTypedHandler(adminContracts.getAdminMemoryStats, async (_event, _input, context) => {
         assertAdmin(context);
         await initializeRemoteSchema();
         const db = getRemoteDb();
 
-        const [userRows, appRows, memoryRows, knowledgeRows, pipelineRows, telemetryRows] = await Promise.all([
+        const [userRows, appRows, memoryRows] = await Promise.all([
             db.select().from(remoteSchema.users),
             db.select({ id: remoteSchema.apps.id, userId: remoteSchema.apps.userId, name: remoteSchema.apps.name }).from(remoteSchema.apps),
-            db.select().from(remoteSchema.memories),
-            db.select().from(remoteSchema.knowledgeEntries),
-            db.select().from(remoteSchema.memoryPipelineLogs),
-            db.select().from(remoteSchema.memoryTelemetry),
+            db.select({
+                userId: remoteSchema.memories.userId,
+                appId: remoteSchema.memories.appId,
+                enabled: remoteSchema.memories.enabled,
+                source: remoteSchema.memories.source,
+            }).from(remoteSchema.memories),
         ]);
 
-        // Build lookup maps
         const appsByUser = new Map<string, typeof appRows>();
         for (const app of appRows) {
             if (!appsByUser.has(app.userId)) appsByUser.set(app.userId, []);
             appsByUser.get(app.userId)!.push(app);
         }
 
-        // Serialize row helper — convert Date objects to ISO strings
-        function serializeRow(row: Record<string, unknown>): Record<string, unknown> {
-            const out: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(row)) {
-                out[k] = v instanceof Date ? v.toISOString() : v;
-            }
-            return out;
-        }
-
         const users = userRows.map((user) => {
             const userApps = appsByUser.get(user.id) || [];
-            const apps = userApps.map((app) => ({
-                appId: app.id,
-                appName: app.name,
-                memories: memoryRows
-                    .filter((r) => r.userId === user.id && r.appId === app.id)
-                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
-                knowledgeEntries: knowledgeRows
-                    .filter((r) => r.userId === user.id && r.appId === app.id)
-                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
-                pipelineLogs: pipelineRows
-                    .filter((r) => r.userId === user.id && r.appId === app.id)
-                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
-                telemetry: telemetryRows
-                    .filter((r) => r.userId === user.id && (r.appId === app.id || r.appId === null))
-                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
-            }));
+            const apps = userApps
+                .map((app) => {
+                    const appMems = memoryRows.filter((r) => r.userId === user.id && r.appId === app.id);
+                    if (appMems.length === 0) return null;
+                    let enabled = 0, disabled = 0, autoCount = 0, manualCount = 0;
+                    for (const m of appMems) {
+                        if (m.enabled) enabled++; else disabled++;
+                        if (m.source === "auto") autoCount++; else manualCount++;
+                    }
+                    return { appId: app.id, appName: app.name, total: appMems.length, enabled, disabled, autoCount, manualCount };
+                })
+                .filter(Boolean) as { appId: number; appName: string; total: number; enabled: number; disabled: number; autoCount: number; manualCount: number }[];
 
-            return {
-                userId: user.id,
-                displayName: user.displayName,
-                email: user.email,
-                apps,
-            };
-        });
+            return { userId: user.id, displayName: user.displayName, apps };
+        }).filter((u) => u.apps.length > 0);
 
         return { users };
+    });
+
+    // ─── ADMIN ANALYZER DATA (telemetry + pipeline for a user) ──────────
+    createTypedHandler(adminContracts.getAdminAnalyzerData, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { eq, and, desc } = await import("drizzle-orm");
+
+        const { userId, appId } = input;
+        const filterApp = appId && appId > 0;
+
+        // Get apps list for this user that have analyzer data
+        const userApps = await db
+            .select({ id: remoteSchema.apps.id, name: remoteSchema.apps.name })
+            .from(remoteSchema.apps)
+            .where(eq(remoteSchema.apps.userId, userId));
+
+        // Filter to apps that actually have telemetry or pipeline data
+        const telemetryAppIds = new Set(
+            (await db
+                .select({ appId: remoteSchema.memoryTelemetry.appId })
+                .from(remoteSchema.memoryTelemetry)
+                .where(eq(remoteSchema.memoryTelemetry.userId, userId))
+            ).map((r) => r.appId)
+        );
+        const pipelineAppIds = new Set(
+            (await db
+                .select({ appId: remoteSchema.memoryPipelineLogs.appId })
+                .from(remoteSchema.memoryPipelineLogs)
+                .where(eq(remoteSchema.memoryPipelineLogs.userId, userId))
+            ).map((r) => r.appId)
+        );
+        const apps = userApps.filter((a) => telemetryAppIds.has(a.id) || pipelineAppIds.has(a.id));
+
+        // Telemetry stats — aggregate action counts
+        const telWhere = filterApp
+            ? and(eq(remoteSchema.memoryTelemetry.userId, userId), eq(remoteSchema.memoryTelemetry.appId, appId))
+            : eq(remoteSchema.memoryTelemetry.userId, userId);
+
+        const telRows = await db
+            .select({ action: remoteSchema.memoryTelemetry.action })
+            .from(remoteSchema.memoryTelemetry)
+            .where(telWhere);
+
+        const statsMap: Record<string, number> = {};
+        for (const r of telRows) {
+            statsMap[r.action] = (statsMap[r.action] || 0) + 1;
+        }
+        const stats = Object.entries(statsMap).map(([action, count]) => ({ action, count }));
+
+        // Recent telemetry events (last 50)
+        const recentRows = await db
+            .select({
+                action: remoteSchema.memoryTelemetry.action,
+                reason: remoteSchema.memoryTelemetry.reason,
+                extractedKeys: remoteSchema.memoryTelemetry.extractedKeys,
+                createdAt: remoteSchema.memoryTelemetry.createdAt,
+            })
+            .from(remoteSchema.memoryTelemetry)
+            .where(telWhere)
+            .orderBy(desc(remoteSchema.memoryTelemetry.createdAt))
+            .limit(50);
+
+        const recent = recentRows.map((r) => ({
+            action: r.action,
+            reason: r.reason,
+            extractedKeys: r.extractedKeys,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
+
+        // Pipeline logs (last 50)
+        const plWhere = filterApp
+            ? and(eq(remoteSchema.memoryPipelineLogs.userId, userId), eq(remoteSchema.memoryPipelineLogs.appId, appId))
+            : eq(remoteSchema.memoryPipelineLogs.userId, userId);
+
+        const plRows = await db
+            .select()
+            .from(remoteSchema.memoryPipelineLogs)
+            .where(plWhere)
+            .orderBy(desc(remoteSchema.memoryPipelineLogs.createdAt))
+            .limit(50);
+
+        const pipelineLogs = plRows.map((r) => ({
+            id: r.id,
+            appId: r.appId,
+            chatId: r.chatId,
+            stage: r.stage,
+            model: r.model,
+            systemPrompt: r.systemPrompt,
+            userMessage: r.userMessage,
+            rawResponse: r.rawResponse,
+            parsedResult: r.parsedResult,
+            resultCount: r.resultCount,
+            durationMs: r.durationMs,
+            success: r.success,
+            error: r.error,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
+
+        return { apps, stats, recent, pipelineLogs };
     });
 
     logger.info("Admin handlers registered");

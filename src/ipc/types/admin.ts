@@ -98,22 +98,70 @@ export const adminContracts = {
         }),
     }),
 
-    getKnowledgeStats: defineContract({
-        channel: "admin:get-knowledge-stats",
+    /**
+     * Memory stats per user — same data as MemorySettings "Memorias por aplicación"
+     * Returns per-user per-app: total, enabled, disabled, auto, manual counts.
+     */
+    getAdminMemoryStats: defineContract({
+        channel: "admin:get-memory-stats",
         input: z.object({}),
         output: z.object({
             users: z.array(z.object({
                 userId: z.string(),
                 displayName: z.string(),
-                email: z.string(),
                 apps: z.array(z.object({
                     appId: z.number(),
                     appName: z.string(),
-                    memories: z.array(z.record(z.unknown())),
-                    knowledgeEntries: z.array(z.record(z.unknown())),
-                    pipelineLogs: z.array(z.record(z.unknown())),
-                    telemetry: z.array(z.record(z.unknown())),
+                    total: z.number(),
+                    enabled: z.number(),
+                    disabled: z.number(),
+                    autoCount: z.number(),
+                    manualCount: z.number(),
                 })),
+            })),
+        }),
+    }),
+
+    /**
+     * Analyzer data per user — same data as MemorySettings "Analizador de memoria"
+     * Returns telemetry stats, recent events, and pipeline logs for a given user+app filter.
+     */
+    getAdminAnalyzerData: defineContract({
+        channel: "admin:get-analyzer-data",
+        input: z.object({
+            userId: z.string(),
+            appId: z.number().optional(), // 0 or omitted = all apps
+        }),
+        output: z.object({
+            apps: z.array(z.object({
+                id: z.number(),
+                name: z.string(),
+            })),
+            stats: z.array(z.object({
+                action: z.string(),
+                count: z.number(),
+            })),
+            recent: z.array(z.object({
+                action: z.string(),
+                reason: z.string().nullable(),
+                extractedKeys: z.string().nullable(),
+                createdAt: z.string(),
+            })),
+            pipelineLogs: z.array(z.object({
+                id: z.number(),
+                appId: z.number(),
+                chatId: z.number().nullable(),
+                stage: z.string(),
+                model: z.string().nullable(),
+                systemPrompt: z.string().nullable(),
+                userMessage: z.string().nullable(),
+                rawResponse: z.string().nullable(),
+                parsedResult: z.string().nullable(),
+                resultCount: z.number(),
+                durationMs: z.number().nullable(),
+                success: z.number(),
+                error: z.string().nullable(),
+                createdAt: z.string(),
             })),
         }),
     }),
