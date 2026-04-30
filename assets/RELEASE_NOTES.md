@@ -23,6 +23,7 @@ Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra la
 - Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
 - El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.
 - Protección contra modelos retirados de OpenRouter: se detectan y desactivan automáticamente para evitar errores 404 durante el uso.
+- Buscador de ajustes reescrito con keywords más precisas y cobertura de todos los controles, incluidos sub-valores de cada selector.
 - Mejoras internas de estabilidad.
 
 # v8.0

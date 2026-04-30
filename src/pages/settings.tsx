@@ -107,52 +107,76 @@ interface SearchSettingItem {
 }
 
 const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
-  // General Settings
+  // ─── General / Tema ───
   {
     id: "theme",
-    label: "Tema",
-    description: "Cambiar entre modo claro, oscuro o sistema",
+    label: "Modo",
+    description: "Elige entre claro, oscuro o sincronizado con el sistema",
     keywords: [
-      "tema",
-      "fuente",
-      "tipografía",
-      "dark",
-      "light",
-      "oscuro",
-      "claro",
-      "apariencia",
-      "color",
+      "tema", "mode", "dark", "light",
+      // sub-values (pill labels)
+      "sistema", "claro", "oscuro",
+      "apariencia", "color",
     ],
     section: "Tema",
     sectionId: "general-settings",
   },
-
   {
     id: "primary-color",
     label: "Color primario",
     description: "Elige el color de acento principal para modo claro y oscuro",
-    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary"],
+    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary", "chroma"],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
+  {
+    id: "intensity",
+    label: "Intensidad",
+    description: "Ajusta la luminosidad de los colores base",
+    keywords: [
+      "intensidad", "luminosidad", "brillo",
+      // sub-values
+      "por defecto", "más claro",
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
   {
     id: "font",
-    label: "Tipografía",
-    description: "Elige la fuente para toda la interfaz",
-    keywords: ["fuente", "tipografía", "font", "geist", "inter", "roboto", "letra"],
+    label: "Tipografía de la Interfaz",
+    description: "Elige la fuente para toda la interfaz (menús, botones)",
+    keywords: [
+      "fuente", "tipografía", "font", "letra", "interfaz",
+      // sub-values: font names
+      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
-  /*
   {
-    id: "icon-library",
-    label: "Librería de Iconos",
-    description: "Cambiar entre Lucide e Iconoir para la interfaz",
-    keywords: ["iconos", "icons", "lucide", "iconoir", "tema", "interfaz", "apariencia"],
+    id: "chat-font",
+    label: "Tipografía del Chat",
+    description: "Elige la fuente base para los mensajes del chat",
+    keywords: [
+      "fuente", "tipografía", "font", "chat", "mensajes",
+      // sub-values: font names
+      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
-  */
+  {
+    id: "font-scale",
+    label: "Tamaño de fuente",
+    description: "Ajusta el tamaño del texto por zona (interfaz, sidebar, chat)",
+    keywords: [
+      "tamaño", "fuente", "escala", "zoom", "scale",
+      "interfaz", "sidebar", "chat",
+      "ancho", "burbuja", "bubble", "width",
+    ],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
   // Workflow Settings
   {
     id: "chat-mode",
@@ -164,24 +188,28 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   },
   {
     id: "auto-approve",
-    label: "Auto-aprobar cambios",
-    description: "Aprobar automáticamente los cambios de código y ejecutarlos",
-    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar"],
+    label: "Confirmar cambios en git",
+    description: "Confirma automáticamente los cambios de la IA en git",
+    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar", "git", "commit", "confirmar"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "auto-expand-preview",
-    label: "Expandir vista previa automáticamente",
-    description: "Expandir el panel de vista previa cuando se hacen cambios",
-    keywords: ["expandir", "preview", "vista previa", "panel", "automatico"],
+    label: "Expandir vista previa",
+    description: "Abre automáticamente el panel de vista previa lateral cuando el código cambia",
+    keywords: [
+      "expandir", "preview", "vista previa", "panel", "automatico",
+      // sub-values
+      "desactivado", "derecha", "izquierda",
+    ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "chat-completion-notification",
-    label: "Notificación de respuesta completada",
-    description: "Mostrar notificación cuando termine una respuesta del chat",
+    label: "Notificaciones de respuesta",
+    description: "Muestra una notificación nativa del sistema cuando el chat termina de generar",
     keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
@@ -194,31 +222,18 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
-  // Embeddings Settings (now inside Agente)
+  // ─── Agente ───
   {
-    id: "embeddings",
-    label: "Búsqueda Semántica",
-    description: "Mejorar la comprensión del código usando vectores semánticos",
-    keywords: ["embeddings", "semantica", "busqueda", "vectores", "ia", "contexto"],
+    id: "chat-language",
+    label: "Idioma del chat",
+    description: "Seleccionar el idioma para las respuestas del agente",
+    keywords: [
+      "idioma", "language", "lenguaje",
+      // sub-values
+      "español", "english", "ingles",
+    ],
     section: "Agente",
     sectionId: "ai-behavior",
-  },
-  {
-    id: "embeddings-model",
-    label: "Modelo de Embeddings",
-    description: "Configurar el modelo usado para la búsqueda semántica",
-    keywords: ["modelo", "embeddings", "openrouter", "dimensiones", "coste"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  // AI Settings
-  {
-    id: "enabled-models",
-    label: "Modelos habilitados",
-    description: "Gestiona qué modelos aparecen en el selector del chat",
-    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
-    section: "OpenRouter",
-    sectionId: "models-connectivity",
   },
   {
     id: "reasoning-effort",
@@ -237,63 +252,59 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
   {
-    id: "max-chat-turns",
-    label: "Turnos máximos de chat",
-    description: "Número máximo de intercambios en una conversación",
-    keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "chat-language",
-    label: "Idioma del chat",
-    description: "Seleccionar el idioma para las respuestas del agente",
-    keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "agent-max-steps",
-    label: "Pasos del agente (Orquestación)",
-    description: "Limita el número de iteraciones del agente por petición — menos pasos es más rápido",
-    keywords: ["pasos", "steps", "iteraciones", "ligero", "rapido", "orquestacion", "agent", "limite", "velocidad"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-
-  {
-    id: "token-stats",
-    label: "Guardar métricas de tokens",
-    description: "Guardar uso de tokens para logs y gráficas",
-    keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
-    section: "Estadísticas",
-    sectionId: "stats-settings",
-  },
-  {
-    id: "verbose-logs",
-    label: "Logs verbosos de chat",
-    description: "Registrar información detallada del chat para debugging",
-    keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
-    section: "Estadísticas",
-    sectionId: "stats-settings",
-  },
-  // Stats
-  {
-    id: "stats",
-    label: "Estadísticas globales",
-    description: "Ver uso de tokens y estadísticas del sistema",
+    id: "chat-view",
+    label: "Vista del chat",
+    description: "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",
     keywords: [
-      "estadisticas",
-      "stats",
-      "tokens",
-      "uso",
-      "graficas",
-      "metricas",
+      "vista", "chat", "render", "modo", "view",
+      // sub-values (pill labels)
+      "completo", "flow", "zen",
+      "ligero", "rapido", "limpio", "esencial",
     ],
-    section: "Estadísticas Globales",
-    sectionId: "stats-settings",
+    section: "Agente",
+    sectionId: "ai-behavior",
   },
-  // Provider Settings
+  {
+    id: "standard-model",
+    label: "Modelo para tareas internas",
+    description: "Títulos, resúmenes y mantenimiento",
+    keywords: [
+      "modelo", "tareas", "internas", "titulos", "resumenes",
+      "standard", "gemini", "flash", "lite",
+    ],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  {
+    id: "agent-permissions",
+    label: "Permisos del Agente",
+    description: "Configurar qué herramientas puede usar el agente",
+    keywords: [
+      "permisos", "agente", "agent", "herramientas", "tools", "permissions",
+      "seguridad",
+      // sub-values: permission names
+      "editar archivos", "terminal", "bash",
+      "acceso web", "webfetch",
+      "búsqueda web", "websearch",
+      "diagnósticos", "lsp",
+      // sub-values: permission levels
+      "siempre", "preguntar", "nunca",
+      // sub-values: granular rules
+      "rm", "borrar", "git add", "git commit", "git push", "git reset",
+      "git checkout", "git restore", "git clean", "git rebase",
+    ],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  // ─── OpenRouter ───
+  {
+    id: "enabled-models",
+    label: "Modelos habilitados",
+    description: "Gestiona qué modelos aparecen en el selector del chat",
+    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
+    section: "OpenRouter",
+    sectionId: "models-connectivity",
+  },
   {
     id: "provider-settings",
     label: "Configuración de OpenRouter",
@@ -302,6 +313,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
+  // ─── Integraciones ───
   {
     id: "github",
     label: "GitHub",
@@ -331,25 +343,12 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Neon",
     description: "Integración con Neon Database",
     keywords: [
-      "neon",
-      "database",
-      "db",
-      "postgres",
-      "postgresql",
-      "integracion",
+      "neon", "database", "db", "postgres", "postgresql", "integracion",
     ],
     section: "Integraciones",
     sectionId: "integrations",
   },
-  // Firebase hidden - not mature yet
-  // {
-  //   id: "firebase",
-  //   label: "Firebase",
-  //   description: "Integración con Firebase (Google)",
-  //   keywords: ["firebase", "google", "database", "db", "firestore", "integracion"],
-  //   section: "Integraciones",
-  //   sectionId: "integrations",
-  // },
+  // ─── Herramientas MCP ───
   {
     id: "mcp-servers",
     label: "Servidores MCP",
@@ -358,61 +357,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Herramientas MCP",
     sectionId: "tools-mcp",
   },
-  // Agent Permissions
-  {
-    id: "agent-permissions",
-    label: "Permisos del Agente",
-    description: "Configurar qué herramientas puede usar el agente",
-    keywords: [
-      "permisos",
-      "agente",
-      "agent",
-      "herramientas",
-      "tools",
-      "permissions",
-      "bash",
-      "terminal",
-      "seguridad",
-      "edit",
-      "editar",
-      "lsp",
-      "webfetch",
-      "websearch",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  // Reset
+  // ─── Otros ───
   {
     id: "reset-all",
     label: "Valores por defecto",
     description: "Restaurar toda la configuración a valores por defecto",
     keywords: [
-      "reset",
-      "resetear",
-      "eliminar",
-      "borrar",
-      "todo",
-      "defecto",
-      "restaurar",
+      "reset", "resetear", "eliminar", "borrar", "todo", "defecto", "restaurar",
     ],
     section: "Tema",
     sectionId: "general-settings",
-  },
-  {
-    id: "prompts",
-    label: "Prompts",
-    description: "Configurar instrucciones del sistema y plantillas de IA",
-    keywords: [
-      "prompts",
-      "sistema",
-      "instrucciones",
-      "plantillas",
-      "ia",
-      "custom",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
   },
 ];
 
@@ -482,6 +436,7 @@ export default function SettingsPage() {
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const [hasReleaseNotes, setHasReleaseNotes] = useState(false);
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -513,6 +468,15 @@ export default function SettingsPage() {
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
+
+  // Track scroll position for sticky header fade
+  useEffect(() => {
+    const container = document.getElementById("settings-scroll-container");
+    if (!container) return;
+    const handleScroll = () => setIsScrolled(container.scrollTop > 8);
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Check if release notes file has content
   useEffect(() => {
@@ -657,9 +621,30 @@ export default function SettingsPage() {
       id="settings-scroll-container"
       className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto"
     >
-      {/* Header Pill */}
-      <div className="w-full mx-auto px-8 pt-6">
-        <div className="w-full mx-auto">
+      {/* Header Pill — sticky */}
+      <div className="sticky top-0 z-50 w-full pt-6 pb-4 pointer-events-none">
+        
+        {/* Solid background behind the pill */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute inset-0 bg-muted/30" />
+        </div>
+
+        {/* Aggressive fade overlay — only visible when scrolled */}
+        <div 
+          className="absolute left-0 right-0 -z-10 h-8"
+          style={{ 
+            top: '100%',
+            opacity: isScrolled ? 1 : 0,
+            background: 'linear-gradient(to bottom, var(--color-background), transparent)',
+            maskImage: 'linear-gradient(to bottom, black 20%, transparent)',
+          }}
+        >
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute inset-0 bg-muted/30" />
+        </div>
+
+        <div className="relative w-full mx-auto px-8 pointer-events-auto">
           <div className="flex justify-between items-center gap-4 bg-card border border-border rounded-2xl p-4 shadow-sm transition-[border-color,box-shadow] duration-300">
             
             {/* Search Input */}
@@ -819,7 +804,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="w-full mx-auto px-8 pt-8 pb-12">
+      <div className="w-full mx-auto px-8 pt-4 pb-12 flex-1">
         <div className="space-y-12 pb-24">
           <GeneralSettings
             appVersion={appVersion}
@@ -932,7 +917,7 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
@@ -974,8 +959,8 @@ export function GeneralSettings({
     if (settings?.fontScaleChat !== undefined && settings.fontScaleChat !== fontScales.chat) {
       applyFontScale("chat", settings.fontScaleChat);
     }
-    if (settings?.fontScaleBubbleWidth !== undefined && settings.fontScaleBubbleWidth !== fontScales["bubble-width"]) {
-      applyFontScale("bubble-width", settings.fontScaleBubbleWidth);
+    if (settings?.fontScaleBubbleWidth !== undefined && settings.fontScaleBubbleWidth !== bubbleWidthPct) {
+      applyBubbleWidth(settings.fontScaleBubbleWidth);
     }
   }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1255,27 +1240,23 @@ export function GeneralSettings({
               />
               <SettingItem
                 label="Ancho de burbuja"
-                description="Ancho máximo de las burbujas de chat"
+                description="Porcentaje del contenedor (100% = ancho total)"
                 control={
                   <UnifiedSelector
-                    value={String(fontScales["bubble-width"])}
+                    value={String(bubbleWidthPct)}
                     onChange={async (value) => {
-                      const scale = parseFloat(value);
-                      applyFontScale("bubble-width", scale);
-                      await updateSettings({ fontScaleBubbleWidth: scale });
+                      const pct = parseFloat(value);
+                      applyBubbleWidth(pct);
+                      await updateSettings({ fontScaleBubbleWidth: pct });
                     }}
                     options={[
-                      { value: "1", label: "100%" },
-                      { value: "1.05", label: "105%" },
-                      { value: "1.1", label: "110%" },
-                      { value: "1.15", label: "115%" },
-                      { value: "1.2", label: "120%" },
-                      { value: "1.25", label: "125%" },
-                      { value: "1.3", label: "130%" },
-                      { value: "1.35", label: "135%" },
-                      { value: "1.4", label: "140%" },
-                      { value: "1.45", label: "145%" },
-                      { value: "1.5", label: "150%" },
+                      { value: "60", label: "60%" },
+                      { value: "65", label: "65%" },
+                      { value: "70", label: "70%" },
+                      { value: "75", label: "75%" },
+                      { value: "85", label: "85%" },
+                      { value: "95", label: "95%" },
+                      { value: "100", label: "100%" },
                     ]}
                     triggerVariant="pill"
                     triggerSize="md"

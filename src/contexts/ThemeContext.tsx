@@ -10,7 +10,7 @@ import { getFontById, getGoogleFontsUrl, DEFAULT_FONT_ID, type FontOption } from
 type Theme = "system" | "light" | "dark";
 
 /** Font-scale group identifiers */
-export type FontScaleGroup = "ui" | "sidebar" | "chat" | "bubble-width";
+export type FontScaleGroup = "ui" | "sidebar" | "chat";
 
 interface ThemeContextType {
   theme: Theme;
@@ -21,9 +21,11 @@ interface ThemeContextType {
   applyFont: (fontId: string) => void;
   applyChatFont: (fontId: string) => void;
   applyFontScale: (group: FontScaleGroup, scale: number) => void;
+  applyBubbleWidth: (pct: number) => void;
   currentFontId: string;
   currentChatFontId: string;
   fontScales: Record<FontScaleGroup, number>;
+  bubbleWidthPct: number;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -89,8 +91,11 @@ const SCALE_CSS_VAR: Record<FontScaleGroup, string> = {
   ui: "--scale-ui",
   sidebar: "--scale-sidebar",
   chat: "--scale-chat",
-  "bubble-width": "--scale-bubble-width",
 };
+
+function applyBubbleWidthToDOM(pct: number) {
+  document.documentElement.style.setProperty("--bubble-width", `${pct}%`);
+}
 
 function applyFontScaleToDOM(group: FontScaleGroup, scale: number) {
   document.documentElement.style.setProperty(SCALE_CSS_VAR[group], scale.toString());
@@ -131,8 +136,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       ui: parse("font-scale-ui"),
       sidebar: parse("font-scale-sidebar"),
       chat: parse("font-scale-chat"),
-      "bubble-width": parse("font-scale-bubble-width"),
     };
+  });
+
+  const [bubbleWidthPct, setBubbleWidthPct] = useState<number>(() => {
+    const v = window.localStorage?.getItem("bubble-width-pct");
+    return v ? parseFloat(v) : 65;
   });
 
   const applyPrimaryColors = useCallback(
@@ -158,6 +167,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setFontScales((prev) => ({ ...prev, [group]: scale }));
     localStorage.setItem(`font-scale-${group}`, scale.toString());
     applyFontScaleToDOM(group, scale);
+  }, []);
+
+  const applyBubbleWidth = useCallback((pct: number) => {
+    setBubbleWidthPct(pct);
+    localStorage.setItem("bubble-width-pct", pct.toString());
+    applyBubbleWidthToDOM(pct);
   }, []);
 
   useEffect(() => {
@@ -198,6 +213,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyFontToDOM(currentFontId);
     applyChatFontToDOM(currentChatFontId);
     applyAllFontScalesToDOM(fontScales);
+    applyBubbleWidthToDOM(bubbleWidthPct);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Global hotkey to toggle theme (Ctrl+T or Cmd+T)
@@ -225,7 +241,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales }}
+      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct }}
     >
       {children}
     </ThemeContext.Provider>
@@ -238,7 +254,7 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales } =
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } =
     context;
 
   // Determine if dark mode is active when component mounts or theme changes
@@ -267,8 +283,10 @@ export function useTheme() {
     applyFont,
     applyChatFont,
     applyFontScale,
+    applyBubbleWidth,
     currentFontId,
     currentChatFontId,
     fontScales,
+    bubbleWidthPct,
   };
 }

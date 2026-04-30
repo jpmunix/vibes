@@ -3,6 +3,7 @@
  * Shows all apps grouped by user, with expandable chats and inline message viewer.
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSettings } from "@/hooks/useSettings";
 import { ipc } from "@/ipc/types";
 import type { AdminUser } from "@/ipc/types/admin";
 import { LanguageBadge } from "@/components/LanguageBadge";
@@ -95,9 +96,16 @@ interface AdminMessage {
 }
 
 function ChatModal({ chatId, title, user, onClose }: { chatId: number; title: string; user?: UserInfo; onClose: () => void }) {
+    const { settings } = useSettings();
     const [messages, setMessages] = useState<AdminMessage[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<ViewMode>("completo");
+    // Default to user's global chatRenderMode — but local-only, never writes back
+    const [viewMode, setViewMode] = useState<ViewMode>(() => {
+        const mode = settings?.chatRenderMode;
+        if (mode === "zen") return "zen";
+        if (mode === "flow") return "flow";
+        return "completo"; // "full" or undefined → "completo"
+    });
 
     useEffect(() => {
         setLoading(true);

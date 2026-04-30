@@ -201,7 +201,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             if (settings.fontScaleUI !== undefined) root.style.setProperty("--scale-ui", settings.fontScaleUI.toString());
             if (settings.fontScaleSidebar !== undefined) root.style.setProperty("--scale-sidebar", settings.fontScaleSidebar.toString());
             if (settings.fontScaleChat !== undefined) root.style.setProperty("--scale-chat", settings.fontScaleChat.toString());
-            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--scale-bubble-width", settings.fontScaleBubbleWidth.toString());
+            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--bubble-width", `${settings.fontScaleBubbleWidth}%`);
         }
     }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
 

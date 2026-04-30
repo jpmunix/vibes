@@ -76,7 +76,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   fontScaleUI: 1,
   fontScaleSidebar: 1,
   fontScaleChat: 1,
-  fontScaleBubbleWidth: 1,
+  fontScaleBubbleWidth: 65,
   // Icon family selection
   iconLibrary: "lucide",
 };

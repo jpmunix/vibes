@@ -486,7 +486,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="px-4 pb-4" data-testid="chat-input-container">
+      <div className="p-4" data-testid="chat-input-container">
         <div className="max-w-3xl mx-auto">
           <div
             className="rounded-lg p-[1.5px]"
