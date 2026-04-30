@@ -26,6 +26,7 @@ Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra la
 - Buscador de ajustes reescrito con keywords más precisas y cobertura de todos los controles, incluidos sub-valores de cada selector.
 - Los títulos de los chats ya no se cortan prematuramente; el límite se ha ampliado para que reflejen mejor el contenido de la conversación.
 - Corregido el botón "Ver todos" en la lista de chats del sidebar, que no hacía nada al pulsarlo.
+- Nueva opción para **reiniciar el servidor del agente** directamente desde el menú de ajustes, sin cerrar la aplicación.
 - Mejoras internas de estabilidad.
 
 # v8.0

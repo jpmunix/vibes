@@ -34,6 +34,7 @@ import {
   Info,
   FileText,
   MoreHorizontal,
+  RotateCcw,
 } from "@/components/ui/icons";
 import { ChevronRight } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -616,6 +617,16 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRestartOpenCode = async () => {
+    try {
+      await ipc.system.restartOpenCodeServer();
+      showSuccess("OpenCode reiniciado correctamente");
+    } catch (err) {
+      console.error("Error restarting OpenCode:", err);
+      showError("No se pudo reiniciar OpenCode");
+    }
+  };
+
   return (
     <div
       id="settings-scroll-container"
@@ -745,13 +756,17 @@ export default function SettingsPage() {
                     <FileText className="h-4 w-4" />
                     Ver logs
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRestartOpenCode} className="cursor-pointer gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Reiniciar OpenCode
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => setIsResetDialogOpen(true)}
                     disabled={isResetting}
                     className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                   >
-                    {isResetting ? "Reseteando..." : "Restablecer"}
+                    {isResetting ? "Reseteando..." : "Restablecer ajustes"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
