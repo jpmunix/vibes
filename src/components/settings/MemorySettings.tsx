@@ -371,7 +371,6 @@ function MemoryAnalyzer() {
   const [fullPayloadLogId, setFullPayloadLogId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"telemetry" | "pipeline">("telemetry");
-  const [bootstrapRunning, setBootstrapRunning] = useState(false);
 
   // Load apps list once
   useEffect(() => {
@@ -844,49 +843,6 @@ function MemoryAnalyzer() {
                 })}
               </div>
             )
-          )}
-
-          {/* 🧬 Manual Bootstrap */}
-          {selectedAppId > 0 && (
-            <div className="flex items-center justify-between p-4 rounded-xl border border-purple-500/30 hover:bg-purple-500/5 transition-colors">
-              <div className="flex-1 min-w-0">
-                <h3 className="typo-label">🧬 Bootstrap de memorias</h3>
-                <p className="typo-caption mt-1">
-                  Genera memorias fundacionales escaneando la configuración y el codebase del proyecto.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 text-purple-500 border-purple-500/30 hover:bg-purple-500/10"
-                disabled={bootstrapRunning}
-                onClick={async () => {
-                  setBootstrapRunning(true);
-                  try {
-                    const result = await ipc.memory.bootstrapProjectMemories({ appId: selectedAppId });
-                    toast.success(
-                      `Bootstrap completado: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
-                    );
-                    // Refresh pipeline logs to show bootstrap entries
-                    const logs = await ipc.memory.getPipelineLogs({
-                      appId: selectedAppId,
-                      limit: 50,
-                    });
-                    setPipelineLogs(logs);
-                  } catch (err: any) {
-                    toast.error(`Bootstrap falló: ${err.message}`);
-                  } finally {
-                    setBootstrapRunning(false);
-                  }
-                }}
-              >
-                {bootstrapRunning ? (
-                  <><Loader2 className="size-3.5 animate-spin mr-1.5" /> Ejecutando...</>
-                ) : (
-                  "🧬 Bootstrap"
-                )}
-              </Button>
-            </div>
           )}
 
           {/* 🗑️ Purge stats */}

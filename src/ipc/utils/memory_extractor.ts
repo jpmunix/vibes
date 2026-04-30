@@ -20,7 +20,7 @@ import type { MemoryEntry } from "../types/memory";
 import { getEffectivePrompt } from "../../prompts";
 import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
-import { debugLog } from "./memory_debug_log";
+import { debugLog, debugPlayground } from "./memory_debug_log";
 
 const logger = log.scope("memory_extractor");
 
@@ -204,6 +204,9 @@ export async function extractMemoriesFromChatCycle(params: {
         // Use memory_synthesis prompt (the Synthesizer V3)
         const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
 
+        // Dump clean prompts to /tmp/opencode/{app}.md for playground testing
+        debugPlayground("Synthesis", model, synthesisPrompt, userMessage);
+
         const t0 = Date.now();
         const data = await openRouterCompletion({
             model,
@@ -264,6 +267,7 @@ export async function extractMemoriesFromChatCycle(params: {
             });
             return [];
         }
+
 
         // Log the successful synthesis call (raw) with enriched metadata
         logPipelineCall({

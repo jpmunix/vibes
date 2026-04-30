@@ -22,7 +22,7 @@ import { handleAdd } from "./memory_extractor";
 import { logPipelineCall } from "./memory_telemetry";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import type { MemoryEntry } from "../types/memory";
-import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext } from "./memory_debug_log";
+import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext, debugPlayground } from "./memory_debug_log";
 
 const logger = log.scope("memory_bootstrap");
 
@@ -225,8 +225,7 @@ async function bootstrapFromDNA(params: {
 
     debugSection("Phase 1: bootstrapFromDNA");
     debugLog("Phase1", `Starting`, { model, configs: dna.configFiles.length.toString(), payloadSize: `${userMessage.length} chars` });
-    debugCodeBlock("System Prompt (memory_onboarding)", onboardingPrompt);
-    debugCodeBlock("User Message (formatted DNA)", userMessage);
+    debugPlayground("Bootstrap DNA", model, onboardingPrompt, userMessage);
 
     logger.info(`[Bootstrap] Phase 1 (DNA): ${dna.configFiles.length} configs, payload=${userMessage.length} chars`);
 
@@ -240,7 +239,7 @@ async function bootstrapFromDNA(params: {
                 { role: "user", content: userMessage },
             ],
             temperature: 0.2,
-            max_tokens: 1500,
+            max_tokens: 2000,
             response_format: { type: "json_object" },
             title: "Vibes - Memory Bootstrap DNA",
         });
@@ -278,7 +277,7 @@ async function bootstrapFromDNA(params: {
         return [];
     }
 
-    debugCodeBlock("LLM Raw Response", rawContent, "json");
+
 
     // Parse operations
     let operations: any[];
@@ -320,7 +319,7 @@ async function bootstrapFromDNA(params: {
 
     debugLog("Phase1", `Processing ${operations.length} operations`, { existingMemories: existingRows.length.toString() });
 
-    for (const op of operations.slice(0, 15)) {
+    for (const op of operations.slice(0, 10)) {
         try {
             if (op.action !== "add") {
                 debugLog("Phase1", `⏭️ Skipping op (action=${op.action})`, { key: op.key || "?" });
@@ -526,7 +525,7 @@ async function bootstrapFromExplore(params: {
 
     debugLog("Phase2", `Processing ${operations.length} operations`, { existingMemories: existingRows.length.toString() });
 
-    for (const op of operations.slice(0, 15)) {
+    for (const op of operations.slice(0, 10)) {
         try {
             if (op.action !== "add") {
                 debugLog("Phase2", `⏭️ Skipping (action=${op.action})`, { key: op.key || "?" });

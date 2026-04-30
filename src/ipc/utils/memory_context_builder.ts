@@ -20,7 +20,7 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { shouldInjectMemories } from "./memory_guardian";
 import { getEffectivePrompt } from "../../prompts";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
-import { debugLog } from "./memory_debug_log";
+import { debugLog, debugPlayground } from "./memory_debug_log";
 
 const logger = log.scope("memory_context");
 
@@ -236,6 +236,9 @@ async function routerSelect(
             "## Prompt del Usuario:",
             userPrompt,
         ].join("\n");
+
+        // Dump clean prompts to /tmp/opencode/{app}.md for playground testing
+        debugPlayground("Router", model, selectionPrompt, userMessage);
 
         const t0 = Date.now();
         const data = await openRouterCompletion({

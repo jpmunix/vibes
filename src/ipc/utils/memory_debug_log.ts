@@ -172,3 +172,37 @@ export function debugList(label: string, items: string[]): void {
         fs.appendFileSync(logPath, lines + "\n");
     } catch { /* never throw */ }
 }
+
+/**
+ * Write clean, copy-paste-ready prompts to a SEPARATE file for playground testing.
+ * File: /tmp/opencode/app_{appId}_{stage}.txt — overwritten each time.
+ * No markdown, no code fences, no truncation — just raw SYSTEM + USER text.
+ */
+export function debugPlayground(stage: string, model: string, systemPrompt: string, userMessage: string): void {
+    try {
+        if (!_currentAppId) return;
+        if (!fs.existsSync(LOG_DIR)) {
+            fs.mkdirSync(LOG_DIR, { recursive: true });
+        }
+
+        const safeStage = stage.toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const filePath = path.join(LOG_DIR, `app_${_currentAppId}_${safeStage}.txt`);
+
+        const content = [
+            `// Playground: ${stage}`,
+            `// Model: ${model}`,
+            `// App: ${_currentAppName} (id=${_currentAppId})`,
+            `// Generated: ${ts()}`,
+            "",
+            "===== SYSTEM =====",
+            "",
+            systemPrompt,
+            "",
+            "===== USER =====",
+            "",
+            userMessage,
+        ].join("\n");
+
+        fs.writeFileSync(filePath, content, "utf-8");
+    } catch { /* never throw */ }
+}
