@@ -456,6 +456,7 @@ export async function initializeRemoteSchema(): Promise<void> {
       error TEXT,
       created_at INTEGER NOT NULL
     )`,
+    `ALTER TABLE messages ADD COLUMN injected_memories TEXT`,
   ];
   for (const migration of migrations) {
     try {

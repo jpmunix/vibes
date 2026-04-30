@@ -37,7 +37,6 @@ export const AppBaseSchema = z.object({
   pocketbaseConfig: z.any().nullable().optional(),
   primaryLanguage: z.string().nullable().optional(),
   projectType: z.string().nullable().optional(),
-  isArchived: z.any().optional(),
 });
 
 /**

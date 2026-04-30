@@ -187,7 +187,7 @@ export function AppItem({
               <SidebarMenuAction
                 showOnHover
                 onClick={(e) => onArchive(app.id, app.name, e)}
-                className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-amber-500 cursor-pointer"
+                className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-primary cursor-pointer"
                 data-testid="archive-button"
                 title="Archivar"
               >

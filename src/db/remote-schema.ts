@@ -137,6 +137,8 @@ export const messages = sqliteTable("messages", {
     status: text("status").default("completed"),
     durationMs: integer("duration_ms"),
     smartModeIntent: text("smart_mode_intent"),
+    /** JSON array of SelectedMemoryMeta — memories injected into this assistant response */
+    injectedMemories: text("injected_memories", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
