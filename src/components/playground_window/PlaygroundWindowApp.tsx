@@ -39,6 +39,7 @@ import {
     Merge,
     Download,
     FileText,
+    Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -267,7 +268,7 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
     onExportToggle?: () => void;
 }) {
     const isTimeout = result.timeout;
-    const memoryCount = viewMode === 'memorias' && !result.error ? getMemoryCount(result.text) : null;
+    const memoryCount = !result.error ? getMemoryCount(result.text) : null;
     const canExpand = !isTimeout;
 
     return (
@@ -295,26 +296,16 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
                     {result.modelDisplayName}
                 </h3>
                 <div className="flex items-center gap-3 shrink-0">
-                    {/* Memory count badge (memorias mode, collapsed) */}
-                    {viewMode === 'memorias' && memoryCount != null && collapsed && (
-                        <span className="typo-caption text-primary/70">
-                            {memoryCount} mem{memoryCount !== 1 ? 's' : ''}
-                        </span>
-                    )}
-                    {/* Char count */}
-                    {!result.error && collapsed && (
-                        <span className="typo-caption text-muted-foreground">
-                            ◇ {result.text.length}
-                        </span>
-                    )}
+                    {/* Time */}
                     <span className={cn("flex items-center gap-1 typo-caption", isTimeout ? "text-destructive" : "text-muted-foreground")}>
                         <Clock size={12} className="opacity-60" />
                         {(result.durationMs / 1000).toFixed(2)}s
                     </span>
-                    {(result.inputTokens != null || result.outputTokens != null) && (
+                    {/* Memory count (memorias mode) */}
+                    {viewMode === 'memorias' && memoryCount != null && (
                         <span className="flex items-center gap-1 typo-caption text-muted-foreground">
-                            <Zap size={12} className="opacity-60" />
-                            {result.inputTokens ?? "?"}→{result.outputTokens ?? "?"}
+                            <Database size={12} className="opacity-60" />
+                            {memoryCount}
                         </span>
                     )}
                     {canExpand && (
@@ -1286,6 +1277,39 @@ function PlaygroundPanel() {
                             </span>
                         );
                     })}
+                    {/* Quick-merge presets chip */}
+                    {modelSets.length > 0 && !isRunning && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="playground-chip"
+                                    style={{ borderStyle: 'dashed', opacity: 0.6 }}
+                                >
+                                    <Plus size={11} />
+                                    Preset
+                                    <ChevronDown size={10} />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="min-w-[200px]">
+                                {modelSets.map(set => (
+                                    <DropdownMenuItem
+                                        key={set.name}
+                                        className="cursor-pointer py-2"
+                                        onSelect={() => handleMergePreset(set.name)}
+                                    >
+                                        <Merge size={12} className="mr-2 opacity-60" />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="truncate">{set.name}</span>
+                                            <span className="typo-micro text-muted-foreground">
+                                                {set.models.length} modelo{set.models.length !== 1 ? 's' : ''}
+                                            </span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
 
                 {/* ── Preset bar ── */}
