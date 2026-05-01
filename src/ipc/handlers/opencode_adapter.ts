@@ -1086,8 +1086,6 @@ async function getOpenCodeClient(appPath: string) {
                 },
         };
 
-        // Log permission config for debugging
-        logger.info(`[OpenCode] Init permission config: ${JSON.stringify(config.permission)}`);
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
         try {
@@ -1828,14 +1826,6 @@ export async function handleOpenCodeStream(
             }
         }
 
-        // Log the full context instructions being sent via config.update
-        // (these are APPENDED to OpenCode's native system prompt, not replacing it)
-        if (options.contextInstructions && options.contextInstructions.length > 0) {
-            logger.info(`${LP} 📝 FULL CONTEXT INSTRUCTIONS (${options.contextInstructions.length} blocks):`);
-            for (let i = 0; i < options.contextInstructions.length; i++) {
-                logger.info(`--- INSTRUCTION BLOCK ${i + 1} ---\n${options.contextInstructions[i]}`);
-            }
-        }
         logger.info(`--- USER PROMPT ---\n${promptText}`);
         logger.info(`------------------------------------------`);
 

@@ -53,10 +53,8 @@ async function writeDesignToApp(appPath: string, content: string): Promise<void>
   await fsPromises.mkdir(docsDir, { recursive: true });
   await fsPromises.writeFile(designMdPath, content, "utf-8");
   logger.info(`[Design] Wrote DESIGN.md to ${designMdPath} (${content.length} chars)`);
-
-  // Register docs/DESIGN.md in the project's opencode.json so OpenCode
-  // loads it natively as part of its instructions context.
-  await patchOpencodeJsonInstructions(fullAppPath, "docs/DESIGN.md");
+  // DESIGN.md is NOT registered in opencode.json — it's injected into SPECS.md
+  // only on the first message of a chat to avoid bloating every subsequent request.
 }
 
 /**

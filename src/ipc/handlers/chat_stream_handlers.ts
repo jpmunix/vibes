@@ -1374,37 +1374,34 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
-          // DESIGN.md — inject full content as context instruction on the FIRST
-          // message only. After that, OpenCode's native opencode.json instructions
-          // (which reference docs/DESIGN.md) handle it automatically.
+          // DESIGN.md — full content on FIRST message, lightweight hint after.
           {
             const isFirstMessage = !updatedChat.messages.some(
               (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
             );
-            const appPathRaw = updatedChat.app.path;
-            const resolvedAppPath = getVibesAppPath(appPathRaw);
+            const resolvedAppPath = getVibesAppPath(updatedChat.app.path);
             const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
             const designExists = fs.existsSync(designMdPath);
-            logger.info(`🎨 [DESIGN] isFirstMessage=${isFirstMessage}, exists=${designExists}, path="${designMdPath}"`);
 
             if (isFirstMessage && designExists) {
+              // First message: inject full DESIGN.md so the AI absorbs it immediately
               try {
                 const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
                 if (designContent.length > 0) {
                   contextInstructions.push(
                     `DESIGN SYSTEM REFERENCE:\n` +
-                    `The following DESIGN.md file defines the visual language, color palette, typography, spacing, and component patterns for this project. ` +
-                    `You MUST follow these design guidelines closely when building UI components. ` +
-                    `Use the exact colors, fonts, spacing values, and design tokens specified.\n\n` +
+                    `The following DESIGN.md defines the visual language for this project. ` +
+                    `Follow these design guidelines when building UI.\n\n` +
                     designContent,
                   );
-                  logger.info(`🎨 [DESIGN] ✅ Injected into contextInstructions (${designContent.length} chars)`);
                 }
-              } catch (designErr: any) {
-                logger.warn(`🎨 [DESIGN] ❌ Failed to read: ${designErr.message}`);
-              }
+              } catch { /* ignore read errors */ }
             } else if (!isFirstMessage && designExists) {
-              logger.info(`🎨 [DESIGN] Skipped (not first message) — trusting opencode.json`);
+              // Subsequent messages: lightweight hint — the AI can Read the file on demand
+              contextInstructions.push(
+                `DESIGN SYSTEM: This project has a design system defined in docs/DESIGN.md. ` +
+                `Read this file with your Read tool before writing or modifying any UI code.`,
+              );
             }
           }
 
