@@ -180,6 +180,12 @@ function transformModel(model: OpenRouterModel): ModelOption {
 // =============================================================================
 
 function isRelevantForCoding(model: OpenRouterModel): boolean {
+    // Skip ":free" variants — duplicates with aggressive rate limits
+    if (model.id.endsWith(":free")) return false;
+
+    // Skip "-latest" aliases — just pointers to versioned models already in the list
+    if (model.id.endsWith("-latest")) return false;
+
     // Must support text output
     if (!model.architecture?.output_modalities?.includes("text")) return false;
 

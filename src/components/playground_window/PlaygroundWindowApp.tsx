@@ -73,7 +73,6 @@ import {
     CommandItem,
 } from "@/components/ui/command";
 import { Check } from "@/components/ui/icons";
-import { ModelItemContent } from "@/components/ModelItemContent";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 
 import "@/styles/globals.css";
@@ -565,6 +564,7 @@ function PlaygroundPanel() {
         setRetryingModel(null);
         setInputCollapsed(false);
         setMorphActive(false);
+        setPrompt("");
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
@@ -1206,6 +1206,20 @@ function PlaygroundPanel() {
                                         <CommandGroup>
                                             {pickerModels.map(m => {
                                                 const isSelected = selectedModels.includes(m.apiName);
+                                                const fmtTokens = (n: number | undefined) => {
+                                                    if (n === undefined) return "—";
+                                                    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
+                                                    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+                                                    return n.toString();
+                                                };
+                                                const fmtPrice = (p: string | undefined) => {
+                                                    if (!p) return "—";
+                                                    const v = parseFloat(p);
+                                                    if (isNaN(v)) return "—";
+                                                    if (v === 0) return "gratis";
+                                                    const pm = v * 1_000_000;
+                                                    return `$${pm < 0.01 ? pm.toFixed(4) : pm.toFixed(2)}`;
+                                                };
                                                 return (
                                                     <CommandItem
                                                         key={m.apiName}
@@ -1219,10 +1233,25 @@ function PlaygroundPanel() {
                                                         <span className="w-5 shrink-0 flex items-center justify-start">
                                                             {isSelected && <Check size={14} className="text-primary" />}
                                                         </span>
-                                                        <ModelItemContent 
-                                                            model={m}
-                                                            alias={aliases[m.apiName]}
-                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-medium truncate">
+                                                                {aliases[m.apiName] || m.displayName}
+                                                            </div>
+                                                            <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-70">
+                                                                <span>Contexto: {fmtTokens(m.contextWindow)}</span>
+                                                                <span className="opacity-30">·</span>
+                                                                <span>Salida: {fmtTokens(m.maxOutputTokens)}</span>
+                                                            </div>
+                                                            {(m.pricingInput || m.pricingOutput) && (
+                                                                <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-50">
+                                                                    <span>In</span>
+                                                                    <span className="tabular-nums">{fmtPrice(m.pricingInput)}</span>
+                                                                    <span className="opacity-40">·</span>
+                                                                    <span>Out</span>
+                                                                    <span className="tabular-nums">{fmtPrice(m.pricingOutput)}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CommandItem>
                                                 );
                                             })}
