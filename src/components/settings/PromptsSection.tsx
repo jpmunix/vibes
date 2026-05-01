@@ -196,40 +196,69 @@ const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] =
   },
 ];
 
-export function PromptsSection() {
+function PromptGroup({
+  title,
+  description,
+  ids,
+}: {
+  title: string;
+  description: string;
+  ids: PromptId[];
+}) {
+  const [expanded, setExpanded] = useState(false);
   const { settings } = useSettings();
 
-  // Check if any prompt has been customized
-  const anyModified = (Object.keys(DEFAULT_PROMPTS) as PromptId[]).some(
-    (id) => !!settings?.customPrompts?.[id],
-  );
+  const groupHasModified = ids.some((id) => !!settings?.customPrompts?.[id]);
 
   return (
-    <div className="space-y-6">
-      {anyModified && (
-        <p className="typo-caption text-primary flex items-center gap-2">
-          <span className="size-2 rounded-full bg-primary shrink-0" />
-          Algunos prompts han sido modificados
-        </p>
-      )}
-
-      {PROMPT_GROUPS.map((group) => (
-        <div key={group.title} className="space-y-3">
-          <div>
-            <h3 className="typo-label text-muted-foreground">{group.title}</h3>
-            <p className="typo-caption">{group.description}</p>
-          </div>
-          <div className="space-y-2">
-            {group.ids.map((id) => (
-              <PromptEditor
-                key={id}
-                label={PROMPT_LABELS[id]}
-                description={PROMPT_DESCRIPTIONS[id]}
-                promptId={id}
-              />
-            ))}
-          </div>
+    <>
+      <div
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <div className="flex-1">
+          <h3 className="typo-label flex items-center gap-2">
+            {title}
+            {groupHasModified && (
+              <span className="size-2 rounded-full bg-primary shrink-0" title="Algún prompt modificado" />
+            )}
+          </h3>
+          <p className="typo-caption mt-1">{description}</p>
         </div>
+        <ChevronRight
+          className={cn(
+            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+            expanded && "rotate-90",
+          )}
+        />
+      </div>
+
+      {expanded && (
+        <div className="pl-4 space-y-2">
+          {ids.map((id) => (
+            <PromptEditor
+              key={id}
+              label={PROMPT_LABELS[id]}
+              description={PROMPT_DESCRIPTIONS[id]}
+              promptId={id}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+export function PromptsSection() {
+  return (
+    <div className="space-y-3">
+      {PROMPT_GROUPS.map((group) => (
+        <PromptGroup
+          key={group.title}
+          title={group.title}
+          description={group.description}
+          ids={group.ids}
+        />
       ))}
     </div>
   );
