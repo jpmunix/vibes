@@ -824,15 +824,8 @@ ${componentSnippet}
             );
           }
 
-          // Get theme prompt for the app (null themeId means "no theme")
-          const themePrompt = "";
-          logger.log(
-            `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
-          );
-
           systemPrompt = constructSystemPrompt({
             chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
-            themePrompt,
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -1299,16 +1292,17 @@ This conversation includes one or more image attachments. When the user uploads 
             `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
           );
 
-          // (LSP is always enabled — no fallback instruction needed)
-
-          // 3. Tool correction (mainly for Gemini hallucinating shell edits)
+          // 3. Direct edit shortcut — skip exploration for trivial changes
           contextInstructions.push(
-            `NOTAS DE ENTORNO IMPORTANTES:\n` +
-            `1. Tienes HERRAMIENTAS JSON NATIVAS (tools) definidas en tu esquema para editar archivos. USAS ESTAS HERRAMIENTAS nativas.\n` +
-            `2. NUNCA uses la herramienta "bash" para intentar editar código ejecutando scripts en consola de "python" o comandos "sed" o redirecciones en la terminal. Usa siempre tus JSON tools disponibles en el esquema para cualquier edición.`
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
           );
 
-          // 4. Efficiency & Task Triage (Prevent over-thinking simple tasks)
+          // 4. Context7 docs — always fetch fresh docs for libraries
+          contextInstructions.push(
+            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
+          );
+
+          // 5. Efficiency & Task Triage (Prevent over-thinking simple tasks)
           contextInstructions.push(
             `CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:\n` +
             `Antes de empezar cualquier tarea, evalúa su complejidad:\n\n` +
@@ -1322,7 +1316,7 @@ This conversation includes one or more image attachments. When the user uploads 
             `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
           );
 
-          // 5. Smart todowrite usage — task management for complex requests
+          // 6. Smart todowrite usage — task management for complex requests
           contextInstructions.push(
             `GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados ` +
             `(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades), ` +

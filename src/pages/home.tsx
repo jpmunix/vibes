@@ -161,14 +161,6 @@ export default function HomePage() {
         });
       }
 
-      // Apply selected theme to the new app (if one is set)
-      if (settings?.selectedThemeId) {
-        await ipc.template.setAppTheme({
-          appId: result.app.id,
-          themeId: settings.selectedThemeId || null,
-        });
-      }
-
       // Stream the message in the dedicated chat window (not here — avoids race condition)
       const prompt = inputValue;
 

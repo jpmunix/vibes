@@ -193,13 +193,11 @@ You must output your plan using the following Markdown structure exactly. Do not
 
 export const constructSystemPrompt = ({
   chatMode = "agent",
-  themePrompt,
   readOnly,
   chatLanguage = "es",
   settings,
 }: {
   chatMode?: "ask" | "agent" | "plan";
-  themePrompt?: string;
   /** If true, use read-only mode for agent (ask mode with tools) */
   readOnly?: boolean;
   /** Language for chat responses */
@@ -220,11 +218,6 @@ export const constructSystemPrompt = ({
     "[[LANGUAGE_INSTRUCTION]]",
     languageInstruction,
   );
-
-  // Append theme prompt if provided
-  if (themePrompt) {
-    systemPrompt += "\n\n" + themePrompt;
-  }
 
   return systemPrompt;
 };

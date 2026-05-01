@@ -955,19 +955,11 @@ async function getOpenCodeClient(appPath: string) {
             }));
         }
 
-        const languageInstruction = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-
-        const globalInstructions = [
-            languageInstruction,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
+        // config.instructions expects FILE PATHS, not inline text.
+        // The file .opencode/vibes-context.md is written per-request in
+        // handleOpenCodeStream BEFORE this client is used.
         const config = {
-                logLevel: "DEBUG" as const,
-                instructions: globalInstructions,
+                instructions: ["vibes-context.md"],
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
@@ -1337,6 +1329,30 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
+    // ── Write dynamic instructions to OpenCode's config dir ────────────────
+    // config.instructions paths are resolved relative to the config file
+    // location (~/.config/minube-vibes/opencode-server/), NOT the project dir.
+    // We write vibes-context.md there so OpenCode can resolve it.
+    {
+        const fs = require("fs");
+        const { app } = require("electron");
+        const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
+            ? options.contextInstructions.join("\n\n")
+            : "";
+        const opencodeConfigDir = path.join(app.getPath("userData"), "opencode-server");
+        const instrFilePath = path.join(opencodeConfigDir, "vibes-context.md");
+
+        try {
+            if (!fs.existsSync(opencodeConfigDir)) {
+                fs.mkdirSync(opencodeConfigDir, { recursive: true });
+            }
+            fs.writeFileSync(instrFilePath, instrContent, "utf-8");
+            logger.info(`${LP} 📋 Instructions written to ${instrFilePath} (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
+        } catch (ctxErr: any) {
+            logger.warn(`${LP} Failed to write instructions file: ${ctxErr.message}`);
+        }
+    }
+
     let client: ReturnType<typeof createOpencodeClient>;
     try {
         const result = await getOpenCodeClient(projectDir);
@@ -1345,37 +1361,6 @@ export async function handleOpenCodeStream(
         const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
         logger.error(`${LP} ${errorMsg}`);
         return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
-    }
-
-    // ── Set instructions BEFORE session.create ────────────────────────────
-    // OpenCode snapshots instructions at session creation time, so they
-    // must be configured before the session exists.
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 PRE-SESSION config.update: ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
-            });
-            logger.info(`${LP} 🎨 Instructions set BEFORE session.create ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to set pre-session instructions: ${ctxError.message}`);
-        }
     }
 
     // Get or create session for this chat
@@ -1578,36 +1563,8 @@ export async function handleOpenCodeStream(
         logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`);
     }
 
-    // Instructions were already set BEFORE session.create (see above).
-    // Re-apply them here as well to cover existing sessions that were
-    // restored from DB (they already exist, so they missed the pre-create call).
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 POST-SESSION config.update (for restored sessions): ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
-            });
-            logger.info(`${LP} 🎨 Instructions re-applied after session ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to re-apply instructions: ${ctxError.message}`);
-        }
-    }
+    // Instructions file was already written before getOpenCodeClient (above).
+    // No config.update needed — it's in the initial config.
 
 
 

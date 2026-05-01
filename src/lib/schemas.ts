@@ -405,7 +405,6 @@ export const UserSettingsSchema = z
 
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
-    selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
 

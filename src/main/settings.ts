@@ -12,7 +12,7 @@ import { safeStorage } from "electron";
 import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
-import { DEFAULT_THEME_ID } from "@/shared/themes";
+
 import {
   DEFAULT_ENABLED_MODELS,
   FALLBACK_PRO_MODEL,
@@ -42,7 +42,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableNotificationSound: true,
   selectedChatMode: "agent",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
-  selectedThemeId: DEFAULT_THEME_ID,
+
   isRunning: false,
   lastKnownPerformance: undefined,
   // Enabled by default in 0.33.0-beta.1
@@ -574,6 +574,8 @@ export function readSettings(): UserSettings {
         'releaseChannel',
         'dossierModel',
         'enableTurboEditsV2',
+        // Dead theme system (never completed)
+        'selectedThemeId',
         // NOTE: playgroundModelSets is NOT deleted here — it's migrated to user_preferences
         // DB by the Playground frontend and cleaned up there after migration.
       ];

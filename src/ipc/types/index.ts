@@ -274,7 +274,6 @@ export type {
 
 export type {
   Template,
-  Theme,
 } from "./templates";
 
 // Proposal types
