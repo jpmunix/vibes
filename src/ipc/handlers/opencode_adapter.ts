@@ -490,7 +490,7 @@ export async function updateOpenCodeConfig(changes: {
             // Apply variant suffix if set (variant is ignored for free models)
             const settings = readSettings();
             const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
-            const modelID = composeModelWithVariant(changes.selectedModel.name, variant);
+            const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
             body.model = `${providerID}/${modelID}`;
         }
         if (changes.standardModeModel) {
@@ -793,7 +793,7 @@ export async function handleVisualQuickEdit(params: {
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID: sanitizeModelName(model.name),
                 },
                 parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
             },
@@ -899,7 +899,7 @@ async function getOpenCodeClient(appPath: string) {
     // Determine provider/model mapping for opencode
     const providerID = mapProviderForOpenCode(model);
     // Apply variant suffix (ignored for free models)
-    const modelID = composeModelWithVariant(model.name, settings.selectedModelVariant ?? "");
+    const modelID = composeModelWithVariant(sanitizeModelName(model.name), settings.selectedModelVariant ?? "");
 
     try {
         // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
@@ -986,7 +986,7 @@ async function getOpenCodeClient(appPath: string) {
                 model: `${providerID}/${modelID}`,
                 // Use the cheap/fast standard model for lightweight tasks (titles, summaries)
                 ...(settings.standardModeModel ? {
-                    small_model: `${providerID}/${settings.standardModeModel}`,
+                    small_model: `${providerID}/${sanitizeModelName(settings.standardModeModel)}`,
                 } : {}),
                 // Agent-level config: reasoning effort + text verbosity
                 // These extra fields are passed directly to the provider as model options
@@ -1258,6 +1258,15 @@ function clearStaleOpenCodeAuth(env: Record<string, string>): void {
 // Model/provider mapping
 // ============================================================================
 
+/**
+ * Strip trailing dots, whitespace, and other stray characters from model names.
+ * Defensive measure against data contamination from remote settings sync or
+ * catalogue parsing artifacts (e.g. "amazon/nova-lite-v1." → "amazon/nova-lite-v1").
+ */
+function sanitizeModelName(name: string): string {
+    return name.replace(/[\s.]+$/, '');
+}
+
 function mapProviderForOpenCode(model: { provider?: string; name: string }): string {
     const provider = (model.provider || "").toLowerCase();
 
@@ -1462,7 +1471,7 @@ export async function handleOpenCodeStream(
                         // Build init body — messageID must start with "msg" (server validates format)
                         const initBody: { providerID: string; modelID: string; messageID: string } = {
                             providerID: initProviderID,
-                            modelID: initModel.name,
+                            modelID: sanitizeModelName(initModel.name),
                             messageID: `msg_init_${Date.now()}`,
                         };
 
@@ -1880,7 +1889,7 @@ export async function handleOpenCodeStream(
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID: sanitizeModelName(model.name),
                 },
                 agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,
