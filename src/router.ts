@@ -7,27 +7,20 @@ import { libraryRoute } from "./routes/library";
 import { rootRoute } from "./routes/root";
 import { settingsRoute } from "./routes/settings";
 
-import { themesRoute } from "./routes/themes";
-import { todosRoute } from "./routes/todos";
-import { todoDetailRoute } from "./routes/todos_.$appId";
-import { todosIndexRoute } from "./routes/todos_.index";
 import { workspaceRoute } from "./routes/workspace";
 
 import { settingsIndexRoute } from "./routes/settings/index";
 import { promptsSettingsRoute } from "./routes/settings/prompts";
-import { aiQueryLogsRoute } from "./routes/settings/ai-query-logs";
 import { selectorsPlaygroundRoute } from "./routes/settings/selectors-playground";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
   hubRoute,
   libraryRoute,
-  themesRoute,
   chatRoute,
-  todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
   workspaceRoute,
-  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, aiQueryLogsRoute, selectorsPlaygroundRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, selectorsPlaygroundRoute]),
 ]);
 
 import { useNavigate } from "@tanstack/react-router";

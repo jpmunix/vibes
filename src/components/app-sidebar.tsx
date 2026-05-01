@@ -6,7 +6,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   Bot,
-  CheckSquare,
   Home,
   Settings,
   LogOut,
@@ -42,9 +41,7 @@ import { isAdmin as checkIsAdmin } from "@/lib/admin";
 import { useRouter } from "@tanstack/react-router";
 
 import { AppList } from "./AppList";
-import { LibraryList } from "./LibraryList";
 import { SettingsList } from "./SettingsList";
-import { TodosList } from "./TodosList";
 import { WorkspaceList } from "./WorkspaceList";
 
 // Menu items.
@@ -83,12 +80,6 @@ const items: {
     to: "/settings",
     icon: Settings,
   },
-  // {
-  //   title: "Tareas",
-  //   tabKey: "Tareas",
-  //   to: "/todos",
-  //   icon: CheckSquare,
-  // },
 ];
 
 /**
@@ -636,9 +627,7 @@ export function SecondarySidebar() {
 
       <AppList show={activeTab === "Aplicaciones"} />
       <WorkspaceList show={activeTab === "Workspace"} />
-      {/* <TodosList show={activeTab === "Tareas"} /> */}
       <SettingsList show={activeTab === "Ajustes"} />
-      <LibraryList show={activeTab === "Biblioteca"} />
 
       {/* Resize handle */}
       {state === "expanded" && (
@@ -674,29 +663,19 @@ function useActiveTab(): [string | null, (tab: string) => void] {
     routerState.location.pathname === "/" ||
     routerState.location.pathname.startsWith("/app-details");
   const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
-  const isLibraryRoute =
-    routerState.location.pathname.startsWith("/library") ||
-    routerState.location.pathname.startsWith("/themes");
-  const isTodosRoute = routerState.location.pathname.startsWith("/todos");
 
   // Sync activeTab with route changes
   useEffect(() => {
     if (isAppRoute) {
       setActiveTab("Aplicaciones");
-    } else if (isTodosRoute) {
-      setActiveTab("Tareas");
     } else if (isSettingsRoute) {
       setActiveTab("Ajustes");
-    } else if (isLibraryRoute) {
-      setActiveTab("Biblioteca");
     } else if (routerState.location.pathname.startsWith("/workspace")) {
       setActiveTab("Workspace");
     }
   }, [
     isAppRoute,
     isSettingsRoute,
-    isLibraryRoute,
-    isTodosRoute,
     routerState.location.pathname,
   ]);
 

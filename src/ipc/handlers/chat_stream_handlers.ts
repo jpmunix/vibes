@@ -22,7 +22,6 @@ import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
 import { getEffectivePrompt } from "../../prompts";
-import { getThemePromptById } from "../utils/theme_utils";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -89,15 +88,12 @@ import { parseAppMentions } from "@/shared/parse_mention_apps";
 // Migrated to remoteSchema.prompts
 import { replacePromptReference } from "../utils/replacePromptReference";
 import z from "zod";
-import { logTokenUsage } from "../utils/token_stats_logger";
-import { logChatInfo, logChatError } from "../utils/chat_logger";
 
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
-import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
@@ -656,16 +652,7 @@ ${componentSnippet}
         });
 
         // Log selected model before starting stream
-        await logChatInfo(
-          req.chatId,
-          "model-selection",
-          `Selected model: ${selectedModel.provider}/${selectedModel.name}`,
-          {
-            provider: selectedModel.provider,
-            model: selectedModel.name,
-            customModelId: selectedModel.customModelId,
-          },
-        );
+        
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -796,19 +783,7 @@ ${componentSnippet}
             codebaseInfo.length / 4,
           );
 
-          await logChatInfo(
-            req.chatId,
-            "context-building",
-            "Extracted codebase information",
-            {
-              appPath,
-              codebaseLength: codebaseInfo.length,
-              estimatedTokens: Math.round(codebaseInfo.length / 4),
-              mentionedApps: mentionedAppsCodebases.length,
-              isDeepContextEnabled,
-            },
-            placeholderAssistantMessage.id,
-          );
+          
 
           // Prepare message history for the AI
           const messageHistory = updatedChat.messages.map((message: any) => ({
@@ -850,7 +825,7 @@ ${componentSnippet}
           }
 
           // Get theme prompt for the app (null themeId means "no theme")
-          const themePrompt = await getThemePromptById(updatedChat.app.themeId);
+          const themePrompt = "";
           logger.log(
             `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
           );
@@ -1083,29 +1058,10 @@ This conversation includes one or more image attachments. When the user uploads 
               "sending AI request to engine with request id:",
               vibesRequestId,
             );
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request to engine",
-              {
-                requestId: vibesRequestId,
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           } else {
             logger.log("sending AI request");
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request",
-              {
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           }
           let versionedFiles: VersionedFiles | undefined;
           if (isDeepContextEnabled) {
@@ -1135,18 +1091,7 @@ This conversation includes one or more image attachments. When the user uploads 
             "Starting direct AI request (no engine):",
             modelClient.model,
           );
-          await logChatInfo(
-            req.chatId,
-            "streaming",
-            "Starting AI request",
-            {
-              model: modelClient.model,
-              provider: selectedModel.provider,
-              hasTools: !!tools,
-              messageCount: chatMessages.length,
-            },
-            placeholderAssistantMessage?.id,
-          );
+          
 
           // Dynamic maxOutputTokens capping based on estimated input
           const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
@@ -1214,37 +1159,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
 
               // Log the query to the dedicated AI query log
-              try {
-                void logAiQuery({
-                  queryType: "chat-stream",
-                  model: selectedModel.name || modelClient.builtinProviderId || "unknown",
-                  promptSnippet: (() => {
-                    const content = chatMessages[chatMessages.length - 1]?.content;
-                    if (typeof content === "string") return content.slice(0, 100);
-                    if (Array.isArray(content)) {
-                      const firstPart = content[0];
-                      if (firstPart && firstPart.type === "text") {
-                        return firstPart.text.slice(0, 100);
-                      }
-                    }
-                    return "";
-                  })(),
-                  payload: {
-                    system: systemPromptOverride,
-                    messages: chatMessages,
-                    tools: tools ? Object.keys(tools) : [],
-                  },
-                  response: {
-                    text: response.text,
-                    toolCalls: response.toolCalls,
-                    finishReason: response.finishReason,
-                  },
-                  inputTokens: promptTokens,
-                  outputTokens: completionTokens,
-                }, currentUserId as string);
-              } catch (e) {
-                logger.error("Failed to log streaming AI query", e);
-              }
+              
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1268,40 +1183,8 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Log token usage for verbose chat logs
-                void logChatInfo(
-                  req.chatId,
-                  "token-usage",
-                  `Total tokens: ${totalTokens} (input: ${promptTokens ?? "?"}, output: ${completionTokens ?? "?"})`,
-                  {
-                    totalTokens,
-                    inputTokens: promptTokens,
-                    outputTokens: completionTokens,
-                    model:
-                      selectedModel?.name ??
-                      placeholderAssistantMessage.model ??
-                      null,
-                    filesCount: files?.length ?? 0,
-                    toolsCount: tools ? Object.keys(tools).length : 0,
-                  },
-                  placeholderAssistantMessage.id,
-                );
+                
 
-                // Persist simple token stats for charts/logs
-                logTokenUsage({
-                  chatId: req.chatId,
-                  messageId: placeholderAssistantMessage.id,
-                  totalTokens,
-                  promptTokens,
-                  completionTokens,
-                  model:
-                    selectedModel?.name ??
-                    placeholderAssistantMessage.model ??
-                    null,
-                  timestamp: Date.now(),
-                  appId: updatedChat?.app?.id ?? null,
-                  filesSent: files?.map((f) => f.path) ?? [],
-                  toolsUsed: tools ? Object.keys(tools) : [],
-                });
               } else {
                 logger.log("Total tokens used: unknown");
               }
@@ -1321,18 +1204,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 error,
               );
 
-              void logChatError(
-                req.chatId,
-                "error-handling",
-                `Streaming error: ${message}`,
-                {
-                  errorMessage,
-                  requestId: vibesRequestId,
-                  model: selectedModel.name,
-                  provider: selectedModel.provider,
-                },
-                placeholderAssistantMessage.id,
-              );
+              
 
               const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
               safeSend(event.sender, "chat:response:error", {
@@ -1693,33 +1565,6 @@ This conversation includes one or more image attachments. When the user uploads 
                 : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
 
-              void logChatInfo(
-                req.chatId,
-                "token-usage",
-                `[Cancelled] Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-                {
-                  totalTokens: ocTotalTokens,
-                  inputTokens: ocInputTokens,
-                  outputTokens: ocOutputTokens,
-                  reasoningTokens: ocReasoningTokens,
-                  billableOutput: ocBillableOutput,
-                  model: settings.selectedModel.name,
-                  type: "opencode-agent",
-                  cancelled: true,
-                },
-                placeholderAssistantMessage.id,
-              );
-
-              logTokenUsage({
-                chatId: req.chatId,
-                messageId: placeholderAssistantMessage.id,
-                totalTokens: ocTotalTokens,
-                promptTokens: ocInputTokens,
-                completionTokens: ocBillableOutput,
-                model: settings.selectedModel.name,
-                timestamp: Date.now(),
-                appId: updatedChat.app.id,
-              });
             }
 
             await db
@@ -1810,34 +1655,6 @@ This conversation includes one or more image attachments. When the user uploads 
               ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
               : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
-            // Log token usage for verbose chat logs and ChatLogsPanel
-            void logChatInfo(
-              req.chatId,
-              "token-usage",
-              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-              {
-                totalTokens: ocTotalTokens,
-                inputTokens: ocInputTokens,
-                outputTokens: ocOutputTokens,
-                reasoningTokens: ocReasoningTokens,
-                billableOutput: ocBillableOutput,
-                model: settings.selectedModel.name,
-                type: "opencode-agent",
-              },
-              placeholderAssistantMessage.id,
-            );
-
-            // Log to token stats file
-            logTokenUsage({
-              chatId: req.chatId,
-              messageId: placeholderAssistantMessage.id,
-              totalTokens: ocTotalTokens,
-              promptTokens: ocInputTokens,
-              completionTokens: ocBillableOutput,
-              model: settings.selectedModel.name,
-              timestamp: Date.now(),
-              appId: updatedChat.app.id,
-            });
           }
 
           await db

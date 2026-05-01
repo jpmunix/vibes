@@ -29,63 +29,6 @@ export const ThemeSchema = z.object({
 
 export type Theme = z.infer<typeof ThemeSchema>;
 
-export const SetAppThemeParamsSchema = z.object({
-  appId: z.number(),
-  themeId: z.string().nullable(),
-});
-
-export type SetAppThemeParams = z.infer<typeof SetAppThemeParamsSchema>;
-
-export const GetAppThemeParamsSchema = z.object({
-  appId: z.number(),
-});
-
-export type GetAppThemeParams = z.infer<typeof GetAppThemeParamsSchema>;
-
-// =============================================================================
-// Custom Theme Schemas
-// =============================================================================
-
-export const CustomThemeSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  description: z.string().nullable(),
-  prompt: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export type CustomTheme = z.infer<typeof CustomThemeSchema>;
-
-export const CreateCustomThemeParamsSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  prompt: z.string(),
-});
-
-export type CreateCustomThemeParams = z.infer<
-  typeof CreateCustomThemeParamsSchema
->;
-
-export const UpdateCustomThemeParamsSchema = z.object({
-  id: z.number(),
-  name: z.string().optional(),
-  description: z.string().optional(),
-  prompt: z.string().optional(),
-});
-
-export type UpdateCustomThemeParams = z.infer<
-  typeof UpdateCustomThemeParamsSchema
->;
-
-export const DeleteCustomThemeParamsSchema = z.object({
-  id: z.number(),
-});
-
-export type DeleteCustomThemeParams = z.infer<
-  typeof DeleteCustomThemeParamsSchema
->;
-
 // =============================================================================
 // Template/Theme Contracts
 // =============================================================================
@@ -101,43 +44,6 @@ export const templateContracts = {
     channel: "get-themes",
     input: z.void(),
     output: z.array(ThemeSchema),
-  }),
-
-  setAppTheme: defineContract({
-    channel: "set-app-theme",
-    input: SetAppThemeParamsSchema,
-    output: z.void(),
-  }),
-
-  getAppTheme: defineContract({
-    channel: "get-app-theme",
-    input: GetAppThemeParamsSchema,
-    output: z.string().nullable(),
-  }),
-
-  // Custom theme operations
-  getCustomThemes: defineContract({
-    channel: "get-custom-themes",
-    input: z.void(),
-    output: z.array(CustomThemeSchema),
-  }),
-
-  createCustomTheme: defineContract({
-    channel: "create-custom-theme",
-    input: CreateCustomThemeParamsSchema,
-    output: CustomThemeSchema,
-  }),
-
-  updateCustomTheme: defineContract({
-    channel: "update-custom-theme",
-    input: UpdateCustomThemeParamsSchema,
-    output: CustomThemeSchema,
-  }),
-
-  deleteCustomTheme: defineContract({
-    channel: "delete-custom-theme",
-    input: DeleteCustomThemeParamsSchema,
-    output: z.void(),
   }),
 } as const;
 

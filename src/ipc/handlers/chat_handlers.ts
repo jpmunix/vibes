@@ -10,7 +10,6 @@ import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
-import { logChatInfo } from "../utils/chat_logger";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
@@ -328,22 +327,6 @@ export function registerChatHandlers() {
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
-        // Log token usage for title generation
-        const usage = data?.usage;
-        if (usage) {
-          void logChatInfo(
-            chatId,
-            "token-usage",
-            `Chat Title Generation - Total tokens: ${usage.total_tokens} (input: ${usage.prompt_tokens}, output: ${usage.completion_tokens})`,
-            {
-              totalTokens: usage.total_tokens,
-              inputTokens: usage.prompt_tokens,
-              outputTokens: usage.completion_tokens,
-              model,
-              type: "chat-title-generation",
-            },
-          );
-        }
 
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);

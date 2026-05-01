@@ -14,6 +14,7 @@ import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import { getVariantLabel } from "@/ipc/shared/model_variants";
+import { matchesModelSearch } from "@/lib/modelSearch";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -85,11 +86,8 @@ export function ModelPicker() {
 
   const doesModelMatchSearch = (m: LanguageModel) => {
      if (!searchLower) return true;
-     // Also search by alias
      const alias = aliases[m.apiName];
-     return m.displayName.toLowerCase().includes(searchLower) 
-       || m.apiName.toLowerCase().includes(searchLower)
-       || (alias && alias.toLowerCase().includes(searchLower));
+     return matchesModelSearch(search, m.displayName, m.apiName, alias);
   };
 
   if (modelsByProviders?.["auto-router"]) {

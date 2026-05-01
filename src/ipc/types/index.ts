@@ -54,14 +54,6 @@ export { designContracts } from "./design";
 export { memoryContracts } from "./memory";
 
 
-export { todoContracts, todoAttachmentContracts } from "./todo";
-export { tokenStatsContracts } from "./token_stats";
-export { chatLogsContracts } from "./chat_logs";
-
-
-export { knowledgeContracts } from "./knowledge";
-export { aiQueryLogContracts } from "../contracts/ai_query_logs";
-
 export { authContracts } from "./auth";
 export { adminContracts } from "./admin";
 
@@ -74,7 +66,6 @@ export { memoryClient } from "./memory";
 export { settingsClient } from "./settings";
 export { appClient } from "./app";
 export { chatClient, chatStreamClient } from "./chat";
-export { todoClient, todoAttachmentClient } from "./todo";
 export { agentClient, agentEventClient } from "./agent";
 export { githubClient, gitClient, githubEventClient } from "./github";
 export { mcpClient, mcpEventClient } from "./mcp";
@@ -95,14 +86,7 @@ export { helpClient, helpStreamClient } from "./help";
 export { capacitorClient } from "./capacitor";
 export { contextClient } from "./context";
 export { visualEditingClient } from "./visual-editing";
-export { tokenStatsClient } from "./token_stats";
-export { chatLogsClient } from "./chat_logs";
-
-
 export { miscClient, miscEventClient } from "./misc";
-
-export { knowledgeClient } from "./knowledge";
-export { aiQueryLogClient } from "./ai_query_logs";
 
 export { authClient } from "./auth";
 export { designClient } from "./design";
@@ -288,16 +272,9 @@ export type {
   UpdatePromptParamsDto,
 } from "./prompts";
 
-// Template types
 export type {
   Template,
   Theme,
-  SetAppThemeParams,
-  GetAppThemeParams,
-  CustomTheme,
-  CreateCustomThemeParams,
-  UpdateCustomThemeParams,
-  DeleteCustomThemeParams,
 } from "./templates";
 
 // Proposal types
@@ -325,41 +302,11 @@ export type { DesignItem } from "./design";
 
 
 // Misc types
-export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
+export type { DeepLinkData, AppOutput, EnvVar } from "./misc";
 
 
 
 
-
-// Todo types
-export type {
-  Todo,
-  TodoSection,
-  CreateTodoParams,
-  UpdateTodoParams,
-  ReorderTodosParams,
-  DevelopTodoParams,
-  DevelopTodoResponse,
-  CreateTodoSectionParams,
-  UpdateTodoSectionParams,
-  UploadTodoFileParams,
-  RemoveTodoAttachmentParams,
-} from "./todo";
-
-
-
-// Knowledge types
-export type {
-  KnowledgeEntry,
-  KnowledgeCategory,
-  KnowledgeSource,
-  KnowledgeDurability,
-  CreateKnowledgeEntryParams,
-  UpdateKnowledgeEntryParams,
-  ExtractKnowledgeParams,
-  BulkKnowledgeParams,
-  KnowledgeHealthResult,
-} from "./knowledge";
 
 // Memory types
 export type {
@@ -402,9 +349,6 @@ export {
 
 export { UserBudgetInfoSchema } from "./system";
 
-export { ChatLogEntrySchema } from "./chat_logs";
-export type { ChatLogEntry } from "./chat_logs";
-
 // =============================================================================
 // Aggregated IPC Client
 // =============================================================================
@@ -413,7 +357,6 @@ import { agentClient, agentEventClient } from "./agent";
 import { appClient } from "./app";
 import { capacitorClient } from "./capacitor";
 import { chatClient, chatStreamClient } from "./chat";
-import { chatLogsClient } from "./chat_logs";
 import { contextClient } from "./context";
 
 
@@ -430,18 +373,13 @@ import { settingsClient } from "./settings";
 import { supabaseClient } from "./supabase";
 import { systemClient, systemEventClient } from "./system";
 import { templateClient } from "./templates";
-import { todoClient, todoAttachmentClient } from "./todo";
-import { tokenStatsClient } from "./token_stats";
 import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
 
-import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
 import { pocketbaseClient } from "./pocketbase";
-import { aiQueryLogClient } from "./ai_query_logs";
-
 import { authClient } from "./auth";
 import { designClient } from "./design";
 import { memoryClient } from "./memory";
@@ -471,8 +409,6 @@ export const ipc = {
   settings: settingsClient,
   app: appClient,
   chat: chatClient,
-  todo: todoClient,
-  todoAttachment: todoAttachmentClient,
   agent: agentClient,
 
 
@@ -506,12 +442,6 @@ export const ipc = {
   context: contextClient,
   visualEditing: visualEditingClient,
   misc: miscClient,
-
-  tokenStats: tokenStatsClient,
-  chatLogs: chatLogsClient,
-
-  knowledge: knowledgeClient,
-  aiQueryLogs: aiQueryLogClient,
 
 
   // Auth

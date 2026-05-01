@@ -75,6 +75,7 @@ import {
 } from "@/components/ui/command";
 import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
+import { matchesModelSearch } from "@/lib/modelSearch";
 
 import "@/styles/globals.css";
 
@@ -435,12 +436,13 @@ function PlaygroundPanel() {
     // Filter and sort models for the picker
     // Uses pickerSnapshot (frozen at popover open) so the list doesn't jump while selecting
     const pickerModels = useMemo(() => {
-        const q = modelSearch.trim().toLowerCase().replace(/-/g, ' ');
         const filtered = allModels.filter(m => {
-            if (!q) return true;
-            const display = (aliases[m.apiName] || m.displayName).toLowerCase().replace(/-/g, ' ');
-            const api = m.apiName.toLowerCase().replace(/-/g, ' ');
-            return display.includes(q) || api.includes(q);
+            if (!modelSearch.trim()) return true;
+            return matchesModelSearch(
+                modelSearch,
+                aliases[m.apiName] || m.displayName,
+                m.apiName,
+            );
         });
 
         // Sort: selected (from snapshot) first, then alphabetical — stable while popover is open

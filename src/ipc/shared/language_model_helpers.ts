@@ -1,7 +1,4 @@
-import { getRemoteDb } from "@/db/remote";
-import * as remoteSchema from "@/db/remote-schema";
 import type { LanguageModelProvider, LanguageModel } from "@/ipc/types";
-import { eq, and } from "drizzle-orm";
 import {
   LOCAL_PROVIDERS,
   CLOUD_PROVIDERS,
@@ -14,38 +11,16 @@ import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
  * merging them with custom providers taking precedence.
  * @returns A promise that resolves to an array of LanguageModelProvider objects.
  */
-export async function getLanguageModelProviders(userId?: string): Promise<
+export async function getLanguageModelProviders(_userId?: string): Promise<
   LanguageModelProvider[]
 > {
-  const customProvidersMap = new Map<string, LanguageModelProvider>();
-
-  if (userId) {
-    const db = getRemoteDb();
-    // Fetch custom providers from the database
-    const customProvidersDb = await db
-      .select()
-      .from(remoteSchema.languageModelProviders)
-      .where(eq(remoteSchema.languageModelProviders.userId, userId));
-    for (const cp of customProvidersDb) {
-      customProvidersMap.set(cp.id, {
-        id: cp.id,
-        name: cp.name,
-        apiBaseUrl: cp.apiBaseUrl,
-        envVarName: cp.envVarName ?? undefined,
-        type: "custom",
-      });
-    }
-  }
-
   // Get hardcoded cloud providers
   const hardcodedProviders: LanguageModelProvider[] = [];
   for (const providerKey in CLOUD_PROVIDERS) {
     if (Object.prototype.hasOwnProperty.call(CLOUD_PROVIDERS, providerKey)) {
-      // Ensure providerKey is a key of PROVIDERS
       const key = providerKey as keyof typeof CLOUD_PROVIDERS;
       const providerDetails = CLOUD_PROVIDERS[key];
       if (providerDetails) {
-        // Ensure providerDetails is not undefined
         hardcodedProviders.push({
           id: key,
           name: providerDetails.displayName,
@@ -55,7 +30,6 @@ export async function getLanguageModelProviders(userId?: string): Promise<
           secondary: providerDetails.secondary,
           envVarName: PROVIDER_TO_ENV_VAR[key] ?? undefined,
           type: "cloud",
-          // apiBaseUrl is not directly in PROVIDERS
         });
       }
     }
@@ -74,7 +48,7 @@ export async function getLanguageModelProviders(userId?: string): Promise<
     }
   }
 
-  return [...hardcodedProviders, ...customProvidersMap.values()];
+  return hardcodedProviders;
 }
 
 /**
@@ -97,51 +71,7 @@ export async function getLanguageModels({
     return [];
   }
 
-  // Get custom models from DB for all provider types
-  let customModels: LanguageModel[] = [];
-
-  try {
-    if (userId) {
-      const db = getRemoteDb();
-      const customModelsDb = await db
-        .select({
-          id: remoteSchema.languageModels.id,
-          displayName: remoteSchema.languageModels.displayName,
-          apiName: remoteSchema.languageModels.apiName,
-          description: remoteSchema.languageModels.description,
-          maxOutputTokens: remoteSchema.languageModels.maxOutputTokens,
-          contextWindow: remoteSchema.languageModels.contextWindow,
-        })
-        .from(remoteSchema.languageModels)
-        .where(
-          and(
-            isCustomProvider({ providerId })
-              ? eq(remoteSchema.languageModels.customProviderId, providerId)
-              : eq(remoteSchema.languageModels.builtinProviderId, providerId),
-            eq(remoteSchema.languageModels.userId, userId),
-          ),
-        );
-
-      customModels = customModelsDb.map((model) => ({
-        id: "cm_" + model.id.toString(), // Add prefix to differentiate from hardcoded
-        name: model.displayName || model.apiName,
-        displayName: model.displayName || model.apiName,
-        apiName: model.apiName,
-        description: model.description || "",
-        contextWindow: Number(model.contextWindow) || undefined,
-        maxOutputTokens: Number(model.maxOutputTokens) || undefined,
-        isCustom: true,
-      } as any));
-    }
-  } catch (error) {
-    console.error(
-      `Error fetching custom models for provider "${providerId}" from DB:`,
-      error,
-    );
-    // Continue with empty custom models array
-  }
-
-  // If it's a cloud provider, also get the hardcoded models
+  // Get models for cloud providers
   let hardcodedModels: LanguageModel[] = [];
   if (provider.type === "cloud") {
     if (providerId === "openrouter") {
@@ -170,12 +100,9 @@ export async function getLanguageModels({
         type: "cloud",
       }));
     }
-    // Note: Some cloud providers (like openai, anthropic, google) don't have
-    // hardcoded models in MODEL_OPTIONS and rely only on custom models.
-    // This is expected behavior and not a warning condition.
   }
 
-  return [...hardcodedModels, ...customModels];
+  return hardcodedModels;
 }
 
 /**

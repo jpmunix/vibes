@@ -175,20 +175,6 @@ export async function onReady() {
   createWindow();
   createApplicationMenu();
 
-  // Capture the "content loaded" promise immediately after createWindow()
-  // to avoid the race condition where did-finish-load fires before we listen.
-  const mainWindowLoaded = mainWindow
-    ? new Promise<void>(resolve => {
-        if (!mainWindow!.webContents.isLoading()) {
-          // Already loaded (fast path — page loaded during createWindow)
-          resolve();
-        } else {
-          mainWindow!.webContents.once("did-finish-load", resolve);
-          // Safety timeout in case something goes wrong
-          setTimeout(resolve, 3000);
-        }
-      })
-    : Promise.resolve();
 
   // Step 2: Validate configured models still exist in OpenRouter
   updateSplash(splash, 2, TOTAL_STEPS, "Validando modelos...");
@@ -196,13 +182,16 @@ export async function onReady() {
     logger.warn("Model validation failed (non-fatal):", err),
   );
 
-  // Step 3: Wait for main window content to fully load, then swap splash → main
+  // Step 3: Show main window and close splash
+  // The main window renders behind the splash (splash is alwaysOnTop).
+  // No need to wait for did-finish-load — the window has backgroundColor
+  // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
+  // naturally while the splash fades away.
   updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
-  await mainWindowLoaded;
-  await closeSplash(splash);
   if (mainWindow) {
     mainWindow.show();
   }
+  await closeSplash(splash);
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {

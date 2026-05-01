@@ -186,6 +186,9 @@ function isRelevantForCoding(model: OpenRouterModel): boolean {
     // Skip "-latest" aliases — just pointers to versioned models already in the list
     if (model.id.endsWith("-latest")) return false;
 
+    // Skip meta/aggregate models that aren't real models
+    if (model.id === "openrouter/auto" || model.id === "openrouter/free") return false;
+
     // Must support text output
     if (!model.architecture?.output_modalities?.includes("text")) return false;
 
