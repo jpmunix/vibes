@@ -197,6 +197,28 @@ export const adminContracts = {
             })),
         }),
     }),
+
+    /** Debug logs — structured markdown logs from memory pipeline per user+app */
+    getAdminDebugLogs: defineContract({
+        channel: "admin:get-debug-logs",
+        input: z.object({
+            userId: z.string(),
+            appId: z.number().optional(),
+            limit: z.number().optional(),
+        }),
+        output: z.array(z.object({
+            id: z.number(),
+            appId: z.number(),
+            sessionId: z.string(),
+            logType: z.string(),
+            stage: z.string().nullable(),
+            message: z.string(),
+            dataJson: z.string().nullable(),
+            contentMd: z.string().nullable(),
+            elapsedMs: z.number().nullable(),
+            createdAt: z.string(),
+        })),
+    }),
 } as const;
 
 // =============================================================================

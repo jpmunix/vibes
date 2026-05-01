@@ -312,6 +312,31 @@ export const memoryPipelineLogs = sqliteTable("memory_pipeline_logs", {
 });
 
 // =============================================================================
+// MEMORY DEBUG LOGS (structured debug output — dev writes to /tmp, prod writes here)
+// =============================================================================
+
+export const memoryDebugLogs = sqliteTable("memory_debug_logs", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id").notNull().default(0),
+    /** Groups all logs within one bootstrap/synthesis/router run */
+    sessionId: text("session_id").notNull(),
+    /** log | section | session_start | code_block | list | playground */
+    logType: text("log_type").notNull(),
+    /** Pipeline stage: DNA, Phase1, Phase2, Orchestrator, Trigger, Synthesis, Router, Guardian */
+    stage: text("stage"),
+    message: text("message").notNull(),
+    /** Structured key-value data as JSON */
+    dataJson: text("data_json"),
+    /** Full markdown content (for sections, code blocks, lists) */
+    contentMd: text("content_md"),
+    elapsedMs: integer("elapsed_ms"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

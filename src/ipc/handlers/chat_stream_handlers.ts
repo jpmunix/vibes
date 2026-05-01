@@ -1609,7 +1609,8 @@ This conversation includes one or more image attachments. When the user uploads 
             // ── Memory extraction from partial response (fire-and-forget) ──
             // Even if the user stopped the stream, there may be valuable knowledge
             // in whatever was already generated.
-            if (updatedChat.app?.id && openCodeResponse.length > 100) {
+            // SKIP plan mode: proposals are not confirmed facts.
+            if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
               extractMemoriesFromChatCycle({
                 appId: updatedChat.app.id,
                 userId: currentUserId as string,
@@ -1704,7 +1705,9 @@ This conversation includes one or more image attachments. When the user uploads 
           });
 
           // ── Memory extraction (fire-and-forget, never blocks UI) ─────────
-          if (success && updatedChat.app?.id) {
+          // SKIP plan mode: plan responses are proposals/suggestions, not confirmed
+          // decisions. Extracting from them would pollute memories with unverified info.
+          if (success && updatedChat.app?.id && agentId !== "plan") {
             extractMemoriesFromChatCycle({
               appId: updatedChat.app.id,
               userId: currentUserId as string,

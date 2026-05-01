@@ -33,6 +33,7 @@ Hemos recortado drásticamente el tiempo de arranque de la aplicación. Se ha op
 - Nueva opción para **reiniciar el servidor del agente** directamente desde el menú de ajustes, sin cerrar la aplicación.
 - Limpieza automática de más de 20 claves abandonadas del archivo de ajustes, tanto en local como al sincronizar con el servidor.
 - Eliminación de código muerto en múltiples componentes que aún referenciaban ajustes obsoletos.
+- Las ventanas ahora recuerdan su última posición y tamaño, y se restauran donde las dejaste al volver a abrirlas.
 - Mejoras internas de estabilidad.
 
 # v8.0

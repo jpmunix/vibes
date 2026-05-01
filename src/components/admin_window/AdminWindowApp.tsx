@@ -41,7 +41,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { id: "aplicaciones", label: "Aplicaciones" },
     { id: "usuarios", label: "Usuarios" },
-    { id: "conocimientos", label: "Base de conocimientos" },
+    { id: "conocimientos", label: "Memorias" },
     { id: "apikeys", label: "API Keys" },
 ];
 

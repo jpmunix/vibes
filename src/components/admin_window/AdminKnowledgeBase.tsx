@@ -1,5 +1,5 @@
 /**
- * Admin — Base de conocimientos.
+ * Admin — Memorias.
  * Hierarchy: User → App (only with data) → Memory stats + Analyzer.
  * Exact clone of MemorySettings UI scoped per user/app.
  */
@@ -22,6 +22,11 @@ interface PipelineLog {
   systemPrompt: string | null; userMessage: string | null; rawResponse: string | null;
   parsedResult: string | null; resultCount: number; durationMs: number | null;
   success: number; error: string | null; createdAt: string;
+}
+interface DebugLogEntry {
+  id: number; appId: number; sessionId: string; logType: string;
+  stage: string | null; message: string; dataJson: string | null;
+  contentMd: string | null; elapsedMs: number | null; createdAt: string;
 }
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -88,8 +93,8 @@ export function AdminKnowledgeBase() {
     <div className="p-8 w-full mx-auto space-y-8">
       <div className="bg-card rounded-2xl shadow-sm p-8 border border-border">
         <div className="mb-8">
-          <h2 className="typo-section-title">Base de conocimientos</h2>
-          <p className="typo-caption mt-1">Memorias y métricas del pipeline de todos los usuarios</p>
+          <h2 className="typo-section-title">Memorias</h2>
+          <p className="typo-caption mt-1">Memorias, métricas y debug logs del pipeline de todos los usuarios</p>
         </div>
         <div className="space-y-4">
           {data.length === 0 ? (
@@ -157,7 +162,9 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
   const [fullPayloadLogId, setFullPayloadLogId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"telemetry" | "pipeline">("telemetry");
+  const [activeTab, setActiveTab] = useState<"telemetry" | "pipeline" | "debug">("telemetry");
+  const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
+  const [debugLoading, setDebugLoading] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -166,6 +173,16 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [userId, appId]);
+
+  // Load debug logs when tab is selected
+  useEffect(() => {
+    if (activeTab !== "debug") return;
+    setDebugLoading(true);
+    ipc.admin.getAdminDebugLogs({ userId, appId, limit: 500 })
+      .then(setDebugLogs)
+      .catch(() => {})
+      .finally(() => setDebugLoading(false));
+  }, [activeTab, userId, appId]);
 
   const totalInteractions = useMemo(() => stats.reduce((s, x) => s + x.count, 0), [stats]);
   const skippedCount = useMemo(() => stats.filter(s => s.action.startsWith("skipped_")).reduce((s, x) => s + x.count, 0), [stats]);
@@ -192,6 +209,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
       <div className="flex gap-1">
         <Button variant={activeTab === "telemetry" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("telemetry")}>Telemetría</Button>
         <Button variant={activeTab === "pipeline" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("pipeline")}>Pipeline Logs</Button>
+        <Button variant={activeTab === "debug" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("debug")}>Debug Logs</Button>
       </div>
 
       {activeTab === "telemetry" ? (
@@ -232,13 +250,22 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
             )}
           </>
         )
-      ) : (
+      ) : activeTab === "pipeline" ? (
         pipelineLogs.length === 0 ? (
           <p className="typo-caption p-4">Sin logs del pipeline.</p>
         ) : (
           <div className="space-y-2">
             {pipelineLogs.map(log => <PipelineLogRow key={log.id} log={log} isOpen={expandedLogId === log.id} onToggle={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)} fullPayload={fullPayloadLogId === log.id} onTogglePayload={() => setFullPayloadLogId(fullPayloadLogId === log.id ? null : log.id)} />)}
           </div>
+        )
+      ) : (
+        /* Debug Logs tab */
+        debugLoading ? (
+          <div className="flex items-center gap-2 p-4 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span className="typo-caption">Cargando debug logs...</span></div>
+        ) : debugLogs.length === 0 ? (
+          <p className="typo-caption p-4">Sin debug logs para esta app. Los debug logs solo se generan en producción (app empaquetada).</p>
+        ) : (
+          <DebugLogViewer logs={debugLogs} />
         )
       )}
     </div>
@@ -293,6 +320,116 @@ function PipelineLogRow({ log, isOpen, onToggle, fullPayload, onTogglePayload }:
           {log.systemPrompt && <PayloadBlock label="System prompt" content={log.systemPrompt} variant="dim" expanded={fullPayload} />}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── DebugLogViewer — groups logs by session, renders markdown content ────────
+
+const LOG_TYPE_ICONS: Record<string, string> = {
+  log: "📝",
+  section: "📌",
+  session_start: "🚀",
+  code_block: "📋",
+  list: "📃",
+  playground: "🎮",
+};
+
+function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+
+  // Group by sessionId
+  const sessions = useMemo(() => {
+    const map = new Map<string, { logs: DebugLogEntry[]; firstTs: string; lastTs: string; appId: number }>();
+    // logs come ordered DESC, but within a session we want ASC
+    const sorted = [...logs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    for (const log of sorted) {
+      if (!map.has(log.sessionId)) {
+        map.set(log.sessionId, { logs: [], firstTs: log.createdAt, lastTs: log.createdAt, appId: log.appId });
+      }
+      const entry = map.get(log.sessionId)!;
+      entry.logs.push(log);
+      entry.lastTs = log.createdAt;
+    }
+    // Return sessions newest first
+    return Array.from(map.entries()).sort((a, b) => new Date(b[1].firstTs).getTime() - new Date(a[1].firstTs).getTime());
+  }, [logs]);
+
+  return (
+    <div className="space-y-2">
+      <p className="typo-caption text-muted-foreground">{sessions.length} sesiones · {logs.length} logs totales</p>
+      {sessions.map(([sessionId, session]) => {
+        const isOpen = expandedSession === sessionId;
+        const stages = [...new Set(session.logs.map(l => l.stage).filter(Boolean))];
+        return (
+          <div key={sessionId} className="rounded-xl border border-border overflow-hidden">
+            {/* Session header */}
+            <div
+              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => setExpandedSession(isOpen ? null : sessionId)}
+            >
+              <ChevronRight className={cn("size-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0", isOpen && "rotate-90")} />
+              <span className="typo-caption font-mono text-muted-foreground shrink-0">{sessionId}</span>
+              <span className="typo-caption text-muted-foreground truncate flex-1">
+                {stages.join(" → ")}
+              </span>
+              <span className="typo-micro text-muted-foreground shrink-0">{session.logs.length} logs</span>
+              <span className="typo-micro text-muted-foreground shrink-0">{formatTime(session.firstTs)}</span>
+            </div>
+
+            {/* Session detail */}
+            {isOpen && (
+              <div className="border-t border-border bg-muted/10 max-h-[600px] overflow-y-auto">
+                <table className="w-full typo-micro">
+                  <thead>
+                    <tr className="border-b border-border/50 text-muted-foreground">
+                      <th className="text-left p-2 w-8"></th>
+                      <th className="text-left p-2 w-20">Tiempo</th>
+                      <th className="text-left p-2 w-24">Stage</th>
+                      <th className="text-left p-2">Mensaje</th>
+                      <th className="text-left p-2 w-48">Datos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {session.logs.map((log) => (
+                      <React.Fragment key={log.id}>
+                        <tr className="border-b border-border/30 hover:bg-muted/30 align-top">
+                          <td className="p-2 text-center">{LOG_TYPE_ICONS[log.logType] || "•"}</td>
+                          <td className="p-2 text-muted-foreground font-mono">
+                            {log.elapsedMs != null ? `+${(log.elapsedMs / 1000).toFixed(1)}s` : "—"}
+                          </td>
+                          <td className="p-2 font-medium">{log.stage || "—"}</td>
+                          <td className="p-2">{log.message}</td>
+                          <td className="p-2 text-muted-foreground truncate max-w-[200px]">
+                            {log.dataJson ? (
+                              (() => {
+                                try {
+                                  const d = JSON.parse(log.dataJson);
+                                  return Object.entries(d).map(([k, v]) => `${k}=${v}`).join(", ");
+                                } catch { return log.dataJson; }
+                              })()
+                            ) : "—"}
+                          </td>
+                        </tr>
+                        {/* Render contentMd below the row if present */}
+                        {log.contentMd && (
+                          <tr className="border-b border-border/20">
+                            <td colSpan={5} className="p-2 pl-10">
+                              <pre className="typo-micro p-2 rounded-lg bg-muted whitespace-pre-wrap break-all overflow-y-auto max-h-40 text-foreground/80">
+                                {log.contentMd}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -499,5 +499,43 @@ export function registerAdminHandlers(): void {
         };
     });
 
+    // ─── ADMIN: GET DEBUG LOGS ──────────────────────────────────────────
+    createTypedHandler(adminContracts.getAdminDebugLogs, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { eq, and, desc } = await import("drizzle-orm");
+
+        const conditions = [
+            eq(remoteSchema.memoryDebugLogs.userId, input.userId),
+        ];
+
+        if (input.appId && input.appId > 0) {
+            conditions.push(eq(remoteSchema.memoryDebugLogs.appId, input.appId));
+        }
+
+        const limit = input.limit || 500;
+
+        const rows = await db
+            .select()
+            .from(remoteSchema.memoryDebugLogs)
+            .where(and(...conditions))
+            .orderBy(desc(remoteSchema.memoryDebugLogs.createdAt))
+            .limit(limit);
+
+        return rows.map(r => ({
+            id: r.id,
+            appId: r.appId,
+            sessionId: r.sessionId,
+            logType: r.logType,
+            stage: r.stage,
+            message: r.message,
+            dataJson: r.dataJson,
+            contentMd: r.contentMd,
+            elapsedMs: r.elapsedMs,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
+    });
+
     logger.info("Admin handlers registered");
 }

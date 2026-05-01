@@ -164,6 +164,29 @@ export function registerImportHandlers() {
         createdAt: new Date(),
       })
       .returning();
+
+    // Fire-and-forget: trigger memory bootstrap (DNA collection) immediately
+    // so the agent has project context before the first prompt.
+    try {
+      const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+      const { setDebugContext } = await import("../utils/memory_debug_log");
+      setDebugContext(appName, app.id);
+      const needs = await needsBootstrap(app.id, userId);
+      if (needs) {
+        logger.info(`🧬 Memory bootstrap triggered on import for appId=${app.id}`);
+        runMemoryBootstrap({
+          appId: app.id,
+          userId,
+          projectDir: appPath,
+          appName,
+        }).catch((err: any) => {
+          logger.warn(`🧬 Memory bootstrap failed on import (non-fatal): ${err.message}`);
+        });
+      }
+    } catch (bootstrapErr: any) {
+      logger.warn(`🧬 Memory bootstrap import hook failed (non-fatal): ${bootstrapErr.message}`);
+    }
+
     return { appId: app.id, chatId: chat.id };
   });
 

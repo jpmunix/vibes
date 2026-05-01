@@ -13,6 +13,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories } from "../utils/memory_lifecycle";
+import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
 
 const logger = log.scope("memory_handlers");
@@ -350,10 +351,72 @@ export function registerMemoryHandlers(): void {
         const result = await runMemoryBootstrap({
             appId: params.appId,
             userId,
-            projectDir: app.path,
+            projectDir: getVibesAppPath(app.path),
         });
 
         return result;
+    });
+
+    // ── GET DEBUG LOGS ──────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.getDebugLogs, async (_event, params, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const conditions = [
+            eq(remoteSchema.memoryDebugLogs.userId, userId),
+        ];
+
+        if (params.appId && params.appId > 0) {
+            conditions.push(eq(remoteSchema.memoryDebugLogs.appId, params.appId));
+        }
+        if (params.sessionId) {
+            conditions.push(eq(remoteSchema.memoryDebugLogs.sessionId, params.sessionId));
+        }
+
+        const limit = params.limit || 500;
+
+        const rows = await db
+            .select()
+            .from(remoteSchema.memoryDebugLogs)
+            .where(and(...conditions))
+            .orderBy(desc(remoteSchema.memoryDebugLogs.createdAt))
+            .limit(limit);
+
+        return rows.map(r => ({
+            id: r.id,
+            appId: r.appId,
+            sessionId: r.sessionId,
+            logType: r.logType,
+            stage: r.stage,
+            message: r.message,
+            dataJson: r.dataJson,
+            contentMd: r.contentMd,
+            elapsedMs: r.elapsedMs,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
+    });
+
+    // ── PURGE OLD DEBUG LOGS (>180 days) ──────────────────────────────────
+    createTypedHandler(memoryContracts.purgeDebugLogs, async (_event, _input, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+
+        const result = await db
+            .delete(remoteSchema.memoryDebugLogs)
+            .where(
+                and(
+                    eq(remoteSchema.memoryDebugLogs.userId, userId),
+                    sql`${remoteSchema.memoryDebugLogs.createdAt} < ${Math.floor(cutoff.getTime() / 1000)}`,
+                ),
+            );
+
+        const deleted = (result as any).rowsAffected ?? 0;
+        logger.info(`[Memory] Purged ${deleted} debug logs older than 180 days`);
+        return deleted;
     });
 
     logger.info("[Memory] Handlers registered");

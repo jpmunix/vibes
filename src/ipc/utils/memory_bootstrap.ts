@@ -160,10 +160,16 @@ export async function collectProjectDNA(
     const directoryTree = getDirectoryTree(projectDir, 4);
     debugLog("DNA", `Directory tree collected`, { lines: directoryTree.split("\n").length.toString() });
 
-    const hasSignificantContent = configFiles.length > 0;
+    // Consider significant if: config files found, OR source directories exist,
+    // OR directory tree is large enough to indicate a real project
+    const treeLines = directoryTree.split("\n").filter(Boolean);
+    const SOURCE_DIRS = ["src/", "app/", "lib/", "pages/", "components/", "packages/"];
+    const hasSourceDirs = treeLines.some(l => SOURCE_DIRS.some(d => l.trimStart().startsWith(d)));
+    const hasSignificantContent = configFiles.length > 0 || hasSourceDirs || treeLines.length >= 5;
     debugLog("DNA", `Scan result: hasSignificantContent=${hasSignificantContent}`, {
         configs: configFiles.length.toString(),
-        treeLines: directoryTree.split("\n").length.toString(),
+        treeLines: treeLines.length.toString(),
+        hasSourceDirs: String(hasSourceDirs),
     });
 
     return {

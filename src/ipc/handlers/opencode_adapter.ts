@@ -1526,7 +1526,10 @@ export async function handleOpenCodeStream(
     // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
     // This ensures that if the first prompt found an empty project (no configs),
     // subsequent prompts will re-check once the agent generates files.
-    try {
+    // SKIP in plan mode: plan responses are proposals, not confirmed decisions.
+    if (agentMode === "plan") {
+        logger.info(`${LP} 🧬 Memory bootstrap skipped — plan mode (proposals, not confirmed)`);
+    } else try {
         const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
         const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
         const bootstrapSettings = readSettings();

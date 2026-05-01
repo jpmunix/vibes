@@ -234,6 +234,35 @@ export const memoryContracts = {
             phase2Count: z.number(),
         }),
     }),
+
+    /** Get debug logs (structured markdown logs from memory pipeline) */
+    getDebugLogs: defineContract({
+        channel: "get-debug-logs",
+        input: z.object({
+            appId: z.number().optional(),
+            sessionId: z.string().optional(),
+            limit: z.number().optional(),
+        }),
+        output: z.array(z.object({
+            id: z.number(),
+            appId: z.number(),
+            sessionId: z.string(),
+            logType: z.string(),
+            stage: z.string().nullable(),
+            message: z.string(),
+            dataJson: z.string().nullable(),
+            contentMd: z.string().nullable(),
+            elapsedMs: z.number().nullable(),
+            createdAt: z.string(),
+        })),
+    }),
+
+    /** Purge debug logs older than 180 days */
+    purgeDebugLogs: defineContract({
+        channel: "purge-debug-logs",
+        input: z.void(),
+        output: z.number(), // number deleted
+    }),
 } as const;
 
 // =============================================================================
