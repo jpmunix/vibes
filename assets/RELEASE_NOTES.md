@@ -48,6 +48,7 @@ La configuración de prompts deja de vivir en una pantalla separada y ahora es u
 - Botón **Nitro** en el Playground para forzar el proveedor más rápido (`:nitro` de OpenRouter) en todos los modelos de la batería.
 - Actualización del SDK de OpenCode a la versión **1.14.31**.
 - El banner azul de cambios sin confirmar ya no interrumpe en ningún modo de chat; el indicador del icono Git es suficiente.
+- Nueva opción **"Exportar a Markdown"** en el menú contextual de cada chat para guardar la conversación completa como archivo `.md`.
 - Mejoras internas de estabilidad.
 
 # v8.0

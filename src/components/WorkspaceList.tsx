@@ -31,6 +31,7 @@ import {
   MessageSquare,
   Code,
   Folder,
+  Download,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
@@ -371,6 +372,39 @@ const AppChats = memo(function AppChats({
           >
             <Pencil size={14} className="opacity-60 shrink-0" />
             Renombrar
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              const chatId = openMenuId;
+              const chat = sortedChats.find(c => c.id === chatId);
+              closeMenu();
+              if (!chatId || !chat) return;
+              try {
+                const fullChat = await ipc.chat.getChat(chatId);
+                const lines: string[] = [];
+                lines.push(`# ${fullChat.title || "Chat sin título"}\n`);
+                for (const msg of fullChat.messages) {
+                  const role = msg.role === "user" ? "Usuario" : "Asistente";
+                  const ts = msg.createdAt ? new Date(msg.createdAt).toLocaleString("es-ES") : "";
+                  lines.push(`## ${role}${ts ? ` — ${ts}` : ""}\n`);
+                  lines.push(msg.content);
+                  lines.push("");
+                }
+                const slug = (fullChat.title || "chat").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, "").replace(/\s+/g, "_").slice(0, 60);
+                await ipc.system.saveTextToFile({
+                  content: lines.join("\n"),
+                  defaultName: `${slug}.md`,
+                  filters: [{ name: "Markdown", extensions: ["md"] }],
+                });
+              } catch (e) {
+                showError(e);
+              }
+            }}
+          >
+            <Download size={14} className="opacity-60 shrink-0" />
+            Exportar a Markdown
           </button>
           <button
             type="button"
