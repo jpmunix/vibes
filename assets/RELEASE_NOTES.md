@@ -17,6 +17,10 @@ Nuevo panel colapsable en **Ajustes → General** para escalar el tamaño de fue
 
 Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra lateral sin borrar nada. Ideal para hacer limpieza visual cuando acumulas proyectos terminados o pausados. Todo queda guardado y accesible desde la sección de archivados, listo para **restaurarse con un clic** cuando lo necesites.
 
+## Arranque casi instantáneo
+
+Hemos recortado drásticamente el tiempo de arranque de la aplicación. Se ha optimizado el flujo de carga de datos, eliminado tablas innecesarias de la base de datos, retirado funcionalidades obsoletas y **borrado más de 50 archivos sin uso**. El resultado es una app que abre prácticamente al instante.
+
 ## Correcciones y ajustes
 
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
