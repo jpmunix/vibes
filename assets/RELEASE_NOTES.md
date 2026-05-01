@@ -47,6 +47,7 @@ La configuración de prompts deja de vivir en una pantalla separada y ahora es u
 - Nuevos modos de ordenación en el Playground: **precio de entrada y salida** (ascendente/descendente), con iconos Lucide en todas las opciones del desplegable.
 - Botón **Nitro** en el Playground para forzar el proveedor más rápido (`:nitro` de OpenRouter) en todos los modelos de la batería.
 - Actualización del SDK de OpenCode a la versión **1.14.31**.
+- El banner azul de cambios sin confirmar ya no interrumpe en ningún modo de chat; el indicador del icono Git es suficiente.
 - Mejoras internas de estabilidad.
 
 # v8.0
