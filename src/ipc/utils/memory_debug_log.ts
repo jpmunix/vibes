@@ -59,13 +59,29 @@ function getLogPath(): string | null {
     }
 }
 
-/** Append text to both the in-memory buffer and the filesystem log */
+// Lazy-resolved: avoids importing electron at module load time
+let _isDev: boolean | null = null;
+function isDev(): boolean {
+    if (_isDev !== null) return _isDev;
+    try {
+        const electron = require("electron");
+        _isDev = !electron.app.isPackaged;
+    } catch {
+        _isDev = true; // Outside electron = dev
+    }
+    return _isDev;
+}
+
+/** Append text to the in-memory buffer (always) and the filesystem log (dev only) */
 function append(text: string): void {
     _buffer.push(text);
-    try {
-        const logPath = getLogPath();
-        if (logPath) fs.appendFileSync(logPath, text + "\n");
-    } catch { /* never throw */ }
+    // Filesystem write only in dev
+    if (isDev()) {
+        try {
+            const logPath = getLogPath();
+            if (logPath) fs.appendFileSync(logPath, text + "\n");
+        } catch { /* never throw */ }
+    }
 }
 
 // =============================================================================
@@ -207,8 +223,8 @@ export function debugPlayground(stage: string, model: string, systemPrompt: stri
         ].join("\n");
         append(summary);
 
-        // Also write the full-length playground file to /tmp
-        if (_currentAppId) {
+        // Also write the full-length playground file to /tmp (dev only)
+        if (isDev() && _currentAppId) {
             if (!fs.existsSync(LOG_DIR)) {
                 fs.mkdirSync(LOG_DIR, { recursive: true });
             }
