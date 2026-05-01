@@ -198,9 +198,11 @@ export async function extractMemoriesFromChatCycle(params: {
         const userMessage = parts.join("\n");
 
         // 4. LLM call using the synthesis prompt
-        const model = settings.memoriesSynthesisModelV2
+        const baseModel = settings.memoriesSynthesisModelV2
             || settings.standardModeModel
             || DEFAULT_STANDARD_MODEL;
+        // Transparent nitro: use fastest provider for memory calls
+        const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 
         // Use memory_synthesis prompt (the Synthesizer V3)
         const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);

@@ -36,7 +36,7 @@ const ROUTER_INPUT_LIMIT = 300;
 const DEFAULT_MAX_SELECTION = 10;
 
 /** Default model for memory selection (ultralight) */
-const DEFAULT_SELECTION_MODEL = "google/gemini-3-flash-preview";
+const DEFAULT_SELECTION_MODEL = "mistralai/devstral-small";
 
 /** Type labels for formatted output */
 const TYPE_LABELS: Record<string, string> = {
@@ -216,8 +216,10 @@ async function routerSelect(
     appId: number,
 ): Promise<MemoryRow[] | null> {
     try {
-        const model = settings.memoriesRouterModelV2
+        const baseModel = settings.memoriesRouterModelV2
             || DEFAULT_SELECTION_MODEL;
+        // Transparent nitro: use fastest provider for memory calls
+        const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
         const maxSelection = settings.memoriesMaxSelection || DEFAULT_MAX_SELECTION;
 
         // Build structured user message matching the prompt format

@@ -62,8 +62,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Memory system (enabled by default)
   memoriesEnabled: true,
   memoriesAutoExtract: true,
-  memoriesSynthesisModelV2: "qwen/qwen3-coder",
-  memoriesRouterModelV2: "google/gemini-3-flash-preview",
+  memoriesSynthesisModelV2: "mistralai/devstral-small",
+  memoriesRouterModelV2: "mistralai/devstral-small",
   enableWebSearch: true,
   // Chat render mode: "full" shows all badges/modals, "zen" shows only prose + cost
   chatRenderMode: "zen",
@@ -515,8 +515,8 @@ export function readSettings(): UserSettings {
     if (!(validatedSettings as any)._migrations?.v9h_memory_models) {
       const migratedSettings = {
         ...validatedSettings,
-        memoriesSynthesisModelV2: "qwen/qwen3-coder",
-        memoriesRouterModelV2: "google/gemini-3-flash-preview",
+        memoriesSynthesisModelV2: "mistralai/devstral-small",
+        memoriesRouterModelV2: "mistralai/devstral-small",
         _migrations: { ...(validatedSettings as any)._migrations, v9h_memory_models: true },
       };
       logger.info("[Migration] Applied v9h memory model defaults");
@@ -525,6 +525,25 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v9h memory model defaults:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v11 memory models → devstral-small:nitro ──
+    // Switch both memory models to mistralai/devstral-small.
+    if (!(validatedSettings as any)._migrations?.v11h_devstral_memory) {
+      const migratedSettings = {
+        ...validatedSettings,
+        memoriesSynthesisModelV2: "mistralai/devstral-small",
+        memoriesRouterModelV2: "mistralai/devstral-small",
+        _migrations: { ...(validatedSettings as any)._migrations, v11h_devstral_memory: true },
+      };
+      logger.info("[Migration] Applied v11h devstral memory models");
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v11h devstral memory models:", e);
       }
       return migratedSettings as UserSettings;
     }

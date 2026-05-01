@@ -40,6 +40,8 @@ import {
     Download,
     FileText,
     Database,
+    DollarSign,
+    AlignLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -76,6 +78,7 @@ import {
 import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
+import { isFreeModel } from "@/ipc/shared/model_variants";
 
 import "@/styles/globals.css";
 
@@ -336,7 +339,16 @@ function ModelChipWithPresets({ apiName, displayName, time, disabled, isRunning,
 
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
-function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode, exportChecked, onExportToggle }: {
+function fmtPricePM(p: string | undefined): string {
+    if (!p) return "—";
+    const v = parseFloat(p);
+    if (isNaN(v)) return "—";
+    if (v === 0) return "gratis";
+    const pm = v * 1_000_000;
+    return `$${pm < 0.01 ? pm.toFixed(4) : pm.toFixed(2)}`;
+}
+
+function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode, exportChecked, onExportToggle, pricingInput, pricingOutput }: {
     result: ModelResult;
     collapsed: boolean;
     rank?: number;
@@ -346,10 +358,13 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
     viewMode: 'raw' | 'memorias';
     exportChecked?: boolean;
     onExportToggle?: () => void;
+    pricingInput?: string;
+    pricingOutput?: string;
 }) {
     const isTimeout = result.timeout;
     const memoryCount = !result.error ? getMemoryCount(result.text) : null;
     const canExpand = !isTimeout;
+    const hasPricing = pricingInput || pricingOutput;
 
     return (
         <div className={cn("playground-result-card", isTimeout && "border-destructive/30 bg-destructive/5")}>
@@ -372,9 +387,18 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, vi
                         #{rank}
                     </span>
                 )}
-                <h3 className={cn("typo-label !text-sm font-semibold truncate flex-1", isTimeout && "text-destructive")}>
-                    {result.modelDisplayName}
-                </h3>
+                <div className="flex-1 min-w-0">
+                    <h3 className={cn("typo-label !text-sm font-semibold truncate", isTimeout && "text-destructive")}>
+                        {result.modelDisplayName}
+                    </h3>
+                    {hasPricing && (
+                        <div className="typo-caption text-muted-foreground/50 truncate flex items-center gap-1.5 mt-0.5">
+                            <span>In <span className="tabular-nums">{fmtPricePM(pricingInput)}</span></span>
+                            <span className="opacity-40">·</span>
+                            <span>Out <span className="tabular-nums">{fmtPricePM(pricingOutput)}</span></span>
+                        </div>
+                    )}
+                </div>
                 <div className="flex items-center gap-3 shrink-0">
                     {/* Time */}
                     <span className={cn("flex items-center gap-1 typo-caption", isTimeout ? "text-destructive" : "text-muted-foreground")}>
@@ -445,10 +469,11 @@ function PlaygroundPanel() {
     const [modelTimes, setModelTimes] = useState<Map<string, number>>(new Map());
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [runFinished, setRunFinished] = useState(false);
-    const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc'>('speed-asc');
+    const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc' | 'price-in-asc' | 'price-in-desc' | 'price-out-asc' | 'price-out-desc'>('speed-asc');
     const [retryingModel, setRetryingModel] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'memorias' | 'raw'>('memorias');
     const [morphActive, setMorphActive] = useState(false);
+    const [nitroActive, setNitroActive] = useState(false);
     const { aliases } = useModelAliases();
     const resultsRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -601,24 +626,41 @@ function PlaygroundPanel() {
     // Sorted results for display (sorted after run finishes)
     const displayResults = useMemo(() => {
         if (!runFinished) return results;
+        // Build a price lookup from allModels
+        const priceMap = new Map<string, { inp: number; out: number }>();
+        for (const m of allModels) {
+            priceMap.set(m.apiName, {
+                inp: parseFloat(m.pricingInput || '0') || 0,
+                out: parseFloat(m.pricingOutput || '0') || 0,
+            });
+        }
         return [...results].sort((a, b) => {
             switch (sortMode) {
-                case 'speed-asc':  return a.durationMs - b.durationMs;
-                case 'speed-desc': return b.durationMs - a.durationMs;
-                case 'size-asc':   return a.text.length - b.text.length;
-                case 'size-desc':  return b.text.length - a.text.length;
-                default:           return 0;
+                case 'speed-asc':     return a.durationMs - b.durationMs;
+                case 'speed-desc':    return b.durationMs - a.durationMs;
+                case 'size-asc':      return a.text.length - b.text.length;
+                case 'size-desc':     return b.text.length - a.text.length;
+                case 'price-in-asc':  return (priceMap.get(a.modelApiName)?.inp ?? 0) - (priceMap.get(b.modelApiName)?.inp ?? 0);
+                case 'price-in-desc': return (priceMap.get(b.modelApiName)?.inp ?? 0) - (priceMap.get(a.modelApiName)?.inp ?? 0);
+                case 'price-out-asc': return (priceMap.get(a.modelApiName)?.out ?? 0) - (priceMap.get(b.modelApiName)?.out ?? 0);
+                case 'price-out-desc':return (priceMap.get(b.modelApiName)?.out ?? 0) - (priceMap.get(a.modelApiName)?.out ?? 0);
+                default:              return 0;
             }
         });
-    }, [results, runFinished, sortMode]);
+    }, [results, runFinished, sortMode, allModels]);
 
-    // Sort labels for dropdown
-    const sortLabels: Record<string, string> = {
-        'speed-asc': 'Más rápido primero',
-        'speed-desc': 'Más lento primero',
-        'size-asc': viewMode === 'memorias' ? 'Menos memorias' : 'Respuesta más corta',
-        'size-desc': viewMode === 'memorias' ? 'Más memorias' : 'Respuesta más larga',
-    };
+    // Sort options for dropdown (icon + label)
+    const sortOptions: { key: typeof sortMode; label: string; icon: React.ReactNode }[] = [
+        { key: 'speed-asc',    label: 'Más rápido primero',   icon: <Zap size={13} /> },
+        { key: 'speed-desc',   label: 'Más lento primero',    icon: <Zap size={13} /> },
+        { key: 'size-asc',     label: viewMode === 'memorias' ? 'Menos memorias' : 'Respuesta más corta', icon: <AlignLeft size={13} /> },
+        { key: 'size-desc',    label: viewMode === 'memorias' ? 'Más memorias' : 'Respuesta más larga',   icon: <AlignLeft size={13} /> },
+        { key: 'price-in-asc', label: 'Entrada más barato',   icon: <DollarSign size={13} /> },
+        { key: 'price-in-desc',label: 'Entrada más caro',     icon: <DollarSign size={13} /> },
+        { key: 'price-out-asc',label: 'Salida más barato',    icon: <DollarSign size={13} /> },
+        { key: 'price-out-desc',label:'Salida más caro',      icon: <DollarSign size={13} /> },
+    ];
+    const activeSortOption = sortOptions.find(o => o.key === sortMode)!;
 
     // Reset everything (keep prompt)
     const handleReset = useCallback(() => {
@@ -636,6 +678,7 @@ function PlaygroundPanel() {
         setRetryingModel(null);
         setInputCollapsed(false);
         setMorphActive(false);
+        setNitroActive(false);
         setPrompt("");
         setActivePresetName(null);
         setActivePromptPreset(null);
@@ -650,10 +693,15 @@ function PlaygroundPanel() {
         setRetryingModel(modelApiName);
         const modelDisplayName = modelDisplayNameMap.get(modelApiName) || modelApiName;
 
+        // Apply nitro suffix if active and model is not free
+        const modelForApi = nitroActive && !modelApiName.includes(":")
+            ? (() => { const m = allModels.find(x => x.apiName === modelApiName); return m && !isFreeModel(m) ? modelApiName + ":nitro" : modelApiName; })()
+            : modelApiName;
+
         const startTime = performance.now();
         try {
             const response = await ipc.misc.playgroundCompletion({
-                model: modelApiName,
+                model: modelForApi,
                 prompt: prompt.trim(),
             });
             const durationMs = performance.now() - startTime;
@@ -707,6 +755,11 @@ function PlaygroundPanel() {
             const modelApiName = activeModels[i];
             const modelDisplayName = modelDisplayNameMap.get(modelApiName) || modelApiName;
 
+            // Apply nitro suffix if active and model is not free
+            const modelForApi = nitroActive && !modelApiName.includes(":")
+                ? (() => { const m = allModels.find(x => x.apiName === modelApiName); return m && !isFreeModel(m) ? modelApiName + ":nitro" : modelApiName; })()
+                : modelApiName;
+
             const startTime = performance.now();
             let durationMs = 0;
             try {
@@ -716,7 +769,7 @@ function PlaygroundPanel() {
 
                 const response = await Promise.race([
                     ipc.misc.playgroundCompletion({
-                        model: modelApiName,
+                        model: modelForApi,
                         prompt: prompt.trim(),
                     }),
                     timeoutPromise,
@@ -1620,20 +1673,21 @@ function PlaygroundPanel() {
                                 className="flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground"
                             >
                                 <ArrowUpDown size={13} />
-                                <span className="truncate">{sortLabels[sortMode]}</span>
+                                <span className="truncate">{activeSortOption.label}</span>
                                 <ChevronDown size={13} className="opacity-50" />
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="min-w-[220px]">
-                            {(Object.entries(sortLabels) as [typeof sortMode, string][]).map(([key, label]) => (
+                            {sortOptions.map(({ key, label, icon }) => (
                                 <DropdownMenuItem
                                     key={key}
                                     className={cn(
-                                        "cursor-pointer py-2.5",
+                                        "cursor-pointer py-2.5 gap-2",
                                         sortMode === key && "bg-primary/10 font-semibold"
                                     )}
                                     onSelect={() => setSortMode(key as any)}
                                 >
+                                    <span className="text-muted-foreground shrink-0">{icon}</span>
                                     {label}
                                 </DropdownMenuItem>
                             ))}
@@ -1668,6 +1722,23 @@ function PlaygroundPanel() {
                             Memorias
                         </button>
                     </div>
+
+                    {/* Nitro toggle */}
+                    <button
+                        type="button"
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors disabled:opacity-50",
+                            nitroActive
+                                ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-semibold"
+                                : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground"
+                        )}
+                        title={nitroActive ? "Desactivar Nitro (provider más rápido)" : "Activar Nitro (provider más rápido)"}
+                        onClick={() => setNitroActive(prev => !prev)}
+                        disabled={isRunning}
+                    >
+                        <Zap size={14} />
+                        Nitro
+                    </button>
 
                     {/* Morph button (toggle) */}
                     <button
@@ -2038,6 +2109,7 @@ function PlaygroundPanel() {
                 {displayResults.map((result, i) => {
                     const cardKey = `${result.modelApiName}-${i}`;
                     const isCollapsed = !expandedCards.has(cardKey);
+                    const modelInfo = allModels.find(m => m.apiName === result.modelApiName);
                     return (
                         <ResultCard
                             key={cardKey}
@@ -2048,6 +2120,8 @@ function PlaygroundPanel() {
                             onRetry={runFinished && !isRunning ? () => handleRetryModel(result.modelApiName) : undefined}
                             isRetrying={retryingModel === result.modelApiName}
                             viewMode={viewMode}
+                            pricingInput={modelInfo?.pricingInput}
+                            pricingOutput={modelInfo?.pricingOutput}
                             exportChecked={runFinished ? exportSelection.has(result.modelApiName) : undefined}
                             onExportToggle={runFinished ? () => {
                                 setExportSelection(prev => {

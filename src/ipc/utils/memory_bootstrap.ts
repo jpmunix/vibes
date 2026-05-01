@@ -223,9 +223,11 @@ async function bootstrapFromDNA(params: {
     const { appId, userId, dna } = params;
     const settings = readSettings();
 
-    const model = settings.memoriesSynthesisModelV2
+    const baseModel = settings.memoriesSynthesisModelV2
         || settings.standardModeModel
         || DEFAULT_STANDARD_MODEL;
+    // Transparent nitro: use fastest provider for memory calls
+    const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 
     const onboardingPrompt = getEffectivePrompt("memory_onboarding", settings);
     const userMessage = formatDNAForLLM(dna);
