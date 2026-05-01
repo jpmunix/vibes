@@ -504,6 +504,14 @@ export const UserSettingsSchema = z
         isMaximized: z.boolean().optional(),
       })
       .optional(),
+    // Per-window-type saved bounds (each secondary window remembers its own position/size)
+    secondaryWindowStates: z.record(z.string(), z.object({
+      x: z.number().optional(),
+      y: z.number().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      isMaximized: z.boolean().optional(),
+    })).optional(),
     // Playground — saved model presets
     playgroundModelSets: z.array(z.object({
       name: z.string(),

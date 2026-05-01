@@ -44,20 +44,55 @@ const pendingChatPrompts = new Map<number, {
 }>();
 
 /**
- * Returns the saved main-window bounds (position + size) so secondary windows
- * open at the same location/size the user last used for the main window.
- * Falls back to sensible defaults when no state is persisted.
+ * Returns the saved bounds for a secondary window, keyed by windowType.
+ * Falls back to the main-window position when no per-type state exists yet,
+ * and finally to sensible defaults.
  */
-function getSavedWindowBounds(defaults?: { width?: number; height?: number }) {
+function getSavedWindowBounds(windowType: string, defaults?: { width?: number; height?: number }) {
   const settings = readSettings();
+  // First: check per-type saved state
+  const perType = settings.secondaryWindowStates?.[windowType];
+  if (perType) {
+    return {
+      width: perType.width ?? defaults?.width ?? 1200,
+      height: perType.height ?? defaults?.height ?? 800,
+      x: perType.x,
+      y: perType.y,
+      isMaximized: perType.isMaximized ?? true,
+    };
+  }
+  // Fallback: use the main window position (first open of this type)
   const ws = settings.windowState;
   return {
-    width: ws?.width ?? defaults?.width ?? 1200,
-    height: ws?.height ?? defaults?.height ?? 800,
+    width: defaults?.width ?? ws?.width ?? 1200,
+    height: defaults?.height ?? ws?.height ?? 800,
     x: ws?.x,
     y: ws?.y,
     isMaximized: ws?.isMaximized ?? true,
   };
+}
+
+/**
+ * Saves a secondary window's bounds to settings under its windowType key.
+ * Called on window "close" to remember position/size per window type.
+ */
+function saveSecondaryWindowState(windowType: string, win: BrowserWindow) {
+  if (win.isDestroyed()) return;
+  const isMaximized = win.isMaximized();
+  const bounds = isMaximized ? win.getNormalBounds() : win.getBounds();
+  const settings = readSettings();
+  writeSettings({
+    secondaryWindowStates: {
+      ...settings.secondaryWindowStates,
+      [windowType]: {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        isMaximized,
+      },
+    },
+  });
 }
 
 export function registerWindowHandlers() {
@@ -128,9 +163,10 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for database window title: ${e}`);
     }
 
-    const saved = getSavedWindowBounds({ width: 1000, height: 700 });
+    const saved = getSavedWindowBounds("database", { width: 1000, height: 700 });
 
     const dbWindow = new BrowserWindow({
+      show: false,
       width: saved.width,
       height: saved.height,
       x: saved.x,
@@ -157,6 +193,7 @@ export function registerWindowHandlers() {
     if (saved.isMaximized) {
       dbWindow.maximize();
     }
+    dbWindow.show();
 
     // Remove native menu bar entirely (File, Edit, View, etc.)
     dbWindow.removeMenu();
@@ -201,6 +238,7 @@ export function registerWindowHandlers() {
 
     databaseWindows.set(appId, dbWindow);
 
+    dbWindow.on("close", () => saveSecondaryWindowState("database", dbWindow));
     dbWindow.on("closed", () => {
       databaseWindows.delete(appId);
     });
@@ -233,9 +271,10 @@ export function registerWindowHandlers() {
     const gitIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const gitIcon = nativeImage.createFromPath(gitIconPath);
 
-    const savedGit = getSavedWindowBounds({ width: 1100, height: 750 });
+    const savedGit = getSavedWindowBounds("git", { width: 1100, height: 750 });
 
     const gitWindow = new BrowserWindow({
+      show: false,
       width: savedGit.width,
       height: savedGit.height,
       x: savedGit.x,
@@ -270,6 +309,7 @@ export function registerWindowHandlers() {
     if (savedGit.isMaximized) {
       gitWindow.maximize();
     }
+    gitWindow.show();
 
     // Prevent the renderer (HTML <title>) from overriding our window title
     gitWindow.on("page-title-updated", (e) => {
@@ -322,6 +362,7 @@ export function registerWindowHandlers() {
 
     gitWindows.set(appId, gitWindow);
 
+    gitWindow.on("close", () => saveSecondaryWindowState("git", gitWindow));
     gitWindow.on("closed", () => {
       gitWindows.delete(appId);
     });
@@ -356,9 +397,10 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for window title: ${e}`);
     }
 
-    const savedChat = getSavedWindowBounds({ width: 1200, height: 800 });
+    const savedChat = getSavedWindowBounds("chat", { width: 1200, height: 800 });
 
     const chatWindow = new BrowserWindow({
+      show: false,
       width: savedChat.width,
       height: savedChat.height,
       x: savedChat.x,
@@ -388,6 +430,7 @@ export function registerWindowHandlers() {
     if (savedChat.isMaximized) {
       chatWindow.maximize();
     }
+    chatWindow.show();
 
     // Remove native menu bar entirely (File, Edit, View, etc.)
     chatWindow.removeMenu();
@@ -440,22 +483,7 @@ export function registerWindowHandlers() {
 
     chatWindows.set(appId, chatWindow);
 
-    chatWindow.on("close", () => {
-      // Save window state before closing
-      if (!chatWindow.isDestroyed()) {
-        const bounds = chatWindow.getBounds();
-        const isMaximized = chatWindow.isMaximized();
-        writeSettings({
-          windowState: {
-            x: bounds.x,
-            y: bounds.y,
-            width: bounds.width,
-            height: bounds.height,
-            isMaximized,
-          },
-        });
-      }
-    });
+    chatWindow.on("close", () => saveSecondaryWindowState("chat", chatWindow));
 
     chatWindow.on("closed", () => {
       chatWindows.delete(appId);
@@ -485,7 +513,7 @@ export function registerWindowHandlers() {
       }
     }
 
-    const savedMsg = getSavedWindowBounds({ width: 800, height: 600 });
+    const savedMsg = getSavedWindowBounds("message", { width: 800, height: 600 });
 
     const messageWindow = new BrowserWindow({
       show: false,
@@ -560,6 +588,7 @@ export function registerWindowHandlers() {
 
     messageWindows.set(messageId, messageWindow);
 
+    messageWindow.on("close", () => saveSecondaryWindowState("message", messageWindow));
     messageWindow.on("closed", () => {
       messageWindows.delete(messageId);
     });
@@ -601,9 +630,10 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for console window title: ${e}`);
     }
 
-    const savedConsole = getSavedWindowBounds({ width: 900, height: 550 });
+    const savedConsole = getSavedWindowBounds("console", { width: 900, height: 550 });
 
     const consoleWindow = new BrowserWindow({
+      show: false,
       width: savedConsole.width,
       height: savedConsole.height,
       x: savedConsole.x,
@@ -630,6 +660,7 @@ export function registerWindowHandlers() {
     if (savedConsole.isMaximized) {
       consoleWindow.maximize();
     }
+    consoleWindow.show();
 
     const themeParam = theme ? `&theme=${theme}` : "";
     const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
@@ -646,6 +677,7 @@ export function registerWindowHandlers() {
 
     consoleWindows.set(appId, consoleWindow);
 
+    consoleWindow.on("close", () => saveSecondaryWindowState("console", consoleWindow));
     consoleWindow.on("closed", () => {
       consoleWindows.delete(appId);
     });
@@ -678,9 +710,10 @@ export function registerWindowHandlers() {
     const codeIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const codeIcon = nativeImage.createFromPath(codeIconPath);
 
-    const savedCode = getSavedWindowBounds({ width: 1100, height: 750 });
+    const savedCode = getSavedWindowBounds("code", { width: 1100, height: 750 });
 
     const codeWindow = new BrowserWindow({
+      show: false,
       width: savedCode.width,
       height: savedCode.height,
       x: savedCode.x,
@@ -715,6 +748,7 @@ export function registerWindowHandlers() {
     if (savedCode.isMaximized) {
       codeWindow.maximize();
     }
+    codeWindow.show();
 
     // Prevent the renderer (HTML <title>) from overriding our window title
     codeWindow.on("page-title-updated", (e) => {
@@ -766,6 +800,7 @@ export function registerWindowHandlers() {
 
     codeWindows.set(appId, codeWindow);
 
+    codeWindow.on("close", () => saveSecondaryWindowState("code", codeWindow));
     codeWindow.on("closed", () => {
       codeWindows.delete(appId);
     });
@@ -825,9 +860,10 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for memory window title: ${e}`);
     }
 
-    const savedMemory = getSavedWindowBounds({ width: 900, height: 650 });
+    const savedMemory = getSavedWindowBounds("memory", { width: 900, height: 650 });
 
     const memoryWindow = new BrowserWindow({
+      show: false,
       width: savedMemory.width,
       height: savedMemory.height,
       x: savedMemory.x,
@@ -850,6 +886,7 @@ export function registerWindowHandlers() {
     if (savedMemory.isMaximized) {
       memoryWindow.maximize();
     }
+    memoryWindow.show();
 
     // Prevent the renderer (HTML <title>) from overriding our window title
     memoryWindow.on("page-title-updated", (e) => {
@@ -896,6 +933,7 @@ export function registerWindowHandlers() {
 
     memoryWindows.set(appId, memoryWindow);
 
+    memoryWindow.on("close", () => saveSecondaryWindowState("memory", memoryWindow));
     memoryWindow.on("closed", () => {
       memoryWindows.delete(appId);
     });
@@ -921,9 +959,10 @@ export function registerWindowHandlers() {
     const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const icon = nativeImage.createFromPath(iconPath);
 
-    const savedAdmin = getSavedWindowBounds({ width: 1000, height: 700 });
+    const savedAdmin = getSavedWindowBounds("admin", { width: 1000, height: 700 });
 
     adminWindow = new BrowserWindow({
+      show: false,
       width: savedAdmin.width,
       height: savedAdmin.height,
       x: savedAdmin.x,
@@ -952,6 +991,7 @@ export function registerWindowHandlers() {
     if (savedAdmin.isMaximized) {
       adminWindow.maximize();
     }
+    adminWindow.show();
 
     // Prevent the renderer from overriding our window title
     adminWindow.on("page-title-updated", (e) => {
@@ -998,6 +1038,7 @@ export function registerWindowHandlers() {
       );
     }
 
+    adminWindow.on("close", () => saveSecondaryWindowState("admin", adminWindow!));
     adminWindow.on("closed", () => {
       adminWindow = null;
     });
@@ -1017,9 +1058,10 @@ export function registerWindowHandlers() {
     const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const icon = nativeImage.createFromPath(iconPath);
 
-    const savedPlayground = getSavedWindowBounds({ width: 900, height: 700 });
+    const savedPlayground = getSavedWindowBounds("playground", { width: 900, height: 700 });
 
     playgroundWindow = new BrowserWindow({
+      show: false,
       width: savedPlayground.width,
       height: savedPlayground.height,
       x: savedPlayground.x,
@@ -1048,6 +1090,7 @@ export function registerWindowHandlers() {
     if (savedPlayground.isMaximized) {
       playgroundWindow.maximize();
     }
+    playgroundWindow.show();
 
     // Prevent the renderer from overriding our window title
     playgroundWindow.on("page-title-updated", (e) => {
@@ -1094,6 +1137,7 @@ export function registerWindowHandlers() {
       );
     }
 
+    playgroundWindow.on("close", () => saveSecondaryWindowState("playground", playgroundWindow!));
     playgroundWindow.on("closed", () => {
       playgroundWindow = null;
     });
