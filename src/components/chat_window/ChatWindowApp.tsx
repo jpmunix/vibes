@@ -18,7 +18,6 @@ import {
     createMemoryHistory,
     RouterProvider,
 } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
 
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
@@ -86,12 +85,7 @@ const queryClient = new QueryClient({
     }),
 });
 
-// ─── No-op PostHog client ───────────────────────────────────────────────
-// Instead of initializing the full PostHog SDK (which sets up localStorage,
-// timers, and internal data structures), we pass null. The PostHogProvider
-// from posthog-js/react gracefully handles this — `usePostHog()` will
-// return null/undefined, and posthog.capture() calls become no-ops.
-const noopPosthogClient = null;
+
 
 // ─── Lightweight sidebar context for chat window ────────────────────────
 // The full SidebarProvider (780 lines) adds keyboard shortcuts, cookie
@@ -598,14 +592,12 @@ export function ChatWindowApp({ appId, chatId, hasPendingPrompt, initialChatMode
 
     return (
         <QueryClientProvider client={queryClient}>
-            <PostHogProvider client={noopPosthogClient}>
-                <ThemeProvider>
-                    <AuthGate>
-                        {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
-                        <RouterProvider router={chatRouter} />
-                    </AuthGate>
-                </ThemeProvider>
-            </PostHogProvider>
+            <ThemeProvider>
+                <AuthGate>
+                    {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
+                    <RouterProvider router={chatRouter} />
+                </AuthGate>
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }

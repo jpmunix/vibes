@@ -31,6 +31,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
 import { McpServer } from "../types/mcp";
+import { patchOpencodeJsonInstructions } from "./design_handlers";
 
 const logger = log.scope("opencode_adapter");
 
@@ -955,11 +956,9 @@ async function getOpenCodeClient(appPath: string) {
             }));
         }
 
-        // config.instructions expects FILE PATHS, not inline text.
-        // The file .opencode/vibes-context.md is written per-request in
-        // handleOpenCodeStream BEFORE this client is used.
+        // Dynamic instructions are written to docs/vibes-context.md per-request
+        // and registered in the project's opencode.json (same pattern as DESIGN.md).
         const config = {
-                instructions: ["vibes-context.md"],
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
@@ -1329,24 +1328,26 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
-    // ── Write dynamic instructions to OpenCode's config dir ────────────────
-    // config.instructions paths are resolved relative to the config file
-    // location (~/.config/minube-vibes/opencode-server/), NOT the project dir.
-    // We write vibes-context.md there so OpenCode can resolve it.
+    // ── Write dynamic instructions to project dir (same pattern as DESIGN.md) ──
+    // We write docs/vibes-context.md in the project and register it in the
+    // project's opencode.json instructions array. OpenCode reads this natively.
     {
         const fs = require("fs");
-        const { app } = require("electron");
         const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
             ? options.contextInstructions.join("\n\n")
             : "";
-        const opencodeConfigDir = path.join(app.getPath("userData"), "opencode-server");
-        const instrFilePath = path.join(opencodeConfigDir, "vibes-context.md");
+        const docsDir = path.join(projectDir, "docs");
+        const instrFilePath = path.join(docsDir, "SPECS.md");
 
         try {
-            if (!fs.existsSync(opencodeConfigDir)) {
-                fs.mkdirSync(opencodeConfigDir, { recursive: true });
+            if (!fs.existsSync(docsDir)) {
+                fs.mkdirSync(docsDir, { recursive: true });
             }
             fs.writeFileSync(instrFilePath, instrContent, "utf-8");
+
+            // Register in project's opencode.json (idempotent — same as DESIGN.md)
+            await patchOpencodeJsonInstructions(projectDir, "docs/SPECS.md");
+
             logger.info(`${LP} 📋 Instructions written to ${instrFilePath} (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
         } catch (ctxErr: any) {
             logger.warn(`${LP} Failed to write instructions file: ${ctxErr.message}`);
@@ -1703,10 +1704,8 @@ export async function handleOpenCodeStream(
             // (steps: 8, bash: false, write/edit: true)
             logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
         } else if (effectiveAgent === "build") {
-            if (!hasAssistantMessages) {
-                promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
-                logger.info(`${LP} 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
-            }
+            // Build mode: no special first-message injection needed.
+            // Rules are in docs/SPECS.md via opencode.json instructions.
         } else if (effectiveAgent === "plan") {
             if (!hasAssistantMessages) {
                 const isEnglish = settings.chatLanguage === "en";
@@ -1751,18 +1750,7 @@ export async function handleOpenCodeStream(
             }
         }
 
-        // On the FIRST message, inject a DESIGN.md hint so the model reads and
-        // applies it immediately. On subsequent messages we trust OpenCode's native
-        // opencode.json instructions (which already reference docs/DESIGN.md).
-        if (!hasAssistantMessages) {
-            const fs = require("fs");
-            const designPath = path.join(projectDir, "docs", "DESIGN.md");
-            if (fs.existsSync(designPath)) {
-                const designHint = `[CONTEXTO OBLIGATORIO: Este proyecto tiene un sistema de diseño definido en docs/DESIGN.md. ANTES de escribir cualquier código de UI, lee este archivo con tu herramienta Read y aplica estrictamente sus colores, tipografía, espaciado, componentes y estilo visual. El usuario ya eligió este diseño — no le preguntes ni le pidas confirmación, simplemente aplícalo.]`;
-                promptText = `${designHint}\n\n${promptText}`;
-                logger.info(`${LP} 🎨 Injected DESIGN.md hint into prompt (first message)`);
-            }
-        }
+        // DESIGN.md is loaded natively via opencode.json instructions — no hint needed.
 
         const promptParts: any[] = [{ type: "text", text: promptText }];
 

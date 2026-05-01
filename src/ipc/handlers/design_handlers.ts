@@ -63,7 +63,7 @@ async function writeDesignToApp(appPath: string, content: string): Promise<void>
  * Ensures `docs/DESIGN.md` is listed in the project's `opencode.json` `instructions` array.
  * Creates the file if it doesn't exist; merges if it does.
  */
-async function patchOpencodeJsonInstructions(projectDir: string, instructionPath: string): Promise<void> {
+export async function patchOpencodeJsonInstructions(projectDir: string, instructionPath: string): Promise<void> {
   const ocJsonPath = path.join(projectDir, "opencode.json");
 
   let config: Record<string, any> = {};
@@ -206,6 +206,18 @@ export function registerDesignHandlers() {
       const fullAppPath = getVibesAppPath(appPath);
       const agentsMdPath = path.join(fullAppPath, "AGENTS.md");
       const content = await fsPromises.readFile(agentsMdPath, "utf-8");
+      return { content };
+    } catch {
+      return { content: null };
+    }
+  });
+
+  // ─── Read docs/SPECS.md from a project ──────────────────────────────────
+  createTypedHandler(designContracts.readSpecsMd, async (_, { appPath }) => {
+    try {
+      const fullAppPath = getVibesAppPath(appPath);
+      const specsMdPath = path.join(fullAppPath, "docs", "SPECS.md");
+      const content = await fsPromises.readFile(specsMdPath, "utf-8");
       return { content };
     } catch {
       return { content: null };
