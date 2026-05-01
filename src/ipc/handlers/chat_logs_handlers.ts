@@ -1,9 +1,9 @@
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { chatLogsContracts } from "../types/chat_logs";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, desc, eq } from "drizzle-orm";
-import { createTypedHandler, HandlerContext } from "./base";
+
 
 export function registerChatLogsHandlers() {
   createTypedHandler(chatLogsContracts.getChatLogs, async (_event, params, context) => {

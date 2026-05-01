@@ -2,9 +2,6 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { router } from "./router";
 import { RouterProvider } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
-import posthog from "posthog-js";
-import { getTelemetryUserId, isTelemetryOptedIn } from "./hooks/useSettings";
 import {
   QueryCache,
   QueryClient,
@@ -66,63 +63,10 @@ const queryClient = new QueryClient({
   }),
 });
 
-const posthogClient = posthog.init(
-  "phc_5Vxx0XT8Ug3eWROhP6mm4D6D2DgIIKT232q4AKxC2ab",
-  {
-    api_host: "https://us.i.posthog.com",
-    // @ts-ignore
-    debug: import.meta.env.MODE === "development",
-    autocapture: false,
-    capture_exceptions: true,
-    capture_pageview: false,
-    before_send: (event) => {
-      if (!isTelemetryOptedIn()) {
-        console.debug("Telemetry not opted in, skipping event");
-        return null;
-      }
-      const telemetryUserId = getTelemetryUserId();
-      if (telemetryUserId) {
-        posthogClient.identify(telemetryUserId);
-      }
-
-      if (event?.properties["$ip"]) {
-        event.properties["$ip"] = null;
-      }
-
-      console.debug(
-        "Telemetry opted in - UUID:",
-        telemetryUserId,
-        "sending event",
-        event,
-      );
-      return event;
-    },
-    persistence: "localStorage",
-  },
-);
+// Telemetry removed
 
 function App() {
-  useEffect(() => {
-    // Subscribe to navigation state changes
-    const unsubscribe = router.subscribe("onResolved", (navigation) => {
-      // Capture the navigation event in PostHog
-      posthog.capture("navigation", {
-        toPath: navigation.toLocation.pathname,
-        fromPath: navigation.fromLocation?.pathname,
-      });
-
-      // Optionally capture as a standard pageview as well
-      posthog.capture("$pageview", {
-        path: navigation.toLocation.pathname,
-      });
-    });
-
-    // Clean up subscription when component unmounts
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
+  // Telemetry navigation capture removed
 
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
@@ -305,16 +249,7 @@ function App() {
     return () => unsubscribe();
   }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId]);
 
-  // Forward telemetry events from main process to PostHog
-  useEffect(() => {
-    const unsubscribe = ipc.events.system.onTelemetryEvent(
-      ({ eventName, properties }) => {
-        posthog.capture(eventName, properties);
-      },
-    );
-    return () => unsubscribe();
-  }, []);
-
+  // Telemetry events removed
   // Cross-window navigation: when a secondary window (chat, etc.) requests
   // navigation, the main process sends us this event so we navigate the router.
   useEffect(() => {
@@ -322,7 +257,7 @@ function App() {
     const unsubscribe = window.electron?.ipcRenderer?.on?.(
       "navigate-to-route",
       (payload: { route: string; search?: Record<string, any> }) => {
-        router.navigate({ to: payload.route as any, search: payload.search });
+        router.navigate({ to: payload.route as any, search: payload.search as any });
       },
     );
     return () => unsubscribe?.();
@@ -979,9 +914,7 @@ if (windowType === "database" && appIdStr) {
     root.render(
       <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <PostHogProvider client={posthogClient}>
-            <AuthGateApp />
-          </PostHogProvider>
+          <AuthGateApp />
         </QueryClientProvider>
       </StrictMode>,
     );

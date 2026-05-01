@@ -68,7 +68,6 @@ import { CapacitorControls } from "@/components/CapacitorControls";
 import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
-import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
@@ -107,7 +106,7 @@ export default function AppDetailsPage() {
   const [newCopyAppName, setNewCopyAppName] = useState("");
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
-  const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
+
 
   const [initialPrompt, setInitialPrompt] = useState<{ content: string | null; createdAt: Date | string | null } | null>(null);
   const [isLoadingInitialPrompt, setIsLoadingInitialPrompt] = useState(false);

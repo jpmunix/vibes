@@ -7,7 +7,6 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { useAttachments } from "@/hooks/useAttachments";
 import { AttachmentsList } from "./AttachmentsList";
 import { DragDropOverlay } from "./DragDropOverlay";
-import { usePostHog } from "posthog-js/react";
 import { HomeSubmitOptions } from "@/pages/home";
 import { ChatInputControls } from "../ChatInputControls";
 import { LexicalChatInput } from "./LexicalChatInput";
@@ -20,7 +19,6 @@ export function HomeChatInput({
 }: {
   onSubmit: (options?: HomeSubmitOptions) => void;
 }) {
-  const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(homeChatInputValueAtom);
   const { settings } = useSettings();
   const { isStreaming } = useStreamChat({
@@ -59,9 +57,6 @@ export function HomeChatInput({
 
     // Clear attachments as part of submission process
     clearAttachments();
-    posthog?.capture("chat:home_submit", {
-      chatMode: settings?.selectedChatMode,
-    });
   };
 
   if (!settings) {

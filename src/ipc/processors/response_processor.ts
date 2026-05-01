@@ -288,7 +288,7 @@ export async function processFullResponseActions(
       try {
         await executeAddDependency({
           packages: addDependencyPackages,
-          message: message,
+          message: message as any,
           appPath,
         });
       } catch (error) {

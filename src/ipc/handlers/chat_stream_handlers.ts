@@ -765,11 +765,11 @@ ${componentSnippet}
               settings.selectedChatMode === "mockup") &&
             !mentionedAppsCodebases.length;
 
-          isDeepContextEnabled =
+          isDeepContextEnabled = Boolean(
             isEngineEnabled &&
-            settings.enableProSmartFilesContextMode &&
             settings.proSmartContextOption !== "balanced" &&
-            mentionedAppsCodebases.length === 0;
+            mentionedAppsCodebases.length === 0
+          );
           logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
 
           // Combine current app codebase with mentioned apps' codebases

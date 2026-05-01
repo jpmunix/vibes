@@ -47,7 +47,7 @@ log.transports.console.level = "info"; // Keep info logs in console/stdout
 const SILENCED_SCOPES = new Set<string>([]);
 log.hooks.push((message, transport) => {
   if (transport !== log.transports.console) return message;
-  if (SILENCED_SCOPES.has(message.scope)) return false;
+  if (message.scope && SILENCED_SCOPES.has(message.scope)) return false;
   return message;
 });
 

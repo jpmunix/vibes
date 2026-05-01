@@ -132,7 +132,6 @@
     "pdf-parse": "^2.4.5",
     "perfect-freehand": "^1.2.2",
     "pocketbase": "^0.26.8",
-    "posthog-js": "^1.236.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-konva": "^19.2.1",

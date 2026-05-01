@@ -22,6 +22,23 @@ const LOCAL_ONLY_FIELDS = [
   "vercelAccessToken",
 ] as const;
 
+/**
+ * Keys removed by the v10 settings cleanup migration.
+ * Must be stripped from remote settings during merge to prevent stale Bunny data
+ * from re-introducing them after the local migration has cleaned them up.
+ */
+const V10_DEAD_KEYS = [
+  'turboEditModel', 'todoAnalysisModel', 'debateModel',
+  'summaryModel', 'appTitleGenerationModel',
+  'memoriesExtractionModel', 'hideLocalAgentNewChatToast',
+  'enableLocalSmartContext', 'enableMcpSmartContext',
+  'enableBackgroundProblemAutoFix', 'enableAutoRepairRuntimeErrors',
+  'autoFixModel', 'autoFixMaxDurationMs', 'autoFixMaxAttempts',
+  'autoFixMaxIssues', 'agentMaxSteps',
+  'enableOpenCodeLsp', 'thinkingBudget', 'experiments',
+  'releaseChannel', 'dossierModel', 'enableTurboEditsV2',
+] as const;
+
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
   const db = getRemoteDb();
   try {
@@ -54,6 +71,11 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
       // --- MIGRATION FLAGS EXCLUSION ---
       // Migration state is local-only — remote may have stale flags.
       delete remoteSettings._migrations;
+
+      // --- DEAD KEY EXCLUSION (v10) ---
+      for (const key of V10_DEAD_KEYS) {
+        delete remoteSettings[key];
+      }
 
       // We must explicitly save these to disk so they immediately become the local truth
       // without needing an initial save from the React frontend.
@@ -105,6 +127,11 @@ export function registerSettingsHandlers() {
             // Strip _migrations — always trust local migration state,
             // otherwise remote overwrites local flags and re-triggers migrations
             delete remoteSettings._migrations;
+
+            // Strip dead/abandoned keys (v10 cleanup) — remote may still hold stale values
+            for (const key of V10_DEAD_KEYS) {
+              delete remoteSettings[key];
+            }
 
             // Merge: local wins for secrets, remote wins for preferences
             return { ...localSettings, ...remoteSettings };

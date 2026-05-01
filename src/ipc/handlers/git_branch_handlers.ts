@@ -765,7 +765,8 @@ async function handleDiscardFileChanges(
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
-  return gitDiscardFile({ path: appPath, filepath });
+  await gitDiscardFile({ path: appPath, filepath });
+  return { message: "Cambios descartados" } as any;
 }
 
 async function handleDiscardAllChanges(

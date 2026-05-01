@@ -46,7 +46,7 @@ import { Proposal, SuggestedAction, FileChange, SqlQuery } from "@/lib/schemas";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
-import { usePostHog } from "posthog-js/react";
+// Telemetry removed
 import { CodeHighlight } from "./CodeHighlight";
 
 import {
@@ -96,7 +96,7 @@ export function ChatInput({
   isPlanMode?: boolean;
   workspaceMode?: boolean;
 }) {
-  const posthog = usePostHog();
+  // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
   const { settings, updateSettings } = useSettings();
@@ -322,7 +322,6 @@ export function ChatInput({
       selectedComponents: componentsToSend,
     });
     clearAttachments();
-    posthog?.capture("chat:submit", { chatMode: settings?.selectedChatMode });
   };
 
   const handleCancel = () => {
@@ -341,7 +340,6 @@ export function ChatInput({
       `Approving proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsApproving(true);
-    posthog?.capture("chat:approve");
     try {
       const result = await ipc.proposal.approveProposal({
         chatId,
@@ -351,7 +349,6 @@ export function ChatInput({
         showExtraFilesToast({
           files: result.extraFiles,
           error: result.extraFilesError,
-          posthog,
         });
       }
     } catch (err) {
@@ -378,7 +375,6 @@ export function ChatInput({
       `Rejecting proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsRejecting(true);
-    posthog?.capture("chat:reject");
     try {
       await ipc.proposal.rejectProposal({
         chatId,
@@ -889,8 +885,7 @@ function KeepGoingButton() {
 
 export function mapActionToButton(action: SuggestedAction) {
   switch (action.id) {
-    case "summarize-in-new-chat":
-      return null;
+
     case "refactor-file":
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":

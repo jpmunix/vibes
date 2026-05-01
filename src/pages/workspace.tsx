@@ -14,6 +14,7 @@ import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 import { useChats } from "@/hooks/useChats";
+import type { ChatSummary } from "@/lib/schemas";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
@@ -37,8 +38,8 @@ export default function WorkspacePage() {
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
 
   // Fetch chats to get the current chat title for the breadcrumb
-  const { chats } = useChats(appId ?? undefined);
-  const selectedChat = chats.find((c) => c.id === chatId);
+  const { chats } = useChats(appId);
+  const selectedChat = (chats as ChatSummary[]).find((c) => c.id === chatId);
 
   // Streaming state for all chats
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -144,7 +145,7 @@ export default function WorkspacePage() {
               <UnifiedSelector
                 value={String(chatId)}
                 onChange={(cId) => navigate({ to: "/workspace", search: { appId: appId!, chatId: Number(cId) } })}
-                options={chats.map((chat) => {
+                options={(chats as ChatSummary[]).map((chat) => {
                   const chatStreaming = isStreamingById.get(chat.id) ?? false;
                   return {
                     value: String(chat.id),

@@ -82,7 +82,7 @@ export const adminContracts = {
     getUserSettings: defineContract({
         channel: "admin:get-user-settings",
         input: z.object({ userId: z.string() }),
-        output: z.object({ settings: z.record(z.unknown()).nullable() }),
+        output: z.object({ settings: z.record(z.string(), z.unknown()).nullable() }),
     }),
 
     getAllUsersSettings: defineContract({
@@ -93,7 +93,7 @@ export const adminContracts = {
                 userId: z.string(),
                 displayName: z.string(),
                 email: z.string(),
-                settings: z.record(z.unknown()).nullable(),
+                settings: z.record(z.string(), z.unknown()).nullable(),
             })),
         }),
     }),

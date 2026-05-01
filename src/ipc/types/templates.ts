@@ -9,7 +9,7 @@ export const TemplateSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
-  imageUrl: z.string(),
+  imageUrl: z.string().optional(),
   githubUrl: z.string().optional(),
   isOfficial: z.boolean(),
   isExperimental: z.boolean().optional(),

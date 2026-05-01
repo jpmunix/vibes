@@ -1681,7 +1681,7 @@ async function handleGetPreview(
       totalAdditions,
       totalDeletions,
       suggestedSquashMessage,
-    };
+    } as any;
   } catch (err: any) {
     logger.error("[GitHub Handler] Failed to get preview:", err);
     throw new Error(err.message || "Failed to get git preview.");

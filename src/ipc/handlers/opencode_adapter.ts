@@ -253,8 +253,8 @@ async function persistPermissionToSettings(
             // ── Bash: add a specific custom rule, never touch the global pill ──
             // Priority: use OpenCode's suggested `always` patterns if available,
             // otherwise extract the command prefix (first word) + wildcard.
-            const rules: Array<{ id: string; pattern: string; permission: string }> =
-                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules] : [];
+            const rules: Array<{ id: string; pattern: string; permission: "ask" | "allow" | "deny" }> =
+                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules as any] : [];
 
             const patternsToAdd: string[] = [];
 
@@ -278,7 +278,7 @@ async function persistPermissionToSettings(
                 rules.push({
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                     pattern,
-                    permission: value,
+                    permission: value as "ask" | "allow" | "deny",
                 });
                 logger.info(`[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`);
             }
@@ -1334,7 +1334,7 @@ export async function handleOpenCodeStream(
     } catch (error: any) {
         const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
         logger.error(`${LP} ${errorMsg}`);
-        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
     }
 
     // ── Set instructions BEFORE session.create ────────────────────────────
@@ -1518,7 +1518,7 @@ export async function handleOpenCodeStream(
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
             logger.error(`${LP} ${errorMsg}`);
-            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
         }
     }
 
@@ -1531,20 +1531,25 @@ export async function handleOpenCodeStream(
         const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
         const bootstrapSettings = readSettings();
         const bootstrapUserId = bootstrapSettings.userId;
-        if (bootstrapUserId && updatedChat?.app?.id) {
-            const appName = updatedChat.app?.name || `app_${updatedChat.app.id}`;
-            setDebugContext(appName, updatedChat.app.id);
+        const db = getRemoteDb();
+        const chatWithApp = await db.query.chats.findFirst({
+            where: eq(remoteSchema.chats.id, req.chatId),
+            with: { app: true }
+        });
+        if (bootstrapUserId && chatWithApp?.app?.id) {
+            const appName = chatWithApp.app?.name || `app_${chatWithApp.app.id}`;
+            setDebugContext(appName, chatWithApp.app.id);
             debugLog("Trigger", `Bootstrap check`, {
-                appId: String(updatedChat.app.id),
+                appId: String(chatWithApp.app.id),
                 appName,
                 projectDir,
             });
-            const needs = await needsBootstrap(updatedChat.app.id, bootstrapUserId);
+            const needs = await needsBootstrap(chatWithApp.app.id, bootstrapUserId);
             if (needs) {
                 debugLog("Trigger", `🧬 Bootstrap TRIGGERED — launching fire-and-forget`);
-                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${updatedChat.app.id}`);
+                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${chatWithApp.app.id}`);
                 runMemoryBootstrap({
-                    appId: updatedChat.app.id,
+                    appId: chatWithApp.app.id,
                     userId: bootstrapUserId,
                     projectDir,
                     appName,
@@ -1933,14 +1938,33 @@ export async function handleOpenCodeStream(
         logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${totalCostUsd.toFixed(6)}` : "unknown"}`);
+        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${(totalCostUsd as any).toFixed(6)}` : "unknown"}`);
         return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens, costUsd: totalCostUsd };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
-            // session.abort() already fired eagerly — no need to call again
-            return getAbortedResponse();
+            
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+            const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
+            const standardChars = Math.max(0, partialText.length - thinkChars);
+            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
+            let estInput = totalInputTokens;
+            if (estInput === 0) {
+               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
+               estInput = Math.ceil(inputString.length / 4) + 1500;
+            }
+            return {
+                fullResponse: partialText || "Operación cancelada",
+                success: false,
+                inputTokens: estInput,
+                outputTokens: estOutput,
+                reasoningTokens: estReasoning,
+                cachedTokens: totalCachedTokens,
+                costUsd: totalCostUsd as number | null,
+            };
         }
 
         logger.error(`${LP} Stream error:`, error.message);

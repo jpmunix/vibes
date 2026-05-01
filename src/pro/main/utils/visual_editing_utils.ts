@@ -75,7 +75,7 @@ export function transformContent(
     const processedLines = new Set<number>();
 
     traverse(ast, {
-      JSXElement(path) {
+      JSXElement(path: any) {
         const line = path.node.openingElement.loc?.start.line;
 
         // Only process if we have changes for this line and haven't processed it yet

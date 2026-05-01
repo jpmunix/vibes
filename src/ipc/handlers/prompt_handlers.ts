@@ -15,10 +15,10 @@ export function registerPromptHandlers() {
     return rows.map((r) => ({
       id: r.id!,
       title: r.title,
-      description: r.description ?? undefined,
+      description: r.description ?? null,
       content: r.content,
-      createdAt: r.createdAt as unknown as string,
-      updatedAt: r.updatedAt as unknown as string,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
     }));
   });
 
@@ -45,10 +45,10 @@ export function registerPromptHandlers() {
     return {
       id: row.id!,
       title: row.title,
-      description: row.description ?? undefined,
+      description: row.description ?? null,
       content: row.content,
-      createdAt: row.createdAt as unknown as string,
-      updatedAt: row.updatedAt as unknown as string,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   });
 

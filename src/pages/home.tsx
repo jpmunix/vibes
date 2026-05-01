@@ -11,7 +11,6 @@ import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
-import { usePostHog } from "posthog-js/react";
 
 import { useAppVersion } from "@/hooks/useAppVersion";
 
@@ -25,6 +24,7 @@ import type { FileAttachment } from "@/ipc/types";
 import { NEON_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
+import { neonTemplateHook } from "@/client_logic/template_hook";
 
 // Adding an export for attachments
 export interface HomeSubmitOptions {
@@ -49,7 +49,6 @@ export default function HomePage() {
     recentLogs?: string;
   }>({});
 
-  const posthog = usePostHog();
   const appVersion = useAppVersion();
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const { theme, intensity } = useTheme();
@@ -201,7 +200,6 @@ export default function HomePage() {
       setIsPreviewOpen(false);
       await refreshApps(); // Ensure refreshApps is awaited if it's async
       await invalidateAppQuery(queryClient, { appId: result.app.id });
-      posthog.capture("home:chat-submit");
       // Install selected design system (DESIGN.md) into the project before opening the chat
       console.log(`[Home] 🎨 DESIGN CHECK — selectedDesign:`, selectedDesign);
       console.log(`[Home] 🎨 DESIGN CHECK — app.path: "${result.app.path}", app.id: ${result.app.id}`);

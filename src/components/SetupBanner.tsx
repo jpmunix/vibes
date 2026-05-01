@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { usePostHog } from "posthog-js/react";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 // @ts-ignore
 // @ts-ignore
@@ -37,7 +36,6 @@ type NodeInstallStep =
   | "finished-checking";
 
 export function SetupBanner() {
-  const posthog = usePostHog();
   const navigate = useNavigate();
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(true);
@@ -92,18 +90,15 @@ export function SetupBanner() {
   }, [checkNode]);
 
   const handleOpenRouterSetupClick = () => {
-    posthog.capture("setup-flow:ai-provider-setup:openrouter:click");
     scrollAndNavigateTo("models-connectivity");
   };
 
   const handleNodeInstallClick = useCallback(async () => {
-    posthog.capture("setup-flow:start-node-install-click");
     setNodeInstallStep("waiting-for-continue");
     ipc.system.openExternalUrl(nodeSystemInfo!.nodeDownloadUrl);
   }, [nodeSystemInfo, setNodeInstallStep]);
 
   const finishNodeInstall = useCallback(async () => {
-    posthog.capture("setup-flow:continue-node-install-click");
     setNodeInstallStep("continue-processing");
     await ipc.system.reloadEnvPath();
     await checkNode();
@@ -442,7 +437,6 @@ export const OpenRouterSetupBanner = ({
 }: {
   className?: string;
 }) => {
-  const posthog = usePostHog();
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   const { isProviderSetup } = useLanguageModelProviders();
 
@@ -455,7 +449,6 @@ export const OpenRouterSetupBanner = ({
       className={cn("mt-2", className)}
       variant="openrouter"
       onClick={() => {
-        posthog.capture("setup-flow:ai-provider-setup:openrouter:click");
         scrollAndNavigateTo("models-connectivity");
       }}
       tabIndex={0}

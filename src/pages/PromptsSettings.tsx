@@ -37,8 +37,7 @@ import { toast } from "sonner";
 const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   thinking_prompt: <Sparkles className="w-4 h-4" />,
 
-  agent_mode_system: <Search className="w-4 h-4" />,
-  plan_mode_system: <ClipboardList className="w-4 h-4" />,
+
   turbo_edit_system: <Zap className="w-4 h-4" />,
   app_title_short: <Sparkles className="w-4 h-4" />,
   app_name_pro: <ShieldCheck className="w-4 h-4" />,
@@ -49,12 +48,14 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
 
   auto_commit_message: <GitBranch className="w-4 h-4" />,
   memory_extraction: <Database className="w-4 h-4" />,
+  memory_synthesis: <Database className="w-4 h-4" />,
+  memory_selection: <Database className="w-4 h-4" />,
+  memory_onboarding: <Database className="w-4 h-4" />,
 };
 
 /** Internal prompts — hidden from UI but kept for backwards compat */
 const HIDDEN_PROMPTS = new Set<PromptId>([
   "thinking_prompt",
-  "agent_mode_system",
   "turbo_edit_system",
   "memory_extraction", // managed in MemorySettings
 ]);
@@ -63,7 +64,7 @@ export function PromptsSettings() {
   const { settings, updateSettings, loading } = useSettings();
   const [localPrompts, setLocalPrompts] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<PromptId>("plan_mode_system");
+  const [activeTab, setActiveTab] = useState<PromptId>("app_title_short");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {

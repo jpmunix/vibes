@@ -28,7 +28,6 @@ import { useMatch } from "@tanstack/react-router";
 import { useRunApp } from "./useRunApp";
 import { useCountTokens } from "./useCountTokens";
 import { useUserBudgetInfo } from "./useUserBudgetInfo";
-import { usePostHog } from "posthog-js/react";
 import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
@@ -84,7 +83,6 @@ export function useStreamChat({
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
   const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
 
-  const posthog = usePostHog();
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
   let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
@@ -438,7 +436,6 @@ export function useStreamChat({
                   showExtraFilesToast({
                     files: response.extraFiles,
                     error: response.extraFilesError,
-                    posthog,
                   });
                 }
                 queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });

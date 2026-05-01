@@ -23,7 +23,7 @@ export function registerTokenStatsHandlers() {
       return logs.map((log) => {
         let payload: any = {};
         try {
-          payload = JSON.parse(log.payload);
+          payload = JSON.parse(log.payload as string);
         } catch (e) {
           // Fallback if not JSON
         }

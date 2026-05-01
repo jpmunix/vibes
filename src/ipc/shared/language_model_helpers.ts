@@ -125,12 +125,13 @@ export async function getLanguageModels({
       customModels = customModelsDb.map((model) => ({
         id: "cm_" + model.id.toString(), // Add prefix to differentiate from hardcoded
         name: model.displayName || model.apiName,
+        displayName: model.displayName || model.apiName,
         apiName: model.apiName,
         description: model.description || "",
         contextWindow: Number(model.contextWindow) || undefined,
         maxOutputTokens: Number(model.maxOutputTokens) || undefined,
         isCustom: true,
-      }));
+      } as any));
     }
   } catch (error) {
     console.error(

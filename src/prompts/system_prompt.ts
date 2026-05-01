@@ -237,11 +237,11 @@ export const getSystemPromptForChatMode = ({
   settings?: UserSettings;
 }) => {
   if (chatMode === "agent") {
-    return getEffectivePrompt("agent_mode_system", settings);
+    return ""; // Agent mode prompt is handled by backend
   }
   if (chatMode === "ask") {
     return ASK_MODE_SYSTEM_PROMPT;
   }
   // plan mode
-  return getEffectivePrompt("plan_mode_system", settings);
+  return PLAN_MODE_SYSTEM_PROMPT;
 };

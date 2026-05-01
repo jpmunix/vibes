@@ -530,8 +530,11 @@ export function readSettings(): UserSettings {
 
     // ── Migration: v10 settings cleanup ──
     // One-shot removal of dead/abandoned keys from settings JSON.
-    if (!(validatedSettings as any)._migrations?.v10_settings_cleanup) {
+    if (!(validatedSettings as any)._migrations?.v10d_settings_cleanup) {
       const DEAD_KEYS = [
+        // Legacy model keys migrated in v5
+        'turboEditModel', 'todoAnalysisModel', 'debateModel', 
+        'summaryModel', 'appTitleGenerationModel',
         // Completely dead (0 code references)
         'memoriesExtractionModel',
         'hideLocalAgentNewChatToast',
@@ -557,12 +560,12 @@ export function readSettings(): UserSettings {
       const cleaned = { ...validatedSettings } as any;
       let removedCount = 0;
       for (const key of DEAD_KEYS) {
-        if (key in cleaned) {
-          delete cleaned[key];
+        if (key in cleaned && cleaned[key] !== undefined) {
+          cleaned[key] = undefined; // Set to undefined so writeSettings overrides the current value
           removedCount++;
         }
       }
-      cleaned._migrations = { ...cleaned._migrations, v10_settings_cleanup: true };
+      cleaned._migrations = { ...cleaned._migrations, v10d_settings_cleanup: true };
       logger.info(`[Migration] Applied v10 settings cleanup: removed ${removedCount} dead keys`);
       cachedSettings = cleaned as UserSettings;
       try {

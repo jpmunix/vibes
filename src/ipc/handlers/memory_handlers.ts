@@ -117,7 +117,7 @@ export function registerMemoryHandlers(): void {
     createTypedHandler(memoryContracts.getMemoryContext, async (_event, appId, ctx) => {
         const userId = ctx.userId;
         if (!userId) throw new Error("Unauthorized");
-        return buildMemoryContext(appId, userId);
+        return (await buildMemoryContext(appId, userId)).block;
     });
 
     // ── EXTRACT MEMORIES ─────────────────────────────────────────────────
