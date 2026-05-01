@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
+  enableNotificationSound: true,
   selectedChatMode: "agent",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
   selectedThemeId: DEFAULT_THEME_ID,

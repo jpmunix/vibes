@@ -398,6 +398,8 @@ export const UserSettingsSchema = z
     enableAllStatsAndLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
+    // Play a programmatic sound (Web Audio API) when a notification fires
+    enableNotificationSound: z.boolean().optional(),
     // Control GitHub auto-commit behavior
     enableGithubAutoCommit: z.boolean().optional(),
 

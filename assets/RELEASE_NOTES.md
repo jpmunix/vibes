@@ -21,6 +21,10 @@ Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra la
 
 Hemos recortado drásticamente el tiempo de arranque de la aplicación. Se ha optimizado el flujo de carga de datos, eliminado tablas innecesarias de la base de datos, retirado funcionalidades obsoletas y **borrado más de 50 archivos sin uso**. El resultado es una app que abre prácticamente al instante.
 
+## Notificaciones y sonido al terminar
+
+Cuando el agente termina de responder —y estás en otro chat o tienes la app en segundo plano— ahora recibes una **notificación nativa del sistema** con el nombre de la app y un resumen de la conversación. Por separado, puedes activar un **sonido de aviso** generado por síntesis de audio (sin archivos externos) que funciona incluso en macOS sin firmar, donde las notificaciones nativas fallan. Ambos controles son independientes y se configuran desde **Ajustes → Flujo de trabajo**. Hay un botón de **"Probar notificación"** en el menú de ajustes para verificar que todo suena bien.
+
 ## Correcciones y ajustes
 
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.

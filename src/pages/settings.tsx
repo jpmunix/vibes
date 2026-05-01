@@ -32,6 +32,7 @@ import {
   FileText,
   MoreHorizontal,
   RotateCcw,
+  Volume2,
 } from "@/components/ui/icons";
 import { ChevronRight } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -56,6 +57,7 @@ import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
+import { sendAppNotification } from "@/lib/notification-sound";
 import {
   Dialog,
   DialogContent,
@@ -205,6 +207,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Notificaciones de respuesta",
     description: "Muestra una notificación nativa del sistema cuando el chat termina de generar",
     keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "notification-sound",
+    label: "Reproducir sonido",
+    description: "Reproduce un sonido al terminar la respuesta (útil en apps sin firmar en macOS)",
+    keywords: ["sonido", "sound", "audio", "notificacion", "chime", "beep", "mac"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
@@ -752,6 +762,13 @@ export default function SettingsPage() {
                   <DropdownMenuItem onClick={handleRestartOpenCode} className="cursor-pointer gap-2">
                     <RotateCcw className="h-4 w-4" />
                     Reiniciar OpenCode
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => sendAppNotification({ title: "Test", body: "Si escuchas esto, el sonido funciona correctamente", settings: settings ?? null })}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                    Probar notificación
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -1419,6 +1436,25 @@ export function WorkflowSettings({
                 checked={!!settings?.enableChatCompletionNotifications}
                 onCheckedChange={(checked) =>
                   updateSettings({ enableChatCompletionNotifications: checked })
+                }
+              />
+            }
+          />
+
+          <SettingItem
+            label="Reproducir sonido"
+            description="Reproduce un sonido al terminar la respuesta. Funciona en apps sin firmar en macOS donde las notificaciones nativas no están disponibles."
+            onClick={() =>
+              updateSettings({
+                enableNotificationSound:
+                  settings?.enableNotificationSound === false,
+              })
+            }
+            control={
+              <TogglePill
+                checked={settings?.enableNotificationSound !== false}
+                onCheckedChange={(checked) =>
+                  updateSettings({ enableNotificationSound: checked })
                 }
               />
             }

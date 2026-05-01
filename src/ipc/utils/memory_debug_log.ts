@@ -53,7 +53,11 @@ function getUserId(): string | null {
 function insertDbLog(logType: string, stage: string | null, message: string, dataJson: string | null, contentMd: string | null): void {
     try {
         const userId = getUserId();
-        if (!userId || !_sessionId) return;
+        if (!userId || !_sessionId) {
+            if (!userId) console.warn("[debug_log] insertDbLog skipped: no userId");
+            if (!_sessionId) console.warn("[debug_log] insertDbLog skipped: no sessionId");
+            return;
+        }
 
         const { getRemoteDb } = require("../../db/remote");
         const remoteSchema = require("../../db/remote-schema");
@@ -74,8 +78,12 @@ function insertDbLog(logType: string, stage: string | null, message: string, dat
                 elapsedMs,
                 createdAt: new Date(),
             })
-            .catch(() => { /* never throw */ });
-    } catch { /* never throw */ }
+            .catch((err: any) => {
+                console.error("[debug_log] DB insert failed:", err?.message || err);
+            });
+    } catch (outerErr: any) {
+        console.error("[debug_log] insertDbLog outer error:", outerErr?.message || outerErr);
+    }
 }
 
 /**

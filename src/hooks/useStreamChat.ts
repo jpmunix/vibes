@@ -32,6 +32,7 @@ import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { sendAppNotification } from "@/lib/notification-sound";
 
 import type { ChatSummary } from "@/lib/schemas";
 
@@ -367,8 +368,7 @@ export function useStreamChat({
               const isViewingDifferentChat =
                 currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
               if (
-                notificationsEnabled &&
-                Notification.permission === "granted" &&
+                (notificationsEnabled || settings?.enableNotificationSound !== false) &&
                 (!document.hasFocus() || isViewingDifferentChat)
               ) {
                 const app = queryClient.getQueryData<App | null>(
@@ -385,9 +385,7 @@ export function useStreamChat({
                     ? rawTitle.slice(0, 80) + "…"
                     : rawTitle
                   : "Respuesta completada";
-                new Notification(appName, {
-                  body,
-                });
+                sendAppNotification({ title: appName, body, settings });
               }
 
               // Immediately mark streaming as done (urgent — affects UI controls)

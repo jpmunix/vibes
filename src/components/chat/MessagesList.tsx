@@ -16,8 +16,8 @@ import {
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { userAtom } from "@/atoms/authAtoms";
-import { useAtomValue } from "jotai";
-import { CheckCircle2 } from "@/components/ui/icons";
+import { useAtomValue, useSetAtom } from "jotai";
+import { CheckCircle2, Rocket } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { showError, showSuccess } from "@/lib/toast";
@@ -30,6 +30,8 @@ import { PromoMessage } from "./PromoMessage";
 import { ContextLimitBanner } from "./ContextLimitBanner";
 import { useCountTokens } from "@/hooks/useCountTokens";
 import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
+import { plansByChatIdAtom, planCollapsedByChatIdAtom } from "@/atoms/planAtoms";
+import { planToPromptText } from "./PlanPanel";
 
 interface MessagesListProps {
   messages: Message[];
@@ -58,6 +60,12 @@ interface FooterContext {
   todoId: number | null;
   isTodoCompleted: boolean;
   onMarkTodoCompleted: () => void;
+  /** True when the current chat mode is "plan" */
+  isPlanMode: boolean;
+  /** True when a parsed plan exists for the current chat */
+  hasPlan: boolean;
+  /** Callback: switch to agent, send acceptance prompt, collapse panel */
+  onAcceptPlan: () => void;
 }
 
 
@@ -76,6 +84,9 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
     todoId,
     isTodoCompleted,
     onMarkTodoCompleted,
+    isPlanMode,
+    hasPlan,
+    onAcceptPlan,
   } = context;
 
   return (
@@ -90,6 +101,18 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
+          {/* "Aceptar plan" — visible when plan mode is active and a plan was parsed */}
+          {isPlanMode && hasPlan && (
+            <Button
+              size="sm"
+              onClick={onAcceptPlan}
+              className="gap-1.5 text-white bg-primary hover:bg-primary/90 transition-all shadow-sm"
+            >
+              <Rocket size={15} />
+              Aceptar plan
+            </Button>
+          )}
+
           {todoId && (
             <Button
               variant="outline"
@@ -131,9 +154,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
-    const { isStreaming } = useStreamChat();
+    const { isStreaming, streamMessage } = useStreamChat();
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const [todoId, setTodoId] = useState<number | null>(null);
     const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
@@ -144,6 +167,13 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
     const user = useAtomValue(userAtom);
+
+    // Plan-related state for "Aceptar plan" button
+    const plans = useAtomValue(plansByChatIdAtom);
+    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
+    const isPlanMode = settings?.selectedChatMode === "plan";
+    const currentPlan = selectedChatId ? (plans.get(selectedChatId) ?? null) : null;
+    const hasPlan = currentPlan !== null;
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -256,6 +286,30 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId]);
 
+    // "Aceptar plan" callback: switch to agent, send the plan, collapse panel
+    const handleAcceptPlan = useCallback(() => {
+      if (!selectedChatId || !currentPlan) return;
+
+      const planText = planToPromptText(currentPlan, false);
+      const acceptPrompt = `Acepto el plan. Procede a implementarlo completo:\n\n${planText}\n\nComienza a desarrollar todas las tareas del plan. Genera el código necesario.`;
+
+      // 1. Switch to agent mode
+      updateSettings({ selectedChatMode: "agent" });
+
+      // 2. Collapse the plan panel
+      setCollapsed((prev) => {
+        const next = new Map(prev);
+        next.set(selectedChatId, true);
+        return next;
+      });
+
+      // 3. Send the acceptance message
+      streamMessage({
+        prompt: acceptPrompt,
+        chatId: selectedChatId,
+      });
+    }, [selectedChatId, currentPlan, updateSettings, setCollapsed, streamMessage]);
+
     // Create context object for Footer component with stable references
     const footerContext = useMemo<FooterContext>(
       () => ({
@@ -272,6 +326,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         onMarkTodoCompleted: handleMarkTodoCompleted,
+        isPlanMode,
+        hasPlan,
+        onAcceptPlan: handleAcceptPlan,
       }),
       [
         messages,
@@ -287,6 +344,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         handleMarkTodoCompleted,
+        isPlanMode,
+        hasPlan,
+        handleAcceptPlan,
       ],
     );
 
