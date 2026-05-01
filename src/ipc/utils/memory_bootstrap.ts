@@ -22,7 +22,7 @@ import { handleAdd } from "./memory_extractor";
 import { logPipelineCall } from "./memory_telemetry";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import type { MemoryEntry } from "../types/memory";
-import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext, debugPlayground } from "./memory_debug_log";
+import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext, debugPlayground, flushDebugLog } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
 
 const logger = log.scope("memory_bootstrap");
@@ -672,6 +672,7 @@ export async function runMemoryBootstrap(params: {
     });
 
     logger.info(`[Bootstrap] Complete: Phase 1=${phase1Keys.length}, Phase 2=${phase2Count}`);
+    flushDebugLog();
     return { phase1Count: phase1Keys.length, phase2Count };
 }
 

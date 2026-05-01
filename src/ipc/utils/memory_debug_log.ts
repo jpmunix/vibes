@@ -1,99 +1,50 @@
 /**
  * Memory Debug Logger
  *
- * Dual-mode:
- *   - Development (!app.isPackaged): writes markdown to /tmp/opencode/{appName}.md
- *   - Production  (app.isPackaged):  inserts structured rows into memory_debug_logs table
- *
- * Provides full observability into the memory pipeline:
- * - Bootstrap trigger decisions
- * - DNA collection details
- * - Phase 1 & 2 operations
- * - Guardian decisions
- * - Synthesis & Router calls
+ * Accumulates markdown in a buffer during a pipeline run.
+ * At the end, flushDebugLog() saves the complete markdown:
+ *   - Always to /tmp/opencode/{appName}.md (filesystem)
+ *   - Always to memory_debug_logs table (one row = one complete run)
  *
  * Safe: fire-and-forget, never throws, never blocks.
  */
 
 import * as fs from "fs";
 import * as path from "path";
-import { randomUUID } from "crypto";
+import { getRemoteDb } from "../../db/remote";
+import { memoryDebugLogs } from "../../db/remote-schema";
+import { readSettings } from "../../main/settings";
 
 const LOG_DIR = "/tmp/opencode";
 
 let _currentAppName: string | null = null;
 let _currentAppId: number | null = null;
 let _sessionStart: number | null = null;
-let _sessionId: string | null = null;
+/** In-memory buffer accumulating markdown for the current run */
+let _buffer: string[] = [];
 
-// Lazy-resolved: avoids importing electron at module load time
-let _isDev: boolean | null = null;
-function isDev(): boolean {
-    if (_isDev !== null) return _isDev;
-    try {
-        const electron = require("electron");
-        _isDev = !electron.app.isPackaged;
-    } catch {
-        _isDev = true; // Outside electron = dev
-    }
-    return _isDev;
-}
-
-// Lazy userId from readSettings (cached in memory, no I/O after first call)
-function getUserId(): string | null {
-    try {
-        const { readSettings } = require("../../main/settings");
-        return readSettings().userId || null;
-    } catch {
-        return null;
-    }
-}
-
-// Async DB insert — fire-and-forget, never awaited
-function insertDbLog(logType: string, stage: string | null, message: string, dataJson: string | null, contentMd: string | null): void {
-    try {
-        const userId = getUserId();
-        if (!userId || !_sessionId) {
-            if (!userId) console.warn("[debug_log] insertDbLog skipped: no userId");
-            if (!_sessionId) console.warn("[debug_log] insertDbLog skipped: no sessionId");
-            return;
-        }
-
-        const { getRemoteDb } = require("../../db/remote");
-        const remoteSchema = require("../../db/remote-schema");
-
-        const db = getRemoteDb();
-        const elapsedMs = _sessionStart ? Math.round(Date.now() - _sessionStart) : null;
-
-        db.insert(remoteSchema.memoryDebugLogs)
-            .values({
-                userId,
-                appId: _currentAppId ?? 0,
-                sessionId: _sessionId,
-                logType,
-                stage,
-                message,
-                dataJson,
-                contentMd,
-                elapsedMs,
-                createdAt: new Date(),
-            })
-            .catch((err: any) => {
-                console.error("[debug_log] DB insert failed:", err?.message || err);
-            });
-    } catch (outerErr: any) {
-        console.error("[debug_log] insertDbLog outer error:", outerErr?.message || outerErr);
-    }
-}
+// =============================================================================
+// Context & Helpers
+// =============================================================================
 
 /**
  * Set the current app context for logging. Must be called before any log calls.
+ * Resets the buffer for a new pipeline run.
  */
 export function setDebugContext(appName: string, appId: number): void {
     _currentAppName = appName.replace(/[^a-zA-Z0-9_\-. ]/g, "_");
     _currentAppId = appId;
     _sessionStart = Date.now();
-    _sessionId = randomUUID().slice(0, 8); // Short session ID for grouping
+    _buffer = [];
+}
+
+function ts(): string {
+    return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+function elapsed(): string {
+    if (!_sessionStart) return "";
+    return ` (+${((Date.now() - _sessionStart) / 1000).toFixed(1)}s)`;
 }
 
 function getLogPath(): string | null {
@@ -108,48 +59,38 @@ function getLogPath(): string | null {
     }
 }
 
-function ts(): string {
-    return new Date().toISOString().replace("T", " ").slice(0, 19);
+/** Append text to both the in-memory buffer and the filesystem log */
+function append(text: string): void {
+    _buffer.push(text);
+    try {
+        const logPath = getLogPath();
+        if (logPath) fs.appendFileSync(logPath, text + "\n");
+    } catch { /* never throw */ }
 }
 
-function elapsed(): string {
-    if (!_sessionStart) return "";
-    return ` (+${((Date.now() - _sessionStart) / 1000).toFixed(1)}s)`;
-}
+// =============================================================================
+// Public Logging API (same signatures as before)
+// =============================================================================
 
 /**
  * Append a line to the current app's debug log.
  */
 export function debugLog(section: string, message: string, data?: Record<string, any>): void {
     try {
-        const dataStr = data
-            ? JSON.stringify(data)
-            : null;
-
-        // Always write to DB
-        insertDbLog("log", section, message, dataStr, null);
-
-        // In dev, also write to filesystem
-        if (isDev()) {
-            const logPath = getLogPath();
-            if (!logPath) return;
-
-            let line = `| ${ts()}${elapsed()} | **${section}** | ${message} |`;
-            if (data) {
-                const display = Object.entries(data)
-                    .map(([k, v]) => {
-                        const val = typeof v === "string" ? v : JSON.stringify(v);
-                        const truncated = val.length > 200 ? val.slice(0, 200) + "…" : val;
-                        return `\`${k}\`=${truncated}`;
-                    })
-                    .join(", ");
-                line += ` ${display} |`;
-            } else {
-                line += " |";
-            }
-
-            fs.appendFileSync(logPath, line + "\n");
+        let line = `| ${ts()}${elapsed()} | **${section}** | ${message} |`;
+        if (data) {
+            const display = Object.entries(data)
+                .map(([k, v]) => {
+                    const val = typeof v === "string" ? v : JSON.stringify(v);
+                    const truncated = val.length > 200 ? val.slice(0, 200) + "…" : val;
+                    return `\`${k}\`=${truncated}`;
+                })
+                .join(", ");
+            line += ` ${display} |`;
+        } else {
+            line += " |";
         }
+        append(line);
     } catch { /* never throw */ }
 }
 
@@ -158,25 +99,15 @@ export function debugLog(section: string, message: string, data?: Record<string,
  */
 export function debugSection(title: string): void {
     try {
-        // Always write to DB
-        insertDbLog("section", null, title, null, null);
-
-        // In dev, also write to filesystem
-        if (isDev()) {
-            const logPath = getLogPath();
-            if (!logPath) return;
-
-            const header = [
-                "",
-                `## ${title}`,
-                `_${ts()} · appId=${_currentAppId} · app="${_currentAppName}"_`,
-                "",
-                "| Time | Stage | Detail | Data |",
-                "|---|---|---|---|",
-            ].join("\n");
-
-            fs.appendFileSync(logPath, header + "\n");
-        }
+        const header = [
+            "",
+            `## ${title}`,
+            `_${ts()} · appId=${_currentAppId} · app="${_currentAppName}"_`,
+            "",
+            "| Time | Stage | Detail | Data |",
+            "|---|---|---|---|",
+        ].join("\n");
+        append(header);
     } catch { /* never throw */ }
 }
 
@@ -185,32 +116,23 @@ export function debugSection(title: string): void {
  */
 export function debugSessionStart(extra?: Record<string, any>): void {
     try {
-        // Always write to DB
-        insertDbLog("session_start", null, `Session started for ${_currentAppName}`, extra ? JSON.stringify(extra) : null, null);
+        const lines = [
+            "",
+            "---",
+            "",
+            `# Session ${ts()}`,
+            "",
+            `- **App**: ${_currentAppName} (id=${_currentAppId})`,
+        ];
 
-        // In dev, also write to filesystem
-        if (isDev()) {
-            const logPath = getLogPath();
-            if (!logPath) return;
-
-            const lines = [
-                "",
-                "---",
-                "",
-                `# Session ${ts()}`,
-                "",
-                `- **App**: ${_currentAppName} (id=${_currentAppId})`,
-            ];
-
-            if (extra) {
-                for (const [k, v] of Object.entries(extra)) {
-                    lines.push(`- **${k}**: ${typeof v === "string" ? v : JSON.stringify(v)}`);
-                }
+        if (extra) {
+            for (const [k, v] of Object.entries(extra)) {
+                lines.push(`- **${k}**: ${typeof v === "string" ? v : JSON.stringify(v)}`);
             }
-
-            lines.push("");
-            fs.appendFileSync(logPath, lines.join("\n") + "\n");
         }
+
+        lines.push("");
+        append(lines.join("\n"));
     } catch { /* never throw */ }
 }
 
@@ -224,28 +146,17 @@ export function debugCodeBlock(label: string, content: string, lang = ""): void 
             ? content.slice(0, maxLen) + `\n\n... (truncated, ${content.length} total chars)`
             : content;
 
-        // Always write to DB
-        const md = "```" + lang + "\n" + truncated + "\n```";
-        insertDbLog("code_block", null, label, JSON.stringify({ chars: content.length }), md);
-
-        // In dev, also write to filesystem
-        if (isDev()) {
-            const logPath = getLogPath();
-            if (!logPath) return;
-
-            const block = [
-                "",
-                `<details><summary>${label} (${content.length} chars)</summary>`,
-                "",
-                "```" + lang,
-                truncated,
-                "```",
-                "</details>",
-                "",
-            ].join("\n");
-
-            fs.appendFileSync(logPath, block + "\n");
-        }
+        const block = [
+            "",
+            `<details><summary>${label} (${content.length} chars)</summary>`,
+            "",
+            "```" + lang,
+            truncated,
+            "```",
+            "</details>",
+            "",
+        ].join("\n");
+        append(block);
     } catch { /* never throw */ }
 }
 
@@ -254,57 +165,50 @@ export function debugCodeBlock(label: string, content: string, lang = ""): void 
  */
 export function debugList(label: string, items: string[]): void {
     try {
-        // Always write to DB
-        const md = items.map(i => `- ${i}`).join("\n");
-        insertDbLog("list", null, label, JSON.stringify({ count: items.length }), md);
-
-        // In dev, also write to filesystem
-        if (isDev()) {
-            const logPath = getLogPath();
-            if (!logPath) return;
-
-            const lines = [
-                "",
-                `**${label}** (${items.length}):`,
-                ...items.map(i => `- ${i}`),
-                "",
-            ].join("\n");
-
-            fs.appendFileSync(logPath, lines + "\n");
-        }
+        const lines = [
+            "",
+            `**${label}** (${items.length}):`,
+            ...items.map(i => `- ${i}`),
+            "",
+        ].join("\n");
+        append(lines);
     } catch { /* never throw */ }
 }
 
 /**
  * Write clean, copy-paste-ready prompts to a SEPARATE file for playground testing.
  * File: /tmp/opencode/app_{appId}_{stage}.txt — overwritten each time.
- * No markdown, no code fences, no truncation — just raw SYSTEM + USER text.
- *
- * In production, stores in DB with the full prompt content.
+ * Also appends a summary to the buffer for DB storage.
  */
 export function debugPlayground(stage: string, model: string, systemPrompt: string, userMessage: string): void {
     try {
-        // Always write to DB (abbreviated version — full prompts are in pipeline_logs)
-        const md = [
+        // Append summary to buffer
+        const summary = [
+            "",
+            `### Playground: ${stage}`,
             `**Model:** ${model}`,
             "",
-            "### System Prompt",
+            "<details><summary>System Prompt</summary>",
+            "",
             "```",
             systemPrompt.slice(0, 1500),
             systemPrompt.length > 1500 ? `\n... (${systemPrompt.length} chars total)` : "",
             "```",
+            "</details>",
             "",
-            "### User Message",
+            "<details><summary>User Message</summary>",
+            "",
             "```",
             userMessage.slice(0, 1500),
             userMessage.length > 1500 ? `\n... (${userMessage.length} chars total)` : "",
             "```",
+            "</details>",
+            "",
         ].join("\n");
-        insertDbLog("playground", null, `Playground: ${stage} (${model})`, JSON.stringify({ model, stage }), md);
+        append(summary);
 
-        // In dev, also write to filesystem
-        if (isDev()) {
-            if (!_currentAppId) return;
+        // Also write the full-length playground file to /tmp
+        if (_currentAppId) {
             if (!fs.existsSync(LOG_DIR)) {
                 fs.mkdirSync(LOG_DIR, { recursive: true });
             }
@@ -329,5 +233,51 @@ export function debugPlayground(stage: string, model: string, systemPrompt: stri
 
             fs.writeFileSync(filePath, content, "utf-8");
         }
+    } catch { /* never throw */ }
+}
+
+// =============================================================================
+// Flush — saves the accumulated buffer to the DB as one complete row
+// =============================================================================
+
+/**
+ * Flush the accumulated markdown buffer to the database.
+ * Call this at the end of every pipeline run (bootstrap, extraction, etc.)
+ * Fire-and-forget — never blocks the caller.
+ */
+export function flushDebugLog(): void {
+    try {
+        if (_buffer.length === 0 || !_currentAppName) return;
+
+        const contentMd = _buffer.join("\n");
+        const filename = `${_currentAppName}.md`;
+        const appId = _currentAppId ?? 0;
+        const appName = _currentAppName ?? "";
+
+        // Reset buffer immediately
+        _buffer = [];
+
+        // Get userId
+        let userId: string | null = null;
+        try {
+            userId = readSettings().userId || null;
+        } catch { /* */ }
+
+        if (!userId) return;
+
+        // Fire-and-forget DB insert
+        getRemoteDb()
+            .insert(memoryDebugLogs)
+            .values({
+                userId,
+                appId,
+                appName,
+                filename,
+                contentMd,
+                createdAt: new Date(),
+            })
+            .catch((err: any) => {
+                console.error("[debug_log] DB flush failed:", err?.message || err);
+            });
     } catch { /* never throw */ }
 }

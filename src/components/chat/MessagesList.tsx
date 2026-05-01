@@ -16,8 +16,8 @@ import {
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { userAtom } from "@/atoms/authAtoms";
-import { useAtomValue, useSetAtom } from "jotai";
-import { CheckCircle2, Rocket } from "@/components/ui/icons";
+import { useAtomValue } from "jotai";
+import { CheckCircle2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { showError, showSuccess } from "@/lib/toast";
@@ -30,8 +30,6 @@ import { PromoMessage } from "./PromoMessage";
 import { ContextLimitBanner } from "./ContextLimitBanner";
 import { useCountTokens } from "@/hooks/useCountTokens";
 import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
-import { plansByChatIdAtom, planCollapsedByChatIdAtom } from "@/atoms/planAtoms";
-import { planToPromptText } from "./PlanPanel";
 
 interface MessagesListProps {
   messages: Message[];
@@ -60,11 +58,9 @@ interface FooterContext {
   todoId: number | null;
   isTodoCompleted: boolean;
   onMarkTodoCompleted: () => void;
-  /** True when the current chat mode is "plan" */
-  isPlanMode: boolean;
-  /** True when a parsed plan exists for the current chat */
-  hasPlan: boolean;
-  /** Callback: switch to agent, send acceptance prompt, collapse panel */
+  /** Ephemeral flag: true only right after streaming ends in plan mode */
+  showAcceptPlan: boolean;
+  /** Callback: switch to agent mode and send acceptance prompt */
   onAcceptPlan: () => void;
 }
 
@@ -84,8 +80,7 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
     todoId,
     isTodoCompleted,
     onMarkTodoCompleted,
-    isPlanMode,
-    hasPlan,
+    showAcceptPlan,
     onAcceptPlan,
   } = context;
 
@@ -100,15 +95,14 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
       )}
 
       {!isStreaming && messages.length > 0 && (
-        <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
-          {/* "Aceptar plan" — visible when plan mode is active and a plan was parsed */}
-          {isPlanMode && hasPlan && (
+        <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
+          {/* "Aceptar plan" — ephemeral accelerator, only after AI finishes in plan mode */}
+          {showAcceptPlan && (
             <Button
               size="sm"
               onClick={onAcceptPlan}
-              className="gap-1.5 text-white bg-primary hover:bg-primary/90 transition-all shadow-sm"
+              className="font-sans font-normal"
             >
-              <Rocket size={15} />
               Aceptar plan
             </Button>
           )}
@@ -168,12 +162,33 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       : false;
     const user = useAtomValue(userAtom);
 
-    // Plan-related state for "Aceptar plan" button
-    const plans = useAtomValue(plansByChatIdAtom);
-    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
+    // "Aceptar plan" — ephemeral: only visible right after streaming ends in plan mode.
+    // Resets when a new stream starts, chat changes, or mode changes.
     const isPlanMode = settings?.selectedChatMode === "plan";
-    const currentPlan = selectedChatId ? (plans.get(selectedChatId) ?? null) : null;
-    const hasPlan = currentPlan !== null;
+    const [showAcceptPlan, setShowAcceptPlan] = useState(false);
+    const prevStreamingForPlanRef = useRef(false);
+
+    useEffect(() => {
+      const wasStreaming = prevStreamingForPlanRef.current;
+      prevStreamingForPlanRef.current = isStreaming;
+
+      if (wasStreaming && !isStreaming && isPlanMode) {
+        // Streaming just ended in plan mode — show the ephemeral button
+        setShowAcceptPlan(true);
+      } else if (isStreaming) {
+        // New stream started — hide the button
+        setShowAcceptPlan(false);
+      }
+    }, [isStreaming, isPlanMode]);
+
+    // Reset when switching chats or leaving plan mode
+    useEffect(() => {
+      setShowAcceptPlan(false);
+    }, [selectedChatId]);
+
+    useEffect(() => {
+      if (!isPlanMode) setShowAcceptPlan(false);
+    }, [isPlanMode]);
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -286,29 +301,19 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId]);
 
-    // "Aceptar plan" callback: switch to agent, send the plan, collapse panel
+    // "Aceptar plan" callback: switch to agent mode and send acceptance prompt
     const handleAcceptPlan = useCallback(() => {
-      if (!selectedChatId || !currentPlan) return;
-
-      const planText = planToPromptText(currentPlan, false);
-      const acceptPrompt = `Acepto el plan. Procede a implementarlo completo:\n\n${planText}\n\nComienza a desarrollar todas las tareas del plan. Genera el código necesario.`;
+      if (!selectedChatId) return;
 
       // 1. Switch to agent mode
       updateSettings({ selectedChatMode: "agent" });
 
-      // 2. Collapse the plan panel
-      setCollapsed((prev) => {
-        const next = new Map(prev);
-        next.set(selectedChatId, true);
-        return next;
-      });
-
-      // 3. Send the acceptance message
+      // 2. Send the acceptance message
       streamMessage({
-        prompt: acceptPrompt,
+        prompt: "Acepto el plan. Procede a implementarlo completo.",
         chatId: selectedChatId,
       });
-    }, [selectedChatId, currentPlan, updateSettings, setCollapsed, streamMessage]);
+    }, [selectedChatId, updateSettings, streamMessage]);
 
     // Create context object for Footer component with stable references
     const footerContext = useMemo<FooterContext>(
@@ -326,8 +331,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         onMarkTodoCompleted: handleMarkTodoCompleted,
-        isPlanMode,
-        hasPlan,
+        showAcceptPlan,
         onAcceptPlan: handleAcceptPlan,
       }),
       [
@@ -344,8 +348,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         handleMarkTodoCompleted,
-        isPlanMode,
-        hasPlan,
+        showAcceptPlan,
         handleAcceptPlan,
       ],
     );

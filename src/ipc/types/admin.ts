@@ -198,7 +198,7 @@ export const adminContracts = {
         }),
     }),
 
-    /** Debug logs — structured markdown logs from memory pipeline per user+app */
+    /** Debug logs — complete markdown files from memory pipeline runs */
     getAdminDebugLogs: defineContract({
         channel: "admin:get-debug-logs",
         input: z.object({
@@ -209,13 +209,9 @@ export const adminContracts = {
         output: z.array(z.object({
             id: z.number(),
             appId: z.number(),
-            sessionId: z.string(),
-            logType: z.string(),
-            stage: z.string().nullable(),
-            message: z.string(),
-            dataJson: z.string().nullable(),
-            contentMd: z.string().nullable(),
-            elapsedMs: z.number().nullable(),
+            appName: z.string(),
+            filename: z.string(),
+            contentMd: z.string(),
             createdAt: z.string(),
         })),
     }),

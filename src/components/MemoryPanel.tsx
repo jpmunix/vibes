@@ -270,57 +270,55 @@ export function MemoryPanel({ appId }: { appId: number }) {
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            className="typo-button gap-1.5"
+            disabled={bootstrapRunning}
+            onClick={async () => {
+              setBootstrapRunning(true);
+              try {
+                const result = await ipc.memory.bootstrapProjectMemories({ appId });
+                toast.success(
+                  `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
+                );
+                await loadMemories();
+              } catch (err: any) {
+                toast.error(`Bootstrap falló: ${err.message}`);
+              } finally {
+                setBootstrapRunning(false);
+              }
+            }}
+          >
+            {bootstrapRunning ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Escaneando...</>
+            ) : (
+              <><Dna className="h-4 w-4" /> Escanear proyecto</>
+            )}
+          </Button>
           {stats.total > 0 && (
-            <>
-              <Button
-                variant="outline"
-                className="typo-button gap-1.5"
-                disabled={bootstrapRunning}
-                onClick={async () => {
-                  setBootstrapRunning(true);
-                  try {
-                    const result = await ipc.memory.bootstrapProjectMemories({ appId });
-                    toast.success(
-                      `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
-                    );
-                    await loadMemories();
-                  } catch (err: any) {
-                    toast.error(`Bootstrap falló: ${err.message}`);
-                  } finally {
-                    setBootstrapRunning(false);
-                  }
-                }}
-              >
-                {bootstrapRunning ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Escaneando...</>
-                ) : (
-                  <><Dna className="h-4 w-4" /> Escanear proyecto</>
-                )}
-              </Button>
-              <DeleteConfirmationDialog
-                itemName={`las ${stats.total} memorias de esta app`}
-                itemType="memorias"
-                onDelete={async () => {
-                  try {
-                    const count = await ipc.memory.deleteAllMemories(appId);
-                    toast.success(`${count} memorias eliminadas`);
-                    await loadMemories();
-                  } catch (err: any) {
-                    toast.error(`Error: ${err.message}`);
-                  }
-                }}
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="typo-button gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar todas
-                  </Button>
+            <DeleteConfirmationDialog
+              itemName={`las ${stats.total} memorias de esta app`}
+              itemType="memorias"
+              onDelete={async () => {
+                try {
+                  const count = await ipc.memory.deleteAllMemories(appId);
+                  toast.success(`${count} memorias eliminadas`);
+                  await loadMemories();
+                } catch (err: any) {
+                  toast.error(`Error: ${err.message}`);
                 }
-              />
-            </>
+              }}
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="typo-button gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar todas
+                </Button>
+              }
+            />
           )}
           <Button
             className="typo-button gap-1.5"
@@ -385,30 +383,6 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <p className="text-muted-foreground typo-caption">
               {memories.length === 0 ? "Sin memorias aún" : "Ninguna memoria coincide con los filtros"}
             </p>
-            {memories.length === 0 && !bootstrapRunning && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={async () => {
-                  setBootstrapRunning(true);
-                  try {
-                    const result = await ipc.memory.bootstrapProjectMemories({ appId });
-                    toast.success(
-                      `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
-                    );
-                    await loadMemories();
-                  } catch (err: any) {
-                    toast.error(`Bootstrap falló: ${err.message}`);
-                  } finally {
-                    setBootstrapRunning(false);
-                  }
-                }}
-              >
-                <Dna className="h-3.5 w-3.5" />
-                Escanear proyecto
-              </Button>
-            )}
             {bootstrapRunning && (
               <div className="flex items-center justify-center gap-2 text-muted-foreground typo-caption">
                 <Loader2 className="h-4 w-4 animate-spin" />

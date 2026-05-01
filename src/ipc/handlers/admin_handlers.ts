@@ -514,10 +514,17 @@ export function registerAdminHandlers(): void {
             conditions.push(eq(remoteSchema.memoryDebugLogs.appId, input.appId));
         }
 
-        const limit = input.limit || 500;
+        const limit = input.limit || 100;
 
         const rows = await db
-            .select()
+            .select({
+                id: remoteSchema.memoryDebugLogs.id,
+                appId: remoteSchema.memoryDebugLogs.appId,
+                appName: remoteSchema.memoryDebugLogs.appName,
+                filename: remoteSchema.memoryDebugLogs.filename,
+                contentMd: remoteSchema.memoryDebugLogs.contentMd,
+                createdAt: remoteSchema.memoryDebugLogs.createdAt,
+            })
             .from(remoteSchema.memoryDebugLogs)
             .where(and(...conditions))
             .orderBy(desc(remoteSchema.memoryDebugLogs.createdAt))
@@ -526,13 +533,9 @@ export function registerAdminHandlers(): void {
         return rows.map(r => ({
             id: r.id,
             appId: r.appId,
-            sessionId: r.sessionId,
-            logType: r.logType,
-            stage: r.stage,
-            message: r.message,
-            dataJson: r.dataJson,
+            appName: r.appName,
+            filename: r.filename,
             contentMd: r.contentMd,
-            elapsedMs: r.elapsedMs,
             createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
         }));
     });

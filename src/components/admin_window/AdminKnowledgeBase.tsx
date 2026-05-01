@@ -24,9 +24,8 @@ interface PipelineLog {
   success: number; error: string | null; createdAt: string;
 }
 interface DebugLogEntry {
-  id: number; appId: number; sessionId: string; logType: string;
-  stage: string | null; message: string; dataJson: string | null;
-  contentMd: string | null; elapsedMs: number | null; createdAt: string;
+  id: number; appId: number; appName: string; filename: string;
+  contentMd: string; createdAt: string;
 }
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -326,110 +325,57 @@ function PipelineLogRow({ log, isOpen, onToggle, fullPayload, onTogglePayload }:
 
 // ── DebugLogViewer — groups logs by session, renders markdown content ────────
 
-const LOG_TYPE_ICONS: Record<string, string> = {
-  log: "📝",
-  section: "📌",
-  session_start: "🚀",
-  code_block: "📋",
-  list: "📃",
-  playground: "🎮",
-};
-
 function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
-
-  // Group by sessionId
-  const sessions = useMemo(() => {
-    const map = new Map<string, { logs: DebugLogEntry[]; firstTs: string; lastTs: string; appId: number }>();
-    // logs come ordered DESC, but within a session we want ASC
-    const sorted = [...logs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    for (const log of sorted) {
-      if (!map.has(log.sessionId)) {
-        map.set(log.sessionId, { logs: [], firstTs: log.createdAt, lastTs: log.createdAt, appId: log.appId });
-      }
-      const entry = map.get(log.sessionId)!;
-      entry.logs.push(log);
-      entry.lastTs = log.createdAt;
-    }
-    // Return sessions newest first
-    return Array.from(map.entries()).sort((a, b) => new Date(b[1].firstTs).getTime() - new Date(a[1].firstTs).getTime());
-  }, [logs]);
+  const [viewingLog, setViewingLog] = useState<DebugLogEntry | null>(null);
 
   return (
-    <div className="space-y-2">
-      <p className="typo-caption text-muted-foreground">{sessions.length} sesiones · {logs.length} logs totales</p>
-      {sessions.map(([sessionId, session]) => {
-        const isOpen = expandedSession === sessionId;
-        const stages = [...new Set(session.logs.map(l => l.stage).filter(Boolean))];
-        return (
-          <div key={sessionId} className="rounded-xl border border-border overflow-hidden">
-            {/* Session header */}
-            <div
-              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => setExpandedSession(isOpen ? null : sessionId)}
-            >
-              <ChevronRight className={cn("size-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0", isOpen && "rotate-90")} />
-              <span className="typo-caption font-mono text-muted-foreground shrink-0">{sessionId}</span>
-              <span className="typo-caption text-muted-foreground truncate flex-1">
-                {stages.join(" → ")}
-              </span>
-              <span className="typo-micro text-muted-foreground shrink-0">{session.logs.length} logs</span>
-              <span className="typo-micro text-muted-foreground shrink-0">{formatTime(session.firstTs)}</span>
+    <>
+      <div className="space-y-1">
+        <p className="typo-caption text-muted-foreground mb-2">{logs.length} archivos de log</p>
+        {logs.map((log) => (
+          <div
+            key={log.id}
+            className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => setViewingLog(log)}
+          >
+            <span className="text-lg">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="typo-caption font-medium truncate">{log.appName || log.filename}</p>
+              <p className="typo-micro text-muted-foreground">{log.filename} · {(log.contentMd?.length ?? 0).toLocaleString()} chars</p>
             </div>
-
-            {/* Session detail */}
-            {isOpen && (
-              <div className="border-t border-border bg-muted/10 max-h-[600px] overflow-y-auto">
-                <table className="w-full typo-micro">
-                  <thead>
-                    <tr className="border-b border-border/50 text-muted-foreground">
-                      <th className="text-left p-2 w-8"></th>
-                      <th className="text-left p-2 w-20">Tiempo</th>
-                      <th className="text-left p-2 w-24">Stage</th>
-                      <th className="text-left p-2">Mensaje</th>
-                      <th className="text-left p-2 w-48">Datos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {session.logs.map((log) => (
-                      <React.Fragment key={log.id}>
-                        <tr className="border-b border-border/30 hover:bg-muted/30 align-top">
-                          <td className="p-2 text-center">{LOG_TYPE_ICONS[log.logType] || "•"}</td>
-                          <td className="p-2 text-muted-foreground font-mono">
-                            {log.elapsedMs != null ? `+${(log.elapsedMs / 1000).toFixed(1)}s` : "—"}
-                          </td>
-                          <td className="p-2 font-medium">{log.stage || "—"}</td>
-                          <td className="p-2">{log.message}</td>
-                          <td className="p-2 text-muted-foreground truncate max-w-[200px]">
-                            {log.dataJson ? (
-                              (() => {
-                                try {
-                                  const d = JSON.parse(log.dataJson);
-                                  return Object.entries(d).map(([k, v]) => `${k}=${v}`).join(", ");
-                                } catch { return log.dataJson; }
-                              })()
-                            ) : "—"}
-                          </td>
-                        </tr>
-                        {/* Render contentMd below the row if present */}
-                        {log.contentMd && (
-                          <tr className="border-b border-border/20">
-                            <td colSpan={5} className="p-2 pl-10">
-                              <pre className="typo-micro p-2 rounded-lg bg-muted whitespace-pre-wrap break-all overflow-y-auto max-h-40 text-foreground/80">
-                                {log.contentMd}
-                              </pre>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <span className="typo-micro text-muted-foreground shrink-0">{formatTime(log.createdAt)}</span>
+            <Button variant="ghost" size="sm" className="shrink-0 h-7 px-2" onClick={(e) => { e.stopPropagation(); setViewingLog(log); }}>
+              Ver
+            </Button>
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+
+      {/* Full markdown modal */}
+      {viewingLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setViewingLog(null)}>
+          <div
+            className="bg-background rounded-2xl border border-border shadow-2xl w-[90vw] max-w-[900px] h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div>
+                <h3 className="typo-body font-semibold">{viewingLog.appName || viewingLog.filename}</h3>
+                <p className="typo-micro text-muted-foreground">{viewingLog.filename} · {formatTime(viewingLog.createdAt)}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}>✕</Button>
+            </div>
+            {/* Markdown content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <pre className="typo-caption whitespace-pre-wrap break-words text-foreground/90 leading-relaxed font-mono">
+                {viewingLog.contentMd}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
+

@@ -27,6 +27,7 @@ Cuando el agente termina de responder —y estás en otro chat o tienes la app e
 
 ## Correcciones y ajustes
 
+- Nuevo botón **"Aceptar plan"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
 - Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
 - El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.

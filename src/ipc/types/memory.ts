@@ -235,24 +235,19 @@ export const memoryContracts = {
         }),
     }),
 
-    /** Get debug logs (structured markdown logs from memory pipeline) */
+    /** Get debug logs (complete markdown files from memory pipeline runs) */
     getDebugLogs: defineContract({
         channel: "get-debug-logs",
         input: z.object({
             appId: z.number().optional(),
-            sessionId: z.string().optional(),
             limit: z.number().optional(),
         }),
         output: z.array(z.object({
             id: z.number(),
             appId: z.number(),
-            sessionId: z.string(),
-            logType: z.string(),
-            stage: z.string().nullable(),
-            message: z.string(),
-            dataJson: z.string().nullable(),
-            contentMd: z.string().nullable(),
-            elapsedMs: z.number().nullable(),
+            appName: z.string(),
+            filename: z.string(),
+            contentMd: z.string(),
             createdAt: z.string(),
         })),
     }),

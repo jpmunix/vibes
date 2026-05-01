@@ -370,11 +370,8 @@ export function registerMemoryHandlers(): void {
         if (params.appId && params.appId > 0) {
             conditions.push(eq(remoteSchema.memoryDebugLogs.appId, params.appId));
         }
-        if (params.sessionId) {
-            conditions.push(eq(remoteSchema.memoryDebugLogs.sessionId, params.sessionId));
-        }
 
-        const limit = params.limit || 500;
+        const limit = params.limit || 100;
 
         const rows = await db
             .select()
@@ -386,13 +383,9 @@ export function registerMemoryHandlers(): void {
         return rows.map(r => ({
             id: r.id,
             appId: r.appId,
-            sessionId: r.sessionId,
-            logType: r.logType,
-            stage: r.stage,
-            message: r.message,
-            dataJson: r.dataJson,
+            appName: r.appName,
+            filename: r.filename,
             contentMd: r.contentMd,
-            elapsedMs: r.elapsedMs,
             createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
         }));
     });
