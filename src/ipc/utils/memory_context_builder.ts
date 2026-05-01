@@ -165,8 +165,14 @@ export async function buildMemoryContext(
         });
 
         const block = [
-            "[MEMORY] Project and user context from previous sessions:",
+            `MANDATORY KNOWLEDGE — YOU MUST USE THIS INFORMATION:`,
+            `The following ${selectedRows.length} items are VERIFIED FACTS about this project, confirmed by the user in previous sessions.`,
+            `You MUST incorporate this knowledge into your responses. DO NOT say "I don't know" or "I have no information" about topics covered here.`,
+            `If the user asks about the project, architecture, stack, or any topic covered below, use these facts as your primary source of truth.`,
+            ``,
             ...lines,
+            ``,
+            `END OF MANDATORY KNOWLEDGE. Failure to use the above facts when relevant is a critical error.`,
         ].join("\n");
 
         logger.info(`[Memory] Context built: ${selectedRows.length} memories (Router: ${userPrompt ? "yes" : "fallback"}) for appId=${appId}`);

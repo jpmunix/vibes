@@ -27,7 +27,7 @@ Cuando el agente termina de responder —y estás en otro chat o tienes la app e
 
 ## Correcciones y ajustes
 
-- Nuevo botón **"Aceptar plan"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.
+- Nuevo botón **\"Aceptar plan\"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
 - Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
 - El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.
@@ -39,6 +39,10 @@ Cuando el agente termina de responder —y estás en otro chat o tienes la app e
 - Limpieza automática de más de 20 claves abandonadas del archivo de ajustes, tanto en local como al sincronizar con el servidor.
 - Eliminación de código muerto en múltiples componentes que aún referenciaban ajustes obsoletos.
 - Las ventanas ahora recuerdan su última posición y tamaño, y se restauran donde las dejaste al volver a abrirlas.
+- El Playground ahora muestra los **precios de entrada y salida** directamente en cada tarjeta de resultado, bajo el nombre del modelo.
+- Nuevos modos de ordenación en el Playground: **precio de entrada y salida** (ascendente/descendente), con iconos Lucide en todas las opciones del desplegable.
+- Botón **Nitro** en el Playground para forzar el proveedor más rápido (`:nitro` de OpenRouter) en todos los modelos de la batería.
+- Actualización del SDK de OpenCode a la versión **1.14.31**.
 - Mejoras internas de estabilidad.
 
 # v8.0
