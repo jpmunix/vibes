@@ -255,6 +255,85 @@ function MemoryResponseContent({ text }: { text: string }) {
     }
 }
 
+// ─── Model chip with right-click preset menu ─────────────────────────────────
+
+function ModelChipWithPresets({ apiName, displayName, time, disabled, isRunning, presets, onToggle, onRemove, onAddToPreset }: {
+    apiName: string;
+    displayName: string;
+    time?: number;
+    disabled: boolean;
+    isRunning: boolean;
+    presets: Array<{ name: string; models: string[] }>;
+    onToggle: () => void;
+    onRemove: () => void;
+    onAddToPreset: (presetName: string) => void;
+}) {
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    return (
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild>
+                <span
+                    className={`playground-chip${disabled ? ' disabled' : ''}`}
+                    onPointerDown={(e) => {
+                        // Prevent Radix from opening the dropdown on left-click
+                        if (e.button === 0) e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onToggle();
+                    }}
+                    onContextMenu={(e) => {
+                        if (presets.length > 0) {
+                            e.preventDefault();
+                            setMenuOpen(true);
+                        }
+                    }}
+                >
+                    {displayName}
+                    {time != null && (
+                        <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                        disabled={isRunning}
+                    >
+                        <X size={10} />
+                    </button>
+                </span>
+            </DropdownMenuTrigger>
+            {presets.length > 0 && (
+                <DropdownMenuContent align="start" className="min-w-[180px]">
+                    <div className="px-3 py-1.5 typo-micro text-muted-foreground opacity-60 uppercase tracking-wider">
+                        Añadir a preset
+                    </div>
+                    {presets.map(set => {
+                        const alreadyIn = set.models.includes(apiName);
+                        return (
+                            <DropdownMenuItem
+                                key={set.name}
+                                className={cn(
+                                    "cursor-pointer py-2",
+                                    alreadyIn && "opacity-40"
+                                )}
+                                disabled={alreadyIn}
+                                onSelect={() => onAddToPreset(set.name)}
+                            >
+                                <Plus size={12} className="mr-2 opacity-60" />
+                                <span className="truncate">{set.name}</span>
+                                {alreadyIn && (
+                                    <Check size={12} className="ml-auto opacity-40" />
+                                )}
+                            </DropdownMenuItem>
+                        );
+                    })}
+                </DropdownMenuContent>
+            )}
+        </DropdownMenu>
+    );
+}
+
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
 function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode, exportChecked, onExportToggle }: {
@@ -756,12 +835,9 @@ function PlaygroundPanel() {
         }
     }, [handleSubmit]);
 
-    // Auto-resize textarea
+    // Update prompt (resize is now manual via CSS resize handle)
     const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setPrompt(e.target.value);
-        const ta = e.target;
-        ta.style.height = 'auto';
-        ta.style.height = `${Math.min(ta.scrollHeight, 720)}px`;
     }, []);
 
     // ── Model preset management (via DB) ──────────────────────────────────
@@ -802,6 +878,15 @@ function PlaygroundPanel() {
         setDisabledModels(new Set());
         setActivePresetName(name);
     }, [modelSets, selectedModels]);
+
+    // Add a single model to an existing preset (merge)
+    const handleAddModelToPreset = useCallback(async (modelApiName: string, presetName: string) => {
+        const preset = modelSets.find(s => s.name === presetName);
+        if (!preset) return;
+        if (preset.models.includes(modelApiName)) return; // already in preset
+        const merged = [...preset.models, modelApiName];
+        await presets.saveModelPreset(presetName, merged);
+    }, [modelSets, presets]);
 
     const handleExportMarkdown = useCallback(() => {
         const toExport = displayResults.filter(r => exportSelection.has(`${r.modelApiName}`));
@@ -904,7 +989,7 @@ function PlaygroundPanel() {
                     width: 100%;
                     min-height: 240px;
                     max-height: 720px;
-                    resize: none;
+                    resize: vertical;
                     overflow-y: auto;
                     border: 1px solid var(--border);
                     border-radius: 12px;
@@ -1260,58 +1345,20 @@ function PlaygroundPanel() {
                     {orderedChips.map(apiName => {
                         const time = modelTimes.get(apiName);
                         return (
-                            <span
+                            <ModelChipWithPresets
                                 key={apiName}
-                                className={`playground-chip${disabledModels.has(apiName) ? ' disabled' : ''}`}
-                                onClick={() => handleToggleModel(apiName)}
-                            >
-                                {modelDisplayNameMap.get(apiName) || apiName}
-                                {time != null && (
-                                    <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveModel(apiName); }}
-                                    disabled={isRunning}
-                                >
-                                    <X size={10} />
-                                </button>
-                            </span>
+                                apiName={apiName}
+                                displayName={modelDisplayNameMap.get(apiName) || apiName}
+                                time={time}
+                                disabled={disabledModels.has(apiName)}
+                                isRunning={isRunning}
+                                presets={modelSets}
+                                onToggle={() => handleToggleModel(apiName)}
+                                onRemove={() => handleRemoveModel(apiName)}
+                                onAddToPreset={(presetName) => handleAddModelToPreset(apiName, presetName)}
+                            />
                         );
                     })}
-                    {/* Quick-merge presets chip */}
-                    {modelSets.length > 0 && !isRunning && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="playground-chip"
-                                    style={{ borderStyle: 'dashed', opacity: 0.6 }}
-                                >
-                                    <Plus size={11} />
-                                    Preset
-                                    <ChevronDown size={10} />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="min-w-[200px]">
-                                {modelSets.map(set => (
-                                    <DropdownMenuItem
-                                        key={set.name}
-                                        className="cursor-pointer py-2"
-                                        onSelect={() => handleMergePreset(set.name)}
-                                    >
-                                        <Merge size={12} className="mr-2 opacity-60" />
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="truncate">{set.name}</span>
-                                            <span className="typo-micro text-muted-foreground">
-                                                {set.models.length} modelo{set.models.length !== 1 ? 's' : ''}
-                                            </span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
                 </div>
 
                 {/* ── Preset bar ── */}

@@ -157,7 +157,7 @@ export async function collectProjectDNA(
     // .env.example — NOT collected (integrations inject env vars; agent can read it)
 
     // 3. Directory tree
-    const directoryTree = getDirectoryTree(projectDir, 2);
+    const directoryTree = getDirectoryTree(projectDir, 4);
     debugLog("DNA", `Directory tree collected`, { lines: directoryTree.split("\n").length.toString() });
 
     const hasSignificantContent = configFiles.length > 0;
@@ -195,7 +195,7 @@ function formatDNAForLLM(dna: ProjectDNA): string {
 
     // Directory structure
     if (dna.directoryTree) {
-        parts.push("## Directory Structure (top 2 levels)");
+        parts.push("## Directory Structure (top 4 levels)");
         parts.push("```");
         parts.push(dna.directoryTree);
         parts.push("```");
