@@ -216,7 +216,19 @@ export function registerDesignHandlers() {
       const fullAppPath = getVibesAppPath(appPath);
       const specsMdPath = path.join(fullAppPath, "docs", "SPECS.md");
       const content = await fsPromises.readFile(specsMdPath, "utf-8");
-      return     const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
+      return { content };
+    } catch {
+      return { content: null };
+    }
+  });
+
+  // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
+  createTypedHandler(designContracts.generateFromScreenshot, async (_, { imageDataUrl, model }) => {
+    logger.info(`[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`);
+
+    const { openRouterCompletion } = await import("../utils/openrouter");
+
+    const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
 
 Tu objetivo: Analizar la captura de pantalla adjunta y aplicar ingeniería inversa para generar un archivo DESIGN.md completo, adhiriéndote estrictamente a la especificación estándar de DESIGN.md. Este archivo será la fuente de verdad tanto para humanos como para agentes de IA.
 
@@ -299,7 +311,7 @@ Lineamientos prácticos, mejores prácticas de contraste y errores a evitar.
 ### 3. Límites (Guardrails)
 * CERO RELLENO CONVERSACIONAL: Empieza directamente con --- y termina con el último texto del markdown.
 * Sé preciso: Usa valores exactos (HEX, px, rem) entre paréntesis en la prosa cuando sea útil.
-* Sé funcional y evocativo en las descripciones.\`;
+* Sé funcional y evocativo en las descripciones.`;
 
     try {
       const data = await openRouterCompletion({
