@@ -1374,30 +1374,42 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
-          // DESIGN.md — full content on FIRST message, lightweight hint after.
+          // ── DESIGN.md context ──────────────────────────────────────────────
+          // Strategy: lightweight hint only (~30 tokens). The AI reads the file
+          // on demand via its Read tool when it needs design context.
+          //
+          // WHY NOT inject the full file?
+          // The full DESIGN.md (~5K tokens) becomes part of the system prompt
+          // and travels in EVERY tool-call round-trip (Read, Grep, Write…).
+          // With 7 tool calls that's ~35K wasted tokens per first message.
+          // The hint approach lets the AI read it once in its own context,
+          // keeping the system prompt lean across all round-trips.
+          //
+          // ── FULL INJECTION (disabled) ──────────────────────────────────────
+          // To restore: uncomment this block and add `isFirstMessage &&` to
+          // the condition to limit it to the first message only.
+          //
+          // const isFirstMessage = !updatedChat.messages.some(
+          //   (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
+          // );
+          // if (isFirstMessage && designExists) {
+          //   try {
+          //     const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
+          //     if (designContent.length > 0) {
+          //       contextInstructions.push(
+          //         `DESIGN SYSTEM REFERENCE:\n` +
+          //         `The following DESIGN.md defines the visual language for this project. ` +
+          //         `Follow these design guidelines when building UI.\n\n` +
+          //         designContent,
+          //       );
+          //     }
+          //   } catch { /* ignore read errors */ }
+          // }
+          // ── END FULL INJECTION ─────────────────────────────────────────────
           {
-            const isFirstMessage = !updatedChat.messages.some(
-              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
-            );
             const resolvedAppPath = getVibesAppPath(updatedChat.app.path);
             const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
-            const designExists = fs.existsSync(designMdPath);
-
-            if (isFirstMessage && designExists) {
-              // First message: inject full DESIGN.md so the AI absorbs it immediately
-              try {
-                const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
-                if (designContent.length > 0) {
-                  contextInstructions.push(
-                    `DESIGN SYSTEM REFERENCE:\n` +
-                    `The following DESIGN.md defines the visual language for this project. ` +
-                    `Follow these design guidelines when building UI.\n\n` +
-                    designContent,
-                  );
-                }
-              } catch { /* ignore read errors */ }
-            } else if (!isFirstMessage && designExists) {
-              // Subsequent messages: lightweight hint — the AI can Read the file on demand
+            if (fs.existsSync(designMdPath)) {
               contextInstructions.push(
                 `DESIGN SYSTEM: This project has a design system defined in docs/DESIGN.md. ` +
                 `Read this file with your Read tool before writing or modifying any UI code.`,
