@@ -966,6 +966,7 @@ async function getOpenCodeClient(appPath: string) {
         ];
 
         const config = {
+                logLevel: "DEBUG" as const,
                 instructions: globalInstructions,
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
@@ -1882,7 +1883,22 @@ export async function handleOpenCodeStream(
             }
         }
 
+        // Log the full context instructions being sent via config.update
+        // (these are APPENDED to OpenCode's native system prompt, not replacing it)
+        if (options.contextInstructions && options.contextInstructions.length > 0) {
+            logger.info(`${LP} 📝 FULL CONTEXT INSTRUCTIONS (${options.contextInstructions.length} blocks):`);
+            for (let i = 0; i < options.contextInstructions.length; i++) {
+                logger.info(`--- INSTRUCTION BLOCK ${i + 1} ---\n${options.contextInstructions[i]}`);
+            }
+        }
+        logger.info(`--- USER PROMPT ---\n${promptText}`);
+        logger.info(`------------------------------------------`);
+
         // Fire the prompt (non-blocking)
+        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
+        // internal system prompt (tools, AGENTS.md, project context). Instead,
+        // context instructions (including memories) are injected via
+        // config.update({ instructions }) which APPENDS them safely.
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
