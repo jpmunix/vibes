@@ -710,6 +710,54 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             )}
           </div>
 
+          {/* ── Código category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "codigo" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("codigo")}
+          >
+            <span className="flex items-center gap-2">
+              <Code size={14} className="opacity-60 shrink-0" />
+              Código
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Código */}
+            {subMenuOpen === "codigo" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("codigo")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onOpenCode(app.id); }}
+                >
+                  <FolderOpen size={14} className="opacity-60 shrink-0" />
+                  Explorar código
+                </button>
+                {hasUnpushedChanges && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); onOpenGit(app.id); }}
+                  >
+                    <GitBranch size={14} className="opacity-60 shrink-0" />
+                    Revisar cambios
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
+                >
+                  <Database size={14} className="opacity-60 shrink-0" />
+                  Memorias
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* ── Workspace category ── */}
           <div
             className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
@@ -762,54 +810,6 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 >
                   <X size={14} className="shrink-0" />
                   Cerrar workspace
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* ── Código category ── */}
-          <div
-            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
-              subMenuOpen === "codigo" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
-            }`}
-            onMouseEnter={() => setSubMenuOpen("codigo")}
-          >
-            <span className="flex items-center gap-2">
-              <Code size={14} className="opacity-60 shrink-0" />
-              Código
-            </span>
-            <ChevronRight size={12} className="opacity-40 shrink-0" />
-            {/* Submenu: Código */}
-            {subMenuOpen === "codigo" && (
-              <div
-                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
-                onMouseEnter={() => setSubMenuOpen("codigo")}
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                  onClick={() => { closeMenu(); onOpenCode(app.id); }}
-                >
-                  <FolderOpen size={14} className="opacity-60 shrink-0" />
-                  Explorar código
-                </button>
-                {hasUnpushedChanges && (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                    onClick={() => { closeMenu(); onOpenGit(app.id); }}
-                  >
-                    <GitBranch size={14} className="opacity-60 shrink-0" />
-                    Revisar cambios
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                  onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
-                >
-                  <Database size={14} className="opacity-60 shrink-0" />
-                  Ver memorias
                 </button>
               </div>
             )}

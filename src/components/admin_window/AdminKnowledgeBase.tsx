@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Loader2, Maximize2, Minimize2 } from "@/components/ui/icons";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -323,7 +325,17 @@ function PipelineLogRow({ log, isOpen, onToggle, fullPayload, onTogglePayload }:
   );
 }
 
-// ── DebugLogViewer — groups logs by session, renders markdown content ────────
+// ── DebugLogViewer — list of pipeline run files + modal with parsed markdown ──
+
+function downloadMarkdown(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
   const [viewingLog, setViewingLog] = useState<DebugLogEntry | null>(null);
@@ -344,33 +356,43 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
               <p className="typo-micro text-muted-foreground">{log.filename} · {(log.contentMd?.length ?? 0).toLocaleString()} chars</p>
             </div>
             <span className="typo-micro text-muted-foreground shrink-0">{formatTime(log.createdAt)}</span>
-            <Button variant="ghost" size="sm" className="shrink-0 h-7 px-2" onClick={(e) => { e.stopPropagation(); setViewingLog(log); }}>
-              Ver
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); downloadMarkdown(log.filename, log.contentMd); }}>
+                ⬇
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setViewingLog(log); }}>
+                Ver
+              </Button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Full markdown modal */}
+      {/* Full markdown modal — wide */}
       {viewingLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setViewingLog(null)}>
           <div
-            className="bg-background rounded-2xl border border-border shadow-2xl w-[90vw] max-w-[900px] h-[85vh] flex flex-col overflow-hidden"
+            className="bg-background rounded-2xl border border-border shadow-2xl w-[95vw] max-w-[1400px] h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div>
                 <h3 className="typo-body font-semibold">{viewingLog.appName || viewingLog.filename}</h3>
-                <p className="typo-micro text-muted-foreground">{viewingLog.filename} · {formatTime(viewingLog.createdAt)}</p>
+                <p className="typo-micro text-muted-foreground">{viewingLog.filename} · {formatTime(viewingLog.createdAt)} · {(viewingLog.contentMd?.length ?? 0).toLocaleString()} chars</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}>✕</Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => downloadMarkdown(viewingLog.filename, viewingLog.contentMd)}>
+                  ⬇ Descargar
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}>✕</Button>
+              </div>
             </div>
-            {/* Markdown content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <pre className="typo-caption whitespace-pre-wrap break-words text-foreground/90 leading-relaxed font-mono">
-                {viewingLog.contentMd}
-              </pre>
+            {/* Parsed markdown content */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewingLog.contentMd}</ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
@@ -378,4 +400,3 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
     </>
   );
 }
-

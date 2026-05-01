@@ -968,6 +968,8 @@ export function registerAppHandlers() {
           .where(eq(remoteSchema.memoryTelemetry.appId, appId));
         await db.delete(remoteSchema.memoryPipelineLogs)
           .where(eq(remoteSchema.memoryPipelineLogs.appId, appId));
+        await db.delete(remoteSchema.memoryDebugLogs)
+          .where(eq(remoteSchema.memoryDebugLogs.appId, appId));
         await db.delete(remoteSchema.userPreferences)
           .where(and(
             eq(remoteSchema.userPreferences.userId, context.userId!),
