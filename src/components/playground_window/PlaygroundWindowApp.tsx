@@ -565,6 +565,8 @@ function PlaygroundPanel() {
         setInputCollapsed(false);
         setMorphActive(false);
         setPrompt("");
+        setActivePresetName(null);
+        setActivePromptPreset(null);
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
