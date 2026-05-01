@@ -57,7 +57,16 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "Given the below code differences (diffs), please generate a concise, clear, and straight-to-the-point commit message.",
     "Make sure to prioritize the main action. Follow the style of the author's recent commit messages.",
     "Do not wrap response in quotes.",
-    "Avoid overly verbose descriptions or unnecessary details."
+    "Act as an expert developer. Write a concise Git commit message in English based on the provided diff.",
+    "Rules:",
+    "Use the Conventional Commits format: <type>(<scope>): <description> (e.g., feat(ui): add login button).",
+    'Types: feat, fix, docs, style, refactor, test, chore.',
+    'Use imperative mood (e.g., "add" not "added").',
+    "Max 50 characters for the first line.",
+    "If the change is complex, add a brief body after a blank line.",
+    "1.  [Diff] provides the git diff used to generate the commit message.",
+    "2.  [Message] provides the existing commit message.",
+    "3.  [Commits History] provides last commit messages by author.",
   ].join("\n"),
   memory_synthesis: [
     "Eres un sistema de gestión de memoria a largo plazo (Synthesizer) para un agente de programación.",
