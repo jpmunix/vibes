@@ -1288,61 +1288,30 @@ This conversation includes one or more image attachments. When the user uploads 
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
           contextInstructions.push(
-            `ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en ${langName}. Piensa en ${langName}, razona en ${langName} y redacta TODAS tus respuestas completamente en ${langName}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.\n` +
-            `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
+            getEffectivePrompt("ctx_language", settings).replace(/\{\{LANGUAGE\}\}/g, langName) + "\n" +
+            getEffectivePrompt("ctx_no_run_locally", settings)
           );
 
-          // 3. Direct edit shortcut — skip exploration for trivial changes
-          contextInstructions.push(
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
-          );
 
           // 4. Context7 docs — always fetch fresh docs for libraries
           contextInstructions.push(
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
+            getEffectivePrompt("ctx_context7_docs", settings)
           );
 
           // 5. Efficiency & Task Triage (Prevent over-thinking simple tasks)
           contextInstructions.push(
-            `CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:\n` +
-            `Antes de empezar cualquier tarea, evalúa su complejidad:\n\n` +
-            `TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):\n` +
-            `- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.\n` +
-            `- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).\n` +
-            `- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.\n` +
-            `- Mantén tu respuesta final extremadamente corta y directa.\n\n` +
-            `TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):\n` +
-            `- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.\n\n` +
-            `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
+            getEffectivePrompt("ctx_efficiency_triage", settings)
           );
 
           // 6. Smart todowrite usage — task management for complex requests
           contextInstructions.push(
-            `GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados ` +
-            `(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades), ` +
-            `usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar. ` +
-            `Marca cada tarea como completada (status: "done") a medida que avanzas. ` +
-            `NO uses todowrite para cambios simples como corregir un error, ajustar un estilo, ` +
-            `o modificar un solo archivo. En esos casos, actúa directamente.`
+            getEffectivePrompt("ctx_task_management", settings)
           );
 
           // 6. Plan mode — interactive question-driven planning
           if (resolvedChatMode === "plan") {
-            const isEnglish = (settings.chatLanguage || "es") === "en";
             contextInstructions.push(
-              isEnglish
-                ? `INTERACTIVE PLANNING MODE:\n` +
-                  `When the user asks you to create a plan, do NOT assume details that are not explicit.\n` +
-                  `Use your "question" tool to ask the user about design decisions, architecture,\n` +
-                  `technologies, priorities, and any ambiguity.\n` +
-                  `Rule: maximum 5 questions. Group related ones. Use options when alternatives are clear.\n` +
-                  `Once everything is clarified, generate the definitive plan.`
-                : `MODO PLANIFICACIÓN INTERACTIVA:\n` +
-                  `Cuando el usuario te pide crear un plan, NO asumas los detalles que no están explícitos.\n` +
-                  `Usa tu herramienta "question" para preguntar al usuario sobre decisiones de diseño,\n` +
-                  `arquitectura, tecnologías, prioridades y cualquier ambigüedad.\n` +
-                  `Regla: máximo 5 preguntas. Agrupa las relacionadas. Usa opciones cuando las alternativas sean claras.\n` +
-                  `Una vez aclarado todo, genera el plan definitivo.`
+              getEffectivePrompt("ctx_plan_mode", settings)
             );
           }
 

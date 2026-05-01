@@ -49,6 +49,7 @@ import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
+import { PromptsSection } from "@/components/settings/PromptsSection";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -852,7 +853,24 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
           />
 
-          {/* Memory System Section */}
+          {/* Prompts Section */}
+          <div
+            id="prompts-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "prompts-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Prompts
+            </h2>
+            <p className="typo-caption mb-8">
+              Personaliza las instrucciones que reciben los modelos AI para tareas internas,
+              generación de nombres y el sistema de memoria.
+            </p>
+            <PromptsSection />
+          </div>
+
           <div
             id="memory-settings"
             className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "memory-settings"

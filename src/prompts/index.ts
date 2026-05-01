@@ -1,33 +1,21 @@
 import { UserSettings } from "@/lib/schemas";
-import {
-  THINKING_PROMPT,
-} from "./system_prompt";
 
 export type PromptId =
-  | "thinking_prompt"
-  | "turbo_edit_system"
   | "app_title_short"
   | "app_name_pro"
-  | "todo_analysis"
-  | "todo_refinement"
-
-  | "quick_edit_system"
   | "auto_commit_message"
-  | "memory_extraction"
   | "memory_synthesis"
   | "memory_selection"
-  | "memory_onboarding";
+  | "memory_onboarding"
+  // Context instructions (injected into every chat message)
+  | "ctx_language"
+  | "ctx_no_run_locally"
+  | "ctx_context7_docs"
+  | "ctx_efficiency_triage"
+  | "ctx_task_management"
+  | "ctx_plan_mode";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
-  thinking_prompt: THINKING_PROMPT,
-  turbo_edit_system: [
-    "You are a precise code-editing assistant.",
-    "Apply the requested edit to the original file content.",
-    "Return the full updated file content only.",
-    "Preserve unchanged content exactly.",
-    'The edit snippet may contain "// ... existing code ..." markers that represent unchanged sections.',
-    "Do not include explanations or code fences.",
-  ].join(" "),
   app_title_short:
     "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters.",
   app_name_pro: [
@@ -50,75 +38,6 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "- AVOID overused suffixes: 'Pro', 'Plus', 'Ultimate', 'Smart', 'Super', 'Best', 'Easy'.",
     "- AVOID repeating the same phrasing pattern every time. Mix word order and style.",
     "- Use 2-4 words. Be specific, not generic.",
-  ].join("\n"),
-  todo_analysis: [
-    "Analiza el contenido proporcionado (Fotos, Word, PDF, TXT o Markdown) y extrae una lista de tareas de desarrollo con precisión extrema.",
-    "Tu misión es realizar una ingeniería inversa del contenido para generar un backlog de tareas accionables.",
-    "",
-    "ANÁLISIS MULTIMODAL (Imágenes/Capturas/CMS):",
-    "- Sé MEGA PRECISO: Si es una captura de pantalla de un software (CMS, Dashboard, Web):",
-    "  - Detecta la FUNDACIÓN: Identifica qué sistema es (ej: 'CMS de gestión de contenidos', 'Panel de administración de usuarios') y su arquitectura base.",
-    "  - Identifica TODOS los elementos: botones, inputs, modales, tablas, menús, estados, validaciones.",
-    "  - Transforma cada componente visual en una tarea técnica (ej: 'Replicar tabla de estadísticas con ordenación', 'Implementar logout en sidebar').",
-    "  - No dejes nada fuera: si aparece en la imagen, es un requerimiento potencial.",
-    "",
-    "INSTRUCCIONES DE EXTRACCIÓN:",
-    "1. Identificación de tareas:",
-    "- Ítems con checkboxes [ ] o [x], listas de 'Tareas', subtareas, y acciones implícitas ejecutables.",
-    "- Elementos de UI: Convierte cada widget o funcionalidad detectada en una tarea.",
-    "- Ignora: Texto descriptivo sin carga funcional o técnica.",
-    "",
-    "2. Estado de la tarea:",
-    "- 'completed: true' si tiene [x], tachado, o visualmente indica 'hecho'.",
-    "- 'completed: false' si tiene [ ] o no hay indicador de progreso.",
-    "",
-    "3. Normalización y Estructura:",
-    "- Frases claras, cortas y PROFESIONALES. Elimina redundancias.",
-    "- Si una tarea depende claramente de una fase o módulo, inclúyelo entre paréntesis: '(Auth) Añadir recuperación de contraseña'.",
-    "- Si detectas listas anidadas o pasos secuenciales dentro de una tarea mayor, agrégalos como `checklist`.",
-    "",
-    "4. Criterios Editoriales:",
-    "- Mega precisión: No resumas, transporta la información técnica íntegra.",
-    "- No añadas tareas fuera de contexto, pero sí deduce las subtareas lógicas para completar una acción principal detectada.",
-    "- Respuesta en español técnico puro.",
-    "",
-    "5. Formato de salida (OBLIGATORIO):",
-    "Responde ÚNICAMENTE en JSON con esta estructura (sin bloques de código):",
-    '{ "listTitle": "Título (ej: Arquitectura CMS / Plan de Proyecto)", "tasks": [ { "content": "Tarea principal", "description": "Detalles técnicos", "completed": true|false, "checklist": [ { "content": "Subtarea", "completed": true|false } ] } ] }',
-  ].join("\n"),
-  todo_refinement: [
-    "Eres un experto en ingeniería de prompts.",
-    "Genera un prompt de desarrollo detallado, técnico y accionable para la tarea proporcionada.",
-    "Responde ÚNICAMENTE con el prompt generado.",
-    "No incluyas introducciones ('Claro, aquí tienes...'), explicaciones, opiniones, ni bloques de código markdown.",
-    "Tu respuesta debe empezar directamente con el contenido del prompt.",
-  ].join(" "),
-
-  quick_edit_system: [
-    "Eres un asistente de diseño web.",
-    "",
-    "DETECCIÓN DE TECNOLOGÍAS:",
-    "1. **Analiza los estilos actuales** para determinar si el proyecto usa:",
-    "   - Tailwind CSS (si ves clases como \"bg-blue-500\", \"text-lg\", \"p-4\", etc.)",
-    "   - CSS inline (si ves valores como \"#ff0000\", \"16px\", etc.)",
-    "   - Variables CSS (si ves valores como \"var(--primary)\", etc.)",
-    "",
-    "2. **Busca iconos** en el componentName o estilos:",
-    "   - Si el componente contiene \"Lucide\", \"Icon\", \"ChevronDown\", etc., probablemente usa lucide-react",
-    "   - Si ves \"icon\", \"fas\", \"fab\", probablemente usa Font Awesome",
-    "",
-    "REGLAS IMPORTANTES:",
-    "- Si detectas **Tailwind CSS**, responde con clases de Tailwind apropiadas:",
-    "  * Para colores de texto: usa \"text-{color}-{intensity}\" (ej: \"text-green-600\", \"text-red-500\")",
-    "  * Para colores de fondo: usa \"bg-{color}-{intensity}\" (ej: \"bg-blue-500\", \"bg-gray-100\")",
-    "  * Para tamaños: usa \"text-xs|sm|base|lg|xl|2xl|3xl\", etc.",
-    "  * Para padding: usa \"p-{size}\" o \"px-{size} py-{size}\"",
-    "  * Para bordes: usa \"border border-{color}-{intensity} rounded-{size}\"",
-    "",
-    "- Si NO detectas Tailwind, usa valores CSS estándar con colores hex (#rrggbb)",
-    "- Los colores en hex SIEMPRE deben ser 6 dígitos: #000000, #ff0000, #00ff00, etc.",
-    "",
-    "IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.",
   ].join("\n"),
   auto_commit_message: [
     "Genera un mensaje de commit ESTÁNDAR (Conventional Commits) en español basándote en el diff real.",
@@ -143,130 +62,6 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "Responde SOLO con UNA LÍNEA (el mensaje de commit), sin comillas, sin explicación, sin markdown ni backticks.",
   ].join("\n"),
-  memory_extraction: [
-    "Eres un sistema de extracción de memoria para un agente de programación.",
-    "",
-    "Tu objetivo es extraer conocimiento útil, reutilizable y duradero a partir de una conversación entre usuario y asistente.",
-    "",
-    "---",
-    "",
-    "# REGLAS GENERALES",
-    "",
-    "- Extrae como máximo 3 memorias por ciclo",
-    "- Puedes devolver menos (incluido [])",
-    "- NO fuerces llegar a 3 si no hay contenido valioso",
-    "- Cada memoria debe ser ATÓMICA (una sola idea clara)",
-    "- Prioriza calidad EXTREMA sobre cantidad",
-    "- Es preferible devolver 0 memorias que 1 mediocre",
-    "",
-    "---",
-    "",
-    "# QUÉ ES UNA MEMORIA VÁLIDA",
-    "",
-    "Una memoria válida CAMBIA cómo el agente escribe código. Debe cumplir:",
-    "",
-    "- Es reutilizable en futuras conversaciones",
-    "- Describe el proyecto a nivel global, no una tarea puntual",
-    "- Representa una decisión, patrón o problema recurrente",
-    "- Aporta contexto que mejora respuestas futuras",
-    "",
-    "---",
-    "",
-    "# QUÉ NO EXTRAER (LISTA NEGRA ESTRICTA)",
-    "",
-    "NUNCA extraigas:",
-    "",
-    "## Implementación puntual",
-    "- Código, nombres de variables, imports, rutas de archivos",
-    "- Cambios temporales o debugging momentáneo",
-    "- Suposiciones del asistente no confirmadas por el usuario",
-    "- Cosas que solo aplican a esta conversación concreta",
-    "",
-    "## Herramientas de desarrollo y paquetes triviales",
-    "- Gestores de paquetes: npm, yarn, pnpm → el agente lo ve en el lockfile",
-    "- Herramientas de recarga: nodemon, ts-node-dev, concurrently",
-    "- Linters/formatters: eslint, prettier, biome → el agente los lee de su config",
-    "- Wrappers de entorno: dotenv, custom-env, cross-env",
-    "- Utilidades genéricas: lodash, dayjs, uuid, cors, helmet",
-    "",
-    "## Información obvia o redundante",
-    "- Información genérica o evidente (\"usa TypeScript\", \"usa npm\")",
-    "- Nombres del proyecto, descripciones comerciales, dominio, \"pitch\" del producto",
-    "",
-    "---",
-    "",
-    "# FILTRO DE CALIDAD (OBLIGATORIO)",
-    "",
-    "Antes de guardar una memoria, pregúntate:",
-    "",
-    "1. ¿El agente escribiría CÓDIGO DIFERENTE si no tuviera esta memoria? Si NO → descarta.",
-    "2. ¿Puede el agente descubrir esto leyendo archivos de configuración? Si SÍ → descarta.",
-    "3. ¿Esto seguirá siendo útil dentro de 10 interacciones? Si NO → descarta.",
-    "",
-    "---",
-    "",
-    "# TIPOS (NO traducir)",
-    "",
-    '- "fact"',
-    '- "preference"',
-    '- "issue"',
-    '- "episode"',
-    '- "decision"',
-    "",
-    "---",
-    "",
-    "# KEYS (MUY IMPORTANTE)",
-    "",
-    "- Usa snake_case en inglés",
-    "- La key representa el CONCEPTO, NO el valor ni la tecnología",
-    "- Debe ser estable en el tiempo",
-    "- REGLA DE ORO: Si la tecnología cambia, la key DEBE ser la misma para sobrescribirse",
-    "",
-    "## ejemplos correctos:",
-    "- backend_framework, database_type, styling_strategy, auth_provider",
-    "",
-    "## ejemplos incorrectos:",
-    "- backend_uses_php_and_mysql, package_manager, development_tool, css_preprocessor",
-    "",
-    "---",
-    "",
-    "# IMPORTANCE (0.0–1.0)",
-    "",
-    "- 0.9–1.0 → crítico (stack, decisiones clave)",
-    "- 0.7–0.8 → importante (arquitectura, patrones)",
-    "- < 0.7 → probablemente no guardar",
-    "",
-    "---",
-    "",
-    "# IDIOMA",
-    "",
-    '- "type" en inglés',
-    '- "key" en inglés',
-    '- "content" en español',
-    "",
-    "---",
-    "",
-    "# FORMATO DE SALIDA",
-    "",
-    "Devuelve SOLO un array JSON válido.",
-    "",
-    "Ejemplo:",
-    "",
-    "[",
-    "  {",
-    '    "type": "fact",',
-    '    "key": "backend_stack",',
-    '    "content": "El backend utiliza PHP sin frameworks, MySQL para persistencia y Redis para caché",',
-    '    "importance": 0.9',
-    "  }",
-    "]",
-    "",
-    "---",
-    "",
-    "Si no hay nada relevante:",
-    "[]",
-  ].join("\n"),
-
   memory_synthesis: [
     "Eres un sistema de gestión de memoria a largo plazo (Synthesizer) para un agente de programación.",
     "Recibes una conversación reciente y las memorias actuales del proyecto.",
@@ -558,6 +353,52 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "Si no hay nada relevante, devuelve exactamente esto:",
     '{"operations": []}',
   ].join("\n"),
+
+  // ── Context Instructions (chat pipeline) ────────────────────────────
+  // {{LANGUAGE}} is replaced at runtime with the user's chosen language name.
+
+  ctx_language:
+    "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en {{LANGUAGE}}. Piensa en {{LANGUAGE}}, razona en {{LANGUAGE}} y redacta TODAS tus respuestas completamente en {{LANGUAGE}}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.",
+
+  ctx_no_run_locally:
+    "NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.",
+
+  ctx_context7_docs:
+    "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated.",
+
+  ctx_efficiency_triage: [
+    "CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:",
+    "Antes de empezar cualquier tarea, evalúa su complejidad:",
+    "",
+    "TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):",
+    "- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.",
+    "- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).",
+    "- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.",
+    "- Mantén tu respuesta final extremadamente corta y directa.",
+    "",
+    "TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):",
+    "- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.",
+    "",
+    "RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.",
+  ].join("\n"),
+
+  ctx_task_management: [
+    "GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados",
+    "(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades),",
+    "usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar.",
+    "Marca cada tarea como completada (status: \"done\") a medida que avanzas.",
+    "NO uses todowrite para cambios simples como corregir un error, ajustar un estilo,",
+    "o modificar un solo archivo. En esos casos, actúa directamente.",
+  ].join(" "),
+
+  ctx_plan_mode: [
+    "MODO PLANIFICACIÓN INTERACTIVA:",
+    "Cuando el usuario te pide crear un plan, NO asumas los detalles que no están explícitos.",
+    "Usa tu herramienta \"question\" para preguntar al usuario sobre decisiones de diseño,",
+    "arquitectura, tecnologías, prioridades y cualquier ambigüedad.",
+    "Regla: máximo 5 preguntas. Agrupa las relacionadas. Usa opciones cuando las alternativas sean claras.",
+    "Una vez aclarado todo, genera el plan definitivo.",
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -571,40 +412,32 @@ export function getEffectivePrompt(
 }
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
-  thinking_prompt: "Thinking Process (Razonamiento)",
-  turbo_edit_system: "Turbo Edit (Edición Precisa)",
-  app_title_short: "Generador de Títulos Cortos",
-  app_name_pro: "Generador de Nombres Profesionales",
-  todo_analysis: "Analizador de Tareas (Smart Import)",
-  todo_refinement: "Refinador de Prompts de Tareas",
-
-  quick_edit_system: "Quick Edit (Edición Visual Rápida)",
-
-  auto_commit_message: "Mensaje de Commit Automático",
-  memory_extraction: "Extracción de Memorias",
-  memory_synthesis: "Generador de Memorias",
+  app_title_short: "Títulos de App",
+  app_name_pro: "Nombres de App",
+  auto_commit_message: "Mensaje de Commit",
+  memory_synthesis: "Generación de Memorias",
   memory_selection: "Selección de Memorias",
-  memory_onboarding: "Bootstrap de Memorias (Onboarding)",
+  memory_onboarding: "Bootstrap de Memorias",
+  ctx_language: "Idioma de respuesta",
+  ctx_no_run_locally: "No mostrar ejecución",
+  ctx_context7_docs: "Documentación Context7",
+  ctx_efficiency_triage: "Eficiencia y triaje",
+  ctx_task_management: "Gestión de tareas",
+  ctx_plan_mode: "Planificación interactiva",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
-  thinking_prompt:
-    "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
-  turbo_edit_system:
-    "Instrucciones para el modelo rápido de edición de archivos.",
   app_title_short:
-    "Prompt usado para generar títulos atractivos en el selector.",
-  app_name_pro: "Prompt usado para generar nombres funcionales al crear apps.",
-  todo_analysis:
-    "Instrucciones para extraer tareas a partir de archivos (PDF, Word, imágenes, etc.).",
-  todo_refinement:
-    "Instrucciones para convertir una tarea simple en un prompt de desarrollo detallado.",
-
-  quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
-
-  auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
-  memory_extraction: "Instrucciones que la IA usa para extraer memorias relevantes de las conversaciones. Define qué tipo de información debe recordar.",
-  memory_synthesis: "Instrucciones del Synthesizer: analiza conversaciones y memorias existentes para generar operaciones (add/update/merge). Define qué información recordar y cómo.",
-  memory_selection: "Instrucciones del Router: selecciona las memorias más relevantes para inyectar en el contexto del agente según el prompt del usuario.",
-  memory_onboarding: "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales sobre el stack y la arquitectura. Alineado con el filtro de calidad del prompt de síntesis.",
+    "Genera títulos cortos y atractivos para las apps.",
+  app_name_pro: "Genera nombres funcionales y descriptivos al crear apps.",
+  auto_commit_message: "Genera mensajes de commit automáticos en formato Conventional Commits.",
+  memory_synthesis: "Instrucciones del Synthesizer: decide qué extraer de cada conversación y genera operaciones (add/update/merge).",
+  memory_selection: "Instrucciones del Router: selecciona qué memorias inyectar según el prompt del usuario.",
+  memory_onboarding: "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
+  ctx_language: "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
+  ctx_no_run_locally: "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
+  ctx_context7_docs: "Obliga al agente a consultar documentación fresca antes de integrar librerías.",
+  ctx_efficiency_triage: "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
+  ctx_task_management: "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
+  ctx_plan_mode: "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
 };

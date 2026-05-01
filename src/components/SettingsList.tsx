@@ -14,6 +14,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "Tema" },
   { id: "models-connectivity", label: "OpenRouter" },
   { id: "ai-behavior", label: "Agente" },
+  { id: "prompts-settings", label: "Prompts" },
   { id: "memory-settings", label: "Memoria" },
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },

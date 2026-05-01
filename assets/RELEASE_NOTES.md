@@ -25,6 +25,10 @@ Hemos recortado drásticamente el tiempo de arranque de la aplicación. Se ha op
 
 Cuando el agente termina de responder —y estás en otro chat o tienes la app en segundo plano— ahora recibes una **notificación nativa del sistema** con el nombre de la app y un resumen de la conversación. Por separado, puedes activar un **sonido de aviso** generado por síntesis de audio (sin archivos externos) que funciona incluso en macOS sin firmar, donde las notificaciones nativas fallan. Ambos controles son independientes y se configuran desde **Ajustes → Flujo de trabajo**. Hay un botón de **"Probar notificación"** en el menú de ajustes para verificar que todo suena bien.
 
+## Todos los prompts en un solo sitio
+
+La configuración de prompts deja de vivir en una pantalla separada y ahora es una **sección más dentro de Ajustes**, al mismo nivel que Agente, Memoria o Integraciones. Además, las instrucciones de contexto que el agente recibe en cada mensaje —idioma, eficiencia, modo plan, gestión de tareas— ya no están fijas en el código: son **prompts editables y restaurables** como cualquier otro. Si quieres que el agente se comporte distinto, lo cambias ahí. De paso, se han retirado prompts internos que ya no se usaban para mantener la lista limpia.
+
 ## Correcciones y ajustes
 
 - Nuevo botón **\"Aceptar plan\"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.

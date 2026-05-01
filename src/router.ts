@@ -10,7 +10,6 @@ import { settingsRoute } from "./routes/settings";
 import { workspaceRoute } from "./routes/workspace";
 
 import { settingsIndexRoute } from "./routes/settings/index";
-import { promptsSettingsRoute } from "./routes/settings/prompts";
 import { selectorsPlaygroundRoute } from "./routes/settings/selectors-playground";
 
 const routeTree = rootRoute.addChildren([
@@ -20,7 +19,7 @@ const routeTree = rootRoute.addChildren([
   chatRoute,
   appDetailsRoute,
   workspaceRoute,
-  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, selectorsPlaygroundRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, selectorsPlaygroundRoute]),
 ]);
 
 import { useNavigate } from "@tanstack/react-router";
