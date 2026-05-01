@@ -33,7 +33,7 @@ const logger = log.scope("memory_context");
 const ROUTER_INPUT_LIMIT = 300;
 
 /** Default max memories the Router can select */
-const DEFAULT_MAX_SELECTION = 10;
+const DEFAULT_MAX_SELECTION = 20;
 
 /** Default model for memory selection (ultralight) */
 const DEFAULT_SELECTION_MODEL = "mistralai/devstral-small";
