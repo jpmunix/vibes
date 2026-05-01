@@ -29,6 +29,10 @@ Cuando el agente termina de responder —y estás en otro chat o tienes la app e
 
 La configuración de prompts deja de vivir en una pantalla separada y ahora es una **sección más dentro de Ajustes**, al mismo nivel que Agente, Memoria o Integraciones. Además, las instrucciones de contexto que el agente recibe en cada mensaje —idioma, eficiencia, modo plan, gestión de tareas— ya no están fijas en el código: son **prompts editables y restaurables** como cualquier otro. Si quieres que el agente se comporte distinto, lo cambias ahí. De paso, se han retirado prompts internos que ya no se usaban para mantener la lista limpia.
 
+## Crea apps completas desde el agente
+
+Al crear un workspace nuevo, el primer chat arranca con **los mismos selectores que la pantalla de crear app**: elige plantilla (React, Express), sistema de diseño (marca, personalizado o generado desde captura) y esfuerzo de razonamiento antes de escribir tu primera instrucción. Al enviar ese mensaje fundacional, el agente **instala el DESIGN.md, aplica la plantilla y empieza a generar todo directamente en el chat**, sin abrir ventanas adicionales. Una vez enviado el primer mensaje, los selectores desaparecen y el chat funciona con normalidad.
+
 ## Correcciones y ajustes
 
 - Nuevo botón **\"Aceptar plan\"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.
