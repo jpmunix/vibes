@@ -6,15 +6,21 @@
  * 2. If no session or invalid → show LoginScreen
  * 3. If session valid → render children (the app)
  *
+ * Performance optimization: If a cached session exists in localStorage,
+ * the app renders immediately without waiting for remote verification.
+ * The verifySession IPC call runs in the background and silently updates
+ * the session if needed.
+ *
  * Logout anywhere in the app → clears session → AuthGate shows LoginScreen again.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useAtom } from "jotai";
 import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
 import { LoginScreen } from "./LoginScreen";
 import { WindowsControls } from "./WindowsControls";
+import { MainWindowSkeleton } from "./skeletons";
 
 // Apply the user's saved theme immediately (before ThemeProvider loads inside the app)
 function applyEarlyTheme() {
@@ -23,6 +29,18 @@ function applyEarlyTheme() {
     const isDark = savedTheme === "dark" || (savedTheme !== "light" && prefersDark);
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(isDark ? "dark" : "light");
+}
+
+/**
+ * Check synchronously (no async, no useEffect) whether the user has a cached
+ * session in localStorage. This runs during the first render cycle so we can
+ * skip the loading spinner for returning users.
+ */
+function hasCachedSession(): boolean {
+    return (
+        !!localStorage.getItem("vibes_user_id") &&
+        !!localStorage.getItem("vibes_session_token")
+    );
 }
 
 interface AuthGateProps {
@@ -34,6 +52,11 @@ export function AuthGate({ children }: AuthGateProps) {
     const [isLoading, setIsLoading] = useAtom(authLoadingAtom);
     // Gate: prevents the logout-watcher from firing during initial hydration
     const hasInitialized = useRef(false);
+
+    // Fast path: if the user has a cached session in localStorage, we can
+    // skip the loading state entirely and render the app immediately.
+    // The remote verifySession still runs in background to sync settings.
+    const cachedSessionRef = useRef(hasCachedSession());
 
 
     // Apply dark/light theme immediately (before ThemeProvider loads)
@@ -94,18 +117,19 @@ export function AuthGate({ children }: AuthGateProps) {
         }
     }, [user, isLoading]);
 
-    // Loading state — show splash
-    if (isLoading) {
+    // Loading state — show skeleton (but skip if we have a cached session,
+    // since the app can render immediately while verifySession runs in background)
+    if (isLoading && !cachedSessionRef.current) {
         return (
             <>
                 <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
-                <AuthSplash />
+                <MainWindowSkeleton />
             </>
         );
     }
 
     // Not authenticated — show login screen
-    if (!user) {
+    if (!user && !cachedSessionRef.current) {
         return (
             <>
                 <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
@@ -116,21 +140,7 @@ export function AuthGate({ children }: AuthGateProps) {
         );
     }
 
-    // Authenticated — render application
+    // Authenticated (or cached session exists) — render application
     return <>{children}</>;
 }
 
-/**
- * Splash screen shown while verifying the session on app launch.
- * Uses inline styles for immediate rendering (no CSS deps).
- */
-function AuthSplash() {
-    return (
-        <div className="flex flex-col items-center justify-center h-screen w-full bg-background app-region-drag">
-            <div className="w-12 h-12 border-3 border-border border-t-primary rounded-full animate-spin" />
-            <p className="mt-5 text-muted-foreground text-sm font-medium">
-                Cargando...
-            </p>
-        </div>
-    );
-}
