@@ -22,7 +22,7 @@ import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
 
-const DEFAULT_SETTINGS: UserSettings = {
+export const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: {
     name: FALLBACK_SELECTED_MODEL,
     provider: "openrouter",
@@ -86,6 +86,22 @@ let cachedSettings: UserSettings | null = null;
 /** @internal — only for testing. Clears the in-memory cache so the next readSettings() re-reads from disk. */
 export function resetSettingsCache() {
   cachedSettings = null;
+}
+
+/**
+ * Nuke the entire settings file and replace it with factory defaults.
+ * Used on logout to guarantee zero credential leakage between users.
+ * Unlike writeSettings() this does NOT merge — it writes from scratch.
+ */
+export function resetSettingsToDefaults(): void {
+  try {
+    const filePath = getSettingsFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SETTINGS, null, 2));
+    cachedSettings = { ...DEFAULT_SETTINGS };
+    logger.info("Settings reset to factory defaults");
+  } catch (error) {
+    logger.error("Error resetting settings to defaults:", error);
+  }
 }
 
 export function getSettingsFilePath(): string {

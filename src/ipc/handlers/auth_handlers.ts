@@ -11,7 +11,7 @@ import { authContracts } from "../types/auth";
 import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import type { VibesUserDto } from "../types/auth";
-import { writeSettings } from "../../main/settings";
+import { writeSettings, resetSettingsToDefaults } from "../../main/settings";
 import { forceSyncRemoteSettingsToLocal } from "./settings_handlers";
 
 const logger = log.scope("auth-handlers");
@@ -276,11 +276,8 @@ export function registerAuthHandlers(): void {
             .set({ sessionToken: null })
             .where(eq(remoteSchema.users.id, input.userId));
 
-        // Clear locally
-        writeSettings({
-            userId: undefined,
-            sessionToken: undefined,
-        });
+        // Nuke local settings to factory defaults — zero credential leakage
+        resetSettingsToDefaults();
 
         logger.info(`User logged out: ${input.userId}`);
     });
