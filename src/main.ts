@@ -30,6 +30,7 @@ import {
   startPerformanceMonitoring,
   stopPerformanceMonitoring,
 } from "./utils/performance_monitor";
+import { shutdownOpenCode } from "./ipc/handlers/opencode_adapter";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
@@ -722,6 +723,7 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
+  shutdownOpenCode();
   stopPerformanceMonitoring();
   writeSettings({ isRunning: false });
 });
