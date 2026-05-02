@@ -463,6 +463,13 @@ export const systemContracts = {
     input: z.void(),
     output: z.string(),
   }),
+
+  // Send a console log entry to the chat window that owns this appId
+  sendConsoleLogToChat: defineContract({
+    channel: "system:send-console-log-to-chat",
+    input: z.object({ appId: z.number(), formattedLog: z.string() }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -478,6 +485,11 @@ export const systemEvents = {
   forceCloseDetected: defineEvent({
     channel: "force-close-detected",
     payload: ForceCloseDetectedPayloadSchema,
+  }),
+
+  consoleLogToChat: defineEvent({
+    channel: "console-log-to-chat",
+    payload: z.object({ appId: z.number(), formattedLog: z.string() }),
   }),
 } as const;
 

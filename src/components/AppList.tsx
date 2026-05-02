@@ -89,9 +89,6 @@ export function AppList({ show }: { show?: boolean }) {
       case "apps:new":
         handleNewApp();
         break;
-      case "apps:empty":
-        setIsEmptyAppDialogOpen(true);
-        break;
       case "apps:import":
         // Trigger the import button programmatically via a custom event
         window.dispatchEvent(new CustomEvent("trigger-import-app"));
@@ -608,9 +605,9 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>¿Cerrar workspace "{deleteAppName}"?</DialogTitle>
+            <DialogTitle>¿Cerrar aplicación "{deleteAppName}"?</DialogTitle>
             <DialogDescription>
-              El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
+              La aplicación se desvinculará de Vibes. Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -648,9 +645,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando...
                 </>
               ) : deleteFiles ? (
-                "Eliminar workspace y archivos"
+                "Eliminar aplicación y archivos"
               ) : (
-                "Cerrar workspace"
+                "Cerrar aplicación"
               )}
             </Button>
           </DialogFooter>
@@ -667,12 +664,12 @@ export function AppList({ show }: { show?: boolean }) {
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>
-              ¿Cerrar {selectedIds.size} workspace{selectedIds.size !== 1 ? "s" : ""}?
+              ¿Cerrar {selectedIds.size} aplicación{selectedIds.size !== 1 ? "es" : ""}?
             </DialogTitle>
             <DialogDescription>
               {selectedIds.size === 1
-                ? "El workspace se desvinculará de Vibes."
-                : `Los ${selectedIds.size} workspaces se desvincularán de Vibes.`}
+                ? "La aplicación se desvinculará de Vibes."
+                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
               {" "}Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
@@ -732,9 +729,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando... {bulkProgress}%
                 </>
               ) : bulkDeleteFiles ? (
-                `Eliminar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""} y archivos`
+                `Eliminar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""} y archivos`
               ) : (
-                `Cerrar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""}`
+                `Cerrar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""}`
               )}
             </Button>
           </DialogFooter>

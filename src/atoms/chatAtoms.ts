@@ -39,7 +39,7 @@ export const pendingMessageQueueByIdAtom = atom<Map<number, PendingQueuedMessage
 // Quoted messages for the reply/cite feature (supports multiple)
 export interface QuotedMessage {
   id: number;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "console";
   content: string; // Plain text excerpt (already stripped)
 }
 export const quotedMessagesAtom = atom<QuotedMessage[]>([]);

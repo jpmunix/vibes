@@ -840,6 +840,40 @@ export function registerWindowHandlers() {
     logger.info(`navigateMainWindow: sent navigation to ${route}`);
   });
 
+  // Route a console log entry to the chat window that owns this appId
+  createTypedHandler(systemContracts.sendConsoleLogToChat, async (_event, { appId, formattedLog }) => {
+    const payload = { appId, formattedLog };
+
+    // 1. Prefer the dedicated chat window for this appId (if open)
+    const chatWin = chatWindows.get(appId);
+    if (chatWin && !chatWin.isDestroyed()) {
+      chatWin.webContents.send("console-log-to-chat", payload);
+      return;
+    }
+
+    // 2. Fall back to the main window
+    const trackedWindows = new Set<number>();
+    for (const w of chatWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of databaseWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of gitWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of consoleWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of codeWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of messageWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
+    if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
+
+    const mainWindow = BrowserWindow.getAllWindows().find(
+      (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
+    );
+
+    if (mainWindow) {
+      mainWindow.webContents.send("console-log-to-chat", payload);
+    } else {
+      logger.warn("sendConsoleLogToChat: no target window found for appId " + appId);
+    }
+  });
+
   // Memory viewer window — dedicated diagnostic panel for agent memories
   createTypedHandler(systemContracts.openMemoryWindow, async (event, { appId, theme, themeIntensity }) => {
     const existing = memoryWindows.get(appId);

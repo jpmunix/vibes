@@ -16,6 +16,7 @@ import {
   Plus,
   FolderOpen,
   FolderPlus,
+  FolderX,
   X,
   Trash2,
   MoreVertical,
@@ -964,10 +965,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const lastSavedExpandedRef = useRef<string | null>(null);
   const lastSavedSelectionRef = useRef<string | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
-  const [wsMenuOpen, setWsMenuOpen] = useState(false);
-  const [wsMenuBtnPos, setWsMenuBtnPos] = useState<{ top: number; left: number } | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
-  const wsMenuBtnRef = useRef<HTMLButtonElement>(null);
 
   // Listen for sidebar action triggers from TopNavbar dropdown
   const sidebarAction = useAtomValue(sidebarActionAtom);
@@ -1034,6 +1032,81 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     }
   }, [setApps, archivedApps, queryClient]);
 
+  // ── Bulk close state ──
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkDeleteFiles, setBulkDeleteFiles] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+
+  const enterSelectionMode = useCallback(() => {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+  }, []);
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((appId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(appId)) next.delete(appId);
+      else next.add(appId);
+      return next;
+    });
+  }, []);
+
+  const selectAllWs = useCallback(() => {
+    setSelectedIds(new Set(apps.map((a) => a.id)));
+  }, [apps]);
+
+  const deselectAllWs = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkClose = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDialogOpen(true);
+  }, [selectedIds]);
+
+  const handleConfirmBulkClose = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBulkDeleting(true);
+      setBulkProgress(0);
+      const ids = Array.from(selectedIds);
+      let completed = 0;
+      for (const appId of ids) {
+        await ipc.app.deleteApp({ appId, deleteFiles: bulkDeleteFiles });
+        completed++;
+        setBulkProgress(Math.round((completed / ids.length) * 100));
+      }
+      setIsBulkDialogOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      await refreshApps();
+      if (selectedAppId !== null && ids.includes(selectedAppId)) {
+        setSelectedAppId(null);
+        setSelectedChatId(null);
+        navigate({ to: "/workspace", search: {} });
+      }
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteFiles(false);
+      setBulkProgress(0);
+    }
+  }, [selectedIds, bulkDeleteFiles, refreshApps, selectedAppId, setSelectedAppId, setSelectedChatId, navigate]);
+
+  const selectedAppNames = useMemo(
+    () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
+    [apps, selectedIds],
+  );
+
   // Empty app dialog state
   const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
   const [emptyAppName, setEmptyAppName] = useState("");
@@ -1047,8 +1120,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     lastActionRef2.current = sidebarAction.ts;
     if (sidebarAction.action === "workspace:open-folder") {
       handleOpenFolder();
-    } else if (sidebarAction.action === "workspace:empty-app") {
+    } else if (sidebarAction.action === "workspace:new-project") {
       setIsEmptyAppDialogOpen(true);
+    } else if (sidebarAction.action === "workspace:search") {
+      setSearchVisible(v => !v);
+    } else if (sidebarAction.action === "workspace:bulk-close") {
+      enterSelectionMode();
     }
   }, [sidebarAction]);
 
@@ -1058,7 +1135,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
     try {
       setIsCreatingEmptyApp(true);
-      const result = await createApp({ name: emptyAppName.trim(), empty: true });
+      const result = await createApp({ name: emptyAppName.trim() });
 
       setSelectedAppId(result.app.id);
       setEmptyAppName("");
@@ -1481,13 +1558,60 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           cursor: not-allowed;
           transform: none;
         }
+
+        /* ── Bulk selection toolbar ── */
+        .bulk-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: var(--sidebar);
+          border-top: 1px solid var(--border);
+          animation: bulk-toolbar-in 0.2s ease-out;
+          overflow: hidden;
+        }
+        @keyframes bulk-toolbar-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .bulk-toolbar-count {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--primary);
+          margin-right: auto;
+          white-space: nowrap;
+        }
       `}</style>
 
       <SidebarGroup
-        className="overflow-y-auto h-[calc(100vh-112px)]"
+        className={`overflow-y-auto overflow-x-hidden ${selectionMode ? "h-[calc(100vh-112px-52px)]" : "h-[calc(100vh-112px)]"}`}
         data-testid="workspace-list-container"
       >
-        
+        {/* ── Selection mode header bar ── */}
+        {selectionMode && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+            <FolderX size={15} className="text-primary shrink-0" />
+            <span className="typo-caption font-semibold text-primary">Seleccionar para cerrar</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                className="typo-micro text-muted-foreground hover:text-primary cursor-pointer transition-colors px-1.5 py-0.5 rounded"
+                onClick={selectedIds.size === apps.length ? deselectAllWs : selectAllWs}
+              >
+                {selectedIds.size === apps.length ? "Ninguno" : "Todos"}
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
+                onClick={exitSelectionMode}
+                title="Cancelar"
+              >
+                <X size={14} className="text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <SidebarGroupContent>
           <div className="flex flex-col gap-3 px-2">
 
@@ -1555,65 +1679,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             )}
 
             {/* ── Workspaces section ── */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 group/ws-header">
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
               <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
                 Workspaces
               </span>
-              <div className="relative ml-auto">
-                <button
-                  ref={wsMenuBtnRef}
-                  type="button"
-                  className="p-1 rounded-md hover:bg-sidebar-accent/80 text-muted-foreground/40 hover:text-foreground/70 transition-all cursor-pointer"
-                  title="Opciones"
-                  onClick={() => {
-                    if (wsMenuOpen) {
-                      setWsMenuOpen(false);
-                      setWsMenuBtnPos(null);
-                    } else {
-                      const rect = wsMenuBtnRef.current?.getBoundingClientRect();
-                      if (rect) setWsMenuBtnPos({ top: rect.bottom + 4, left: rect.right - 192 });
-                      setWsMenuOpen(true);
-                    }
-                  }}
-                >
-                  <MoreVertical size={14} />
-                </button>
-                {wsMenuOpen && wsMenuBtnPos && createPortal(
-                  <>
-                    <div className="fixed inset-0 z-[998]" onClick={() => { setWsMenuOpen(false); setWsMenuBtnPos(null); }} />
-                    <div
-                      className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
-                      style={{ top: wsMenuBtnPos.top, left: wsMenuBtnPos.left }}
-                    >
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); setSearchVisible(v => !v); }}
-                      >
-                        <Search size={14} className="opacity-60 shrink-0" />
-                        <span>Buscar</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); setIsEmptyAppDialogOpen(true); }}
-                      >
-                        <FolderPlus size={14} className="opacity-60 shrink-0" />
-                        <span>Nuevo workspace</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); handleOpenFolder(); }}
-                      >
-                        <FolderOpen size={14} className="opacity-60 shrink-0" />
-                        <span>Abrir workspace</span>
-                      </button>
-                    </div>
-                  </>,
-                  document.body
-                )}
-              </div>
             </div>
 
             {/* Search (toggled via menu) */}
@@ -1643,6 +1712,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               </div>
             )}
 
+
             {/* Apps list */}
             {loading ? (
               <div className="py-3 px-2 typo-micro opacity-60 text-center">
@@ -1659,8 +1729,24 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             ) : (
               <div className="mt-1">
                 {filteredApps.map((app) => (
-                  <WorkspaceAppItem
-                    key={app.id}
+                  <div key={app.id} className="relative">
+                    {selectionMode && (
+                      <button
+                        type="button"
+                        className="absolute left-0 top-0 bottom-0 z-30 flex items-center justify-center w-full cursor-pointer bg-transparent hover:bg-primary/5 rounded-xl transition-colors"
+                        onClick={() => toggleSelect(app.id)}
+                      >
+                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                          selectedIds.has(app.id) ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        }`}>
+                          {selectedIds.has(app.id) && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                        </div>
+                      </button>
+                    )}
+                    <div className={selectionMode ? "pointer-events-none opacity-75" : ""}>
+                      <WorkspaceAppItem
                     app={app}
                     isExpanded={expandedApps.has(app.id)}
                     onToggle={handleToggleApp}
@@ -1682,6 +1768,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -1743,6 +1831,33 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
         </SidebarGroupContent>
       </SidebarGroup>
+
+          {/* ── Bulk selection bottom toolbar ── */}
+          {selectionMode && (
+            <div className="bulk-toolbar">
+              <span className="bulk-toolbar-count">
+                {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exitSelectionMode}
+                className="h-7 text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkClose}
+                disabled={selectedIds.size === 0}
+                className="h-7 text-xs flex items-center gap-1"
+              >
+                <FolderX size={13} />
+                Cerrar ({selectedIds.size})
+              </Button>
+            </div>
+          )}
 
       {/* Close Folder Confirmation Dialog — portal to escape sidebar overflow */}
       {/* Close workspace dialog */}
@@ -1868,21 +1983,21 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         </DialogContent>
       </Dialog>
 
-      {/* Create empty workspace dialog */}
+      {/* Create new project dialog */}
       <Dialog open={isEmptyAppDialogOpen} onOpenChange={(open) => { if (!open) { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); } }}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Crear workspace</DialogTitle>
+            <DialogTitle>Nuevo proyecto</DialogTitle>
           </DialogHeader>
           <p className="typo-caption text-muted-foreground">
-            Se creará un workspace vacío con git inicializado, listo para usar.
+            Se creará un proyecto con el scaffold del template seleccionado, listo para usar.
           </p>
           <form onSubmit={handleCreateEmptyApp}>
             <input
               type="text"
               value={emptyAppName}
               onChange={(e) => setEmptyAppName(e.target.value)}
-              placeholder="Nombre del workspace..."
+              placeholder="Nombre del proyecto..."
               disabled={isCreatingEmptyApp}
               autoFocus
               className={`w-full mb-2 bg-transparent border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30 ${
@@ -1891,7 +2006,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             />
             {emptyAppNameCheck?.exists && (
               <p className="typo-micro text-destructive mb-2">
-                Ya existe un workspace con este nombre
+                Ya existe un proyecto con este nombre
               </p>
             )}
             <DialogFooter className="mt-3">
@@ -1913,11 +2028,91 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     Creando...
                   </>
                 ) : (
-                  "Crear workspace"
+                  "Crear proyecto"
                 )}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk close confirmation dialog ── */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={(open) => {
+        if (!isBulkDeleting) {
+          setIsBulkDialogOpen(open);
+          if (!open) setBulkDeleteFiles(false);
+        }
+      }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>
+              ¿Cerrar {selectedIds.size} workspace{selectedIds.size !== 1 ? "s" : ""}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="typo-caption text-muted-foreground">
+            {selectedIds.size === 1
+              ? "El workspace se desvinculará de Vibes."
+              : `Los ${selectedIds.size} workspaces se desvincularán de Vibes.`}
+            {" "}Los archivos en disco se conservarán.
+          </p>
+
+          {/* List selected apps */}
+          <div className="max-h-[160px] overflow-y-auto bg-muted rounded-lg p-2 my-2">
+            {selectedAppNames.map((name) => (
+              <div key={name} className="text-sm py-0.5 text-foreground/85">• {name}</div>
+            ))}
+          </div>
+
+          <div className="flex items-center space-x-2 py-1">
+            <input
+              type="checkbox"
+              id="ws-bulk-delete-files-check"
+              checked={bulkDeleteFiles}
+              onChange={(e) => setBulkDeleteFiles(e.target.checked)}
+              disabled={isBulkDeleting}
+              className="rounded border-border"
+            />
+            <label htmlFor="ws-bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+              Eliminar también los archivos del disco
+            </label>
+          </div>
+
+          {/* Progress bar during deletion */}
+          {isBulkDeleting && (
+            <div className="h-[3px] bg-muted rounded-sm overflow-hidden mt-2">
+              <div
+                className="h-full bg-primary rounded-sm transition-[width] duration-300"
+                style={{ width: `${bulkProgress}%` }}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBulkDialogOpen(false)}
+              disabled={isBulkDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant={bulkDeleteFiles ? "destructive" : "default"}
+              onClick={handleConfirmBulkClose}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 size={12} className="animate-spin mr-1.5" />
+                  Cerrando... {bulkProgress}%
+                </>
+              ) : bulkDeleteFiles ? (
+                `Eliminar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""} y archivos`
+              ) : (
+                `Cerrar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""}`
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

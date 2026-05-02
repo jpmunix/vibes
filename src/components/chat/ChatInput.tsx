@@ -281,7 +281,7 @@ export function ChatInput({
     if (quotedMessages.length > 0) {
       const quoteBlock = quotedMessages
         .map((q) => {
-          const roleLabel = q.role === "user" ? "Usuario" : "IA";
+          const roleLabel = q.role === "console" ? "Consola" : q.role === "user" ? "Usuario" : "IA";
           // Prefix EVERY line with > to form a proper markdown blockquote
           const quotedLines = q.content
             .split("\n")

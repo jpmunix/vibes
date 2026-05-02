@@ -2,7 +2,7 @@ import { StrictMode, useEffect } from "react";
 import { router } from "./router";
 import { RouterProvider } from "@tanstack/react-router";
 import { ipc } from "./ipc/types";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtomValue } from "jotai";
 import {
   pendingAgentConsentsAtom,
   pendingAskUsersAtom,
@@ -10,7 +10,9 @@ import {
   agentTodosByChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
+  quotedMessagesAtom,
 } from "./atoms/chatAtoms";
+import { selectedAppIdAtom } from "./atoms/appAtoms";
 import { queryKeys } from "./lib/queryKeys";
 import { useUpdateChecker } from "./hooks/useUpdateChecker";
 import { UpdateAvailableDialog } from "./components/UpdateAvailableDialog";
@@ -212,6 +214,27 @@ export default function AppRoot() {
     );
     return () => unsubscribe?.();
   }, []);
+
+  // Cross-window console log: when a console window sends a log to chat,
+  // the main process routes it here as a quote card (not raw text).
+  const setQuotedForConsole = useSetAtom(quotedMessagesAtom);
+  const currentAppIdForConsole = useAtomValue(selectedAppIdAtom);
+  useEffect(() => {
+    // @ts-ignore — using raw preload API for custom event
+    const unsubscribe = window.electron?.ipcRenderer?.on?.(
+      "console-log-to-chat",
+      (payload: { appId: number; formattedLog: string }) => {
+        if (payload.appId === currentAppIdForConsole) {
+          setQuotedForConsole((prev) => {
+            // Use timestamp as unique id to avoid duplicates
+            const id = Date.now();
+            return [...prev, { id, role: "console" as const, content: payload.formattedLog }];
+          });
+        }
+      },
+    );
+    return () => unsubscribe?.();
+  }, [currentAppIdForConsole, setQuotedForConsole]);
 
   // Agent problems updates - update the TanStack Query cache when the agent runs type checks
   useEffect(() => {

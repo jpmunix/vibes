@@ -26,6 +26,7 @@ interface ConsoleItemProps {
   typeFilter: string;
   getEntryKey: (entry: ConsoleEntry | undefined, index: number) => string;
   toggleExpanded: (key: string, index: number) => void;
+  appId: number | null;
 }
 
 const ConsoleItem = memo(
@@ -36,6 +37,7 @@ const ConsoleItem = memo(
     typeFilter,
     getEntryKey,
     toggleExpanded,
+    appId,
   }: ConsoleItemProps) => {
     if (!entry) {
       return <div />;
@@ -55,6 +57,7 @@ const ConsoleItem = memo(
           typeFilter={typeFilter}
           isExpanded={isExpanded}
           onToggleExpand={() => toggleExpanded(entryKey, index)}
+          appId={appId}
         />
       </div>
     );
@@ -289,10 +292,11 @@ export const Console = () => {
           typeFilter={typeFilter}
           getEntryKey={getEntryKey}
           toggleExpanded={toggleExpanded}
+          appId={selectedAppId}
         />
       );
     },
-    [filteredEntries, expandedEntries, typeFilter, getEntryKey, toggleExpanded],
+    [filteredEntries, expandedEntries, typeFilter, getEntryKey, toggleExpanded, selectedAppId],
   );
 
   const listHeight = containerHeight - (showFilters ? 60 : 0);
@@ -346,6 +350,7 @@ export const Console = () => {
                       typeFilter={typeFilter}
                       isExpanded={isExpanded}
                       onToggleExpand={() => toggleExpanded(entryKey)}
+                      appId={selectedAppId}
                     />
                   </div>
                 );

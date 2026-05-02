@@ -53,9 +53,10 @@ interface LogItemProps {
   typeFilter: string;
   getEntryKey: (entry: ConsoleEntry | undefined, index: number) => string;
   toggleExpanded: (key: string, index: number) => void;
+  appId: number;
 }
 
-const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, toggleExpanded }: LogItemProps) => {
+const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, toggleExpanded, appId }: LogItemProps) => {
   if (!entry) return <div />;
   const entryKey = getEntryKey(entry, index);
   const isExpanded = expandedEntries.has(entryKey);
@@ -70,6 +71,7 @@ const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, 
         typeFilter={typeFilter}
         isExpanded={isExpanded}
         onToggleExpand={() => toggleExpanded(entryKey, index)}
+        appId={appId}
       />
     </div>
   );
@@ -243,6 +245,7 @@ function LogsPanel({ appId }: { appId: number }) {
                 typeFilter={typeFilter}
                 getEntryKey={getEntryKey}
                 toggleExpanded={toggleExpanded}
+                appId={appId}
               />
             )}
             style={{ height: "100%" }}

@@ -35,6 +35,7 @@ import {
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
+    quotedMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
@@ -233,6 +234,25 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     }, [chatId, chats, loading]);
 
     useAppOutputSubscription();
+
+    // Cross-window console log: when a console window sends a log to this chat,
+    // the main process routes it here as a quote card via the appId.
+    const setQuotedForConsole = useSetAtom(quotedMessagesAtom);
+    useEffect(() => {
+        // @ts-ignore — using raw preload API for custom event
+        const unsubscribe = window.electron?.ipcRenderer?.on?.(
+            "console-log-to-chat",
+            (payload: { appId: number; formattedLog: string }) => {
+                if (payload.appId === appId) {
+                    setQuotedForConsole((prev) => {
+                        const id = Date.now();
+                        return [...prev, { id, role: "console" as const, content: payload.formattedLog }];
+                    });
+                }
+            },
+        );
+        return () => unsubscribe?.();
+    }, [appId, setQuotedForConsole]);
 
 
     // Set document.title so the native title bar shows app name

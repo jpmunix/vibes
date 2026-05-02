@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { useAtom } from "jotai";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
-import { X, Bot, User } from "@/components/ui/icons";
+import { X, Bot, User, Terminal } from "@/components/ui/icons";
 
 /**
  * QuotePreview — tarjetas de cita apiladas que aparecen encima del ChatInput.
@@ -20,10 +20,19 @@ export const QuotePreview = React.memo(function QuotePreview() {
     <div className="mx-3 mt-2.5 mb-2 flex flex-col gap-1.5">
       {quotedMessages.map((q) => {
         const isUser = q.role === "user";
+        const isConsole = q.role === "console";
         const excerpt =
           q.content.length > 160
             ? q.content.slice(0, 160) + "…"
             : q.content;
+
+        const roleLabel = isConsole
+          ? "Log de consola"
+          : isUser
+            ? "Mensaje del usuario"
+            : "Respuesta de la IA";
+
+        const RoleIcon = isConsole ? Terminal : isUser ? User : Bot;
 
         return (
           <div
@@ -35,13 +44,13 @@ export const QuotePreview = React.memo(function QuotePreview() {
 
             {/* Icon */}
             <div className="mt-0.5 shrink-0 text-primary/60">
-              {isUser ? <User size={12} /> : <Bot size={12} />}
+              <RoleIcon size={12} />
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0 space-y-0.5">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary/50">
-                {isUser ? "Mensaje del usuario" : "Respuesta de la IA"}
+                {roleLabel}
               </p>
               <p className="text-muted-foreground/80 leading-relaxed break-words line-clamp-3 whitespace-pre-line">
                 {excerpt}
