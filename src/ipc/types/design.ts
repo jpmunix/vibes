@@ -81,17 +81,6 @@ export const designContracts = {
       content: z.string().nullable(),
     }),
   }),
-
-  /** Read docs/SPECS.md from the project (returns null if missing) */
-  readSpecsMd: defineContract({
-    channel: "design:read-specs-md",
-    input: z.object({
-      appPath: z.string(),
-    }),
-    output: z.object({
-      content: z.string().nullable(),
-    }),
-  }),
 } as const;
 
 // =============================================================================

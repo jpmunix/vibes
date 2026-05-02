@@ -210,18 +210,6 @@ export function registerDesignHandlers() {
     }
   });
 
-  // ─── Read docs/SPECS.md from a project ──────────────────────────────────
-  createTypedHandler(designContracts.readSpecsMd, async (_, { appPath }) => {
-    try {
-      const fullAppPath = getVibesAppPath(appPath);
-      const specsMdPath = path.join(fullAppPath, "docs", "SPECS.md");
-      const content = await fsPromises.readFile(specsMdPath, "utf-8");
-      return { content };
-    } catch {
-      return { content: null };
-    }
-  });
-
   // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
   createTypedHandler(designContracts.generateFromScreenshot, async (_, { imageDataUrl, model }) => {
     logger.info(`[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`);

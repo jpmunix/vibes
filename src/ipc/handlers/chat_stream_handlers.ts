@@ -1396,10 +1396,20 @@ This conversation includes one or more image attachments. When the user uploads 
           // Load memories (app-specific + global) and inject as context instruction
           let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
           try {
+            // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
+            const priorMessages = (updatedChat.messages || [])
+              .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content)
+              .map((m: any) => ({
+                role: m.role as string,
+                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+              }))
+              .slice(-2); // last 2 prior messages (e.g. prev user + prev assistant)
+
             const memoryResult = await buildMemoryContext(
               updatedChat.app.id,
               currentUserId as string,
               userPrompt,
+              priorMessages.length > 0 ? priorMessages : undefined,
             );
             if (memoryResult.block) {
               contextInstructions.push(memoryResult.block);

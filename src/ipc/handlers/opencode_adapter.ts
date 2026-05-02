@@ -31,7 +31,6 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
 import { McpServer } from "../types/mcp";
-import { patchOpencodeJsonInstructions } from "./design_handlers";
 
 const logger = log.scope("opencode_adapter");
 
@@ -1326,29 +1325,66 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
-    // ── Write dynamic instructions to project dir (same pattern as DESIGN.md) ──
-    // We write docs/vibes-context.md in the project and register it in the
-    // project's opencode.json instructions array. OpenCode reads this natively.
+    // ── Append dynamic instructions to AGENTS.md (replaces old SPECS.md) ──
+    // We append a delimited section at the end of the project's AGENTS.md.
+    // OpenCode reads AGENTS.md natively — no opencode.json registration needed.
     {
         const fs = require("fs");
         const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
             ? options.contextInstructions.join("\n\n")
             : "";
-        const docsDir = path.join(projectDir, "docs");
-        const instrFilePath = path.join(docsDir, "SPECS.md");
+
+        const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
+        const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
+        const agentsMdPath = path.join(projectDir, "AGENTS.md");
 
         try {
-            if (!fs.existsSync(docsDir)) {
-                fs.mkdirSync(docsDir, { recursive: true });
+            // 1. Read existing AGENTS.md (or start empty)
+            let existing = "";
+            if (fs.existsSync(agentsMdPath)) {
+                existing = fs.readFileSync(agentsMdPath, "utf-8");
             }
-            fs.writeFileSync(instrFilePath, instrContent, "utf-8");
 
-            // Register in project's opencode.json (idempotent — same as DESIGN.md)
-            await patchOpencodeJsonInstructions(projectDir, "docs/SPECS.md");
+            // 2. Strip old Vibes section if present
+            const startIdx = existing.indexOf(VIBES_START);
+            const endIdx = existing.indexOf(VIBES_END);
+            let baseContent = existing;
+            if (startIdx !== -1 && endIdx !== -1) {
+                baseContent = existing.substring(0, startIdx).trimEnd()
+                    + existing.substring(endIdx + VIBES_END.length);
+            }
 
-            logger.info(`${LP} 📋 Instructions written to ${instrFilePath} (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
+            // 3. Build new AGENTS.md = original content + Vibes section
+            const vibesSection = instrContent
+                ? `\n\n${VIBES_START}\n${instrContent}\n${VIBES_END}\n`
+                : "";
+            const finalContent = baseContent.trimEnd() + vibesSection;
+
+            fs.writeFileSync(agentsMdPath, finalContent, "utf-8");
+            logger.info(`${LP} 📋 Context written to AGENTS.md (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
+
+            // 4. Cleanup: delete stale docs/SPECS.md if it exists
+            const specsPath = path.join(projectDir, "docs", "SPECS.md");
+            if (fs.existsSync(specsPath)) {
+                fs.unlinkSync(specsPath);
+                logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
+            }
+
+            // 5. Remove docs/SPECS.md from opencode.json instructions[] if registered
+            try {
+                const ocJsonPath = path.join(projectDir, "opencode.json");
+                if (fs.existsSync(ocJsonPath)) {
+                    const ocJson = JSON.parse(fs.readFileSync(ocJsonPath, "utf-8"));
+                    if (Array.isArray(ocJson.instructions) && ocJson.instructions.includes("docs/SPECS.md")) {
+                        ocJson.instructions = ocJson.instructions.filter((i: string) => i !== "docs/SPECS.md");
+                        fs.writeFileSync(ocJsonPath, JSON.stringify(ocJson, null, 2), "utf-8");
+                        logger.info(`${LP} 🗑️ Removed docs/SPECS.md from opencode.json instructions`);
+                    }
+                }
+            } catch { /* ignore opencode.json cleanup errors */ }
+
         } catch (ctxErr: any) {
-            logger.warn(`${LP} Failed to write instructions file: ${ctxErr.message}`);
+            logger.warn(`${LP} Failed to write AGENTS.md context: ${ctxErr.message}`);
         }
     }
 

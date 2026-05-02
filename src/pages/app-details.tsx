@@ -367,15 +367,6 @@ export default function AppDetailsPage() {
   });
   const hasAgentsMd = !!agentsData?.content;
 
-  // Check if docs/SPECS.md exists for download option
-  const { data: specsData } = useQuery({
-    queryKey: ["specs-md-read", currentAppPath],
-    queryFn: () => ipc.design.readSpecsMd({ appPath: selectedApp.path }),
-    enabled: !!currentAppPath,
-    staleTime: 30_000,
-  });
-  const hasSpecsMd = !!specsData?.content;
-
   const handleDownloadDesign = () => {
     if (!designData?.content) return;
     const blob = new Blob([designData.content], { type: "text/markdown" });
@@ -394,17 +385,6 @@ export default function AppDetailsPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download = "AGENTS.md";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadSpecsMd = () => {
-    if (!specsData?.content) return;
-    const blob = new Blob([specsData.content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "SPECS.md";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -478,7 +458,7 @@ export default function AppDetailsPage() {
                 </Button>
               </div>
 
-              {(hasDesignMd || hasAgentsMd || hasSpecsMd) && (
+              {(hasDesignMd || hasAgentsMd) && (
                 <div className="flex gap-2 justify-center flex-wrap">
                   {hasDesignMd && (
                     <Button
@@ -500,17 +480,6 @@ export default function AppDetailsPage() {
                     >
                       <Download className="h-3.5 w-3.5" />
                       AGENTS.md
-                    </Button>
-                  )}
-                  {hasSpecsMd && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
-                      onClick={handleDownloadSpecsMd}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      SPECS.md
                     </Button>
                   )}
                 </div>

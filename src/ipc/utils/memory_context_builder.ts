@@ -74,6 +74,7 @@ export async function buildMemoryContext(
     appId: number,
     userId: string,
     userPrompt?: string,
+    recentMessages?: { role: string; content: string }[],
 ): Promise<MemoryContextResult> {
     const EMPTY_RESULT: MemoryContextResult = { block: "", memories: [] };
     try {
@@ -130,7 +131,7 @@ export async function buildMemoryContext(
         // 2. If we have a prompt AND an API key, use the LLM Router
         let selectedRows = rows;
         if (userPrompt && hasOpenRouterApiKey() && rows.length > 3) {
-            const routerSelected = await routerSelect(rows, userPrompt, settings, userId, appId);
+            const routerSelected = await routerSelect(rows, userPrompt, settings, userId, appId, recentMessages);
             if (routerSelected && routerSelected.length > 0) {
                 selectedRows = routerSelected;
 
@@ -220,6 +221,7 @@ async function routerSelect(
     settings: any,
     userId: string,
     appId: number,
+    recentMessages?: { role: string; content: string }[],
 ): Promise<MemoryRow[] | null> {
     try {
         const baseModel = settings.memoriesRouterModelV2
@@ -236,14 +238,36 @@ async function routerSelect(
         const selectionPrompt = getEffectivePrompt("memory_selection", settings)
             .replace("__NUM_MEMORIES__", String(maxSelection));
 
+        // Build conversation context — use up to 3 recent messages for better selection
+        let conversationContext: string;
+        if (recentMessages && recentMessages.length > 0) {
+            const trail = recentMessages.map(m => {
+                const label = m.role === "user" ? "Usuario" : "Asistente";
+                // Truncate long assistant responses to avoid bloating router input
+                const content = m.content.length > 500 ? m.content.slice(0, 500) + "..." : m.content;
+                return `[${label}]: ${content}`;
+            }).join("\n");
+            conversationContext = [
+                "## Contexto de la Conversación (últimos mensajes):",
+                trail,
+                "",
+                "## Prompt Actual del Usuario:",
+                userPrompt,
+            ].join("\n");
+        } else {
+            conversationContext = [
+                "## Prompt del Usuario:",
+                userPrompt,
+            ].join("\n");
+        }
+
         const userMessage = [
             "# CONTEXTO DE EVALUACIÓN",
             "",
             `## Memorias Disponibles (${memories.length}):`,
             memoryList,
             "",
-            "## Prompt del Usuario:",
-            userPrompt,
+            conversationContext,
         ].join("\n");
 
         // Dump clean prompts to /tmp/opencode/{app}.md for playground testing
