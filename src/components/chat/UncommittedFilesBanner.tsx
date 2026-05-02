@@ -144,12 +144,9 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
     return null;
   }
 
-  // In agent/plan mode the git icon (red dot) already signals pending changes — skip the banner.
-  // Only show it in "ask" (chat) mode where the user manages commits manually.
-  const chatMode = settings?.selectedChatMode ?? "agent";
-  if (chatMode !== "ask") {
-    return null;
-  }
+  // The git icon (red dot) already signals pending changes — skip the intrusive banner
+  // in all modes. Users can review/commit via the git button in the header.
+  return null;
 
   if (!appId || isLoading || !hasUncommittedFiles) {
     return null;

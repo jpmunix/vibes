@@ -2,6 +2,7 @@ import React from "react";
 import type { Message } from "@/ipc/types";
 import { ipc } from "@/ipc/types";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
+import { MemoryBadge } from "./MemoryBadge";
 import {
   VibesMarkdownParser,
 } from "./VibesMarkdownParser";
@@ -49,6 +50,7 @@ import {
   quotedMessagesAtom,
   isZenModeAtom,
   pendingAskUsersAtom,
+  selectedMemoriesByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -151,6 +153,23 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const userAtomValue = useAtomValue(userAtom);
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
+  const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
+  const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
+
+  // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
+  const resolvedMemories = useMemo(() => {
+    if (isLastMessage && selectedMemories && selectedMemories.length > 0) {
+      return selectedMemories;
+    }
+    if (message.role === "assistant" && (message as any).injectedMemories) {
+      const raw = (message as any).injectedMemories;
+      if (typeof raw === "string") {
+        try { return JSON.parse(raw); } catch { return undefined; }
+      }
+      if (Array.isArray(raw)) return raw;
+    }
+    return undefined;
+  }, [isLastMessage, selectedMemories, message]);
 
   const activeUser = user || userAtomValue;
 
@@ -473,8 +492,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   return (
     <div className="flex justify-center">
-      <div className="mt-4 mb-4 w-full max-w-4xl mx-auto group">
-        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "var(--bubble-width, 65%)" }}>
+        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`} style={isUser ? { marginLeft: '100px' } : undefined}>
           {/* Avatar (hidden for system messages) */}
           {!isSystem && (
           <div className="flex-shrink-0 mt-1">
@@ -519,7 +538,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                   aria-label="Copiar mensaje"
                 >
                   {userCopied ? (
-                    <Check size={13} className="text-green-500" />
+                    <Check size={13} className="text-primary" />
                   ) : (
                     <Copy size={13} />
                   )}
@@ -620,10 +639,15 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                           aria-label="Copiar respuesta"
                         >
-                          {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                          {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                         </button>
                         {messageCost && (
                           <span className="typo-micro ml-1">{messageCost}</span>
+                        )}
+                        {resolvedMemories && resolvedMemories.length > 0 && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <MemoryBadge memories={resolvedMemories} />
+                          </div>
                         )}
                         {message.createdAt && (
                           <span className="typo-micro ml-1 flex items-center gap-1">
@@ -679,10 +703,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                       aria-label="Copiar respuesta"
                     >
-                      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                      {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                     </button>
                     {messageCost && (
                       <span className="typo-micro ml-1">{messageCost}</span>
+                    )}
+                    {resolvedMemories && resolvedMemories.length > 0 && (
+                      <MemoryBadge memories={resolvedMemories} />
                     )}
                     {message.createdAt && (
                       <span className="typo-micro ml-1 flex items-center gap-1">
@@ -749,6 +776,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             </div>
             </div>{/* end relative wrapper */}
           </div>
+          {/* Invisible spacer to balance avatar width — keeps content centered */}
+          {!isSystem && <div className="w-7 flex-shrink-0" />}
         </div>
       </div>
     </div>

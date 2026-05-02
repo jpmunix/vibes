@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, X, FolderX } from "@/components/ui/icons";
+import { Loader2, X, FolderX, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import {
   SidebarGroup,
@@ -18,7 +18,7 @@ import { AppSearchDialog } from "./AppSearchDialog";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { AppItem } from "./appItem";
 import { ipc } from "@/ipc/types";
-import { showError } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import {
   Dialog,
   DialogContent,
@@ -32,11 +32,15 @@ import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const setSelectedChatId = useSetAtom(selectedChatIdAtom);
+  const setApps = useSetAtom(appsListAtom);
   const { apps, loading, error, refreshApps } = useLoadApps();
   const { toggleFavorite, isLoading: isFavoriteLoading } =
     useAddAppToFavorite();
@@ -57,6 +61,15 @@ export function AppList({ show }: { show?: boolean }) {
   const [emptyAppName, setEmptyAppName] = useState("");
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+  const queryClient = useQueryClient();
+
+  // ── Archived apps state ──
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const { data: archivedApps = [] } = useQuery({
+    queryKey: ["archived-apps"],
+    queryFn: () => ipc.app.getArchivedApps(),
+  });
+  const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
 
   // ── Bulk selection mode state ──
   const [selectionMode, setSelectionMode] = useState(false);
@@ -75,9 +88,6 @@ export function AppList({ show }: { show?: boolean }) {
     switch (sidebarAction.action) {
       case "apps:new":
         handleNewApp();
-        break;
-      case "apps:empty":
-        setIsEmptyAppDialogOpen(true);
         break;
       case "apps:import":
         // Trigger the import button programmatically via a custom event
@@ -269,6 +279,40 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
+  const handleArchiveApp = async (appId: number, appName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Optimistic: remove from atom immediately (no flash)
+    setApps(prev => prev.filter(a => a.id !== appId));
+    if (selectedAppId === appId) {
+      setSelectedAppId(null);
+      navigate({ to: "/", search: {} });
+    }
+    try {
+      await ipc.app.archiveApp({ appId, archived: true });
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+      showSuccess(`"${appName}" archivado`);
+    } catch (error) {
+      // Rollback on failure
+      refreshApps();
+      showError(error);
+    }
+  };
+
+  const handleUnarchiveApp = async (appId: number) => {
+    setUnarchivingId(appId);
+    try {
+      await ipc.app.archiveApp({ appId, archived: false });
+      // Optimistic: move app from archived list back into main atom
+      const restored = archivedApps.find(a => a.id === appId);
+      if (restored) setApps(prev => [restored, ...prev]);
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+    } catch (error) {
+      showError(error);
+    } finally {
+      setUnarchivingId(null);
+    }
+  };
+
   // Selected app names for the bulk dialog
   const selectedAppNames = useMemo(
     () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
@@ -288,6 +332,7 @@ export function AppList({ show }: { show?: boolean }) {
       selectionMode={selectionMode}
       isSelected={selectedIds.has(app.id)}
       onToggleSelect={toggleSelect}
+      onArchive={handleArchiveApp}
     />
   );
 
@@ -460,6 +505,60 @@ export function AppList({ show }: { show?: boolean }) {
                 )}
               </SidebarMenu>
             )}
+
+            {/* ── Archived apps collapsible ── */}
+            <div className="mt-3">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-medium text-muted-foreground/60 tracking-wide hover:text-muted-foreground/80 transition-colors cursor-pointer"
+                onClick={() => setArchivedOpen(v => !v)}
+              >
+                {archivedOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <Archive size={12} className="opacity-60" />
+                Archivadas
+                {archivedApps.length > 0 && (
+                  <span className="ml-auto text-[10px] text-muted-foreground/40">
+                    {archivedApps.length}
+                  </span>
+                )}
+              </button>
+
+              {archivedOpen && (
+                <div className="mt-1 pl-2">
+                  {archivedApps.length === 0 ? (
+                    <div className="py-3 px-2 typo-caption opacity-40 text-center">
+                      Sin apps archivadas
+                    </div>
+                  ) : (
+                    archivedApps.map((app) => (
+                      <div
+                        key={app.id}
+                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                      >
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
+                          <span className="text-xs text-muted-foreground/45 mt-0.5">
+                            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                          onClick={() => handleUnarchiveApp(app.id)}
+                          disabled={unarchivingId === app.id}
+                          title="Restaurar"
+                        >
+                          {unarchivingId === app.id
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <ArchiveRestore size={15} strokeWidth={2} />
+                          }
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
@@ -506,9 +605,9 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>¿Cerrar workspace "{deleteAppName}"?</DialogTitle>
+            <DialogTitle>¿Cerrar aplicación "{deleteAppName}"?</DialogTitle>
             <DialogDescription>
-              El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
+              La aplicación se desvinculará de Vibes. Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -546,9 +645,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando...
                 </>
               ) : deleteFiles ? (
-                "Eliminar workspace y archivos"
+                "Eliminar aplicación y archivos"
               ) : (
-                "Cerrar workspace"
+                "Cerrar aplicación"
               )}
             </Button>
           </DialogFooter>
@@ -565,12 +664,12 @@ export function AppList({ show }: { show?: boolean }) {
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>
-              ¿Cerrar {selectedIds.size} workspace{selectedIds.size !== 1 ? "s" : ""}?
+              ¿Cerrar {selectedIds.size} aplicación{selectedIds.size !== 1 ? "es" : ""}?
             </DialogTitle>
             <DialogDescription>
               {selectedIds.size === 1
-                ? "El workspace se desvinculará de Vibes."
-                : `Los ${selectedIds.size} workspaces se desvincularán de Vibes.`}
+                ? "La aplicación se desvinculará de Vibes."
+                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
               {" "}Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
@@ -630,9 +729,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando... {bulkProgress}%
                 </>
               ) : bulkDeleteFiles ? (
-                `Eliminar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""} y archivos`
+                `Eliminar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""} y archivos`
               ) : (
-                `Cerrar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""}`
+                `Cerrar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""}`
               )}
             </Button>
           </DialogFooter>

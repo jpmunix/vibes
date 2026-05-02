@@ -425,6 +425,51 @@ export const systemContracts = {
       arch: z.string(),
     }),
   }),
+
+  // Memory viewer window — dedicated diagnostic panel for agent memories
+  openMemoryWindow: defineContract({
+    channel: "window:open-memory",
+    input: z.object({
+      appId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Admin panel window — restricted to authorized admin user
+  openAdminWindow: defineContract({
+    channel: "window:open-admin",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Playground window — model comparison tool
+  openPlaygroundWindow: defineContract({
+    channel: "window:open-playground",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Log file path — returns the absolute path to the electron-log file
+  getLogFilePath: defineContract({
+    channel: "system:get-log-file-path",
+    input: z.void(),
+    output: z.string(),
+  }),
+
+  // Send a console log entry to the chat window that owns this appId
+  sendConsoleLogToChat: defineContract({
+    channel: "system:send-console-log-to-chat",
+    input: z.object({ appId: z.number(), formattedLog: z.string() }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -440,6 +485,11 @@ export const systemEvents = {
   forceCloseDetected: defineEvent({
     channel: "force-close-detected",
     payload: ForceCloseDetectedPayloadSchema,
+  }),
+
+  consoleLogToChat: defineEvent({
+    channel: "console-log-to-chat",
+    payload: z.object({ appId: z.number(), formattedLog: z.string() }),
   }),
 } as const;
 

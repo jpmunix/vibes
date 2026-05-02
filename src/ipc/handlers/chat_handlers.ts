@@ -10,7 +10,6 @@ import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
-import { logChatInfo } from "../utils/chat_logger";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
@@ -22,7 +21,7 @@ export function registerChatHandlers() {
 
     // Get the app's path first
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       columns: {
         path: true,
       },
@@ -48,7 +47,7 @@ export function registerChatHandlers() {
       .insert(remoteSchema.chats)
       .values({
         appId,
-        userId: context.userId,
+        userId: context.userId!,
         initialCommitHash,
         createdAt: new Date(),
       })
@@ -64,12 +63,12 @@ export function registerChatHandlers() {
     return chat.id;
   });
 
-  createTypedHandler(chatContracts.getChat, async (_, chatId, context) => {
+  createTypedHandler(chatContracts.getChat as any, async (_, chatId: number, context: HandlerContext) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
     const chat = await db.query.chats.findFirst({
-      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
       with: {
         messages: {
           orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -103,7 +102,7 @@ export function registerChatHandlers() {
       ? db.query.chats.findMany({
         where: and(
           eq(remoteSchema.chats.appId, appId),
-          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.userId, context.userId!),
           eq(remoteSchema.chats.isArchived, 0),
         ),
         columns: {
@@ -118,7 +117,7 @@ export function registerChatHandlers() {
       })
       : db.query.chats.findMany({
         where: and(
-          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.userId, context.userId!),
           eq(remoteSchema.chats.isArchived, 0),
         ),
         columns: {
@@ -139,7 +138,7 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+    await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   createTypedHandler(chatContracts.updateChat, async (_, params, context) => {
@@ -152,7 +151,7 @@ export function registerChatHandlers() {
     if (planData !== undefined) updateData.planData = planData;
 
     if (Object.keys(updateData).length > 0) {
-      await db.update(remoteSchema.chats).set(updateData).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      await db.update(remoteSchema.chats).set(updateData).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
     }
   });
 
@@ -161,15 +160,15 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     await db.update(remoteSchema.chats).set({
       planData,
-      isPlan: true,
-    }).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      isPlan: 1,
+    }).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   createTypedHandler(chatContracts.getPlanData, async (_, chatId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
     const chat = await db.query.chats.findFirst({
-      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
       columns: { planData: true },
     });
     return chat?.planData ?? null;
@@ -193,7 +192,7 @@ export function registerChatHandlers() {
       .from(remoteSchema.chats)
       .where(and(
         eq(remoteSchema.chats.appId, appId),
-        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.userId, context.userId!),
         like(remoteSchema.chats.title, `%${query}%`)
       ))
       .orderBy(desc(remoteSchema.chats.createdAt))
@@ -203,9 +202,9 @@ export function registerChatHandlers() {
       id: c.id,
       appId: c.appId as number,
       title: c.title || "",
-      createdAt: c.createdAt as unknown as string,
+      createdAt: c.createdAt,
       matchedMessageContent: null,
-      isPlan: c.isPlan ?? false,
+      isPlan: c.isPlan ? true : false,
     }));
 
     // 2) Find messages that match and join to chats to build one result per message
@@ -222,7 +221,7 @@ export function registerChatHandlers() {
       .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
       .where(and(
         eq(remoteSchema.chats.appId, appId),
-        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.userId, context.userId!),
         like(remoteSchema.messages.content, `%${query}%`)
       ))
       .orderBy(desc(remoteSchema.chats.createdAt))
@@ -233,9 +232,9 @@ export function registerChatHandlers() {
       id: c.id,
       appId: c.appId as number,
       title: c.title || "",
-      createdAt: c.createdAt as unknown as string,
+      createdAt: c.createdAt,
       matchedMessageContent: c.matchedMessageContent,
-      isPlan: c.isPlan ?? false
+      isPlan: c.isPlan ? true : false
     }));
 
     const combined: ChatSearchResult[] = [...titleResults, ...messageResultsMapped];
@@ -284,7 +283,7 @@ export function registerChatHandlers() {
             })
             .from(remoteSchema.messages)
             .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
-            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId)))
+            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId!)))
             .orderBy(remoteSchema.messages.createdAt)
             .limit(1);
 
@@ -311,12 +310,12 @@ export function registerChatHandlers() {
           model,
           title: "chat-title",
           temperature: 0.3,
-          max_tokens: 40,
+          max_tokens: 80,
           messages: [
             {
               role: "system",
               content:
-                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
+                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 100 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
             },
             {
               role: "user",
@@ -328,25 +327,9 @@ export function registerChatHandlers() {
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
-        // Log token usage for title generation
-        const usage = data?.usage;
-        if (usage) {
-          void logChatInfo(
-            chatId,
-            "token-usage",
-            `Chat Title Generation - Total tokens: ${usage.total_tokens} (input: ${usage.prompt_tokens}, output: ${usage.completion_tokens})`,
-            {
-              totalTokens: usage.total_tokens,
-              inputTokens: usage.prompt_tokens,
-              outputTokens: usage.completion_tokens,
-              model,
-              type: "chat-title-generation",
-            },
-          );
-        }
 
         // Sanitize title
-        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 50);
+        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);
 
         logger.info(
           `Generated title for chatId=${chatId}: "${sanitizedTitle}"`,
@@ -356,7 +339,7 @@ export function registerChatHandlers() {
         const updateResult = await db
           .update(remoteSchema.chats)
           .set({ title: sanitizedTitle })
-          .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)))
+          .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)))
           .returning({ id: remoteSchema.chats.id, title: remoteSchema.chats.title });
 
         logger.info(
@@ -383,12 +366,12 @@ export function registerChatHandlers() {
           .delete(remoteSchema.chats)
           .where(and(
             eq(remoteSchema.chats.appId, appId),
-            eq(remoteSchema.chats.userId, context.userId),
+            eq(remoteSchema.chats.userId, context.userId!),
             ne(remoteSchema.chats.id, currentChatId)
           ));
       } else {
         // If no current chat, delete all chats for the app
-        await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)));
+        await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!)));
       }
     },
   );
@@ -402,7 +385,7 @@ export function registerChatHandlers() {
       try {
         // Find the oldest chat for this app
         const oldestChat = await db.query.chats.findFirst({
-          where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)),
+          where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!)),
           orderBy: (chats, { asc }) => [asc(chats.createdAt)],
           columns: { id: true },
         });
@@ -423,7 +406,7 @@ export function registerChatHandlers() {
             and(
               eq(remoteSchema.messages.chatId, oldestChat.id),
               eq(remoteSchema.messages.role, "user"),
-              eq(remoteSchema.chats.userId, context.userId)
+              eq(remoteSchema.chats.userId, context.userId!)
             ),
           )
           .orderBy(remoteSchema.messages.createdAt)
@@ -450,7 +433,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     await db.update(remoteSchema.chats)
       .set({ lastReadAt: new Date(), isRead: 1 })
-      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   // Mark a chat as unread
@@ -459,7 +442,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     await db.update(remoteSchema.chats)
       .set({ isRead: 0 })
-      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   // Rename a chat
@@ -468,7 +451,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     await db.update(remoteSchema.chats)
       .set({ title })
-      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   // Archive / unarchive a chat
@@ -477,7 +460,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     await db.update(remoteSchema.chats)
       .set({ isArchived: archived ? 1 : 0 })
-      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   // Get archived chats for an app
@@ -487,7 +470,7 @@ export function registerChatHandlers() {
     const archived = await db.query.chats.findMany({
       where: and(
         eq(remoteSchema.chats.appId, appId),
-        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.userId, context.userId!),
         eq(remoteSchema.chats.isArchived, 1),
       ),
       columns: { id: true, title: true, createdAt: true, appId: true },
@@ -554,7 +537,7 @@ export function registerChatHandlers() {
       }
 
       await db.insert(remoteSchema.messages).values({
-        userId: context.userId,
+        userId: context.userId!,
         chatId,
         role: "user",
         content: userPrompt,
@@ -578,7 +561,7 @@ export function registerChatHandlers() {
         .select({ id: remoteSchema.chats.id })
         .from(remoteSchema.chats)
         .where(and(
-          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.userId, context.userId!),
           eq(remoteSchema.chats.isPinned, 1),
         ));
       if (currentPinned.length >= 10) {
@@ -588,7 +571,7 @@ export function registerChatHandlers() {
 
     await db.update(remoteSchema.chats)
       .set({ isPinned: pinned ? 1 : 0 })
-      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
   // Get all pinned chats (across all apps)
@@ -607,7 +590,7 @@ export function registerChatHandlers() {
       .from(remoteSchema.chats)
       .innerJoin(remoteSchema.apps, eq(remoteSchema.chats.appId, remoteSchema.apps.id))
       .where(and(
-        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.userId, context.userId!),
         eq(remoteSchema.chats.isPinned, 1),
       ))
       .orderBy(desc(remoteSchema.chats.createdAt));

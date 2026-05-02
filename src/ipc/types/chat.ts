@@ -29,6 +29,8 @@ export const MessageSchema = z.object({
   // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
   // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
   aiMessagesJson: z.any().nullable().optional(),
+  // Persisted memories injected into agent context for this response
+  injectedMemories: z.any().nullable().optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;
@@ -144,6 +146,13 @@ export const ChatResponseEndSchema = z.object({
   chatSummary: z.string().optional(),
   /** When a cancel happens before content is generated, the user's prompt is sent back */
   restoredPrompt: z.string().optional(),
+  /** Memories selected by the Router and injected into agent context */
+  selectedMemories: z.array(z.object({
+    id: z.number(),
+    type: z.string(),
+    key: z.string().nullable(),
+    content: z.string(),
+  })).optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;

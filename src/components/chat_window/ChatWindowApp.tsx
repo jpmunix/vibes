@@ -18,7 +18,6 @@ import {
     createMemoryHistory,
     RouterProvider,
 } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
 
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
@@ -36,6 +35,7 @@ import {
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
+    quotedMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
@@ -86,12 +86,7 @@ const queryClient = new QueryClient({
     }),
 });
 
-// ─── No-op PostHog client ───────────────────────────────────────────────
-// Instead of initializing the full PostHog SDK (which sets up localStorage,
-// timers, and internal data structures), we pass null. The PostHogProvider
-// from posthog-js/react gracefully handles this — `usePostHog()` will
-// return null/undefined, and posthog.capture() calls become no-ops.
-const noopPosthogClient = null;
+
 
 // ─── Lightweight sidebar context for chat window ────────────────────────
 // The full SidebarProvider (780 lines) adds keyboard shortcuts, cookie
@@ -194,6 +189,17 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         }
     }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
 
+    // Apply font scale CSS variables from settings
+    useEffect(() => {
+        if (settings) {
+            const root = document.documentElement;
+            if (settings.fontScaleUI !== undefined) root.style.setProperty("--scale-ui", settings.fontScaleUI.toString());
+            if (settings.fontScaleSidebar !== undefined) root.style.setProperty("--scale-sidebar", settings.fontScaleSidebar.toString());
+            if (settings.fontScaleChat !== undefined) root.style.setProperty("--scale-chat", settings.fontScaleChat.toString());
+            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--bubble-width", `${settings.fontScaleBubbleWidth}%`);
+        }
+    }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
+
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
     useEffect(() => {
         if (
@@ -228,6 +234,25 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     }, [chatId, chats, loading]);
 
     useAppOutputSubscription();
+
+    // Cross-window console log: when a console window sends a log to this chat,
+    // the main process routes it here as a quote card via the appId.
+    const setQuotedForConsole = useSetAtom(quotedMessagesAtom);
+    useEffect(() => {
+        // @ts-ignore — using raw preload API for custom event
+        const unsubscribe = window.electron?.ipcRenderer?.on?.(
+            "console-log-to-chat",
+            (payload: { appId: number; formattedLog: string }) => {
+                if (payload.appId === appId) {
+                    setQuotedForConsole((prev) => {
+                        const id = Date.now();
+                        return [...prev, { id, role: "console" as const, content: payload.formattedLog }];
+                    });
+                }
+            },
+        );
+        return () => unsubscribe?.();
+    }, [appId, setQuotedForConsole]);
 
 
     // Set document.title so the native title bar shows app name
@@ -587,14 +612,12 @@ export function ChatWindowApp({ appId, chatId, hasPendingPrompt, initialChatMode
 
     return (
         <QueryClientProvider client={queryClient}>
-            <PostHogProvider client={noopPosthogClient}>
-                <ThemeProvider>
-                    <AuthGate>
-                        {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
-                        <RouterProvider router={chatRouter} />
-                    </AuthGate>
-                </ThemeProvider>
-            </PostHogProvider>
+            <ThemeProvider>
+                <AuthGate>
+                    {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
+                    <RouterProvider router={chatRouter} />
+                </AuthGate>
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }

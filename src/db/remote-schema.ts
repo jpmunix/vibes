@@ -80,9 +80,10 @@ export const apps = sqliteTable("apps", {
     startCommand: text("start_command"),
     chatContext: text("chat_context", { mode: "json" }),
     isFavorite: integer("is_favorite").notNull().default(0),
-    themeId: text("theme_id"),
+
     primaryLanguage: text("primary_language"),
     projectType: text("project_type"),
+    isArchived: integer("is_archived").notNull().default(0),
 });
 
 // =============================================================================
@@ -97,7 +98,6 @@ export const chats = sqliteTable("chats", {
     appId: integer("app_id")
         .notNull()
         .references(() => apps.id, { onDelete: "cascade" }),
-    todoId: integer("todo_id"),
     title: text("title"),
     initialCommitHash: text("initial_commit_hash"),
     isPlan: integer("is_plan").default(0),
@@ -136,30 +136,12 @@ export const messages = sqliteTable("messages", {
     status: text("status").default("completed"),
     durationMs: integer("duration_ms"),
     smartModeIntent: text("smart_mode_intent"),
+    /** JSON array of SelectedMemoryMeta — memories injected into this assistant response */
+    injectedMemories: text("injected_memories", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
-// =============================================================================
-// CHAT LOGS
-// =============================================================================
 
-export const chatLogs = sqliteTable("chat_logs", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    chatId: integer("chat_id")
-        .notNull()
-        .references(() => chats.id, { onDelete: "cascade" }),
-    messageId: integer("message_id").references(() => messages.id, {
-        onDelete: "cascade",
-    }),
-    level: text("level").notNull(),
-    category: text("category").notNull(),
-    message: text("message").notNull(),
-    metadata: text("metadata", { mode: "json" }),
-    timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
-});
 
 // =============================================================================
 // VERSIONS
@@ -195,44 +177,7 @@ export const prompts = sqliteTable("prompts", {
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-// =============================================================================
-// LANGUAGE MODEL PROVIDERS
-// =============================================================================
 
-export const languageModelProviders = sqliteTable("language_model_providers", {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    name: text("name").notNull(),
-    apiBaseUrl: text("api_base_url").notNull(),
-    envVarName: text("env_var_name"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// LANGUAGE MODELS
-// =============================================================================
-
-export const languageModels = sqliteTable("language_models", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    displayName: text("display_name").notNull(),
-    apiName: text("api_name").notNull(),
-    builtinProviderId: text("builtin_provider_id"),
-    customProviderId: text("custom_provider_id").references(
-        () => languageModelProviders.id,
-        { onDelete: "cascade" },
-    ),
-    description: text("description"),
-    maxOutputTokens: integer("max_output_tokens"),
-    contextWindow: integer("context_window"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
 
 // =============================================================================
 // MCP SERVERS
@@ -272,148 +217,7 @@ export const mcpToolConsents = sqliteTable("mcp_tool_consents", {
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-// =============================================================================
-// CUSTOM THEMES
-// =============================================================================
 
-export const customThemes = sqliteTable("custom_themes", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    name: text("name").notNull(),
-    description: text("description"),
-    prompt: text("prompt").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-
-
-// =============================================================================
-// TODO SECTIONS
-// =============================================================================
-
-export const todoSections = sqliteTable("todo_sections", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    appId: integer("app_id")
-        .notNull()
-        .references(() => apps.id, { onDelete: "cascade" }),
-    title: text("title").notNull().default("Nueva sección"),
-    order: integer("order").notNull().default(0),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// TODOS
-// =============================================================================
-
-export const todos = sqliteTable("todos", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    appId: integer("app_id")
-        .notNull()
-        .references(() => apps.id, { onDelete: "cascade" }),
-    sectionId: integer("section_id").references(() => todoSections.id, {
-        onDelete: "set null",
-    }),
-    content: text("content").notNull().default(""),
-    description: text("description"),
-    prompt: text("prompt"),
-    completed: integer("completed").notNull().default(0),
-    order: integer("order").notNull().default(0),
-    developmentSummary: text("development_summary"),
-    checklist: text("checklist"),
-    attachments: text("attachments"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-
-
-// =============================================================================
-// KNOWLEDGE ENTRIES
-// =============================================================================
-
-export const knowledgeEntries = sqliteTable("knowledge_entries", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    appId: integer("app_id")
-        .notNull()
-        .references(() => apps.id, { onDelete: "cascade" }),
-    category: text("category").notNull(),
-    content: text("content").notNull(),
-    source: text("source").notNull().default("manual"),
-    confidence: integer("confidence").notNull().default(100),
-    enabled: integer("enabled").notNull().default(1),
-    durability: text("durability").default("permanent"),
-    supersededBy: integer("superseded_by"),
-    lastConfirmedAt: integer("last_confirmed_at", { mode: "timestamp" }),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// AI QUERY LOGS
-// =============================================================================
-
-export const aiQueryLogs = sqliteTable("ai_query_logs", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    queryType: text("query_type").notNull(),
-    model: text("model").notNull(),
-    promptSnippet: text("prompt_snippet").notNull(),
-    payload: text("payload", { mode: "json" }).notNull(),
-    response: text("response", { mode: "json" }).notNull(),
-    inputTokens: integer("input_tokens"),
-    outputTokens: integer("output_tokens"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// EMBEDDINGS CACHE
-// =============================================================================
-
-export const embeddingsCache = sqliteTable("embeddings_cache", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    scope: text("scope").notNull(),
-    sourceId: integer("source_id").notNull(),
-    contentKey: text("content_key").notNull(),
-    contentHash: text("content_hash").notNull(),
-    embedding: text("embedding").notNull(),
-    model: text("model").notNull(),
-    dimensions: integer("dimensions").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// DOSSIERS (NEW — linked to apps)
-// =============================================================================
-
-export const dossiers = sqliteTable("dossiers", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    appId: integer("app_id")
-        .notNull()
-        .references(() => apps.id, { onDelete: "cascade" }),
-    storagePath: text("storage_path").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
 
 // =============================================================================
 // USER PREFERENCES (key/value store, multi-tenant, optionally per-app)
@@ -431,17 +235,98 @@ export const userPreferences = sqliteTable("user_preferences", {
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+
+
 // =============================================================================
-// CUSTOM MODEL NAMES (user-defined aliases for models)
+// MEMORIES (agent memory system — persistent structured knowledge)
 // =============================================================================
 
-export const customModelNames = sqliteTable("custom_model_names", {
+export const memories = sqliteTable("memories", {
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: text("user_id")
         .notNull()
         .references(() => users.id),
-    modelId: text("model_id").notNull(),
-    customName: text("custom_name").notNull(),
+    // app_id = 0 means global (not tied to any app); otherwise references the app
+    appId: integer("app_id").notNull().default(0),
+    type: text("type").notNull(),          // fact, preference, issue, episode, decision
+    key: text("key"),                       // For key-based overwrite (e.g. "backend_framework")
+    content: text("content").notNull(),
+    importance: integer("importance").notNull().default(50), // 0–100 (stored as int, mapped to 0.0–1.0)
+    status: text("status"),                 // Issue lifecycle: active, fix_attempted, suspected_resolved, resolved, deprecated
+    source: text("source").notNull().default("auto"), // auto | manual
+    sourceChatId: integer("source_chat_id"),
+    enabled: integer("enabled").notNull().default(1),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    lastUsed: integer("last_used", { mode: "timestamp" }),  // When the Router last selected this memory
+});
+
+// =============================================================================
+// MEMORY TELEMETRY (temporary — for tuning the extraction pipeline)
+// =============================================================================
+
+export const memoryTelemetry = sqliteTable("memory_telemetry", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id"),
+    action: text("action").notNull(),  // skipped_trivial, skipped_no_tech, synthesized, routed, merged, discarded_quality
+    reason: text("reason"),
+    extractedKeys: text("extracted_keys"),  // JSON array of processed keys
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
+// MEMORY PIPELINE LOGS (raw — full payloads for deep analysis)
+// =============================================================================
+
+export const memoryPipelineLogs = sqliteTable("memory_pipeline_logs", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id").notNull(),
+    chatId: integer("chat_id"),
+    /** Pipeline stage: "synthesis" | "router" | "guardian" */
+    stage: text("stage").notNull(),
+    /** Model used for this LLM call */
+    model: text("model"),
+    /** Full system prompt sent to the LLM */
+    systemPrompt: text("system_prompt"),
+    /** Full user message sent to the LLM */
+    userMessage: text("user_message"),
+    /** Raw LLM response (unparsed) */
+    rawResponse: text("raw_response"),
+    /** Parsed operations/IDs as JSON */
+    parsedResult: text("parsed_result"),
+    /** Number of operations/IDs produced */
+    resultCount: integer("result_count").notNull().default(0),
+    /** Duration in ms */
+    durationMs: integer("duration_ms"),
+    /** Whether the call succeeded */
+    success: integer("success").notNull().default(1),
+    /** Error message if failed */
+    error: text("error"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
+// MEMORY DEBUG LOGS (one row = one complete pipeline run markdown file)
+// =============================================================================
+
+export const memoryDebugLogs = sqliteTable("memory_debug_logs", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id").notNull().default(0),
+    appName: text("app_name").notNull().default(""),
+    /** Original filename (e.g. "minube-phalcon.md") */
+    filename: text("filename").notNull(),
+    /** Full markdown content of the pipeline run */
+    contentMd: text("content_md").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 // =============================================================================
@@ -454,34 +339,22 @@ export const usersRelations = relations(users, ({ one, many }) => ({
         references: [userSettings.userId],
     }),
     apps: many(apps),
-    dossiers: many(dossiers),
 }));
 
 export const appsRelations = relations(apps, ({ one, many }) => ({
     user: one(users, { fields: [apps.userId], references: [users.id] }),
     chats: many(chats),
     versions: many(versions),
-    todoSections: many(todoSections),
-    todos: many(todos),
-    knowledgeEntries: many(knowledgeEntries),
-    dossiers: many(dossiers),
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
     user: one(users, { fields: [chats.userId], references: [users.id] }),
     app: one(apps, { fields: [chats.appId], references: [apps.id] }),
     messages: many(messages),
-    chatLogs: many(chatLogs),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
     user: one(users, { fields: [messages.userId], references: [users.id] }),
     chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
 }));
-
-export const dossiersRelations = relations(dossiers, ({ one }) => ({
-    user: one(users, { fields: [dossiers.userId], references: [users.id] }),
-    app: one(apps, { fields: [dossiers.appId], references: [apps.id] }),
-}));
-
 

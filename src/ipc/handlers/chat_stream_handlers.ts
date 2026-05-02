@@ -22,7 +22,6 @@ import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
 import { getEffectivePrompt } from "../../prompts";
-import { getThemePromptById } from "../utils/theme_utils";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -65,6 +64,9 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
+import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
+import { buildMemoryContext } from "../utils/memory_context_builder";
+import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
@@ -86,15 +88,12 @@ import { parseAppMentions } from "@/shared/parse_mention_apps";
 // Migrated to remoteSchema.prompts
 import { replacePromptReference } from "../utils/replacePromptReference";
 import z from "zod";
-import { logTokenUsage } from "../utils/token_stats_logger";
-import { logChatInfo, logChatError } from "../utils/chat_logger";
 
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
-import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
@@ -653,16 +652,7 @@ ${componentSnippet}
         });
 
         // Log selected model before starting stream
-        await logChatInfo(
-          req.chatId,
-          "model-selection",
-          `Selected model: ${selectedModel.provider}/${selectedModel.name}`,
-          {
-            provider: selectedModel.provider,
-            model: selectedModel.name,
-            customModelId: selectedModel.customModelId,
-          },
-        );
+        
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -762,11 +752,11 @@ ${componentSnippet}
               settings.selectedChatMode === "mockup") &&
             !mentionedAppsCodebases.length;
 
-          isDeepContextEnabled =
+          isDeepContextEnabled = Boolean(
             isEngineEnabled &&
-            settings.enableProSmartFilesContextMode &&
             settings.proSmartContextOption !== "balanced" &&
-            mentionedAppsCodebases.length === 0;
+            mentionedAppsCodebases.length === 0
+          );
           logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
 
           // Combine current app codebase with mentioned apps' codebases
@@ -793,19 +783,7 @@ ${componentSnippet}
             codebaseInfo.length / 4,
           );
 
-          await logChatInfo(
-            req.chatId,
-            "context-building",
-            "Extracted codebase information",
-            {
-              appPath,
-              codebaseLength: codebaseInfo.length,
-              estimatedTokens: Math.round(codebaseInfo.length / 4),
-              mentionedApps: mentionedAppsCodebases.length,
-              isDeepContextEnabled,
-            },
-            placeholderAssistantMessage.id,
-          );
+          
 
           // Prepare message history for the AI
           const messageHistory = updatedChat.messages.map((message: any) => ({
@@ -846,15 +824,8 @@ ${componentSnippet}
             );
           }
 
-          // Get theme prompt for the app (null themeId means "no theme")
-          const themePrompt = await getThemePromptById(updatedChat.app.themeId);
-          logger.log(
-            `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
-          );
-
           systemPrompt = constructSystemPrompt({
             chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
-            themePrompt,
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -1080,29 +1051,10 @@ This conversation includes one or more image attachments. When the user uploads 
               "sending AI request to engine with request id:",
               vibesRequestId,
             );
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request to engine",
-              {
-                requestId: vibesRequestId,
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           } else {
             logger.log("sending AI request");
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request",
-              {
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           }
           let versionedFiles: VersionedFiles | undefined;
           if (isDeepContextEnabled) {
@@ -1132,18 +1084,7 @@ This conversation includes one or more image attachments. When the user uploads 
             "Starting direct AI request (no engine):",
             modelClient.model,
           );
-          await logChatInfo(
-            req.chatId,
-            "streaming",
-            "Starting AI request",
-            {
-              model: modelClient.model,
-              provider: selectedModel.provider,
-              hasTools: !!tools,
-              messageCount: chatMessages.length,
-            },
-            placeholderAssistantMessage?.id,
-          );
+          
 
           // Dynamic maxOutputTokens capping based on estimated input
           const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
@@ -1211,37 +1152,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
 
               // Log the query to the dedicated AI query log
-              try {
-                void logAiQuery({
-                  queryType: "chat-stream",
-                  model: selectedModel.name || modelClient.builtinProviderId || "unknown",
-                  promptSnippet: (() => {
-                    const content = chatMessages[chatMessages.length - 1]?.content;
-                    if (typeof content === "string") return content.slice(0, 100);
-                    if (Array.isArray(content)) {
-                      const firstPart = content[0];
-                      if (firstPart && firstPart.type === "text") {
-                        return firstPart.text.slice(0, 100);
-                      }
-                    }
-                    return "";
-                  })(),
-                  payload: {
-                    system: systemPromptOverride,
-                    messages: chatMessages,
-                    tools: tools ? Object.keys(tools) : [],
-                  },
-                  response: {
-                    text: response.text,
-                    toolCalls: response.toolCalls,
-                    finishReason: response.finishReason,
-                  },
-                  inputTokens: promptTokens,
-                  outputTokens: completionTokens,
-                }, currentUserId as string);
-              } catch (e) {
-                logger.error("Failed to log streaming AI query", e);
-              }
+              
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1265,40 +1176,8 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Log token usage for verbose chat logs
-                void logChatInfo(
-                  req.chatId,
-                  "token-usage",
-                  `Total tokens: ${totalTokens} (input: ${promptTokens ?? "?"}, output: ${completionTokens ?? "?"})`,
-                  {
-                    totalTokens,
-                    inputTokens: promptTokens,
-                    outputTokens: completionTokens,
-                    model:
-                      selectedModel?.name ??
-                      placeholderAssistantMessage.model ??
-                      null,
-                    filesCount: files?.length ?? 0,
-                    toolsCount: tools ? Object.keys(tools).length : 0,
-                  },
-                  placeholderAssistantMessage.id,
-                );
+                
 
-                // Persist simple token stats for charts/logs
-                logTokenUsage({
-                  chatId: req.chatId,
-                  messageId: placeholderAssistantMessage.id,
-                  totalTokens,
-                  promptTokens,
-                  completionTokens,
-                  model:
-                    selectedModel?.name ??
-                    placeholderAssistantMessage.model ??
-                    null,
-                  timestamp: Date.now(),
-                  appId: updatedChat?.app?.id ?? null,
-                  filesSent: files?.map((f) => f.path) ?? [],
-                  toolsUsed: tools ? Object.keys(tools) : [],
-                });
               } else {
                 logger.log("Total tokens used: unknown");
               }
@@ -1318,18 +1197,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 error,
               );
 
-              void logChatError(
-                req.chatId,
-                "error-handling",
-                `Streaming error: ${message}`,
-                {
-                  errorMessage,
-                  requestId: vibesRequestId,
-                  model: selectedModel.name,
-                  provider: selectedModel.provider,
-                },
-                placeholderAssistantMessage.id,
-              );
+              
 
               const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
               safeSend(event.sender, "chat:response:error", {
@@ -1420,60 +1288,30 @@ This conversation includes one or more image attachments. When the user uploads 
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
           contextInstructions.push(
-            `ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en ${langName}. Piensa en ${langName}, razona en ${langName} y redacta TODAS tus respuestas completamente en ${langName}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.\n` +
-            `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
+            getEffectivePrompt("ctx_language", settings).replace(/\{\{LANGUAGE\}\}/g, langName) + "\n" +
+            getEffectivePrompt("ctx_no_run_locally", settings)
           );
 
-          // (LSP is always enabled — no fallback instruction needed)
 
-          // 3. Tool correction (mainly for Gemini hallucinating shell edits)
+          // 4. Context7 docs — always fetch fresh docs for libraries
           contextInstructions.push(
-            `NOTAS DE ENTORNO IMPORTANTES:\n` +
-            `1. Tienes HERRAMIENTAS JSON NATIVAS (tools) definidas en tu esquema para editar archivos. USAS ESTAS HERRAMIENTAS nativas.\n` +
-            `2. NUNCA uses la herramienta "bash" para intentar editar código ejecutando scripts en consola de "python" o comandos "sed" o redirecciones en la terminal. Usa siempre tus JSON tools disponibles en el esquema para cualquier edición.`
+            getEffectivePrompt("ctx_context7_docs", settings)
           );
 
-          // 4. Efficiency & Task Triage (Prevent over-thinking simple tasks)
+          // 5. Efficiency & Task Triage (Prevent over-thinking simple tasks)
           contextInstructions.push(
-            `CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:\n` +
-            `Antes de empezar cualquier tarea, evalúa su complejidad:\n\n` +
-            `TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):\n` +
-            `- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.\n` +
-            `- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).\n` +
-            `- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.\n` +
-            `- Mantén tu respuesta final extremadamente corta y directa.\n\n` +
-            `TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):\n` +
-            `- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.\n\n` +
-            `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
+            getEffectivePrompt("ctx_efficiency_triage", settings)
           );
 
-          // 5. Smart todowrite usage — task management for complex requests
+          // 6. Smart todowrite usage — task management for complex requests
           contextInstructions.push(
-            `GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados ` +
-            `(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades), ` +
-            `usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar. ` +
-            `Marca cada tarea como completada (status: "done") a medida que avanzas. ` +
-            `NO uses todowrite para cambios simples como corregir un error, ajustar un estilo, ` +
-            `o modificar un solo archivo. En esos casos, actúa directamente.`
+            getEffectivePrompt("ctx_task_management", settings)
           );
 
           // 6. Plan mode — interactive question-driven planning
           if (resolvedChatMode === "plan") {
-            const isEnglish = (settings.chatLanguage || "es") === "en";
             contextInstructions.push(
-              isEnglish
-                ? `INTERACTIVE PLANNING MODE:\n` +
-                  `When the user asks you to create a plan, do NOT assume details that are not explicit.\n` +
-                  `Use your "question" tool to ask the user about design decisions, architecture,\n` +
-                  `technologies, priorities, and any ambiguity.\n` +
-                  `Rule: maximum 5 questions. Group related ones. Use options when alternatives are clear.\n` +
-                  `Once everything is clarified, generate the definitive plan.`
-                : `MODO PLANIFICACIÓN INTERACTIVA:\n` +
-                  `Cuando el usuario te pide crear un plan, NO asumas los detalles que no están explícitos.\n` +
-                  `Usa tu herramienta "question" para preguntar al usuario sobre decisiones de diseño,\n` +
-                  `arquitectura, tecnologías, prioridades y cualquier ambigüedad.\n` +
-                  `Regla: máximo 5 preguntas. Agrupa las relacionadas. Usa opciones cuando las alternativas sean claras.\n` +
-                  `Una vez aclarado todo, genera el plan definitivo.`
+              getEffectivePrompt("ctx_plan_mode", settings)
             );
           }
 
@@ -1505,42 +1343,83 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
-          // DESIGN.md — inject full content as context instruction on the FIRST
-          // message only. After that, OpenCode's native opencode.json instructions
-          // (which reference docs/DESIGN.md) handle it automatically.
+          // ── DESIGN.md context ──────────────────────────────────────────────
+          // Strategy: lightweight hint only (~30 tokens). The AI reads the file
+          // on demand via its Read tool when it needs design context.
+          //
+          // WHY NOT inject the full file?
+          // The full DESIGN.md (~5K tokens) becomes part of the system prompt
+          // and travels in EVERY tool-call round-trip (Read, Grep, Write…).
+          // With 7 tool calls that's ~35K wasted tokens per first message.
+          // The hint approach lets the AI read it once in its own context,
+          // keeping the system prompt lean across all round-trips.
+          //
+          // ── FULL INJECTION (disabled) ──────────────────────────────────────
+          // To restore: uncomment this block and add `isFirstMessage &&` to
+          // the condition to limit it to the first message only.
+          //
+          // const isFirstMessage = !updatedChat.messages.some(
+          //   (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
+          // );
+          // if (isFirstMessage && designExists) {
+          //   try {
+          //     const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
+          //     if (designContent.length > 0) {
+          //       contextInstructions.push(
+          //         `DESIGN SYSTEM REFERENCE:\n` +
+          //         `The following DESIGN.md defines the visual language for this project. ` +
+          //         `Follow these design guidelines when building UI.\n\n` +
+          //         designContent,
+          //       );
+          //     }
+          //   } catch { /* ignore read errors */ }
+          // }
+          // ── END FULL INJECTION ─────────────────────────────────────────────
           {
-            const isFirstMessage = !updatedChat.messages.some(
-              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
-            );
-            const appPathRaw = updatedChat.app.path;
-            const resolvedAppPath = getVibesAppPath(appPathRaw);
+            const resolvedAppPath = getVibesAppPath(updatedChat.app.path);
             const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
-            const designExists = fs.existsSync(designMdPath);
-            logger.info(`🎨 [DESIGN] isFirstMessage=${isFirstMessage}, exists=${designExists}, path="${designMdPath}"`);
-
-            if (isFirstMessage && designExists) {
-              try {
-                const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
-                if (designContent.length > 0) {
-                  contextInstructions.push(
-                    `DESIGN SYSTEM REFERENCE:\n` +
-                    `The following DESIGN.md file defines the visual language, color palette, typography, spacing, and component patterns for this project. ` +
-                    `You MUST follow these design guidelines closely when building UI components. ` +
-                    `Use the exact colors, fonts, spacing values, and design tokens specified.\n\n` +
-                    designContent,
-                  );
-                  logger.info(`🎨 [DESIGN] ✅ Injected into contextInstructions (${designContent.length} chars)`);
-                }
-              } catch (designErr: any) {
-                logger.warn(`🎨 [DESIGN] ❌ Failed to read: ${designErr.message}`);
-              }
-            } else if (!isFirstMessage && designExists) {
-              logger.info(`🎨 [DESIGN] Skipped (not first message) — trusting opencode.json`);
+            if (fs.existsSync(designMdPath)) {
+              contextInstructions.push(
+                `DESIGN SYSTEM: This project has a design system defined in docs/DESIGN.md. ` +
+                `Read this file with your Read tool before writing or modifying any UI code.`,
+              );
             }
           }
 
 
           // 4. Build integration env vars — accessible via bash in OpenCode
+          // ── Memory decay + context injection ─────────────────────────────
+          // Decay stale auto-extracted memories (fire-and-forget, non-blocking)
+          decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
+            .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
+
+          // Load memories (app-specific + global) and inject as context instruction
+          let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
+          try {
+            // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
+            const priorMessages = (updatedChat.messages || [])
+              .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content)
+              .map((m: any) => ({
+                role: m.role as string,
+                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+              }))
+              .slice(-2); // last 2 prior messages (e.g. prev user + prev assistant)
+
+            const memoryResult = await buildMemoryContext(
+              updatedChat.app.id,
+              currentUserId as string,
+              userPrompt,
+              priorMessages.length > 0 ? priorMessages : undefined,
+            );
+            if (memoryResult.block) {
+              contextInstructions.push(memoryResult.block);
+              selectedMemories = memoryResult.memories;
+              logger.info(`🧠 [MEMORY] Injected ${memoryResult.block.length} chars (${selectedMemories.length} memories) into contextInstructions`);
+            }
+          } catch (memErr: any) {
+            logger.warn(`🧠 [MEMORY] Context injection failed: ${memErr.message}`);
+          }
+
           const integrationEnvVars: Record<string, string> = {};
 
           // Bunny DB
@@ -1668,33 +1547,6 @@ This conversation includes one or more image attachments. When the user uploads 
                 : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
 
-              void logChatInfo(
-                req.chatId,
-                "token-usage",
-                `[Cancelled] Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-                {
-                  totalTokens: ocTotalTokens,
-                  inputTokens: ocInputTokens,
-                  outputTokens: ocOutputTokens,
-                  reasoningTokens: ocReasoningTokens,
-                  billableOutput: ocBillableOutput,
-                  model: settings.selectedModel.name,
-                  type: "opencode-agent",
-                  cancelled: true,
-                },
-                placeholderAssistantMessage.id,
-              );
-
-              logTokenUsage({
-                chatId: req.chatId,
-                messageId: placeholderAssistantMessage.id,
-                totalTokens: ocTotalTokens,
-                promptTokens: ocInputTokens,
-                completionTokens: ocBillableOutput,
-                model: settings.selectedModel.name,
-                timestamp: Date.now(),
-                appId: updatedChat.app.id,
-              });
             }
 
             await db
@@ -1702,6 +1554,9 @@ This conversation includes one or more image attachments. When the user uploads 
               .set({
                 content: fullResponse,
                 durationMs: openCodeDurationMs,
+                injectedMemories: selectedMemories.length > 0
+                  ? JSON.stringify(selectedMemories) as any
+                  : null,
               })
               .where(
                 and(
@@ -1732,6 +1587,20 @@ This conversation includes one or more image attachments. When the user uploads 
               totalTokens: ocTotalTokens,
               cancelled: true,
             });
+
+            // ── Memory extraction from partial response (fire-and-forget) ──
+            // Even if the user stopped the stream, there may be valuable knowledge
+            // in whatever was already generated.
+            // SKIP plan mode: proposals are not confirmed facts.
+            if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
+              extractMemoriesFromChatCycle({
+                appId: updatedChat.app.id,
+                userId: currentUserId as string,
+                chatId: req.chatId,
+                userPrompt,
+                assistantResponse: openCodeResponse,
+              }).catch(err => logger.warn("[Memory] Extraction failed (cancelled):", err));
+            }
 
             return;
           }
@@ -1769,34 +1638,6 @@ This conversation includes one or more image attachments. When the user uploads 
               ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
               : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
-            // Log token usage for verbose chat logs and ChatLogsPanel
-            void logChatInfo(
-              req.chatId,
-              "token-usage",
-              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-              {
-                totalTokens: ocTotalTokens,
-                inputTokens: ocInputTokens,
-                outputTokens: ocOutputTokens,
-                reasoningTokens: ocReasoningTokens,
-                billableOutput: ocBillableOutput,
-                model: settings.selectedModel.name,
-                type: "opencode-agent",
-              },
-              placeholderAssistantMessage.id,
-            );
-
-            // Log to token stats file
-            logTokenUsage({
-              chatId: req.chatId,
-              messageId: placeholderAssistantMessage.id,
-              totalTokens: ocTotalTokens,
-              promptTokens: ocInputTokens,
-              completionTokens: ocBillableOutput,
-              model: settings.selectedModel.name,
-              timestamp: Date.now(),
-              appId: updatedChat.app.id,
-            });
           }
 
           await db
@@ -1804,6 +1645,9 @@ This conversation includes one or more image attachments. When the user uploads 
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
+              injectedMemories: selectedMemories.length > 0
+                ? JSON.stringify(selectedMemories) as any
+                : null,
             })
             .where(
               and(
@@ -1829,6 +1673,7 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             updatedFiles: !!success,
             totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
+            selectedMemories: selectedMemories.length > 0 ? selectedMemories : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 
@@ -1840,6 +1685,19 @@ This conversation includes one or more image attachments. When the user uploads 
             success,
             totalTokens: ocTotalTokens,
           });
+
+          // ── Memory extraction (fire-and-forget, never blocks UI) ─────────
+          // SKIP plan mode: plan responses are proposals/suggestions, not confirmed
+          // decisions. Extracting from them would pollute memories with unverified info.
+          if (success && updatedChat.app?.id && agentId !== "plan") {
+            extractMemoriesFromChatCycle({
+              appId: updatedChat.app.id,
+              userId: currentUserId as string,
+              chatId: req.chatId,
+              userPrompt,
+              assistantResponse: fullResponse,
+            }).catch(err => logger.warn("[Memory] Extraction failed:", err));
+          }
 
           // ── Post-agent clean install ────────────────────────────────────
           // The agent may have modified package.json (adding new dependencies)

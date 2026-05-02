@@ -3,25 +3,10 @@ import { useAtom } from "jotai";
 import { userSettingsAtom, envVarsAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { type UserSettings } from "@/lib/schemas";
-import { usePostHog } from "posthog-js/react";
 import { useAppVersion } from "./useAppVersion";
 import { showSuccess } from "@/lib/toast";
 
-const TELEMETRY_CONSENT_KEY = "vibesTelemetryConsent";
-const TELEMETRY_USER_ID_KEY = "vibesTelemetryUserId";
-
-export function isTelemetryOptedIn() {
-  return window.localStorage.getItem(TELEMETRY_CONSENT_KEY) === "opted_in";
-}
-
-export function getTelemetryUserId(): string | null {
-  return window.localStorage.getItem(TELEMETRY_USER_ID_KEY);
-}
-
-let isInitialLoad = false;
-
 export function useSettings() {
-  const posthog = usePostHog();
   const [settings, setSettingsAtom] = useAtom(userSettingsAtom);
   const [envVars, setEnvVarsAtom] = useAtom(envVarsAtom);
   const [loading, setLoading] = useState(true);
@@ -35,13 +20,7 @@ export function useSettings() {
         ipc.settings.getUserSettings(),
         ipc.misc.getEnvVars(),
       ]);
-      processSettingsForTelemetry(userSettings);
-      if (!isInitialLoad && appVersion) {
-        posthog.capture("app:initial-load", {
-          appVersion,
-        });
-        isInitialLoad = true;
-      }
+
       setSettingsAtom(userSettings);
       setEnvVarsAtom(fetchedEnvVars);
       setError(null);
@@ -65,6 +44,7 @@ export function useSettings() {
   // We listen here to keep the Jotai atom in sync without a full IPC
   // round-trip through getUserSettings (which merges with Bunny DB).
   useEffect(() => {
+    // @ts-ignore
     const unsubscribe = window.electron?.ipcRenderer?.on(
       "settings:updated-from-backend" as any,
       (updatedSettings: any) => {
@@ -81,7 +61,6 @@ export function useSettings() {
     try {
       const updatedSettings = await ipc.settings.setUserSettings(newSettings);
       setSettingsAtom(updatedSettings);
-      processSettingsForTelemetry(updatedSettings);
 
 
       setError(null);
@@ -111,21 +90,4 @@ export function useSettings() {
   };
 }
 
-function processSettingsForTelemetry(settings: UserSettings) {
-  if (settings.telemetryConsent) {
-    window.localStorage.setItem(
-      TELEMETRY_CONSENT_KEY,
-      settings.telemetryConsent,
-    );
-  } else {
-    window.localStorage.removeItem(TELEMETRY_CONSENT_KEY);
-  }
-  if (settings.telemetryUserId) {
-    window.localStorage.setItem(
-      TELEMETRY_USER_ID_KEY,
-      settings.telemetryUserId,
-    );
-  } else {
-    window.localStorage.removeItem(TELEMETRY_USER_ID_KEY);
-  }
-}
+

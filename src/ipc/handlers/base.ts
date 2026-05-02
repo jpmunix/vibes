@@ -170,7 +170,7 @@ export function registerTypedHandlers<
   for (const [key, contract] of Object.entries(contracts)) {
     const handler = handlers[key as keyof typeof handlers];
     if (handler) {
-      createTypedHandler(contract, handler);
+      createTypedHandler(contract as any, handler as any);
     }
   }
 }

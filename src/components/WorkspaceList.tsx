@@ -16,6 +16,7 @@ import {
   Plus,
   FolderOpen,
   FolderPlus,
+  FolderX,
   X,
   Trash2,
   MoreVertical,
@@ -27,13 +28,20 @@ import {
   Pin,
   PinOff,
   Square,
+  Database,
+  MessageSquare,
+  Code,
+  Folder,
+  Download,
+  Share2,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import { selectedChatIdAtom, recentStreamChatIdsAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
+import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
 import { useCreateApp } from "@/hooks/useCreateApp";
@@ -105,6 +113,7 @@ const AppChats = memo(function AppChats({
 
   const queryClient = useQueryClient();
 
+  const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -148,13 +157,14 @@ const AppChats = memo(function AppChats({
     setMenuPos(null);
   }, []);
 
-  const sortedChats = useMemo(() => {
+  const allSortedChats = useMemo(() => {
     if (!chats) return [];
     return [...chats]
       .filter(c => !pinnedChatIds.has(c.id))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [chats, pinnedChatIds]);
+
+  const sortedChats = showAll ? allSortedChats : allSortedChats.slice(0, 5);
 
   if (loading) {
     return (
@@ -254,7 +264,7 @@ const AppChats = memo(function AppChats({
                     {/* Pin/Unpin quick action */}
                     <button
                       type="button"
-                      className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title={pinnedChatIds.has(chat.id) ? "Desfijar" : "Fijar"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -270,42 +280,43 @@ const AppChats = memo(function AppChats({
                     {/* Archive quick action */}
                     <button
                       type="button"
-                      className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Archivar"
                       onClick={(e) => {
                         e.stopPropagation();
                         onArchiveChat(chat.id, chat.title || "Nuevo chat");
                       }}
                     >
-                      <Archive size={16} />
+                      <Archive size={15} />
                     </button>
                     {/* 3-dot menu */}
                     <button
                       ref={(el) => { if (el) menuBtnRefs.current.set(chat.id, el); else menuBtnRefs.current.delete(chat.id); }}
                       type="button"
-                      className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Opciones"
                       onClick={(e) => {
                         e.stopPropagation();
                         isMenuOpen ? closeMenu() : openMenu(chat.id);
                       }}
                     >
-                      <MoreVertical size={16} />
+                      <MoreVertical size={15} />
                     </button>
                   </>
                 )}
               </div>
             );
           })}
-          {chats.length > 5 && (
+          {allSortedChats.length > 5 && (
             <button
               type="button"
               className="px-2 py-1 typo-micro opacity-60 hover:text-primary transition-colors cursor-pointer text-left"
               onClick={(e) => {
                 e.stopPropagation();
+                setShowAll(prev => !prev);
               }}
             >
-              Ver todos ({chats.length})
+              {showAll ? "Ver menos" : `Ver todos (${allSortedChats.length})`}
             </button>
           )}
         </>
@@ -364,6 +375,35 @@ const AppChats = memo(function AppChats({
           >
             <Pencil size={14} className="opacity-60 shrink-0" />
             Renombrar
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              const chatId = openMenuId;
+              const chat = sortedChats.find(c => c.id === chatId);
+              closeMenu();
+              if (!chatId || !chat) return;
+              try {
+                const fullChat = await ipc.chat.getChat(chatId);
+                const markdown = buildShareMarkdown(
+                  fullChat.title || "Chat sin título",
+                  fullChat.messages,
+                );
+                const result = await ipc.markdownShare.uploadDocument({
+                  title: fullChat.title || "Chat sin título",
+                  content: markdown,
+                  format: "md",
+                });
+                await navigator.clipboard.writeText(result.data.share_url);
+                showSuccess("URL copiada al portapapeles");
+              } catch (e) {
+                showError(e);
+              }
+            }}
+          >
+            <Share2 size={14} className="opacity-60 shrink-0" />
+            Compartir chat
           </button>
           <button
             type="button"
@@ -429,7 +469,7 @@ const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) 
   if (!hasUnpushedChanges) return null;
 
   return (
-    <GitBranch className="w-3.5 h-3.5 text-primary animate-pulse shrink-0 ml-1.5" />
+    <GitBranch className="w-3.5 h-3.5 text-muted-foreground animate-pulse shrink-0 ml-1.5" />
   );
 });
 
@@ -467,6 +507,7 @@ interface WorkspaceAppItemProps {
   onOpenGit: (appId: number) => void;
   onOpenCode: (appId: number) => void;
   onStopServer: (appId: number) => void;
+  onArchiveApp: (appId: number, appName: string) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -489,17 +530,20 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onOpenGit,
   onOpenCode,
   onStopServer,
+  onArchiveApp,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
   const isActive = selectedAppId === app.id && (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const { isServerRunning } = useAppServerStatus(app.id);
+  const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | null>(null);
 
   const [archivePanelOpen, setArchivePanelOpen] = useState(false);
   const [archivePanelPos, setArchivePanelPos] = useState<{ top: number; left: number } | null>(null);
@@ -511,7 +555,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     const btn = menuBtnRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    const menuHeight = 110; // Approx height of 3 items popup
+    const menuHeight = 130; // Approx height of 3 category items
     let top = rect.bottom + 4;
     if (top + menuHeight > window.innerHeight) {
       top = rect.top - menuHeight - 4;
@@ -523,6 +567,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     setMenuPos(null);
+    setSubMenuOpen(null);
   }, []);
 
   const loadAndShowArchived = useCallback(async () => {
@@ -594,7 +639,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 
         {/* Gradient fade — theme-aware: uses sidebar-accent for idle, inherits active bg tint */}
         <div
-          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none transition-opacity z-10 rounded-r-lg ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          className={`absolute right-0 top-0 bottom-0 w-32 pointer-events-none transition-opacity z-10 rounded-r-lg ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
           style={{
             background: isActive
               ? "linear-gradient(to left, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.08) 40%, transparent)"
@@ -613,10 +658,20 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <MoreVertical size={15} />
         </button>
 
+        {/* Archive button */}
+        <button
+          type="button"
+          className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          title="Archivar"
+          onClick={(e) => { e.stopPropagation(); onArchiveApp(app.id, app.name); }}
+        >
+          <Archive size={15} />
+        </button>
+
         {/* New chat (Plus) button */}
         <button
           type="button"
-          className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          className={`absolute right-[3.75rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
           title="Nuevo chat"
           onClick={(e) => { e.stopPropagation(); onNewChat(app.id); }}
         >
@@ -646,72 +701,150 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       <>
         <div className="fixed inset-0 z-[998]" onClick={closeMenu} />
         <div
-          className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+          className="fixed z-[999] min-w-[172px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-visible"
           style={{ top: menuPos.top, left: menuPos.left }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onNewChat(app.id); }}
+          {/* ── Chat category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "chat" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("chat")}
           >
-            <Plus size={14} className="opacity-60 shrink-0" />
-            Nuevo chat
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onOpenCode(app.id); }}
+            <span className="flex items-center gap-2">
+              <MessageSquare size={14} className="opacity-60 shrink-0" />
+              Chat
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Chat */}
+            {subMenuOpen === "chat" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("chat")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onNewChat(app.id); }}
+                >
+                  <Plus size={14} className="opacity-60 shrink-0" />
+                  Nuevo chat
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={loadAndShowArchived}
+                >
+                  <Archive size={14} className="opacity-60 shrink-0" />
+                  Ver archivados
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Código category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "codigo" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("codigo")}
           >
-            <FolderOpen size={14} className="opacity-60 shrink-0" />
-            Explorar código
-          </button>
-          {hasUnpushedChanges && (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => { closeMenu(); onOpenGit(app.id); }}
-            >
-              <GitBranch size={14} className="opacity-60 shrink-0" />
-              Revisar cambios
-            </button>
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
+            <span className="flex items-center gap-2">
+              <Code size={14} className="opacity-60 shrink-0" />
+              Código
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Código */}
+            {subMenuOpen === "codigo" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("codigo")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onOpenCode(app.id); }}
+                >
+                  <FolderOpen size={14} className="opacity-60 shrink-0" />
+                  Explorar código
+                </button>
+                <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); onOpenGit(app.id); }}
+                  >
+                    <GitBranch size={14} className="opacity-60 shrink-0" />
+                    {hasUnpushedChanges ? "Revisar cambios" : "Git"}
+                  </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
+                >
+                  <Database size={14} className="opacity-60 shrink-0" />
+                  Memorias
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Workspace category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "workspace" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("workspace")}
           >
-            <Pencil size={14} className="opacity-60 shrink-0" />
-            Renombrar proyecto
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={loadAndShowArchived}
-          >
-            <Archive size={14} className="opacity-60 shrink-0" />
-            Ver archivados
-          </button>
-          {/* ── Destructive actions ── */}
-          <div className="my-1 border-t border-border" />
-          {isServerRunning && (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => { closeMenu(); onStopServer(app.id); }}
-            >
-              <Square size={14} className="shrink-0" />
-              Detener servidor
-            </button>
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
-          >
-            <X size={14} className="shrink-0" />
-            Cerrar workspace
-          </button>
+            <span className="flex items-center gap-2">
+              <Folder size={14} className="opacity-60 shrink-0" />
+              Workspace
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Workspace */}
+            {subMenuOpen === "workspace" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[190px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("workspace")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
+                >
+                  <Pencil size={14} className="opacity-60 shrink-0" />
+                  Renombrar workspace
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onArchiveApp(app.id, app.name); }}
+                >
+                  <Archive size={14} className="opacity-60 shrink-0" />
+                  Archivar
+                </button>
+                <div className="my-1 mx-2 border-t border-border/50" />
+                {isServerRunning && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); onStopServer(app.id); }}
+                  >
+                    <Square size={14} className="shrink-0" />
+                    Detener servidor
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
+                >
+                  <X size={14} className="shrink-0" />
+                  Cerrar workspace
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </>,
       document.body
@@ -772,9 +905,6 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     key={chat.id}
                     className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
                   >
-                    <div className="p-1.5 rounded-lg bg-muted/30 shrink-0">
-                      <Archive size={12} className="text-muted-foreground/50" />
-                    </div>
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm truncate font-medium">{chat.title || "Sin título"}</span>
                       <span className="text-xs text-muted-foreground/55 mt-0.5">
@@ -783,15 +913,15 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     </div>
                     <button
                       type="button"
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                      className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                       onClick={() => handleUnarchive(chat.id)}
                       disabled={unarchivingId === chat.id}
+                      title="Restaurar"
                     >
                       {unarchivingId === chat.id
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : <ArchiveRestore size={12} />
+                        ? <Loader2 size={15} className="animate-spin" />
+                        : <ArchiveRestore size={15} strokeWidth={2} />
                       }
-                      Restaurar
                     </button>
                   </div>
                 ))}
@@ -831,10 +961,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const lastSavedExpandedRef = useRef<string | null>(null);
   const lastSavedSelectionRef = useRef<string | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
-  const [wsMenuOpen, setWsMenuOpen] = useState(false);
-  const [wsMenuBtnPos, setWsMenuBtnPos] = useState<{ top: number; left: number } | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
-  const wsMenuBtnRef = useRef<HTMLButtonElement>(null);
 
   // Listen for sidebar action triggers from TopNavbar dropdown
   const sidebarAction = useAtomValue(sidebarActionAtom);
@@ -859,6 +986,123 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     }
   }, [queryClient]);
 
+  // ── Archived apps state ──
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const setApps = useSetAtom(appsListAtom);
+  const { data: archivedApps = [] } = useQuery({
+    queryKey: ["archived-apps"],
+    queryFn: () => ipc.app.getArchivedApps(),
+  });
+  const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
+
+  const handleArchiveApp = useCallback(async (appId: number, appName: string) => {
+    // Optimistic: remove from atom immediately (no flash)
+    setApps(prev => prev.filter(a => a.id !== appId));
+    if (selectedAppId === appId) {
+      setSelectedAppId(null);
+      navigate({ to: "/workspace", search: {} });
+    }
+    try {
+      await ipc.app.archiveApp({ appId, archived: true });
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+      showSuccess(`"${appName}" archivado`);
+    } catch (e) {
+      // Rollback on failure
+      refreshApps();
+      showError(e);
+    }
+  }, [setApps, selectedAppId, setSelectedAppId, navigate, queryClient, refreshApps]);
+
+  const handleUnarchiveApp = useCallback(async (appId: number) => {
+    setUnarchivingId(appId);
+    try {
+      await ipc.app.archiveApp({ appId, archived: false });
+      // Optimistic: move app from archived list back into main atom
+      const restored = archivedApps.find(a => a.id === appId);
+      if (restored) setApps(prev => [restored, ...prev]);
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+    } catch (e) {
+      showError(e);
+    } finally {
+      setUnarchivingId(null);
+    }
+  }, [setApps, archivedApps, queryClient]);
+
+  // ── Bulk close state ──
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkDeleteFiles, setBulkDeleteFiles] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+
+  const enterSelectionMode = useCallback(() => {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+  }, []);
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((appId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(appId)) next.delete(appId);
+      else next.add(appId);
+      return next;
+    });
+  }, []);
+
+  const selectAllWs = useCallback(() => {
+    setSelectedIds(new Set(apps.map((a) => a.id)));
+  }, [apps]);
+
+  const deselectAllWs = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkClose = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDialogOpen(true);
+  }, [selectedIds]);
+
+  const handleConfirmBulkClose = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBulkDeleting(true);
+      setBulkProgress(0);
+      const ids = Array.from(selectedIds);
+      let completed = 0;
+      for (const appId of ids) {
+        await ipc.app.deleteApp({ appId, deleteFiles: bulkDeleteFiles });
+        completed++;
+        setBulkProgress(Math.round((completed / ids.length) * 100));
+      }
+      setIsBulkDialogOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      await refreshApps();
+      if (selectedAppId !== null && ids.includes(selectedAppId)) {
+        setSelectedAppId(null);
+        setSelectedChatId(null);
+        navigate({ to: "/workspace", search: {} });
+      }
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteFiles(false);
+      setBulkProgress(0);
+    }
+  }, [selectedIds, bulkDeleteFiles, refreshApps, selectedAppId, setSelectedAppId, setSelectedChatId, navigate]);
+
+  const selectedAppNames = useMemo(
+    () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
+    [apps, selectedIds],
+  );
+
   // Empty app dialog state
   const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
   const [emptyAppName, setEmptyAppName] = useState("");
@@ -872,8 +1116,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     lastActionRef2.current = sidebarAction.ts;
     if (sidebarAction.action === "workspace:open-folder") {
       handleOpenFolder();
-    } else if (sidebarAction.action === "workspace:empty-app") {
+    } else if (sidebarAction.action === "workspace:new-project") {
       setIsEmptyAppDialogOpen(true);
+    } else if (sidebarAction.action === "workspace:search") {
+      setSearchVisible(v => !v);
+    } else if (sidebarAction.action === "workspace:bulk-close") {
+      enterSelectionMode();
     }
   }, [sidebarAction]);
 
@@ -883,7 +1131,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
     try {
       setIsCreatingEmptyApp(true);
-      const result = await createApp({ name: emptyAppName.trim(), empty: true });
+      const result = await createApp({ name: emptyAppName.trim() });
 
       setSelectedAppId(result.app.id);
       setEmptyAppName("");
@@ -1306,13 +1554,60 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           cursor: not-allowed;
           transform: none;
         }
+
+        /* ── Bulk selection toolbar ── */
+        .bulk-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: var(--sidebar);
+          border-top: 1px solid var(--border);
+          animation: bulk-toolbar-in 0.2s ease-out;
+          overflow: hidden;
+        }
+        @keyframes bulk-toolbar-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .bulk-toolbar-count {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--primary);
+          margin-right: auto;
+          white-space: nowrap;
+        }
       `}</style>
 
       <SidebarGroup
-        className="overflow-y-auto h-[calc(100vh-112px)]"
+        className={`overflow-y-auto overflow-x-hidden ${selectionMode ? "h-[calc(100vh-112px-52px)]" : "h-[calc(100vh-112px)]"}`}
         data-testid="workspace-list-container"
       >
-        
+        {/* ── Selection mode header bar ── */}
+        {selectionMode && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+            <FolderX size={15} className="text-primary shrink-0" />
+            <span className="typo-caption font-semibold text-primary">Seleccionar para cerrar</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                className="typo-micro text-muted-foreground hover:text-primary cursor-pointer transition-colors px-1.5 py-0.5 rounded"
+                onClick={selectedIds.size === apps.length ? deselectAllWs : selectAllWs}
+              >
+                {selectedIds.size === apps.length ? "Ninguno" : "Todos"}
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
+                onClick={exitSelectionMode}
+                title="Cancelar"
+              >
+                <X size={14} className="text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <SidebarGroupContent>
           <div className="flex flex-col gap-3 px-2">
 
@@ -1380,65 +1675,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             )}
 
             {/* ── Workspaces section ── */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 group/ws-header">
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
               <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
                 Workspaces
               </span>
-              <div className="relative ml-auto">
-                <button
-                  ref={wsMenuBtnRef}
-                  type="button"
-                  className="p-1 rounded-md hover:bg-sidebar-accent/80 text-muted-foreground/40 hover:text-foreground/70 transition-all cursor-pointer"
-                  title="Opciones"
-                  onClick={() => {
-                    if (wsMenuOpen) {
-                      setWsMenuOpen(false);
-                      setWsMenuBtnPos(null);
-                    } else {
-                      const rect = wsMenuBtnRef.current?.getBoundingClientRect();
-                      if (rect) setWsMenuBtnPos({ top: rect.bottom + 4, left: rect.right - 192 });
-                      setWsMenuOpen(true);
-                    }
-                  }}
-                >
-                  <MoreVertical size={14} />
-                </button>
-                {wsMenuOpen && wsMenuBtnPos && createPortal(
-                  <>
-                    <div className="fixed inset-0 z-[998]" onClick={() => { setWsMenuOpen(false); setWsMenuBtnPos(null); }} />
-                    <div
-                      className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
-                      style={{ top: wsMenuBtnPos.top, left: wsMenuBtnPos.left }}
-                    >
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); setSearchVisible(v => !v); }}
-                      >
-                        <Search size={14} className="opacity-60 shrink-0" />
-                        <span>Buscar</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); setIsEmptyAppDialogOpen(true); }}
-                      >
-                        <FolderPlus size={14} className="opacity-60 shrink-0" />
-                        <span>Nuevo workspace</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setWsMenuOpen(false); handleOpenFolder(); }}
-                      >
-                        <FolderOpen size={14} className="opacity-60 shrink-0" />
-                        <span>Abrir workspace</span>
-                      </button>
-                    </div>
-                  </>,
-                  document.body
-                )}
-              </div>
             </div>
 
             {/* Search (toggled via menu) */}
@@ -1468,6 +1708,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               </div>
             )}
 
+
             {/* Apps list */}
             {loading ? (
               <div className="py-3 px-2 typo-micro opacity-60 text-center">
@@ -1484,8 +1725,24 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             ) : (
               <div className="mt-1">
                 {filteredApps.map((app) => (
-                  <WorkspaceAppItem
-                    key={app.id}
+                  <div key={app.id} className="relative">
+                    {selectionMode && (
+                      <button
+                        type="button"
+                        className="absolute left-0 top-0 bottom-0 z-30 flex items-center justify-center w-full cursor-pointer bg-transparent hover:bg-primary/5 rounded-xl transition-colors"
+                        onClick={() => toggleSelect(app.id)}
+                      >
+                        <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                          selectedIds.has(app.id) ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        }`}>
+                          {selectedIds.has(app.id) && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                        </div>
+                      </button>
+                    )}
+                    <div className={selectionMode ? "pointer-events-none opacity-75" : ""}>
+                      <WorkspaceAppItem
                     app={app}
                     isExpanded={expandedApps.has(app.id)}
                     onToggle={handleToggleApp}
@@ -1498,6 +1755,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onPinChat={handlePinChat}
                     onUnpinChat={handleUnpinChat}
                     pinnedChatIds={pinnedChatIds}
+                    onArchiveApp={handleArchiveApp}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
                     onOpenGit={handleOpenGit}
@@ -1506,12 +1764,96 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </div>
+
+            {/* ── Archived workspaces collapsible ── */}
+            <div className="mt-3 px-1">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-medium text-muted-foreground/60 tracking-wide hover:text-muted-foreground/80 transition-colors cursor-pointer"
+                onClick={() => setArchivedOpen(v => !v)}
+              >
+                {archivedOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <Archive size={12} className="opacity-60" />
+                Archivados
+                {archivedApps.length > 0 && (
+                  <span className="ml-auto text-[10px] text-muted-foreground/40">
+                    {archivedApps.length}
+                  </span>
+                )}
+              </button>
+
+              {archivedOpen && (
+                <div className="mt-1 pl-2">
+                  {archivedApps.length === 0 ? (
+                    <div className="py-3 px-2 typo-micro opacity-40 text-center">
+                      Sin workspaces archivados
+                    </div>
+                  ) : (
+                    archivedApps.map((app) => (
+                      <div
+                        key={app.id}
+                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                      >
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
+                          <span className="text-xs text-muted-foreground/45 mt-0.5">
+                            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                          onClick={() => handleUnarchiveApp(app.id)}
+                          disabled={unarchivingId === app.id}
+                          title="Restaurar"
+                        >
+                          {unarchivingId === app.id
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <ArchiveRestore size={15} strokeWidth={2} />
+                          }
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
         </SidebarGroupContent>
       </SidebarGroup>
+
+          {/* ── Bulk selection bottom toolbar ── */}
+          {selectionMode && (
+            <div className="bulk-toolbar">
+              <span className="bulk-toolbar-count">
+                {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exitSelectionMode}
+                className="h-7 text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkClose}
+                disabled={selectedIds.size === 0}
+                className="h-7 text-xs flex items-center gap-1"
+              >
+                <FolderX size={13} />
+                Cerrar ({selectedIds.size})
+              </Button>
+            </div>
+          )}
 
       {/* Close Folder Confirmation Dialog — portal to escape sidebar overflow */}
       {/* Close workspace dialog */}
@@ -1637,21 +1979,21 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         </DialogContent>
       </Dialog>
 
-      {/* Create empty workspace dialog */}
+      {/* Create new project dialog */}
       <Dialog open={isEmptyAppDialogOpen} onOpenChange={(open) => { if (!open) { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); } }}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Crear workspace</DialogTitle>
+            <DialogTitle>Nuevo proyecto</DialogTitle>
           </DialogHeader>
           <p className="typo-caption text-muted-foreground">
-            Se creará un workspace vacío con git inicializado, listo para usar.
+            Se creará un proyecto con el scaffold del template seleccionado, listo para usar.
           </p>
           <form onSubmit={handleCreateEmptyApp}>
             <input
               type="text"
               value={emptyAppName}
               onChange={(e) => setEmptyAppName(e.target.value)}
-              placeholder="Nombre del workspace..."
+              placeholder="Nombre del proyecto..."
               disabled={isCreatingEmptyApp}
               autoFocus
               className={`w-full mb-2 bg-transparent border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30 ${
@@ -1660,7 +2002,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             />
             {emptyAppNameCheck?.exists && (
               <p className="typo-micro text-destructive mb-2">
-                Ya existe un workspace con este nombre
+                Ya existe un proyecto con este nombre
               </p>
             )}
             <DialogFooter className="mt-3">
@@ -1682,11 +2024,91 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     Creando...
                   </>
                 ) : (
-                  "Crear workspace"
+                  "Crear proyecto"
                 )}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk close confirmation dialog ── */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={(open) => {
+        if (!isBulkDeleting) {
+          setIsBulkDialogOpen(open);
+          if (!open) setBulkDeleteFiles(false);
+        }
+      }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>
+              ¿Cerrar {selectedIds.size} workspace{selectedIds.size !== 1 ? "s" : ""}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="typo-caption text-muted-foreground">
+            {selectedIds.size === 1
+              ? "El workspace se desvinculará de Vibes."
+              : `Los ${selectedIds.size} workspaces se desvincularán de Vibes.`}
+            {" "}Los archivos en disco se conservarán.
+          </p>
+
+          {/* List selected apps */}
+          <div className="max-h-[160px] overflow-y-auto bg-muted rounded-lg p-2 my-2">
+            {selectedAppNames.map((name) => (
+              <div key={name} className="text-sm py-0.5 text-foreground/85">• {name}</div>
+            ))}
+          </div>
+
+          <div className="flex items-center space-x-2 py-1">
+            <input
+              type="checkbox"
+              id="ws-bulk-delete-files-check"
+              checked={bulkDeleteFiles}
+              onChange={(e) => setBulkDeleteFiles(e.target.checked)}
+              disabled={isBulkDeleting}
+              className="rounded border-border"
+            />
+            <label htmlFor="ws-bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+              Eliminar también los archivos del disco
+            </label>
+          </div>
+
+          {/* Progress bar during deletion */}
+          {isBulkDeleting && (
+            <div className="h-[3px] bg-muted rounded-sm overflow-hidden mt-2">
+              <div
+                className="h-full bg-primary rounded-sm transition-[width] duration-300"
+                style={{ width: `${bulkProgress}%` }}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBulkDialogOpen(false)}
+              disabled={isBulkDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant={bulkDeleteFiles ? "destructive" : "default"}
+              onClick={handleConfirmBulkClose}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 size={12} className="animate-spin mr-1.5" />
+                  Cerrando... {bulkProgress}%
+                </>
+              ) : bulkDeleteFiles ? (
+                `Eliminar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""} y archivos`
+              ) : (
+                `Cerrar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""}`
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

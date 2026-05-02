@@ -9,6 +9,7 @@ import {
 import { parsePlanFromText } from "@/components/chat/PlanPanel";
 import { useSettings } from "./useSettings";
 import { ipc } from "@/ipc/types";
+import { sendAppNotification } from "@/lib/notification-sound";
 
 function updateMapAtom<K, V>(
     setter: (fn: (prev: Map<K, V>) => Map<K, V>) => void,
@@ -84,16 +85,14 @@ export function usePlanSync(chatId?: number) {
                 console.error("Failed to save plan data:", err)
             );
 
-            // Notify user via system notification if window is not focused
-            if (
-                settings?.enableChatCompletionNotifications !== false &&
-                Notification.permission === "granted" &&
-                !document.hasFocus()
-            ) {
-                new Notification("Plan listo", {
+            // Notify user if window is not focused
+            if (!document.hasFocus()) {
+                sendAppNotification({
+                    title: "Plan listo",
                     body: parsed.objective.length > 80
                         ? parsed.objective.slice(0, 80) + "…"
                         : parsed.objective,
+                    settings: settings ?? null,
                 });
             }
         }

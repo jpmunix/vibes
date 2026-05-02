@@ -21,7 +21,6 @@ import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
 import { firebaseContracts } from "../types/firebase";
-import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
 
 
@@ -41,16 +40,16 @@ import { settingsContracts } from "../types/settings";
 import { supabaseContracts } from "../types/supabase";
 import { systemContracts, systemEvents } from "../types/system";
 import { templateContracts } from "../types/templates";
-import { todoContracts } from "../types/todo";
-import { tokenStatsContracts } from "../types/token_stats";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 
-import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
+import { memoryContracts } from "../types/memory";
+import { adminContracts } from "../types/admin";
+import { markdownShareContracts } from "../types/markdown-share";
 
 
 // =============================================================================
@@ -85,7 +84,6 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(chatContracts),
 
-  ...getInvokeChannels(todoContracts),
   ...getInvokeChannels(agentContracts),
 
 
@@ -118,18 +116,18 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(visualEditingContracts),
   ...getInvokeChannels(miscContracts),
 
-  ...getInvokeChannels(tokenStatsContracts),
-  ...getInvokeChannels(chatLogsContracts),
-
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(bunnyContracts),
   ...getInvokeChannels(pocketbaseContracts),
-  // knowledgeContracts — KB removed
-  ...getInvokeChannels(aiQueryLogContracts),
+  ...getInvokeChannels(memoryContracts),
 
   ...getInvokeChannels(authContracts),
 
   ...getInvokeChannels(designContracts),
+
+  ...getInvokeChannels(adminContracts),
+
+  ...getInvokeChannels(markdownShareContracts),
 
 
   // Test-only channels
@@ -183,6 +181,9 @@ export const VALID_RECEIVE_CHANNELS = [
 
   // Backend-initiated settings updates (e.g. permission persistence)
   "settings:updated-from-backend",
+
+  // Model validator — notifies when stale models are auto-replaced on boot
+  "models:migrated",
 ] as const;
 
 // =============================================================================

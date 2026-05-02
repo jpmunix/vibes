@@ -2,16 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LightbulbIcon } from "@/components/ui/icons";
 import { ErrorComponentProps } from "@tanstack/react-router";
-import { usePostHog } from "posthog-js/react";
 import { ipc } from "@/ipc/types";
 
 export function ErrorBoundary({ error }: ErrorComponentProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const posthog = usePostHog();
-
   useEffect(() => {
     console.error("An error occurred in the route:", error);
-    posthog.captureException(error);
   }, [error]);
 
   const handleReportBug = async () => {

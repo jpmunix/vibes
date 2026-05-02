@@ -5,6 +5,8 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import log from "electron-log";
+import { BrowserWindow } from "electron";
+import { safeSend } from "../utils/safe_sender";
 
 const logger = log.scope("settings_handlers");
 
@@ -18,6 +20,23 @@ const LOCAL_ONLY_FIELDS = [
   "providerSettings",
   "githubAccessToken",
   "vercelAccessToken",
+] as const;
+
+/**
+ * Keys removed by the v10 settings cleanup migration.
+ * Must be stripped from remote settings during merge to prevent stale Bunny data
+ * from re-introducing them after the local migration has cleaned them up.
+ */
+const V10_DEAD_KEYS = [
+  'turboEditModel', 'todoAnalysisModel', 'debateModel',
+  'summaryModel', 'appTitleGenerationModel',
+  'memoriesExtractionModel', 'hideLocalAgentNewChatToast',
+  'enableLocalSmartContext', 'enableMcpSmartContext',
+  'enableBackgroundProblemAutoFix', 'enableAutoRepairRuntimeErrors',
+  'autoFixModel', 'autoFixMaxDurationMs', 'autoFixMaxAttempts',
+  'autoFixMaxIssues', 'agentMaxSteps',
+  'enableOpenCodeLsp', 'thinkingBudget', 'experiments',
+  'releaseChannel', 'dossierModel', 'enableTurboEditsV2',
 ] as const;
 
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
@@ -42,6 +61,20 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
       // differently-encrypted values from another machine/session).
       for (const field of LOCAL_ONLY_FIELDS) {
         delete remoteSettings[field];
+      }
+
+      // --- MEMORY MODEL EXCLUSION ---
+      // Memory model fields are managed by local migrations (v9g+).
+      // They MUST NOT be overwritten by remote data.
+      delete remoteSettings.memoriesSynthesisModelV2;
+      delete remoteSettings.memoriesRouterModelV2;
+      // --- MIGRATION FLAGS EXCLUSION ---
+      // Migration state is local-only — remote may have stale flags.
+      delete remoteSettings._migrations;
+
+      // --- DEAD KEY EXCLUSION (v10) ---
+      for (const key of V10_DEAD_KEYS) {
+        delete remoteSettings[key];
       }
 
       // We must explicitly save these to disk so they immediately become the local truth
@@ -88,6 +121,17 @@ export function registerSettingsHandlers() {
             // Also strip session data
             delete remoteSettings.userId;
             delete remoteSettings.sessionToken;
+            // Strip memory model fields — managed by local migration v9
+            delete remoteSettings.memoriesSynthesisModelV2;
+            delete remoteSettings.memoriesRouterModelV2;
+            // Strip _migrations — always trust local migration state,
+            // otherwise remote overwrites local flags and re-triggers migrations
+            delete remoteSettings._migrations;
+
+            // Strip dead/abandoned keys (v10 cleanup) — remote may still hold stale values
+            for (const key of V10_DEAD_KEYS) {
+              delete remoteSettings[key];
+            }
 
             // Merge: local wins for secrets, remote wins for preferences
             return { ...localSettings, ...remoteSettings };
@@ -112,7 +156,7 @@ export function registerSettingsHandlers() {
   //
   // ⚠️  Main-process code that needs the same pipeline must replicate these
   //     steps manually — see persistPermissionToSettings() in opencode_adapter.ts.
-  createTypedHandler(settingsContracts.setUserSettings, async (_, settings, context) => {
+  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context) => {
     writeSettings(settings);
     const updated = readSettings();
 
@@ -186,6 +230,17 @@ export function registerSettingsHandlers() {
         logger.error("Error syncing settings to remote DB:", error);
       }
     }
+
+    // ── Broadcast to ALL other windows for real-time sync ──
+    // The calling window already receives `updated` as the return value;
+    // other windows (admin panel, chat sub-windows) need the IPC push.
+    const senderWebContentsId = event?.sender?.id;
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && win.webContents && win.webContents.id !== senderWebContentsId) {
+        safeSend(win.webContents, "settings:updated-from-backend", updated);
+      }
+    }
+
     return updated;
   });
 }

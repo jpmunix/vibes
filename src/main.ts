@@ -30,9 +30,11 @@ import {
   startPerformanceMonitoring,
   stopPerformanceMonitoring,
 } from "./utils/performance_monitor";
+import { shutdownOpenCode } from "./ipc/handlers/opencode_adapter";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
+import { validateModelSettings } from "./ipc/utils/model_validator";
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -41,6 +43,26 @@ log.scope.labelPadding = false;
 // Optimization: Only write errors to disk to avoid I/O contention
 log.transports.file.level = "error";
 log.transports.console.level = "info"; // Keep info logs in console/stdout
+
+// Silence noisy scopes — they flood the console during normal operation
+const SILENCED_SCOPES = new Set<string>([
+  "opencode_adapter",
+  "design_handlers",
+  "start_proxy_server",
+  "scaffold-cache",
+  "auth-handlers",
+  "token_count_handlers",
+  "opencode_diagnostic",
+  "morph_patcher",
+  "proposal_handlers",
+  "window-handlers",
+  "tsc",
+]);
+log.hooks.push((message, transport) => {
+  if (transport !== log.transports.console) return message;
+  if (message.scope && SILENCED_SCOPES.has(message.scope)) return false;
+  return message;
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Performance: Chromium command-line flags (must be set before app.ready)
@@ -156,7 +178,7 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 2;
+  const TOTAL_STEPS = 3;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -166,17 +188,23 @@ export async function onReady() {
   createWindow();
   createApplicationMenu();
 
-  // Step 2: Wait for main window content to fully load, then swap splash → main
-  updateSplash(splash, 2, TOTAL_STEPS, "Cargando...");
+
+  // Step 2: Validate configured models still exist in OpenRouter
+  updateSplash(splash, 2, TOTAL_STEPS, "Validando modelos...");
+  await validateModelSettings().catch((err) =>
+    logger.warn("Model validation failed (non-fatal):", err),
+  );
+
+  // Step 3: Show main window and close splash
+  // The main window renders behind the splash (splash is alwaysOnTop).
+  // No need to wait for did-finish-load — the window has backgroundColor
+  // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
+  // naturally while the splash fades away.
+  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
-    await new Promise<void>(resolve => {
-      mainWindow!.webContents.once("did-finish-load", resolve);
-      // Safety timeout in case did-finish-load already fired
-      setTimeout(resolve, 5000);
-    });
-    await closeSplash(splash);
     mainWindow.show();
   }
+  await closeSplash(splash);
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
@@ -393,7 +421,7 @@ const createWindow = () => {
     menu.popup({ window: mainWindow! });
   });
 
-  if (windowState?.isMaximized) {
+  if (windowState?.isMaximized ?? true) {
     mainWindow.maximize();
   }
 
@@ -695,6 +723,7 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
+  shutdownOpenCode();
   stopPerformanceMonitoring();
   writeSettings({ isRunning: false });
 });

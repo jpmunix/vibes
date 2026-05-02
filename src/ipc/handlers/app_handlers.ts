@@ -110,7 +110,7 @@ export function registerAppHandlers() {
     let fullAppPath = getVibesAppPath(appPath);
     let suffix = 1;
     while (fs.existsSync(fullAppPath) || await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.name, appPath), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.name, appPath), eq(remoteSchema.apps.userId, context.userId!)),
     })) {
       suffix++;
       appPath = `${baseSlug}-${suffix}`;
@@ -121,7 +121,7 @@ export function registerAppHandlers() {
     const [app] = await db
       .insert(remoteSchema.apps)
       .values({
-        userId: context.userId,
+        userId: context.userId!,
         name: appPath,
         path: appPath,
         createdAt: new Date(),
@@ -132,7 +132,7 @@ export function registerAppHandlers() {
     const [chat] = await db
       .insert(remoteSchema.chats)
       .values({
-        userId: context.userId,
+        userId: context.userId!,
         appId: app.id,
         createdAt: new Date(),
       })
@@ -180,7 +180,7 @@ export function registerAppHandlers() {
       .set({
         initialCommitHash: commitHash,
       })
-      .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId)));
+      .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId!)));
 
     // Detect and persist primary language (fire-and-forget)
     detectProjectLanguage(fullAppPath).then(async ({ primaryLanguage, projectType }) => {
@@ -206,7 +206,7 @@ export function registerAppHandlers() {
 
     // 1. Check if an app with the new name already exists
     const existingApp = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.name, newAppName), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.name, newAppName), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (existingApp) {
@@ -215,7 +215,7 @@ export function registerAppHandlers() {
 
     // 2. Find the original app
     const originalApp = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!originalApp) {
@@ -260,7 +260,7 @@ export function registerAppHandlers() {
     const [newDbApp] = await db
       .insert(remoteSchema.apps)
       .values({
-        userId: context.userId,
+        userId: context.userId!,
         name: newAppName,
         path: newAppName, // Use the new name for the path
         // Explicitly set these to null because we don't want to copy them over.
@@ -284,7 +284,7 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) {
@@ -342,7 +342,10 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const allApps = await db.query.apps.findMany({
-      where: eq(remoteSchema.apps.userId, context.userId),
+      where: and(
+        eq(remoteSchema.apps.userId, context.userId!),
+        eq(remoteSchema.apps.isArchived, 0),
+      ),
       orderBy: [desc(remoteSchema.apps.createdAt)],
     });
 
@@ -390,13 +393,57 @@ export function registerAppHandlers() {
     };
   });
 
+  // Archive / unarchive an app
+  createTypedHandler(appContracts.archiveApp, async (_, { appId, archived }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.apps)
+      .set({ isArchived: archived ? 1 : 0 })
+      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
+  });
+
+  // Get archived apps
+  createTypedHandler(appContracts.getArchivedApps, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const archivedApps = await db.query.apps.findMany({
+      where: and(
+        eq(remoteSchema.apps.userId, context.userId!),
+        eq(remoteSchema.apps.isArchived, 1),
+      ),
+      orderBy: [desc(remoteSchema.apps.createdAt)],
+    });
+
+    const appsWithResolvedPath = await Promise.all(
+      archivedApps.map(async (app) => {
+        const resolvedPath = getVibesAppPath(app.path);
+        let localPathExists = false;
+        try {
+          await fsPromises.access(resolvedPath);
+          localPathExists = true;
+        } catch {
+          // Path does not exist
+        }
+        return {
+          ...app,
+          resolvedPath,
+          localPathExists,
+          canClone: !!(app.githubOrg && app.githubRepo),
+        };
+      }),
+    );
+
+    return appsWithResolvedPath;
+  });
+
   createTypedHandler(appContracts.readAppFile, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) {
@@ -430,7 +477,7 @@ export function registerAppHandlers() {
 
     const { appId, filePath } = params;
     const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!appRecord) throw new Error("App not found");
@@ -497,7 +544,7 @@ export function registerAppHandlers() {
       }
 
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (!app) {
@@ -641,7 +688,7 @@ export function registerAppHandlers() {
 
         // Now start the app again
         const app = await db.query.apps.findFirst({
-          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
         });
 
         if (!app) {
@@ -717,7 +764,7 @@ export function registerAppHandlers() {
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) {
@@ -823,7 +870,7 @@ export function registerAppHandlers() {
 
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) throw new Error("App not found");
@@ -855,7 +902,7 @@ export function registerAppHandlers() {
 
     const { appId, oldPath, newPath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) throw new Error("App not found");
@@ -890,7 +937,7 @@ export function registerAppHandlers() {
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (!app) {
@@ -914,9 +961,24 @@ export function registerAppHandlers() {
 
       // Delete app from database
       try {
+        // Manual cascade for tables without FK onDelete (prevent orphan data)
+        await db.delete(remoteSchema.memories)
+          .where(eq(remoteSchema.memories.appId, appId));
+        await db.delete(remoteSchema.memoryTelemetry)
+          .where(eq(remoteSchema.memoryTelemetry.appId, appId));
+        await db.delete(remoteSchema.memoryPipelineLogs)
+          .where(eq(remoteSchema.memoryPipelineLogs.appId, appId));
+        await db.delete(remoteSchema.memoryDebugLogs)
+          .where(eq(remoteSchema.memoryDebugLogs.appId, appId));
+        await db.delete(remoteSchema.userPreferences)
+          .where(and(
+            eq(remoteSchema.userPreferences.userId, context.userId!),
+            eq(remoteSchema.userPreferences.appId, appId),
+          ));
+
+        // Delete the app row (chats, versions, todos, etc. cascade via FK)
         await db.delete(remoteSchema.apps)
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
-        // Note: Associated chats will cascade delete
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
         throw new Error(`Failed to delete app from database: ${error.message}`);
@@ -930,7 +992,7 @@ export function registerAppHandlers() {
           .from(remoteSchema.userPreferences)
           .where(
             and(
-              eq(remoteSchema.userPreferences.userId, context.userId),
+              eq(remoteSchema.userPreferences.userId, context.userId!),
               eq(remoteSchema.userPreferences.key, "sidebar.lastSelection"),
               eq(remoteSchema.userPreferences.appId, 0),
             ),
@@ -942,7 +1004,7 @@ export function registerAppHandlers() {
               await db
                 .insert(remoteSchema.userPreferences)
                 .values({
-                  userId: context.userId,
+                  userId: context.userId!,
                   appId: 0,
                   key: "sidebar.lastSelection",
                   value: "",
@@ -1000,7 +1062,7 @@ export function registerAppHandlers() {
         const result = await db
           .select({ isFavorite: remoteSchema.apps.isFavorite })
           .from(remoteSchema.apps)
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
           .limit(1);
 
         if (result.length === 0) {
@@ -1013,7 +1075,7 @@ export function registerAppHandlers() {
         const updated = await db
           .update(remoteSchema.apps)
           .set({ isFavorite: currentIsFavorite ? 0 : 1 })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
           .returning({ isFavorite: remoteSchema.apps.isFavorite });
 
         if (updated.length === 0) {
@@ -1023,7 +1085,7 @@ export function registerAppHandlers() {
         }
 
         // Return the updated isFavorite value
-        return { isFavorite: updated[0].isFavorite };
+        return { isFavorite: updated[0].isFavorite ? true : false };
       } catch (error: any) {
         logger.error(
           `Error in add-to-favorite handler for app ID ${appId}:`,
@@ -1047,7 +1109,7 @@ export function registerAppHandlers() {
             installCommand: installCommand?.trim() || null,
             startCommand: startCommand?.trim() || null,
           })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
         logger.info(
           `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
         );
@@ -1070,7 +1132,7 @@ export function registerAppHandlers() {
       let appPath = newPath;
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (!app) {
@@ -1103,7 +1165,7 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1122,7 +1184,7 @@ export function registerAppHandlers() {
       let hasPathConflict = false;
       if (pathChanged) {
         const allApps = await db.query.apps.findMany({
-          where: eq(remoteSchema.apps.userId, context.userId),
+          where: eq(remoteSchema.apps.userId, context.userId!),
         });
         hasPathConflict = allApps.some((existingApp) => {
           if (existingApp.id === appId) {
@@ -1213,7 +1275,7 @@ export function registerAppHandlers() {
             name: appName,
             path: pathToStore,
           })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
           .returning();
 
         return;
@@ -1249,7 +1311,7 @@ export function registerAppHandlers() {
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (!app) {
@@ -1258,7 +1320,7 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1270,7 +1332,7 @@ export function registerAppHandlers() {
         await db
           .update(remoteSchema.apps)
           .set({ name: appName })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
           .returning();
 
         return;
@@ -1353,7 +1415,7 @@ export function registerAppHandlers() {
 
     const { appId, oldBranchName, newBranchName } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!app) {
@@ -1437,7 +1499,7 @@ export function registerAppHandlers() {
 
     // Get app path
     const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!appRecord) {
@@ -1615,7 +1677,7 @@ export function registerAppHandlers() {
     const { appId, partial } = params;
 
     const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!appRecord) {
@@ -1670,7 +1732,7 @@ export function registerAppHandlers() {
     }
 
     const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
     });
 
     if (!appRecord) {
@@ -1818,7 +1880,7 @@ export function registerAppHandlers() {
 
     return withLock(appId, async () => {
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
       });
 
       if (!app) {
@@ -1838,7 +1900,7 @@ export function registerAppHandlers() {
           await db
             .update(remoteSchema.apps)
             .set({ path: nextResolvedPath })
-            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
         }
         return {
           resolvedPath: nextResolvedPath,
@@ -1846,7 +1908,7 @@ export function registerAppHandlers() {
       }
 
       const allApps = await db.query.apps.findMany({
-        where: eq(remoteSchema.apps.userId, context.userId),
+        where: eq(remoteSchema.apps.userId, context.userId!),
       });
       const conflict = allApps.some(
         (existingApp) =>
@@ -1875,7 +1937,7 @@ export function registerAppHandlers() {
         await db
           .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
         return {
           resolvedPath: nextResolvedPath,
         };
@@ -1903,7 +1965,7 @@ export function registerAppHandlers() {
         await db
           .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
 
         try {
           await fsPromises.rm(currentResolvedPath, {
@@ -2022,7 +2084,7 @@ export function registerAppHandlers() {
           })
           .from(remoteSchema.messages)
           .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
-          .where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.messages.role, "user"), eq(remoteSchema.chats.userId, context.userId)))
+          .where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.messages.role, "user"), eq(remoteSchema.chats.userId, context.userId!)))
           .orderBy(remoteSchema.messages.createdAt) // Get oldest first
           .limit(1);
 
@@ -2078,7 +2140,7 @@ export function registerAppHandlers() {
     const appInfo = await db.query.apps.findFirst({
       where: and(
         eq(remoteSchema.apps.id, appId),
-        eq(remoteSchema.apps.userId, context.userId),
+        eq(remoteSchema.apps.userId, context.userId!),
       ),
     });
 

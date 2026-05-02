@@ -39,7 +39,7 @@ export const pendingMessageQueueByIdAtom = atom<Map<number, PendingQueuedMessage
 // Quoted messages for the reply/cite feature (supports multiple)
 export interface QuotedMessage {
   id: number;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "console";
   content: string; // Plain text excerpt (already stripped)
 }
 export const quotedMessagesAtom = atom<QuotedMessage[]>([]);
@@ -114,3 +114,11 @@ export interface PendingOpenCodePermission {
 
 export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>([]);
 
+// Memory Router: selected memories injected into agent context per chat
+export interface SelectedMemoryMeta {
+  id: number;
+  type: string;
+  key: string | null;
+  content: string;
+}
+export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[]>>(new Map());

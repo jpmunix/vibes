@@ -540,6 +540,18 @@ export const appContracts = {
       url: z.string().optional(),
     }),
   }),
+
+  archiveApp: defineContract({
+    channel: "archive-app",
+    input: z.object({ appId: z.number(), archived: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getArchivedApps: defineContract({
+    channel: "get-archived-apps",
+    input: z.void(),
+    output: z.array(ListedAppSchema),
+  }),
 } as const;
 
 // =============================================================================

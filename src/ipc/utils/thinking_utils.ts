@@ -20,9 +20,6 @@ export function getExtraProviderOptions(
     return { reasoning_effort: effort };
   }
   if (providerId === "openrouter") {
-    if (effort === "none") {
-      return {};
-    }
     return {
       reasoning: {
         effort,

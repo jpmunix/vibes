@@ -188,7 +188,7 @@ export const GitPullRequestArrow = withIconFactory(Lucide.GitPullRequestArrow, I
 export const HardDrive = withIconFactory(Lucide.HardDrive, Iconoir.HardDrive);
 export const MoreHorizontal = withIconFactory(Lucide.MoreHorizontal, Iconoir.MoreHoriz);
 export const Network = withIconFactory(Lucide.Network, Iconoir.Network);
-export const UserPlus = withIconFactory(Lucide.UserPlus, Iconoir.AddUser);
+export const UserPlus = withIconFactory(Lucide.UserPlus, Iconoir.UserPlus);
 export const Users = withIconFactory(Lucide.Users, Iconoir.Group);
 // Visual editor & Annotator icons
 export const AlignCenter = withIconFactory(Lucide.AlignCenter, Iconoir.AlignCenter);
@@ -235,10 +235,12 @@ export const Table = withIconFactory(Lucide.Table, Iconoir.Table);
 export const Table2 = withIconFactory(Lucide.Table2, Iconoir.TableRows);
 export const TabletSmartphone = withIconFactory(Lucide.TabletSmartphone, Iconoir.SmartphoneDevice);
 export const TestTube = withIconFactory(Lucide.TestTube, Iconoir.Flask);
-export const TrendingUp = withIconFactory(Lucide.TrendingUp, Iconoir.TrendUp);
+export const TrendingUp = withIconFactory(Lucide.TrendingUp, Iconoir.GraphUp);
 export const Undo2 = withIconFactory(Lucide.Undo2, Iconoir.Undo);
 export const Video = withIconFactory(Lucide.Video, Iconoir.VideoCamera);
 export const Wifi = withIconFactory(Lucide.Wifi, Iconoir.Wifi);
+export const CloudOff = withIconFactory(Lucide.CloudOff, Iconoir.CloudDesync);
+export const Unlink = withIconFactory(Lucide.Unlink, Iconoir.Link);
 
 // Custom Brand SVGs
 const NeonSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (

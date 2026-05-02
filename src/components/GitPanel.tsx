@@ -3,13 +3,15 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useGitPanel } from "@/hooks/useGitPanel";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useSettings } from "@/hooks/useSettings";
-import { GitRemoteSetup } from "@/components/git_window/GitRemoteSetup";
+import { GitRemoteSetupDialog } from "@/components/git_window/GitRemoteSetup";
+import { VercelPublishButton } from "@/components/git_window/VercelPublishButton";
 import CommitMessageDialog from "@/components/CommitMessageDialog";
 import { useHighlighter, getLanguageFromPath } from "@/components/chat/CodeHighlight";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     GitBranch,
     Plus,
@@ -46,6 +48,9 @@ import {
     GripHorizontal,
     MoreVertical,
     Undo2,
+    Cloud,
+    CloudOff,
+    Unlink,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -728,9 +733,16 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const [discardTarget, setDiscardTarget] = useState<string[] | null>(null);
     const appId = useAtomValue(selectedAppIdAtom);
     const { app, refreshApp } = useLoadApp(appId);
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
+    const commitPanelDraggingRef = useRef(false);
+    const commitPanelSizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track whether settings have loaded at least once — used as key to remount
+    // the PanelGroup with the correct saved defaultSize
+    const settingsLoadedRef = useRef(false);
+    if (settings && !settingsLoadedRef.current) settingsLoadedRef.current = true;
     const hasGithubToken = !!settings?.githubAccessToken;
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
+    const queryClient = useQueryClient();
 
     const {
         uncommittedFiles,
@@ -775,6 +787,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     } = useGitPanel(appId);
 
     const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
+    const [showRemoteDialog, setShowRemoteDialog] = useState(false);
 
 
     // ── file selection & diff ──
@@ -914,8 +927,12 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
     const handleCommitAndPush = useCallback(async () => {
         await handleCommit();
+        if (!hasRemote) {
+            setShowRemoteDialog(true);
+            return;
+        }
         await push({});
-    }, [handleCommit, push]);
+    }, [handleCommit, push, hasRemote]);
 
     const handleDiscard = useCallback((filepath: string) => {
         setDiscardTarget([filepath]);
@@ -990,7 +1007,10 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer text-primary"
-                                    onClick={() => push({})} disabled={isPushing || isPulling}>
+                                    onClick={() => {
+                                        if (!hasRemote) { setShowRemoteDialog(true); return; }
+                                        push({});
+                                    }} disabled={isPushing || isPulling}>
                                     {isPushing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                                 </Button>
                             </TooltipTrigger>
@@ -1007,6 +1027,26 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             aheadCount={gitState?.ahead}
                             align="end"
                         />
+                    )}
+                    {/* No-remote badge */}
+                    {hasGithubToken && !hasRemote && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setShowRemoteDialog(true)}
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
+                                >
+                                    <CloudOff size={11} />
+                                    Sin remote
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Configurar repositorio remoto</TooltipContent>
+                        </Tooltip>
+                    )}
+
+                    {/* Vercel Publish button */}
+                    {appId && app && (
+                        <VercelPublishButton appId={appId} app={app} refreshApp={refreshApp} />
                     )}
                     
                     <DropdownMenu>
@@ -1059,6 +1099,34 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 <Ban size={13} />
                                 Abortar rebase
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="typo-micro">Repositorio remoto</DropdownMenuLabel>
+                            {hasRemote ? (
+                                <DropdownMenuItem
+                                    className="text-xs flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                    onClick={async (e) => {
+                                        e.preventDefault();
+                                        if (!appId) return;
+                                        try {
+                                            await ipc.github.disconnect({ appId });
+                                            toast.success("Remote desconectado");
+                                            refreshApp();
+                                            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+                                        } catch (err: any) { toast.error(err.message); }
+                                    }}
+                                >
+                                    <GitBranch size={13} />
+                                    Desconectar remote
+                                </DropdownMenuItem>
+                            ) : (
+                                <DropdownMenuItem
+                                    className="text-xs flex items-center gap-2 cursor-pointer"
+                                    onClick={(e) => { e.preventDefault(); setShowRemoteDialog(true); }}
+                                >
+                                    <GitBranch size={13} />
+                                    Configurar remote
+                                </DropdownMenuItem>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -1103,10 +1171,25 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
                         {/* ── Left: file tree + commit area ── */}
                         <Panel defaultSize={32} minSize={22} maxSize={55}>
-                            <PanelGroup direction="vertical" className="h-full">
+                            <PanelGroup
+                                direction="vertical"
+                                className="h-full"
+                                key={settingsLoadedRef.current ? "loaded" : "init"}
+                                onLayout={(sizes: number[]) => {
+                                    // Only persist when the user is actively dragging the resize handle
+                                    if (!commitPanelDraggingRef.current) return;
+                                    const commitSize = sizes[1];
+                                    if (commitSize != null) {
+                                        if (commitPanelSizeTimerRef.current) clearTimeout(commitPanelSizeTimerRef.current);
+                                        commitPanelSizeTimerRef.current = setTimeout(() => {
+                                            updateSettings({ gitCommitPanelSize: Math.round(commitSize) });
+                                        }, 500);
+                                    }
+                                }}
+                            >
 
                                 {/* ── Top: file list ── */}
-                                <Panel defaultSize={65} minSize={30}>
+                                <Panel defaultSize={settings?.gitCommitPanelSize ? (100 - settings.gitCommitPanelSize) : 65} minSize={30}>
                                     <div className="h-full flex flex-col overflow-hidden">
 
                                     {/* File list */}
@@ -1230,14 +1313,17 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 </Panel>
 
                                 {/* ── Horizontal resize handle ── */}
-                                <PanelResizeHandle className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-row-resize">
+                                <PanelResizeHandle
+                                    className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-row-resize"
+                                    onDragging={(isDragging) => { commitPanelDraggingRef.current = isDragging; }}
+                                >
                                     <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
                                         <GripHorizontal className="h-2.5 w-2.5 text-muted-foreground" />
                                     </div>
                                 </PanelResizeHandle>
 
                                 {/* ── Bottom: commit area ── */}
-                                <Panel defaultSize={35} minSize={20} maxSize={65}>
+                                <Panel defaultSize={settings?.gitCommitPanelSize ?? 35} minSize={20} maxSize={65}>
                                     <div className="flex flex-col h-full overflow-hidden">
 
                                     {/* Commit area */}
@@ -1294,10 +1380,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         </Tooltip>
                                     </div>
 
-                                    {/* Remote setup if needed */}
-                                    {hasGithubToken && !hasRemote && appId && (
-                                        <GitRemoteSetup appId={appId} appName={app?.name || "app"} onLinked={() => refreshApp()} />
-                                    )}
+
                                     </div>
                                     </div>
                                 </Panel>
@@ -1326,6 +1409,19 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
             {/* Single Commit Dialog */}
             
+            {/* Remote Setup Dialog */}
+            {hasGithubToken && appId && (
+                <GitRemoteSetupDialog
+                    appId={appId}
+                    appName={app?.name || "app"}
+                    isOpen={showRemoteDialog}
+                    onClose={() => setShowRemoteDialog(false)}
+                    onLinked={() => refreshApp()}
+                    autoPushAfterLink={true}
+                    pushFn={push}
+                />
+            )}
+
             <ConfirmationDialog
                 isOpen={!!discardTarget}
                 title="Revertir cambios"

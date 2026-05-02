@@ -17,12 +17,13 @@ export const workspaceModeAtom = atomWithStorage<boolean>("workspace-mode", fals
 // The timestamp ensures each trigger is unique.
 export type SidebarAction =
   | "apps:new"
-  | "apps:empty"
   | "apps:import"
   | "apps:search"
   | "apps:bulk-close"
+  | "workspace:new-project"
   | "workspace:open-folder"
-  | "workspace:empty-app"
+  | "workspace:search"
+  | "workspace:bulk-close"
   | null;
 
 export const sidebarActionAtom = atom<{ action: SidebarAction; ts: number } | null>(null);

@@ -41,6 +41,7 @@ import {
   Download,
   FileText,
   Plus,
+  Share2,
 } from "@/components/ui/icons";
 
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,12 @@ import { PocketBaseConnector } from "@/components/PocketBaseConnector";
 // Firebase hidden - not mature yet
 // import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
@@ -68,8 +75,6 @@ import { CapacitorControls } from "@/components/CapacitorControls";
 import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
-import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { Brain } from "@/components/ui/icons";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
@@ -108,7 +113,7 @@ export default function AppDetailsPage() {
   const [newCopyAppName, setNewCopyAppName] = useState("");
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
-  const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
+
 
   const [initialPrompt, setInitialPrompt] = useState<{ content: string | null; createdAt: Date | string | null } | null>(null);
   const [isLoadingInitialPrompt, setIsLoadingInitialPrompt] = useState(false);
@@ -360,6 +365,15 @@ export default function AppDetailsPage() {
   });
   const hasDesignMd = !!designData?.content;
 
+  // Check if AGENTS.md exists in the project root for download option
+  const { data: agentsData } = useQuery({
+    queryKey: ["agents-md-read", currentAppPath],
+    queryFn: () => ipc.design.readAgentsMd({ appPath: selectedApp.path }),
+    enabled: !!currentAppPath,
+    staleTime: 30_000,
+  });
+  const hasAgentsMd = !!agentsData?.content;
+
   const handleDownloadDesign = () => {
     if (!designData?.content) return;
     const blob = new Blob([designData.content], { type: "text/markdown" });
@@ -369,6 +383,47 @@ export default function AppDetailsPage() {
     a.download = "DESIGN.md";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadAgentsMd = () => {
+    if (!agentsData?.content) return;
+    const blob = new Blob([agentsData.content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "AGENTS.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareDesign = async () => {
+    if (!designData?.content) return;
+    try {
+      const result = await ipc.markdownShare.uploadDocument({
+        title: `DESIGN.md — ${selectedApp.name}`,
+        content: designData.content,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    }
+  };
+
+  const handleShareAgentsMd = async () => {
+    if (!agentsData?.content) return;
+    try {
+      const result = await ipc.markdownShare.uploadDocument({
+        title: `AGENTS.md — ${selectedApp.name}`,
+        content: agentsData.content,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    }
   };
 
   return (
@@ -440,18 +495,72 @@ export default function AppDetailsPage() {
                 </Button>
               </div>
 
-              {hasDesignMd && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer self-center"
-                  onClick={handleDownloadDesign}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Descargar DESIGN.md
-                </Button>
+              {(hasDesignMd || hasAgentsMd) && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {hasDesignMd && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          DESIGN.md
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="min-w-[160px]">
+                        <DropdownMenuItem onClick={handleDownloadDesign} className="cursor-pointer">
+                          <Download className="h-4 w-4" />
+                          Descargar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareDesign} className="cursor-pointer">
+                          <Share2 className="h-4 w-4" />
+                          Compartir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {hasAgentsMd && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          AGENTS.md
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="min-w-[160px]">
+                        <DropdownMenuItem onClick={handleDownloadAgentsMd} className="cursor-pointer">
+                          <Download className="h-4 w-4" />
+                          Descargar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareAgentsMd} className="cursor-pointer">
+                          <Share2 className="h-4 w-4" />
+                          Compartir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               )}
 
+              {appId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 h-8 text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer self-center"
+                  onClick={() => ipc.system.openMemoryWindow({ appId, theme, themeIntensity: intensity })}
+                >
+                  <Database className="h-3.5 w-3.5" />
+                  <span className="text-xs">Memorias</span>
+                </Button>
+              )}
 
 
               {/* ── Integraciones ── */}

@@ -1,10 +1,8 @@
-import { registerThemesHandlers } from "../pro/main/ipc/handlers/themes_handlers";
 import { registerVisualEditingHandlers } from "../pro/main/ipc/handlers/visual_editing_handlers";
 import { registerAppEnvVarsHandlers } from "./handlers/app_env_vars_handlers";
 import { registerAppHandlers } from "./handlers/app_handlers";
 import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
-import { registerChatLogsHandlers } from "./handlers/chat_logs_handlers";
 import registerChatStreamHandlers from "./handlers/chat_stream_handlers";
 import { registerFirebaseHandlers } from "./handlers/firebase_handlers";
 import { registerBunnyHandlers } from "./handlers/bunny_handlers";
@@ -32,35 +30,35 @@ import { registerSettingsHandlers } from "./handlers/settings_handlers";
 import { registerShellHandlers } from "./handlers/shell_handler";
 import { registerSupabaseHandlers } from "./handlers/supabase_handlers";
 import { registerTemplateHandlers } from "./handlers/template_handlers";
-import { registerTodoHandlers } from "./handlers/todo_handlers";
 import { registerTokenCountHandlers } from "./handlers/token_count_handlers";
-import { registerTokenStatsHandlers } from "./handlers/token_stats_handlers";
 import { registerUploadHandlers } from "./handlers/upload_handlers";
 import { registerVercelHandlers } from "./handlers/vercel_handlers";
 import { registerVersionHandlers } from "./handlers/version_handlers";
 import { registerWindowHandlers } from "./handlers/window_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
-// Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
-import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
+import { registerMemoryHandlers } from "./handlers/memory_handlers";
 
 import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
 import { registerAuthHandlers } from "./handlers/auth_handlers";
+import { registerAdminHandlers } from "./handlers/admin_handlers";
 
 import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
+import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
+import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { warmUpScaffoldCache } from "./utils/scaffold_cache";
 import log from "electron-log";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
   registerAuthHandlers();
+  registerAdminHandlers();
 
   registerAppHandlers();
   registerChatHandlers();
-  registerTodoHandlers();
   registerChatStreamHandlers();
   registerSettingsHandlers();
   registerShellHandlers();
@@ -93,15 +91,12 @@ export function registerIpcHandlers() {
   registerCapacitorHandlers();
   registerAppEnvVarsHandlers();
   registerTemplateHandlers();
-  registerThemesHandlers();
   registerPortalHandlers();
   registerPromptHandlers();
   registerVisualEditingHandlers();
-  registerTokenStatsHandlers();
-  registerChatLogsHandlers();
 
   registerBackupHandlers();
-  registerAiQueryLogHandlers();
+  registerMemoryHandlers();
 
   registerConsoleHandlers();
   registerUpdateCheckerHandlers();
@@ -119,6 +114,12 @@ export function registerIpcHandlers() {
 
   // Design system picker — getdesign CLI integration
   registerDesignHandlers();
+
+  // Playground — model comparison tool
+  registerPlaygroundHandlers();
+
+  // Markdown share — md.mnstatic.com document upload
+  registerMarkdownShareHandlers();
 
   // Pre-cache scaffold node_modules in background (non-blocking)
   warmUpScaffoldCache().catch(err =>

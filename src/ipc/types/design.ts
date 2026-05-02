@@ -70,6 +70,17 @@ export const designContracts = {
       content: z.string().nullable(),
     }),
   }),
+
+  /** Read AGENTS.md from the project root (returns null if missing) */
+  readAgentsMd: defineContract({
+    channel: "design:read-agents-md",
+    input: z.object({
+      appPath: z.string(),
+    }),
+    output: z.object({
+      content: z.string().nullable(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

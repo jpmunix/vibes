@@ -12,7 +12,7 @@ import { safeStorage } from "electron";
 import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
-import { DEFAULT_THEME_ID } from "@/shared/themes";
+
 import {
   DEFAULT_ENABLED_MODELS,
   FALLBACK_PRO_MODEL,
@@ -22,7 +22,7 @@ import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
 
-const DEFAULT_SETTINGS: UserSettings = {
+export const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: {
     name: FALLBACK_SELECTED_MODEL,
     provider: "openrouter",
@@ -34,15 +34,15 @@ const DEFAULT_SETTINGS: UserSettings = {
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
-  experiments: {},
   enableProLazyEditsMode: true,
   enableProSmartFilesContextMode: true,
 
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
+  enableNotificationSound: true,
   selectedChatMode: "agent",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
-  selectedThemeId: DEFAULT_THEME_ID,
+
   isRunning: false,
   lastKnownPerformance: undefined,
   // Enabled by default in 0.33.0-beta.1
@@ -56,19 +56,24 @@ const DEFAULT_SETTINGS: UserSettings = {
   windowState: undefined,
   reasoningEffort: "medium",
   textVerbosity: "low",
-  thinkingBudget: "medium",
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
-  // Web search — enabled by default so the model can search when needed
+  // Memory system (enabled by default)
+  memoriesEnabled: true,
+  memoriesAutoExtract: true,
+  memoriesSynthesisModelV2: "mistralai/devstral-small",
+  memoriesRouterModelV2: "mistralai/devstral-small",
   enableWebSearch: true,
-  // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)
-  enableOpenCodeLsp: true,
   // Chat render mode: "full" shows all badges/modals, "zen" shows only prose + cost
   chatRenderMode: "zen",
   // Default font
   selectedFont: "bricolage-grotesque",
   selectedChatFont: "jetbrains-mono",
+  fontScaleUI: 1,
+  fontScaleSidebar: 1,
+  fontScaleChat: 1,
+  fontScaleBubbleWidth: 65,
   // Icon family selection
   iconLibrary: "lucide",
 };
@@ -81,6 +86,22 @@ let cachedSettings: UserSettings | null = null;
 /** @internal — only for testing. Clears the in-memory cache so the next readSettings() re-reads from disk. */
 export function resetSettingsCache() {
   cachedSettings = null;
+}
+
+/**
+ * Nuke the entire settings file and replace it with factory defaults.
+ * Used on logout to guarantee zero credential leakage between users.
+ * Unlike writeSettings() this does NOT merge — it writes from scratch.
+ */
+export function resetSettingsToDefaults(): void {
+  try {
+    const filePath = getSettingsFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SETTINGS, null, 2));
+    cachedSettings = { ...DEFAULT_SETTINGS };
+    logger.info("Settings reset to factory defaults");
+  } catch (error) {
+    logger.error("Error resetting settings to defaults:", error);
+  }
 }
 
 export function getSettingsFilePath(): string {
@@ -503,6 +524,94 @@ export function readSettings(): UserSettings {
         logger.error("[Migration] Failed to persist v8 reasoning effort simplification:", e);
       }
       return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v9 memory model defaults ──
+    // Hard migration: force memory models to qwen3-coder (synthesis) and gemini-3-flash (selection).
+    if (!(validatedSettings as any)._migrations?.v9h_memory_models) {
+      const migratedSettings = {
+        ...validatedSettings,
+        memoriesSynthesisModelV2: "mistralai/devstral-small",
+        memoriesRouterModelV2: "mistralai/devstral-small",
+        _migrations: { ...(validatedSettings as any)._migrations, v9h_memory_models: true },
+      };
+      logger.info("[Migration] Applied v9h memory model defaults");
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v9h memory model defaults:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v11 memory models → devstral-small:nitro ──
+    // Switch both memory models to mistralai/devstral-small.
+    if (!(validatedSettings as any)._migrations?.v11h_devstral_memory) {
+      const migratedSettings = {
+        ...validatedSettings,
+        memoriesSynthesisModelV2: "mistralai/devstral-small",
+        memoriesRouterModelV2: "mistralai/devstral-small",
+        _migrations: { ...(validatedSettings as any)._migrations, v11h_devstral_memory: true },
+      };
+      logger.info("[Migration] Applied v11h devstral memory models");
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v11h devstral memory models:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v10 settings cleanup ──
+    // One-shot removal of dead/abandoned keys from settings JSON.
+    if (!(validatedSettings as any)._migrations?.v10d_settings_cleanup) {
+      const DEAD_KEYS = [
+        // Legacy model keys migrated in v5
+        'turboEditModel', 'todoAnalysisModel', 'debateModel', 
+        'summaryModel', 'appTitleGenerationModel',
+        // Completely dead (0 code references)
+        'memoriesExtractionModel',
+        'hideLocalAgentNewChatToast',
+        'enableLocalSmartContext',
+        'enableMcpSmartContext',
+        'enableBackgroundProblemAutoFix',
+        'enableAutoRepairRuntimeErrors',
+        'autoFixModel',
+        'autoFixMaxDurationMs',
+        'autoFixMaxAttempts',
+        'autoFixMaxIssues',
+        'agentMaxSteps',
+        // Defaults-only (never read by runtime logic)
+        'enableOpenCodeLsp',
+        'thinkingBudget',
+        'experiments',
+        'releaseChannel',
+        'dossierModel',
+        'enableTurboEditsV2',
+        // Dead theme system (never completed)
+        'selectedThemeId',
+        // NOTE: playgroundModelSets is NOT deleted here — it's migrated to user_preferences
+        // DB by the Playground frontend and cleaned up there after migration.
+      ];
+      const cleaned = { ...validatedSettings } as any;
+      let removedCount = 0;
+      for (const key of DEAD_KEYS) {
+        if (key in cleaned && cleaned[key] !== undefined) {
+          cleaned[key] = undefined; // Set to undefined so writeSettings overrides the current value
+          removedCount++;
+        }
+      }
+      cleaned._migrations = { ...cleaned._migrations, v10d_settings_cleanup: true };
+      logger.info(`[Migration] Applied v10 settings cleanup: removed ${removedCount} dead keys`);
+      cachedSettings = cleaned as UserSettings;
+      try {
+        writeSettings(cleaned);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v10 settings cleanup:", e);
+      }
+      return cleaned as UserSettings;
     }
 
     // Update cache

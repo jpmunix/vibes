@@ -398,12 +398,13 @@ export const UserSettingsSchema = z
     enableAllStatsAndLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
+    // Play a programmatic sound (Web Audio API) when a notification fires
+    enableNotificationSound: z.boolean().optional(),
     // Control GitHub auto-commit behavior
     enableGithubAutoCommit: z.boolean().optional(),
 
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
-    selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
 
@@ -461,6 +462,12 @@ export const UserSettingsSchema = z
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
+    // Memory system — agent persistent knowledge
+    memoriesEnabled: z.boolean().optional(),
+    memoriesAutoExtract: z.boolean().optional(),
+    memoriesSynthesisModelV2: z.string().optional(),
+    memoriesRouterModelV2: z.string().optional(),
+    memoriesMaxSelection: z.number().optional(),
     // OpenRouter web search (server tool) — model decides when to search
     enableWebSearch: z.boolean().optional(),
     // OpenCode LSP: when true, language servers send diagnostics after each file write
@@ -472,8 +479,18 @@ export const UserSettingsSchema = z
     selectedFont: z.string().optional(),
     // Selected Chat font family
     selectedChatFont: z.string().optional(),
+    // Font size multiplier (1 = default, 1.3 = 30% larger) — per group
+    fontScaleUI: z.number().optional(),
+    fontScaleSidebar: z.number().optional(),
+    fontScaleChat: z.number().optional(),
+    fontScaleBubbleWidth: z.number().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
+
+    // Morph Patch Engine — overrides OpenCode's built-in edit/patch tools with
+    // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
+    enableMorphPatchTool: z.boolean().optional(),
+    morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),
@@ -488,7 +505,22 @@ export const UserSettingsSchema = z
         isMaximized: z.boolean().optional(),
       })
       .optional(),
+    // Per-window-type saved bounds (each secondary window remembers its own position/size)
+    secondaryWindowStates: z.record(z.string(), z.object({
+      x: z.number().optional(),
+      y: z.number().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      isMaximized: z.boolean().optional(),
+    })).optional(),
+    // Playground — saved model presets
+    playgroundModelSets: z.array(z.object({
+      name: z.string(),
+      models: z.array(z.string()),
+    })).optional(),
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
+    // Git commit panel: persisted vertical split size (percentage, 0-100)
+    gitCommitPanelSize: z.number().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

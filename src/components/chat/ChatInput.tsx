@@ -46,7 +46,7 @@ import { Proposal, SuggestedAction, FileChange, SqlQuery } from "@/lib/schemas";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
-import { usePostHog } from "posthog-js/react";
+// Telemetry removed
 import { CodeHighlight } from "./CodeHighlight";
 
 import {
@@ -83,7 +83,7 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
-import { quotedMessagesAtom } from "@/atoms/chatAtoms";
+import { quotedMessagesAtom, selectedDesignAtom } from "@/atoms/chatAtoms";
 
 export function ChatInput({
   chatId,
@@ -96,9 +96,10 @@ export function ChatInput({
   isPlanMode?: boolean;
   workspaceMode?: boolean;
 }) {
-  const posthog = usePostHog();
+  // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
+  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions, revertVersion, refreshVersions } = useVersions(appId);
@@ -117,6 +118,8 @@ export function ChatInput({
   const [isUndoLoading, setIsUndoLoading] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+  // Workspace: detect first message to show foundational pickers (template + design)
+  const isFirstWorkspaceMessage = workspaceMode && currentMessages.filter(m => m.role === "user").length === 0;
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -278,7 +281,7 @@ export function ChatInput({
     if (quotedMessages.length > 0) {
       const quoteBlock = quotedMessages
         .map((q) => {
-          const roleLabel = q.role === "user" ? "Usuario" : "IA";
+          const roleLabel = q.role === "console" ? "Consola" : q.role === "user" ? "Usuario" : "IA";
           // Prefix EVERY line with > to form a proper markdown blockquote
           const quotedLines = q.content
             .split("\n")
@@ -297,6 +300,23 @@ export function ChatInput({
     setInputValue("");
 
     let currentChatId = chatId;
+
+    // ── Workspace foundational message: install design system on first message ──
+    if (workspaceMode && isFirstWorkspaceMessage && selectedDesign && appId) {
+      try {
+        const app = await ipc.app.getApp(appId);
+        if (app?.path) {
+          if (selectedDesign.customContent) {
+            await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
+          } else {
+            await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
+          }
+        }
+      } catch (designError) {
+        console.error("[ChatInput] 🎨 DESIGN ERROR:", designError);
+      }
+      setSelectedDesign(null);
+    }
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -322,7 +342,6 @@ export function ChatInput({
       selectedComponents: componentsToSend,
     });
     clearAttachments();
-    posthog?.capture("chat:submit", { chatMode: settings?.selectedChatMode });
   };
 
   const handleCancel = () => {
@@ -341,7 +360,6 @@ export function ChatInput({
       `Approving proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsApproving(true);
-    posthog?.capture("chat:approve");
     try {
       const result = await ipc.proposal.approveProposal({
         chatId,
@@ -351,7 +369,6 @@ export function ChatInput({
         showExtraFilesToast({
           files: result.extraFiles,
           error: result.extraFilesError,
-          posthog,
         });
       }
     } catch (err) {
@@ -378,7 +395,6 @@ export function ChatInput({
       `Rejecting proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsRejecting(true);
-    posthog?.capture("chat:reject");
     try {
       await ipc.proposal.rejectProposal({
         chatId,
@@ -486,7 +502,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="px-4 pb-4" data-testid="chat-input-container">
+      <div className="p-4" data-testid="chat-input-container">
         <div className="max-w-3xl mx-auto">
           <div
             className="rounded-lg p-[1.5px]"
@@ -620,7 +636,11 @@ export function ChatInput({
                   appId={appId ?? undefined}
                 />
                 <div className="flex items-center ml-2.5">
-                  <ChatInputControls showContextFilesPicker={false} />
+                  <ChatInputControls
+                    showContextFilesPicker={false}
+                    showTemplatePicker={workspaceMode && isFirstWorkspaceMessage}
+                    showDesignPicker={workspaceMode && isFirstWorkspaceMessage}
+                  />
                 </div>
 
                 <div className="ml-auto flex items-center gap-1.5">
@@ -889,8 +909,7 @@ function KeepGoingButton() {
 
 export function mapActionToButton(action: SuggestedAction) {
   switch (action.id) {
-    case "summarize-in-new-chat":
-      return null;
+
     case "refactor-file":
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":

@@ -45,6 +45,11 @@ let serverUrl: string | null = null;
 // Track the last project directory used — needed for question reply routing
 let lastProjectDir: string | null = null;
 
+/** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
+export function getOpenCodeClientInstance() {
+    return clientInstance;
+}
+
 // Active stream text injector — allows the question reply handler to inject
 // the user's answer directly into the live chat stream content.
 let activeTextInjector: ((text: string) => void) | null = null;
@@ -248,8 +253,8 @@ async function persistPermissionToSettings(
             // ── Bash: add a specific custom rule, never touch the global pill ──
             // Priority: use OpenCode's suggested `always` patterns if available,
             // otherwise extract the command prefix (first word) + wildcard.
-            const rules: Array<{ id: string; pattern: string; permission: string }> =
-                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules] : [];
+            const rules: Array<{ id: string; pattern: string; permission: "ask" | "allow" | "deny" }> =
+                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules as any] : [];
 
             const patternsToAdd: string[] = [];
 
@@ -273,7 +278,7 @@ async function persistPermissionToSettings(
                 rules.push({
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                     pattern,
-                    permission: value,
+                    permission: value as "ask" | "allow" | "deny",
                 });
                 logger.info(`[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`);
             }
@@ -485,7 +490,7 @@ export async function updateOpenCodeConfig(changes: {
             // Apply variant suffix if set (variant is ignored for free models)
             const settings = readSettings();
             const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
-            const modelID = composeModelWithVariant(changes.selectedModel.name, variant);
+            const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
             body.model = `${providerID}/${modelID}`;
         }
         if (changes.standardModeModel) {
@@ -788,7 +793,7 @@ export async function handleVisualQuickEdit(params: {
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID: sanitizeModelName(model.name),
                 },
                 parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
             },
@@ -894,7 +899,7 @@ async function getOpenCodeClient(appPath: string) {
     // Determine provider/model mapping for opencode
     const providerID = mapProviderForOpenCode(model);
     // Apply variant suffix (ignored for free models)
-    const modelID = composeModelWithVariant(model.name, settings.selectedModelVariant ?? "");
+    const modelID = composeModelWithVariant(sanitizeModelName(model.name), settings.selectedModelVariant ?? "");
 
     try {
         // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
@@ -910,6 +915,24 @@ async function getOpenCodeClient(appPath: string) {
 
         const originalCwd = process.cwd();
         process.chdir(opencodeDataDir);
+
+        // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
+        // Admin-only feature. Non-admins always get built-in tools.
+        try {
+            const { deployMorphTools, removeMorphTools } = await import("../utils/morph_patcher");
+            const { isAdmin } = await import("../../lib/admin");
+            const morphEnabled = isAdmin((settings as any).userId) && (settings as any).enableMorphPatchTool === true;
+
+            if (morphEnabled) {
+                deployMorphTools();
+                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ~/.config/opencode/tools/`);
+            } else {
+                removeMorphTools();
+                logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Morph tools deployment failed (non-fatal): ${e.message}`);
+        }
 
         // Load MCP servers
         const { getRemoteDb } = await import("../../db/remote");
@@ -932,18 +955,9 @@ async function getOpenCodeClient(appPath: string) {
             }));
         }
 
-        const languageInstruction = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-
-        const globalInstructions = [
-            languageInstruction,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
+        // Dynamic instructions are written to docs/vibes-context.md per-request
+        // and registered in the project's opencode.json (same pattern as DESIGN.md).
         const config = {
-                instructions: globalInstructions,
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
@@ -963,7 +977,7 @@ async function getOpenCodeClient(appPath: string) {
                 model: `${providerID}/${modelID}`,
                 // Use the cheap/fast standard model for lightweight tasks (titles, summaries)
                 ...(settings.standardModeModel ? {
-                    small_model: `${providerID}/${settings.standardModeModel}`,
+                    small_model: `${providerID}/${sanitizeModelName(settings.standardModeModel)}`,
                 } : {}),
                 // Agent-level config: reasoning effort + text verbosity
                 // These extra fields are passed directly to the provider as model options
@@ -1071,8 +1085,6 @@ async function getOpenCodeClient(appPath: string) {
                 },
         };
 
-        // Log permission config for debugging
-        logger.info(`[OpenCode] Init permission config: ${JSON.stringify(config.permission)}`);
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
         try {
@@ -1235,6 +1247,15 @@ function clearStaleOpenCodeAuth(env: Record<string, string>): void {
 // Model/provider mapping
 // ============================================================================
 
+/**
+ * Strip trailing dots, whitespace, and other stray characters from model names.
+ * Defensive measure against data contamination from remote settings sync or
+ * catalogue parsing artifacts (e.g. "amazon/nova-lite-v1." → "amazon/nova-lite-v1").
+ */
+function sanitizeModelName(name: string): string {
+    return name.replace(/[\s.]+$/, '');
+}
+
 function mapProviderForOpenCode(model: { provider?: string; name: string }): string {
     const provider = (model.provider || "").toLowerCase();
 
@@ -1304,6 +1325,69 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
+    // ── Append dynamic instructions to AGENTS.md (replaces old SPECS.md) ──
+    // We append a delimited section at the end of the project's AGENTS.md.
+    // OpenCode reads AGENTS.md natively — no opencode.json registration needed.
+    {
+        const fs = require("fs");
+        const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
+            ? options.contextInstructions.join("\n\n")
+            : "";
+
+        const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
+        const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
+        const agentsMdPath = path.join(projectDir, "AGENTS.md");
+
+        try {
+            // 1. Read existing AGENTS.md (or start empty)
+            let existing = "";
+            if (fs.existsSync(agentsMdPath)) {
+                existing = fs.readFileSync(agentsMdPath, "utf-8");
+            }
+
+            // 2. Strip old Vibes section if present
+            const startIdx = existing.indexOf(VIBES_START);
+            const endIdx = existing.indexOf(VIBES_END);
+            let baseContent = existing;
+            if (startIdx !== -1 && endIdx !== -1) {
+                baseContent = existing.substring(0, startIdx).trimEnd()
+                    + existing.substring(endIdx + VIBES_END.length);
+            }
+
+            // 3. Build new AGENTS.md = original content + Vibes section
+            const vibesSection = instrContent
+                ? `\n\n${VIBES_START}\n${instrContent}\n${VIBES_END}\n`
+                : "";
+            const finalContent = baseContent.trimEnd() + vibesSection;
+
+            fs.writeFileSync(agentsMdPath, finalContent, "utf-8");
+            logger.info(`${LP} 📋 Context written to AGENTS.md (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
+
+            // 4. Cleanup: delete stale docs/SPECS.md if it exists
+            const specsPath = path.join(projectDir, "docs", "SPECS.md");
+            if (fs.existsSync(specsPath)) {
+                fs.unlinkSync(specsPath);
+                logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
+            }
+
+            // 5. Remove docs/SPECS.md from opencode.json instructions[] if registered
+            try {
+                const ocJsonPath = path.join(projectDir, "opencode.json");
+                if (fs.existsSync(ocJsonPath)) {
+                    const ocJson = JSON.parse(fs.readFileSync(ocJsonPath, "utf-8"));
+                    if (Array.isArray(ocJson.instructions) && ocJson.instructions.includes("docs/SPECS.md")) {
+                        ocJson.instructions = ocJson.instructions.filter((i: string) => i !== "docs/SPECS.md");
+                        fs.writeFileSync(ocJsonPath, JSON.stringify(ocJson, null, 2), "utf-8");
+                        logger.info(`${LP} 🗑️ Removed docs/SPECS.md from opencode.json instructions`);
+                    }
+                }
+            } catch { /* ignore opencode.json cleanup errors */ }
+
+        } catch (ctxErr: any) {
+            logger.warn(`${LP} Failed to write AGENTS.md context: ${ctxErr.message}`);
+        }
+    }
+
     let client: ReturnType<typeof createOpencodeClient>;
     try {
         const result = await getOpenCodeClient(projectDir);
@@ -1311,38 +1395,7 @@ export async function handleOpenCodeStream(
     } catch (error: any) {
         const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
         logger.error(`${LP} ${errorMsg}`);
-        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
-    }
-
-    // ── Set instructions BEFORE session.create ────────────────────────────
-    // OpenCode snapshots instructions at session creation time, so they
-    // must be configured before the session exists.
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 PRE-SESSION config.update: ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
-            });
-            logger.info(`${LP} 🎨 Instructions set BEFORE session.create ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to set pre-session instructions: ${ctxError.message}`);
-        }
+        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
     }
 
     // Get or create session for this chat
@@ -1439,7 +1492,7 @@ export async function handleOpenCodeStream(
                         // Build init body — messageID must start with "msg" (server validates format)
                         const initBody: { providerID: string; modelID: string; messageID: string } = {
                             providerID: initProviderID,
-                            modelID: initModel.name,
+                            modelID: sanitizeModelName(initModel.name),
                             messageID: `msg_init_${Date.now()}`,
                         };
 
@@ -1495,40 +1548,58 @@ export async function handleOpenCodeStream(
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
             logger.error(`${LP} ${errorMsg}`);
-            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
         }
     }
 
-    // Instructions were already set BEFORE session.create (see above).
-    // Re-apply them here as well to cover existing sessions that were
-    // restored from DB (they already exist, so they missed the pre-create call).
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 POST-SESSION config.update (for restored sessions): ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
+    // ── Memory Bootstrap (cold start, fire-and-forget) ──
+    // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
+    // This ensures that if the first prompt found an empty project (no configs),
+    // subsequent prompts will re-check once the agent generates files.
+    // SKIP in plan mode: plan responses are proposals, not confirmed decisions.
+    if (agentMode === "plan") {
+        logger.info(`${LP} 🧬 Memory bootstrap skipped — plan mode (proposals, not confirmed)`);
+    } else try {
+        const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+        const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
+        const bootstrapSettings = readSettings();
+        const bootstrapUserId = bootstrapSettings.userId;
+        const db = getRemoteDb();
+        const chatWithApp = await db.query.chats.findFirst({
+            where: eq(remoteSchema.chats.id, req.chatId),
+            with: { app: true }
+        });
+        if (bootstrapUserId && chatWithApp?.app?.id) {
+            const appName = chatWithApp.app?.name || `app_${chatWithApp.app.id}`;
+            setDebugContext(appName, chatWithApp.app.id);
+            debugLog("Trigger", `Bootstrap check`, {
+                appId: String(chatWithApp.app.id),
+                appName,
+                projectDir,
             });
-            logger.info(`${LP} 🎨 Instructions re-applied after session ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to re-apply instructions: ${ctxError.message}`);
+            const needs = await needsBootstrap(chatWithApp.app.id, bootstrapUserId);
+            if (needs) {
+                debugLog("Trigger", `🧬 Bootstrap TRIGGERED — launching fire-and-forget`);
+                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${chatWithApp.app.id}`);
+                runMemoryBootstrap({
+                    appId: chatWithApp.app.id,
+                    userId: bootstrapUserId,
+                    projectDir,
+                    appName,
+                }).catch((err: any) => {
+                    debugLog("Trigger", `❌ Bootstrap FAILED`, { error: err.message });
+                    logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
+                });
+            } else {
+                debugLog("Trigger", `⏭️ Bootstrap skipped — app already has memories`);
+            }
         }
+    } catch (bootstrapErr: any) {
+        logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`);
     }
+
+    // Instructions file was already written before getOpenCodeClient (above).
+    // No config.update needed — it's in the initial config.
 
 
 
@@ -1667,10 +1738,8 @@ export async function handleOpenCodeStream(
             // (steps: 8, bash: false, write/edit: true)
             logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
         } else if (effectiveAgent === "build") {
-            if (!hasAssistantMessages) {
-                promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
-                logger.info(`${LP} 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
-            }
+            // Build mode: no special first-message injection needed.
+            // Rules are in docs/SPECS.md via opencode.json instructions.
         } else if (effectiveAgent === "plan") {
             if (!hasAssistantMessages) {
                 const isEnglish = settings.chatLanguage === "en";
@@ -1715,18 +1784,7 @@ export async function handleOpenCodeStream(
             }
         }
 
-        // On the FIRST message, inject a DESIGN.md hint so the model reads and
-        // applies it immediately. On subsequent messages we trust OpenCode's native
-        // opencode.json instructions (which already reference docs/DESIGN.md).
-        if (!hasAssistantMessages) {
-            const fs = require("fs");
-            const designPath = path.join(projectDir, "docs", "DESIGN.md");
-            if (fs.existsSync(designPath)) {
-                const designHint = `[CONTEXTO OBLIGATORIO: Este proyecto tiene un sistema de diseño definido en docs/DESIGN.md. ANTES de escribir cualquier código de UI, lee este archivo con tu herramienta Read y aplica estrictamente sus colores, tipografía, espaciado, componentes y estilo visual. El usuario ya eligió este diseño — no le preguntes ni le pidas confirmación, simplemente aplícalo.]`;
-                promptText = `${designHint}\n\n${promptText}`;
-                logger.info(`${LP} 🎨 Injected DESIGN.md hint into prompt (first message)`);
-            }
-        }
+        // DESIGN.md is loaded natively via opencode.json instructions — no hint needed.
 
         const promptParts: any[] = [{ type: "text", text: promptText }];
 
@@ -1804,14 +1862,21 @@ export async function handleOpenCodeStream(
             }
         }
 
+        logger.info(`--- USER PROMPT ---\n${promptText}`);
+        logger.info(`------------------------------------------`);
+
         // Fire the prompt (non-blocking)
+        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
+        // internal system prompt (tools, AGENTS.md, project context). Instead,
+        // context instructions (including memories) are injected via
+        // config.update({ instructions }) which APPENDS them safely.
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID: sanitizeModelName(model.name),
                 },
                 agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,
@@ -1872,14 +1937,33 @@ export async function handleOpenCodeStream(
         logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${totalCostUsd.toFixed(6)}` : "unknown"}`);
+        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${(totalCostUsd as any).toFixed(6)}` : "unknown"}`);
         return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens, costUsd: totalCostUsd };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
-            // session.abort() already fired eagerly — no need to call again
-            return getAbortedResponse();
+            
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+            const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
+            const standardChars = Math.max(0, partialText.length - thinkChars);
+            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
+            let estInput = totalInputTokens;
+            if (estInput === 0) {
+               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
+               estInput = Math.ceil(inputString.length / 4) + 1500;
+            }
+            return {
+                fullResponse: partialText || "Operación cancelada",
+                success: false,
+                inputTokens: estInput,
+                outputTokens: estOutput,
+                reasoningTokens: estReasoning,
+                cachedTokens: totalCachedTokens,
+                costUsd: totalCostUsd as number | null,
+            };
         }
 
         logger.error(`${LP} Stream error:`, error.message);

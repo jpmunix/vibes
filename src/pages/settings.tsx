@@ -22,9 +22,6 @@ import { useAppVersion } from "@/hooks/useAppVersion";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  TrendingUp,
-  Zap,
-  Clock,
   Sparkles,
   Search,
   X,
@@ -32,6 +29,10 @@ import {
   Download,
   Upload,
   Info,
+  FileText,
+  MoreHorizontal,
+  RotateCcw,
+  Volume2,
 } from "@/components/ui/icons";
 import { ChevronRight } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -47,6 +48,8 @@ import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
+import { MemorySettings } from "@/components/settings/MemorySettings";
+import { PromptsSection } from "@/components/settings/PromptsSection";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -55,10 +58,7 @@ import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
-import { tokenStatsClient } from "@/ipc/types";
-import type { TokenStatEntry } from "@/ipc/types/token_stats";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { sendAppNotification } from "@/lib/notification-sound";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +81,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "@/components/ui/icons";
@@ -103,52 +104,76 @@ interface SearchSettingItem {
 }
 
 const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
-  // General Settings
+  // ─── General / Tema ───
   {
     id: "theme",
-    label: "Tema",
-    description: "Cambiar entre modo claro, oscuro o sistema",
+    label: "Modo",
+    description: "Elige entre claro, oscuro o sincronizado con el sistema",
     keywords: [
-      "tema",
-      "fuente",
-      "tipografía",
-      "dark",
-      "light",
-      "oscuro",
-      "claro",
-      "apariencia",
-      "color",
+      "tema", "mode", "dark", "light",
+      // sub-values (pill labels)
+      "sistema", "claro", "oscuro",
+      "apariencia", "color",
     ],
     section: "Tema",
     sectionId: "general-settings",
   },
-
   {
     id: "primary-color",
     label: "Color primario",
     description: "Elige el color de acento principal para modo claro y oscuro",
-    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary"],
+    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary", "chroma"],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
+  {
+    id: "intensity",
+    label: "Intensidad",
+    description: "Ajusta la luminosidad de los colores base",
+    keywords: [
+      "intensidad", "luminosidad", "brillo",
+      // sub-values
+      "por defecto", "más claro",
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
   {
     id: "font",
-    label: "Tipografía",
-    description: "Elige la fuente para toda la interfaz",
-    keywords: ["fuente", "tipografía", "font", "geist", "inter", "roboto", "letra"],
+    label: "Tipografía de la Interfaz",
+    description: "Elige la fuente para toda la interfaz (menús, botones)",
+    keywords: [
+      "fuente", "tipografía", "font", "letra", "interfaz",
+      // sub-values: font names
+      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
-  /*
   {
-    id: "icon-library",
-    label: "Librería de Iconos",
-    description: "Cambiar entre Lucide e Iconoir para la interfaz",
-    keywords: ["iconos", "icons", "lucide", "iconoir", "tema", "interfaz", "apariencia"],
+    id: "chat-font",
+    label: "Tipografía del Chat",
+    description: "Elige la fuente base para los mensajes del chat",
+    keywords: [
+      "fuente", "tipografía", "font", "chat", "mensajes",
+      // sub-values: font names
+      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
-  */
+  {
+    id: "font-scale",
+    label: "Tamaño de fuente",
+    description: "Ajusta el tamaño del texto por zona (interfaz, sidebar, chat)",
+    keywords: [
+      "tamaño", "fuente", "escala", "zoom", "scale",
+      "interfaz", "sidebar", "chat",
+      "ancho", "burbuja", "bubble", "width",
+    ],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
   // Workflow Settings
   {
     id: "chat-mode",
@@ -160,25 +185,37 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   },
   {
     id: "auto-approve",
-    label: "Auto-aprobar cambios",
-    description: "Aprobar automáticamente los cambios de código y ejecutarlos",
-    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar"],
+    label: "Confirmar cambios en git",
+    description: "Confirma automáticamente los cambios de la IA en git",
+    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar", "git", "commit", "confirmar"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "auto-expand-preview",
-    label: "Expandir vista previa automáticamente",
-    description: "Expandir el panel de vista previa cuando se hacen cambios",
-    keywords: ["expandir", "preview", "vista previa", "panel", "automatico"],
+    label: "Expandir vista previa",
+    description: "Abre automáticamente el panel de vista previa lateral cuando el código cambia",
+    keywords: [
+      "expandir", "preview", "vista previa", "panel", "automatico",
+      // sub-values
+      "desactivado", "derecha", "izquierda",
+    ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "chat-completion-notification",
-    label: "Notificación de respuesta completada",
-    description: "Mostrar notificación cuando termine una respuesta del chat",
+    label: "Notificaciones de respuesta",
+    description: "Muestra una notificación nativa del sistema cuando el chat termina de generar",
     keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "notification-sound",
+    label: "Reproducir sonido",
+    description: "Reproduce un sonido al terminar la respuesta (útil en apps sin firmar en macOS)",
+    keywords: ["sonido", "sound", "audio", "notificacion", "chime", "beep", "mac"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
@@ -190,31 +227,18 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
-  // Embeddings Settings (now inside Agente)
+  // ─── Agente ───
   {
-    id: "embeddings",
-    label: "Búsqueda Semántica",
-    description: "Mejorar la comprensión del código usando vectores semánticos",
-    keywords: ["embeddings", "semantica", "busqueda", "vectores", "ia", "contexto"],
+    id: "chat-language",
+    label: "Idioma del chat",
+    description: "Seleccionar el idioma para las respuestas del agente",
+    keywords: [
+      "idioma", "language", "lenguaje",
+      // sub-values
+      "español", "english", "ingles",
+    ],
     section: "Agente",
     sectionId: "ai-behavior",
-  },
-  {
-    id: "embeddings-model",
-    label: "Modelo de Embeddings",
-    description: "Configurar el modelo usado para la búsqueda semántica",
-    keywords: ["modelo", "embeddings", "openrouter", "dimensiones", "coste"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  // AI Settings
-  {
-    id: "enabled-models",
-    label: "Modelos habilitados",
-    description: "Gestiona qué modelos aparecen en el selector del chat",
-    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
-    section: "OpenRouter",
-    sectionId: "models-connectivity",
   },
   {
     id: "reasoning-effort",
@@ -233,63 +257,59 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
   {
-    id: "max-chat-turns",
-    label: "Turnos máximos de chat",
-    description: "Número máximo de intercambios en una conversación",
-    keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "chat-language",
-    label: "Idioma del chat",
-    description: "Seleccionar el idioma para las respuestas del agente",
-    keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "agent-max-steps",
-    label: "Pasos del agente (Orquestación)",
-    description: "Limita el número de iteraciones del agente por petición — menos pasos es más rápido",
-    keywords: ["pasos", "steps", "iteraciones", "ligero", "rapido", "orquestacion", "agent", "limite", "velocidad"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-
-  {
-    id: "token-stats",
-    label: "Guardar métricas de tokens",
-    description: "Guardar uso de tokens para logs y gráficas",
-    keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
-    section: "Estadísticas",
-    sectionId: "stats-settings",
-  },
-  {
-    id: "verbose-logs",
-    label: "Logs verbosos de chat",
-    description: "Registrar información detallada del chat para debugging",
-    keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
-    section: "Estadísticas",
-    sectionId: "stats-settings",
-  },
-  // Stats
-  {
-    id: "stats",
-    label: "Estadísticas globales",
-    description: "Ver uso de tokens y estadísticas del sistema",
+    id: "chat-view",
+    label: "Vista del chat",
+    description: "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",
     keywords: [
-      "estadisticas",
-      "stats",
-      "tokens",
-      "uso",
-      "graficas",
-      "metricas",
+      "vista", "chat", "render", "modo", "view",
+      // sub-values (pill labels)
+      "completo", "flow", "zen",
+      "ligero", "rapido", "limpio", "esencial",
     ],
-    section: "Estadísticas Globales",
-    sectionId: "stats-settings",
+    section: "Agente",
+    sectionId: "ai-behavior",
   },
-  // Provider Settings
+  {
+    id: "standard-model",
+    label: "Modelo para tareas internas",
+    description: "Títulos, resúmenes y mantenimiento",
+    keywords: [
+      "modelo", "tareas", "internas", "titulos", "resumenes",
+      "standard", "gemini", "flash", "lite",
+    ],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  {
+    id: "agent-permissions",
+    label: "Permisos del Agente",
+    description: "Configurar qué herramientas puede usar el agente",
+    keywords: [
+      "permisos", "agente", "agent", "herramientas", "tools", "permissions",
+      "seguridad",
+      // sub-values: permission names
+      "editar archivos", "terminal", "bash",
+      "acceso web", "webfetch",
+      "búsqueda web", "websearch",
+      "diagnósticos", "lsp",
+      // sub-values: permission levels
+      "siempre", "preguntar", "nunca",
+      // sub-values: granular rules
+      "rm", "borrar", "git add", "git commit", "git push", "git reset",
+      "git checkout", "git restore", "git clean", "git rebase",
+    ],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  // ─── OpenRouter ───
+  {
+    id: "enabled-models",
+    label: "Modelos habilitados",
+    description: "Gestiona qué modelos aparecen en el selector del chat",
+    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
+    section: "OpenRouter",
+    sectionId: "models-connectivity",
+  },
   {
     id: "provider-settings",
     label: "Configuración de OpenRouter",
@@ -298,6 +318,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
+  // ─── Integraciones ───
   {
     id: "github",
     label: "GitHub",
@@ -327,25 +348,12 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Neon",
     description: "Integración con Neon Database",
     keywords: [
-      "neon",
-      "database",
-      "db",
-      "postgres",
-      "postgresql",
-      "integracion",
+      "neon", "database", "db", "postgres", "postgresql", "integracion",
     ],
     section: "Integraciones",
     sectionId: "integrations",
   },
-  // Firebase hidden - not mature yet
-  // {
-  //   id: "firebase",
-  //   label: "Firebase",
-  //   description: "Integración con Firebase (Google)",
-  //   keywords: ["firebase", "google", "database", "db", "firestore", "integracion"],
-  //   section: "Integraciones",
-  //   sectionId: "integrations",
-  // },
+  // ─── Herramientas MCP ───
   {
     id: "mcp-servers",
     label: "Servidores MCP",
@@ -354,61 +362,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Herramientas MCP",
     sectionId: "tools-mcp",
   },
-  // Agent Permissions
-  {
-    id: "agent-permissions",
-    label: "Permisos del Agente",
-    description: "Configurar qué herramientas puede usar el agente",
-    keywords: [
-      "permisos",
-      "agente",
-      "agent",
-      "herramientas",
-      "tools",
-      "permissions",
-      "bash",
-      "terminal",
-      "seguridad",
-      "edit",
-      "editar",
-      "lsp",
-      "webfetch",
-      "websearch",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  // Reset
+  // ─── Otros ───
   {
     id: "reset-all",
     label: "Valores por defecto",
     description: "Restaurar toda la configuración a valores por defecto",
     keywords: [
-      "reset",
-      "resetear",
-      "eliminar",
-      "borrar",
-      "todo",
-      "defecto",
-      "restaurar",
+      "reset", "resetear", "eliminar", "borrar", "todo", "defecto", "restaurar",
     ],
     section: "Tema",
     sectionId: "general-settings",
-  },
-  {
-    id: "prompts",
-    label: "Prompts",
-    description: "Configurar instrucciones del sistema y plantillas de IA",
-    keywords: [
-      "prompts",
-      "sistema",
-      "instrucciones",
-      "plantillas",
-      "ia",
-      "custom",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
   },
 ];
 
@@ -478,6 +441,7 @@ export default function SettingsPage() {
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const [hasReleaseNotes, setHasReleaseNotes] = useState(false);
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -509,6 +473,15 @@ export default function SettingsPage() {
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
+
+  // Track scroll position for sticky header fade
+  useEffect(() => {
+    const container = document.getElementById("settings-scroll-container");
+    if (!container) return;
+    const handleScroll = () => setIsScrolled(container.scrollTop > 8);
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Check if release notes file has content
   useEffect(() => {
@@ -638,14 +611,55 @@ export default function SettingsPage() {
     input.click();
   };
 
+  const handleOpenLogs = async () => {
+    try {
+      const logPath = await ipc.system.getLogFilePath();
+      await ipc.system.showItemInFolder(logPath);
+    } catch (err) {
+      console.error("Error opening logs:", err);
+      showError("No se pudo abrir el archivo de logs");
+    }
+  };
+
+  const handleRestartOpenCode = async () => {
+    try {
+      await ipc.system.restartOpenCodeServer();
+      showSuccess("OpenCode reiniciado correctamente");
+    } catch (err) {
+      console.error("Error restarting OpenCode:", err);
+      showError("No se pudo reiniciar OpenCode");
+    }
+  };
+
   return (
     <div
       id="settings-scroll-container"
       className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto"
     >
-      {/* Header Pill */}
-      <div className="w-full mx-auto px-8 pt-6">
-        <div className="w-full mx-auto">
+      {/* Header Pill — sticky */}
+      <div className="sticky top-0 z-50 w-full pt-6 pb-4 pointer-events-none">
+        
+        {/* Solid background behind the pill */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute inset-0 bg-muted/30" />
+        </div>
+
+        {/* Aggressive fade overlay — only visible when scrolled */}
+        <div 
+          className="absolute left-0 right-0 -z-10 h-8"
+          style={{ 
+            top: '100%',
+            opacity: isScrolled ? 1 : 0,
+            background: 'linear-gradient(to bottom, var(--color-background), transparent)',
+            maskImage: 'linear-gradient(to bottom, black 20%, transparent)',
+          }}
+        >
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute inset-0 bg-muted/30" />
+        </div>
+
+        <div className="relative w-full mx-auto px-8 pointer-events-auto">
           <div className="flex justify-between items-center gap-4 bg-card border border-border rounded-2xl p-4 shadow-sm transition-[border-color,box-shadow] duration-300">
             
             {/* Search Input */}
@@ -722,37 +736,51 @@ export default function SettingsPage() {
 
               <div className="w-px h-5 bg-border/60 mx-1" />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
-                onClick={handleImportSettings}
-              >
-                <Download className="h-4 w-4" />
-                Importar
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
-                onClick={handleExportSettings}
-              >
-                <Upload className="h-4 w-4" />
-                Exportar
-              </Button>
-
-              <div className="w-px h-5 bg-border/60 mx-1" />
-
-              <Button
-                onClick={() => setIsResetDialogOpen(true)}
-                disabled={isResetting}
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors rounded-xl"
-              >
-                {isResetting ? "Reseteando..." : "Restablecer"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleImportSettings} className="cursor-pointer gap-2">
+                    <Download className="h-4 w-4" />
+                    Importar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportSettings} className="cursor-pointer gap-2">
+                    <Upload className="h-4 w-4" />
+                    Exportar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleOpenLogs} className="cursor-pointer gap-2">
+                    <FileText className="h-4 w-4" />
+                    Ver logs
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRestartOpenCode} className="cursor-pointer gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Reiniciar OpenCode
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => sendAppNotification({ title: "Test", body: "Si escuchas esto, el sonido funciona correctamente", settings: settings ?? null })}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                    Probar notificación
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setIsResetDialogOpen(true)}
+                    disabled={isResetting}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                  >
+                    {isResetting ? "Reseteando..." : "Restablecer ajustes"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -802,7 +830,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="w-full mx-auto px-8 pt-8 pb-12">
+      <div className="w-full mx-auto px-8 pt-4 pb-12 flex-1">
         <div className="space-y-12 pb-24">
           <GeneralSettings
             appVersion={appVersion}
@@ -824,6 +852,41 @@ export default function SettingsPage() {
           <AIBehaviorSettings
             isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
           />
+
+          {/* Prompts Section */}
+          <div
+            id="prompts-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "prompts-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Prompts
+            </h2>
+            <p className="typo-caption mb-8">
+              Personaliza las instrucciones que reciben los modelos AI para tareas internas,
+              generación de nombres y el sistema de memoria.
+            </p>
+            <PromptsSection />
+          </div>
+
+          <div
+            id="memory-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "memory-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Memoria
+            </h2>
+            <p className="typo-caption mb-8">
+              Configura la memoria persistente del agente: el sistema recuerda hechos,
+              preferencias y decisiones entre sesiones.
+            </p>
+            <MemorySettings />
+          </div>
 
 
 
@@ -871,7 +934,6 @@ export default function SettingsPage() {
           </div>
 
 
-          {/* StatsSettings — retired: logging system removed */}
         </div>
       </div>
 
@@ -897,7 +959,8 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } = useTheme();
+  const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   useEffect(() => {
@@ -926,6 +989,22 @@ export function GeneralSettings({
       applyChatFont(settings.selectedChatFont);
     }
   }, [settings?.selectedFont, settings?.selectedChatFont]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply font scales from settings on load
+  useEffect(() => {
+    if (settings?.fontScaleUI !== undefined && settings.fontScaleUI !== fontScales.ui) {
+      applyFontScale("ui", settings.fontScaleUI);
+    }
+    if (settings?.fontScaleSidebar !== undefined && settings.fontScaleSidebar !== fontScales.sidebar) {
+      applyFontScale("sidebar", settings.fontScaleSidebar);
+    }
+    if (settings?.fontScaleChat !== undefined && settings.fontScaleChat !== fontScales.chat) {
+      applyFontScale("chat", settings.fontScaleChat);
+    }
+    if (settings?.fontScaleBubbleWidth !== undefined && settings.fontScaleBubbleWidth !== bubbleWidthPct) {
+      applyBubbleWidth(settings.fontScaleBubbleWidth);
+    }
+  }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -1095,6 +1174,144 @@ export function GeneralSettings({
           }
         />
 
+        {/* Font Scale — collapsible */}
+        <div className="space-y-0">
+          <div
+            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+            onClick={() => setFontScaleExpanded((e) => !e)}
+          >
+            <div className="flex-1">
+              <h3 className="typo-label">Tamaño de fuente</h3>
+              <p className="typo-caption mt-1">
+                Ajusta el tamaño del texto por zona
+              </p>
+            </div>
+            <ChevronRight
+              className={cn(
+                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+                fontScaleExpanded && "rotate-90",
+              )}
+            />
+          </div>
+
+          {fontScaleExpanded && (
+            <div className="pl-4 space-y-0">
+              <SettingItem
+                label="Interfaz"
+                description="Títulos, botones, labels, badges y controles"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.ui)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("ui", scale);
+                      await updateSettings({ fontScaleUI: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-ui-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Sidebar"
+                description="Menús, apps y chats de la barra lateral"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.sidebar)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("sidebar", scale);
+                      await updateSettings({ fontScaleSidebar: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-sidebar-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Chat"
+                description="Mensajes y contenido del chat"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.chat)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("chat", scale);
+                      await updateSettings({ fontScaleChat: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-chat-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Ancho de burbuja"
+                description="Porcentaje del contenedor (100% = ancho total)"
+                control={
+                  <UnifiedSelector
+                    value={String(bubbleWidthPct)}
+                    onChange={async (value) => {
+                      const pct = parseFloat(value);
+                      applyBubbleWidth(pct);
+                      await updateSettings({ fontScaleBubbleWidth: pct });
+                    }}
+                    options={[
+                      { value: "60", label: "60%" },
+                      { value: "65", label: "65%" },
+                      { value: "70", label: "70%" },
+                      { value: "75", label: "75%" },
+                      { value: "85", label: "85%" },
+                      { value: "95", label: "95%" },
+                      { value: "100", label: "100%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-bubble-width-selector"
+                  />
+                }
+              />
+            </div>
+          )}
+        </div>
+
         {/* Icon Library Selector (Hidden - Experimental)
         <SettingItem
           label="Librería de Iconos"
@@ -1243,6 +1460,25 @@ export function WorkflowSettings({
           />
 
           <SettingItem
+            label="Reproducir sonido"
+            description="Reproduce un sonido al terminar la respuesta. Funciona en apps sin firmar en macOS donde las notificaciones nativas no están disponibles."
+            onClick={() =>
+              updateSettings({
+                enableNotificationSound:
+                  settings?.enableNotificationSound === false,
+              })
+            }
+            control={
+              <TogglePill
+                checked={settings?.enableNotificationSound !== false}
+                onCheckedChange={(checked) =>
+                  updateSettings({ enableNotificationSound: checked })
+                }
+              />
+            }
+          />
+
+          <SettingItem
             label="Búsqueda web"
             description="Permite al modelo buscar en internet cuando necesite información actualizada. OpenRouter ejecuta la búsqueda automáticamente."
             onClick={() =>
@@ -1261,521 +1497,6 @@ export function WorkflowSettings({
           />
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
-  const navigate = useNavigate();
-  const { settings, updateSettings } = useSettings();
-  const [entries, setEntries] = useState<TokenStatEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<TokenStatEntry | null>(
-    null,
-  );
-
-  const allStatsEnabled = !!settings?.enableAllStatsAndLogs;
-
-  const load = async () => {
-    if (!allStatsEnabled) return;
-    setLoading(true);
-    try {
-      const data = await tokenStatsClient.getTokenStats();
-      setEntries(data || []);
-    } catch (error) {
-      console.error("Failed to load token stats", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (allStatsEnabled) {
-      void load();
-    } else {
-      setEntries([]);
-    }
-  }, [allStatsEnabled]);
-
-  // Calculate total stats
-  const totalStats = entries.reduce(
-    (acc, entry) => ({
-      total: acc.total + entry.totalTokens,
-      input: acc.input + (entry.promptTokens ?? 0),
-      output: acc.output + (entry.completionTokens ?? 0),
-    }),
-    { total: 0, input: 0, output: 0 },
-  );
-
-  // Group by hour
-  const hourlyStats = (() => {
-    const stats = new Map<string, { tokens: number; count: number }>();
-    entries.forEach((entry) => {
-      const date = new Date(entry.timestamp);
-      const hourKey = `${date.getHours()}:00`;
-      if (!stats.has(hourKey)) {
-        stats.set(hourKey, { tokens: 0, count: 0 });
-      }
-      const s = stats.get(hourKey)!;
-      s.tokens += entry.totalTokens;
-      s.count += 1;
-    });
-    return Array.from(stats.entries())
-      .map(([hour, data]) => ({ hour, ...data }))
-      .sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
-  })();
-
-  const maxHourlyTokens = Math.max(...hourlyStats.map((h) => h.tokens), 1);
-
-  // Group by model
-  const modelStats = (() => {
-    const stats = new Map<string, number>();
-    entries.forEach((entry) => {
-      const model = entry.model || "unknown";
-      stats.set(model, (stats.get(model) || 0) + entry.totalTokens);
-    });
-    return Array.from(stats.entries())
-      .map(([model, tokens]) => ({ model, tokens }))
-      .sort((a, b) => b.tokens - a.tokens)
-      .slice(0, 5);
-  })();
-
-  const maxModelTokens = Math.max(...modelStats.map((m) => m.tokens), 1);
-
-  const handleToggleMaster = async (checked: boolean) => {
-    await updateSettings({ enableAllStatsAndLogs: checked } as any, { showToast: true });
-  };
-
-  const handleToggleSubSetting = async (
-    field: "enableTokenStats" | "enableVerboseChatLogs",
-    value: boolean,
-  ) => {
-    await updateSettings({ [field]: value } as any, { showToast: true });
-  };
-
-  return (
-    <div
-      id="stats-settings"
-      className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
-        isHighlighted
-          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-          : "",
-      )}
-    >
-      {/* Header with master switch on the right */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="typo-section-title">
-            Estadísticas y Logs
-          </h2>
-          <p className="typo-caption mt-1">
-            Controla el registro de métricas, estadísticas y logs de la aplicación.
-          </p>
-        </div>
-        <TogglePill
-          checked={allStatsEnabled}
-          onCheckedChange={handleToggleMaster}
-        />
-      </div>
-
-      {/* Everything below only shows when master switch is ON */}
-      {allStatsEnabled && (
-        <div className="mt-8 space-y-12">
-          {/* Sub-setting toggles (moved from AI Behavior) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-              <div>
-                <Label className="text-base font-bold text-foreground">
-                  Métricas de tokens
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Guarda el historial de consumo para las estadísticas.
-                </p>
-              </div>
-              <TogglePill
-                checked={settings?.enableTokenStats !== false}
-                onCheckedChange={(checked) =>
-                  handleToggleSubSetting("enableTokenStats", checked)
-                }
-              />
-            </div>
-
-            <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-              <div>
-                <Label className="text-base font-bold text-foreground">
-                  Logs verbosos
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Información técnica detallada en el panel de chat.
-                </p>
-              </div>
-              <TogglePill
-                checked={!!settings?.enableVerboseChatLogs}
-                onCheckedChange={(checked) =>
-                  handleToggleSubSetting("enableVerboseChatLogs", checked)
-                }
-              />
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-4 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-              onClick={() => {
-                const header = [
-                  "timestamp",
-                  "chatId",
-                  "messageId",
-                  "totalTokens",
-                  "promptTokens",
-                  "completionTokens",
-                  "model",
-                  "filesSent",
-                  "toolsUsed",
-                ].join(",");
-                const lines = entries.map((e) =>
-                  [
-                    new Date(e.timestamp).toISOString(),
-                    e.chatId,
-                    e.messageId,
-                    e.totalTokens,
-                    e.promptTokens ?? "",
-                    e.completionTokens ?? "",
-                    e.model ?? "",
-                    (e.filesSent || []).join("|"),
-                    (e.toolsUsed || []).join("|"),
-                  ].join(","),
-                );
-                const csv = [header, ...lines].join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "token-stats.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Exportar CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-              onClick={() => navigate({ to: "/settings/ai-query-logs" })}
-            >
-              Inspeccionar Logs de IA
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={load}
-              disabled={loading}
-              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-            >
-              {loading ? "Cargando..." : "Refrescar"}
-            </Button>
-          </div>
-
-          {entries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <TrendingUp className="text-muted-foreground/20 mb-6" size={64} />
-              <p className="text-xl font-semibold text-foreground">
-                Aún no hay datos
-              </p>
-              <p className="text-base text-muted-foreground mt-2">
-                Envía un mensaje para registrar tus estadísticas de uso
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-12">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Zap className="text-primary" size={20} />
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                      Total
-                    </span>
-                  </div>
-                  <p className="text-4xl font-black text-foreground">
-                    {totalStats.total.toLocaleString()}
-                  </p>
-                  <p className="typo-caption mt-2">
-                    tokens en {entries.length} mensajes
-                  </p>
-                </div>
-
-                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-                  <div className="flex items-center gap-3 mb-4">
-                    <TrendingUp className="text-primary" size={20} />
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                      Entrada
-                    </span>
-                  </div>
-                  <p className="text-4xl font-black text-foreground">
-                    {totalStats.input.toLocaleString()}
-                  </p>
-                  <p className="typo-caption mt-2">
-                    tokens de prompt (contexto)
-                  </p>
-                </div>
-
-                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-                  <div className="flex items-center gap-3 mb-4">
-                    <TrendingUp className="text-primary" size={20} />
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                      Salida
-                    </span>
-                  </div>
-                  <p className="text-4xl font-black text-foreground">
-                    {totalStats.output.toLocaleString()}
-                  </p>
-                  <p className="typo-caption mt-2">
-                    tokens generados por la IA
-                  </p>
-                </div>
-              </div>
-
-              {/* Hourly Chart */}
-              {hourlyStats.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <Clock className="text-muted-foreground/60" size={20} />
-                    <h3 className="typo-subsection-title">
-                      Uso por Hora
-                    </h3>
-                  </div>
-                  <div className="space-y-4 p-8 rounded-2xl bg-muted/30 border border-border">
-                    {hourlyStats.map((stat) => (
-                      <div key={stat.hour} className="flex items-center gap-6">
-                        <span className="text-sm font-mono font-bold text-muted-foreground w-16">
-                          {stat.hour}
-                        </span>
-                        <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded-full transition-[width] duration-300 flex items-center justify-end pr-4"
-                            style={{
-                              width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
-                            }}
-                          >
-                            {stat.tokens > maxHourlyTokens * 0.3 && (
-                              <span className="text-xs font-black text-primary-foreground uppercase tracking-widest">
-                                {stat.tokens.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {stat.tokens <= maxHourlyTokens * 0.3 && (
-                          <span className="text-sm font-bold text-foreground w-24">
-                            {stat.tokens.toLocaleString()}
-                          </span>
-                        )}
-                        <span className="text-xs font-bold text-muted-foreground/40 w-24 text-right">
-                          {stat.count} msgs
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Top Models and Recent Activity */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* Top Models */}
-                <div className="space-y-6 flex flex-col h-full">
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="text-muted-foreground/60" size={20} />
-                    <h3 className="typo-subsection-title">
-                      Top Modelos
-                    </h3>
-                  </div>
-                  <div className="space-y-6 p-6 rounded-2xl bg-muted/30 border border-border h-full overflow-hidden">
-                    {modelStats.map((stat, idx) => (
-                      <div key={stat.model} className="space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest flex-shrink-0">
-                              #{idx + 1}
-                            </span>
-                            <div className="text-sm font-bold text-foreground truncate">
-                              {stat.model}
-                            </div>
-                          </div>
-                          <span className="text-sm font-black text-primary/80 flex-shrink-0">
-                            {stat.tokens.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-[width] duration-300"
-                            style={{
-                              width: `${(stat.tokens / maxModelTokens) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="text-muted-foreground/60" size={20} />
-                    <h3 className="typo-subsection-title">
-                      Actividad Reciente
-                    </h3>
-                  </div>
-                  <div className="space-y-3 p-4 rounded-2xl bg-muted/30 border border-border max-h-[460px] overflow-y-auto">
-                    {entries.slice(0, 10).map((entry) => (
-                      <button
-                        key={`${entry.timestamp}-${entry.messageId}`}
-                        onClick={() => setSelectedEntry(entry)}
-                        className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-border group shadow-none hover:shadow-sm"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
-                            Chat #{entry.chatId} · {entry.model || "IA"}
-                          </span>
-                          <span className="text-xs font-bold text-muted-foreground/40 uppercase tracking-widest">
-                            {formatDistanceToNow(new Date(entry.timestamp), {
-                              addSuffix: true,
-                              locale: es,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary transition-[width]"
-                              style={{
-                                width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-black text-foreground">
-                            {entry.totalTokens.toLocaleString()}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Details Dialog */}
-          <Dialog
-            open={!!selectedEntry}
-            onOpenChange={() => setSelectedEntry(null)}
-          >
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Detalles del Token Stat</DialogTitle>
-              </DialogHeader>
-              {selectedEntry && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">
-                        Chat ID
-                      </label>
-                      <p className="text-sm text-foreground mt-1">
-                        #{selectedEntry.chatId}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">
-                        Message ID
-                      </label>
-                      <p className="text-sm text-foreground mt-1">
-                        {selectedEntry.messageId}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">
-                        Total Tokens
-                      </label>
-                      <p className="text-2xl font-bold text-primary mt-1">
-                        {selectedEntry.totalTokens.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">
-                        Input Tokens
-                      </label>
-                      <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                        {selectedEntry.promptTokens?.toLocaleString() ?? "?"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">
-                        Output Tokens
-                      </label>
-                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
-                        {selectedEntry.completionTokens?.toLocaleString() ?? "?"}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">
-                      Modelo
-                    </label>
-                    <p className="text-sm text-foreground mt-1">
-                      {selectedEntry.model || "unknown"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">
-                      Timestamp
-                    </label>
-                    <p className="text-sm text-foreground mt-1">
-                      {new Date(selectedEntry.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  {selectedEntry.filesSent &&
-                    selectedEntry.filesSent.length > 0 && (
-                      <div>
-                        <label className="text-sm font-medium text-foreground">
-                          Archivos Enviados ({selectedEntry.filesSent.length})
-                        </label>
-                        <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-2 overflow-x-auto max-h-40">
-                          {selectedEntry.filesSent.join("\n")}
-                        </pre>
-                      </div>
-                    )}
-                  {selectedEntry.toolsUsed &&
-                    selectedEntry.toolsUsed.length > 0 && (
-                      <div>
-                        <label className="text-sm font-medium text-foreground">
-                          Herramientas Usadas
-                        </label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedEntry.toolsUsed.map((tool) => (
-                            <span
-                              key={tool}
-                              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-foreground"
-                            >
-                              {tool}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
     </div>
   );
 }

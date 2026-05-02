@@ -203,6 +203,27 @@ export const miscContracts = {
     }),
     output: z.record(z.string(), z.string().nullable()),
   }),
+
+  // Playground — single model completion (returns full response text)
+  playgroundCompletion: defineContract({
+    channel: "playground:completion",
+    input: z.object({
+      model: z.string(),
+      prompt: z.string(),
+    }),
+    output: z.object({
+      text: z.string(),
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional(),
+    }),
+  }),
+
+  // Playground — cancel in-flight completion request
+  playgroundCancel: defineContract({
+    channel: "playground:cancel",
+    input: z.object({}),
+    output: z.object({ cancelled: z.boolean() }),
+  }),
 } as const;
 
 export const AppLogsBatchSchema = z.object({
@@ -240,6 +261,15 @@ export const miscEvents = {
   chatStreamEnd: defineEvent({
     channel: "chat:stream:end",
     payload: z.object({ chatId: z.number() }),
+  }),
+
+  /** Fired when the boot-time model validator replaces stale model references */
+  modelsMigrated: defineEvent({
+    channel: "models:migrated",
+    payload: z.object({
+      /** Human-readable list of what was migrated, e.g. ["selectedModel → google/gemini-3-flash-preview"] */
+      changes: z.array(z.string()),
+    }),
   }),
 } as const;
 

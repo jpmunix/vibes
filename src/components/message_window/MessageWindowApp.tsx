@@ -8,7 +8,7 @@ import {
     createMemoryHistory,
     RouterProvider,
 } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
+
 import { Provider } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { Loader2 } from "lucide-react";
@@ -19,7 +19,7 @@ import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { ThemeProvider } from "../../contexts/ThemeContext";
 
 const queryClient = new QueryClient();
-const noopPosthogClient = null;
+
 
 // Route setup
 function createMessageWindowRouter(appId: number, chatId: number, messageId: number) {
@@ -154,14 +154,12 @@ export function MessageWindowApp(props: MessageWindowAppProps) {
     <Provider>
       <GlobalStateHydrator appId={props.appId} chatId={props.chatId}>
         <QueryClientProvider client={queryClient}>
-          <PostHogProvider client={noopPosthogClient}>
             <ThemeProvider>
               <div className="vibes-theme-root h-screen w-screen overflow-hidden bg-background font-sans text-foreground">
                 {/* @ts-ignore */}
                 <RouterProvider router={chatRouter} />
               </div>
             </ThemeProvider>
-          </PostHogProvider>
         </QueryClientProvider>
       </GlobalStateHydrator>
     </Provider>

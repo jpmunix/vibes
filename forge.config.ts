@@ -18,7 +18,8 @@ const ignore = (file: string): boolean => {
     file.startsWith("/scaffold") ||
     file.startsWith("/scaffold-vue") ||
     file.startsWith("/scaffold-astro") ||
-    file.startsWith("/scaffold-svelte")
+    file.startsWith("/scaffold-svelte") ||
+    file.startsWith("/scaffold-tools")
   ) {
     if (
       file.includes("/node_modules") ||

@@ -1,6 +1,5 @@
 import { readSettings, decrypt } from "../../main/settings";
 import log from "electron-log";
-import { logAiQuery } from "./ai_query_logger";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
 const logger = log.scope("openrouter_client");
@@ -157,20 +156,6 @@ export async function openRouterCompletion(
 
   const data = await response.json();
 
-  // Log the query
-  try {
-    void logAiQuery({
-      queryType: options.title || "generic-completion",
-      model: finalModel,
-      promptSnippet: messages[messages.length - 1]?.content?.slice(0, 100) || "",
-      payload: body,
-      response: data,
-      inputTokens: data?.usage?.prompt_tokens,
-      outputTokens: data?.usage?.completion_tokens,
-    }, settings.userId as string);
-  } catch (err) {
-    logger.error("Failed to initiate AI query logging", err);
-  }
 
   return data;
 }

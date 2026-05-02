@@ -52,7 +52,7 @@ export function registerDependencyHandlers() {
 
     executeAddDependency({
       packages,
-      message,
+      message: message as any,
       appPath: getVibesAppPath(app.path),
     });
   });

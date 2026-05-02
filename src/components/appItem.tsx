@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Pin, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "@/components/ui/icons";
+import { Pin, ExternalLink, AlertTriangle, CloudDownload, Loader2, Archive } from "@/components/ui/icons";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
@@ -22,6 +22,7 @@ type AppItemProps = {
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (appId: number) => void;
+  onArchive?: (appId: number, appName: string, e: React.MouseEvent) => void;
 };
 
 export function AppItem({
@@ -35,6 +36,7 @@ export function AppItem({
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
+  onArchive,
 }: AppItemProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -148,9 +150,9 @@ export function AppItem({
                 title="Descargar archivos desde GitHub"
               >
                 {isDownloading ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 size={15} className="animate-spin" />
                 ) : (
-                  <CloudDownload size={14} />
+                  <CloudDownload size={15} />
                 )}
               </SidebarMenuAction>
             )}
@@ -162,11 +164,11 @@ export function AppItem({
               data-testid="favorite-button"
             >
               <Pin
-                size={14}
+                size={15}
                 className={
                   app.isFavorite
-                    ? "fill-primary text-primary"
-                    : "text-muted-foreground hover:text-primary hover:fill-primary"
+                    ? "fill-foreground text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:fill-foreground"
                 }
               />
             </SidebarMenuAction>
@@ -174,11 +176,22 @@ export function AppItem({
               <SidebarMenuAction
                 showOnHover
                 onClick={(e) => handleOpenChat(app.id, e)}
-                className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-primary cursor-pointer"
+                className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-foreground cursor-pointer"
                 data-testid="open-chat-button"
                 title="Abrir en Chat"
               >
-                <ExternalLink size={14} />
+                <ExternalLink size={15} />
+              </SidebarMenuAction>
+            )}
+            {onArchive && (
+              <SidebarMenuAction
+                showOnHover
+                onClick={(e) => onArchive(app.id, app.name, e)}
+                className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                data-testid="archive-button"
+                title="Archivar"
+              >
+                <Archive size={15} />
               </SidebarMenuAction>
             )}
           </div>
