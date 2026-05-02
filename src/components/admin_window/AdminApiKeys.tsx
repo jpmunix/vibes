@@ -10,6 +10,7 @@ import {
     ChevronRight,
     Copy,
     Download,
+    Share2,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -259,18 +260,41 @@ export function AdminApiKeys() {
                         </p>
                     </div>
                     {data.length > 0 && (
-                        <button
-                            type="button"
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground cursor-pointer transition-colors typo-caption"
-                            onClick={() => {
-                                const md = generateMarkdown(data);
-                                downloadFile("api-keys.md", md, "text/markdown");
-                                toast.success("api-keys.md descargado");
-                            }}
-                        >
-                            <Download size={14} />
-                            Exportar .md
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground cursor-pointer transition-colors typo-caption"
+                                onClick={() => {
+                                    const md = generateMarkdown(data);
+                                    downloadFile("api-keys.md", md, "text/markdown");
+                                    toast.success("api-keys.md descargado");
+                                }}
+                            >
+                                <Download size={14} />
+                                Descargar
+                            </button>
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground cursor-pointer transition-colors typo-caption"
+                                onClick={async () => {
+                                    try {
+                                        const md = generateMarkdown(data);
+                                        const result = await ipc.markdownShare.uploadDocument({
+                                            title: "API Keys",
+                                            content: md,
+                                            format: "md",
+                                        });
+                                        await navigator.clipboard.writeText(result.data.share_url);
+                                        toast.success("URL copiada al portapapeles");
+                                    } catch (e: any) {
+                                        toast.error(e.message || "Error al compartir");
+                                    }
+                                }}
+                            >
+                                <Share2 size={14} />
+                                Compartir
+                            </button>
+                        </div>
                     )}
                 </div>
 

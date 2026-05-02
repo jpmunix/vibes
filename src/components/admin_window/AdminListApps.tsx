@@ -7,9 +7,10 @@ import { useSettings } from "@/hooks/useSettings";
 import { ipc } from "@/ipc/types";
 import type { AdminUser } from "@/ipc/types/admin";
 import { LanguageBadge } from "@/components/LanguageBadge";
-import { Loader2, ChevronRight, MessageSquare } from "@/components/ui/icons";
+import { Loader2, ChevronRight, MessageSquare, Share2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { VibesMarkdownParser, VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { UserMessageContent } from "@/components/chat/UserMessageContent";
 import { format, formatDistanceToNow } from "date-fns";
@@ -65,6 +66,32 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
                         <span className="typo-micro text-muted-foreground shrink-0">
                             {formatDate(chat.createdAt)}
                         </span>
+                        <button
+                            type="button"
+                            title="Compartir"
+                            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                    const fullChat = await ipc.admin.getAdminChat({ chatId: chat.id });
+                                    const markdown = buildShareMarkdown(
+                                        chat.title || "Sin título",
+                                        fullChat.messages,
+                                    );
+                                    const result = await ipc.markdownShare.uploadDocument({
+                                        title: chat.title || "Sin título",
+                                        content: markdown,
+                                        format: "md",
+                                    });
+                                    await navigator.clipboard.writeText(result.data.share_url);
+                                    toast.success("URL copiada al portapapeles");
+                                } catch (err: any) {
+                                    toast.error(err.message || "Error al compartir");
+                                }
+                            }}
+                        >
+                            <Share2 size={13} />
+                        </button>
                     </div>
                 ))}
             </div>

@@ -403,7 +403,7 @@ const AppChats = memo(function AppChats({
             }}
           >
             <Share2 size={14} className="opacity-60 shrink-0" />
-            Compartir markdown
+            Compartir chat
           </button>
           <button
             type="button"

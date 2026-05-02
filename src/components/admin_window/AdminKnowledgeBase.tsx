@@ -7,7 +7,8 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Loader2, Maximize2, Minimize2 } from "@/components/ui/icons";
+import { ChevronRight, Loader2, Maximize2, Minimize2, Download, Share2 } from "@/components/ui/icons";
+import { showError, showSuccess } from "@/lib/toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -340,6 +341,20 @@ function downloadMarkdown(filename: string, content: string) {
 function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
   const [viewingLog, setViewingLog] = useState<DebugLogEntry | null>(null);
 
+  const handleShare = async (log: DebugLogEntry) => {
+    try {
+      const result = await ipc.markdownShare.uploadDocument({
+        title: log.appName || log.filename,
+        content: log.contentMd,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    }
+  };
+
   return (
     <>
       <div className="space-y-1">
@@ -357,18 +372,18 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
             </div>
             <span className="typo-micro text-muted-foreground shrink-0">{formatTime(log.createdAt)}</span>
             <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); downloadMarkdown(log.filename, log.contentMd); }}>
-                ⬇
+              <Button variant="ghost" size="sm" className="h-7 px-2 cursor-pointer" title="Descargar" onClick={(e) => { e.stopPropagation(); downloadMarkdown(log.filename, log.contentMd); }}>
+                <Download className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setViewingLog(log); }}>
-                Ver
+              <Button variant="ghost" size="sm" className="h-7 px-2 cursor-pointer" title="Compartir" onClick={(e) => { e.stopPropagation(); handleShare(log); }}>
+                <Share2 className="size-3.5" />
               </Button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Full markdown modal — wide */}
+      {/* Full markdown modal */}
       {viewingLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setViewingLog(null)}>
           <div
@@ -382,8 +397,13 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
                 <p className="typo-micro text-muted-foreground">{viewingLog.filename} · {formatTime(viewingLog.createdAt)} · {(viewingLog.contentMd?.length ?? 0).toLocaleString()} chars</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => downloadMarkdown(viewingLog.filename, viewingLog.contentMd)}>
-                  ⬇ Descargar
+                <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => downloadMarkdown(viewingLog.filename, viewingLog.contentMd)}>
+                  <Download className="size-3.5" />
+                  Descargar
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => handleShare(viewingLog)}>
+                  <Share2 className="size-3.5" />
+                  Compartir
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}>✕</Button>
               </div>
