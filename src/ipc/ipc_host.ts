@@ -48,6 +48,7 @@ import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
+import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { warmUpScaffoldCache } from "./utils/scaffold_cache";
 import log from "electron-log";
 
@@ -116,6 +117,9 @@ export function registerIpcHandlers() {
 
   // Playground — model comparison tool
   registerPlaygroundHandlers();
+
+  // Markdown share — md.mnstatic.com document upload
+  registerMarkdownShareHandlers();
 
   // Pre-cache scaffold node_modules in background (non-blocking)
   warmUpScaffoldCache().catch(err =>

@@ -41,6 +41,7 @@ import {
   Download,
   FileText,
   Plus,
+  Share2,
 } from "@/components/ui/icons";
 
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,12 @@ import { PocketBaseConnector } from "@/components/PocketBaseConnector";
 // Firebase hidden - not mature yet
 // import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
@@ -389,6 +396,36 @@ export default function AppDetailsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleShareDesign = async () => {
+    if (!designData?.content) return;
+    try {
+      const result = await ipc.markdownShare.uploadDocument({
+        title: `DESIGN.md — ${selectedApp.name}`,
+        content: designData.content,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    }
+  };
+
+  const handleShareAgentsMd = async () => {
+    if (!agentsData?.content) return;
+    try {
+      const result = await ipc.markdownShare.uploadDocument({
+        title: `AGENTS.md — ${selectedApp.name}`,
+        content: agentsData.content,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    }
+  };
+
   return (
     <div
       className="relative h-full w-full overflow-hidden flex"
@@ -461,26 +498,54 @@ export default function AppDetailsPage() {
               {(hasDesignMd || hasAgentsMd) && (
                 <div className="flex gap-2 justify-center flex-wrap">
                   {hasDesignMd && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
-                      onClick={handleDownloadDesign}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      DESIGN.md
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          DESIGN.md
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="min-w-[160px]">
+                        <DropdownMenuItem onClick={handleDownloadDesign} className="cursor-pointer">
+                          <Download className="h-4 w-4" />
+                          Descargar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareDesign} className="cursor-pointer">
+                          <Share2 className="h-4 w-4" />
+                          Compartir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                   {hasAgentsMd && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
-                      onClick={handleDownloadAgentsMd}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      AGENTS.md
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          AGENTS.md
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="min-w-[160px]">
+                        <DropdownMenuItem onClick={handleDownloadAgentsMd} className="cursor-pointer">
+                          <Download className="h-4 w-4" />
+                          Descargar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareAgentsMd} className="cursor-pointer">
+                          <Share2 className="h-4 w-4" />
+                          Compartir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               )}

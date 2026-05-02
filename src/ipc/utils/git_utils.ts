@@ -863,6 +863,27 @@ export async function gitHasRemote({ path }: GitBaseParams): Promise<boolean> {
   }
 }
 
+/**
+ * Remove the 'origin' remote from a git repository.
+ */
+export async function gitRemoveRemote({ path }: GitBaseParams): Promise<void> {
+  const settings = readSettings();
+  if (settings.enableNativeGit) {
+    const result = await execGit(["remote", "remove", "origin"], path);
+    if (result.exitCode !== 0 && !result.stderr.includes("No such remote")) {
+      throw new Error(`Failed to remove remote: ${result.stderr}`);
+    }
+  } else {
+    // isomorphic-git: delete remote config entries
+    try {
+      await git.setConfig({ fs, dir: path, path: "remote.origin.url", value: undefined });
+      await git.setConfig({ fs, dir: path, path: "remote.origin.fetch", value: undefined });
+    } catch {
+      // Ignore errors if config keys don't exist
+    }
+  }
+}
+
 export async function gitSetRemoteUrl({
   path,
   remoteUrl,

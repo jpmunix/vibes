@@ -239,6 +239,8 @@ export const TrendingUp = withIconFactory(Lucide.TrendingUp, Iconoir.GraphUp);
 export const Undo2 = withIconFactory(Lucide.Undo2, Iconoir.Undo);
 export const Video = withIconFactory(Lucide.Video, Iconoir.VideoCamera);
 export const Wifi = withIconFactory(Lucide.Wifi, Iconoir.Wifi);
+export const CloudOff = withIconFactory(Lucide.CloudOff, Iconoir.CloudDesync);
+export const Unlink = withIconFactory(Lucide.Unlink, Iconoir.Link);
 
 // Custom Brand SVGs
 const NeonSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (

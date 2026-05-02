@@ -33,6 +33,14 @@ La configuración de prompts deja de vivir en una pantalla separada y ahora es u
 
 Al crear un workspace nuevo, el primer chat arranca con **los mismos selectores que la pantalla de crear app**: elige plantilla (React, Express), sistema de diseño (marca, personalizado o generado desde captura) y esfuerzo de razonamiento antes de escribir tu primera instrucción. Al enviar ese mensaje fundacional, el agente **instala el DESIGN.md, aplica la plantilla y empieza a generar todo directamente en el chat**, sin abrir ventanas adicionales. Una vez enviado el primer mensaje, los selectores desaparecen y el chat funciona con normalidad.
 
+## Comparte con un clic
+
+Nuevo sistema de **compartir como enlace** integrado en toda la app. Desde el menú contextual de cualquier chat puedes generar una URL pública con la conversación completa en Markdown; desde la ficha de cada aplicación puedes hacer lo mismo con el **DESIGN.md** y el **AGENTS.md**. En todos los casos, el contenido se sube y la URL se copia al portapapeles, lista para enviar.
+
+## Configurar remote y publicar, ahora más claro
+
+El flujo para vincular un repositorio de GitHub se ha rediseñado por completo: en lugar del panel comprimido al pie del panel Git, ahora se abre un **diálogo modal** con dos tarjetas claras —crear repo privado o vincular uno existente— y pasos guiados. El mismo panel Git incluye ahora un botón **"Publicar"** que conecta directamente con **Vercel**: crea un proyecto nuevo o vincula uno existente, muestra el estado del despliegue en tiempo real y da acceso a la URL en vivo con un clic.
+
 ## Correcciones y ajustes
 
 - Nuevo botón **\"Aceptar plan\"** que aparece al terminar una planificación para lanzar la ejecución directamente, sin escribir nada más.
@@ -52,10 +60,11 @@ Al crear un workspace nuevo, el primer chat arranca con **los mismos selectores 
 - Botón **Nitro** en el Playground para forzar el proveedor más rápido (`:nitro` de OpenRouter) en todos los modelos de la batería.
 - Actualización del SDK de OpenCode a la versión **1.14.31**.
 - El banner azul de cambios sin confirmar ya no interrumpe en ningún modo de chat; el indicador del icono Git es suficiente.
-- Nueva opción **"Exportar a Markdown"** en el menú contextual de cada chat para guardar la conversación completa como archivo `.md`.
+- La opción de compartir chat genera un **enlace público** con el contenido en Markdown y lo copia al portapapeles.
 - **Liberación limpia de recursos** al cerrar la aplicación: todos los procesos en segundo plano y conexiones activas se detienen automáticamente, evitando procesos huérfanos y consumo de memoria residual.
 - Los logs de la consola ahora se pueden **citar directamente en el chat** (incluso desde ventanas independientes), con icono y etiqueta de "Consola" propios.
 - La pestaña Workspace tiene su propio **menú contextual** (nuevo proyecto, abrir, buscar, cerrar) y la terminología de la pestaña Apps se ha unificado para distinguir mejor entre aplicaciones y workspaces.
+- El panel de mensaje de commit en Git ahora **recuerda su último tamaño** al redimensionarlo, y lo restaura automáticamente la próxima vez que abras el panel.
 - Mejoras internas de estabilidad.
 
 # v8.0

@@ -30,6 +30,7 @@ import {
   getGitAheadCount,
   withGitAuthor,
   gitHasRemote,
+  gitRemoveRemote,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -221,9 +222,10 @@ export async function prepareLocalBranch({
             "Failed to auto-commit uncommitted changes. Please commit or stash your changes manually and try again.",
           );
         }
+      } else if (!isClean) {
+        // Auto-commit is disabled and workspace is dirty — fail early
+        await ensureCleanWorkspace(appPath, `preparing branch '${targetBranch}'`);
       }
-
-      await ensureCleanWorkspace(appPath, `preparing branch '${targetBranch}'`);
 
       // List branches and check if target branch exists
       const localBranches = await gitListBranches({ path: appPath });
@@ -320,19 +322,18 @@ export async function prepareLocalBranch({
     });
   } catch (gitError: any) {
     logger.error("[GitHub Handler] Failed to prepare local branch:", gitError);
-    // Check if error is about uncommitted changes (fallback in case check above missed it)
     const errorMessage =
       gitError?.message ||
       "Failed to prepare local branch for the connected repository.";
     const lowerMessage = errorMessage.toLowerCase();
+
     if (
       lowerMessage.includes("local changes") ||
       lowerMessage.includes("would be overwritten") ||
       lowerMessage.includes("please commit or stash")
     ) {
       throw new Error(
-        `Failed to prepare local branch: uncommitted changes detected. ` +
-        "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
+        "Hay cambios sin commitear. Haz commit de tus cambios antes de vincular un repositorio remoto.",
       );
     }
     throw new Error(errorMessage);
@@ -1441,6 +1442,15 @@ async function handleDisconnectGithubRepo(
       githubBranch: null,
     })
     .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+
+  // Also remove the git remote from the local repository
+  const appPath = getVibesAppPath(app.path);
+  try {
+    await gitRemoveRemote({ path: appPath });
+    logger.log(`[GitHub Handler] Removed git remote 'origin' for appId: ${appId}`);
+  } catch (err: any) {
+    logger.warn(`[GitHub Handler] Could not remove git remote: ${err.message}`);
+  }
 }
 // --- GitHub Clone Repo from URL Handler ---
 async function handleCloneRepoFromUrl(

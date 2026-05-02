@@ -52,12 +52,14 @@ export { visualEditingContracts } from "./visual-editing";
 export { miscContracts, miscEvents } from "./misc";
 export { designContracts } from "./design";
 export { memoryContracts } from "./memory";
+export { markdownShareContracts } from "./markdown-share";
 
 
 export { authContracts } from "./auth";
 export { adminContracts } from "./admin";
 
 export { memoryClient } from "./memory";
+export { markdownShareClient } from "./markdown-share";
 
 // =============================================================================
 // Client Exports
@@ -299,6 +301,9 @@ export type {
 // Design types
 export type { DesignItem } from "./design";
 
+// Markdown Share types
+export type { MarkdownShareDocument } from "./markdown-share";
+
 
 // Misc types
 export type { DeepLinkData, AppOutput, EnvVar } from "./misc";
@@ -383,6 +388,7 @@ import { authClient } from "./auth";
 import { designClient } from "./design";
 import { memoryClient } from "./memory";
 import { adminClient } from "./admin";
+import { markdownShareClient } from "./markdown-share";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -454,6 +460,9 @@ export const ipc = {
 
   // Admin panel
   admin: adminClient,
+
+  // Markdown share (md.mnstatic.com)
+  markdownShare: markdownShareClient,
 
   // Event clients for main->renderer pub/sub
   events: {

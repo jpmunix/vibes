@@ -33,6 +33,7 @@ import {
   Code,
   Folder,
   Download,
+  Share2,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
@@ -40,6 +41,7 @@ import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import { selectedChatIdAtom, recentStreamChatIdsAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
+import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
 import { useCreateApp } from "@/hooks/useCreateApp";
@@ -384,28 +386,24 @@ const AppChats = memo(function AppChats({
               if (!chatId || !chat) return;
               try {
                 const fullChat = await ipc.chat.getChat(chatId);
-                const lines: string[] = [];
-                lines.push(`# ${fullChat.title || "Chat sin título"}\n`);
-                for (const msg of fullChat.messages) {
-                  const role = msg.role === "user" ? "Usuario" : "Asistente";
-                  const ts = msg.createdAt ? new Date(msg.createdAt).toLocaleString("es-ES") : "";
-                  lines.push(`## ${role}${ts ? ` — ${ts}` : ""}\n`);
-                  lines.push(msg.content);
-                  lines.push("");
-                }
-                const slug = (fullChat.title || "chat").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, "").replace(/\s+/g, "_").slice(0, 60);
-                await ipc.system.saveTextToFile({
-                  content: lines.join("\n"),
-                  defaultName: `${slug}.md`,
-                  filters: [{ name: "Markdown", extensions: ["md"] }],
+                const markdown = buildShareMarkdown(
+                  fullChat.title || "Chat sin título",
+                  fullChat.messages,
+                );
+                const result = await ipc.markdownShare.uploadDocument({
+                  title: fullChat.title || "Chat sin título",
+                  content: markdown,
+                  format: "md",
                 });
+                await navigator.clipboard.writeText(result.data.share_url);
+                showSuccess("URL copiada al portapapeles");
               } catch (e) {
                 showError(e);
               }
             }}
           >
-            <Download size={14} className="opacity-60 shrink-0" />
-            Exportar a Markdown
+            <Share2 size={14} className="opacity-60 shrink-0" />
+            Compartir markdown
           </button>
           <button
             type="button"
@@ -771,16 +769,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   <FolderOpen size={14} className="opacity-60 shrink-0" />
                   Explorar código
                 </button>
-                {hasUnpushedChanges && (
-                  <button
+                <button
                     type="button"
                     className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
                     onClick={() => { closeMenu(); onOpenGit(app.id); }}
                   >
-                    <GitBranch size={14} className="opacity-60 shrink-0" />
-                    Revisar cambios
+                    <GitBranch size={14} className={`shrink-0 ${hasUnpushedChanges ? "text-primary animate-pulse" : "opacity-60"}`} />
+                    {hasUnpushedChanges ? "Revisar cambios" : "Git"}
                   </button>
-                )}
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"

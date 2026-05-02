@@ -49,6 +49,7 @@ import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
 import { memoryContracts } from "../types/memory";
 import { adminContracts } from "../types/admin";
+import { markdownShareContracts } from "../types/markdown-share";
 
 
 // =============================================================================
@@ -125,6 +126,8 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(designContracts),
 
   ...getInvokeChannels(adminContracts),
+
+  ...getInvokeChannels(markdownShareContracts),
 
 
   // Test-only channels

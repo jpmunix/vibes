@@ -519,6 +519,8 @@ export const UserSettingsSchema = z
       models: z.array(z.string()),
     })).optional(),
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
+    // Git commit panel: persisted vertical split size (percentage, 0-100)
+    gitCommitPanelSize: z.number().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)
