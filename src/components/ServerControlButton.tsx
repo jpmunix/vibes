@@ -1,12 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ChevronDown, ExternalLink, Play, RotateCcw, Square, Terminal } from "@/components/ui/icons";
+import { ExternalLink, Play, RotateCcw, Square, Terminal } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useTheme } from "@/contexts/ThemeContext";
-
-
-import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ServerStatus = "running" | "stopped" | "error";
 
@@ -15,14 +13,13 @@ interface ServerControlButtonProps {
 }
 
 /**
- * Split dropdown button with status indicator for controlling the dev server
- * in workspace (agent) mode.
+ * Icon-only server control buttons for workspace (agent) mode.
  *
- * Shows a colored dot (green=running, gray=stopped, red=error) and provides
- * two dropdown actions: start/restart/stop (depending on state) and open console.
- *
- * Also renders an "open in browser" icon when the server is actively serving,
- * and a Git button when there are unpushed changes.
+ * States:
+ * - Stopped:  grey Play icon only
+ * - Starting: amber Play icon (pulsing)
+ * - Running:  green Play icon + Restart / Stop / Console icons appear
+ * - Error:    red Play icon + Restart icon
  */
 export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const [status, setStatus] = useState<ServerStatus>("stopped");
@@ -30,8 +27,6 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const [loading, setLoading] = useState(false);
   const { runApp, stopApp, restartApp } = useRunApp();
   const { theme, intensity } = useTheme();
-
-
 
   // Poll server status every 2 seconds
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -120,87 +115,112 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     }
   }, [appUrl]);
 
+  const isRunning = status === "running";
+  const isStarting = isRunning && !appUrl;
+  const isActive = isRunning && !!appUrl;
+  const isStopped = status === "stopped";
+  const isError = status === "error";
 
+  // Determine play icon color + style
+  const playIconClass = cn(
+    "h-3.5 w-3.5 transition-colors duration-300",
+    isStopped && "text-zinc-400 dark:text-zinc-500",
+    isStarting && "text-amber-400 animate-pulse",
+    isActive && "text-emerald-500",
+    isError && "text-red-500",
+  );
 
-  // Status indicator colors
-  const statusColor = {
-    running: appUrl
-      ? "bg-emerald-500 shadow-[0_0_6px_1px_rgba(16,185,129,0.4)]"
-      : "bg-amber-400 shadow-[0_0_6px_1px_rgba(251,191,36,0.3)] animate-pulse",
-    stopped: "bg-zinc-400 dark:bg-zinc-500",
-    error: "bg-red-500 shadow-[0_0_6px_1px_rgba(239,68,68,0.4)]",
-  }[status];
-
-  const statusLabel = {
-    running: appUrl ? "Servidor activo" : "Iniciando…",
-    stopped: "Servidor detenido",
-    error: "Error en servidor",
-  }[status];
+  // Shared icon-button style
+  const btnBase = cn(
+    "p-1.5 rounded-md transition-all duration-200",
+    "text-muted-foreground hover:text-foreground",
+    "hover:bg-accent/50",
+    "cursor-pointer",
+    loading && "opacity-40 pointer-events-none",
+  );
 
   return (
-    <div className="flex items-center gap-1">
-      <UnifiedSelector
-        value={undefined as any}
-        onChange={(val) => {
-          if (val === "start") handleStart();
-          if (val === "stop") handleStop();
-          if (val === "restart") handleRestart();
-          if (val === "console") handleOpenConsole();
-        }}
-        options={[
-          ...(status === "stopped" ? [
-            { value: "start", label: "Iniciar servidor", leftIcon: <Play className="text-emerald-500" />, group: "main" }
-          ] : []),
-          ...(status === "running" ? [
-            { value: "restart", label: "Reiniciar servidor", leftIcon: <RotateCcw className="text-amber-500" />, group: "main" },
-            { value: "stop", label: "Detener servidor", leftIcon: <Square className="text-red-500" />, group: "main" }
-          ] : []),
-          ...(status === "error" ? [
-            { value: "restart", label: "Reiniciar servidor", leftIcon: <RotateCcw className="text-amber-500" />, group: "main" },
-            { value: "start", label: "Iniciar servidor", leftIcon: <Play className="text-emerald-500" />, group: "main" }
-          ] : []),
-          { value: "console", label: "Ver consola", leftIcon: <Terminal />, group: "actions" }
-        ]}
-        groups={[
-          { id: "main", heading: undefined },
-          { id: "actions", heading: undefined }
-        ]}
-        triggerVariant="minimal"
-        triggerSize="sm"
-        triggerClassName={cn(
-          "border border-border/50 hover:border-border",
-          "bg-background/60 hover:bg-accent/50",
-          loading && "opacity-50 pointer-events-none"
-        )}
-        customTriggerLabel={
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span
-              className={cn(
-                "w-2 h-2 rounded-full shrink-0 transition-colors duration-300",
-                statusColor,
-              )}
-            />
-            <span className="hidden sm:inline font-medium">{statusLabel}</span>
-          </div>
-        }
-        align="end"
-        popoverWidth="w-[200px]"
-        showCheckmark={false}
-      />
+    <div className="flex items-center gap-0.5">
+      {/* Play — only when stopped, starting, or error (disappears once fully active) */}
+      {!isActive && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className={cn(btnBase, "relative")}
+              onClick={isStopped || isError ? handleStart : undefined}
+              disabled={loading || isStarting}
+              style={{ cursor: isStopped || isError ? "pointer" : "default" }}
+            >
+              <Play
+                className={playIconClass}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {isStopped ? "Iniciar servidor" :
+             isStarting ? "Iniciando…" :
+             isError ? "Error — clic para reiniciar" : ""}
+          </TooltipContent>
+        </Tooltip>
+      )}
 
-      {/* Open in browser — only visible when server is actively serving */}
-      {appUrl && (
-        <button
-          onClick={handleOpenInBrowser}
-          className={cn(
-            "p-1.5 rounded-md transition-all duration-200",
-            "text-muted-foreground hover:text-foreground",
-            "hover:bg-accent/50",
-          )}
-          title="Abrir en navegador"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-        </button>
+      {/* Restart / Stop / Console / Browser — only once server is 100% active */}
+      {isActive && (
+        <>
+          {/* Restart */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={btnBase}
+                onClick={handleRestart}
+                disabled={loading}
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Reiniciar servidor</TooltipContent>
+          </Tooltip>
+
+          {/* Stop */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={btnBase}
+                onClick={handleStop}
+                disabled={loading}
+              >
+                <Square className="h-3.5 w-3.5 text-red-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Detener servidor</TooltipContent>
+          </Tooltip>
+
+          {/* Console */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={btnBase}
+                onClick={handleOpenConsole}
+              >
+                <Terminal className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Ver consola</TooltipContent>
+          </Tooltip>
+
+          {/* Open in browser */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={btnBase}
+                onClick={handleOpenInBrowser}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Abrir en navegador</TooltipContent>
+          </Tooltip>
+        </>
       )}
     </div>
   );

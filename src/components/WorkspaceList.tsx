@@ -469,7 +469,7 @@ const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) 
   if (!hasUnpushedChanges) return null;
 
   return (
-    <GitBranch className="w-3.5 h-3.5 text-primary animate-pulse shrink-0 ml-1.5" />
+    <GitBranch className="w-3.5 h-3.5 text-muted-foreground animate-pulse shrink-0 ml-1.5" />
   );
 });
 
@@ -774,7 +774,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
                     onClick={() => { closeMenu(); onOpenGit(app.id); }}
                   >
-                    <GitBranch size={14} className={`shrink-0 ${hasUnpushedChanges ? "text-primary animate-pulse" : "opacity-60"}`} />
+                    <GitBranch size={14} className="opacity-60 shrink-0" />
                     {hasUnpushedChanges ? "Revisar cambios" : "Git"}
                   </button>
                 <button

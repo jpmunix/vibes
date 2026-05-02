@@ -396,14 +396,14 @@ export function VercelPublishButton({ appId, app, refreshApp }: VercelPublishBut
     const [showSetupDialog, setShowSetupDialog] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    // If connected, use the deployments hook
+    // Only fetch deployments when connected
     const {
         deployments,
         isLoading: isLoadingDeployments,
         getDeployments,
         disconnectProject,
         isDisconnecting,
-    } = useVercelDeployments(appId);
+    } = useVercelDeployments(appId, { enabled: isConnected });
 
     const latestDeployment = deployments[0];
     const isDeploying = latestDeployment?.readyState === "BUILDING" || latestDeployment?.readyState === "INITIALIZING";
