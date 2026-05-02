@@ -54,6 +54,8 @@ Al crear un workspace nuevo, el primer chat arranca con **los mismos selectores 
 - El banner azul de cambios sin confirmar ya no interrumpe en ningún modo de chat; el indicador del icono Git es suficiente.
 - Nueva opción **"Exportar a Markdown"** en el menú contextual de cada chat para guardar la conversación completa como archivo `.md`.
 - **Liberación limpia de recursos** al cerrar la aplicación: todos los procesos en segundo plano y conexiones activas se detienen automáticamente, evitando procesos huérfanos y consumo de memoria residual.
+- Los logs de la consola ahora se pueden **citar directamente en el chat** (incluso desde ventanas independientes), con icono y etiqueta de "Consola" propios.
+- La pestaña Workspace tiene su propio **menú contextual** (nuevo proyecto, abrir, buscar, cerrar) y la terminología de la pestaña Apps se ha unificado para distinguir mejor entre aplicaciones y workspaces.
 - Mejoras internas de estabilidad.
 
 # v8.0
