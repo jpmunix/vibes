@@ -29,6 +29,7 @@ export const markdownShareContracts = {
   uploadDocument: defineContract({
     channel: "markdown-share:upload",
     input: z.object({
+      id: z.string().optional(),
       title: z.string(),
       content: z.string(),
       format: z.enum(["md", "txt"]).default("md"),

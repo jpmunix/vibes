@@ -9,8 +9,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ipc } from "@/ipc/types";
 import { useAppVersion } from "@/hooks/useAppVersion";
-import { ChevronRight } from "@/components/ui/icons";
+import { ChevronRight, Share2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { showError, showSuccess } from "@/lib/toast";
 
 interface ReleaseNotesDialogProps {
     isOpen: boolean;
@@ -136,9 +137,34 @@ export function ReleaseNotesDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="!max-w-[900px] !w-[90vw] max-h-[85vh] flex flex-col p-8 !gap-0 overflow-hidden">
                 <DialogHeader className="mb-4 flex-shrink-0">
-                    <DialogTitle className="flex items-center gap-3">
-                        🚀 ¿Qué hay de nuevo en v{appVersion}?
-                    </DialogTitle>
+                    <div className="flex items-center justify-between">
+                        <DialogTitle className="flex items-center gap-3">
+                            🚀 ¿Qué hay de nuevo en v{appVersion}?
+                        </DialogTitle>
+                        {content && !isLoading && (
+                            <button
+                                type="button"
+                                title="Compartir"
+                                className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                onClick={async () => {
+                                    try {
+                                        const result = await ipc.markdownShare.uploadDocument({
+                                            id: "release-notes",
+                                            title: `Release Notes v${appVersion}`,
+                                            content,
+                                            format: "md",
+                                        });
+                                        await navigator.clipboard.writeText(result.data.share_url);
+                                        showSuccess("URL copiada al portapapeles");
+                                    } catch (e) {
+                                        showError(e);
+                                    }
+                                }}
+                            >
+                                <Share2 size={16} />
+                            </button>
+                        )}
+                    </div>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 w-full overflow-y-auto pr-4 custom-scrollbar">
                     {isLoading ? (

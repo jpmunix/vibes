@@ -13,11 +13,14 @@ export function registerMarkdownShareHandlers() {
     async (_, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
 
-      const { title, content, format } = params;
+      const { id, title, content, format } = params;
 
       logger.info(
-        `Uploading document "${title}" (${format}) to md.mnstatic.com`,
+        `Uploading document "${title}" (${format})${id ? ` [id=${id}]` : ""} to md.mnstatic.com`,
       );
+
+      const body: Record<string, string> = { title, content, format };
+      if (id) body.id = id;
 
       const response = await fetch(`${MD_API_BASE}/documents`, {
         method: "POST",
@@ -25,7 +28,7 @@ export function registerMarkdownShareHandlers() {
           Authorization: `Bearer ${context.userId}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, content, format }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {

@@ -138,6 +138,17 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
+    
+    // Attempt to delete from OpenCode backend
+    const chat = await db.query.chats.findFirst({
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
+      columns: { opencodeSessionId: true }
+    });
+    if (chat?.opencodeSessionId) {
+      const { deleteOpenCodeSessionById } = await import("./opencode_adapter");
+      deleteOpenCodeSessionById(chat.opencodeSessionId);
+    }
+
     await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
   });
 
@@ -361,18 +372,23 @@ export function registerChatHandlers() {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
-      if (currentChatId !== null) {
-        await db
-          .delete(remoteSchema.chats)
-          .where(and(
-            eq(remoteSchema.chats.appId, appId),
-            eq(remoteSchema.chats.userId, context.userId!),
-            ne(remoteSchema.chats.id, currentChatId)
-          ));
-      } else {
-        // If no current chat, delete all chats for the app
-        await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!)));
+      const condition = currentChatId !== null
+        ? and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!), ne(remoteSchema.chats.id, currentChatId))
+        : and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!));
+
+      // Attempt to delete from OpenCode backend
+      const chatsToDelete = await db.query.chats.findMany({
+        where: condition,
+        columns: { opencodeSessionId: true }
+      });
+      if (chatsToDelete.length > 0) {
+        const { deleteOpenCodeSessionById } = await import("./opencode_adapter");
+        for (const c of chatsToDelete) {
+          if (c.opencodeSessionId) deleteOpenCodeSessionById(c.opencodeSessionId);
+        }
       }
+
+      await db.delete(remoteSchema.chats).where(condition);
     },
   );
 

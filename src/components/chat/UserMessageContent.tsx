@@ -102,6 +102,11 @@ export const UserMessageContent = React.memo(function UserMessageContent({
             text = text.substring(0, uploadMarker);
         }
 
+        // Convert single \n into markdown hard breaks (two trailing spaces + \n)
+        // so plain-text messages preserve line breaks without whitespace-pre-wrap,
+        // while markdown block elements (lists, headings) still render correctly.
+        text = text.replace(/\n(?!\n)/g, '  \n');
+
         return text.trim();
     }, [content]);
 
@@ -149,7 +154,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 </>
             ) : (
                 cleanContent && (
-                    <div className="whitespace-pre-wrap">
+                    <div>
                         <VanillaMarkdownParser content={cleanContent} />
                     </div>
                 )

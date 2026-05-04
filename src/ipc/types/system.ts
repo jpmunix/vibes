@@ -470,6 +470,20 @@ export const systemContracts = {
     input: z.object({ appId: z.number(), formattedLog: z.string() }),
     output: z.void(),
   }),
+
+  // Purge orphaned OpenCode sessions (admin diagnostic)
+  purgeOpenCodeSessions: defineContract({
+    channel: "system:purge-opencode-sessions",
+    input: z.object({ dryRun: z.boolean() }),
+    output: z.object({
+      totalInOpenCode: z.number(),
+      knownInVibes: z.number(),
+      orphaned: z.number(),
+      deleted: z.number(),
+      errors: z.number(),
+      report: z.string(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

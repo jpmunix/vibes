@@ -116,7 +116,7 @@ export function ModelPicker() {
     });
   }
 
-  // Sort: selected first
+  // Sort: selected first, then by most-recently-used (timestamp descending)
   const sortedModels = [...allAvailableModels].sort((a, b) => {
     const isASelected =
       a.provider === selectedModel.provider &&

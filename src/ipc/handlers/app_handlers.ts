@@ -959,6 +959,15 @@ export function registerAppHandlers() {
       // Clear logs for this app to prevent memory leak
       clearLogs(appId);
 
+      // Clean up OpenCode sessions before DB cascade deletes the chats
+      // (FK cascade would lose the opencodeSessionId references)
+      try {
+        const { cleanupOpenCodeSessionsForApp } = await import("./opencode_adapter");
+        await cleanupOpenCodeSessionsForApp(appId);
+      } catch (e: any) {
+        logger.warn(`Failed to cleanup OpenCode sessions for app ${appId}: ${e.message}`);
+      }
+
       // Delete app from database
       try {
         // Manual cascade for tables without FK onDelete (prevent orphan data)
@@ -1358,6 +1367,16 @@ export function registerAppHandlers() {
       }
     }
     logger.log("all running apps stopped.");
+
+    // Purge all OpenCode sessions (everything is being wiped)
+    try {
+      const { purgeAllOrphanedOpenCodeSessions } = await import("./opencode_adapter");
+      // Not dry-run: delete everything since all apps are being removed
+      await purgeAllOrphanedOpenCodeSessions(false);
+      logger.log("OpenCode sessions purged.");
+    } catch (e: any) {
+      logger.warn(`Failed to purge OpenCode sessions during reset: ${e.message}`);
+    }
 
     logger.log("deleting settings...");
     // 2. Remove settings

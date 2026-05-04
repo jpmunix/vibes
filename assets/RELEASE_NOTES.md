@@ -1,3 +1,19 @@
+# v8.4
+*4 de mayo de 2026*
+
+## Limpieza automática del core
+
+Con el uso diario se acumulan datos internos de sesiones de chat que ya no existen: conversaciones borradas, apps eliminadas o sesiones que quedaron huérfanas. A partir de ahora, al cerrar una aplicación **se limpian automáticamente todas sus sesiones asociadas**, liberando espacio en disco. Además, desde el panel de administración puedes lanzar un **purgado completo** que cruza las sesiones activas con la base de datos, detecta las que ya no corresponden a ningún chat y las elimina de golpe — con opción de simular antes de borrar.
+
+## Tus modelos favoritos, primero
+
+El selector de modelo ahora ordena la lista por **uso reciente**: los modelos que has utilizado hace poco aparecen arriba, y los que nunca has tocado bajan al final. Ya no tienes que buscar cada vez el que usas siempre.
+
+## Correcciones y ajustes
+
+- Los mensajes del usuario ahora respetan los **saltos de línea simples** tal como se escribieron, sin necesidad de dejar una línea en blanco.
+- Mejoras internas de estabilidad.
+
 # v8.3
 *28 de abril de 2026*
 

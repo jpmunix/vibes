@@ -442,6 +442,17 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
                 const newSessionId = forked.data?.id;
                 if (newSessionId) {
                     chatSessionMap.set(chatId, newSessionId);
+                    // Delete the original session (now replaced by the fork)
+                    deleteOpenCodeSessionById(sessionId);
+                    // Update DB reference to point to the new forked session
+                    try {
+                        const db = getRemoteDb();
+                        await db.update(remoteSchema.chats)
+                            .set({ opencodeSessionId: newSessionId })
+                            .where(eq(remoteSchema.chats.id, chatId));
+                    } catch (e: any) {
+                        logger.warn(`[OpenCode] Failed to persist forked sessionId: ${e.message}`);
+                    }
                     logger.info(`[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`);
                     return;
                 }
@@ -452,6 +463,7 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
 
         // Last resort: destroy session
         chatSessionMap.delete(chatId);
+        deleteOpenCodeSessionById(sessionId);
         logger.warn(`[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`);
     }
 }
@@ -466,7 +478,346 @@ export function destroyOpenCodeSession(chatId: number): void {
     if (sessionId) {
         chatSessionMap.delete(chatId);
         logger.info(`[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`);
+        deleteOpenCodeSessionById(sessionId);
     }
+}
+
+/**
+ * Delete a specific OpenCode session from the backend by its ID.
+ */
+export function deleteOpenCodeSessionById(sessionId: string): void {
+    if (clientInstance) {
+        clientInstance.session.delete({ path: { id: sessionId } }).catch((err: any) => {
+            logger.warn(`[OpenCode] Failed to delete session ${sessionId} from backend: ${err.message}`);
+        });
+    }
+}
+
+/**
+ * Clean up ALL OpenCode sessions associated with a Vibes app.
+ * Must be called BEFORE the app row is deleted (FK cascade would lose opencodeSessionId).
+ */
+export async function cleanupOpenCodeSessionsForApp(appId: number): Promise<void> {
+    if (!clientInstance) return;
+
+    const db = getRemoteDb();
+
+    // 1. Get all chats with opencode sessions for this app
+    const chatsWithSessions = await db.query.chats.findMany({
+        where: eq(remoteSchema.chats.appId, appId),
+        columns: { id: true, opencodeSessionId: true },
+    });
+
+    // 2. Delete each session from OpenCode backend
+    for (const chat of chatsWithSessions) {
+        if (chat.opencodeSessionId) {
+            deleteOpenCodeSessionById(chat.opencodeSessionId);
+        }
+        chatSessionMap.delete(chat.id);
+    }
+
+    // 3. Clean up visual-edit session for this app's path
+    const app = await db.query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
+        columns: { path: true },
+    });
+    if (app?.path) {
+        const appPath = getVibesAppPath(app.path);
+        const visualSessionId = visualEditSessionMap.get(appPath);
+        if (visualSessionId) {
+            deleteOpenCodeSessionById(visualSessionId);
+            visualEditSessionMap.delete(appPath);
+        }
+    }
+
+    logger.info(`[OpenCode] Cleaned up ${chatsWithSessions.length} session(s) for app ${appId}`);
+}
+
+/**
+ * Purge orphaned OpenCode sessions that no longer correspond to any Vibes chat.
+ * @param dryRun If true, returns a report without deleting anything.
+ * @returns Summary object including a full markdown report string.
+ */
+export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<{
+    totalInOpenCode: number;
+    knownInVibes: number;
+    orphaned: number;
+    deleted: number;
+    errors: number;
+    report: string;
+}> {
+    const emptyResult = { totalInOpenCode: 0, knownInVibes: 0, orphaned: 0, deleted: 0, errors: 0, report: '' };
+
+    // Auto-start the OpenCode server if it's not running
+    if (!clientInstance) {
+        try {
+            const dummyPath = getVibesAppPath(".");
+            await getOpenCodeClient(dummyPath);
+        } catch (e: any) {
+            return { ...emptyResult, report: `❌ No se pudo iniciar el servidor de OpenCode: ${e.message}` };
+        }
+    }
+    if (!clientInstance) {
+        return { ...emptyResult, report: '❌ No se pudo obtener el cliente de OpenCode.' };
+    }
+
+    const startMs = Date.now();
+
+    // 1. Get ALL sessions from OpenCode (experimental endpoint: cross-project)
+    //    The v1 SDK only has session.list() which is project-scoped.
+    //    We use the raw HTTP endpoint /experimental/session to list across ALL projects.
+    let allOcSessions: Array<{ id: string; title: string; createdAt: string }> = [];
+    try {
+        const url = `${serverUrl}/experimental/session?limit=10000`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        const sessions = Array.isArray(data) ? data : (data.data || data.sessions || []);
+        allOcSessions = sessions.map((s: any) => ({
+            id: s.id,
+            title: s.title || s.info?.title || '(sin título)',
+            createdAt: s.time?.created ? new Date(s.time.created * 1000).toISOString() : s.createdAt || '?',
+        }));
+    } catch (e: any) {
+        return { ...emptyResult, report: `❌ Error al listar sesiones OpenCode: ${e.message}` };
+    }
+
+    // 2. Get all known session IDs from Vibes DB
+    const db = getRemoteDb();
+    const allChats = await db.query.chats.findMany({
+        columns: { id: true, opencodeSessionId: true, title: true, appId: true },
+    });
+    const knownIds = new Set<string>();
+    const knownSessionDetails = new Map<string, { chatId: number; chatTitle: string | null; appId: number }>();
+    for (const c of allChats) {
+        if (c.opencodeSessionId) {
+            knownIds.add(c.opencodeSessionId);
+            knownSessionDetails.set(c.opencodeSessionId, {
+                chatId: c.id,
+                chatTitle: c.title,
+                appId: c.appId,
+            });
+        }
+    }
+    // Visual-edit sessions are also "known"
+    for (const [appPath, sid] of visualEditSessionMap.entries()) {
+        knownIds.add(sid);
+        knownSessionDetails.set(sid, { chatId: 0, chatTitle: `[visual-edit] ${appPath}`, appId: 0 });
+    }
+    // In-memory chat sessions (may not be persisted to DB yet)
+    for (const [chatId, sid] of chatSessionMap.entries()) {
+        if (!knownIds.has(sid)) {
+            knownIds.add(sid);
+            knownSessionDetails.set(sid, { chatId, chatTitle: `[en memoria]`, appId: 0 });
+        }
+    }
+
+    // 3. Classify
+    const orphanSessions = allOcSessions.filter(s => !knownIds.has(s.id));
+    const matchedSessions = allOcSessions.filter(s => knownIds.has(s.id));
+
+    // Diagnostic logging
+    logger.info(`[OpenCode] Purge diagnostic: ${allChats.length} chats in DB, ${knownIds.size} known IDs, ${chatSessionMap.size} in-memory, ${visualEditSessionMap.size} visual-edit`);
+    if (allChats.length > 0) {
+        const sample = allChats.slice(0, 3).map(c => `chat#${c.id}→${c.opencodeSessionId ?? 'NULL'}`).join(', ');
+        logger.info(`[OpenCode] DB sample: ${sample}`);
+    }
+    if (allOcSessions.length > 0) {
+        const sample = allOcSessions.slice(0, 3).map(s => s.id).join(', ');
+        logger.info(`[OpenCode] OC sample: ${sample}`);
+    }
+
+    // Helper: measure OpenCode data directory size
+    const measureDiskSize = (): number => {
+        try {
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const ocDataDir = `${HOME}/.local/share/opencode`;
+            const output = execSync(`du -sb "${ocDataDir}" 2>/dev/null || echo "0"`, { encoding: 'utf-8' }).trim();
+            return parseInt(output.split('\t')[0], 10) || 0;
+        } catch { return 0; }
+    };
+    const formatBytes = (bytes: number): string => {
+        if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+    };
+
+    const sizeBefore = measureDiskSize();
+
+    // 4. Delete orphans (unless dryRun)
+    let deleted = 0;
+    let errors = 0;
+    const deleteResults: Array<{ id: string; title: string; success: boolean; error?: string }> = [];
+    if (!dryRun) {
+        for (const orphan of orphanSessions) {
+            try {
+                await clientInstance!.session.delete({ path: { id: orphan.id } });
+                deleted++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: true });
+            } catch (e: any) {
+                errors++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: false, error: e.message });
+            }
+        }
+
+        // 4b. Deep cleanup: remove orphan diff files from disk
+        let diffsCleaned = 0;
+        try {
+            const fs = require('fs');
+            const pathMod = require('path');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const diffDir = pathMod.join(HOME, '.local/share/opencode/storage/session_diff');
+            if (fs.existsSync(diffDir)) {
+                // Get remaining session IDs from DB
+                const { execSync } = require('child_process');
+                const dbPath = pathMod.join(HOME, '.local/share/opencode/opencode.db');
+                const existingIds = new Set<string>();
+                try {
+                    const output = execSync(`sqlite3 "${dbPath}" "SELECT id FROM session;"`, { encoding: 'utf-8' });
+                    output.trim().split('\n').filter(Boolean).forEach((id: string) => existingIds.add(id.trim()));
+                } catch { /* DB might be locked, skip */ }
+
+                if (existingIds.size > 0) {
+                    const files = fs.readdirSync(diffDir) as string[];
+                    for (const file of files) {
+                        const sessionId = file.replace('.json', '');
+                        if (!existingIds.has(sessionId)) {
+                            try {
+                                fs.unlinkSync(pathMod.join(diffDir, file));
+                                diffsCleaned++;
+                            } catch { /* skip locked files */ }
+                        }
+                    }
+                    logger.info(`[OpenCode] Cleaned ${diffsCleaned} orphan diff files`);
+                }
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Diff cleanup error (non-fatal): ${e.message}`);
+        }
+
+        // 4c. Shut down server, then VACUUM + WAL checkpoint to reclaim disk space
+        try {
+            await shutdownOpenCode();
+            logger.info('[OpenCode] Server shut down for VACUUM');
+
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const dbPath = `${HOME}/.local/share/opencode/opencode.db`;
+            execSync(`sqlite3 "${dbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 30000 });
+            logger.info('[OpenCode] VACUUM + WAL checkpoint completed');
+        } catch (e: any) {
+            logger.warn(`[OpenCode] VACUUM error (non-fatal): ${e.message}`);
+        }
+    }
+
+    const sizeAfter = dryRun ? sizeBefore : measureDiskSize();
+    const elapsedMs = Date.now() - startMs;
+
+    // 5. Build markdown report
+    const lines: string[] = [];
+    lines.push(`# Informe de Purgado OpenCode`);
+    lines.push('');
+    lines.push(`**Modo:** ${dryRun ? '🔍 Simulación (dry-run)' : '🗑️ Ejecución real'}`);
+    lines.push(`**Fecha:** ${new Date().toISOString()}`);
+    lines.push(`**Duración:** ${elapsedMs}ms`);
+    const freed = sizeBefore - sizeAfter;
+    lines.push(`**Almacenamiento OpenCode:** ${formatBytes(sizeBefore)}${!dryRun ? ` → ${formatBytes(sizeAfter)}${freed > 0 ? ` (liberado: ${formatBytes(freed)})` : ''}` : ''}`);
+    lines.push('');
+    lines.push(`## Diagnóstico`);
+    lines.push('');
+    lines.push(`| Fuente | Registros |`);
+    lines.push(`|--------|-----------|`);
+    lines.push(`| Chats en DB (tabla chats) | ${allChats.length} |`);
+    lines.push(`| Chats con opencodeSessionId | ${allChats.filter(c => c.opencodeSessionId).length} |`);
+    lines.push(`| chatSessionMap (memoria) | ${chatSessionMap.size} |`);
+    lines.push(`| visualEditSessionMap (memoria) | ${visualEditSessionMap.size} |`);
+    lines.push(`| IDs conocidos (total) | ${knownIds.size} |`);
+    lines.push(`| Sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push('');
+    if (allChats.length > 0 && allChats.filter(c => c.opencodeSessionId).length > 0) {
+        lines.push(`**Muestra DB** (primeros 5 con sessionId):`);
+        const dbSample = allChats.filter(c => c.opencodeSessionId).slice(0, 5);
+        for (const c of dbSample) {
+            lines.push(`- chat #${c.id} → \`${c.opencodeSessionId}\``);
+        }
+        lines.push('');
+    }
+    if (allOcSessions.length > 0) {
+        lines.push(`**Muestra OpenCode** (primeros 5):`);
+        for (const s of allOcSessions.slice(0, 5)) {
+            lines.push(`- \`${s.id}\` — ${s.title}`);
+        }
+        lines.push('');
+    }
+    lines.push(`## Resumen`);
+    lines.push('');
+    lines.push(`| Métrica | Valor |`);
+    lines.push(`|---------|-------|`);
+    lines.push(`| Total sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push(`| Sesiones vinculadas a Vibes | ${matchedSessions.length} |`);
+    lines.push(`| Sesiones huérfanas | ${orphanSessions.length} |`);
+    if (!dryRun) {
+        lines.push(`| Eliminadas | ${deleted} |`);
+        lines.push(`| Errores al eliminar | ${errors} |`);
+    }
+    lines.push('');
+
+    if (matchedSessions.length > 0) {
+        lines.push(`## ✅ Sesiones vinculadas (se conservan)`);
+        lines.push('');
+        lines.push(`| Session ID | Título OC | Chat Vibes | App ID |`);
+        lines.push(`|-----------|-----------|------------|--------|`);
+        for (const s of matchedSessions) {
+            const detail = knownSessionDetails.get(s.id);
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            lines.push(`| \`${sid}\` | ${s.title} | ${detail ? `#${detail.chatId} "${detail.chatTitle || ''}"` : '?'} | ${detail?.appId ?? '?'} |`);
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length > 0) {
+        lines.push(`## ${dryRun ? '⚠️ Sesiones huérfanas (se eliminarían)' : '🗑️ Sesiones huérfanas eliminadas'}`);
+        lines.push('');
+        if (dryRun) {
+            lines.push(`| Session ID | Título | Creado |`);
+            lines.push(`|-----------|--------|--------|`);
+        } else {
+            lines.push(`| Session ID | Título | Creado | Estado |`);
+            lines.push(`|-----------|--------|--------|--------|`);
+        }
+        for (const s of orphanSessions) {
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            if (dryRun) {
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} |`);
+            } else {
+                const result = deleteResults.find(r => r.id === s.id);
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} | ${result?.success ? '✅' : `❌ ${result?.error}`} |`);
+            }
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length === 0) {
+        lines.push(`> ✨ No se encontraron sesiones huérfanas. Todo sincronizado.`);
+        lines.push('');
+    }
+
+    const report = lines.join('\n');
+    logger.info(
+        `[OpenCode] Purge ${dryRun ? '(dry-run)' : ''}: ${allOcSessions.length} total, ` +
+        `${orphanSessions.length} orphaned, ${deleted} deleted, ${errors} errors (${elapsedMs}ms)`
+    );
+
+    return {
+        totalInOpenCode: allOcSessions.length,
+        knownInVibes: matchedSessions.length,
+        orphaned: orphanSessions.length,
+        deleted,
+        errors,
+        report,
+    };
 }
 
 /**
@@ -2886,6 +3237,7 @@ export async function shutdownOpenCode() {
         clientInstance = null;
         serverUrl = null;
         chatSessionMap.clear();
+        visualEditSessionMap.clear();
     }
 }
 
