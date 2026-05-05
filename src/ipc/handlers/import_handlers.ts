@@ -8,7 +8,7 @@ import log from "electron-log";
 import { getVibesAppPath } from "../../paths/paths";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitCommit, gitAdd, gitInit } from "../utils/git_utils";
@@ -46,16 +46,20 @@ export function registerImportHandlers() {
   });
 
   // Handler for checking if an app name is already taken
-  createTypedHandler(importContracts.checkAppName, async (_, { appName, skipCopy }) => {
+  createTypedHandler(importContracts.checkAppName, async (_, { appName, skipCopy }, context) => {
     // Only check filesystem if we're copying to vibes-apps
     if (!skipCopy) {
       const appPath = getVibesAppPath(appName);
       try {
         await fs.access(appPath);
-        // Folder exists in vibes-apps — check if it's already registered in the DB
-        const existingApp = await getRemoteDb().query.apps.findFirst({
-          where: eq(remoteSchema.apps.name, appName),
-        });
+        // Folder exists in vibes-apps — check if it's already registered in the DB for this user
+        const existingApp = context.userId
+          ? await getRemoteDb().query.apps.findFirst({
+              where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+            })
+          : await getRemoteDb().query.apps.findFirst({
+              where: eq(remoteSchema.apps.name, appName),
+            });
         if (existingApp) {
           return { exists: true, existingAppId: existingApp.id };
         }
@@ -65,10 +69,14 @@ export function registerImportHandlers() {
       }
     }
 
-    // Check database
-    const existingApp = await getRemoteDb().query.apps.findFirst({
-      where: eq(remoteSchema.apps.name, appName),
-    });
+    // Check database — scope to the current user so we don't collide with other users' apps
+    const existingApp = context.userId
+      ? await getRemoteDb().query.apps.findFirst({
+          where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+        })
+      : await getRemoteDb().query.apps.findFirst({
+          where: eq(remoteSchema.apps.name, appName),
+        });
 
     return {
       exists: !!existingApp,
