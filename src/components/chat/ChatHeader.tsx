@@ -297,9 +297,7 @@ export function ChatHeader({
                           <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                           </span>
-                        ) : (
-                          <MessageSquare size={14} className="mr-2 shrink-0" />
-                        )}
+                        ) : null}
                         <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
                           {chat.title || `Chat ${chat.id}`}
                         </span>
