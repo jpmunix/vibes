@@ -111,6 +111,27 @@ export const chats = sqliteTable("chats", {
 });
 
 // =============================================================================
+// CHAT ARTIFACTS
+// =============================================================================
+
+export const chatArtifacts = sqliteTable("chat_artifacts", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id")
+        .notNull()
+        .references(() => apps.id, { onDelete: "cascade" }),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    title: text("title"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // MESSAGES
 // =============================================================================
 
@@ -351,6 +372,7 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     user: one(users, { fields: [chats.userId], references: [users.id] }),
     app: one(apps, { fields: [chats.appId], references: [apps.id] }),
     messages: many(messages),
+    artifacts: many(chatArtifacts),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -358,3 +380,8 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
 }));
 
+export const chatArtifactsRelations = relations(chatArtifacts, ({ one }) => ({
+    user: one(users, { fields: [chatArtifacts.userId], references: [users.id] }),
+    app: one(apps, { fields: [chatArtifacts.appId], references: [apps.id] }),
+    chat: one(chats, { fields: [chatArtifacts.chatId], references: [chats.id] }),
+}));

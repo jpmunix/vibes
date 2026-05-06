@@ -1347,6 +1347,43 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
+          // ── ARTIFACTS CONTEXT ────────────────────────────────────────────────
+          // If we are in build mode, and we have active artifacts for this chat,
+          // inject them as context.
+          if (agentId === "build" && updatedChat.app?.id) {
+            try {
+              const chatArtifacts = await db.query.chatArtifacts.findMany({
+                where: and(
+                  eq(remoteSchema.chatArtifacts.chatId, req.chatId),
+                  eq(remoteSchema.chatArtifacts.appId, updatedChat.app.id)
+                )
+              });
+
+              if (chatArtifacts.length > 0) {
+                const projectDir = getVibesAppPath(updatedChat.app.path);
+                
+                let artifactsContext = "PLANNING ARTIFACTS AVAILABLE:\nThe following artifacts were generated during the planning phase. Read and use them to guide your implementation. As you make progress, you MUST update these files (e.g. checking off checkboxes, updating statuses) to keep the plan in sync with the codebase:\n\n";
+                let artifactsAdded = 0;
+                
+                for (const artifact of chatArtifacts) {
+                  const fullPath = path.join(projectDir, artifact.path);
+                  if (fs.existsSync(fullPath)) {
+                    const content = fs.readFileSync(fullPath, "utf-8");
+                    artifactsContext += `--- BEGIN ARTIFACT: ${artifact.path} ---\n${content}\n--- END ARTIFACT ---\n\n`;
+                    artifactsAdded++;
+                  }
+                }
+                
+                if (artifactsAdded > 0) {
+                  contextInstructions.push(artifactsContext);
+                  logger.log(`[OPENCODE] Injected ${artifactsAdded} artifacts as context`);
+                }
+              }
+            } catch (err) {
+              logger.error("Failed to load artifacts for context injection:", err);
+            }
+          }
+
           // ── DESIGN.md context ──────────────────────────────────────────────
           // Strategy: lightweight hint only (~30 tokens). The AI reads the file
           // on demand via its Read tool when it needs design context.

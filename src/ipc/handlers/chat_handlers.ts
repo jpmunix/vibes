@@ -746,5 +746,97 @@ export function registerChatHandlers() {
     return newChat.id;
   });
 
+  createTypedHandler(chatContracts.getChatArtifacts, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const fs = await import("fs");
+    const pathMod = await import("path");
+
+    // ── Auto-discover .vibes/*.md from disk ──────────────────────────
+    // If the project has .vibes/ files on disk that aren't in the DB yet,
+    // register them automatically. This handles cases where the DB was
+    // recreated or the interceptor missed a write.
+    try {
+      const chat = await db.query.chats.findFirst({
+        where: eq(remoteSchema.chats.id, chatId),
+        columns: { appId: true },
+        with: { app: { columns: { path: true } } },
+      });
+
+      if (chat?.app?.path) {
+        const projectDir = getVibesAppPath(chat.app.path);
+        const vibesDir = pathMod.join(projectDir, ".vibes");
+
+        if (fs.existsSync(vibesDir)) {
+          const mdFiles = fs.readdirSync(vibesDir).filter((f: string) => f.endsWith(".md"));
+
+          for (const file of mdFiles) {
+            const relativePath = `.vibes/${file}`;
+            // Check if this artifact is already registered for ANY chat (not just this one)
+            // to avoid cross-chat contamination
+            const existingAnywhere = await db.query.chatArtifacts.findFirst({
+              where: and(
+                eq(remoteSchema.chatArtifacts.appId, chat.appId),
+                eq(remoteSchema.chatArtifacts.path, relativePath)
+              ),
+            });
+
+            // Only register if truly orphaned (no chat owns it at all)
+            if (!existingAnywhere) {
+              await db.insert(remoteSchema.chatArtifacts).values({
+                userId: context.userId!,
+                appId: chat.appId,
+                chatId,
+                path: relativePath,
+                title: file,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+              logger.info(`[getChatArtifacts] Auto-registered orphaned artifact ${relativePath} for chat ${chatId}`);
+            }
+          }
+        }
+      }
+    } catch (syncErr: any) {
+      logger.warn(`[getChatArtifacts] Auto-sync failed (non-fatal): ${syncErr.message}`);
+    }
+
+    // ── Return all artifacts for this chat ────────────────────────────
+    const artifacts = await db.query.chatArtifacts.findMany({
+      where: and(
+        eq(remoteSchema.chatArtifacts.chatId, chatId),
+        eq(remoteSchema.chatArtifacts.userId, context.userId!)
+      ),
+      columns: { id: true, path: true, title: true, createdAt: true, updatedAt: true },
+      orderBy: [desc(remoteSchema.chatArtifacts.createdAt)],
+    });
+
+    return artifacts as any;
+  });
+
+  createTypedHandler(chatContracts.getChatArtifactContent, async (_, { appId, path: relPath }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      columns: { path: true },
+    });
+    
+    if (!app) throw new Error("App not found");
+    
+    const fs = await import("fs");
+    const path = await import("path");
+    
+    // getVibesAppPath is already imported at the top
+    const fullPath = path.join(getVibesAppPath(app.path), relPath);
+    
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`Artifact file not found: ${relPath}`);
+    }
+    
+    return fs.readFileSync(fullPath, "utf-8");
+  });
+
   logger.debug("Registered chat IPC handlers");
 }

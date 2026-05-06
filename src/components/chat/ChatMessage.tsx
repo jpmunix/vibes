@@ -28,6 +28,7 @@ import {
   Quote,
   Share2,
   Coins,
+  FileText,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
@@ -58,6 +59,9 @@ import {
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import logoSrc from "../../../assets/icon/logo.png";
+import { Button } from "@/components/ui/button";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 
 interface ChatMessageProps {
   message: Message;
@@ -158,6 +162,10 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
   const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
+
+  const { artifacts } = useChatArtifacts(selectedChatId);
+  const [, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
+  const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
 
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
@@ -644,6 +652,31 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             contentExcerpt={effectiveStreamingInfo.contentExcerpt}
                          />
                       )}
+
+                      {/* Per-message artifact button: if this message mentions a .vibes/ path,
+                          show a direct button to open that specific artifact in the sidebar */}
+                      {isAssistant && !isStreaming && !isCollapsed && (() => {
+                        // Extract .vibes/xxx.md references from the message content
+                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-\.]+\.md/);
+                        if (!vibesMatch) return null;
+                        const artifactPath = vibesMatch[0];
+                        return (
+                          <div className="mt-3 pt-3 border-t border-border/20">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="w-full sm:w-auto text-xs gap-2"
+                              onClick={() => {
+                                setSelectedPath(artifactPath);
+                                setSidebarOpen(true);
+                              }}
+                            >
+                              <FileText size={14} />
+                              Ver Plan
+                            </Button>
+                          </div>
+                        );
+                      })()}
                     </>
                   )}
                 </>

@@ -1,4 +1,3 @@
-
 import {
   PanelRightOpen,
   MessageSquarePlus,
@@ -15,6 +14,7 @@ import {
   Loader2,
   Check,
   Shrink,
+  FileText,
 } from "@/components/ui/icons";
 
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "@/components/ui/icons";
@@ -31,6 +31,7 @@ import { useRouter } from "@tanstack/react-router";
 import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
 
 import { useChats } from "@/hooks/useChats";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
@@ -53,7 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 // KnowledgeBaseModal — REMOVED
-import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { chatPositionAtom, artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
@@ -374,8 +375,9 @@ export function ChatHeader({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Right: Expand + Position toggle | Session cost */}
+        {/* Right: Expand + Position toggle | Session cost | Artifacts */}
         <div className="flex-1 flex items-center justify-end pr-1 gap-1.5">
+          <ArtifactsDropdown chatId={selectedChatId} />
           {!workspaceMode && (
             <ExpandChatButton
               isPreviewOpen={isPreviewOpen}
@@ -622,3 +624,40 @@ function ExpandChatButton({
   );
 }
 
+function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
+  const { artifacts } = useChatArtifacts(chatId);
+  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
+  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+
+  if (!artifacts || artifacts.length === 0) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver planificaciones y artefactos">
+          <FileText size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-b border-border/50 mb-1">
+          Artefactos del chat
+        </div>
+        {artifacts.map((artifact) => (
+          <DropdownMenuItem
+            key={artifact.id}
+            onClick={() => {
+              setSelectedPath(artifact.path);
+              setSidebarOpen(true);
+            }}
+            className="cursor-pointer py-2"
+          >
+            <div className="flex flex-col gap-0.5 w-full">
+              <span className="font-medium text-sm truncate">{artifact.title || artifact.path}</span>
+              <span className="text-xs text-muted-foreground truncate opacity-80">{artifact.path}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

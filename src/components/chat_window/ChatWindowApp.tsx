@@ -23,6 +23,7 @@ import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
+import { ArtifactSidebar } from "../chat/ArtifactSidebar";
 import { AuthGate } from "../AuthGate";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -553,6 +554,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                         </div>
                     </PanelResizeHandle>
                     {chatPosition === "left" ? previewPanelNode : chatPanelNode}
+                    <ArtifactSidebar />
                 </PanelGroup>
             </div>
             <Toaster richColors />

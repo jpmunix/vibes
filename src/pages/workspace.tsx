@@ -6,7 +6,7 @@ import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { ChevronRight, Loader2, MessagesSquare } from "@/components/ui/icons";
+import { ChevronRight, Loader2, MessagesSquare, FileText } from "@/components/ui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { ServerControlButton } from "@/components/ServerControlButton";
@@ -18,6 +18,17 @@ import type { ChatSummary } from "@/lib/schemas";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import { PanelGroup, Panel } from "react-resizable-panels";
+import { ArtifactSidebar } from "@/components/chat/ArtifactSidebar";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -183,6 +194,7 @@ export default function WorkspacePage() {
               <ServerControlButton appId={appId} />
             )}
             <GitChangesButton appId={appId} />
+            <WorkspaceArtifactsDropdown chatId={selectedChatId} />
 
             {/* Session cost — separated with a delicate divider */}
             {hasPricing && (
@@ -214,13 +226,18 @@ export default function WorkspacePage() {
 
       {/* Chat panel — no preview, no server */}
       <div className="flex-1 min-h-0">
-        <ChatPanel
-          chatId={selectedChatId ?? undefined}
-          autoStart={false}
-          isPreviewOpen={false}
-          onTogglePreview={() => {}}
-          workspaceMode
-        />
+        <PanelGroup autoSaveId={`workspace-panel-${appId}`} direction="horizontal">
+          <Panel defaultSize={100} minSize={30}>
+            <ChatPanel
+              chatId={selectedChatId ?? undefined}
+              autoStart={false}
+              isPreviewOpen={false}
+              onTogglePreview={() => {}}
+              workspaceMode
+            />
+          </Panel>
+          <ArtifactSidebar />
+        </PanelGroup>
       </div>
     </div>
   );
@@ -237,5 +254,46 @@ function formatWorkspaceCost(usd: number): string {
     raw = usd.toFixed(2);
   }
   return "$" + raw.replace(".", ",");
+}
+
+function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
+  const { artifacts } = useChatArtifacts(chatId);
+  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
+  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+
+  if (!artifacts || artifacts.length === 0) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="relative p-1.5 rounded-md transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer"
+          title="Ver planificaciones y artefactos"
+        >
+          <FileText className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-b border-border/50 mb-1">
+          Artefactos del chat
+        </div>
+        {artifacts.map((artifact) => (
+          <DropdownMenuItem
+            key={artifact.id}
+            onClick={() => {
+              setSelectedPath(artifact.path);
+              setSidebarOpen(true);
+            }}
+            className="cursor-pointer py-2"
+          >
+            <div className="flex flex-col gap-0.5 w-full">
+              <span className="font-medium text-sm truncate">{artifact.title || artifact.path}</span>
+              <span className="text-xs text-muted-foreground truncate opacity-80">{artifact.path}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 

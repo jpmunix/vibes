@@ -83,7 +83,7 @@ export function resolveModelForAgent(
     const isStrategist = STRATEGIST_AGENTS.has(agentId);
 
     const effectiveModelName = isStrategist
-        ? (settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
+        ? nitroStrategist(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
         : (settings.executorModel || DEFAULT_EXECUTOR_MODEL);
     const tier = isStrategist ? "strategist" : "executor";
 
@@ -913,7 +913,7 @@ export async function updateOpenCodeConfig(changes: {
             const agentConfig: Record<string, any> = body.agent || {};
 
             if (changes.strategistModel) {
-                const model = `openrouter/${changes.strategistModel}`;
+                const model = `openrouter/${nitroStrategist(changes.strategistModel)}`;
                 for (const id of ["plan", "explore", "general"]) {
                     agentConfig[id] = { ...(agentConfig[id] || {}), model };
                 }
@@ -1413,13 +1413,17 @@ async function getOpenCodeClient(appPath: string) {
                     },
                     // Strategist tier — reasoning agents
                     plan: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `openrouter/${nitroStrategist(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        permission: {
+                            edit: "allow",
+                            bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
+                        }
                     },
                     explore: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `openrouter/${nitroStrategist(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     general: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `openrouter/${nitroStrategist(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     // Executor tier — lightweight tasks
                     compaction: {
@@ -1703,6 +1707,15 @@ function clearStaleOpenCodeAuth(env: Record<string, string>): void {
  */
 function sanitizeModelName(name: string): string {
     return name.replace(/[\s.]+$/, '');
+}
+
+/**
+ * Append `:nitro` to a strategist model name for OpenRouter priority routing.
+ * Already-suffixed names are returned as-is.
+ */
+function nitroStrategist(name: string): string {
+    const sanitized = sanitizeModelName(name);
+    return sanitized.includes(":nitro") ? sanitized : `${sanitized}:nitro`;
 }
 
 function mapProviderForOpenCode(model: { provider?: string; name: string }): string {
@@ -2226,10 +2239,12 @@ export async function handleOpenCodeStream(
                       `- If you need more than 5, you must explicitly justify it to the user.\n` +
                       `- Group related questions into a single question when possible.\n` +
                       `- Use predefined options when the alternatives are clear.\n\n` +
-                      `FLOW:\n` +
-                      `1. Analyze the user's request and identify ambiguities and pending decisions.\n` +
-                      `2. Use the "question" tool to ask the user (one question at a time).\n` +
-                      `3. Once you have all the answers, generate the complete plan with the Stages and Tasks structure.\n\n` +
+                      `CRITICAL OUTPUT RULES:\n` +
+                      `1. Once all questions are answered, write the complete plan as a Markdown file inside the \`.vibes/\` folder using your file writing tool.\n` +
+                      `   The filename MUST be descriptive and unique (e.g. \`.vibes/plan-auth-flow-1715123456.md\`).\n` +
+                      `   The markdown file must be organized, hierarchical, use checkboxes for tasks, and include Mermaid diagrams if needed.\n` +
+                      `2. NEVER print/dump the plan content in the chat. Your ONLY permitted write operation is the .vibes/ artifact file.\n` +
+                      `3. After writing the file, your chat response must be ONLY a brief message inviting the user to view the plan in the artifact panel (e.g. "✅ Plan created. You can view it using the 📄 icon in the top bar.").\n\n` +
                       `Do NOT generate a provisional or incomplete plan while waiting for answers.\n` +
                       `First clarify, then plan.]`
                     : `[INSTRUCCIÓN DE PLANIFICACIÓN INTERACTIVA:\n` +
@@ -2243,11 +2258,12 @@ export async function handleOpenCodeStream(
                       `- Si necesitas más de 5, debes justificarlo explícitamente al usuario.\n` +
                       `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible.\n` +
                       `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
-                      `FLUJO:\n` +
-                      `1. Analiza la petición del usuario e identifica las ambigüedades y decisiones pendientes.\n` +
-                      `2. Usa la herramienta "question" para preguntar al usuario (una pregunta a la vez).\n` +
-                      `3. Una vez que tengas todas las respuestas, genera el plan completo con la estructura\n` +
-                      `   de Etapas y Tareas.\n\n` +
+                      `REGLAS CRÍTICAS DE OUTPUT:\n` +
+                      `1. Una vez resueltas todas las preguntas, escribe el plan completo como un archivo Markdown dentro de la carpeta \`.vibes/\` usando tu herramienta de escritura de archivos.\n` +
+                      `   El nombre del archivo debe ser descriptivo y único (ej. \`.vibes/plan-auth-flow-1715123456.md\`).\n` +
+                      `   El archivo markdown debe estar organizado, jerarquizado, usar checkboxes para las tareas, e incluir diagramas Mermaid si es necesario.\n` +
+                      `2. NUNCA imprimas/escupas el contenido del plan en el chat. Tu ÚNICA operación de escritura permitida es el archivo .vibes/.\n` +
+                      `3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan en el panel de artefactos (ej: "✅ He creado el plan. Puedes verlo usando el icono 📄 en la barra superior.").\n\n` +
                       `NO generes un plan provisional o incompleto mientras esperas respuestas.\n` +
                       `Primero aclara, luego planifica.]`;
                 promptText = `${planQuestionPrompt}\n\n${req.prompt}`;
@@ -2435,6 +2451,51 @@ export async function handleOpenCodeStream(
         const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         const totalTools = timeline.filter(e => e.type === "tool").length;
         logger.info(`${LP} ✅ Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
+
+        // Check for .vibes/ artifacts
+        if (filesEdited.length > 0) {
+            try {
+                const db = getRemoteDb();
+                const chat = await db.query.chats.findFirst({
+                    where: eq(remoteSchema.chats.id, req.chatId),
+                    columns: { appId: true },
+                });
+                
+                if (chat) {
+                    for (const file of filesEdited) {
+                        if (file.includes(".vibes/") && file.endsWith(".md")) {
+                            let relativePath = file;
+                            const idx = file.indexOf(".vibes/");
+                            if (idx !== -1) {
+                                relativePath = file.substring(idx);
+                            }
+                            
+                            const existing = await db.query.chatArtifacts.findFirst({
+                                where: and(
+                                    eq(remoteSchema.chatArtifacts.chatId, req.chatId),
+                                    eq(remoteSchema.chatArtifacts.path, relativePath)
+                                )
+                            });
+                            
+                            if (!existing) {
+                                await db.insert(remoteSchema.chatArtifacts).values({
+                                    userId: settings.userId!,
+                                    appId: chat.appId,
+                                    chatId: req.chatId,
+                                    path: relativePath,
+                                    title: require("path").basename(relativePath),
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                });
+                                logger.info(`${LP} Saved chat artifact ${relativePath} for chat ${req.chatId}`);
+                            }
+                        }
+                    }
+                }
+            } catch (err: any) {
+                logger.error(`${LP} Failed to save chat artifacts: ${err.message}`);
+            }
+        }
 
         // Send final response with all content
         const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);

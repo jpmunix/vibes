@@ -437,6 +437,7 @@ export function useStreamChat({
                   });
                 }
                 queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
+                queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
                 refetchUserBudget();
 
                 queryClient.invalidateQueries({

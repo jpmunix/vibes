@@ -410,6 +410,29 @@ export const chatContracts = {
     }),
     output: z.number(), // Returns newChatId
   }),
+
+  getChatArtifacts: defineContract({
+    channel: "get-chat-artifacts",
+    input: z.number(), // chatId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        path: z.string(),
+        title: z.string().nullable(),
+        createdAt: z.date(),
+        updatedAt: z.date(),
+      })
+    ),
+  }),
+
+  getChatArtifactContent: defineContract({
+    channel: "get-chat-artifact-content",
+    input: z.object({
+      appId: z.number(),
+      path: z.string(), // relative path to .vibes/ file
+    }),
+    output: z.string(), // markdown content
+  }),
 } as const;
 
 // =============================================================================

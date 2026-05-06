@@ -28,3 +28,6 @@ export type SidebarAction =
 
 export const sidebarActionAtom = atom<{ action: SidebarAction; ts: number } | null>(null);
 
+// Atoms for artifacts UI
+export const artifactsSidebarOpenAtom = atom<boolean>(false);
+export const selectedArtifactPathAtom = atom<string | null>(null);
