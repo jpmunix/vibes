@@ -3,12 +3,15 @@ import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvid
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import { DEFAULT_AGENT_MODEL } from "@/lib/schemas";
 
+/** All supported agent IDs that can have model overrides */
+export type AgentId = "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup";
+
 interface AgentModelSelectorProps {
-    agentId: "plan" | "explore";
+    agentId: AgentId;
 }
 
 /**
- * Selector for per-agent model overrides (Plan / Explore).
+ * Selector for per-agent model overrides.
  * Uses agentModels[agentId] from settings. Falls back to DEFAULT_AGENT_MODEL.
  * Selecting the default option resets to the global default.
  */
@@ -54,7 +57,7 @@ export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
                     value: DEFAULT_AGENT_MODEL,
                     label:
                         defaultModelInList?.displayName ||
-                        "Qwen 3.5 Flash (recomendado)",
+                        "Gemini 3.1 Flash Lite (recomendado)",
                     description: defaultModelInList
                         ? undefined
                         : "Modelo por defecto para este agente",

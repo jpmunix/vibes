@@ -7,7 +7,7 @@ El sistema de memoria del agente ahora **condensa la conversación en resúmenes
 
 ## Un modelo para cada agente
 
-Hasta ahora, todos los modos de chat —Agente, Planificar, Preguntar— usaban el mismo modelo que seleccionabas en el picker. Eso significaba pagar lo mismo por explorar un codebase que por implementar una feature compleja. Ahora puedes **asignar un modelo distinto a cada agente** desde **Ajustes → Agentes**: elige un modelo potente para Build y uno rápido y barato para Plan y Explore. Por defecto, Plan y Explore usan **Qwen 3.5 Flash** para ahorrar sin perder calidad, mientras que Build sigue usando el modelo del picker. Si no configuras nada, todo funciona como antes.
+Ahora puedes **asignar un modelo distinto a cada uno de los 7 agentes** de OpenCode desde **Ajustes → Agentes → Modelos por agente**: Build, Plan, Explore, General, Compaction, Title, Summary y Mockup. Cada selector aparece dentro de un desplegable con descripción del agente y un modelo por defecto. Solo Build sigue usando el modelo del picker principal; todos los demás usan **Gemini 3.1 Flash Lite** como default para optimizar coste. Puedes cambiar cualquiera en cualquier momento y el cambio se aplica en caliente, sin reiniciar el servidor.
 
 ## Limpieza automática del core
 
@@ -21,11 +21,25 @@ El selector de modelo ahora ordena la lista por **uso reciente**: los modelos qu
 
 Si tienes varios chats activos a la vez y el agente necesita tu atención en uno que no estás mirando —una pregunta, una solicitud de permiso o un consentimiento—, ahora aparece una **notificación flotante en la parte superior del chat** con un resumen de lo que necesita y un botón para saltar directamente a esa conversación. Si no te interesa en ese momento, puedes descartarla y seguir con lo tuyo. La notificación desaparece automáticamente cuando el agente ya no espera respuesta.
 
+## Tus mensajes nunca se pierden
+
+Lo que escribes en el chat ahora se **guarda automáticamente como borrador** mientras tecleas. Si cambias de chat, se va la luz o la app se cierra inesperadamente, al volver encontrarás tu mensaje exactamente donde lo dejaste. Cada chat mantiene su propio borrador de forma independiente, así que puedes saltar entre conversaciones —o atender una notificación del agente en otro chat— sin perder lo que estabas escribiendo. El borrador se elimina automáticamente cuando envías el mensaje.
+
+## Las ramas de GitHub, siempre visibles
+
+Hasta ahora, si creabas una rama desde la web de GitHub, no aparecía en el selector de ramas de Vibes: el selector solo mostraba ramas locales, y para verla tenías que hacer un fetch manualmente y saber que existía. A partir de ahora, el selector **combina ramas locales y remotas en una sola lista**. Las ramas que solo existen en el remoto aparecen en un grupo separado — **\"Ramas remotas\"** — con un icono de nube para distinguirlas de las locales. Al seleccionar una de ellas, Vibes **hace fetch y checkout automáticamente**, creando el tracking branch local sin que tengas que tocar la terminal. Además, cada vez que haces fetch o cambias de rama, la lista se refresca al instante para reflejar el estado real del repositorio.
+
+## Adjuntos de imagen en la nube
+
+Las capturas que adjuntas al chat ya **no se guardan dentro de la base de datos**. Ahora se suben automáticamente al CDN (Bunny Storage) y solo se almacena la URL resultante — unas pocas decenas de bytes en lugar de megabytes de datos binarios. Esto resuelve el error que impedía enviar dos o más capturas de alta resolución en un mismo mensaje, y de paso hace que **las imágenes se vean en cualquier dispositivo** donde inicies sesión, sin depender de archivos temporales locales. El modelo sigue recibiendo la imagen completa en base64 para su análisis; el cambio solo afecta a la persistencia.
+
 ## Correcciones y ajustes
 
-- Nueva plantilla **Next.js** disponible al crear aplicaciones, junto a las de React y Express.
+- Al **compartir un chat** vía md.mnstatic.com, los mensajes con capturas ahora incluyen las imágenes embebidas como tags de markdown que apuntan al CDN, visibles en cualquier navegador.
 - Los mensajes del usuario ahora respetan los **saltos de línea simples** tal como se escribieron, sin necesidad de dejar una línea en blanco.
 - Corregido un bug que mostraba los **selectores de stack y diseño** al crear un nuevo chat en una app existente (workspace/agente). Esos controles solo deben aparecer al crear una app nueva desde la pantalla de inicio.
+- El botón **\"Aceptar plan\"** ahora envía un mensaje genérico que encaja tanto si el agente propuso el plan completo como si sugirió solo una etapa. Además, ya no se queda flotando en la interfaz tras pulsar Undo cuando todos los mensajes desaparecen.
+- Ahora puedes **compartir un mensaje individual** desde cualquier burbuja del chat. El botón aparece junto al de copiar y sube el contenido limpio —incluyendo imágenes adjuntas del CDN— a md.mnstatic.com, copiando la URL al portapapeles.
 - Mejoras internas de estabilidad.
 
 # v8.3

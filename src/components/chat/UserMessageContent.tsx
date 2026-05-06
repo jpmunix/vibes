@@ -14,11 +14,12 @@ interface UserMessageContentProps {
 }
 
 /**
- * Extract image base64 data from aiMessagesJson if available.
- * Returns an array of { base64, mimeType } objects.
+ * Extract image data from aiMessagesJson if available.
+ * Supports both inline base64 data and CDN URLs (from Bunny storage).
+ * Returns an array of { src, mimeType } where src is either a data URL or a CDN URL.
  */
 function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
-    base64: string;
+    src: string;
     mimeType: string;
 }> {
     if (!aiMessagesJson) {
@@ -44,7 +45,7 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
         return [];
     }
 
-    const images: Array<{ base64: string; mimeType: string }> = [];
+    const images: Array<{ src: string; mimeType: string }> = [];
 
     for (const msg of messages) {
         if (msg.role !== "user") continue;
@@ -52,10 +53,13 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
 
         for (const part of msg.content) {
             if (part.type === "image" && part.image) {
-                images.push({
-                    base64: part.image,
-                    mimeType: part.mediaType || part.mimeType || "image/png",
-                });
+                const mimeType = part.mediaType || part.mimeType || "image/png";
+                // Detect whether image value is a URL or base64 data
+                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
+                const src = isUrl
+                    ? part.image
+                    : `data:${mimeType};base64,${part.image}`;
+                images.push({ src, mimeType });
             }
         }
     }
@@ -164,16 +168,15 @@ export const UserMessageContent = React.memo(function UserMessageContent({
             {images.length > 0 && (
                 <div className="not-prose flex flex-wrap gap-2 mt-2">
                     {images.map((img, index) => {
-                        const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
                         return (
                             <button
                                 key={index}
-                                onClick={() => handleImageClick(dataUrl)}
+                                onClick={() => handleImageClick(img.src)}
                                 className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
                                 style={{ width: 120, height: 120, flexShrink: 0 }}
                             >
                                 <img
-                                    src={dataUrl}
+                                    src={img.src}
                                     alt={`Captura ${index + 1}`}
                                     className="block w-full h-full object-cover rounded-lg"
                                 />

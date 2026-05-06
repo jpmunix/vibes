@@ -57,6 +57,16 @@ export function useGitPanel(appId: number | null) {
         enabled: appId !== null,
     });
 
+    // Fetch remote branches (to show branches created on GitHub but not yet locally)
+    const { data: remoteBranchList } = useQuery({
+        queryKey: ["git-panel", "remote-branches", appId],
+        queryFn: async () => {
+            if (!appId) return [];
+            return ipc.github.listRemoteBranches({ appId }).catch(() => []);
+        },
+        enabled: appId !== null,
+    });
+
     // Fetch git state (ahead/behind, merge/rebase status)
     const { data: gitState } = useQuery({
         queryKey: ["git-state", appId],
@@ -194,6 +204,8 @@ export function useGitPanel(appId: number | null) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "local-branches", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "remote-branches", appId] });
             toast.success("Fetch realizado correctamente");
         },
         onError: (err: Error) => toast.error(`Error en fetch: ${err.message}`),
@@ -385,6 +397,7 @@ export function useGitPanel(appId: number | null) {
             refreshBranch();
             queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
             queryClient.invalidateQueries({ queryKey: ["git-panel", "local-branches", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "remote-branches", appId] });
             toast.success("Rama cambiada correctamente");
         },
         onError: (err: Error) => toast.error(`Error al cambiar de rama: ${err.message}`),
@@ -395,6 +408,7 @@ export function useGitPanel(appId: number | null) {
         uncommittedFiles,
         currentBranch: branchInfo?.branch ?? null,
         branches: branchList?.branches ?? [],
+        remoteBranches: remoteBranchList ?? [],
         gitState,
         commitMessage,
         isLoadingFiles,

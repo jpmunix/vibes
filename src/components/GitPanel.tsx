@@ -748,6 +748,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         uncommittedFiles,
         currentBranch,
         branches,
+        remoteBranches,
         gitState,
         commitMessage,
         setCommitMessage,
@@ -1022,6 +1023,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             appId={appId}
                             currentBranch={currentBranch}
                             branches={branches}
+                            remoteBranches={remoteBranches}
                             switchBranch={switchBranch}
                             isSwitchingBranch={isSwitchingBranch}
                             aheadCount={gitState?.ahead}

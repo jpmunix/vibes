@@ -190,6 +190,11 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       if (!isPlanMode) setShowAcceptPlan(false);
     }, [isPlanMode]);
 
+    // Reset when messages are emptied (e.g. after undo)
+    useEffect(() => {
+      if (messages.length === 0) setShowAcceptPlan(false);
+    }, [messages.length]);
+
     // Fetch todoId from chat
     React.useEffect(() => {
       if (selectedChatId) {
@@ -310,7 +315,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
       // 2. Send the acceptance message
       streamMessage({
-        prompt: "Acepto el plan. Procede a implementarlo completo.",
+        prompt: "Acepto. Procede con lo propuesto.",
         chatId: selectedChatId,
       });
     }, [selectedChatId, updateSettings, streamMessage]);

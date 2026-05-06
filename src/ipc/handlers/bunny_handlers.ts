@@ -6,13 +6,55 @@ import { eq, and } from "drizzle-orm";
 import { createTypedHandler, HandlerContext } from "./base";
 import { bunnyContracts, BunnyConfig } from "../types/bunny";
 import { createClient, Client } from "@libsql/client";
+import * as crypto from "crypto";
 
 const logger = log.scope("bunny_handlers");
 
-// Bunny Storage Credentials for avatars
+// Bunny Storage Credentials
 const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
-const BUNNY_STORAGE_URL = "https://storage.bunnycdn.com/minube-vibes/avatars/";
-const CDN_BASE_URL = "https://minube-vibes.b-cdn.net/avatars/";
+const BUNNY_STORAGE_BASE = "https://storage.bunnycdn.com/minube-vibes";
+const BUNNY_STORAGE_URL = `${BUNNY_STORAGE_BASE}/avatars/`;
+const CDN_BASE = "https://minube-vibes.b-cdn.net";
+const CDN_BASE_URL = `${CDN_BASE}/avatars/`;
+
+/**
+ * Upload a buffer to Bunny Storage under chat-attachments/{userId}/ and return the CDN URL.
+ * Used to persist chat image attachments in the cloud instead of inlining base64
+ * in the database (which exceeds libsql's ~1MB column limit for large images).
+ *
+ * File names are the md5 hash of the content — ensures uniqueness and automatic
+ * deduplication if the same image is attached twice.
+ */
+export async function uploadChatAttachment(
+  buffer: Buffer,
+  mimeType: string,
+  originalExtension: string,
+  userId: string,
+): Promise<string> {
+  const hash = crypto.createHash("md5").update(buffer).digest("hex");
+  const fileName = `${hash}${originalExtension}`;
+  const storagePath = `chat-attachments/${userId}/${fileName}`;
+  const uploadUrl = `${BUNNY_STORAGE_BASE}/${storagePath}`;
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      AccessKey: BUNNY_STORAGE_API_KEY,
+      "Content-Type": mimeType,
+    },
+    body: buffer,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error(`Bunny chat-attachment upload failed: ${response.status}`, errorText);
+    throw new Error(`Bunny upload failed: ${response.statusText}`);
+  }
+
+  const cdnUrl = `${CDN_BASE}/${storagePath}`;
+  logger.info(`Uploaded chat attachment → ${cdnUrl}`);
+  return cdnUrl;
+}
 
 export function registerBunnyHandlers() {
     // Get Bunny config for an app

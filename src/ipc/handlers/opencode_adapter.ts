@@ -53,15 +53,15 @@ export function getOpenCodeClientInstance() {
 
 /**
  * Resolve the effective model for a given agent.
- * Priority: agentModels[agentId] → DEFAULT_AGENT_MODEL (for plan/explore) → selectedModel (global picker).
- * `build` always uses selectedModel. `mockup` uses selectedModel (too residual for its own selector).
+ * Priority: agentModels[agentId] → DEFAULT_AGENT_MODEL → selectedModel (global picker).
+ * `build` always uses selectedModel. All others check agentModels first.
  */
 export function resolveModelForAgent(
-    agentId: "build" | "plan" | "explore" | "mockup",
+    agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
     settings: any // UserSettings
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
-    // Build & mockup always use the global selectedModel
-    if (agentId === "build" || agentId === "mockup") {
+    // Build always uses the global selectedModel (chat picker)
+    if (agentId === "build") {
         const model = settings.selectedModel;
         const result = {
             model,
@@ -71,22 +71,22 @@ export function resolveModelForAgent(
                 settings.selectedModelVariant ?? "",
             ),
         };
-        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
+        logger.info(`[AgentModel] BUILD → ${result.providerID}/${result.modelID} (selectedModel)`);
         return result;
     }
 
-    // Plan & Explore: check agentModels override → DEFAULT_AGENT_MODEL → selectedModel
-    const agentModelName = settings.agentModels?.[agentId as "plan" | "explore"];
+    // All other agents: check agentModels override → DEFAULT_AGENT_MODEL → selectedModel
+    const agentModelName = settings.agentModels?.[agentId];
     const effectiveModelName = agentModelName || DEFAULT_AGENT_MODEL;
     const source = agentModelName ? "agentModels override" : "DEFAULT_AGENT_MODEL";
 
     if (effectiveModelName) {
-        const cheapModel = {
+        const agentModel = {
             name: effectiveModelName,
             provider: "openrouter",
         };
         const result = {
-            model: cheapModel,
+            model: agentModel,
             providerID: "openrouter",
             modelID: sanitizeModelName(effectiveModelName),
         };
@@ -915,17 +915,18 @@ export async function updateOpenCodeConfig(changes: {
                 },
             };
         }
-        // Hot-update per-agent model overrides
+        // Hot-update per-agent model overrides (all agents)
         if (changes.agentModels) {
             const agentConfig: Record<string, any> = body.agent || {};
-            if (changes.agentModels.plan) {
-                agentConfig.plan = { ...(agentConfig.plan || {}), model: `openrouter/${changes.agentModels.plan}` };
-            }
-            if (changes.agentModels.explore) {
-                agentConfig.explore = { ...(agentConfig.explore || {}), model: `openrouter/${changes.agentModels.explore}` };
+            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
+            for (const id of agentIds) {
+                if (changes.agentModels[id]) {
+                    agentConfig[id] = { ...(agentConfig[id] || {}), model: `openrouter/${changes.agentModels[id]}` };
+                }
             }
             body.agent = agentConfig;
-            logger.info(`[OpenCode] Agent models updated: plan=${changes.agentModels.plan || 'default'}, explore=${changes.agentModels.explore || 'default'}`);
+            const summary = agentIds.map(id => `${id}=${changes.agentModels[id] || 'default'}`).join(', ');
+            logger.info(`[OpenCode] Agent models updated: ${summary}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1388,6 +1389,10 @@ async function getOpenCodeClient(appPath: string) {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
                                 apiKey: "{env:OPENROUTER_API_KEY}",
+                                headers: {
+                                    "X-Title": "Vibes",
+                                    "HTTP-Referer": "https://vibes.minube.com",
+                                },
                             },
                         } : providerID === "anthropic" ? {
                             options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
@@ -1402,19 +1407,30 @@ async function getOpenCodeClient(appPath: string) {
                 ...(settings.standardModeModel ? {
                     small_model: `${providerID}/${sanitizeModelName(settings.standardModeModel)}`,
                 } : {}),
-                // Agent-level config: reasoning effort + text verbosity
-                // These extra fields are passed directly to the provider as model options
+                // Agent-level config: reasoning effort + text verbosity + per-agent models
                 agent: {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
                     },
-                    // Per-agent model overrides for Plan and Explore
+                    // Per-agent model overrides
                     plan: {
                         model: `openrouter/${sanitizeModelName(settings.agentModels?.plan || DEFAULT_AGENT_MODEL)}`,
                     },
                     explore: {
                         model: `openrouter/${sanitizeModelName(settings.agentModels?.explore || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    general: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.general || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    compaction: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.compaction || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    title: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.title || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    summary: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.summary || DEFAULT_AGENT_MODEL)}`,
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -1443,11 +1459,11 @@ async function getOpenCodeClient(appPath: string) {
                         ].join("\n"),
                     },
                     // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
-                    // Defined as a real OpenCode custom agent per https://opencode.ai/docs/agents
                     "mockup": {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.mockup || DEFAULT_AGENT_MODEL)}`,
                         tools: {
                             write: true,
                             edit: true,
@@ -1460,12 +1476,6 @@ async function getOpenCodeClient(appPath: string) {
                         },
                         prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
                     },
-                    // Use cheap model for compaction (maintenance task)
-                    ...(settings.standardModeModel ? {
-                        compaction: {
-                            model: `openrouter/${sanitizeModelName(settings.standardModeModel)}`,
-                        },
-                    } : {}),
                 },
                 // Permissions: built from user settings
                 permission: buildPermissionConfig(settings),
@@ -1535,17 +1545,20 @@ async function getOpenCodeClient(appPath: string) {
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
 
         // Log full agent→model mapping for visibility
-        const planModel = settings.agentModels?.plan || DEFAULT_AGENT_MODEL;
-        const exploreModel = settings.agentModels?.explore || DEFAULT_AGENT_MODEL;
-        const compactionModel = settings.standardModeModel || '(main model)';
+        const am = settings.agentModels || {};
+        const resolve = (id: string) => am[id] || DEFAULT_AGENT_MODEL;
+        const tag = (id: string) => am[id] ? '(override)' : '(default)';
         logger.info(
             `[OpenCode] 🤖 Agent model map:\n` +
-            `  BUILD   → ${providerID}/${modelID} (selectedModel)\n` +
-            `  PLAN    → openrouter/${planModel}${settings.agentModels?.plan ? ' (override)' : ' (default)'}\n` +
-            `  EXPLORE → openrouter/${exploreModel}${settings.agentModels?.explore ? ' (override)' : ' (default)'}\n` +
-            `  MOCKUP  → ${providerID}/${modelID} (selectedModel)\n` +
-            `  VISUAL  → ${providerID}/${modelID} (selectedModel)\n` +
-            `  COMPACT → ${compactionModel === '(main model)' ? providerID + '/' + modelID : 'openrouter/' + compactionModel} (standardModeModel)`
+            `  BUILD      → ${providerID}/${modelID} (selectedModel)\n` +
+            `  PLAN       → openrouter/${resolve('plan')} ${tag('plan')}\n` +
+            `  EXPLORE    → openrouter/${resolve('explore')} ${tag('explore')}\n` +
+            `  GENERAL    → openrouter/${resolve('general')} ${tag('general')}\n` +
+            `  COMPACTION → openrouter/${resolve('compaction')} ${tag('compaction')}\n` +
+            `  TITLE      → openrouter/${resolve('title')} ${tag('title')}\n` +
+            `  SUMMARY    → openrouter/${resolve('summary')} ${tag('summary')}\n` +
+            `  MOCKUP     → openrouter/${resolve('mockup')} ${tag('mockup')}\n` +
+            `  VISUAL     → ${providerID}/${modelID} (selectedModel)`
         );
 
         return { client: opencode.client, opencode };

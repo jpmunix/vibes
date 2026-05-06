@@ -51,8 +51,44 @@ export function cleanUserContent(raw: string): string {
 }
 
 /**
+ * Extract image URLs (CDN or data URIs) from aiMessagesJson.
+ * Returns an array of URL strings suitable for markdown `![](url)` tags.
+ */
+export function extractImageUrls(aiMessagesJson: any): string[] {
+  if (!aiMessagesJson) return [];
+
+  let parsed = aiMessagesJson;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+
+  const messages = Array.isArray(parsed) ? parsed : parsed?.messages;
+  if (!messages || !Array.isArray(messages)) return [];
+
+  const urls: string[] = [];
+  for (const msg of messages) {
+    if (msg.role !== "user") continue;
+    if (!Array.isArray(msg.content)) continue;
+    for (const part of msg.content) {
+      if (part.type === "image" && part.image) {
+        // Only include CDN URLs — skip base64 data (too large for markdown)
+        if (part.image.startsWith("http://") || part.image.startsWith("https://")) {
+          urls.push(part.image);
+        }
+      }
+    }
+  }
+  return urls;
+}
+
+/**
  * Build a clean markdown document from a chat's messages.
  * Filters out empty messages after cleaning.
+ * Embeds image attachments from aiMessagesJson as markdown image tags.
  */
 export function buildShareMarkdown(
   title: string,
@@ -60,6 +96,7 @@ export function buildShareMarkdown(
     role: string;
     content: string;
     createdAt?: string | Date | null;
+    aiMessagesJson?: any;
   }>,
 ): string {
   const lines: string[] = [];
@@ -76,8 +113,11 @@ export function buildShareMarkdown(
       ? cleanUserContent(msg.content ?? "")
       : cleanAssistantContent(msg.content ?? "");
 
+    // Extract image URLs for user messages
+    const imageUrls = isUser ? extractImageUrls(msg.aiMessagesJson) : [];
+
     // Skip messages that become empty after cleaning (e.g. tool-only responses)
-    if (!cleaned) continue;
+    if (!cleaned && imageUrls.length === 0) continue;
 
     const role = isUser ? "Usuario" : "Asistente";
     const ts = msg.createdAt
@@ -85,9 +125,19 @@ export function buildShareMarkdown(
       : "";
 
     lines.push(`## ${role}${ts ? ` — ${ts}` : ""}\n`);
-    lines.push(cleaned);
+    if (cleaned) lines.push(cleaned);
+
+    // Append image tags for user messages with CDN-backed attachments
+    if (imageUrls.length > 0) {
+      lines.push(""); // blank line before images
+      for (let i = 0; i < imageUrls.length; i++) {
+        lines.push(`![Captura ${i + 1}](${imageUrls[i]})`);
+      }
+    }
+
     lines.push("");
   }
 
   return lines.join("\n");
 }
+
