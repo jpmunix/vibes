@@ -344,14 +344,14 @@ async function bootstrapFromDNA(params: {
             ),
         );
 
-    const VALID_TYPES = new Set(["fact", "preference", "issue", "episode", "decision"]);
+    const VALID_TYPES = new Set(["session", "preference", "issue"]);
     const now = new Date();
     const persistedKeys: string[] = [];
     const persisted: MemoryEntry[] = [];
 
     debugLog("Phase1", `Processing ${operations.length} operations`, { existingMemories: existingRows.length.toString() });
 
-    for (const op of operations.slice(0, 10)) {
+    for (const op of operations.slice(0, 3)) {
         try {
             if (op.action !== "add") {
                 debugLog("Phase1", `⏭️ Skipping op (action=${op.action})`, { key: op.key || "?" });
@@ -458,7 +458,7 @@ async function bootstrapFromExplore(params: {
         "Usa grep, read y glob para navegar el código. Lee los archivos clave.",
         "",
         "Al final, devuelve un bloque JSON con el formato:",
-        '{"operations": [{"action": "add", "type": "fact|decision|preference", "key": "snake_case_key", "content": "Descripción en español", "importance": 0.85}]}',
+        '{"operations": [{"action": "add", "type": "session|preference|issue", "key": "snake_case_key", "content": "Descripción densa en español (50-200 palabras)", "importance": 0.85}]}',
         "",
         "Reglas: content en español, key en inglés snake_case, importance 0.8-0.95, máximo 15 operaciones.",
         existingKeysBlock,
@@ -550,7 +550,7 @@ async function bootstrapFromExplore(params: {
             ),
         );
 
-    const VALID_TYPES = new Set(["fact", "preference", "issue", "episode", "decision"]);
+    const VALID_TYPES = new Set(["session", "preference", "issue"]);
     const now = new Date();
     let persistedCount = 0;
 

@@ -7,6 +7,12 @@ import { isOpenAIOrAnthropicSetup } from "./providerUtils";
  */
 export const DEFAULT_STANDARD_MODEL = "google/gemini-2.5-flash-lite" as const;
 
+/**
+ * Default model for Plan and Explore agents when no explicit override is set.
+ * Cheap/fast model suited for read-only exploration and planning drafts.
+ */
+export const DEFAULT_AGENT_MODEL = "qwen/qwen3.5-flash-02-23" as const;
+
 export const SecretSchema = z.object({
   value: z.string(),
   encryptionType: z.enum(["electron-safe-storage", "plaintext"]).optional(),
@@ -491,6 +497,14 @@ export const UserSettingsSchema = z
     // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
     enableMorphPatchTool: z.boolean().optional(),
     morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
+
+    // Per-agent model overrides — allows assigning different models to Plan and Explore agents.
+    // Build always uses `selectedModel` (the chat picker model).
+    // If not set, falls back to DEFAULT_AGENT_MODEL, then to `selectedModel`.
+    agentModels: z.object({
+      plan: z.string().optional(),      // model for Plan agent (analysis/planning)
+      explore: z.string().optional(),   // model for Explore agent (read-only codebase exploration)
+    }).optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),

@@ -9,6 +9,7 @@ import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
 import { AgentToolsSettings } from "./AgentToolsSettings";
 import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
+import { AgentModelSelector } from "./AgentModelSelector";
 
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -96,10 +97,10 @@ export function AIBehaviorSettings({
     >
       <div className="mb-8">
         <h2 className="typo-section-title">
-          Agente
+          Agentes
         </h2>
         <p className="typo-caption mt-1">
-          Personaliza cómo el agente procesa la información y se comunica contigo
+          Personaliza cómo los agentes procesan la información y los modelos que usan
         </p>
       </div>
 
@@ -194,6 +195,19 @@ export function AIBehaviorSettings({
         {/* Turnos de contexto — hidden: OpenCode manages context internally */}
 
         {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
+
+        {/* Per-agent model selectors */}
+        <SettingRow
+          label="Modelo para Plan"
+          description="Análisis y planificación. Se recomienda un modelo con buen razonamiento."
+          control={<AgentModelSelector agentId="plan" />}
+        />
+
+        <SettingRow
+          label="Modelo para Explore"
+          description="Exploración del codebase (solo lectura). Un modelo rápido y económico es ideal."
+          control={<AgentModelSelector agentId="explore" />}
+        />
 
         {/* Modelo para tareas internas */}
         <SettingRow

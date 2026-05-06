@@ -12,7 +12,8 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
-import { decayMemories } from "../utils/memory_lifecycle";
+import { decayMemories, migrateLegacyTypesToSession } from "../utils/memory_lifecycle";
+import { restorePendingBuffers } from "../utils/memory_extractor";
 import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
 
@@ -411,6 +412,30 @@ export function registerMemoryHandlers(): void {
         logger.info(`[Memory] Purged ${deleted} debug logs older than 180 days`);
         return deleted;
     });
+
+    // ── One-time migration: legacy types → session ──────────────────────
+    // Fire-and-forget, idempotent, non-blocking
+    (async () => {
+        try {
+            const db = getRemoteDb();
+            // Get all distinct userIds to migrate
+            const users = await db
+                .selectDistinct({ userId: remoteSchema.memories.userId })
+                .from(remoteSchema.memories)
+                .where(sql`${remoteSchema.memories.type} IN ('fact', 'episode', 'decision')`);
+
+            for (const { userId } of users) {
+                if (userId) await migrateLegacyTypesToSession(userId);
+            }
+        } catch (e: any) {
+            logger.warn(`[Memory] Legacy migration sweep failed: ${e.message}`);
+        }
+    })();
+
+    // ── Restore pending memory buffers from previous session ──────────
+    // If the app quit with unflushed rounds, process them now.
+    restorePendingBuffers()
+        .catch(e => logger.warn(`[Memory] Buffer restoration failed: ${e.message}`));
 
     logger.info("[Memory] Handlers registered");
 }

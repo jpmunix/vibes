@@ -40,11 +40,9 @@ const DEFAULT_SELECTION_MODEL = "mistralai/devstral-small";
 
 /** Type labels for formatted output */
 const TYPE_LABELS: Record<string, string> = {
-    fact: "fact",
+    session: "session",
     preference: "pref",
-    decision: "decision",
     issue: "issue",
-    episode: "episode",
 };
 
 /** Metadata for a selected memory (for chat UI display) */

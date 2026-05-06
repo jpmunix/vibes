@@ -30,6 +30,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
+import { DEFAULT_AGENT_MODEL } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
 
 const logger = log.scope("opencode_adapter");
@@ -48,6 +49,63 @@ let lastProjectDir: string | null = null;
 /** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
 export function getOpenCodeClientInstance() {
     return clientInstance;
+}
+
+/**
+ * Resolve the effective model for a given agent.
+ * Priority: agentModels[agentId] → DEFAULT_AGENT_MODEL (for plan/explore) → selectedModel (global picker).
+ * `build` always uses selectedModel. `mockup` uses selectedModel (too residual for its own selector).
+ */
+export function resolveModelForAgent(
+    agentId: "build" | "plan" | "explore" | "mockup",
+    settings: any // UserSettings
+): { model: { name: string; provider: string }; providerID: string; modelID: string } {
+    // Build & mockup always use the global selectedModel
+    if (agentId === "build" || agentId === "mockup") {
+        const model = settings.selectedModel;
+        const result = {
+            model,
+            providerID: mapProviderForOpenCode(model),
+            modelID: composeModelWithVariant(
+                sanitizeModelName(model.name),
+                settings.selectedModelVariant ?? "",
+            ),
+        };
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
+        return result;
+    }
+
+    // Plan & Explore: check agentModels override → DEFAULT_AGENT_MODEL → selectedModel
+    const agentModelName = settings.agentModels?.[agentId as "plan" | "explore"];
+    const effectiveModelName = agentModelName || DEFAULT_AGENT_MODEL;
+    const source = agentModelName ? "agentModels override" : "DEFAULT_AGENT_MODEL";
+
+    if (effectiveModelName) {
+        const cheapModel = {
+            name: effectiveModelName,
+            provider: "openrouter",
+        };
+        const result = {
+            model: cheapModel,
+            providerID: "openrouter",
+            modelID: sanitizeModelName(effectiveModelName),
+        };
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${source})`);
+        return result;
+    }
+
+    // Ultimate fallback: global selectedModel
+    const model = settings.selectedModel;
+    const result = {
+        model,
+        providerID: mapProviderForOpenCode(model),
+        modelID: composeModelWithVariant(
+            sanitizeModelName(model.name),
+            settings.selectedModelVariant ?? "",
+        ),
+    };
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (fallback to selectedModel)`);
+    return result;
 }
 
 // Active stream text injector — allows the question reply handler to inject
@@ -830,6 +888,7 @@ export async function updateOpenCodeConfig(changes: {
     standardModeModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    agentModels?: { plan?: string; explore?: string };
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
@@ -849,11 +908,24 @@ export async function updateOpenCodeConfig(changes: {
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
+                ...(body.agent || {}),
                 build: {
                     ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
                     ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
                 },
             };
+        }
+        // Hot-update per-agent model overrides
+        if (changes.agentModels) {
+            const agentConfig: Record<string, any> = body.agent || {};
+            if (changes.agentModels.plan) {
+                agentConfig.plan = { ...(agentConfig.plan || {}), model: `openrouter/${changes.agentModels.plan}` };
+            }
+            if (changes.agentModels.explore) {
+                agentConfig.explore = { ...(agentConfig.explore || {}), model: `openrouter/${changes.agentModels.explore}` };
+            }
+            body.agent = agentConfig;
+            logger.info(`[OpenCode] Agent models updated: plan=${changes.agentModels.plan || 'default'}, explore=${changes.agentModels.explore || 'default'}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1337,6 +1409,13 @@ async function getOpenCodeClient(appPath: string) {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
                     },
+                    // Per-agent model overrides for Plan and Explore
+                    plan: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.plan || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    explore: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.explore || DEFAULT_AGENT_MODEL)}`,
+                    },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
                     "visual-edit": {
@@ -1381,11 +1460,10 @@ async function getOpenCodeClient(appPath: string) {
                         },
                         prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
                     },
-                    // Use the cheap/fast model for context compaction summaries
-                    // so we don't burn expensive tokens on housekeeping
+                    // Use cheap model for compaction (maintenance task)
                     ...(settings.standardModeModel ? {
                         compaction: {
-                            model: `${providerID}/${settings.standardModeModel}`,
+                            model: `openrouter/${sanitizeModelName(settings.standardModeModel)}`,
                         },
                     } : {}),
                 },
@@ -1455,6 +1533,20 @@ async function getOpenCodeClient(appPath: string) {
 
         logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
+
+        // Log full agent→model mapping for visibility
+        const planModel = settings.agentModels?.plan || DEFAULT_AGENT_MODEL;
+        const exploreModel = settings.agentModels?.explore || DEFAULT_AGENT_MODEL;
+        const compactionModel = settings.standardModeModel || '(main model)';
+        logger.info(
+            `[OpenCode] 🤖 Agent model map:\n` +
+            `  BUILD   → ${providerID}/${modelID} (selectedModel)\n` +
+            `  PLAN    → openrouter/${planModel}${settings.agentModels?.plan ? ' (override)' : ' (default)'}\n` +
+            `  EXPLORE → openrouter/${exploreModel}${settings.agentModels?.explore ? ' (override)' : ' (default)'}\n` +
+            `  MOCKUP  → ${providerID}/${modelID} (selectedModel)\n` +
+            `  VISUAL  → ${providerID}/${modelID} (selectedModel)\n` +
+            `  COMPACT → ${compactionModel === '(main model)' ? providerID + '/' + modelID : 'openrouter/' + compactionModel} (standardModeModel)`
+        );
 
         return { client: opencode.client, opencode };
     } catch (error: any) {
@@ -1647,6 +1739,12 @@ export async function handleOpenCodeStream(
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
         /**
+         * Memory context block to inject via noReply before the prompt.
+         * Invisible to the user (not saved to DB, not shown in UI).
+         * OpenCode sees it as a silent user message in the session history.
+         */
+        memoryBlock?: string;
+        /**
          * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
          * Each is sent with `noReply: true` so OpenCode records them in the conversation
          * history without generating an AI response. This is the native way to "batch"
@@ -1676,67 +1774,36 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
-    // ── Append dynamic instructions to AGENTS.md (replaces old SPECS.md) ──
-    // We append a delimited section at the end of the project's AGENTS.md.
-    // OpenCode reads AGENTS.md natively — no opencode.json registration needed.
+    // ── One-time cleanup: strip old VIBES:CONTEXT from AGENTS.md ─────
+    // We no longer write to AGENTS.md (it's OpenCode's file). If a previous
+    // version left a VIBES:CONTEXT block, remove it once.
     {
         const fs = require("fs");
-        const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
-            ? options.contextInstructions.join("\n\n")
-            : "";
-
+        const agentsMdPath = path.join(projectDir, "AGENTS.md");
         const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
         const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
-        const agentsMdPath = path.join(projectDir, "AGENTS.md");
-
         try {
-            // 1. Read existing AGENTS.md (or start empty)
-            let existing = "";
             if (fs.existsSync(agentsMdPath)) {
-                existing = fs.readFileSync(agentsMdPath, "utf-8");
+                const content = fs.readFileSync(agentsMdPath, "utf-8");
+                const startIdx = content.indexOf(VIBES_START);
+                const endIdx = content.indexOf(VIBES_END);
+                if (startIdx !== -1 && endIdx !== -1) {
+                    const cleaned = content.substring(0, startIdx).trimEnd()
+                        + content.substring(endIdx + VIBES_END.length);
+                    fs.writeFileSync(agentsMdPath, cleaned.trimEnd() + "\n", "utf-8");
+                    logger.info(`${LP} 🧹 Stripped legacy VIBES:CONTEXT block from AGENTS.md`);
+                }
             }
+        } catch { /* non-fatal */ }
 
-            // 2. Strip old Vibes section if present
-            const startIdx = existing.indexOf(VIBES_START);
-            const endIdx = existing.indexOf(VIBES_END);
-            let baseContent = existing;
-            if (startIdx !== -1 && endIdx !== -1) {
-                baseContent = existing.substring(0, startIdx).trimEnd()
-                    + existing.substring(endIdx + VIBES_END.length);
-            }
-
-            // 3. Build new AGENTS.md = original content + Vibes section
-            const vibesSection = instrContent
-                ? `\n\n${VIBES_START}\n${instrContent}\n${VIBES_END}\n`
-                : "";
-            const finalContent = baseContent.trimEnd() + vibesSection;
-
-            fs.writeFileSync(agentsMdPath, finalContent, "utf-8");
-            logger.info(`${LP} 📋 Context written to AGENTS.md (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
-
-            // 4. Cleanup: delete stale docs/SPECS.md if it exists
+        // Also clean stale docs/SPECS.md if present
+        try {
             const specsPath = path.join(projectDir, "docs", "SPECS.md");
             if (fs.existsSync(specsPath)) {
                 fs.unlinkSync(specsPath);
                 logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
             }
-
-            // 5. Remove docs/SPECS.md from opencode.json instructions[] if registered
-            try {
-                const ocJsonPath = path.join(projectDir, "opencode.json");
-                if (fs.existsSync(ocJsonPath)) {
-                    const ocJson = JSON.parse(fs.readFileSync(ocJsonPath, "utf-8"));
-                    if (Array.isArray(ocJson.instructions) && ocJson.instructions.includes("docs/SPECS.md")) {
-                        ocJson.instructions = ocJson.instructions.filter((i: string) => i !== "docs/SPECS.md");
-                        fs.writeFileSync(ocJsonPath, JSON.stringify(ocJson, null, 2), "utf-8");
-                        logger.info(`${LP} 🗑️ Removed docs/SPECS.md from opencode.json instructions`);
-                    }
-                }
-            } catch { /* ignore opencode.json cleanup errors */ }
-
-        } catch (ctxErr: any) {
-            logger.warn(`${LP} Failed to write AGENTS.md context: ${ctxErr.message}`);
-        }
+        } catch { /* non-fatal */ }
     }
 
     let client: ReturnType<typeof createOpencodeClient>;
@@ -2064,10 +2131,10 @@ export async function handleOpenCodeStream(
 
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
-        const model = settings.selectedModel;
-        const providerID = mapProviderForOpenCode(model);
+        const effectiveAgent = options.agentId || "build";
+        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings);
 
-        logger.info(`${LP} Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
+        logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);
         lastProjectDir = projectDir;
         logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
@@ -2077,7 +2144,6 @@ export async function handleOpenCodeStream(
         // inject a build-mode instruction so the agent directly implements instead of
         // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
         let promptText = req.prompt;
-        const effectiveAgent = options.agentId || "build";
         const isMockupMode = effectiveAgent === "mockup";
 
         // Detect first message (no prior assistant responses) — used by build-mode
@@ -2216,18 +2282,51 @@ export async function handleOpenCodeStream(
         logger.info(`--- USER PROMPT ---\n${promptText}`);
         logger.info(`------------------------------------------`);
 
+        // ── Inject Vibes context via noReply (invisible to user) ─────────
+        // All Vibes context (instructions + memories) is injected as a single
+        // silent user message. Only exists in OpenCode's session history.
+        // Not saved to our DB → not shown in chat UI → invisible.
+        {
+            const contextParts: string[] = [];
+
+            // Static instructions (language, integrations, efficiency, etc.)
+            if (options.contextInstructions && options.contextInstructions.length > 0) {
+                contextParts.push(options.contextInstructions.join("\n\n"));
+            }
+
+            // Dynamic memories (selected per-prompt by the memory router)
+            if (options.memoryBlock) {
+                contextParts.push(options.memoryBlock);
+            }
+
+            if (contextParts.length > 0) {
+                const contextText = contextParts.join("\n\n---\n\n");
+                try {
+                    await client.session.prompt({
+                        path: { id: sessionId },
+                        query: { directory: projectDir },
+                        body: {
+                            noReply: true,
+                            parts: [{ type: "text", text: contextText }],
+                        } as any,
+                    });
+                    logger.info(`${LP} 📋 Context injected via noReply (${contextText.length} chars: ${options.contextInstructions?.length || 0} instructions + ${options.memoryBlock ? 'memories' : 'no memories'})`);
+                } catch (ctxErr: any) {
+                    logger.warn(`${LP} 📋 Context noReply injection failed (non-fatal): ${ctxErr.message}`);
+                }
+            }
+        }
+
         // Fire the prompt (non-blocking)
         // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
-        // internal system prompt (tools, AGENTS.md, project context). Instead,
-        // context instructions (including memories) are injected via
-        // config.update({ instructions }) which APPENDS them safely.
+        // internal system prompt. All Vibes context flows via noReply above.
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
             body: {
                 model: {
                     providerID,
-                    modelID: sanitizeModelName(model.name),
+                    modelID,
                 },
                 agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,

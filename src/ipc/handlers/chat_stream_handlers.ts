@@ -64,7 +64,7 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
-import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
+import { bufferChatRound } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
@@ -728,7 +728,7 @@ ${componentSnippet}
         }
 
         // ── Build-mode preprocessing (skipped for OpenCode agent mode) ──────
-        // OpenCode manages its own context via AGENTS.md and built-in tools.
+        // OpenCode manages its own project context. Vibes injects additional
         // These variables are only used by the build/ask mode branches below.
         let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
         let willUseAgentStream = isAgentMode;
@@ -1280,7 +1280,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode
-          // handles all project knowledge natively via AGENTS.md.
+          // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
           // 1. Language & Behavior instructions
@@ -1393,8 +1393,9 @@ This conversation includes one or more image attachments. When the user uploads 
           decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
             .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
 
-          // Load memories (app-specific + global) and inject as context instruction
+          // Load memories (app-specific + global) — injected via noReply (invisible to user)
           let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
+          let memoryBlock: string | undefined;
           try {
             // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
             const priorMessages = (updatedChat.messages || [])
@@ -1412,12 +1413,12 @@ This conversation includes one or more image attachments. When the user uploads 
               priorMessages.length > 0 ? priorMessages : undefined,
             );
             if (memoryResult.block) {
-              contextInstructions.push(memoryResult.block);
+              memoryBlock = memoryResult.block;
               selectedMemories = memoryResult.memories;
-              logger.info(`🧠 [MEMORY] Injected ${memoryResult.block.length} chars (${selectedMemories.length} memories) into contextInstructions`);
+              logger.info(`🧠 [MEMORY] Prepared ${memoryBlock.length} chars (${selectedMemories.length} memories) for noReply injection`);
             }
           } catch (memErr: any) {
-            logger.warn(`🧠 [MEMORY] Context injection failed: ${memErr.message}`);
+            logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
           }
 
           const integrationEnvVars: Record<string, string> = {};
@@ -1453,6 +1454,7 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMessages: updatedChat.messages,
               agentId,
               contextInstructions,
+              memoryBlock,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
@@ -1593,13 +1595,13 @@ This conversation includes one or more image attachments. When the user uploads 
             // in whatever was already generated.
             // SKIP plan mode: proposals are not confirmed facts.
             if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
-              extractMemoriesFromChatCycle({
+              bufferChatRound({
+                chatId: req.chatId,
                 appId: updatedChat.app.id,
                 userId: currentUserId as string,
-                chatId: req.chatId,
                 userPrompt,
                 assistantResponse: openCodeResponse,
-              }).catch(err => logger.warn("[Memory] Extraction failed (cancelled):", err));
+              });
             }
 
             return;
@@ -1690,13 +1692,13 @@ This conversation includes one or more image attachments. When the user uploads 
           // SKIP plan mode: plan responses are proposals/suggestions, not confirmed
           // decisions. Extracting from them would pollute memories with unverified info.
           if (success && updatedChat.app?.id && agentId !== "plan") {
-            extractMemoriesFromChatCycle({
+            bufferChatRound({
+              chatId: req.chatId,
               appId: updatedChat.app.id,
               userId: currentUserId as string,
-              chatId: req.chatId,
               userPrompt,
               assistantResponse: fullResponse,
-            }).catch(err => logger.warn("[Memory] Extraction failed:", err));
+            });
           }
 
           // ── Post-agent clean install ────────────────────────────────────

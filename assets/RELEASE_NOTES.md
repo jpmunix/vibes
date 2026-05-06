@@ -1,6 +1,14 @@
 # v8.4
 *4 de mayo de 2026*
 
+## Memorias más inteligentes y compactas
+
+El sistema de memoria del agente ahora **condensa la conversación en resúmenes densos** en vez de almacenar hechos sueltos como "El proyecto usa React". A medida que chateas, el agente espera a tener contexto suficiente antes de sintetizar, y cuando lo hace genera un párrafo que captura lo importante: qué se construyó, qué se decidió y por qué. Con el tiempo, las memorias más antiguas se **fusionan automáticamente** para mantener el pool limpio y relevante sin que tengas que hacer nada. El resultado: el agente arranca cada sesión con un contexto más claro, más breve y más útil.
+
+## Un modelo para cada agente
+
+Hasta ahora, todos los modos de chat —Agente, Planificar, Preguntar— usaban el mismo modelo que seleccionabas en el picker. Eso significaba pagar lo mismo por explorar un codebase que por implementar una feature compleja. Ahora puedes **asignar un modelo distinto a cada agente** desde **Ajustes → Agentes**: elige un modelo potente para Build y uno rápido y barato para Plan y Explore. Por defecto, Plan y Explore usan **Qwen 3.5 Flash** para ahorrar sin perder calidad, mientras que Build sigue usando el modelo del picker. Si no configuras nada, todo funciona como antes.
+
 ## Limpieza automática del core
 
 Con el uso diario se acumulan datos internos de sesiones de chat que ya no existen: conversaciones borradas, apps eliminadas o sesiones que quedaron huérfanas. A partir de ahora, al cerrar una aplicación **se limpian automáticamente todas sus sesiones asociadas**, liberando espacio en disco. Además, desde el panel de administración puedes lanzar un **purgado completo** que cruza las sesiones activas con la base de datos, detecta las que ya no corresponden a ningún chat y las elimina de golpe — con opción de simular antes de borrar.
@@ -9,9 +17,15 @@ Con el uso diario se acumulan datos internos de sesiones de chat que ya no exist
 
 El selector de modelo ahora ordena la lista por **uso reciente**: los modelos que has utilizado hace poco aparecen arriba, y los que nunca has tocado bajan al final. Ya no tienes que buscar cada vez el que usas siempre.
 
+## Nunca más respondas en el chat equivocado
+
+Si tienes varios chats activos a la vez y el agente necesita tu atención en uno que no estás mirando —una pregunta, una solicitud de permiso o un consentimiento—, ahora aparece una **notificación flotante en la parte superior del chat** con un resumen de lo que necesita y un botón para saltar directamente a esa conversación. Si no te interesa en ese momento, puedes descartarla y seguir con lo tuyo. La notificación desaparece automáticamente cuando el agente ya no espera respuesta.
+
 ## Correcciones y ajustes
 
+- Nueva plantilla **Next.js** disponible al crear aplicaciones, junto a las de React y Express.
 - Los mensajes del usuario ahora respetan los **saltos de línea simples** tal como se escribieron, sin necesidad de dejar una línea en blanco.
+- Corregido un bug que mostraba los **selectores de stack y diseño** al crear un nuevo chat en una app existente (workspace/agente). Esos controles solo deben aparecer al crear una app nueva desde la pantalla de inicio.
 - Mejoras internas de estabilidad.
 
 # v8.3

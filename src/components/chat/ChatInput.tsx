@@ -83,7 +83,7 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
-import { quotedMessagesAtom, selectedDesignAtom } from "@/atoms/chatAtoms";
+import { quotedMessagesAtom } from "@/atoms/chatAtoms";
 
 export function ChatInput({
   chatId,
@@ -99,7 +99,7 @@ export function ChatInput({
   // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
-  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
+
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions, revertVersion, refreshVersions } = useVersions(appId);
@@ -118,8 +118,6 @@ export function ChatInput({
   const [isUndoLoading, setIsUndoLoading] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-  // Workspace: detect first message to show foundational pickers (template + design)
-  const isFirstWorkspaceMessage = workspaceMode && currentMessages.filter(m => m.role === "user").length === 0;
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -301,22 +299,6 @@ export function ChatInput({
 
     let currentChatId = chatId;
 
-    // ── Workspace foundational message: install design system on first message ──
-    if (workspaceMode && isFirstWorkspaceMessage && selectedDesign && appId) {
-      try {
-        const app = await ipc.app.getApp(appId);
-        if (app?.path) {
-          if (selectedDesign.customContent) {
-            await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
-          } else {
-            await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
-          }
-        }
-      } catch (designError) {
-        console.error("[ChatInput] 🎨 DESIGN ERROR:", designError);
-      }
-      setSelectedDesign(null);
-    }
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -638,8 +620,6 @@ export function ChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
-                    showTemplatePicker={workspaceMode && isFirstWorkspaceMessage}
-                    showDesignPicker={workspaceMode && isFirstWorkspaceMessage}
                   />
                 </div>
 

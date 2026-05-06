@@ -160,8 +160,8 @@ export function registerSettingsHandlers() {
     writeSettings(settings);
     const updated = readSettings();
 
-    // Hot-update OpenCode server config if model, variant, reasoning effort, or verbosity changed
-    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.standardModeModel || settings.reasoningEffort || settings.textVerbosity) {
+    // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or agent models changed
+    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.standardModeModel || settings.reasoningEffort || settings.textVerbosity || settings.agentModels) {
       try {
         const { updateOpenCodeConfig } = await import("./opencode_adapter");
         await updateOpenCodeConfig({
@@ -171,6 +171,7 @@ export function registerSettingsHandlers() {
           standardModeModel: settings.standardModeModel,
           reasoningEffort: settings.reasoningEffort,
           textVerbosity: settings.textVerbosity,
+          agentModels: settings.agentModels,
         });
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);

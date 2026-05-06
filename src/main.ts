@@ -725,6 +725,13 @@ app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
   shutdownOpenCode();
   stopPerformanceMonitoring();
+  // Persist any pending memory buffers so they're processed on next startup
+  try {
+    const { serializePendingBuffers } = require("./ipc/utils/memory_extractor");
+    serializePendingBuffers();
+  } catch (err: any) {
+    logger.warn("Failed to serialize pending memory buffers:", err.message);
+  }
   writeSettings({ isRunning: false });
 });
 

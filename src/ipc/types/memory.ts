@@ -6,11 +6,9 @@ import { defineContract, createClient } from "../contracts/core";
 // =============================================================================
 
 export const MemoryTypeSchema = z.enum([
-    "fact",
+    "session",
     "preference",
     "issue",
-    "episode",
-    "decision",
 ]);
 export type MemoryType = z.infer<typeof MemoryTypeSchema>;
 
