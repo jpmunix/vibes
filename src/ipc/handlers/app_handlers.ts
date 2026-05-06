@@ -2035,7 +2035,7 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+      settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
     logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
@@ -2091,7 +2091,7 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+        settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 

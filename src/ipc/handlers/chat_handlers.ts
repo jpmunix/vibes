@@ -289,7 +289,7 @@ export function registerChatHandlers() {
       const settings = readSettings();
 
       const model =
-        settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+        settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       try {
         let messageContent = prompt;
@@ -683,7 +683,7 @@ export function registerChatHandlers() {
     // 3. Generate summary using openRouterCompletion
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
-    const model = settings.agentModels?.summary || settings.summaryModel || settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     let generatedSummary = "";
     try {

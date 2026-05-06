@@ -11,6 +11,10 @@ El sistema de memoria es cada vez más inteligente y ahora se encarga de hacer l
 
 Además, el Panel de Memoria estrena un nuevo menú de gestión. Ahora puedes **compactar tus memorias manualmente** para pedirle a la IA que fusione datos antiguos en resúmenes mucho más limpios. También hemos incluido nuevos filtros avanzados y opciones de ordenación (por relevancia, fecha o estado) para que navegar por el contexto de tu proyecto sea rapidísimo.
 
+## Dos modelos, cero complicaciones
+
+En la versión anterior introdujimos la posibilidad de asignar un modelo distinto a cada uno de los 7 agentes internos. Tras probarlo en producción vimos que la granularidad extra no aportaba: en la práctica acabas queriendo un modelo potente para pensar y uno rápido para ejecutar, y configurar 7 selectores individuales era más ruido que utilidad. Así que hemos dado un paso atrás para dar dos hacia delante. Ahora solo tienes **dos selectores** en Ajustes → Agente: el **Modelo estratega** (planificación, exploración y razonamiento) y el **Modelo ejecutor** (títulos, resúmenes, compactación y tareas ligeras). Cambias uno y afecta a todo su grupo al instante, sin reiniciar nada. Menos decisiones, la misma flexibilidad donde importa.
+
 ## Correcciones y ajustes
 
 - **Markdown Sanitizado:** Los bloques de código se sanitizan intentando garantizar que el *parser* visual de la interfaz nunca se rompa al renderizarlos.

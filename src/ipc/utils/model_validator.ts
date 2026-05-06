@@ -63,11 +63,19 @@ export async function validateModelSettings(): Promise<void> {
             migrated.push(`selectedModel → ${FALLBACK_SELECTED_MODEL}`);
         }
 
-        // ── 2. standardModeModel (cheap/fast tasks) ──
-        if (settings.standardModeModel && !availableNames.has(settings.standardModeModel)) {
-            logger.warn(`[ModelValidator] standardModeModel "${settings.standardModeModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`);
-            settings.standardModeModel = DEFAULT_STANDARD_MODEL;
-            migrated.push(`standardModeModel → ${DEFAULT_STANDARD_MODEL}`);
+        // ── 2. executorModel (lightweight tasks) ──
+        if (settings.executorModel && !availableNames.has(settings.executorModel)) {
+            logger.warn(`[ModelValidator] executorModel "${settings.executorModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`);
+            settings.executorModel = DEFAULT_STANDARD_MODEL;
+            migrated.push(`executorModel → ${DEFAULT_STANDARD_MODEL}`);
+        }
+
+        // ── 2b. strategistModel (reasoning agents) ──
+        if (settings.strategistModel && !availableNames.has(settings.strategistModel)) {
+            const fallback = "deepseek/deepseek-v3.2";
+            logger.warn(`[ModelValidator] strategistModel "${settings.strategistModel}" no longer exists → "${fallback}"`);
+            settings.strategistModel = fallback;
+            migrated.push(`strategistModel → ${fallback}`);
         }
 
         // ── 3. memoriesSynthesisModelV2 (memory extraction) ──

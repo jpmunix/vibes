@@ -30,7 +30,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
-import { DEFAULT_AGENT_MODEL } from "../../lib/schemas";
+import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
 
 const logger = log.scope("opencode_adapter");
@@ -53,8 +53,11 @@ export function getOpenCodeClientInstance() {
 
 /**
  * Resolve the effective model for a given agent.
- * Priority: agentModels[agentId] → DEFAULT_AGENT_MODEL → selectedModel (global picker).
- * `build` always uses selectedModel. All others check agentModels first.
+ *
+ * Three tiers:
+ *   - `build` → selectedModel (the chat picker model, user-chosen per session)
+ *   - `plan`, `explore`, `general` → strategistModel (reasoning agents)
+ *   - `compaction`, `title`, `summary`, `mockup` → executorModel (lightweight tasks)
  */
 export function resolveModelForAgent(
     agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
@@ -75,36 +78,25 @@ export function resolveModelForAgent(
         return result;
     }
 
-    // All other agents: check agentModels override → DEFAULT_AGENT_MODEL → selectedModel
-    const agentModelName = settings.agentModels?.[agentId];
-    const effectiveModelName = agentModelName || DEFAULT_AGENT_MODEL;
-    const source = agentModelName ? "agentModels override" : "DEFAULT_AGENT_MODEL";
+    // Reasoning agents: strategistModel
+    const STRATEGIST_AGENTS = new Set(["plan", "explore", "general"]);
+    const isStrategist = STRATEGIST_AGENTS.has(agentId);
 
-    if (effectiveModelName) {
-        const agentModel = {
-            name: effectiveModelName,
-            provider: "openrouter",
-        };
-        const result = {
-            model: agentModel,
-            providerID: "openrouter",
-            modelID: sanitizeModelName(effectiveModelName),
-        };
-        logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${source})`);
-        return result;
-    }
+    const effectiveModelName = isStrategist
+        ? (settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
+        : (settings.executorModel || DEFAULT_EXECUTOR_MODEL);
+    const tier = isStrategist ? "strategist" : "executor";
 
-    // Ultimate fallback: global selectedModel
-    const model = settings.selectedModel;
-    const result = {
-        model,
-        providerID: mapProviderForOpenCode(model),
-        modelID: composeModelWithVariant(
-            sanitizeModelName(model.name),
-            settings.selectedModelVariant ?? "",
-        ),
+    const agentModel = {
+        name: effectiveModelName,
+        provider: "openrouter",
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (fallback to selectedModel)`);
+    const result = {
+        model: agentModel,
+        providerID: "openrouter",
+        modelID: sanitizeModelName(effectiveModelName),
+    };
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${tier})`);
     return result;
 }
 
@@ -885,10 +877,10 @@ export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<
 export async function updateOpenCodeConfig(changes: {
     selectedModel?: { provider?: string; name: string };
     selectedModelVariant?: string;
-    standardModeModel?: string;
+    strategistModel?: string;
+    executorModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
-    agentModels?: { plan?: string; explore?: string };
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
@@ -903,8 +895,9 @@ export async function updateOpenCodeConfig(changes: {
             const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
             body.model = `${providerID}/${modelID}`;
         }
-        if (changes.standardModeModel) {
-            body.small_model = `openrouter/${changes.standardModeModel}`;
+        // Executor model → small_model (used for lightweight tasks)
+        if (changes.executorModel) {
+            body.small_model = `openrouter/${changes.executorModel}`;
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
@@ -915,18 +908,25 @@ export async function updateOpenCodeConfig(changes: {
                 },
             };
         }
-        // Hot-update per-agent model overrides (all agents)
-        if (changes.agentModels) {
+        // Hot-update unified model tiers for agents
+        if (changes.strategistModel || changes.executorModel) {
             const agentConfig: Record<string, any> = body.agent || {};
-            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
-            for (const id of agentIds) {
-                if (changes.agentModels[id]) {
-                    agentConfig[id] = { ...(agentConfig[id] || {}), model: `openrouter/${changes.agentModels[id]}` };
+
+            if (changes.strategistModel) {
+                const model = `openrouter/${changes.strategistModel}`;
+                for (const id of ["plan", "explore", "general"]) {
+                    agentConfig[id] = { ...(agentConfig[id] || {}), model };
                 }
             }
+            if (changes.executorModel) {
+                const model = `openrouter/${changes.executorModel}`;
+                for (const id of ["compaction", "title", "summary", "mockup"]) {
+                    agentConfig[id] = { ...(agentConfig[id] || {}), model };
+                }
+            }
+
             body.agent = agentConfig;
-            const summary = agentIds.map(id => `${id}=${changes.agentModels[id] || 'default'}`).join(', ');
-            logger.info(`[OpenCode] Agent models updated: ${summary}`);
+            logger.info(`[OpenCode] Model tiers updated: strategist=${changes.strategistModel || '(unchanged)'}, executor=${changes.executorModel || '(unchanged)'}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1403,34 +1403,33 @@ async function getOpenCodeClient(appPath: string) {
                         } : {}),
                 },
                 model: `${providerID}/${modelID}`,
-                // Use the cheap/fast standard model for lightweight tasks (titles, summaries)
-                ...(settings.standardModeModel ? {
-                    small_model: `${providerID}/${sanitizeModelName(settings.standardModeModel)}`,
-                } : {}),
-                // Agent-level config: reasoning effort + text verbosity + per-agent models
+                // Executor model for lightweight tasks (titles, summaries, commit messages)
+                small_model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                // Agent-level config: reasoning effort + text verbosity + unified model tiers
                 agent: {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
                     },
-                    // Per-agent model overrides
+                    // Strategist tier — reasoning agents
                     plan: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.plan || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     explore: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.explore || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     general: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.general || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
+                    // Executor tier — lightweight tasks
                     compaction: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.compaction || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                     },
                     title: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.title || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                     },
                     summary: {
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.summary || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -1463,7 +1462,7 @@ async function getOpenCodeClient(appPath: string) {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
-                        model: `openrouter/${sanitizeModelName(settings.agentModels?.mockup || DEFAULT_AGENT_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                         tools: {
                             write: true,
                             edit: true,
@@ -1545,20 +1544,14 @@ async function getOpenCodeClient(appPath: string) {
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
 
         // Log full agent→model mapping for visibility
-        const am = settings.agentModels || {};
-        const resolve = (id: string) => am[id] || DEFAULT_AGENT_MODEL;
-        const tag = (id: string) => am[id] ? '(override)' : '(default)';
+        const strat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+        const exec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
         logger.info(
-            `[OpenCode] 🤖 Agent model map:\n` +
-            `  BUILD      → ${providerID}/${modelID} (selectedModel)\n` +
-            `  PLAN       → openrouter/${resolve('plan')} ${tag('plan')}\n` +
-            `  EXPLORE    → openrouter/${resolve('explore')} ${tag('explore')}\n` +
-            `  GENERAL    → openrouter/${resolve('general')} ${tag('general')}\n` +
-            `  COMPACTION → openrouter/${resolve('compaction')} ${tag('compaction')}\n` +
-            `  TITLE      → openrouter/${resolve('title')} ${tag('title')}\n` +
-            `  SUMMARY    → openrouter/${resolve('summary')} ${tag('summary')}\n` +
-            `  MOCKUP     → openrouter/${resolve('mockup')} ${tag('mockup')}\n` +
-            `  VISUAL     → ${providerID}/${modelID} (selectedModel)`
+            `[OpenCode] Agent model map:\n` +
+            `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
+            `  STRATEGIST  → openrouter/${strat} (plan, explore, general)\n` +
+            `  EXECUTOR    → openrouter/${exec} (compaction, title, summary, mockup)\n` +
+            `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`
         );
 
         return { client: opencode.client, opencode };

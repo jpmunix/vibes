@@ -1725,7 +1725,7 @@ async function generateSquashCommitMessage({
   }
 
   const settings = readSettings();
-  const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+  const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
   // Get the combined diff between remote and local
   const diffContext = await gitDiffRange({
@@ -1925,7 +1925,7 @@ export function registerCommitMessageStreamHandler() {
       }
 
       const db = getRemoteDb();
-      const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       const app = await db.query.apps.findFirst({
         where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),

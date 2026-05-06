@@ -6,7 +6,9 @@ import {
   type UserSettings,
   Secret,
   VertexProviderSetting,
-  DEFAULT_STANDARD_MODEL,
+  DEFAULT_EXECUTOR_MODEL,
+  DEFAULT_STRATEGIST_MODEL,
+  DEFAULT_STANDARD_MODEL, // legacy alias — used only by migration code
 } from "../lib/schemas";
 import { safeStorage } from "electron";
 import { v4 as uuidv4 } from "uuid";
@@ -15,7 +17,6 @@ import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 
 import {
   DEFAULT_ENABLED_MODELS,
-  FALLBACK_PRO_MODEL,
   FALLBACK_SELECTED_MODEL,
 } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
@@ -28,9 +29,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
-  // Unified model keys (v2) — two tiers replace the old 7 individual fields
-  standardModeModel: DEFAULT_STANDARD_MODEL,
-  proModeModel: FALLBACK_PRO_MODEL,
+  // Unified model keys — Estratega (reasoning) + Ejecutor (lightweight)
+  strategistModel: DEFAULT_STRATEGIST_MODEL,
+  executorModel: DEFAULT_EXECUTOR_MODEL,
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,

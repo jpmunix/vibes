@@ -2,17 +2,24 @@ import { z } from "zod";
 import { isOpenAIOrAnthropicSetup } from "./providerUtils";
 
 /**
- * Default fallback model for standard-mode tasks (titles, summaries, stack detection, etc.)
- * Used when `settings.standardModeModel` is not configured.
+ * Default model for lightweight/mechanical tasks (titles, summaries, compaction,
+ * mockups, commit messages, stack detection, etc.).
+ * Used when `settings.executorModel` is not configured.
  */
-export const DEFAULT_STANDARD_MODEL = "google/gemini-2.5-flash-lite" as const;
+export const DEFAULT_EXECUTOR_MODEL = "google/gemini-2.5-flash-lite" as const;
 
 /**
- * Default model for agent overrides when no explicit value is set.
- * Used by: plan, explore, general, compaction, title, summary, mockup.
+ * Default model for reasoning agents (plan, explore, general).
+ * Used when `settings.strategistModel` is not configured.
  * Build always uses selectedModel (the chat picker model).
  */
-export const DEFAULT_AGENT_MODEL = "google/gemini-3.1-flash-lite-preview" as const;
+export const DEFAULT_STRATEGIST_MODEL = "deepseek/deepseek-v3.2" as const;
+
+// ── Legacy aliases (kept for migration compat — DO NOT USE in new code) ──
+/** @deprecated Use DEFAULT_EXECUTOR_MODEL */
+export const DEFAULT_STANDARD_MODEL = DEFAULT_EXECUTOR_MODEL;
+/** @deprecated Use DEFAULT_STRATEGIST_MODEL */
+export const DEFAULT_AGENT_MODEL = DEFAULT_STRATEGIST_MODEL;
 
 export const SecretSchema = z.object({
   value: z.string(),
@@ -355,8 +362,7 @@ export const UserSettingsSchema = z
     ////////////////////////////////
     selectedModel: LargeLanguageModelSchema,
     providerSettings: z.record(z.string(), ProviderSettingSchema),
-    // DEPRECATED — legacy individual model fields. Use standardModeModel / proModeModel instead.
-    // Kept in schema for backwards-compat (.passthrough() preserves them in settings files).
+    // DEPRECATED — legacy individual model fields. Kept for backwards-compat (.passthrough()).
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
@@ -364,9 +370,12 @@ export const UserSettingsSchema = z
     summaryModel: z.string().optional(),
     knowledgeExtractionModel: z.string().optional(),
     dossierModel: z.string().optional(),
-    // Unified model keys — two tiers that replace all 7 individual fields above
-    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates)
-    proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
+    // DEPRECATED — superseded by strategistModel + executorModel
+    standardModeModel: z.string().optional(),
+    proModeModel: z.string().optional(),
+    // ── Active unified model keys ──
+    strategistModel: z.string().optional(),   // reasoning agents (plan, explore, general)
+    executorModel: z.string().optional(),     // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
     openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
@@ -499,17 +508,15 @@ export const UserSettingsSchema = z
     enableMorphPatchTool: z.boolean().optional(),
     morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
 
-    // Per-agent model overrides — allows assigning a different model to each agent.
-    // Build always uses `selectedModel` (the chat picker model).
-    // If not set, falls back to DEFAULT_AGENT_MODEL.
+    // DEPRECATED — per-agent model overrides. Superseded by strategistModel + executorModel.
     agentModels: z.object({
-      plan: z.string().optional(),        // Plan agent (analysis/planning)
-      explore: z.string().optional(),     // Explore subagent (read-only codebase exploration)
-      general: z.string().optional(),     // General subagent (multi-purpose, parallel tasks)
-      compaction: z.string().optional(),  // Compaction agent (context summarization)
-      title: z.string().optional(),       // Title agent (session title generation)
-      summary: z.string().optional(),     // Summary agent (session summary generation)
-      mockup: z.string().optional(),      // Mockup agent (fast visual edits, no bash)
+      plan: z.string().optional(),
+      explore: z.string().optional(),
+      general: z.string().optional(),
+      compaction: z.string().optional(),
+      title: z.string().optional(),
+      summary: z.string().optional(),
+      mockup: z.string().optional(),
     }).optional(),
 
     // Auth (Vibes System)

@@ -434,7 +434,7 @@ export async function compactOldSessions(
 
         const settings = readSettings();
         const baseModel = (settings as any).memoriesSynthesisModelV2
-            || (settings as any).standardModeModel
+            || (settings as any).executorModel
             || DEFAULT_STANDARD_MODEL;
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 

@@ -44,7 +44,7 @@ export async function generateAutoCommitMessage({
     }
 
     const settings = readSettings();
-    const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     // Build a summary of changes with limited diffs
     const allFiles = [

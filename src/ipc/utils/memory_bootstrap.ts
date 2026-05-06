@@ -224,7 +224,7 @@ async function bootstrapFromDNA(params: {
     const settings = readSettings();
 
     const baseModel = settings.memoriesSynthesisModelV2
-        || settings.standardModeModel
+        || settings.executorModel
         || DEFAULT_STANDARD_MODEL;
     // Transparent nitro: use fastest provider for memory calls
     const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";

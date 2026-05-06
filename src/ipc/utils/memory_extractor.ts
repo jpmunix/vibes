@@ -274,7 +274,7 @@ export async function extractMemoriesFromBatch(params: {
 
         // LLM call
         const baseModel = settings.memoriesSynthesisModelV2
-            || settings.standardModeModel
+            || settings.executorModel
             || DEFAULT_STANDARD_MODEL;
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
         const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
@@ -630,7 +630,7 @@ export async function extractMemoriesFromChatCycle(params: {
 
         // 4. LLM call using the synthesis prompt
         const baseModel = settings.memoriesSynthesisModelV2
-            || settings.standardModeModel
+            || settings.executorModel
             || DEFAULT_STANDARD_MODEL;
         // Transparent nitro: use fastest provider for memory calls
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
