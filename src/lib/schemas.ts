@@ -7,6 +7,13 @@ import { isOpenAIOrAnthropicSetup } from "./providerUtils";
  */
 export const DEFAULT_STANDARD_MODEL = "google/gemini-2.5-flash-lite" as const;
 
+/**
+ * Default model for agent overrides when no explicit value is set.
+ * Used by: plan, explore, general, compaction, title, summary, mockup.
+ * Build always uses selectedModel (the chat picker model).
+ */
+export const DEFAULT_AGENT_MODEL = "google/gemini-3.1-flash-lite-preview" as const;
+
 export const SecretSchema = z.object({
   value: z.string(),
   encryptionType: z.enum(["electron-safe-storage", "plaintext"]).optional(),
@@ -491,6 +498,19 @@ export const UserSettingsSchema = z
     // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
     enableMorphPatchTool: z.boolean().optional(),
     morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
+
+    // Per-agent model overrides — allows assigning a different model to each agent.
+    // Build always uses `selectedModel` (the chat picker model).
+    // If not set, falls back to DEFAULT_AGENT_MODEL.
+    agentModels: z.object({
+      plan: z.string().optional(),        // Plan agent (analysis/planning)
+      explore: z.string().optional(),     // Explore subagent (read-only codebase exploration)
+      general: z.string().optional(),     // General subagent (multi-purpose, parallel tasks)
+      compaction: z.string().optional(),  // Compaction agent (context summarization)
+      title: z.string().optional(),       // Title agent (session title generation)
+      summary: z.string().optional(),     // Summary agent (session summary generation)
+      mockup: z.string().optional(),      // Mockup agent (fast visual edits, no bash)
+    }).optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),

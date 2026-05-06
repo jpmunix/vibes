@@ -11,6 +11,7 @@ import { ChatHeader } from "./chat/ChatHeader";
 import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
+import { CrossChatNotification } from "./chat/CrossChatNotification";
 
 
 import { Button } from "@/components/ui/button";
@@ -392,6 +393,9 @@ export function ChatPanel({
                 </div>
               )}
             </>
+
+            {/* Cross-chat notification: alerts when ANOTHER chat has pending questions/permissions */}
+            <CrossChatNotification />
 
             {/* Scroll to bottom button */}
             {showScrollButton && progressiveMessages.length > 0 && (

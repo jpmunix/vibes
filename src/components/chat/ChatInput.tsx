@@ -83,7 +83,8 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
-import { quotedMessagesAtom, selectedDesignAtom } from "@/atoms/chatAtoms";
+import { quotedMessagesAtom } from "@/atoms/chatAtoms";
+import { saveDraft, loadDraft, clearDraft } from "@/lib/chat-draft";
 
 export function ChatInput({
   chatId,
@@ -99,7 +100,33 @@ export function ChatInput({
   // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
-  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
+
+  // ── Per-chat draft persistence ─────────────────────────────────────────
+  // Restore draft when switching chats
+  const prevChatIdRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    // Save draft for the chat we're leaving
+    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chatId) {
+      saveDraft(prevChatIdRef.current, inputValue);
+    }
+    prevChatIdRef.current = chatId;
+
+    // Load draft for the chat we're entering
+    if (chatId !== undefined) {
+      const draft = loadDraft(chatId);
+      setInputValue(draft);
+    }
+  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced save — persist draft every 2s while typing (not on every keystroke)
+  useEffect(() => {
+    if (chatId === undefined) return;
+    const timer = setTimeout(() => {
+      saveDraft(chatId, inputValue);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [inputValue, chatId]);
+
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions, revertVersion, refreshVersions } = useVersions(appId);
@@ -118,8 +145,6 @@ export function ChatInput({
   const [isUndoLoading, setIsUndoLoading] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-  // Workspace: detect first message to show foundational pickers (template + design)
-  const isFirstWorkspaceMessage = workspaceMode && currentMessages.filter(m => m.role === "user").length === 0;
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -272,6 +297,7 @@ export function ChatInput({
         return next;
       });
       setInputValue("");
+      if (chatId) clearDraft(chatId);
       clearAttachments(); // free the attachment slots visually
       return;
     }
@@ -298,25 +324,10 @@ export function ChatInput({
     window.dispatchEvent(new CustomEvent("vibes:scroll-to-bottom"));
 
     setInputValue("");
+    if (chatId) clearDraft(chatId);
 
     let currentChatId = chatId;
 
-    // ── Workspace foundational message: install design system on first message ──
-    if (workspaceMode && isFirstWorkspaceMessage && selectedDesign && appId) {
-      try {
-        const app = await ipc.app.getApp(appId);
-        if (app?.path) {
-          if (selectedDesign.customContent) {
-            await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
-          } else {
-            await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
-          }
-        }
-      } catch (designError) {
-        console.error("[ChatInput] 🎨 DESIGN ERROR:", designError);
-      }
-      setSelectedDesign(null);
-    }
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -638,8 +649,6 @@ export function ChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
-                    showTemplatePicker={workspaceMode && isFirstWorkspaceMessage}
-                    showDesignPicker={workspaceMode && isFirstWorkspaceMessage}
                   />
                 </div>
 
@@ -705,22 +714,32 @@ export function ChatInput({
                                       if (aiMessages && Array.isArray(aiMessages)) {
                                         const userMsg = aiMessages.find((m: any) => m.role === "user");
                                         if (userMsg && Array.isArray(userMsg.content)) {
-                                          userMsg.content.forEach((part: any, i: number) => {
+                                          for (let i = 0; i < userMsg.content.length; i++) {
+                                            const part = userMsg.content[i];
                                             if (part.type === "image" && part.image) {
                                               const mimeType = part.mediaType || part.mimeType || "image/png";
                                               const ext = mimeType.split("/")[1] || "png";
                                               try {
-                                                let base64 = part.image;
-                                                if (base64.startsWith("data:")) {
-                                                  base64 = base64.split(",")[1] || "";
+                                                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
+                                                if (isUrl) {
+                                                  // CDN URL: fetch the image and create a File
+                                                  const resp = await fetch(part.image);
+                                                  const blob = await resp.blob();
+                                                  attachmentsToRestore.push(new File([blob], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                                                } else {
+                                                  // Legacy base64 data
+                                                  let base64 = part.image;
+                                                  if (base64.startsWith("data:")) {
+                                                    base64 = base64.split(",")[1] || "";
+                                                  }
+                                                  const byteChars = atob(base64);
+                                                  const byteArr = new Uint8Array(byteChars.length);
+                                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                                  attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
                                                 }
-                                                const byteChars = atob(base64);
-                                                const byteArr = new Uint8Array(byteChars.length);
-                                                for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                                                attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
                                               } catch { /* skip */ }
                                             }
-                                          });
+                                          }
                                         }
                                       }
                                     }

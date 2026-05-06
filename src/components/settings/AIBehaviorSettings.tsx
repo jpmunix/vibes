@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { systemClient } from "@/ipc/types/system";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSettings } from "@/hooks/useSettings";
@@ -9,6 +9,8 @@ import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
 import { AgentToolsSettings } from "./AgentToolsSettings";
 import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
+import { AgentModelSelector } from "./AgentModelSelector";
+import type { AgentId } from "./AgentModelSelector";
 
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -63,6 +65,57 @@ function SettingRow({
   );
 }
 
+// ─── Agent model definitions for the collapsible section ───
+const AGENT_MODEL_ENTRIES: { id: AgentId; label: string; description: string }[] = [
+  { id: "plan",       label: "Plan",        description: "Análisis y planificación" },
+  { id: "explore",    label: "Explore",     description: "Exploración del codebase (solo lectura)" },
+  { id: "general",    label: "General",     description: "Subagente multipropósito para tareas en paralelo" },
+  { id: "compaction", label: "Compaction",  description: "Compactación automática de contexto largo" },
+  { id: "title",      label: "Title",       description: "Generación de títulos de sesión" },
+  { id: "summary",    label: "Summary",     description: "Resúmenes automáticos de sesión" },
+  { id: "mockup",     label: "Mockup",      description: "Mockups y ediciones visuales rápidas (sin terminal)" },
+];
+
+// ─── Collapsible agent models section ───
+function AgentModelsSection() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <div className="flex-1">
+          <h3 className="typo-label">Modelos por agente</h3>
+          <p className="typo-caption mt-1">
+            Asigna un modelo distinto a cada agente para optimizar coste y rendimiento
+          </p>
+        </div>
+        <ChevronRight
+          className={cn(
+            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+            expanded && "rotate-90",
+          )}
+        />
+      </div>
+
+      {expanded && (
+        <div className="pl-4 space-y-0">
+          {AGENT_MODEL_ENTRIES.map((entry) => (
+            <SettingRow
+              key={entry.id}
+              label={entry.label}
+              description={entry.description}
+              control={<AgentModelSelector agentId={entry.id} />}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export function AIBehaviorSettings({
   isHighlighted,
@@ -96,10 +149,10 @@ export function AIBehaviorSettings({
     >
       <div className="mb-8">
         <h2 className="typo-section-title">
-          Agente
+          Agentes
         </h2>
         <p className="typo-caption mt-1">
-          Personaliza cómo el agente procesa la información y se comunica contigo
+          Personaliza cómo los agentes procesan la información y los modelos que usan
         </p>
       </div>
 
@@ -195,10 +248,13 @@ export function AIBehaviorSettings({
 
         {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
 
-        {/* Modelo para tareas internas */}
+        {/* ── Modelos por agente — collapsible section ── */}
+        <AgentModelsSection />
+
+        {/* Modelo para tareas sencillas (small_model en OpenCode) */}
         <SettingRow
-          label="Modelo para tareas internas"
-          description="Títulos, resúmenes y mantenimiento"
+          label="Modelo para tareas sencillas"
+          description="Títulos de sesión, resúmenes y otras tareas ligeras internas"
           control={<StandardModeModelSelector />}
         />
 

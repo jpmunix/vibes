@@ -22,8 +22,384 @@ import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
+import { compactOldSessions } from "./memory_lifecycle";
 
 const logger = log.scope("memory_extractor");
+
+// =============================================================================
+// Batching — accumulate N rounds before synthesis
+// =============================================================================
+
+const BATCH_SIZE = 3;
+
+interface RoundEntry {
+    userPrompt: string;
+    assistantResponse: string;
+}
+
+interface ChatBuffer {
+    rounds: RoundEntry[];
+    appId: number;
+    userId: string;
+}
+
+/** In-memory buffer per chatId. Cleared on flush or process exit. */
+const chatBuffers = new Map<string, ChatBuffer>();
+
+/**
+ * Buffer a chat round. When BATCH_SIZE is reached, triggers synthesis
+ * with all accumulated rounds. Fire-and-forget.
+ */
+export function bufferChatRound(params: {
+    chatId: string;
+    appId: number;
+    userId: string;
+    userPrompt: string;
+    assistantResponse: string;
+}): void {
+    const { chatId, appId, userId, userPrompt, assistantResponse } = params;
+
+    let buffer = chatBuffers.get(chatId);
+    if (!buffer) {
+        buffer = { rounds: [], appId, userId };
+        chatBuffers.set(chatId, buffer);
+    }
+
+    buffer.rounds.push({ userPrompt, assistantResponse });
+
+    if (buffer.rounds.length >= BATCH_SIZE) {
+        const rounds = [...buffer.rounds];
+        buffer.rounds = [];
+        // Fire-and-forget
+        extractMemoriesFromBatch({ appId, userId, chatId, rounds })
+            .catch(err => logger.warn("[Memory] Batch extraction failed:", err));
+    }
+}
+
+/**
+ * Flush any remaining rounds in the buffer for a chat (e.g., on session end).
+ * Fire-and-forget — safe to call even if buffer is empty.
+ */
+export function flushChatBuffer(chatId: string): void {
+    const buffer = chatBuffers.get(chatId);
+    if (!buffer || buffer.rounds.length === 0) {
+        chatBuffers.delete(chatId);
+        return;
+    }
+
+    const { appId, userId, rounds } = buffer;
+    chatBuffers.delete(chatId);
+
+    extractMemoriesFromBatch({ appId, userId, chatId, rounds: [...rounds] })
+        .catch(err => logger.warn("[Memory] Flush extraction failed:", err));
+}
+
+// =============================================================================
+// Buffer Persistence — survive app restarts
+// =============================================================================
+
+import { app } from "electron";
+import * as path from "node:path";
+import * as fs from "node:fs";
+
+/** File where pending buffers are persisted on quit */
+const PENDING_BUFFER_FILE = () => path.join(app.getPath("userData"), ".memory_pending_buffer.json");
+
+interface SerializedBuffer {
+    chatId: string;
+    appId: number;
+    userId: string;
+    rounds: RoundEntry[];
+}
+
+/**
+ * Persist all pending (unflushed) chat buffers to disk.
+ * Called synchronously during `will-quit` — MUST use writeFileSync.
+ *
+ * @returns number of buffers persisted
+ */
+export function serializePendingBuffers(): number {
+    const pending: SerializedBuffer[] = [];
+
+    for (const [chatId, buffer] of chatBuffers.entries()) {
+        if (buffer.rounds.length > 0) {
+            pending.push({
+                chatId,
+                appId: buffer.appId,
+                userId: buffer.userId,
+                rounds: buffer.rounds,
+            });
+        }
+    }
+
+    if (pending.length === 0) {
+        // Clean up any stale file
+        try { fs.unlinkSync(PENDING_BUFFER_FILE()); } catch { /* ignore */ }
+        return 0;
+    }
+
+    try {
+        fs.writeFileSync(PENDING_BUFFER_FILE(), JSON.stringify(pending), "utf-8");
+        logger.info(`[Memory] Persisted ${pending.length} pending buffer(s) (${pending.reduce((n, b) => n + b.rounds.length, 0)} rounds total) to disk`);
+        return pending.length;
+    } catch (err: any) {
+        logger.warn(`[Memory] Failed to persist pending buffers: ${err.message}`);
+        return 0;
+    }
+}
+
+/**
+ * Restore and process any pending buffers that were persisted on last quit.
+ * Called at startup — fire-and-forget, non-blocking.
+ * Deletes the file after reading to prevent double-processing.
+ */
+export async function restorePendingBuffers(): Promise<void> {
+    const filePath = PENDING_BUFFER_FILE();
+
+    let raw: string;
+    try {
+        if (!fs.existsSync(filePath)) return;
+        raw = fs.readFileSync(filePath, "utf-8");
+        fs.unlinkSync(filePath); // Delete immediately to prevent double-processing
+    } catch {
+        return; // File doesn't exist or can't be read — nothing to restore
+    }
+
+    let pending: SerializedBuffer[];
+    try {
+        pending = JSON.parse(raw);
+        if (!Array.isArray(pending) || pending.length === 0) return;
+    } catch {
+        logger.warn("[Memory] Pending buffer file was corrupted — discarding");
+        return;
+    }
+
+    logger.info(`[Memory] Restoring ${pending.length} pending buffer(s) from previous session`);
+
+    for (const buf of pending) {
+        try {
+            await extractMemoriesFromBatch({
+                appId: buf.appId,
+                userId: buf.userId,
+                chatId: buf.chatId,
+                rounds: buf.rounds,
+            });
+        } catch (err: any) {
+            logger.warn(`[Memory] Failed to process restored buffer for chat ${buf.chatId}: ${err.message}`);
+        }
+    }
+}
+
+/**
+ * Extract memories from a batch of rounds (the actual LLM call).
+ * Builds a combined user message with all rounds + the previous session summary.
+ */
+async function extractMemoriesFromBatch(params: {
+    appId: number;
+    userId: string;
+    chatId: string;
+    rounds: RoundEntry[];
+}): Promise<MemoryEntry[]> {
+    const { appId, userId, chatId, rounds } = params;
+
+    if (!hasOpenRouterApiKey()) return [];
+
+    const settings = readSettings();
+    if (settings.memoriesEnabled === false || settings.memoriesAutoExtract === false) return [];
+
+    try {
+        // Strip thinking blocks from all responses
+        const cleanRounds = rounds.map(r => ({
+            userPrompt: r.userPrompt,
+            assistantResponse: stripThinkingBlocks(r.assistantResponse),
+        }));
+
+        // Guardian check on the combined content
+        const combinedPrompt = cleanRounds.map(r => r.userPrompt).join("\n");
+        const combinedResponse = cleanRounds.map(r => r.assistantResponse).join("\n");
+        const guardianResult = shouldProcessInteraction(combinedPrompt, combinedResponse);
+        if (!guardianResult.allowed) {
+            debugLog("BatchGuardian", `❌ Rejected batch (${rounds.length} rounds): ${guardianResult.reason}`);
+            logTelemetry({ userId, appId, action: "skipped_trivial", reason: `BatchGuardian: ${guardianResult.reason}` });
+            return [];
+        }
+
+        // Load existing memories
+        const db = getRemoteDb();
+        const existingRows = await db
+            .select()
+            .from(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.userId, userId),
+                    eq(remoteSchema.memories.appId, appId),
+                    eq(remoteSchema.memories.enabled, 1),
+                ),
+            );
+
+        // Build structured user message with ALL rounds
+        const parts: string[] = ["# CONTEXTO ACTUAL", ""];
+
+        // Existing memories
+        if (existingRows.length > 0) {
+            parts.push("## Memorias existentes de esta app:");
+            for (const m of existingRows) {
+                parts.push(`- [#${m.id}] [${m.type}] key:${m.key || "—"} | imp:${m.importance} | ${m.content}`);
+            }
+            parts.push("");
+        }
+
+        // All rounds in the batch
+        parts.push(`## Interacciones recientes a evaluar (${cleanRounds.length} rondas):`);
+        for (let i = 0; i < cleanRounds.length; i++) {
+            const r = cleanRounds[i];
+            const maxLen = Math.floor(3000 / cleanRounds.length); // Distribute token budget
+            const truncPrompt = r.userPrompt.length > maxLen
+                ? r.userPrompt.slice(0, maxLen) + "... [truncado]"
+                : r.userPrompt;
+            const truncResponse = r.assistantResponse.length > maxLen
+                ? r.assistantResponse.slice(0, maxLen) + "... [truncado]"
+                : r.assistantResponse;
+
+            parts.push(`### Ronda ${i + 1}/${cleanRounds.length}`);
+            parts.push("**Usuario:**");
+            parts.push(truncPrompt);
+            parts.push("");
+            parts.push("**Asistente:**");
+            parts.push(truncResponse);
+            parts.push("");
+        }
+
+        const userMessage = parts.join("\n");
+
+        // LLM call
+        const baseModel = settings.memoriesSynthesisModelV2
+            || settings.standardModeModel
+            || DEFAULT_STANDARD_MODEL;
+        const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
+        const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
+
+        debugPlayground("Synthesis-Batch", model, synthesisPrompt, userMessage);
+
+        const t0 = Date.now();
+        const data = await openRouterCompletion({
+            model,
+            messages: [
+                { role: "system", content: synthesisPrompt },
+                { role: "user", content: userMessage },
+            ],
+            temperature: 0.2,
+            max_tokens: 800,
+            response_format: { type: "json_object" },
+            title: "Vibes - Memory Synthesis (Batch)",
+        });
+        const durationMs = Date.now() - t0;
+
+        const rawContent = data.choices?.[0]?.message?.content?.trim();
+        if (!rawContent) {
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: "",
+                resultCount: 0, durationMs, success: true,
+            });
+            return [];
+        }
+
+        // Parse JSON
+        let operations: SynthesisOperation[];
+        try {
+            const parsed = extractJsonFromLLM(rawContent);
+            if (parsed?.operations && Array.isArray(parsed.operations)) {
+                operations = parsed.operations;
+            } else {
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis", model,
+                    systemPrompt: synthesisPrompt,
+                    userMessage,
+                    rawResponse: rawContent,
+                    resultCount: 0, durationMs, success: false,
+                    error: "Unexpected JSON structure",
+                });
+                return [];
+            }
+        } catch {
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                resultCount: 0, durationMs, success: false,
+                error: "JSON parse error",
+            });
+            return [];
+        }
+
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    batchSize: rounds.length,
+                    existingMemoriesCount: existingRows.length,
+                    operationsGenerated: operations.length,
+                },
+            }),
+            resultCount: operations.length, durationMs, success: true,
+        });
+
+        if (operations.length === 0) return [];
+
+        // Process operations
+        const persisted: MemoryEntry[] = [];
+        const now = new Date();
+        const VALID_TYPES = new Set(["session", "preference", "issue"]);
+
+        for (const op of operations.slice(0, 3)) {
+            try {
+                if (op.action === "add") {
+                    const result = await handleAdd(op, db, existingRows, userId, appId, chatId, now, VALID_TYPES);
+                    if (result) persisted.push(result);
+                } else if (op.action === "update") {
+                    const result = await handleUpdate(op, db, existingRows, appId, chatId, now);
+                    if (result) persisted.push(result);
+                } else if (op.action === "merge") {
+                    const result = await handleMerge(op, db, existingRows, userId, appId, chatId, now, VALID_TYPES);
+                    if (result) persisted.push(result);
+                }
+            } catch (opErr: any) {
+                logger.warn(`[Memory] Batch op failed: ${opErr.message}`);
+            }
+        }
+
+        if (persisted.length > 0) {
+            logTelemetry({
+                userId, appId,
+                action: "synthesized",
+                extractedKeys: persisted.map(p => p.key || "—"),
+            });
+
+            // P2: Trigger compaction after successful extraction (fire-and-forget)
+            compactOldSessions(appId, userId)
+                .catch(err => logger.warn("[Memory] Compaction failed:", err));
+        }
+
+        logger.info(`[Memory] Batch synthesis: ${persisted.length} memories from ${rounds.length} rounds (chat ${chatId})`);
+        return persisted;
+
+    } catch (error: any) {
+        logger.warn(`[Memory] Batch extraction failed: ${error.message}`);
+        return [];
+    }
+}
 
 // =============================================================================
 // Types
@@ -32,7 +408,7 @@ const logger = log.scope("memory_extractor");
 interface SynthesisOperation {
     action: "add" | "update" | "merge";
     // add fields
-    type?: "fact" | "preference" | "issue" | "episode" | "decision";
+    type?: "session" | "preference" | "issue";
     key?: string | null;
     content?: string;
     importance?: number; // 0.0–1.0
@@ -301,7 +677,7 @@ export async function extractMemoriesFromChatCycle(params: {
         // 6. Process operations
         const persisted: MemoryEntry[] = [];
         const now = new Date();
-        const VALID_TYPES = new Set(["fact", "preference", "issue", "episode", "decision"]);
+        const VALID_TYPES = new Set(["session", "preference", "issue"]);
 
         for (const op of operations.slice(0, 3)) { // Hard cap at 3
             try {
@@ -372,7 +748,7 @@ export async function handleAdd(
         return null;
     }
 
-    if ((op.type === "episode" || op.type === "issue") && op.content.length < 30) {
+    if ((op.type === "session" || op.type === "episode" || op.type === "issue") && op.content.length < 30) {
         logger.info(`[Memory] Filtered short ${op.type}: "${op.content}"`);
         return null;
     }

@@ -44,7 +44,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
     const currentValue = settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID;
 
     // Only show enabled templates in the compact picker
-    const ENABLED_TEMPLATE_IDS = new Set(["react-beta", "express"]);
+    const ENABLED_TEMPLATE_IDS = new Set(["react-beta", "express", "next"]);
     const templates = localTemplatesData.filter(
         (t) => t.isOfficial && !t.isExperimental && ENABLED_TEMPLATE_IDS.has(t.id),
     );

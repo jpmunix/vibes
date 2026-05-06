@@ -30,6 +30,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
+import { DEFAULT_AGENT_MODEL } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
 
 const logger = log.scope("opencode_adapter");
@@ -48,6 +49,63 @@ let lastProjectDir: string | null = null;
 /** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
 export function getOpenCodeClientInstance() {
     return clientInstance;
+}
+
+/**
+ * Resolve the effective model for a given agent.
+ * Priority: agentModels[agentId] → DEFAULT_AGENT_MODEL → selectedModel (global picker).
+ * `build` always uses selectedModel. All others check agentModels first.
+ */
+export function resolveModelForAgent(
+    agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
+    settings: any // UserSettings
+): { model: { name: string; provider: string }; providerID: string; modelID: string } {
+    // Build always uses the global selectedModel (chat picker)
+    if (agentId === "build") {
+        const model = settings.selectedModel;
+        const result = {
+            model,
+            providerID: mapProviderForOpenCode(model),
+            modelID: composeModelWithVariant(
+                sanitizeModelName(model.name),
+                settings.selectedModelVariant ?? "",
+            ),
+        };
+        logger.info(`[AgentModel] BUILD → ${result.providerID}/${result.modelID} (selectedModel)`);
+        return result;
+    }
+
+    // All other agents: check agentModels override → DEFAULT_AGENT_MODEL → selectedModel
+    const agentModelName = settings.agentModels?.[agentId];
+    const effectiveModelName = agentModelName || DEFAULT_AGENT_MODEL;
+    const source = agentModelName ? "agentModels override" : "DEFAULT_AGENT_MODEL";
+
+    if (effectiveModelName) {
+        const agentModel = {
+            name: effectiveModelName,
+            provider: "openrouter",
+        };
+        const result = {
+            model: agentModel,
+            providerID: "openrouter",
+            modelID: sanitizeModelName(effectiveModelName),
+        };
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${source})`);
+        return result;
+    }
+
+    // Ultimate fallback: global selectedModel
+    const model = settings.selectedModel;
+    const result = {
+        model,
+        providerID: mapProviderForOpenCode(model),
+        modelID: composeModelWithVariant(
+            sanitizeModelName(model.name),
+            settings.selectedModelVariant ?? "",
+        ),
+    };
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (fallback to selectedModel)`);
+    return result;
 }
 
 // Active stream text injector — allows the question reply handler to inject
@@ -442,6 +500,17 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
                 const newSessionId = forked.data?.id;
                 if (newSessionId) {
                     chatSessionMap.set(chatId, newSessionId);
+                    // Delete the original session (now replaced by the fork)
+                    deleteOpenCodeSessionById(sessionId);
+                    // Update DB reference to point to the new forked session
+                    try {
+                        const db = getRemoteDb();
+                        await db.update(remoteSchema.chats)
+                            .set({ opencodeSessionId: newSessionId })
+                            .where(eq(remoteSchema.chats.id, chatId));
+                    } catch (e: any) {
+                        logger.warn(`[OpenCode] Failed to persist forked sessionId: ${e.message}`);
+                    }
                     logger.info(`[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`);
                     return;
                 }
@@ -452,6 +521,7 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
 
         // Last resort: destroy session
         chatSessionMap.delete(chatId);
+        deleteOpenCodeSessionById(sessionId);
         logger.warn(`[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`);
     }
 }
@@ -466,7 +536,346 @@ export function destroyOpenCodeSession(chatId: number): void {
     if (sessionId) {
         chatSessionMap.delete(chatId);
         logger.info(`[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`);
+        deleteOpenCodeSessionById(sessionId);
     }
+}
+
+/**
+ * Delete a specific OpenCode session from the backend by its ID.
+ */
+export function deleteOpenCodeSessionById(sessionId: string): void {
+    if (clientInstance) {
+        clientInstance.session.delete({ path: { id: sessionId } }).catch((err: any) => {
+            logger.warn(`[OpenCode] Failed to delete session ${sessionId} from backend: ${err.message}`);
+        });
+    }
+}
+
+/**
+ * Clean up ALL OpenCode sessions associated with a Vibes app.
+ * Must be called BEFORE the app row is deleted (FK cascade would lose opencodeSessionId).
+ */
+export async function cleanupOpenCodeSessionsForApp(appId: number): Promise<void> {
+    if (!clientInstance) return;
+
+    const db = getRemoteDb();
+
+    // 1. Get all chats with opencode sessions for this app
+    const chatsWithSessions = await db.query.chats.findMany({
+        where: eq(remoteSchema.chats.appId, appId),
+        columns: { id: true, opencodeSessionId: true },
+    });
+
+    // 2. Delete each session from OpenCode backend
+    for (const chat of chatsWithSessions) {
+        if (chat.opencodeSessionId) {
+            deleteOpenCodeSessionById(chat.opencodeSessionId);
+        }
+        chatSessionMap.delete(chat.id);
+    }
+
+    // 3. Clean up visual-edit session for this app's path
+    const app = await db.query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
+        columns: { path: true },
+    });
+    if (app?.path) {
+        const appPath = getVibesAppPath(app.path);
+        const visualSessionId = visualEditSessionMap.get(appPath);
+        if (visualSessionId) {
+            deleteOpenCodeSessionById(visualSessionId);
+            visualEditSessionMap.delete(appPath);
+        }
+    }
+
+    logger.info(`[OpenCode] Cleaned up ${chatsWithSessions.length} session(s) for app ${appId}`);
+}
+
+/**
+ * Purge orphaned OpenCode sessions that no longer correspond to any Vibes chat.
+ * @param dryRun If true, returns a report without deleting anything.
+ * @returns Summary object including a full markdown report string.
+ */
+export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<{
+    totalInOpenCode: number;
+    knownInVibes: number;
+    orphaned: number;
+    deleted: number;
+    errors: number;
+    report: string;
+}> {
+    const emptyResult = { totalInOpenCode: 0, knownInVibes: 0, orphaned: 0, deleted: 0, errors: 0, report: '' };
+
+    // Auto-start the OpenCode server if it's not running
+    if (!clientInstance) {
+        try {
+            const dummyPath = getVibesAppPath(".");
+            await getOpenCodeClient(dummyPath);
+        } catch (e: any) {
+            return { ...emptyResult, report: `❌ No se pudo iniciar el servidor de OpenCode: ${e.message}` };
+        }
+    }
+    if (!clientInstance) {
+        return { ...emptyResult, report: '❌ No se pudo obtener el cliente de OpenCode.' };
+    }
+
+    const startMs = Date.now();
+
+    // 1. Get ALL sessions from OpenCode (experimental endpoint: cross-project)
+    //    The v1 SDK only has session.list() which is project-scoped.
+    //    We use the raw HTTP endpoint /experimental/session to list across ALL projects.
+    let allOcSessions: Array<{ id: string; title: string; createdAt: string }> = [];
+    try {
+        const url = `${serverUrl}/experimental/session?limit=10000`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        const sessions = Array.isArray(data) ? data : (data.data || data.sessions || []);
+        allOcSessions = sessions.map((s: any) => ({
+            id: s.id,
+            title: s.title || s.info?.title || '(sin título)',
+            createdAt: s.time?.created ? new Date(s.time.created * 1000).toISOString() : s.createdAt || '?',
+        }));
+    } catch (e: any) {
+        return { ...emptyResult, report: `❌ Error al listar sesiones OpenCode: ${e.message}` };
+    }
+
+    // 2. Get all known session IDs from Vibes DB
+    const db = getRemoteDb();
+    const allChats = await db.query.chats.findMany({
+        columns: { id: true, opencodeSessionId: true, title: true, appId: true },
+    });
+    const knownIds = new Set<string>();
+    const knownSessionDetails = new Map<string, { chatId: number; chatTitle: string | null; appId: number }>();
+    for (const c of allChats) {
+        if (c.opencodeSessionId) {
+            knownIds.add(c.opencodeSessionId);
+            knownSessionDetails.set(c.opencodeSessionId, {
+                chatId: c.id,
+                chatTitle: c.title,
+                appId: c.appId,
+            });
+        }
+    }
+    // Visual-edit sessions are also "known"
+    for (const [appPath, sid] of visualEditSessionMap.entries()) {
+        knownIds.add(sid);
+        knownSessionDetails.set(sid, { chatId: 0, chatTitle: `[visual-edit] ${appPath}`, appId: 0 });
+    }
+    // In-memory chat sessions (may not be persisted to DB yet)
+    for (const [chatId, sid] of chatSessionMap.entries()) {
+        if (!knownIds.has(sid)) {
+            knownIds.add(sid);
+            knownSessionDetails.set(sid, { chatId, chatTitle: `[en memoria]`, appId: 0 });
+        }
+    }
+
+    // 3. Classify
+    const orphanSessions = allOcSessions.filter(s => !knownIds.has(s.id));
+    const matchedSessions = allOcSessions.filter(s => knownIds.has(s.id));
+
+    // Diagnostic logging
+    logger.info(`[OpenCode] Purge diagnostic: ${allChats.length} chats in DB, ${knownIds.size} known IDs, ${chatSessionMap.size} in-memory, ${visualEditSessionMap.size} visual-edit`);
+    if (allChats.length > 0) {
+        const sample = allChats.slice(0, 3).map(c => `chat#${c.id}→${c.opencodeSessionId ?? 'NULL'}`).join(', ');
+        logger.info(`[OpenCode] DB sample: ${sample}`);
+    }
+    if (allOcSessions.length > 0) {
+        const sample = allOcSessions.slice(0, 3).map(s => s.id).join(', ');
+        logger.info(`[OpenCode] OC sample: ${sample}`);
+    }
+
+    // Helper: measure OpenCode data directory size
+    const measureDiskSize = (): number => {
+        try {
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const ocDataDir = `${HOME}/.local/share/opencode`;
+            const output = execSync(`du -sb "${ocDataDir}" 2>/dev/null || echo "0"`, { encoding: 'utf-8' }).trim();
+            return parseInt(output.split('\t')[0], 10) || 0;
+        } catch { return 0; }
+    };
+    const formatBytes = (bytes: number): string => {
+        if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+    };
+
+    const sizeBefore = measureDiskSize();
+
+    // 4. Delete orphans (unless dryRun)
+    let deleted = 0;
+    let errors = 0;
+    const deleteResults: Array<{ id: string; title: string; success: boolean; error?: string }> = [];
+    if (!dryRun) {
+        for (const orphan of orphanSessions) {
+            try {
+                await clientInstance!.session.delete({ path: { id: orphan.id } });
+                deleted++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: true });
+            } catch (e: any) {
+                errors++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: false, error: e.message });
+            }
+        }
+
+        // 4b. Deep cleanup: remove orphan diff files from disk
+        let diffsCleaned = 0;
+        try {
+            const fs = require('fs');
+            const pathMod = require('path');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const diffDir = pathMod.join(HOME, '.local/share/opencode/storage/session_diff');
+            if (fs.existsSync(diffDir)) {
+                // Get remaining session IDs from DB
+                const { execSync } = require('child_process');
+                const dbPath = pathMod.join(HOME, '.local/share/opencode/opencode.db');
+                const existingIds = new Set<string>();
+                try {
+                    const output = execSync(`sqlite3 "${dbPath}" "SELECT id FROM session;"`, { encoding: 'utf-8' });
+                    output.trim().split('\n').filter(Boolean).forEach((id: string) => existingIds.add(id.trim()));
+                } catch { /* DB might be locked, skip */ }
+
+                if (existingIds.size > 0) {
+                    const files = fs.readdirSync(diffDir) as string[];
+                    for (const file of files) {
+                        const sessionId = file.replace('.json', '');
+                        if (!existingIds.has(sessionId)) {
+                            try {
+                                fs.unlinkSync(pathMod.join(diffDir, file));
+                                diffsCleaned++;
+                            } catch { /* skip locked files */ }
+                        }
+                    }
+                    logger.info(`[OpenCode] Cleaned ${diffsCleaned} orphan diff files`);
+                }
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Diff cleanup error (non-fatal): ${e.message}`);
+        }
+
+        // 4c. Shut down server, then VACUUM + WAL checkpoint to reclaim disk space
+        try {
+            await shutdownOpenCode();
+            logger.info('[OpenCode] Server shut down for VACUUM');
+
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const dbPath = `${HOME}/.local/share/opencode/opencode.db`;
+            execSync(`sqlite3 "${dbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 30000 });
+            logger.info('[OpenCode] VACUUM + WAL checkpoint completed');
+        } catch (e: any) {
+            logger.warn(`[OpenCode] VACUUM error (non-fatal): ${e.message}`);
+        }
+    }
+
+    const sizeAfter = dryRun ? sizeBefore : measureDiskSize();
+    const elapsedMs = Date.now() - startMs;
+
+    // 5. Build markdown report
+    const lines: string[] = [];
+    lines.push(`# Informe de Purgado OpenCode`);
+    lines.push('');
+    lines.push(`**Modo:** ${dryRun ? '🔍 Simulación (dry-run)' : '🗑️ Ejecución real'}`);
+    lines.push(`**Fecha:** ${new Date().toISOString()}`);
+    lines.push(`**Duración:** ${elapsedMs}ms`);
+    const freed = sizeBefore - sizeAfter;
+    lines.push(`**Almacenamiento OpenCode:** ${formatBytes(sizeBefore)}${!dryRun ? ` → ${formatBytes(sizeAfter)}${freed > 0 ? ` (liberado: ${formatBytes(freed)})` : ''}` : ''}`);
+    lines.push('');
+    lines.push(`## Diagnóstico`);
+    lines.push('');
+    lines.push(`| Fuente | Registros |`);
+    lines.push(`|--------|-----------|`);
+    lines.push(`| Chats en DB (tabla chats) | ${allChats.length} |`);
+    lines.push(`| Chats con opencodeSessionId | ${allChats.filter(c => c.opencodeSessionId).length} |`);
+    lines.push(`| chatSessionMap (memoria) | ${chatSessionMap.size} |`);
+    lines.push(`| visualEditSessionMap (memoria) | ${visualEditSessionMap.size} |`);
+    lines.push(`| IDs conocidos (total) | ${knownIds.size} |`);
+    lines.push(`| Sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push('');
+    if (allChats.length > 0 && allChats.filter(c => c.opencodeSessionId).length > 0) {
+        lines.push(`**Muestra DB** (primeros 5 con sessionId):`);
+        const dbSample = allChats.filter(c => c.opencodeSessionId).slice(0, 5);
+        for (const c of dbSample) {
+            lines.push(`- chat #${c.id} → \`${c.opencodeSessionId}\``);
+        }
+        lines.push('');
+    }
+    if (allOcSessions.length > 0) {
+        lines.push(`**Muestra OpenCode** (primeros 5):`);
+        for (const s of allOcSessions.slice(0, 5)) {
+            lines.push(`- \`${s.id}\` — ${s.title}`);
+        }
+        lines.push('');
+    }
+    lines.push(`## Resumen`);
+    lines.push('');
+    lines.push(`| Métrica | Valor |`);
+    lines.push(`|---------|-------|`);
+    lines.push(`| Total sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push(`| Sesiones vinculadas a Vibes | ${matchedSessions.length} |`);
+    lines.push(`| Sesiones huérfanas | ${orphanSessions.length} |`);
+    if (!dryRun) {
+        lines.push(`| Eliminadas | ${deleted} |`);
+        lines.push(`| Errores al eliminar | ${errors} |`);
+    }
+    lines.push('');
+
+    if (matchedSessions.length > 0) {
+        lines.push(`## ✅ Sesiones vinculadas (se conservan)`);
+        lines.push('');
+        lines.push(`| Session ID | Título OC | Chat Vibes | App ID |`);
+        lines.push(`|-----------|-----------|------------|--------|`);
+        for (const s of matchedSessions) {
+            const detail = knownSessionDetails.get(s.id);
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            lines.push(`| \`${sid}\` | ${s.title} | ${detail ? `#${detail.chatId} "${detail.chatTitle || ''}"` : '?'} | ${detail?.appId ?? '?'} |`);
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length > 0) {
+        lines.push(`## ${dryRun ? '⚠️ Sesiones huérfanas (se eliminarían)' : '🗑️ Sesiones huérfanas eliminadas'}`);
+        lines.push('');
+        if (dryRun) {
+            lines.push(`| Session ID | Título | Creado |`);
+            lines.push(`|-----------|--------|--------|`);
+        } else {
+            lines.push(`| Session ID | Título | Creado | Estado |`);
+            lines.push(`|-----------|--------|--------|--------|`);
+        }
+        for (const s of orphanSessions) {
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            if (dryRun) {
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} |`);
+            } else {
+                const result = deleteResults.find(r => r.id === s.id);
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} | ${result?.success ? '✅' : `❌ ${result?.error}`} |`);
+            }
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length === 0) {
+        lines.push(`> ✨ No se encontraron sesiones huérfanas. Todo sincronizado.`);
+        lines.push('');
+    }
+
+    const report = lines.join('\n');
+    logger.info(
+        `[OpenCode] Purge ${dryRun ? '(dry-run)' : ''}: ${allOcSessions.length} total, ` +
+        `${orphanSessions.length} orphaned, ${deleted} deleted, ${errors} errors (${elapsedMs}ms)`
+    );
+
+    return {
+        totalInOpenCode: allOcSessions.length,
+        knownInVibes: matchedSessions.length,
+        orphaned: orphanSessions.length,
+        deleted,
+        errors,
+        report,
+    };
 }
 
 /**
@@ -479,6 +888,7 @@ export async function updateOpenCodeConfig(changes: {
     standardModeModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    agentModels?: { plan?: string; explore?: string };
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
@@ -498,11 +908,25 @@ export async function updateOpenCodeConfig(changes: {
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
+                ...(body.agent || {}),
                 build: {
                     ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
                     ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
                 },
             };
+        }
+        // Hot-update per-agent model overrides (all agents)
+        if (changes.agentModels) {
+            const agentConfig: Record<string, any> = body.agent || {};
+            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
+            for (const id of agentIds) {
+                if (changes.agentModels[id]) {
+                    agentConfig[id] = { ...(agentConfig[id] || {}), model: `openrouter/${changes.agentModels[id]}` };
+                }
+            }
+            body.agent = agentConfig;
+            const summary = agentIds.map(id => `${id}=${changes.agentModels[id] || 'default'}`).join(', ');
+            logger.info(`[OpenCode] Agent models updated: ${summary}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -965,6 +1389,10 @@ async function getOpenCodeClient(appPath: string) {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
                                 apiKey: "{env:OPENROUTER_API_KEY}",
+                                headers: {
+                                    "X-Title": "Vibes",
+                                    "HTTP-Referer": "https://vibes.minube.com",
+                                },
                             },
                         } : providerID === "anthropic" ? {
                             options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
@@ -979,12 +1407,30 @@ async function getOpenCodeClient(appPath: string) {
                 ...(settings.standardModeModel ? {
                     small_model: `${providerID}/${sanitizeModelName(settings.standardModeModel)}`,
                 } : {}),
-                // Agent-level config: reasoning effort + text verbosity
-                // These extra fields are passed directly to the provider as model options
+                // Agent-level config: reasoning effort + text verbosity + per-agent models
                 agent: {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
+                    },
+                    // Per-agent model overrides
+                    plan: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.plan || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    explore: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.explore || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    general: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.general || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    compaction: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.compaction || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    title: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.title || DEFAULT_AGENT_MODEL)}`,
+                    },
+                    summary: {
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.summary || DEFAULT_AGENT_MODEL)}`,
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -1013,11 +1459,11 @@ async function getOpenCodeClient(appPath: string) {
                         ].join("\n"),
                     },
                     // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
-                    // Defined as a real OpenCode custom agent per https://opencode.ai/docs/agents
                     "mockup": {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
+                        model: `openrouter/${sanitizeModelName(settings.agentModels?.mockup || DEFAULT_AGENT_MODEL)}`,
                         tools: {
                             write: true,
                             edit: true,
@@ -1030,13 +1476,6 @@ async function getOpenCodeClient(appPath: string) {
                         },
                         prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
                     },
-                    // Use the cheap/fast model for context compaction summaries
-                    // so we don't burn expensive tokens on housekeeping
-                    ...(settings.standardModeModel ? {
-                        compaction: {
-                            model: `${providerID}/${settings.standardModeModel}`,
-                        },
-                    } : {}),
                 },
                 // Permissions: built from user settings
                 permission: buildPermissionConfig(settings),
@@ -1104,6 +1543,23 @@ async function getOpenCodeClient(appPath: string) {
 
         logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
+
+        // Log full agent→model mapping for visibility
+        const am = settings.agentModels || {};
+        const resolve = (id: string) => am[id] || DEFAULT_AGENT_MODEL;
+        const tag = (id: string) => am[id] ? '(override)' : '(default)';
+        logger.info(
+            `[OpenCode] 🤖 Agent model map:\n` +
+            `  BUILD      → ${providerID}/${modelID} (selectedModel)\n` +
+            `  PLAN       → openrouter/${resolve('plan')} ${tag('plan')}\n` +
+            `  EXPLORE    → openrouter/${resolve('explore')} ${tag('explore')}\n` +
+            `  GENERAL    → openrouter/${resolve('general')} ${tag('general')}\n` +
+            `  COMPACTION → openrouter/${resolve('compaction')} ${tag('compaction')}\n` +
+            `  TITLE      → openrouter/${resolve('title')} ${tag('title')}\n` +
+            `  SUMMARY    → openrouter/${resolve('summary')} ${tag('summary')}\n` +
+            `  MOCKUP     → openrouter/${resolve('mockup')} ${tag('mockup')}\n` +
+            `  VISUAL     → ${providerID}/${modelID} (selectedModel)`
+        );
 
         return { client: opencode.client, opencode };
     } catch (error: any) {
@@ -1296,6 +1752,12 @@ export async function handleOpenCodeStream(
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
         /**
+         * Memory context block to inject via noReply before the prompt.
+         * Invisible to the user (not saved to DB, not shown in UI).
+         * OpenCode sees it as a silent user message in the session history.
+         */
+        memoryBlock?: string;
+        /**
          * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
          * Each is sent with `noReply: true` so OpenCode records them in the conversation
          * history without generating an AI response. This is the native way to "batch"
@@ -1325,67 +1787,36 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
-    // ── Append dynamic instructions to AGENTS.md (replaces old SPECS.md) ──
-    // We append a delimited section at the end of the project's AGENTS.md.
-    // OpenCode reads AGENTS.md natively — no opencode.json registration needed.
+    // ── One-time cleanup: strip old VIBES:CONTEXT from AGENTS.md ─────
+    // We no longer write to AGENTS.md (it's OpenCode's file). If a previous
+    // version left a VIBES:CONTEXT block, remove it once.
     {
         const fs = require("fs");
-        const instrContent = (options.contextInstructions && options.contextInstructions.length > 0)
-            ? options.contextInstructions.join("\n\n")
-            : "";
-
+        const agentsMdPath = path.join(projectDir, "AGENTS.md");
         const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
         const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
-        const agentsMdPath = path.join(projectDir, "AGENTS.md");
-
         try {
-            // 1. Read existing AGENTS.md (or start empty)
-            let existing = "";
             if (fs.existsSync(agentsMdPath)) {
-                existing = fs.readFileSync(agentsMdPath, "utf-8");
+                const content = fs.readFileSync(agentsMdPath, "utf-8");
+                const startIdx = content.indexOf(VIBES_START);
+                const endIdx = content.indexOf(VIBES_END);
+                if (startIdx !== -1 && endIdx !== -1) {
+                    const cleaned = content.substring(0, startIdx).trimEnd()
+                        + content.substring(endIdx + VIBES_END.length);
+                    fs.writeFileSync(agentsMdPath, cleaned.trimEnd() + "\n", "utf-8");
+                    logger.info(`${LP} 🧹 Stripped legacy VIBES:CONTEXT block from AGENTS.md`);
+                }
             }
+        } catch { /* non-fatal */ }
 
-            // 2. Strip old Vibes section if present
-            const startIdx = existing.indexOf(VIBES_START);
-            const endIdx = existing.indexOf(VIBES_END);
-            let baseContent = existing;
-            if (startIdx !== -1 && endIdx !== -1) {
-                baseContent = existing.substring(0, startIdx).trimEnd()
-                    + existing.substring(endIdx + VIBES_END.length);
-            }
-
-            // 3. Build new AGENTS.md = original content + Vibes section
-            const vibesSection = instrContent
-                ? `\n\n${VIBES_START}\n${instrContent}\n${VIBES_END}\n`
-                : "";
-            const finalContent = baseContent.trimEnd() + vibesSection;
-
-            fs.writeFileSync(agentsMdPath, finalContent, "utf-8");
-            logger.info(`${LP} 📋 Context written to AGENTS.md (${instrContent.length} chars, ${(options.contextInstructions || []).length} blocks)`);
-
-            // 4. Cleanup: delete stale docs/SPECS.md if it exists
+        // Also clean stale docs/SPECS.md if present
+        try {
             const specsPath = path.join(projectDir, "docs", "SPECS.md");
             if (fs.existsSync(specsPath)) {
                 fs.unlinkSync(specsPath);
                 logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
             }
-
-            // 5. Remove docs/SPECS.md from opencode.json instructions[] if registered
-            try {
-                const ocJsonPath = path.join(projectDir, "opencode.json");
-                if (fs.existsSync(ocJsonPath)) {
-                    const ocJson = JSON.parse(fs.readFileSync(ocJsonPath, "utf-8"));
-                    if (Array.isArray(ocJson.instructions) && ocJson.instructions.includes("docs/SPECS.md")) {
-                        ocJson.instructions = ocJson.instructions.filter((i: string) => i !== "docs/SPECS.md");
-                        fs.writeFileSync(ocJsonPath, JSON.stringify(ocJson, null, 2), "utf-8");
-                        logger.info(`${LP} 🗑️ Removed docs/SPECS.md from opencode.json instructions`);
-                    }
-                }
-            } catch { /* ignore opencode.json cleanup errors */ }
-
-        } catch (ctxErr: any) {
-            logger.warn(`${LP} Failed to write AGENTS.md context: ${ctxErr.message}`);
-        }
+        } catch { /* non-fatal */ }
     }
 
     let client: ReturnType<typeof createOpencodeClient>;
@@ -1713,10 +2144,10 @@ export async function handleOpenCodeStream(
 
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
-        const model = settings.selectedModel;
-        const providerID = mapProviderForOpenCode(model);
+        const effectiveAgent = options.agentId || "build";
+        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings);
 
-        logger.info(`${LP} Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
+        logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);
         lastProjectDir = projectDir;
         logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
@@ -1726,7 +2157,6 @@ export async function handleOpenCodeStream(
         // inject a build-mode instruction so the agent directly implements instead of
         // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
         let promptText = req.prompt;
-        const effectiveAgent = options.agentId || "build";
         const isMockupMode = effectiveAgent === "mockup";
 
         // Detect first message (no prior assistant responses) — used by build-mode
@@ -1865,18 +2295,51 @@ export async function handleOpenCodeStream(
         logger.info(`--- USER PROMPT ---\n${promptText}`);
         logger.info(`------------------------------------------`);
 
+        // ── Inject Vibes context via noReply (invisible to user) ─────────
+        // All Vibes context (instructions + memories) is injected as a single
+        // silent user message. Only exists in OpenCode's session history.
+        // Not saved to our DB → not shown in chat UI → invisible.
+        {
+            const contextParts: string[] = [];
+
+            // Static instructions (language, integrations, efficiency, etc.)
+            if (options.contextInstructions && options.contextInstructions.length > 0) {
+                contextParts.push(options.contextInstructions.join("\n\n"));
+            }
+
+            // Dynamic memories (selected per-prompt by the memory router)
+            if (options.memoryBlock) {
+                contextParts.push(options.memoryBlock);
+            }
+
+            if (contextParts.length > 0) {
+                const contextText = contextParts.join("\n\n---\n\n");
+                try {
+                    await client.session.prompt({
+                        path: { id: sessionId },
+                        query: { directory: projectDir },
+                        body: {
+                            noReply: true,
+                            parts: [{ type: "text", text: contextText }],
+                        } as any,
+                    });
+                    logger.info(`${LP} 📋 Context injected via noReply (${contextText.length} chars: ${options.contextInstructions?.length || 0} instructions + ${options.memoryBlock ? 'memories' : 'no memories'})`);
+                } catch (ctxErr: any) {
+                    logger.warn(`${LP} 📋 Context noReply injection failed (non-fatal): ${ctxErr.message}`);
+                }
+            }
+        }
+
         // Fire the prompt (non-blocking)
         // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
-        // internal system prompt (tools, AGENTS.md, project context). Instead,
-        // context instructions (including memories) are injected via
-        // config.update({ instructions }) which APPENDS them safely.
+        // internal system prompt. All Vibes context flows via noReply above.
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
             body: {
                 model: {
                     providerID,
-                    modelID: sanitizeModelName(model.name),
+                    modelID,
                 },
                 agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,
@@ -2886,6 +3349,7 @@ export async function shutdownOpenCode() {
         clientInstance = null;
         serverUrl = null;
         chatSessionMap.clear();
+        visualEditSessionMap.clear();
     }
 }
 

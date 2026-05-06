@@ -40,6 +40,7 @@ export const NEON_TEMPLATE_IDS = new Set<string>([PORTAL_MINI_STORE_ID]);
 export const SCAFFOLD_TEMPLATE_IDS: Record<string, string> = {
   "react-beta": "scaffold-react-beta",
   express: "scaffold-express",
+  next: "scaffold-next",
   // vue: "scaffold-vue",       // Available but not active
   // astro: "scaffold-astro",   // Available but not active
   // svelte: "scaffold-svelte", // Available but not active
@@ -194,7 +195,7 @@ export const localTemplatesData: Template[] = [
     id: "next",
     title: "Next.js",
     description: "Next.js, React, Shadcn, Tailwind y TypeScript.",
-    githubUrl: "https://github.com/<vibes-sh/nextjs-template",
+    githubUrl: "https://github.com/dyad-sh/nextjs-template",
     isOfficial: true,
     tags: ["Full-Stack", "SSR"],
   },

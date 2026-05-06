@@ -64,7 +64,8 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
-import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
+import { uploadChatAttachment } from "./bunny_handlers";
+import { bufferChatRound } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
@@ -475,10 +476,11 @@ ${componentSnippet}
       }
 
       // Generate aiMessagesJson early if we have attachments
+      // We build two versions: one with base64 for the LLM, one with CDN URLs for DB storage
       let userAiMessagesJson: any = null;
       if (attachmentPaths.length > 0) {
-        const prepared = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths);
-        const json = getAiMessagesJsonIfWithinLimit([prepared]);
+        const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths, currentUserId);
+        const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
         if (json) userAiMessagesJson = JSON.stringify(json);
       }
 
@@ -502,9 +504,9 @@ ${componentSnippet}
               priorAttachmentInfo += `- ${att.name} (${att.type})\n`;
             }
             priorContent += priorAttachmentInfo;
-            // Build aiMessagesJson for image visibility in the UI
-            const prepared = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths);
-            const json = getAiMessagesJsonIfWithinLimit([prepared]);
+            // Build aiMessagesJson for image visibility in the UI (CDN URLs for DB)
+            const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths, currentUserId);
+            const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
             if (json) priorAiMessagesJson = JSON.stringify(json);
           }
 
@@ -728,7 +730,7 @@ ${componentSnippet}
         }
 
         // ── Build-mode preprocessing (skipped for OpenCode agent mode) ──────
-        // OpenCode manages its own context via AGENTS.md and built-in tools.
+        // OpenCode manages its own project context. Vibes injects additional
         // These variables are only used by the build/ask mode branches below.
         let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
         let willUseAgentStream = isAgentMode;
@@ -1014,10 +1016,12 @@ This conversation includes one or more image attachments. When the user uploads 
           const lastUserIndex = chatMessages.length - 2;
           const lastUserMessage = chatMessages[lastUserIndex];
           if (lastUserMessage.role === "user" && attachmentPaths.length > 0) {
-            chatMessages[lastUserIndex] = await prepareMessageWithAttachments(
+            const { llmMessage } = await prepareMessageWithAttachments(
               lastUserMessage,
               attachmentPaths,
+              currentUserId as string,
             );
+            chatMessages[lastUserIndex] = llmMessage;
           }
         } else {
           logger.warn(
@@ -1280,7 +1284,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode
-          // handles all project knowledge natively via AGENTS.md.
+          // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
           // 1. Language & Behavior instructions
@@ -1393,8 +1397,9 @@ This conversation includes one or more image attachments. When the user uploads 
           decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
             .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
 
-          // Load memories (app-specific + global) and inject as context instruction
+          // Load memories (app-specific + global) — injected via noReply (invisible to user)
           let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
+          let memoryBlock: string | undefined;
           try {
             // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
             const priorMessages = (updatedChat.messages || [])
@@ -1412,12 +1417,12 @@ This conversation includes one or more image attachments. When the user uploads 
               priorMessages.length > 0 ? priorMessages : undefined,
             );
             if (memoryResult.block) {
-              contextInstructions.push(memoryResult.block);
+              memoryBlock = memoryResult.block;
               selectedMemories = memoryResult.memories;
-              logger.info(`🧠 [MEMORY] Injected ${memoryResult.block.length} chars (${selectedMemories.length} memories) into contextInstructions`);
+              logger.info(`🧠 [MEMORY] Prepared ${memoryBlock.length} chars (${selectedMemories.length} memories) for noReply injection`);
             }
           } catch (memErr: any) {
-            logger.warn(`🧠 [MEMORY] Context injection failed: ${memErr.message}`);
+            logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
           }
 
           const integrationEnvVars: Record<string, string> = {};
@@ -1443,6 +1448,16 @@ This conversation includes one or more image attachments. When the user uploads 
             if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
           }
 
+          // ── Snapshot package.json BEFORE the agent runs ──────────────────
+          // Used later to decide if node_modules needs a clean reinstall.
+          let pkgJsonHashBefore: string | null = null;
+          try {
+            const pkgJsonPath = path.join(getVibesAppPath(updatedChat.app.path), "package.json");
+            if (fs.existsSync(pkgJsonPath)) {
+              pkgJsonHashBefore = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+            }
+          } catch { /* ignore — if we can't read it, we skip the optimization */ }
+
           const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
             event,
             req,
@@ -1453,6 +1468,7 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMessages: updatedChat.messages,
               agentId,
               contextInstructions,
+              memoryBlock,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
@@ -1593,13 +1609,13 @@ This conversation includes one or more image attachments. When the user uploads 
             // in whatever was already generated.
             // SKIP plan mode: proposals are not confirmed facts.
             if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
-              extractMemoriesFromChatCycle({
+              bufferChatRound({
+                chatId: req.chatId,
                 appId: updatedChat.app.id,
                 userId: currentUserId as string,
-                chatId: req.chatId,
                 userPrompt,
                 assistantResponse: openCodeResponse,
-              }).catch(err => logger.warn("[Memory] Extraction failed (cancelled):", err));
+              });
             }
 
             return;
@@ -1690,34 +1706,40 @@ This conversation includes one or more image attachments. When the user uploads 
           // SKIP plan mode: plan responses are proposals/suggestions, not confirmed
           // decisions. Extracting from them would pollute memories with unverified info.
           if (success && updatedChat.app?.id && agentId !== "plan") {
-            extractMemoriesFromChatCycle({
+            bufferChatRound({
+              chatId: req.chatId,
               appId: updatedChat.app.id,
               userId: currentUserId as string,
-              chatId: req.chatId,
               userPrompt,
               assistantResponse: fullResponse,
-            }).catch(err => logger.warn("[Memory] Extraction failed:", err));
+            });
           }
 
-          // ── Post-agent clean install ────────────────────────────────────
-          // The agent may have modified package.json (adding new dependencies)
-          // or run a partial `npm install` via bash that left node_modules in
-          // a dirty state. Delete node_modules so the upcoming `runApp` call
-          // performs a pristine `npm install --legacy-peer-deps`.
-          // ONLY do this when the app is NOT already running — if the dev
-          // server is live, a restart is the user's responsibility (we don't
-          // want to crash a working server mid-session).
+          // ── Post-agent clean install (ONLY if package.json changed) ─────
+          // Compare package.json hash before vs after. If unchanged, skip
+          // the expensive node_modules wipe — the agent didn't touch deps.
           if (success && updatedChat.app?.id && !runningApps.has(updatedChat.app.id)) {
             try {
               const cleanupAppPath = getVibesAppPath(updatedChat.app.path);
-              const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
-              if (fs.existsSync(nodeModulesPath)) {
-                logger.info(`🧹 [POST-AGENT] Removing node_modules for clean install (app ${updatedChat.app.id})`);
-                await fsRm(nodeModulesPath, { recursive: true, force: true });
-                logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+              const pkgJsonPath = path.join(cleanupAppPath, "package.json");
+              let pkgJsonHashAfter: string | null = null;
+              if (fs.existsSync(pkgJsonPath)) {
+                pkgJsonHashAfter = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+              }
+
+              const pkgChanged = pkgJsonHashBefore !== pkgJsonHashAfter;
+              if (pkgChanged) {
+                const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
+                if (fs.existsSync(nodeModulesPath)) {
+                  logger.info(`🧹 [POST-AGENT] package.json changed — removing node_modules for clean install (app ${updatedChat.app.id})`);
+                  await fsRm(nodeModulesPath, { recursive: true, force: true });
+                  logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+                }
+              } else {
+                logger.info(`🧹 [POST-AGENT] package.json unchanged — skipping node_modules cleanup (app ${updatedChat.app.id})`);
               }
             } catch (cleanupErr: any) {
-              logger.warn(`🧹 [POST-AGENT] Failed to remove node_modules: ${cleanupErr.message}`);
+              logger.warn(`🧹 [POST-AGENT] Failed during post-agent cleanup: ${cleanupErr.message}`);
             }
           }
 
@@ -1843,18 +1865,22 @@ async function replaceTextAttachmentWithContent(
   }
 }
 
-// Helper function to convert traditional message to one with proper image attachments
+// Helper function to convert traditional message to one with proper image attachments.
+// Returns two versions:
+//   llmMessage  – base64-encoded images for sending to the LLM (multimodal input)
+//   dbMessage   – CDN URLs for persisting in the database (avoids libsql size limits)
 async function prepareMessageWithAttachments(
   message: ModelMessage,
   attachmentPaths: string[],
-): Promise<ModelMessage> {
+  userId: string,
+): Promise<{ llmMessage: ModelMessage; dbMessage: ModelMessage }> {
   let textContent = message.content;
   // Get the original text content
   if (typeof textContent !== "string") {
     logger.warn(
       "Message content is not a string - shouldn't happen but using message as-is",
     );
-    return message;
+    return { llmMessage: message, dbMessage: message };
   }
 
   // Process text file attachments - replace placeholder tags with full content
@@ -1867,34 +1893,49 @@ async function prepareMessageWithAttachments(
     );
   }
 
-  // For user messages with attachments, create a content array
-  const contentParts: (TextPart | ImagePart)[] = [];
+  // For user messages with attachments, create content arrays
+  const llmParts: (TextPart | ImagePart)[] = [];
+  const dbParts: (TextPart | ImagePart)[] = [];
 
   // Add the text part first with possibly modified content
-  contentParts.push({
-    type: "text",
-    text: textContent,
-  });
+  const textPart: TextPart = { type: "text", text: textContent };
+  llmParts.push(textPart);
+  dbParts.push(textPart);
 
   // Add image parts for any image attachments
   for (const filePath of attachmentPaths) {
     const ext = path.extname(filePath).toLowerCase();
     if ([".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext)) {
       try {
-        // Read the file as a buffer and convert to base64 string
-        // Using base64 strings instead of raw Buffers ensures proper JSON serialization
-        // for storage in aiMessagesJson (raw Buffers serialize inefficiently and exceed size limits)
         const imageBuffer = await readFile(filePath);
         const mimeType =
           ext === ".jpg" ? "image/jpeg" : `image/${ext.slice(1)}`;
         const base64Data = imageBuffer.toString("base64");
 
-        // Add the image to the content parts with base64 data and mediaType
-        contentParts.push({
+        // LLM version: base64 for multimodal vision input
+        llmParts.push({
           type: "image",
           image: base64Data,
           mediaType: mimeType,
         });
+
+        // DB version: upload to Bunny CDN and store the lightweight URL
+        try {
+          const cdnUrl = await uploadChatAttachment(imageBuffer, mimeType, ext, userId);
+          dbParts.push({
+            type: "image",
+            image: cdnUrl,   // CDN URL instead of base64
+            mediaType: mimeType,
+          } as any);
+        } catch (uploadErr) {
+          logger.warn(`Bunny upload failed, falling back to base64 for DB: ${uploadErr}`);
+          // Fallback: store base64 (may still fail on very large images)
+          dbParts.push({
+            type: "image",
+            image: base64Data,
+            mediaType: mimeType,
+          });
+        }
 
         logger.log(`Added image attachment: ${filePath}`);
       } catch (error) {
@@ -1903,10 +1944,9 @@ async function prepareMessageWithAttachments(
     }
   }
 
-  // Return the message with the content array
   return {
-    role: "user",
-    content: contentParts,
+    llmMessage: { role: "user", content: llmParts },
+    dbMessage: { role: "user", content: dbParts },
   };
 }
 

@@ -248,7 +248,7 @@ export const memories = sqliteTable("memories", {
         .references(() => users.id),
     // app_id = 0 means global (not tied to any app); otherwise references the app
     appId: integer("app_id").notNull().default(0),
-    type: text("type").notNull(),          // fact, preference, issue, episode, decision
+    type: text("type").notNull(),          // session, preference, issue (v2)
     key: text("key"),                       // For key-based overwrite (e.g. "backend_framework")
     content: text("content").notNull(),
     importance: integer("importance").notNull().default(50), // 0–100 (stored as int, mapped to 0.0–1.0)

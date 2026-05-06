@@ -19,6 +19,7 @@ import { AdminListUsers } from "@/components/admin_window/AdminListUsers";
 import { AdminListApps } from "@/components/admin_window/AdminListApps";
 import { AdminApiKeys } from "@/components/admin_window/AdminApiKeys";
 import { AdminKnowledgeBase } from "@/components/admin_window/AdminKnowledgeBase";
+import { AdminOpenCode } from "@/components/admin_window/AdminOpenCode";
 
 import "@/styles/globals.css";
 
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     { id: "usuarios", label: "Usuarios" },
     { id: "conocimientos", label: "Memorias" },
     { id: "apikeys", label: "API Keys" },
+    { id: "opencode", label: "OpenCode" },
 ];
 
 // ─── Admin Panel Layout ──────────────────────────────────────────────────────
@@ -132,6 +134,8 @@ function AdminContent({ activeItem }: { activeItem: string }) {
             return <AdminApiKeys />;
         case "conocimientos":
             return <AdminKnowledgeBase />;
+        case "opencode":
+            return <AdminOpenCode />;
         default: {
             const item = NAV_ITEMS.find((i) => i.id === activeItem);
             return (

@@ -7,6 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 const TYPE_LABELS: Record<string, string> = {
   fact: "Fact",
@@ -39,19 +44,25 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
 
   return (
     <>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(true);
-        }}
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
-          text-xs text-muted-foreground hover:text-foreground
-          hover:bg-accent/50 transition-colors cursor-pointer"
-        aria-label={`${memories.length} memorias inyectadas`}
-      >
-        <Database size={12} />
-        <span className="typo-micro">{memories.length}</span>
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
+              text-xs text-muted-foreground hover:text-foreground
+              hover:bg-accent/50 transition-colors cursor-pointer"
+            aria-label={`${memories.length} memorias inyectadas`}
+          >
+            <Database size={12} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {memories.length} {memories.length === 1 ? "memoria" : "memorias"}
+        </TooltipContent>
+      </Tooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[820px] max-h-[70vh] flex flex-col">

@@ -46,19 +46,15 @@ interface MemoryWithScore extends MemoryEntry {
 }
 
 const TYPE_WEIGHTS: Record<string, number> = {
+  session: 1.0,
   preference: 1.0,
-  fact: 0.9,
-  decision: 0.8,
   issue: 0.6,
-  episode: 0.4,
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  fact: "Hecho",
+  session: "Sesión",
   preference: "Preferencia",
   issue: "Problema",
-  episode: "Episodio",
-  decision: "Decisión",
 };
 
 // =============================================================================
@@ -102,7 +98,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
   // Create dialog
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    type: "fact" as MemoryType,
+    type: "session" as MemoryType,
     key: "",
     content: "",
     importance: 70,
@@ -156,7 +152,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
         source: "manual",
       });
       setIsCreateOpen(false);
-      setCreateForm({ type: "fact", key: "", content: "", importance: 70 });
+      setCreateForm({ type: "session", key: "", content: "", importance: 70 });
       await loadMemories();
     } catch (err) {
       console.error("Failed to create memory:", err);
@@ -242,7 +238,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       {/* Toolbar: filters + new button */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-          {["all", "fact", "preference", "issue", "episode", "decision"].map(t => (
+          {["all", "session", "preference", "issue"].map(t => (
             <button
               key={t}
               onClick={() => setFilter(t)}
@@ -484,11 +480,9 @@ export function MemoryPanel({ appId }: { appId: number }) {
                 showCheckmark
                 popoverWidth="w-[580px]"
                 options={[
-                  { value: "fact", label: "Hecho", description: "Datos técnicos del proyecto: stack, estructura, versiones, dependencias" },
-                  { value: "preference", label: "Preferencia", description: "Convenciones y gustos del usuario: estilo de código, idioma, patrones favoritos" },
-                  { value: "decision", label: "Decisión", description: "Elecciones de arquitectura o diseño tomadas y su justificación" },
-                  { value: "issue", label: "Problema", description: "Bugs conocidos, gotchas, limitaciones técnicas a tener en cuenta" },
-                  { value: "episode", label: "Episodio", description: "Eventos o interacciones relevantes ocurridas en sesiones anteriores" },
+                  { value: "session", label: "Sesión", description: "Resumen denso de lo construido/decidido. Tipo principal para conocimiento arquitectural." },
+                  { value: "preference", label: "Preferencia", description: "Convenciones y gustos del usuario que persisten entre sesiones." },
+                  { value: "issue", label: "Problema", description: "Bugs conocidos, gotchas, limitaciones técnicas a tener en cuenta." },
                 ]}
               />
             </div>

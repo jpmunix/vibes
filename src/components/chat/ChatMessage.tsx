@@ -26,6 +26,8 @@ import {
   Sparkles,
   User as UserIcon,
   Quote,
+  Share2,
+  Coins,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
@@ -39,9 +41,10 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { showSuccess, showError } from "@/lib/toast";
+import { cleanAssistantContent, cleanUserContent, extractImageUrls } from "@/lib/markdown_share_cleaner";
 import {
   selectedChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
@@ -252,6 +255,44 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
       return [...prev, newQuote];
     });
   }, [message.id, message.role, message.content, isUser, setQuotedMessages]);
+
+  // Share individual message via md.mnstatic.com
+  const [isSharing, setIsSharing] = useState(false);
+  const handleShareMessage = useCallback(async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      const cleaned = isUser
+        ? cleanUserContent(message.content ?? "")
+        : cleanAssistantContent(message.content ?? "");
+      // Extract CDN image URLs for user messages (same as full-chat share)
+      const imageUrls = isUser ? extractImageUrls((message as any).aiMessagesJson) : [];
+      if (!cleaned && imageUrls.length === 0) { setIsSharing(false); return; }
+      const role = isUser ? "Usuario" : "Asistente";
+      const ts = message.createdAt
+        ? new Date(message.createdAt).toLocaleString("es-ES")
+        : "";
+      const parts: string[] = [`## ${role}${ts ? ` — ${ts}` : ""}\n`];
+      if (cleaned) parts.push(cleaned);
+      if (imageUrls.length > 0) {
+        parts.push("");
+        imageUrls.forEach((url, i) => parts.push(`![Captura ${i + 1}](${url})`));
+      }
+      const md = parts.join("\n");
+      const title = `Mensaje ${role}${ts ? ` ${ts}` : ""}`;
+      const result = await ipc.markdownShare.uploadDocument({
+        title,
+        content: md,
+        format: "md",
+      });
+      await navigator.clipboard.writeText(result.data.share_url);
+      showSuccess("URL del mensaje copiada al portapapeles");
+    } catch (e) {
+      showError(e);
+    } finally {
+      setIsSharing(false);
+    }
+  }, [isSharing, isUser, message]);
 
   // Open single message debug window
   const openDebugMessage = useCallback(() => {
@@ -522,7 +563,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
-              <div className="absolute -left-16 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="absolute -left-24 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
                   onClick={handleQuote}
                   title="Citar"
@@ -542,6 +583,15 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                   ) : (
                     <Copy size={13} />
                   )}
+                </button>
+                <button
+                  onClick={handleShareMessage}
+                  title="Compartir mensaje"
+                  className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  aria-label="Compartir mensaje"
+                  disabled={isSharing}
+                >
+                  <Share2 size={13} className={isSharing ? "animate-pulse text-primary" : ""} />
                 </button>
               </div>
             )}
@@ -641,8 +691,26 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         >
                           {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                         </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleShareMessage(); }}
+                          title="Compartir mensaje"
+                          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                          aria-label="Compartir mensaje"
+                          disabled={isSharing}
+                        >
+                          <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
+                        </button>
                         {messageCost && (
-                          <span className="typo-micro ml-1">{messageCost}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default" onClick={(e) => e.stopPropagation()}>
+                                <Coins size={12} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              {messageCost}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {resolvedMemories && resolvedMemories.length > 0 && (
                           <div onClick={(e) => e.stopPropagation()}>
@@ -705,8 +773,26 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     >
                       {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                     </button>
+                    <button
+                      onClick={handleShareMessage}
+                      title="Compartir mensaje"
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      aria-label="Compartir mensaje"
+                      disabled={isSharing}
+                    >
+                      <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
+                    </button>
                     {messageCost && (
-                      <span className="typo-micro ml-1">{messageCost}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default">
+                            <Coins size={12} />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {messageCost}
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {resolvedMemories && resolvedMemories.length > 0 && (
                       <MemoryBadge memories={resolvedMemories} />

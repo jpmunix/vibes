@@ -874,6 +874,12 @@ export function registerWindowHandlers() {
     }
   });
 
+  // Purge orphaned OpenCode sessions (admin diagnostic tool)
+  createTypedHandler(systemContracts.purgeOpenCodeSessions, async (_event, { dryRun }) => {
+    const { purgeAllOrphanedOpenCodeSessions } = await import("./opencode_adapter");
+    return await purgeAllOrphanedOpenCodeSessions(dryRun);
+  });
+
   // Memory viewer window — dedicated diagnostic panel for agent memories
   createTypedHandler(systemContracts.openMemoryWindow, async (event, { appId, theme, themeIntensity }) => {
     const existing = memoryWindows.get(appId);
