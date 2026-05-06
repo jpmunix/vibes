@@ -12,7 +12,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
-import { decayMemories, migrateLegacyTypesToSession } from "../utils/memory_lifecycle";
+import { decayMemories, migrateLegacyTypesToSession, compactOldSessions } from "../utils/memory_lifecycle";
 import { restorePendingBuffers } from "../utils/memory_extractor";
 import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
@@ -126,6 +126,14 @@ export function registerMemoryHandlers(): void {
     // Placeholder — will be implemented in Fase 2 (write pipeline)
     createTypedHandler(memoryContracts.extractMemories, async (_event, _params, _ctx) => {
         return [];
+    });
+
+    // ── CONDENSE SESSION MEMORIES ──────────────────────────────────────────
+    createTypedHandler(memoryContracts.condenseSessionMemories, async (_event, { appId, chatId }, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        const { forceCondenseChatSession } = await import("../utils/memory_extractor");
+        await forceCondenseChatSession({ appId, userId, chatId });
     });
 
     // ── DECAY MEMORIES ─────────────────────────────────────────────────────
@@ -356,6 +364,13 @@ export function registerMemoryHandlers(): void {
         });
 
         return result;
+    });
+
+    // ── COMPACT MEMORIES (manual trigger) ───────────────────────────────
+    createTypedHandler(memoryContracts.compactMemories, async (_event, params, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        return compactOldSessions(params.appId, userId, { force: true });
     });
 
     // ── GET DEBUG LOGS ──────────────────────────────────────────────────

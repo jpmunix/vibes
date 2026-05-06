@@ -14,6 +14,7 @@ import {
   Minimize2,
   Loader2,
   Check,
+  Shrink,
 } from "@/components/ui/icons";
 
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "@/components/ui/icons";
@@ -30,7 +31,7 @@ import { useRouter } from "@tanstack/react-router";
 import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
 
 import { useChats } from "@/hooks/useChats";
-import { showError, showSuccess } from "@/lib/toast";
+import { showError, showSuccess, toast } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -252,7 +253,7 @@ export function ChatHeader({
               <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
+          <DropdownMenuContent align="start" className="w-fit min-w-[380px] max-w-[550px] max-h-[400px] overflow-y-auto">
             {chats.length === 0 ? (
               <DropdownMenuItem disabled>
                 <span className="typo-caption text-muted-foreground">Sin chats</span>
@@ -302,6 +303,44 @@ export function ChatHeader({
                           {chat.title || `Chat ${chat.id}`}
                         </span>
                         <button
+                          title="Condensar memoria"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!appId) return;
+                            try {
+                              showSuccess("Condensando memoria del chat...");
+                              await ipc.memory.condenseSessionMemories({ appId, chatId: chat.id });
+                              showSuccess("Memoria condensada correctamente");
+                            } catch (err) {
+                              showError(`Error: ${(err as any).toString()}`);
+                            }
+                          }}
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                        >
+                          <Shrink size={12} className="text-muted-foreground" />
+                        </button>
+                        <button
+                          title="Resumir a chat nuevo"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!appId) return;
+                            const tid = toast.loading("Generando resumen y creando chat nuevo...");
+                            try {
+                              const newChatId = await ipc.chat.summarizeToNewChat({ appId, chatId: chat.id });
+                              await invalidateChats();
+                              setSelectedChatId(newChatId);
+                              navigate({ to: "/chat", search: { id: newChatId } });
+                              toast.success("Resumen completado con éxito", { id: tid });
+                            } catch (err) {
+                              toast.error(`Error: ${(err as any).toString()}`, { id: tid });
+                            }
+                          }}
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                        >
+                          <Minimize2 size={12} className="text-muted-foreground" />
+                        </button>
+                        <button
+                          title="Renombrar chat"
                           onClick={(e) => {
                             e.stopPropagation();
                             setChatToRename({
@@ -309,11 +348,12 @@ export function ChatHeader({
                               title: chat.title || `Chat ${chat.id}`,
                             });
                           }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
                         >
                           <Pencil size={12} className="text-muted-foreground" />
                         </button>
                         <button
+                          title="Eliminar chat"
                           onClick={(e) => {
                             e.stopPropagation();
                             setChatToDelete({
@@ -321,7 +361,7 @@ export function ChatHeader({
                               title: chat.title || `Chat ${chat.id}`,
                             });
                           }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
                         >
                           <Trash2 size={12} className="text-destructive" />
                         </button>

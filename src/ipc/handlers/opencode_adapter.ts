@@ -1885,6 +1885,54 @@ export async function handleOpenCodeStream(
                 logger.warn(`${LP} Failed to persist sessionId: ${e.message}`);
             }
 
+            // ── INJECT CONVERSATION HISTORY INTO NEW SESSION ──────────────
+            // If this is a newly created session (e.g. from "Resumir a chat nuevo" or a lost session),
+            // we must ensure OpenCode knows about past messages before we send the active prompt.
+            if (options.chatMessages && options.chatMessages.length > 0) {
+                // Filter out system messages and the pending placeholder
+                let historyToInject = options.chatMessages.filter(
+                    (m: any) => m.role !== "system" && m.id !== options.placeholderMessageId && m.content && m.content.trim() !== ""
+                );
+
+                // The current user prompt is already the last user message in chatMessages.
+                // We MUST filter it out because it will be sent later as the active prompt!
+                const lastUserMsgIndex = [...historyToInject].reverse().findIndex((m: any) => m.role === "user");
+                if (lastUserMsgIndex !== -1) {
+                    const actualIndex = historyToInject.length - 1 - lastUserMsgIndex;
+                    historyToInject.splice(actualIndex, 1);
+                }
+
+                // Limit to last 20 messages to prevent massive token usage on recovery
+                if (historyToInject.length > 20) {
+                    historyToInject = historyToInject.slice(-20);
+                }
+
+                if (historyToInject.length > 0) {
+                    logger.info(`${LP} Injecting ${historyToInject.length} historical messages into new session...`);
+                    const formattedHistory = historyToInject.map((m: any) => {
+                        const roleName = m.role === "assistant" ? "Asistente" : "Usuario";
+                        // We strip complex vibes tags to save tokens, just like chat_stream_handlers does for standard mode
+                        let cleaned = m.content;
+                        cleaned = cleaned.replace(/<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "[Herramienta ejecutada]");
+                        return `[Mensaje antiguo del ${roleName}]:\n${cleaned.trim()}`;
+                    }).join("\n\n---\n\n");
+
+                    try {
+                        await client.session.prompt({
+                            path: { id: sessionId },
+                            query: { directory: projectDir },
+                            body: {
+                                noReply: true,
+                                parts: [{ type: "text", text: `Historial de la conversación recuperado:\n\n${formattedHistory}` }],
+                            } as any,
+                        });
+                        logger.info(`${LP} Injected conversation history successfully.`);
+                    } catch (e: any) {
+                        logger.warn(`${LP} Failed to inject conversation history: ${e.message}`);
+                    }
+                }
+            }
+
             // Initialize project context — generates AGENTS.md with tech stack,
             // build commands, and architecture. This is the key mechanism that gives
             // the agent native project knowledge (equivalent to /init in OpenCode CLI).

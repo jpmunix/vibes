@@ -1,3 +1,20 @@
+# v8.5
+*6 de mayo de 2026*
+
+## Resumir y saltar a un chat nuevo
+
+Si una conversación se ha vuelto demasiado larga, ha acumulado mucho ruido o el contexto ha empezado a desviarse, ahora tienes una salida limpia. Con el nuevo botón **"Resumir"** —accesible directamente desde el selector de chats—, la IA analizará todo el historial, extraerá lo verdaderamente importante (decisiones, estado actual, próximos pasos) y te abrirá un chat completamente en blanco usando ese resumen como punto de partida. El resultado: menos ruido, un contexto mucho más limpio y una conversación focalizada al 100%, sin perder nada de lo que ya habías avanzado. El propio selector de chats se ha rediseñado para ser más ancho y exponer estas acciones directas de forma más ágil.
+
+## Memorias siempre ordenadas y sin esfuerzo
+
+El sistema de memoria es cada vez más inteligente y ahora se encarga de hacer limpieza por ti. Al eliminar o archivar un chat, el agente rescata automáticamente la información clave antes de que desaparezca, sin interrumpirte ni hacerte esperar. 
+
+Además, el Panel de Memoria estrena un nuevo menú de gestión. Ahora puedes **compactar tus memorias manualmente** para pedirle a la IA que fusione datos antiguos en resúmenes mucho más limpios. También hemos incluido nuevos filtros avanzados y opciones de ordenación (por relevancia, fecha o estado) para que navegar por el contexto de tu proyecto sea rapidísimo.
+
+## Correcciones y ajustes
+
+- **Markdown Sanitizado:** Los bloques de código se sanitizan intentando garantizar que el *parser* visual de la interfaz nunca se rompa al renderizarlos.
+
 # v8.4
 *4 de mayo de 2026*
 

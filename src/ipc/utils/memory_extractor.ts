@@ -194,7 +194,7 @@ export async function restorePendingBuffers(): Promise<void> {
  * Extract memories from a batch of rounds (the actual LLM call).
  * Builds a combined user message with all rounds + the previous session summary.
  */
-async function extractMemoriesFromBatch(params: {
+export async function extractMemoriesFromBatch(params: {
     appId: number;
     userId: string;
     chatId: string;
@@ -457,6 +457,61 @@ export function isNoisy(content: string): boolean {
 // =============================================================================
 // Main extraction function
 // =============================================================================
+
+/**
+ * Force condensation of all chat rounds into session memories,
+ * skipping the 3-round batching rule. Used on archive/delete or explicitly.
+ */
+export async function forceCondenseChatSession(params: {
+    appId: number;
+    userId: string;
+    chatId: number;
+}): Promise<void> {
+    const { appId, userId, chatId } = params;
+    const db = getRemoteDb();
+
+    // Fetch all messages for this chat
+    const rows = await db
+        .select()
+        .from(remoteSchema.messages)
+        .where(
+            and(
+                eq(remoteSchema.messages.chatId, chatId),
+                eq(remoteSchema.messages.userId, userId)
+            )
+        )
+        .orderBy(remoteSchema.messages.createdAt);
+
+    if (rows.length < 2) return; // Need at least user+assistant
+
+    const rounds: RoundEntry[] = [];
+    let currentPrompt: string | null = null;
+
+    for (const msg of rows) {
+        if (msg.role === "user") {
+            currentPrompt = msg.content;
+        } else if (msg.role === "assistant" && currentPrompt) {
+            rounds.push({
+                userPrompt: currentPrompt,
+                assistantResponse: msg.content || ""
+            });
+            currentPrompt = null;
+        }
+    }
+
+    if (rounds.length > 0) {
+        try {
+            await extractMemoriesFromBatch({
+                appId,
+                userId,
+                chatId: String(chatId),
+                rounds
+            });
+        } catch (error) {
+            logger.error(`Error forcing condensation for chatId=${chatId}:`, error);
+        }
+    }
+}
 
 /**
  * Extract memories from a chat cycle (user prompt + AI response).

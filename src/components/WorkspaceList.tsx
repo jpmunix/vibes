@@ -34,13 +34,15 @@ import {
   Folder,
   Download,
   Share2,
+  Shrink,
+  Minimize2,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import { selectedChatIdAtom, recentStreamChatIdsAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
-import { showError, showSuccess } from "@/lib/toast";
+import { showError, showSuccess, toast } from "@/lib/toast";
 import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
@@ -404,6 +406,46 @@ const AppChats = memo(function AppChats({
           >
             <Share2 size={14} className="opacity-60 shrink-0" />
             Compartir chat
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              const chatId = openMenuId;
+              closeMenu();
+              if (!chatId) return;
+              try {
+                showSuccess("Condensando memoria del chat...");
+                await ipc.memory.condenseSessionMemories({ appId, chatId });
+                showSuccess("Memoria condensada correctamente");
+              } catch (e) {
+                showError(`Error al condensar memoria: ${(e as any).toString()}`);
+              }
+            }}
+          >
+            <Shrink size={14} className="opacity-60 shrink-0" />
+            Condensar memoria
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              const chatId = openMenuId;
+              closeMenu();
+              if (!chatId) return;
+              const tid = toast.loading("Generando resumen y creando chat nuevo...");
+              try {
+                const newChatId = await ipc.chat.summarizeToNewChat({ appId, chatId });
+                queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+                onChatClick(appId, newChatId);
+                toast.success("Resumen completado con éxito", { id: tid });
+              } catch (e) {
+                toast.error(`Error al resumir chat: ${(e as any).toString()}`, { id: tid });
+              }
+            }}
+          >
+            <Minimize2 size={14} className="opacity-60 shrink-0" />
+            Resumir a chat nuevo
           </button>
           <button
             type="button"

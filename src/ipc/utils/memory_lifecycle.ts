@@ -69,7 +69,7 @@ export async function migrateLegacyTypesToSession(userId: string): Promise<numbe
 // =============================================================================
 
 /** Days of disuse before a zombie memory is disabled */
-const ZOMBIE_THRESHOLD_DAYS = 90;
+const ZOMBIE_THRESHOLD_DAYS = 5;
 
 /** Importance threshold for zombie detection */
 const ZOMBIE_IMPORTANCE_THRESHOLD = 30;
@@ -321,14 +321,14 @@ export async function confirmMemory(
 // Compaction — Merge old session memories
 // =============================================================================
 
-/** Minimum active sessions before compaction triggers */
-const COMPACTION_THRESHOLD = 20;
+/** No minimum pool — compaction can trigger at any pool size */
+const COMPACTION_THRESHOLD = 0;
 
 /** Minimum old sessions to justify a compaction LLM call */
 const MIN_OLD_SESSIONS = 5;
 
 /** Days after which sessions are eligible for compaction */
-const COMPACTION_AGE_DAYS = 30;
+const COMPACTION_AGE_DAYS = 2;
 
 /**
  * Compact old session memories into a single dense summary.
@@ -348,6 +348,7 @@ const COMPACTION_AGE_DAYS = 30;
 export async function compactOldSessions(
     appId: number,
     userId: string,
+    options?: { force?: boolean },
 ): Promise<number> {
     try {
         const db = getRemoteDb();
@@ -366,25 +367,30 @@ export async function compactOldSessions(
             );
 
         const activeCount = countResult?.count ?? 0;
-        if (activeCount < COMPACTION_THRESHOLD) return 0;
+        if (!options?.force && activeCount < COMPACTION_THRESHOLD) return 0;
 
-        // 2. Find old sessions
+        // 2. Find sessions to compact
         const cutoff = new Date(Date.now() - COMPACTION_AGE_DAYS * 24 * 60 * 60 * 1000);
+        const dateConditions = [
+            eq(remoteSchema.memories.userId, userId),
+            eq(remoteSchema.memories.appId, appId),
+            eq(remoteSchema.memories.enabled, 1),
+            eq(remoteSchema.memories.type, "session"),
+        ];
+        // In automatic mode, only compact sessions older than COMPACTION_AGE_DAYS
+        if (!options?.force) {
+            dateConditions.push(
+                sql`${remoteSchema.memories.updatedAt} < ${Math.floor(cutoff.getTime() / 1000)}` as any,
+            );
+        }
         const oldSessions = await db
             .select()
             .from(remoteSchema.memories)
-            .where(
-                and(
-                    eq(remoteSchema.memories.userId, userId),
-                    eq(remoteSchema.memories.appId, appId),
-                    eq(remoteSchema.memories.enabled, 1),
-                    eq(remoteSchema.memories.type, "session"),
-                    sql`${remoteSchema.memories.updatedAt} < ${Math.floor(cutoff.getTime() / 1000)}`,
-                ),
-            )
+            .where(and(...dateConditions))
             .orderBy(asc(remoteSchema.memories.updatedAt));
 
-        if (oldSessions.length < MIN_OLD_SESSIONS) return 0;
+        if (oldSessions.length < 2) return 0; // absolute minimum: need ≥2 to merge
+        if (!options?.force && oldSessions.length < MIN_OLD_SESSIONS) return 0;
 
         // 3. Build compaction prompt
         const sessionTexts = oldSessions.map((m, i) =>

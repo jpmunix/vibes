@@ -139,14 +139,26 @@ export function registerChatHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
     
-    // Attempt to delete from OpenCode backend
+    // Attempt to delete from OpenCode backend and condense memories
     const chat = await db.query.chats.findFirst({
       where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
-      columns: { opencodeSessionId: true }
+      columns: { appId: true, opencodeSessionId: true }
     });
-    if (chat?.opencodeSessionId) {
-      const { deleteOpenCodeSessionById } = await import("./opencode_adapter");
-      deleteOpenCodeSessionById(chat.opencodeSessionId);
+    if (chat) {
+      if (chat.appId) {
+        try {
+          const { forceCondenseChatSession } = await import("../utils/memory_extractor");
+          forceCondenseChatSession({ appId: chat.appId, userId: context.userId!, chatId }).catch(e => {
+            logger.error("Error auto-condensing chat on delete", e);
+          });
+        } catch (e) {
+          logger.error("Error importing memory_extractor on delete", e);
+        }
+      }
+      if (chat.opencodeSessionId) {
+        const { deleteOpenCodeSessionById } = await import("./opencode_adapter");
+        deleteOpenCodeSessionById(chat.opencodeSessionId);
+      }
     }
 
     await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
@@ -376,14 +388,25 @@ export function registerChatHandlers() {
         ? and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!), ne(remoteSchema.chats.id, currentChatId))
         : and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId!));
 
-      // Attempt to delete from OpenCode backend
+      // Attempt to delete from OpenCode backend and condense memories
       const chatsToDelete = await db.query.chats.findMany({
         where: condition,
-        columns: { opencodeSessionId: true }
+        columns: { id: true, appId: true, opencodeSessionId: true }
       });
       if (chatsToDelete.length > 0) {
         const { deleteOpenCodeSessionById } = await import("./opencode_adapter");
+        const { forceCondenseChatSession } = await import("../utils/memory_extractor");
+        
         for (const c of chatsToDelete) {
+          try {
+            if (c.appId) {
+              forceCondenseChatSession({ appId: c.appId, userId: context.userId!, chatId: c.id }).catch(e => {
+                logger.error(`Error auto-condensing chat ${c.id} on bulk delete`, e);
+              });
+            }
+          } catch (e) {
+            logger.error(`Error with auto-condense invocation for chat ${c.id}`, e);
+          }
           if (c.opencodeSessionId) deleteOpenCodeSessionById(c.opencodeSessionId);
         }
       }
@@ -474,6 +497,25 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.archiveChat, async (_, { chatId, archived }, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
+
+    if (archived) {
+      // Auto-condense before archiving
+      const chat = await db.query.chats.findFirst({
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
+        columns: { appId: true }
+      });
+      if (chat?.appId) {
+        try {
+          const { forceCondenseChatSession } = await import("../utils/memory_extractor");
+          forceCondenseChatSession({ appId: chat.appId, userId: context.userId!, chatId }).catch(e => {
+            logger.error("Error auto-condensing chat on archive", e);
+          });
+        } catch (e) {
+          logger.error("Error importing memory_extractor on archive", e);
+        }
+      }
+    }
+
     await db.update(remoteSchema.chats)
       .set({ isArchived: archived ? 1 : 0 })
       .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
@@ -612,6 +654,96 @@ export function registerChatHandlers() {
       .orderBy(desc(remoteSchema.chats.createdAt));
 
     return pinned as any;
+  });
+
+  // Summarize the current chat and output to a new chat
+  createTypedHandler(chatContracts.summarizeToNewChat, async (_, { appId, chatId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // 1. Fetch old chat details and all its messages
+    const oldChat = await db.query.chats.findFirst({
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
+      with: {
+        messages: {
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        },
+      },
+    });
+
+    if (!oldChat || oldChat.messages.length === 0) {
+      throw new Error("Chat not found or is empty");
+    }
+
+    // 2. Format history for the prompt
+    const formattedHistory = oldChat.messages
+      .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .join("\n\n");
+
+    // 3. Generate summary using openRouterCompletion
+    const { readSettings } = await import("../../main/settings");
+    const settings = readSettings();
+    const model = settings.agentModels?.summary || settings.summaryModel || settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+
+    let generatedSummary = "";
+    try {
+      const data = await openRouterCompletion({
+        model,
+        title: "summarize-to-new-chat",
+        temperature: 0.2,
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "system",
+            content: "Eres un analista técnico de primer nivel. Tu tarea es condensar el historial de esta conversación en un resumen denso y estructurado. Incluye contexto técnico, decisiones tomadas, estado final y próximos pasos. Este resumen se usará como contexto inicial para continuar el trabajo en una nueva sesión. Devuelve SOLO el markdown del resumen, sin saludos, sin intros ni despedidas.",
+          },
+          {
+            role: "user",
+            content: formattedHistory,
+          },
+        ],
+      });
+      generatedSummary = data?.choices?.[0]?.message?.content?.trim() || "";
+
+      // Sanitizar el markdown quitando bloques envolventes ```markdown ... ```
+      const mdWrapperRegex = /^```(?:markdown)?\s*([\s\S]*?)```\s*$/i;
+      const match = generatedSummary.match(mdWrapperRegex);
+      if (match) {
+        generatedSummary = match[1].trim();
+      }
+    } catch (error) {
+      logger.error("Error summarizing chat:", error);
+      throw new Error("No se pudo generar el resumen");
+    }
+
+    if (!generatedSummary) throw new Error("El resumen generado está vacío");
+
+    // 4. Create new chat
+    const [newChat] = await db
+      .insert(remoteSchema.chats)
+      .values({
+        appId,
+        userId: context.userId!,
+        initialCommitHash: oldChat.initialCommitHash,
+        createdAt: new Date(),
+        title: `Resumen: ${oldChat.title || "Chat " + oldChat.id}`
+      })
+      .returning();
+
+    // 5. Insert the summary as an assistant message
+    const introText = "Me he traído el contexto de nuestro chat anterior. Aquí tienes el estado actual del proyecto para que podamos continuar:\n\n---\n" + generatedSummary + "\n---\n\n¿Qué hacemos ahora?";
+    
+    await db.insert(remoteSchema.messages).values({
+      userId: context.userId!,
+      chatId: newChat.id,
+      role: "assistant",
+      content: introText,
+      aiMessagesJson: null,
+      createdAt: new Date(),
+    });
+
+    logger.info(`Summarized chat ${chatId} into new chat ${newChat.id}`);
+    return newChat.id;
   });
 
   logger.debug("Registered chat IPC handlers");

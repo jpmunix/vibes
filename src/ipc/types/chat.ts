@@ -401,6 +401,15 @@ export const chatContracts = {
       }),
     ),
   }),
+
+  summarizeToNewChat: defineContract({
+    channel: "summarize-to-new-chat",
+    input: z.object({
+      appId: z.number(),
+      chatId: z.number(),
+    }),
+    output: z.number(), // Returns newChatId
+  }),
 } as const;
 
 // =============================================================================
