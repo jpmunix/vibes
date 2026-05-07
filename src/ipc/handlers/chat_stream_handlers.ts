@@ -93,6 +93,8 @@ import z from "zod";
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
+  DEFAULT_STRATEGIST_MODEL,
+  DEFAULT_EXECUTOR_MODEL
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { getCurrentCommitHash } from "../utils/git_utils";
@@ -550,6 +552,23 @@ ${componentSnippet}
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
+      const resolvedChatMode = settings.selectedChatMode || "agent";
+      const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+        agent: "build",
+        "crush-agent": "build",
+        plan: "plan",
+        ask: "explore",
+        mockup: "mockup",
+      };
+      const agentId = agentIdMap[resolvedChatMode] || "build";
+      
+      let effectiveModelName = settings.selectedModel.name;
+      if (agentId === "plan" || agentId === "explore") {
+        effectiveModelName = (settings.strategistModel || DEFAULT_STRATEGIST_MODEL).replace(/^openrouter\//, "");
+      } else if (agentId === "mockup") {
+        effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
+      }
+
       // Check if this is a test prompt
       const testResponse = getTestResponse(req.prompt);
 
@@ -569,7 +588,7 @@ ${componentSnippet}
             role: "assistant",
             content: "",
             requestId: vibesRequestId,
-            model: settings.selectedModel.name,
+            model: effectiveModelName,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
             }).catch(() => null),
@@ -620,7 +639,7 @@ ${componentSnippet}
             role: "assistant",
             content: "",
             requestId: vibesRequestId,
-            model: selectedModel.name,
+            model: effectiveModelName,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
             }).catch(() => null),
@@ -1634,7 +1653,7 @@ This conversation includes one or more image attachments. When the user uploads 
             // Log telemetry
             sendTelemetryEvent("chat:stream:end", {
               chatMode: `opencode-${agentId}`,
-              model: settings.selectedModel.name,
+              model: effectiveModelName,
               responseLength: fullResponse.length,
               success: false,
               totalTokens: ocTotalTokens,
@@ -1733,7 +1752,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // Log telemetry
           sendTelemetryEvent("chat:stream:end", {
             chatMode: `opencode-${agentId}`,
-            model: settings.selectedModel.name,
+            model: effectiveModelName,
             responseLength: fullResponse.length,
             success,
             totalTokens: ocTotalTokens,

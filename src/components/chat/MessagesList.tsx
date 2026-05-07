@@ -96,8 +96,8 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
-          {/* "Aceptar plan" — ephemeral accelerator, only after AI finishes in plan mode */}
-          {showAcceptPlan && (
+          {/* Accept plan button hidden — functionality preserved */}
+          {false && showAcceptPlan && (
             <Button
               size="sm"
               onClick={onAcceptPlan}

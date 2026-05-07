@@ -20,13 +20,15 @@ import {
   type BeautifulMentionsMenuItemProps,
 } from "lexical-beautiful-mentions";
 import { KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH } from "lexical";
-import { useLoadApps } from "@/hooks/useLoadApps";
 import { usePrompts } from "@/hooks/usePrompts";
 import { forwardRef } from "react";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { MENTION_REGEX, parseAppMentions } from "@/shared/parse_mention_apps";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { MENTION_REGEX } from "@/shared/parse_mention_apps";
 import { useLoadApp } from "@/hooks/useLoadApp";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
+import { FileText, Database, Code, Search } from "@/components/ui/icons";
 
 // Define the theme for mentions
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
@@ -40,50 +42,59 @@ const CustomMenuItem = forwardRef<
   BeautifulMentionsMenuItemProps
 >(({ selected, item, ...props }, ref) => {
   const isPrompt = item.data?.type === "prompt";
-  const isApp = item.data?.type === "app";
-  const label = isPrompt ? "Prompt" : isApp ? "App" : "Archivo";
+  const isArtifact = item.data?.type === "artifact";
+  const label = isPrompt ? "Prompt" : isArtifact ? "Plan/Artifact" : "Archivo";
   const value = (item as any)?.value;
+  
   return (
     <li
-      className={`m-0 flex items-center px-3 py-2 cursor-pointer whitespace-nowrap ${selected
-        ? "bg-accent text-accent-foreground"
-        : "bg-popover text-popover-foreground hover:bg-accent/50"
-        }`}
+      className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors ${
+        selected ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+      }`}
       {...props}
       ref={ref}
     >
-      <div className="flex items-center space-x-2 min-w-0">
-        <span
-          className={`px-2 py-0.5 typo-badge rounded-md flex-shrink-0 ${isPrompt
-            ? "bg-purple-500 text-white"
-            : isApp
-              ? "bg-primary text-primary-foreground"
-              : "bg-blue-600 text-white"
-            }`}
-        >
+      <div className="flex items-center gap-2 w-full overflow-hidden">
+        {isArtifact ? (
+          <FileText size={14} className="text-primary shrink-0" />
+        ) : isPrompt ? (
+          <Database size={14} className="text-purple-500 shrink-0" />
+        ) : (
+          <Code size={14} className="text-blue-500 shrink-0" />
+        )}
+        <span className="truncate flex-1">{value}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 shrink-0">
           {label}
         </span>
-        <span className="truncate typo-body">{value}</span>
       </div>
     </li>
   );
 });
 
-// Custom menu component
+// Custom menu component (Styled like shadcn Command menu)
 function CustomMenu({ loading: _loading, ...props }: any) {
   return (
-    <ul
-      className="m-0 mb-1 min-w-[300px] w-auto max-h-64 overflow-y-auto bg-popover border border-border rounded-lg shadow-lg z-50"
+    <div
+      className="z-50 min-w-[300px] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
       style={{
         position: "absolute",
         bottom: "100%",
         left: 0,
-        right: 0,
-        transform: "translateY(-20px)", // Add a larger gap between menu and input (12px higher)
+        marginBottom: "8px",
       }}
       data-mentions-menu="true"
-      {...props}
-    />
+    >
+      <div className="flex items-center border-b border-border px-3" onClick={(e) => e.stopPropagation()}>
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <span className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 border-none text-muted-foreground opacity-70">
+          Escribe para buscar...
+        </span>
+      </div>
+      <ul
+        className="max-h-[300px] overflow-y-auto overflow-x-hidden p-1"
+        {...props}
+      />
+    </div>
   );
 }
 
@@ -255,60 +266,41 @@ export function LexicalChatInput({
   disableSendButton,
   compact = false,
 }: LexicalChatInputProps) {
-  const { apps } = useLoadApps();
   const { prompts } = usePrompts();
   const [shouldClear, setShouldClear] = useState(false);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
   const { app } = useLoadApp(selectedAppId);
+  const { artifacts } = useChatArtifacts(selectedChatId);
   const appFiles = app?.files;
 
-  // Prepare mention items - convert apps to mention format
+  // Prepare mention items
   const mentionItems = React.useMemo(() => {
-    if (!apps) return { "@": [] };
-
-    // Get current app name
-    const currentApp = apps.find((app) => app.id === selectedAppId);
-    const currentAppName = currentApp?.name;
-
-    // Parse already mentioned apps from current input value
-    const alreadyMentioned = parseAppMentions(value);
-
-    // Filter out current app and already mentioned apps
-    const filteredApps = apps.filter((app) => {
-      // Exclude current app
-      if (excludeCurrentApp && app.name === currentAppName) return false;
-
-      // Exclude already mentioned apps (case-insensitive comparison)
-      if (
-        alreadyMentioned.some(
-          (mentioned) => mentioned.toLowerCase() === app.name.toLowerCase(),
-        )
-      )
-        return false;
-
-      return true;
-    });
-
-    const appMentions = filteredApps.map((app) => ({
-      value: app.name,
-      type: "app",
+    // 1. Artifacts first
+    const artifactItems = (artifacts || []).map((a) => ({
+      value: a.path,
+      type: "artifact",
     }));
 
+    // 2. Regular files (excluding .vibes/ since they are artifacts)
+    const fileItems = (appFiles || [])
+      .filter((f) => !f.startsWith(".vibes/"))
+      .map((item) => ({
+        value: item,
+        type: "file",
+      }));
+
+    // 3. Prompts
     const promptItems = (prompts || []).map((p) => ({
       value: p.title,
       type: "prompt",
       id: p.id,
     }));
 
-    const fileItems = (appFiles || []).map((item) => ({
-      value: item,
-      type: "file",
-    }));
-
     return {
-      "@": [...appMentions, ...promptItems, ...fileItems],
+      "@": [...artifactItems, ...fileItems, ...promptItems],
     };
-  }, [apps, selectedAppId, value, excludeCurrentApp, prompts, appFiles]);
+  }, [artifacts, appFiles, prompts]);
 
   const initialConfig = {
     namespace: "ChatInput",
@@ -331,19 +323,6 @@ export function LexicalChatInput({
 
         // Short-circuit if there's no "@" symbol in the text
         if (textContent.includes("@")) {
-          const appNames = apps?.map((app) => app.name) || [];
-          for (const appName of appNames) {
-            // Escape special regex characters in app name
-            const escapedAppName = appName.replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&",
-            );
-            const mentionRegex = new RegExp(
-              `@(${escapedAppName})(?![a-zA-Z0-9_-])`,
-              "g",
-            );
-            textContent = textContent.replace(mentionRegex, "@app:$1");
-          }
           // Convert @PromptTitle to @prompt:<id>
           const map = new Map((prompts || []).map((p) => [p.title, p.id]));
           for (const [title, id] of map.entries()) {
@@ -364,7 +343,7 @@ export function LexicalChatInput({
         onChange(textContent);
       });
     },
-    [onChange, apps, prompts, appFiles],
+    [onChange, prompts, appFiles],
   );
 
   const handleSubmit = useCallback(() => {

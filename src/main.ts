@@ -46,7 +46,7 @@ log.transports.console.level = "info"; // Keep info logs in console/stdout
 
 // Silence noisy scopes — they flood the console during normal operation
 const SILENCED_SCOPES = new Set<string>([
-  "opencode_adapter",
+  //"opencode_adapter",
   "design_handlers",
   "start_proxy_server",
   "scaffold-cache",

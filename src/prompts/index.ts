@@ -391,7 +391,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "REGLA CRÍTICA DE OUTPUT:",
     "1. Una vez aclarado todo, DEBES escribir el plan completo como un archivo Markdown dentro del directorio .vibes/ del proyecto usando tu herramienta de escritura de archivos.",
     "2. NUNCA escupas/imprimas el contenido del plan en el chat. Tu ÚNICA herramienta de escritura permitida es para crear el archivo .vibes/.",
-    "3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan en el panel de artefactos (ej: \"✅ He creado el plan. Puedes verlo usando el icono 📄 en la barra superior.\").",
+    "3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan en el panel de artefactos (ej: \"✅ He creado el plan. Puedes verlo usando el botón 📄 junto a la caja de texto.\").",
     "4. Guarda el archivo con un nombre descriptivo y único (ej: .vibes/plan-login-auth-1715123456.md).",
     "5. El plan debe estar organizado, jerarquizado, usar checkboxes (- [ ]) para las tareas e incluir diagramas mermaid si resulta útil.",
   ].join("\n"),

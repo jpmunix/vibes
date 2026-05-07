@@ -271,12 +271,10 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
           title="Ver planificaciones y artefactos"
         >
           <FileText className="h-3.5 w-3.5" />
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground border-b border-border/50 mb-1">
-          Artefactos del chat
-        </div>
+      <DropdownMenuContent align="end" className="min-w-[200px] max-w-[400px] w-auto">
         {artifacts.map((artifact) => (
           <DropdownMenuItem
             key={artifact.id}
@@ -288,7 +286,11 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
           >
             <div className="flex flex-col gap-0.5 w-full">
               <span className="font-medium text-sm truncate">{artifact.title || artifact.path}</span>
-              <span className="text-xs text-muted-foreground truncate opacity-80">{artifact.path}</span>
+              {artifact.createdAt && (
+                <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                  {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
             </div>
           </DropdownMenuItem>
         ))}

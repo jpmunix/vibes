@@ -695,7 +695,7 @@ export function registerChatHandlers() {
         messages: [
           {
             role: "system",
-            content: "Eres un analista técnico de primer nivel. Tu tarea es condensar el historial de esta conversación en un resumen denso y estructurado. Incluye contexto técnico, decisiones tomadas, estado final y próximos pasos. Este resumen se usará como contexto inicial para continuar el trabajo en una nueva sesión. Devuelve SOLO el markdown del resumen, sin saludos, sin intros ni despedidas.",
+            content: "Eres un analista técnico de primer nivel. Tu tarea es condensar el historial de esta conversación en un resumen denso y estructurado. Incluye contexto técnico, decisiones tomadas, estado final y próximos pasos. Este resumen se usará como contexto inicial para continuar el trabajo en una nueva sesión. Devuelve SOLO el markdown del resumen, sin saludos, sin intros ni despedidas.\n\nIMPORTANTE: Si mencionas archivos de artefactos/planificaciones, usa SIEMPRE la ruta completa con el directorio .vibes/ (ej: `.vibes/plan-internacionalizacion-1715123456.md`), nunca solo el nombre del archivo suelto. Esto permite que la interfaz los detecte y abra correctamente.",
           },
           {
             role: "user",
@@ -783,12 +783,23 @@ export function registerChatHandlers() {
 
             // Only register if truly orphaned (no chat owns it at all)
             if (!existingAnywhere) {
+              // Try to extract H1 heading from the file content
+              let artifactTitle = file;
+              try {
+                const fullPath = pathMod.join(vibesDir, file);
+                const fileContent = fs.readFileSync(fullPath, "utf-8");
+                const h1Match = fileContent.match(/^#\s+(.+)$/m);
+                if (h1Match?.[1]) {
+                  artifactTitle = h1Match[1].trim();
+                }
+              } catch { /* non-fatal — fall back to filename */ }
+
               await db.insert(remoteSchema.chatArtifacts).values({
                 userId: context.userId!,
                 appId: chat.appId,
                 chatId,
                 path: relativePath,
-                title: file,
+                title: artifactTitle,
                 createdAt: new Date(),
                 updatedAt: new Date(),
               });
@@ -810,6 +821,37 @@ export function registerChatHandlers() {
       columns: { id: true, path: true, title: true, createdAt: true, updatedAt: true },
       orderBy: [desc(remoteSchema.chatArtifacts.createdAt)],
     });
+
+    // ── Auto-heal stale titles (raw filenames → H1) ─────────────────
+    try {
+      const chat = await db.query.chats.findFirst({
+        where: eq(remoteSchema.chats.id, chatId),
+        columns: { appId: true },
+        with: { app: { columns: { path: true } } },
+      });
+      if (chat?.app?.path) {
+        const projectDir = getVibesAppPath(chat.app.path);
+        for (const artifact of artifacts) {
+          // Title looks like a raw filename if it ends with .md
+          if (artifact.title && artifact.title.endsWith(".md")) {
+            try {
+              const fullPath = pathMod.join(projectDir, artifact.path);
+              if (fs.existsSync(fullPath)) {
+                const fileContent = fs.readFileSync(fullPath, "utf-8");
+                const h1Match = fileContent.match(/^#\s+(.+)$/m);
+                if (h1Match?.[1]) {
+                  const newTitle = h1Match[1].trim();
+                  await db.update(remoteSchema.chatArtifacts)
+                    .set({ title: newTitle })
+                    .where(eq(remoteSchema.chatArtifacts.id, artifact.id));
+                  artifact.title = newTitle;
+                }
+              }
+            } catch { /* non-fatal */ }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
 
     return artifacts as any;
   });
