@@ -2242,44 +2242,55 @@ export async function handleOpenCodeStream(
                 const planQuestionPrompt = isEnglish
                     ? `[INTERACTIVE PLANNING INSTRUCTION:\n` +
                       `You are in planning mode. Your goal is to create a detailed and precise development plan.\n\n` +
-                      `GOLDEN RULE — ASK BEFORE PLANNING:\n` +
-                      `Unless the user has provided an extremely detailed plan with all decisions already made,\n` +
-                      `you MUST use the "question" tool to ask the user about fine details before generating\n` +
-                      `the final plan. Every doubt, ambiguity, or design/architecture decision must be resolved with the user.\n\n` +
+                      `QUESTIONS — INLINE IN THE DOCUMENT:\n` +
+                      `If you truly need clarification on fine details that you cannot reasonably deduce yourself, embed your questions DIRECTLY inside the Markdown plan file.\n` +
+                      `DO NOT use the "question" tool. Instead, add a clearly highlighted section in the plan document.\n` +
+                      `Format each question like this:\n\n` +
+                      `> **❓ Question 1:** [Your question here]\n` +
+                      `> - Option A: ... (Recommended)\n` +
+                      `> - Option B: ...\n\n` +
+                      `The user will respond using the artifact commenting feature directly on those questions.\n\n` +
                       `QUESTION LIMIT:\n` +
-                      `- Ask a MAXIMUM of 5 questions to the user (you can ask fewer if the request is clear).\n` +
-                      `- If you need more than 5, you must explicitly justify it to the user.\n` +
+                      `- Ask a MAXIMUM of 5 questions (fewer if the request is clear enough).\n` +
+                      `- If you need more than 5, justify it explicitly.\n` +
                       `- Group related questions into a single question when possible.\n` +
-                      `- Use predefined options when the alternatives are clear.\n\n` +
+                      `- Use predefined options when the alternatives are clear.\n` +
+                      `- Recommend the best option with a (Recommended) label.\n\n` +
                       `CRITICAL OUTPUT RULES:\n` +
-                      `1. Once all questions are answered, write the complete plan as a Markdown file inside the \`.vibes/\` folder using your file writing tool.\n` +
+                      `1. Write the complete plan as a Markdown file inside the \`.vibes/\` folder using your file writing tool.\n` +
                       `   The filename MUST be descriptive and unique (e.g. \`.vibes/plan-auth-flow-1715123456.md\`).\n` +
                       `   The markdown file must be organized, hierarchical, use checkboxes for tasks, and include Mermaid diagrams if needed.\n` +
                       `2. NEVER print/dump the plan content in the chat. Your ONLY permitted write operation is the .vibes/ artifact file.\n` +
-                      `3. After writing the file, your chat response must be ONLY a brief message inviting the user to view the plan using the artifact button (e.g. "✅ Plan created. You can view it using the 📄 button next to the chat input.").\n\n` +
+                      `3. After writing the file, your chat response must be ONLY a brief message inviting the user to view the plan using the artifact button (e.g. "✅ Plan created. You can view it using the 📄 button in the status bar.").\n` +
+                      `4. If the plan contains questions, add at the end of your chat message something like: "I left a few questions in the plan — just comment on them directly in the document."\n\n` +
                       `Do NOT generate a provisional or incomplete plan while waiting for answers.\n` +
-                      `First clarify, then plan.]`
+                      `First clarify what you can't deduce, then plan.]`
                     : `[INSTRUCCIÓN DE PLANIFICACIÓN INTERACTIVA:\n` +
                       `Estás en modo planificación. Tu objetivo es crear un plan de desarrollo detallado y preciso.\n\n` +
-                      `PREGUNTAR SI HACE FALTA:\n` +
-                      //`A menos que el usuario te haya dado un plan sumamente detallado con todas las decisiones ya tomadas,\n` +
-                      `DEBES usar la herramienta "question" para preguntarle al usuario por los detalles finos antes de generar el plan definitivo, si es que de verdad necesitas detalles. No es cuestión de interrumpir al usuario por algo que puedes deducir\n` +
-                      `Cada duda, ambigüedad o decisión de diseño/arquitectura puede resolverse con el usuario.\n\n` +
+                      `PREGUNTAS — DENTRO DEL DOCUMENTO:\n` +
+                      `Si de verdad necesitas aclarar detalles finos que no puedes deducir razonablemente por ti mismo, incrusta las preguntas DIRECTAMENTE en el archivo Markdown del plan.\n` +
+                      `NO uses la herramienta "question". En su lugar, añade una sección claramente resaltada en el documento del plan.\n` +
+                      `Formatea cada pregunta así:\n\n` +
+                      `> **❓ Pregunta 1:** [Tu pregunta aquí]\n` +
+                      `> - Opción A: ... (Recomendado)\n` +
+                      `> - Opción B: ...\n\n` +
+                      `El usuario responderá usando la función de comentarios del artefacto directamente sobre esas preguntas.\n\n` +
                       `LÍMITE DE PREGUNTAS:\n` +
-                      `- Haz como MÁXIMO 2 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
+                      `- Haz como MÁXIMO 5 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
                       `- Si necesitas más, debes justificarlo explícitamente al usuario.\n` +
                       `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible pero siempre que mantengan relación.\n` +
-                      `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
+                      `- Usa opciones predefinidas cuando las alternativas sean claras.\n` +
                       `- Intenta recomendar la mejor opción al usuario con un (Recomendado).\n\n` +
                       `REGLAS CRÍTICAS DE OUTPUT:\n` +
-                      `1. Una vez resueltas todas las preguntas, escribe el plan completo como un archivo Markdown dentro de la carpeta \`.vibes/\` usando tu herramienta de escritura de archivos.\n` +
+                      `1. Escribe el plan completo como un archivo Markdown dentro de la carpeta \`.vibes/\` usando tu herramienta de escritura de archivos.\n` +
                       `   El nombre del archivo debe ser descriptivo y único (ej. \`.vibes/plan-auth-flow-1715123456.md\`).\n` +
                       `   El archivo markdown debe estar organizado, jerarquizado, usar checkboxes para las tareas, e incluir diagramas Mermaid si es necesario.\n` +
                       `2. NUNCA imprimas/escupas el contenido del plan en el chat. Tu ÚNICA operación de escritura permitida es el archivo .vibes/.\n` +
-                      `3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan usando el botón de artefactos (ej: "✅ He creado el plan. Puedes verlo usando el botón 📄 en la barra de estado.").\n\n` +
+                      `3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan usando el botón de artefactos (ej: "✅ He creado el plan. Puedes verlo usando el botón 📄 en la barra de estado.").\n` +
+                      `4. Si el plan contiene preguntas, añade al final de tu mensaje en el chat algo como: "Te he dejado unas preguntas en el plan — respóndelas comentando directamente en el documento."\n\n` +
                       `NO generes un plan provisional o incompleto mientras esperas respuestas.\n` +
-                      `NO incluyas fases de tests unitarios o probas que ralenticen un desarrollo ágil y rápido.\n` +
-                      `Primero aclara, luego planifica.]`;
+                      `NO incluyas fases de tests unitarios o pruebas que ralenticen un desarrollo ágil y rápido.\n` +
+                      `Primero aclara lo que no puedas deducir, luego planifica.]`;
                 promptText = `${planQuestionPrompt}\n\n${req.prompt}`;
                 logger.info(`${LP} 🗣️ First message in plan mode — injected interactive question instruction (lang=${isEnglish ? "en" : "es"})`);
             }
