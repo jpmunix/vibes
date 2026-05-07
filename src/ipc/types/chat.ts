@@ -101,6 +101,7 @@ export const ChatStreamParamsSchema = z.object({
     .array(
       z.object({
         prompt: z.string(),
+        role: z.string().optional(),
         attachments: z.array(ChatAttachmentSchema).optional(),
       }),
     )
@@ -419,6 +420,7 @@ export const chatContracts = {
         id: z.number(),
         path: z.string(),
         title: z.string().nullable(),
+        accepted: z.number().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
       })
@@ -432,6 +434,62 @@ export const chatContracts = {
       path: z.string(), // relative path to .vibes/ file
     }),
     output: z.string(), // markdown content
+  }),
+
+  acceptArtifact: defineContract({
+    channel: "accept-artifact",
+    input: z.number(), // artifactId
+    output: z.boolean(),
+  }),
+
+  // ── Artifact Comments ─────────────────────────────────────────────────────
+
+  addArtifactComment: defineContract({
+    channel: "add-artifact-comment",
+    input: z.object({
+      artifactId: z.number(),
+      selectedText: z.string().nullable(),
+      blockRef: z.string().nullable(),
+      comment: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      artifactId: z.number(),
+      selectedText: z.string().nullable(),
+      blockRef: z.string().nullable(),
+      comment: z.string(),
+      createdAt: z.date(),
+    }),
+  }),
+
+  getArtifactComments: defineContract({
+    channel: "get-artifact-comments",
+    input: z.number(), // artifactId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        artifactId: z.number(),
+        selectedText: z.string().nullable(),
+        blockRef: z.string().nullable(),
+        comment: z.string(),
+        createdAt: z.date(),
+      })
+    ),
+  }),
+
+  updateArtifactComment: defineContract({
+    channel: "update-artifact-comment",
+    input: z.object({
+      commentId: z.number(),
+      comment: z.string(),
+    }),
+    output: z.boolean(),
+  }),
+
+  deleteArtifactComment: defineContract({
+    channel: "delete-artifact-comment",
+    input: z.number(), // commentId
+    output: z.boolean(),
   }),
 } as const;
 

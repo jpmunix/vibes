@@ -1,6 +1,6 @@
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { desc, eq, and, like, ne, gte, sql } from "drizzle-orm";
+import { desc, asc, eq, and, like, ne, gte, sql } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
@@ -818,7 +818,7 @@ export function registerChatHandlers() {
         eq(remoteSchema.chatArtifacts.chatId, chatId),
         eq(remoteSchema.chatArtifacts.userId, context.userId!)
       ),
-      columns: { id: true, path: true, title: true, createdAt: true, updatedAt: true },
+      columns: { id: true, path: true, title: true, accepted: true, createdAt: true, updatedAt: true },
       orderBy: [desc(remoteSchema.chatArtifacts.createdAt)],
     });
 
@@ -878,6 +878,88 @@ export function registerChatHandlers() {
     }
     
     return fs.readFileSync(fullPath, "utf-8");
+  });
+
+  // ── Accept artifact (one-way) ────────────────────────────────────────────
+
+  createTypedHandler(chatContracts.acceptArtifact, async (_, artifactId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    await db.update(remoteSchema.chatArtifacts)
+      .set({ accepted: 1 })
+      .where(
+        and(
+          eq(remoteSchema.chatArtifacts.id, artifactId),
+          eq(remoteSchema.chatArtifacts.userId, context.userId!)
+        )
+      );
+
+    return true;
+  });
+
+  // ── Artifact Comments ────────────────────────────────────────────────────
+
+  createTypedHandler(chatContracts.addArtifactComment, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const [inserted] = await db.insert(remoteSchema.artifactComments).values({
+      artifactId: params.artifactId,
+      userId: context.userId!,
+      selectedText: params.selectedText,
+      blockRef: params.blockRef,
+      comment: params.comment,
+      createdAt: new Date(),
+    }).returning();
+
+    return inserted as any;
+  });
+
+  createTypedHandler(chatContracts.getArtifactComments, async (_, artifactId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const comments = await db.query.artifactComments.findMany({
+      where: and(
+        eq(remoteSchema.artifactComments.artifactId, artifactId),
+        eq(remoteSchema.artifactComments.userId, context.userId!)
+      ),
+      orderBy: [asc(remoteSchema.artifactComments.createdAt)],
+    });
+
+    return comments as any;
+  });
+
+  createTypedHandler(chatContracts.updateArtifactComment, async (_, { commentId, comment }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    await db.update(remoteSchema.artifactComments)
+      .set({ comment })
+      .where(
+        and(
+          eq(remoteSchema.artifactComments.id, commentId),
+          eq(remoteSchema.artifactComments.userId, context.userId!)
+        )
+      );
+
+    return true;
+  });
+
+  createTypedHandler(chatContracts.deleteArtifactComment, async (_, commentId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    await db.delete(remoteSchema.artifactComments)
+      .where(
+        and(
+          eq(remoteSchema.artifactComments.id, commentId),
+          eq(remoteSchema.artifactComments.userId, context.userId!)
+        )
+      );
+
+    return true;
   });
 
   logger.debug("Registered chat IPC handlers");

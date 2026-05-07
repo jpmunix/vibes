@@ -15,9 +15,16 @@ Además, el Panel de Memoria estrena un nuevo menú de gestión. Ahora puedes **
 
 En la versión anterior introdujimos la posibilidad de asignar un modelo distinto a cada uno de los 7 agentes internos. Tras probarlo en producción vimos que la granularidad extra no aportaba: en la práctica acabas queriendo un modelo potente para pensar y uno rápido para ejecutar, y configurar 7 selectores individuales era más ruido que utilidad. Así que hemos dado un paso atrás para dar dos hacia delante. Ahora solo tienes **dos selectores** en Ajustes → Agente: el **Modelo estratega** (planificación, exploración y razonamiento) y el **Modelo ejecutor** (títulos, resúmenes, compactación y tareas ligeras). Cambias uno y afecta a todo su grupo al instante, sin reiniciar nada. Menos decisiones, la misma flexibilidad donde importa.
 
+## Artefactos: planificaciones vivas dentro del chat
+
+Cuando le pides al agente que elabore un plan, ahora el resultado se guarda como un **artefacto** —un documento completo que queda vinculado a esa conversación y se puede consultar en cualquier momento. Aparece un indicador azul en la barra superior, tanto en modo Agente como en el workspace de Apps, para que sepas de un vistazo que hay documentos disponibles. Al pulsar se despliega un listado con el **título del documento** y la **fecha y hora** de creación, para que localices lo que buscas al instante.
+
+Selecciona cualquier artefacto y se abrirá en un **panel lateral redimensionable** con el título destacado y el contenido completo. Desde la propia cabecera del panel puedes **compartir el documento** con un clic: se genera un enlace público y se copia al portapapeles, listo para enviar a quien necesites. Y si el agente incluyó **diagramas** en su respuesta —ya sea dentro de un artefacto o en el propio chat—, se dibujan directamente con los colores del tema activo. Cada diagrama tiene un botón de **pantalla completa** que lo abre a casi toda la pantalla para verlo en detalle, perfecto para flujos complejos o arquitecturas con muchos nodos.
+
 ## Correcciones y ajustes
 
 - **Markdown Sanitizado:** Los bloques de código se sanitizan intentando garantizar que el *parser* visual de la interfaz nunca se rompa al renderizarlos.
+- **Reparaciones en permisos:** Se han detectado bucles infinitos al solicitar o intentar usar ciertos permisos. Se ha solucionado el problema y en los ajustes de permisos se han añadido nuevos controles granulares.
 
 # v8.4
 *4 de mayo de 2026*

@@ -119,7 +119,27 @@ export async function testRemoteConnection(): Promise<boolean> {
  *   - ALTER TABLE memories ADD COLUMN last_used INTEGER
  *   - CREATE TABLE memory_telemetry (...)
  *   - CREATE TABLE memory_pipeline_logs (...)
+ *   - CREATE TABLE artifact_comments (...)
  */
 export async function initializeRemoteSchema(): Promise<void> {
+  try {
+    const client = getClient();
+    // Auto-create artifact_comments if missing (added v8.5)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS artifact_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        artifact_id INTEGER NOT NULL REFERENCES chat_artifacts(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        selected_text TEXT,
+        block_ref TEXT,
+        comment TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `);
+    // Add accepted column if missing (added v8.5)
+    await client.execute(`ALTER TABLE chat_artifacts ADD COLUMN accepted INTEGER DEFAULT 0`).catch(() => {});
+  } catch (e) {
+    logger.warn("artifact_comments migration (non-fatal):", e);
+  }
   _remoteSchemaInitialized = true;
 }

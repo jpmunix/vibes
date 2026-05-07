@@ -127,8 +127,25 @@ export const chatArtifacts = sqliteTable("chat_artifacts", {
         .references(() => chats.id, { onDelete: "cascade" }),
     path: text("path").notNull(),
     title: text("title"),
+    accepted: integer("accepted").default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const artifactComments = sqliteTable("artifact_comments", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    artifactId: integer("artifact_id")
+        .notNull()
+        .references(() => chatArtifacts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    /** The exact text the user highlighted (null = block-level comment) */
+    selectedText: text("selected_text"),
+    /** Human-readable section/heading reference for contextual display */
+    blockRef: text("block_ref"),
+    comment: text("comment").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 // =============================================================================
@@ -380,8 +397,14 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
 }));
 
-export const chatArtifactsRelations = relations(chatArtifacts, ({ one }) => ({
+export const chatArtifactsRelations = relations(chatArtifacts, ({ one, many }) => ({
     user: one(users, { fields: [chatArtifacts.userId], references: [users.id] }),
     app: one(apps, { fields: [chatArtifacts.appId], references: [apps.id] }),
     chat: one(chats, { fields: [chatArtifacts.chatId], references: [chats.id] }),
+    comments: many(artifactComments),
+}));
+
+export const artifactCommentsRelations = relations(artifactComments, ({ one }) => ({
+    artifact: one(chatArtifacts, { fields: [artifactComments.artifactId], references: [chatArtifacts.id] }),
+    user: one(users, { fields: [artifactComments.userId], references: [users.id] }),
 }));

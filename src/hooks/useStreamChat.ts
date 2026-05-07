@@ -257,7 +257,7 @@ export function useStreamChat({
             newMessages.push({
               id: tempUserId - i - 2, // unique negative IDs
               chatId,
-              role: "user",
+              role: priorMessages[i].role || "user",
               content: priorMessages[i].prompt,
               createdAt: new Date().toISOString(),
             } as any);

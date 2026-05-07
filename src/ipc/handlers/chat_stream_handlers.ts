@@ -515,7 +515,7 @@ ${componentSnippet}
           await db.insert(remoteSchema.messages).values({
             userId: currentUserId,
             chatId: req.chatId,
-            role: "user",
+            role: prior.role || "user",
             content: priorContent,
             aiMessagesJson: priorAiMessagesJson,
             createdAt: new Date(),

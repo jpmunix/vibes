@@ -117,10 +117,14 @@ const pendingPermissionResolvers = new Map<string, (response: string) => void>()
 const PERMISSION_DEFAULTS: Record<string, "allow" | "ask" | "deny"> = {
     edit: "ask",
     read: "allow",   // Read ops are non-destructive — always allowed
+    list: "allow",   // Directory listing — non-destructive, always allowed
     bash: "allow",
     webfetch: "ask",
     websearch: "ask",
     lsp: "allow",
+    task: "allow",              // Subagent launch — safe by default
+    skill: "allow",             // Skill execution — safe by default
+    externalDirectory: "ask",   // Access outside project — ask by default
 };
 
 /**
@@ -203,16 +207,20 @@ function buildPermissionConfig(settings: any) {
 
     return {
         edit: perms?.edit ?? PERMISSION_DEFAULTS.edit,
-        read: "allow",    // Read ops (read, glob, grep) are always allowed — non-destructive
+        read: "allow",    // Read ops (read, glob, grep, list) are always allowed — non-destructive
         glob: "allow",
         grep: "allow",
+        list: "allow",    // Directory listing — CRITICAL: without this, OpenCode blocks on ls/list
         bash: bashRules,
         webfetch: perms?.webfetch ?? PERMISSION_DEFAULTS.webfetch,
         websearch: perms?.websearch ?? PERMISSION_DEFAULTS.websearch,
         lsp: perms?.lsp ?? PERMISSION_DEFAULTS.lsp,
-        task: "allow",        // Subagent launch
+        task: perms?.task ?? "allow",              // Subagent launch
         question: "allow",
-        external_directory: "ask",
+        todowrite: "allow",                        // Agent TODO management — non-destructive
+        doom_loop: "allow",                        // Auto-recovery from stuck loops — non-destructive
+        skill: perms?.skill ?? "allow",            // Skill/prompt execution
+        external_directory: perms?.externalDirectory ?? "ask",
     };
 }
 
@@ -228,12 +236,24 @@ function resolveToolPermission(
     if (!permsConfig) return "allow"; // No config → default allow (backwards compat)
 
     // Map OpenCode tool names to our settings keys.
-    // glob/grep are separate tools in OpenCode but follow the user's "read" pill.
+    // glob/grep/list are separate tools in OpenCode but follow the user's "read" pill.
+    // external_directory uses underscore in OpenCode but camelCase in settings.
     const TOOL_ALIAS: Record<string, string> = {
         glob: "read",
         grep: "read",
+        list: "read",
+        external_directory: "externalDirectory",
     };
     const settingsKey = TOOL_ALIAS[toolName] ?? toolName;
+
+    // ── Read-family tools are ALWAYS auto-allowed regardless of config ──
+    // These are non-destructive operations that should never block the agent.
+    // Without this safeguard, a missing config key causes the agent to stall
+    // waiting for a user permission response that may never come.
+    const READ_FAMILY_TOOLS = new Set(["read", "glob", "grep", "list"]);
+    if (READ_FAMILY_TOOLS.has(toolName)) {
+        return "allow";
+    }
 
     const value = permsConfig[settingsKey as keyof typeof permsConfig];
 
@@ -337,8 +357,9 @@ async function persistPermissionToSettings(
         } else {
             // ── Non-bash: set the global tool pill ──
             const TOOL_TO_KEY: Record<string, string> = {
-                edit: "edit", read: "read", glob: "read", grep: "read",
+                edit: "edit", read: "read", glob: "read", grep: "read", list: "read",
                 webfetch: "webfetch", websearch: "websearch", lsp: "lsp",
+                task: "task", skill: "skill", external_directory: "externalDirectory",
             };
             const key = TOOL_TO_KEY[toolName];
             if (!key) {
@@ -2247,15 +2268,17 @@ export async function handleOpenCodeStream(
                       `LÍMITE DE PREGUNTAS:\n` +
                       `- Haz como MÁXIMO 5 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
                       `- Si necesitas más de 5, debes justificarlo explícitamente al usuario.\n` +
-                      `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible.\n` +
+                      `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible pero siempre que mantengan relación.\n` +
                       `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
+                      `- Intenta recomendar la mejor opción al usuario con un (Recomendado).\n\n` +
                       `REGLAS CRÍTICAS DE OUTPUT:\n` +
                       `1. Una vez resueltas todas las preguntas, escribe el plan completo como un archivo Markdown dentro de la carpeta \`.vibes/\` usando tu herramienta de escritura de archivos.\n` +
                       `   El nombre del archivo debe ser descriptivo y único (ej. \`.vibes/plan-auth-flow-1715123456.md\`).\n` +
                       `   El archivo markdown debe estar organizado, jerarquizado, usar checkboxes para las tareas, e incluir diagramas Mermaid si es necesario.\n` +
                       `2. NUNCA imprimas/escupas el contenido del plan en el chat. Tu ÚNICA operación de escritura permitida es el archivo .vibes/.\n` +
-                      `3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan usando el botón de artefactos (ej: "✅ He creado el plan. Puedes verlo usando el botón 📄 junto a la caja de texto.").\n\n` +
+                      `3. Tras escribir el archivo, tu respuesta en el chat debe ser SOLO un breve mensaje invitando al usuario a ver el plan usando el botón de artefactos (ej: "✅ He creado el plan. Puedes verlo usando el botón 📄 en la barra de estado.").\n\n` +
                       `NO generes un plan provisional o incompleto mientras esperas respuestas.\n` +
+                      `NO incluyas fases de tests unitarios o probas que ralenticen un desarrollo ágil y rápido.\n` +
                       `Primero aclara, luego planifica.]`;
                 promptText = `${planQuestionPrompt}\n\n${req.prompt}`;
                 logger.info(`${LP} 🗣️ First message in plan mode — injected interactive question instruction (lang=${isEnglish ? "en" : "es"})`);
@@ -2451,7 +2474,7 @@ export async function handleOpenCodeStream(
                     where: eq(remoteSchema.chats.id, req.chatId),
                     columns: { appId: true },
                 });
-                
+
                 if (chat) {
                     for (const file of filesEdited) {
                         if (file.includes(".vibes/") && file.endsWith(".md")) {
@@ -2460,14 +2483,14 @@ export async function handleOpenCodeStream(
                             if (idx !== -1) {
                                 relativePath = file.substring(idx);
                             }
-                            
+
                             const existing = await db.query.chatArtifacts.findFirst({
                                 where: and(
                                     eq(remoteSchema.chatArtifacts.chatId, req.chatId),
                                     eq(remoteSchema.chatArtifacts.path, relativePath)
                                 )
                             });
-                            
+
                             if (!existing) {
                                 // Try to extract H1 heading from the file content
                                 let artifactTitle = require("path").basename(relativePath);
@@ -2520,7 +2543,7 @@ export async function handleOpenCodeStream(
     } catch (error: any) {
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
-            
+
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
             const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
             const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
@@ -3508,7 +3531,7 @@ export function registerQuestionHandler() {
             });
 
             const text = await res.text();
-            
+
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}: ${text}`);
             }

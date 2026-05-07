@@ -83,6 +83,15 @@ export const showWarning = (message: string) => {
 };
 
 /**
+ * Show a warning toast with long duration (8s) for actionable messages.
+ * @param message The warning message to display
+ */
+export const showWarningLong = (message: string) => {
+  toast.warning(message, { duration: 8000 });
+  console.warn(message);
+};
+
+/**
  * Show an info toast
  * @param message The info message to display
  */

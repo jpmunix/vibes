@@ -314,6 +314,10 @@ export const OpenCodePermissionsConfigSchema = z.object({
   webfetch: OpenCodePermissionSchema.optional(),
   websearch: OpenCodePermissionSchema.optional(),
   lsp: OpenCodePermissionSchema.optional(),
+  // Agent capabilities
+  task: OpenCodePermissionSchema.optional(),
+  skill: OpenCodePermissionSchema.optional(),
+  externalDirectory: OpenCodePermissionSchema.optional(),
   // Bash granular sub-rules — filesystem
   bashRm: OpenCodePermissionSchema.optional(),
   // Git — repo-local destructive
