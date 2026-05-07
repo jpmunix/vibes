@@ -474,6 +474,7 @@ function PlaygroundPanel() {
     const [viewMode, setViewMode] = useState<'memorias' | 'raw'>('memorias');
     const [morphActive, setMorphActive] = useState(false);
     const [nitroActive, setNitroActive] = useState(false);
+    const [timeoutSeconds, setTimeoutSeconds] = useState(15);
     const { aliases } = useModelAliases();
     const resultsRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -745,7 +746,7 @@ function PlaygroundPanel() {
         userScrolledRef.current = false;
         setInputCollapsed(true);
 
-        const MODEL_TIMEOUT_MS = 15_000;
+        const MODEL_TIMEOUT_MS = timeoutSeconds * 1000;
 
         for (let i = 0; i < activeModels.length; i++) {
             if (cancelledRef.current) break;
@@ -809,7 +810,7 @@ function PlaygroundPanel() {
                 setResults(prev => [...prev, {
                     modelApiName,
                     modelDisplayName,
-                    text: isTimeout ? "Tiempo límite superado (15s)" : (error?.message || String(error)),
+                    text: isTimeout ? `Tiempo límite superado (${timeoutSeconds}s)` : (error?.message || String(error)),
                     durationMs,
                     error: true,
                     timeout: isTimeout,
@@ -853,7 +854,7 @@ function PlaygroundPanel() {
                 resultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
             }
         }, 100);
-    }, [prompt, activeModels, isRunning, modelDisplayNameMap, autoCollapse]);
+    }, [prompt, activeModels, isRunning, modelDisplayNameMap, autoCollapse, timeoutSeconds]);
 
     // Cancel in-flight request and stop the loop
     const handleCancel = useCallback(async () => {
@@ -1786,6 +1787,45 @@ function PlaygroundPanel() {
                         <ChevronsDownUp size={14} />
                         Auto-colapso
                     </button>
+
+                    {/* Timeout selector */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors",
+                                    timeoutSeconds !== 15
+                                        ? "bg-amber-500/10 text-amber-600 border-amber-500/30 font-semibold"
+                                        : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground"
+                                )}
+                                disabled={isRunning}
+                                title="Tiempo límite por modelo"
+                            >
+                                <Clock size={14} />
+                                {timeoutSeconds}s
+                                <ChevronDown size={13} className="opacity-50" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[160px]">
+                            <div className="px-3 py-1.5 typo-micro text-muted-foreground opacity-60 uppercase tracking-wider">
+                                Timeout por modelo
+                            </div>
+                            {[10, 15, 30, 60, 90, 120].map(seconds => (
+                                <DropdownMenuItem
+                                    key={seconds}
+                                    className={cn(
+                                        "cursor-pointer py-2 gap-2",
+                                        timeoutSeconds === seconds && "bg-primary/10 font-semibold"
+                                    )}
+                                    onSelect={() => setTimeoutSeconds(seconds)}
+                                >
+                                    <Clock size={13} className="text-muted-foreground shrink-0" />
+                                    {seconds} segundos
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {/* Spacer */}
                     <div className="flex-1" />
