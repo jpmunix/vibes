@@ -82,7 +82,7 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
       "components.json — configuración de Shadcn/ui",
     ],
-    verifyCommand: "npx tsc --noEmit",
+    verifyCommand: "npx oxlint",
   },
   next: {
     title: "Next.js",

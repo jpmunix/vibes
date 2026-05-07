@@ -1331,6 +1331,7 @@ This conversation includes one or more image attachments. When the user uploads 
             getEffectivePrompt("ctx_task_management", settings)
           );
 
+
           // 6. Plan mode — interactive question-driven planning
           if (resolvedChatMode === "plan") {
             contextInstructions.push(

@@ -127,6 +127,43 @@ const PERMISSION_DEFAULTS: Record<string, "allow" | "ask" | "deny"> = {
     externalDirectory: "ask",   // Access outside project — ask by default
 };
 
+// ============================================================================
+// Vibes Rules — written to docs/vibes-rules.md in user projects
+// ============================================================================
+
+const VIBES_RULES_MD = `# Vibes Platform Rules
+
+## Linting & Type-Checking
+
+- Run lint/type-check **once**, only after **all** edits are complete. Never between individual file changes.
+- **No doom loops**: if lint reports errors, fix the critical ones and stop. Maximum 1 cycle: lint → fix → lint. Do not keep looping.
+- **Prefer oxlint**: if the project has \`oxlint\` in devDependencies, use \`npx oxlint\` instead of \`eslint\`. It is 100x faster.
+- **Install oxlint**: if the project uses eslint but does NOT have oxlint, install it (\`npm i -D oxlint\`) and update the \`lint\` script in package.json to \`oxlint\` before running lint. This is a one-time migration.
+- **Targeted lint**: never lint the entire project. If you edited 2 files, lint only those: \`npx oxlint src/file1.tsx src/file2.tsx\`
+- **Skip when irrelevant**: if you only changed CSS, text content, or static assets, do not run lint. It only matters after JS/TS logic changes.
+
+## Execution
+
+- Never explain how to run the app locally (npm run dev, etc.). The Vibes environment handles compilation and preview automatically.
+`;
+
+/**
+ * Write docs/vibes-rules.md to the project directory.
+ * This file is registered in opencode.json instructions and combined
+ * with AGENTS.md by OpenCode natively.
+ */
+async function writeVibesRules(projectDir: string): Promise<void> {
+    const fs = await import("node:fs");
+    const docsDir = path.join(projectDir, "docs");
+    const rulesPath = path.join(docsDir, "vibes-rules.md");
+
+    if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+    }
+    fs.writeFileSync(rulesPath, VIBES_RULES_MD, "utf-8");
+    logger.info(`[OpenCode] Wrote vibes-rules.md to ${rulesPath}`);
+}
+
 /**
  * Build the OpenCode `permission` config block from user settings.
  * Falls back to PERMISSION_DEFAULTS if no settings are configured.
@@ -317,7 +354,7 @@ async function persistPermissionToSettings(
 ) {
     try {
         const current = readSettings();
-        const perms = { ...(current.openCodePermissions2 || {}) };
+        const perms = { ...current.openCodePermissions2 };
 
         if (toolName === "bash") {
             // ── Bash: add a specific custom rule, never touch the global pill ──
@@ -922,7 +959,7 @@ export async function updateOpenCodeConfig(changes: {
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
-                ...(body.agent || {}),
+                ...body.agent,
                 build: {
                     ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
                     ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
@@ -936,13 +973,13 @@ export async function updateOpenCodeConfig(changes: {
             if (changes.strategistModel) {
                 const model = `openrouter/${sanitizeModelName(changes.strategistModel)}`;
                 for (const id of ["plan", "explore", "general"]) {
-                    agentConfig[id] = { ...(agentConfig[id] || {}), model };
+                    agentConfig[id] = { ...agentConfig[id], model };
                 }
             }
             if (changes.executorModel) {
                 const model = `openrouter/${changes.executorModel}`;
                 for (const id of ["compaction", "title", "summary", "mockup"]) {
-                    agentConfig[id] = { ...(agentConfig[id] || {}), model };
+                    agentConfig[id] = { ...agentConfig[id], model };
                 }
             }
 
@@ -1544,7 +1581,7 @@ async function getOpenCodeClient(appPath: string) {
                         enabled: true,
                         headers: { "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" },
                     },
-                    ...(buildMcpConfig(enabledServers) || {}),
+                    ...buildMcpConfig(enabledServers),
                 },
         };
 
@@ -2047,6 +2084,26 @@ export async function handleOpenCodeStream(
             logger.error(`${LP} ${errorMsg}`);
             return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
         }
+    }
+
+    // ── Inject Vibes rules for Node.js projects (idempotent) ──────────
+    // Writes docs/vibes-rules.md and registers it in opencode.json.
+    // Runs for ALL projects (new + existing) but only if package.json exists.
+    // The file is combined with AGENTS.md by OpenCode natively.
+    try {
+        const fsModule = await import("node:fs");
+        const pkgJsonPath = path.join(projectDir, "package.json");
+        if (fsModule.existsSync(pkgJsonPath)) {
+            const rulesPath = path.join(projectDir, "docs", "vibes-rules.md");
+            if (!fsModule.existsSync(rulesPath)) {
+                const { patchOpencodeJsonInstructions } = await import("./design_handlers");
+                await writeVibesRules(projectDir);
+                await patchOpencodeJsonInstructions(projectDir, "docs/vibes-rules.md");
+                logger.info(`${LP} 📋 Vibes rules injected (Node.js project detected)`);
+            }
+        }
+    } catch (rulesErr: any) {
+        logger.warn(`${LP} ⚠️ Failed to inject vibes-rules.md (non-fatal): ${rulesErr.message}`);
     }
 
     // ── Memory Bootstrap (cold start, fire-and-forget) ──

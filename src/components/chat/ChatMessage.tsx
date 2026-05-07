@@ -390,8 +390,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
         const activeLabel = meta.pendingLabel ?? meta.label;
 
         let contentExcerpt: string | undefined = undefined;
-        // If it's a thinking tag, extract a short, clean snippet of the ongoing thought
-        if (["think", "thought", "vibes-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
+        // Extract a short excerpt from the ongoing tool/thinking content
+        if (lastOpenIndex !== -1) {
           const ongoingContent = normalizedMessageContent.slice(lastOpenIndex);
           // Strip basic markdown to get clean text for the excerpt
           const cleanText = ongoingContent
@@ -657,7 +657,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           show a direct button to open that specific artifact in the sidebar */}
                       {isAssistant && !isStreaming && !isCollapsed && (() => {
                         // Extract .vibes/xxx.md references from the message content
-                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-\.]+\.md/);
+                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-.]+\.md/);
                         if (!vibesMatch) return null;
                         const artifactPath = vibesMatch[0];
                         return (

@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 interface StreamingLoadingAnimationProps {
   variant: "initial" | "streaming";
@@ -184,11 +184,117 @@ function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey
   );
 }
 
+// ─── Glitch Typewriter Effect ─────────────────────────────────────────────────
+
+/**
+ * Characters that can substitute during the "glitch" reveal phase.
+ * Mix of unicode blocks, dots, slashes — gives a terminal/matrix feel.
+ */
+const GLITCH_CHARS = "░▒▓█▄▀─│┌┐└┘├┤┬┴┼·•◦⊙⊕";
+
+/**
+ * GlitchTypewriter: reveals text character-by-character with random "glitch"
+ * substitutions that quickly resolve to the real character.
+ * Inspired by the thinking-stream effect but designed for tool command output.
+ */
+function GlitchTypewriter({ text, className }: { text: string; className?: string }) {
+  const [revealCount, setRevealCount] = useState(0);
+  const [glitchIndices, setGlitchIndices] = useState<Set<number>>(new Set());
+  const prevTextRef = useRef(text);
+  const frameRef = useRef<number | null>(null);
+
+  // When text changes (new excerpt), animate the new characters in
+  useEffect(() => {
+    const prevLen = prevTextRef.current === text ? 0 : Math.min(prevTextRef.current.length, text.length);
+    prevTextRef.current = text;
+    setRevealCount(prevLen);
+
+    // Cancel any pending animation
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+
+    const totalChars = text.length;
+    const charsToReveal = totalChars - prevLen;
+    if (charsToReveal <= 0) {
+      setRevealCount(totalChars);
+      return;
+    }
+
+    // Reveal ~3-5 chars per frame at ~60fps for a fast but visible effect
+    const CHARS_PER_TICK = Math.max(2, Math.ceil(charsToReveal / 15));
+    let current = prevLen;
+
+    const tick = () => {
+      current = Math.min(current + CHARS_PER_TICK, totalChars);
+      setRevealCount(current);
+
+      // Add random glitch positions in the "frontier" zone
+      const newGlitch = new Set<number>();
+      for (let i = Math.max(0, current - 4); i < Math.min(current + 3, totalChars); i++) {
+        if (Math.random() > 0.5) newGlitch.add(i);
+      }
+      setGlitchIndices(newGlitch);
+
+      if (current < totalChars) {
+        frameRef.current = requestAnimationFrame(tick);
+      } else {
+        // Clear glitches after reveal completes
+        setTimeout(() => setGlitchIndices(new Set()), 80);
+      }
+    };
+
+    // Small initial delay so the label animation plays first
+    const startTimeout = setTimeout(() => {
+      frameRef.current = requestAnimationFrame(tick);
+    }, 50);
+
+    return () => {
+      clearTimeout(startTimeout);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [text]);
+
+  // Build the rendered string with glitch substitutions
+  const rendered = useMemo(() => {
+    const chars: React.ReactNode[] = [];
+    for (let i = 0; i < text.length; i++) {
+      if (i >= revealCount) {
+        // Not yet revealed — show nothing or a dim placeholder
+        chars.push(
+          <span key={i} style={{ opacity: 0 }}>{text[i]}</span>
+        );
+      } else if (glitchIndices.has(i)) {
+        // Glitch zone — show random char that will resolve next frame
+        const glitchChar = GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+        chars.push(
+          <span key={i} style={{ opacity: 0.3 }}>{glitchChar}</span>
+        );
+      } else {
+        // Fully revealed
+        chars.push(
+          <span key={i} style={{ opacity: Math.min(1, 0.4 + (revealCount - i) * 0.08) }}>
+            {text[i]}
+          </span>
+        );
+      }
+    }
+    return chars;
+  }, [text, revealCount, glitchIndices]);
+
+  return (
+    <span className={className} style={{ fontFamily: "var(--font-mono, 'SF Mono', 'Fira Code', monospace)" }}>
+      {rendered}
+    </span>
+  );
+}
+
 /**
  * Professional streaming indicator with orbital particle animation.
  *
  * - **initial**: orbital loader with label (shown when waiting for first content)
  * - **streaming**: compact inline orbital with contextual label (shown while content is arriving)
+ *
+ * When a tool is active (not just thinking), shows a glitch-typewriter effect
+ * on the right with the tool's inner content (commands, paths, etc.).
  */
 export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAnimation({
   variant,
@@ -208,7 +314,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
       setDisplayedExcerpt((prev) =>
         prev !== latestExcerptRef.current ? latestExcerptRef.current : prev
       );
-    }, 1000); // 1 second per update
+    }, 800); // Slightly faster than before (800ms vs 1s) for better tool feedback
 
     return () => clearInterval(interval);
   }, []);
@@ -245,16 +351,19 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
         </span>
         <AnimatePresence mode="popLayout">
           {displayedExcerpt && (
-            <motion.span
+            <motion.div
               key={displayedExcerpt}
-              className="text-xs italic text-muted-foreground/60 overflow-hidden text-ellipsis whitespace-nowrap flex-1"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.3 }}
+              className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.2 }}
             >
-              {displayedExcerpt}
-            </motion.span>
+              <GlitchTypewriter
+                text={displayedExcerpt}
+                className="text-[11px] text-muted-foreground/45"
+              />
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
