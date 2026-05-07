@@ -263,6 +263,8 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
 
   if (!artifacts || artifacts.length === 0) return null;
 
+  const hasUnreviewed = artifacts.some((a) => !a.accepted);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -271,7 +273,7 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
           title="Ver planificaciones y artefactos"
         >
           <FileText className="h-3.5 w-3.5" />
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />
+          {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[200px] max-w-[400px] w-auto">

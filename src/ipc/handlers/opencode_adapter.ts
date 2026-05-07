@@ -2261,13 +2261,13 @@ export async function handleOpenCodeStream(
                       `First clarify, then plan.]`
                     : `[INSTRUCCIÓN DE PLANIFICACIÓN INTERACTIVA:\n` +
                       `Estás en modo planificación. Tu objetivo es crear un plan de desarrollo detallado y preciso.\n\n` +
-                      `REGLA DE ORO — PREGUNTAR ANTES DE PLANIFICAR:\n` +
-                      `A menos que el usuario te haya dado un plan sumamente detallado con todas las decisiones ya tomadas,\n` +
-                      `DEBES usar la herramienta "question" para preguntarle al usuario por los detalles finos antes de generar\n` +
-                      `el plan definitivo. Cada duda, ambigüedad o decisión de diseño/arquitectura debe resolverse con el usuario.\n\n` +
+                      `PREGUNTAR SI HACE FALTA:\n` +
+                      //`A menos que el usuario te haya dado un plan sumamente detallado con todas las decisiones ya tomadas,\n` +
+                      `DEBES usar la herramienta "question" para preguntarle al usuario por los detalles finos antes de generar el plan definitivo, si es que de verdad necesitas detalles. No es cuestión de interrumpir al usuario por algo que puedes deducir\n` +
+                      `Cada duda, ambigüedad o decisión de diseño/arquitectura puede resolverse con el usuario.\n\n` +
                       `LÍMITE DE PREGUNTAS:\n` +
-                      `- Haz como MÁXIMO 5 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
-                      `- Si necesitas más de 5, debes justificarlo explícitamente al usuario.\n` +
+                      `- Haz como MÁXIMO 2 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
+                      `- Si necesitas más, debes justificarlo explícitamente al usuario.\n` +
                       `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible pero siempre que mantengan relación.\n` +
                       `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
                       `- Intenta recomendar la mejor opción al usuario con un (Recomendado).\n\n` +
