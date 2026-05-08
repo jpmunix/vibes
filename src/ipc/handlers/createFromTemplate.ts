@@ -119,7 +119,7 @@ async function replaceTemplateWildcards(
   appPath: string,
   appName?: string,
 ): Promise<void> {
-  const displayName = appName || "minube vibes";
+  const displayName = appName || "Vibes";
   // Replace {{APP_NAME}} in any files that use it
   const filesToCheck = ["index.html", "package.json"];
   for (const fileName of filesToCheck) {

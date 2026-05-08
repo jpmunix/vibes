@@ -2,7 +2,7 @@
  * OpenCode AI SDK Adapter
  *
  * Integrates the OpenCode AI agent (https://opencode.ai) as a backend for
- * the minube-vibes chat system. Uses the @opencode-ai/sdk to communicate
+ * the vibes chat system. Uses the @opencode-ai/sdk to communicate
  * with a local OpenCode server via HTTP + SSE events.
  *
  * Architecture:

@@ -1,5 +1,5 @@
 /**
- * LoginScreen — Fullscreen login for minube vibes.
+ * LoginScreen — Fullscreen login for vibes.
  * Uses the app's existing theme CSS variables (light/dark mode).
  * Real cloud logo from assets.
  */
@@ -48,11 +48,11 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         <div className="text-center mb-8">
           <img
             src={logoSrc}
-            alt="minube vibes"
+            alt="Vibes"
             className="w-12 h-12 mx-auto mb-4 rounded-lg"
           />
           <h1 className="typo-section-title tracking-tight">
-            minube vibes
+            Vibes
           </h1>
         </div>
 

@@ -351,7 +351,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en {{LANGUAGE}}. Piensa en {{LANGUAGE}}, razona en {{LANGUAGE}} y redacta TODAS tus respuestas completamente en {{LANGUAGE}}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.",
 
   ctx_no_run_locally:
-    "NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.",
+    "NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.",
 
 
 

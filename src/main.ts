@@ -87,7 +87,7 @@ app.commandLine.appendSwitch("enable-smooth-scrolling");
 const logger = log.scope("main");
 
 // ─── Build Profile ───────────────────────────────────────────────────────
-// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside minube-vibes).
+// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside vibes).
 // Override userData BEFORE any settings/paths are accessed so the two instances
 // get completely independent config directories and single-instance locks.
 const IS_VIBES_PROFILE = process.env.VIBES_PROFILE === "vibes";

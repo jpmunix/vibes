@@ -1,4 +1,4 @@
-# Plan de Integración: Open Responses → Minube Vibes
+# Plan de Integración: Open Responses → Vibes
 
 > **Fecha:** 2026-02-18
 > **Estado:** 📋 Pendiente de revisión
