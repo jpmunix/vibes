@@ -13,7 +13,7 @@ export const DEFAULT_EXECUTOR_MODEL = "google/gemini-2.5-flash-lite" as const;
  * Used when `settings.strategistModel` is not configured.
  * Build always uses selectedModel (the chat picker model).
  */
-export const DEFAULT_STRATEGIST_MODEL = "deepseek/deepseek-v3.2" as const;
+export const DEFAULT_STRATEGIST_MODEL = "deepseek/deepseek-v4-flash" as const;
 
 // ── Legacy aliases (kept for migration compat — DO NOT USE in new code) ──
 /** @deprecated Use DEFAULT_EXECUTOR_MODEL */

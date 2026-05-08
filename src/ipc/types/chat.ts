@@ -96,6 +96,8 @@ export const ChatStreamParamsSchema = z.object({
   undoRedo: z.boolean().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
   selectedComponents: z.array(ComponentSelectionSchema).optional(),
+  /** Transient model override for plan/ask mode (non-persisted). */
+  modelOverride: z.string().optional(),
   /** Messages to inject into the AI session before the main prompt (via noReply:true). */
   priorMessages: z
     .array(

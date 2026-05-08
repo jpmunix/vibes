@@ -14,6 +14,7 @@ import {
   selectedChatIdAtom,
   pendingMessageQueueByIdAtom,
   selectedMemoriesByChatIdAtom,
+  planModelOverrideAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -83,6 +84,7 @@ export function useStreamChat({
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
   const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
+  const planModelOverride = useAtomValue(planModelOverrideAtom);
 
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
@@ -324,6 +326,7 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
+            modelOverride: planModelOverride ?? undefined,
           },
           {
             onChunk: ({ messages: updatedMessages }) => {

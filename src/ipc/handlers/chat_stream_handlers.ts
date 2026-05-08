@@ -564,7 +564,8 @@ ${componentSnippet}
       
       let effectiveModelName = settings.selectedModel.name;
       if (agentId === "plan" || agentId === "explore") {
-        effectiveModelName = (settings.strategistModel || DEFAULT_STRATEGIST_MODEL).replace(/^openrouter\//, "");
+        // Prioritize transient override from the frontend (plan mode picker)
+        effectiveModelName = (req.modelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL).replace(/^openrouter\//, "");
       } else if (agentId === "mockup") {
         effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
       }

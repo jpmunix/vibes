@@ -134,7 +134,12 @@ export function registerSettingsHandlers() {
             }
 
             // Merge: local wins for secrets, remote wins for preferences
-            return { ...localSettings, ...remoteSettings };
+            const merged = { ...localSettings, ...remoteSettings };
+            // Hard migration: upgrade stale strategist model from remote
+            if (merged.strategistModel === "deepseek/deepseek-v3.2" || !merged.strategistModel) {
+              merged.strategistModel = "deepseek/deepseek-v4-flash";
+            }
+            return merged;
           } catch (e) {
             logger.error("Failed to parse remote settings JSON", e);
           }

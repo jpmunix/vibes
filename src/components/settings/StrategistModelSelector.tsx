@@ -45,7 +45,7 @@ export function StrategistModelSelector() {
                 {
                     value: DEFAULT_MODEL,
                     label:
-                        defaultModelInList?.displayName || "DeepSeek V3.2 (recomendado)",
+                        defaultModelInList?.displayName || "DeepSeek V4 Flash (recomendado)",
                     description: defaultModelInList ? undefined : "Modelo predeterminado",
                 },
             ]}

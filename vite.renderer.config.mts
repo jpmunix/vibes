@@ -8,11 +8,7 @@ const ReactCompilerConfig = {};
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    // Disable HMR so frontend file changes don't trigger automatic hot reloads.
-    // This prevents disruptive mid-work reloads when the AI agent edits files.
-    // The developer can manually refresh the preview (Ctrl+R / refresh button).
-    hmr: false,
-    watch: null,
+    // HMR enabled for faster development iteration.
   },
   plugins: [
     react({

@@ -615,6 +615,29 @@ export function readSettings(): UserSettings {
       return cleaned as UserSettings;
     }
 
+    // ── Hard migration: strategist model → deepseek-v4-flash ──
+    // Always force-upgrade from deepseek-v3.2 to deepseek-v4-flash.
+    // No flag gating — runs every boot until the value is no longer v3.2.
+    {
+      const OLD_STRATEGIST = "deepseek/deepseek-v3.2";
+      const NEW_STRATEGIST = "deepseek/deepseek-v4-flash";
+      const current = (validatedSettings as any).strategistModel;
+      if (!current || current === "" || current === OLD_STRATEGIST) {
+        const migratedSettings = {
+          ...validatedSettings,
+          strategistModel: NEW_STRATEGIST,
+        };
+        logger.info(`[Migration] Hard upgrade strategist model: "${current || "(empty)"}" → ${NEW_STRATEGIST}`);
+        cachedSettings = migratedSettings as UserSettings;
+        try {
+          writeSettings(migratedSettings);
+        } catch (e) {
+          logger.error("[Migration] Failed to persist strategist model upgrade:", e);
+        }
+        return migratedSettings as UserSettings;
+      }
+    }
+
     // Update cache
     cachedSettings = validatedSettings;
 

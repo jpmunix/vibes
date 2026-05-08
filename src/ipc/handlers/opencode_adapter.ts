@@ -61,7 +61,9 @@ export function getOpenCodeClientInstance() {
  */
 export function resolveModelForAgent(
     agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
-    settings: any // UserSettings
+    settings: any, // UserSettings
+    /** Transient model override from the plan-mode picker (non-persisted). */
+    modelOverride?: string,
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
     // Build always uses the global selectedModel (chat picker)
     if (agentId === "build") {
@@ -78,12 +80,12 @@ export function resolveModelForAgent(
         return result;
     }
 
-    // Reasoning agents: strategistModel
+    // Reasoning agents: strategistModel (or transient override)
     const STRATEGIST_AGENTS = new Set(["plan", "explore", "general"]);
     const isStrategist = STRATEGIST_AGENTS.has(agentId);
 
     const effectiveModelName = isStrategist
-        ? sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
+        ? sanitizeModelName(modelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
         : (settings.executorModel || DEFAULT_EXECUTOR_MODEL);
     const tier = isStrategist ? "strategist" : "executor";
 
@@ -96,7 +98,7 @@ export function resolveModelForAgent(
         providerID: "openrouter",
         modelID: sanitizeModelName(effectiveModelName),
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${tier})`);
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${tier}${modelOverride ? ", override" : ""})`);
     return result;
 }
 
@@ -2268,7 +2270,7 @@ export async function handleOpenCodeStream(
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
         const effectiveAgent = options.agentId || "build";
-        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings);
+        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings, req.modelOverride);
 
         logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);

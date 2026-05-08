@@ -1,6 +1,10 @@
 # v8.5
 *6 de mayo de 2026*
 
+## Nueva identidad visual: Vibes
+
+Hemos renovado por completo la imagen de la aplicación para abrazar plenamente la identidad de **Vibes**. Todos los logotipos, iconos y elementos gráficos clave se han actualizado para reflejar esta nueva etapa visual, más moderna y alineada con la evolución de la plataforma.
+
 ## Resumir y saltar a un chat nuevo
 
 Si una conversación se ha vuelto demasiado larga, ha acumulado mucho ruido o el contexto ha empezado a desviarse, ahora tienes una salida limpia. Con el nuevo botón **"Resumir"** —accesible directamente desde el selector de chats—, la IA analizará todo el historial, extraerá lo verdaderamente importante (decisiones, estado actual, próximos pasos) y te abrirá un chat completamente en blanco usando ese resumen como punto de partida. El resultado: menos ruido, un contexto mucho más limpio y una conversación focalizada al 100%, sin perder nada de lo que ya habías avanzado. El propio selector de chats se ha rediseñado para ser más ancho y exponer estas acciones directas de forma más ágil.
@@ -24,6 +28,10 @@ Selecciona cualquier artefacto y se abrirá en un **panel lateral redimensionabl
 ## Etiquetas de colores para tus chats
 
 Organiza tus conversaciones con **etiquetas personalizadas**. Desde el menú contextual de cualquier chat, elige un nombre y un color, y te aparecerá un badge debajo del título. Puedes poner varias por chat, y eliminarlas con un clic al pasar el cursor. Funcionan en chats normales, fijados y archivados. **Sólo modo agente**
+
+## El picker de modelo se adapta al modo
+
+Al cambiar a modo **Plan** o **Preguntar**, el selector de modelo del chat deja de mostrar el modelo de agente y pasa a mostrar el **modelo estratega**. Puedes cambiarlo sobre la marcha sin que afecte al modelo que usas en modo Agente: la selección es transitoria y no se guarda en ajustes. Al volver a modo Agente, el picker recupera tu modelo habitual automáticamente.
 
 ## Correcciones y ajustes
 

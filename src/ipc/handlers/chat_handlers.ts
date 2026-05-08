@@ -14,6 +14,9 @@ import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
 
+/** Track which appIds have already been cleaned for duplicate artifacts (once per process). */
+const _cleanedAppIds = new Set<number>();
+
 export function registerChatHandlers() {
   createTypedHandler(chatContracts.createChat, async (_, appId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -788,6 +791,7 @@ export function registerChatHandlers() {
     // attachArtifactToChat to explicitly link one.
 
     // ── Auto-cleanup of duplicate artifacts (fix for old auto-sync bug) ──────
+    // Only run once per app per process lifetime to avoid repeated DB churn.
     try {
       const allForChat = await db.query.chatArtifacts.findMany({
         where: eq(remoteSchema.chatArtifacts.chatId, chatId),
@@ -795,36 +799,40 @@ export function registerChatHandlers() {
       });
       if (allForChat.length > 0) {
         const appId = allForChat[0].appId;
-        // Find all artifacts for this app
-        const allForApp = await db.query.chatArtifacts.findMany({
-          where: eq(remoteSchema.chatArtifacts.appId, appId),
-          columns: { id: true, path: true, createdAt: true },
-          orderBy: [desc(remoteSchema.chatArtifacts.createdAt)], // newest first
-        });
-        
-        // Group by path and find duplicates
-        const pathMap = new Map<string, number[]>();
-        for (const a of allForApp) {
-          if (!pathMap.has(a.path)) pathMap.set(a.path, []);
-          pathMap.get(a.path)!.push(a.id);
-        }
-        
-        const idsToDelete: number[] = [];
-        for (const [path, ids] of pathMap.entries()) {
-          if (ids.length > 1) {
-            // Keep the oldest one (last in the array since we ordered by desc)
-            const oldestId = ids[ids.length - 1];
-            // Delete all others
-            const toDelete = ids.filter(id => id !== oldestId);
-            idsToDelete.push(...toDelete);
+        if (!_cleanedAppIds.has(appId)) {
+          _cleanedAppIds.add(appId);
+
+          // Find all artifacts for this app
+          const allForApp = await db.query.chatArtifacts.findMany({
+            where: eq(remoteSchema.chatArtifacts.appId, appId),
+            columns: { id: true, path: true, chatId: true, createdAt: true },
+            orderBy: [desc(remoteSchema.chatArtifacts.createdAt)], // newest first
+          });
+
+          // Group by path and find duplicates
+          const pathMap = new Map<string, typeof allForApp>();
+          for (const a of allForApp) {
+            if (!pathMap.has(a.path)) pathMap.set(a.path, []);
+            pathMap.get(a.path)!.push(a);
           }
-        }
-        
-        if (idsToDelete.length > 0) {
-          const { inArray } = await import("drizzle-orm");
-          await db.delete(remoteSchema.chatArtifacts)
-            .where(inArray(remoteSchema.chatArtifacts.id, idsToDelete));
-          logger.info(`Cleaned up ${idsToDelete.length} duplicate artifacts for appId ${appId}`);
+
+          const idsToDelete: number[] = [];
+          for (const [, entries] of pathMap.entries()) {
+            if (entries.length > 1) {
+              // Prefer the entry matching the current chatId, else keep oldest
+              const keeper =
+                entries.find(e => e.chatId === chatId)
+                ?? entries[entries.length - 1]; // oldest (array is desc by createdAt)
+              idsToDelete.push(...entries.filter(e => e.id !== keeper.id).map(e => e.id));
+            }
+          }
+
+          if (idsToDelete.length > 0) {
+            const { inArray } = await import("drizzle-orm");
+            await db.delete(remoteSchema.chatArtifacts)
+              .where(inArray(remoteSchema.chatArtifacts.id, idsToDelete));
+            logger.info(`Cleaned up ${idsToDelete.length} duplicate artifacts for appId ${appId}`);
+          }
         }
       }
     } catch (err) {

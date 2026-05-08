@@ -15,6 +15,8 @@ import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import { getVariantLabel } from "@/ipc/shared/model_variants";
 import { matchesModelSearch } from "@/lib/modelSearch";
+import { useAtom } from "jotai";
+import { planModelOverrideAtom } from "@/atoms/chatAtoms";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -24,12 +26,17 @@ export function ModelPicker() {
   const { stats, incrementUsage, removeUsage } = useModelUsageStats();
   const { aliases, setAlias, removeAlias, resolveDisplayName } = useModelAliases();
   const [search, setSearch] = useState("");
+  const [planModelOverride, setPlanModelOverride] = useAtom(planModelOverrideAtom);
 
   const onModelSelect = (model: LargeLanguageModel) => {
-    updateSettings({ selectedModel: model });
+    if (planModelOverride !== null) {
+      // In plan/ask mode: write to the transient override atom — do NOT persist to settings
+      setPlanModelOverride(model.name);
+    } else {
+      updateSettings({ selectedModel: model });
+    }
     incrementUsage(`${model.provider}:${model.name}`);
     // Invalidate token count when model changes since different models have different context windows
-    // (technically they have different tokenizers, but we don't keep track of that).
     queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
   };
 
@@ -73,9 +80,18 @@ export function ModelPicker() {
   if (!settings) {
     return null;
   }
-  const selectedModel = settings?.selectedModel;
-  const selectedVariant = settings?.selectedModelVariant ?? "";
+
+  // Determine if we're in plan/ask mode from either source (atom is sync, settings is async)
+  const settingsIsPlan = settings.selectedChatMode === "plan" || settings.selectedChatMode === "ask";
+  const isPlanMode = planModelOverride !== null || settingsIsPlan;
+
+  // In plan mode, show the override model (or strategist default); in agent mode, show selectedModel
+  const selectedModel = isPlanMode
+    ? { name: planModelOverride || settings.strategistModel || "deepseek/deepseek-v4-flash", provider: "openrouter" as const }
+    : settings.selectedModel;
+  const selectedVariant = isPlanMode ? "" : (settings.selectedModelVariant ?? "");
   const modelDisplayName = getModelDisplayName();
+
 
   // Variant display label for the trigger
   const variantLabel = getVariantLabel(selectedVariant);

@@ -84,46 +84,31 @@ function highlightText(root: HTMLElement, needle: string, commentId: number): vo
   }
   if (!origEnd) origEnd = fullText.length;
 
-  // 4. Find the text nodes that contain the start and end offsets
-  let startNode: Text | null = null, endNode: Text | null = null;
-  let startOffset = 0, endOffset = 0;
-  for (const e of entries) {
-    if (!startNode && origStart < e.end) {
-      startNode = e.node;
-      startOffset = origStart - e.start;
-    }
-    if (origEnd <= e.end) {
-      endNode = e.node;
-      endOffset = origEnd - e.start;
-      break;
-    }
-  }
-  if (!startNode || !endNode) return;
-
-  // 5. Create a range and wrap it in a <mark>
+  // 4. Wrap each text node segment individually within the matched range.
+  //    This avoids extractContents/insertNode which breaks DOM structure
+  //    in lists and other block-level elements, causing extra whitespace.
   try {
-    const range = document.createRange();
-    range.setStart(startNode, startOffset);
-    range.setEnd(endNode, endOffset);
+    for (const e of entries) {
+      // Skip nodes entirely before or after the match range
+      if (e.end <= origStart || e.start >= origEnd) continue;
 
-    const mark = document.createElement("mark");
-    mark.className = HIGHLIGHT_CLASS;
-    mark.setAttribute(HIGHLIGHT_ATTR, String(commentId));
-    // Inline styles guarantee visibility regardless of prose/UA overrides
-    mark.style.backgroundColor = "oklch(from var(--primary) l c h / 0.22)";
-    mark.style.color = "inherit";
-    mark.style.padding = "2px 1px";
-    mark.style.borderRadius = "3px";
-    mark.style.cursor = "pointer";
+      const nodeStart = Math.max(0, origStart - e.start);
+      const nodeEnd = Math.min(e.node.textContent!.length, origEnd - e.start);
 
-    // surroundContents only works if range doesn't cross element boundaries
-    // For cross-node selections, extract and re-insert
-    if (startNode === endNode) {
+      const range = document.createRange();
+      range.setStart(e.node, nodeStart);
+      range.setEnd(e.node, nodeEnd);
+
+      const mark = document.createElement("mark");
+      mark.className = HIGHLIGHT_CLASS;
+      mark.setAttribute(HIGHLIGHT_ATTR, String(commentId));
+      mark.style.backgroundColor = "oklch(from var(--primary) l c h / 0.22)";
+      mark.style.color = "inherit";
+      mark.style.padding = "2px 1px";
+      mark.style.borderRadius = "3px";
+      mark.style.cursor = "pointer";
+
       range.surroundContents(mark);
-    } else {
-      const fragment = range.extractContents();
-      mark.appendChild(fragment);
-      range.insertNode(mark);
     }
   } catch {
     // Silently fail if DOM manipulation is impossible
