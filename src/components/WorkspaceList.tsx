@@ -20,6 +20,7 @@ import {
   X,
   Trash2,
   MoreVertical,
+  Bell,
   BellOff,
   Pencil,
   Archive,
@@ -36,6 +37,8 @@ import {
   Share2,
   Shrink,
   Minimize2,
+  FileText,
+  Hash,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
@@ -45,6 +48,7 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useChats } from "@/hooks/useChats";
 import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
@@ -62,6 +66,275 @@ const PREF_EXPANDED_APPS = "sidebar.expandedApps";
 const PREF_LAST_SELECTION = "sidebar.lastSelection";
 const MAX_PINNED_CHATS = 10;
 
+// --- Label color presets (hex from COLOR_PALETTE) ---
+const LABEL_COLORS = [
+  { hex: "#EF4444", name: "Rojo" },
+  { hex: "#F97316", name: "Naranja" },
+  { hex: "#F59E0B", name: "Ámbar" },
+  { hex: "#22C55E", name: "Verde" },
+  { hex: "#10B981", name: "Esmeralda" },
+  { hex: "#06B6D4", name: "Cian" },
+  { hex: "#3B82F6", name: "Azul" },
+  { hex: "#6366F1", name: "Índigo" },
+  { hex: "#8B5CF6", name: "Violeta" },
+  { hex: "#A855F7", name: "Púrpura" },
+  { hex: "#EC4899", name: "Rosa" },
+  { hex: "#F43F5E", name: "Rosado" },
+] as const;
+
+// --- Shared label badge strip (used in chat rows, pinned section, and archived panel) ---
+type LabelEntry = { id: number; label: string; color: string };
+
+function ChatRowLabels({ labels, onRemove }: { labels?: LabelEntry[]; onRemove?: (id: number) => void }) {
+  if (!labels || labels.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1 mb-0.5">
+      {labels.map((l) => (
+        <div key={l.id} className="group/label relative inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none whitespace-nowrap" style={{ backgroundColor: `${l.color}15`, color: l.color, border: `1px solid ${l.color}30` }}>
+          {l.label}
+          {onRemove && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(l.id); }} className="opacity-0 group-hover/label:opacity-100 ml-1 hover:text-foreground transition-opacity cursor-pointer">
+              <X size={10} />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Shared chat context menu (used by both AppChats and pinned section) ---
+interface ChatMenuAction {
+  chatId: number;
+  appId: number;
+  chatTitle: string;
+  isPinned: boolean;
+  isUnread: boolean;
+  pos: { top: number; left: number };
+  onClose: () => void;
+  onPin: (chatId: number, appId: number, chatTitle: string) => void;
+  onUnpin: (chatId: number) => void;
+  onMarkUnread: (chatId: number) => void;
+  onMarkRead: (chatId: number) => void;
+  onRename: (chatId: number, currentTitle: string) => void;
+  onArchive: (chatId: number, chatTitle: string) => void;
+  onDelete: (chatId: number, chatTitle: string) => void;
+  onChatClick: (appId: number, chatId: number) => void;
+  onLabelDialog: (chatId: number) => void;
+}
+
+const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
+  chatId, appId, chatTitle, isPinned, isUnread, pos, onClose,
+  onPin, onUnpin, onMarkUnread, onMarkRead, onRename, onArchive, onDelete, onChatClick, onLabelDialog,
+}: ChatMenuAction) {
+  const queryClient = useQueryClient();
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-[998]" onClick={onClose} />
+      <div
+        className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+        style={{ top: pos.top, left: pos.left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Pin / Unpin */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); isPinned ? onUnpin(chatId) : onPin(chatId, appId, chatTitle); }}
+        >
+          {isPinned ? (
+            <><PinOff size={14} className="opacity-60 shrink-0" /> Desfijar</>
+          ) : (
+            <><Pin size={14} className="opacity-60 shrink-0" /> Fijar</>
+          )}
+        </button>
+        {/* Read / Unread */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); isUnread ? onMarkRead(chatId) : onMarkUnread(chatId); }}
+        >
+          {isUnread ? (
+            <><Bell size={14} className="opacity-60 shrink-0" /> Marcar como leído</>
+          ) : (
+            <><BellOff size={14} className="opacity-60 shrink-0" /> Marcar como no leído</>
+          )}
+        </button>
+        {/* Rename */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); onRename(chatId, chatTitle); }}
+        >
+          <Pencil size={14} className="opacity-60 shrink-0" />
+          Renombrar
+        </button>
+        {/* Label */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); onLabelDialog(chatId); }}
+        >
+          <Hash size={14} className="opacity-60 shrink-0" />
+          Añadir etiqueta
+        </button>
+        {/* Share */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={async () => {
+            onClose();
+            try {
+              const fullChat = await ipc.chat.getChat(chatId);
+              const markdown = buildShareMarkdown(fullChat.title || "Chat sin título", fullChat.messages);
+              const result = await ipc.markdownShare.uploadDocument({ title: fullChat.title || "Chat sin título", content: markdown, format: "md" });
+              await navigator.clipboard.writeText(result.data.share_url);
+              showSuccess("URL copiada al portapapeles");
+            } catch (e) { showError(e); }
+          }}
+        >
+          <Share2 size={14} className="opacity-60 shrink-0" />
+          Compartir chat
+        </button>
+        {/* Condense memory */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={async () => {
+            onClose();
+            try {
+              showSuccess("Condensando memoria del chat...");
+              await ipc.memory.condenseSessionMemories({ appId, chatId });
+              showSuccess("Memoria condensada correctamente");
+            } catch (e) { showError(`Error al condensar memoria: ${(e as any).toString()}`); }
+          }}
+        >
+          <Shrink size={14} className="opacity-60 shrink-0" />
+          Condensar memoria
+        </button>
+        {/* Summarize to new chat */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={async () => {
+            onClose();
+            const tid = toast.loading("Generando resumen y creando chat nuevo...");
+            try {
+              const newChatId = await ipc.chat.summarizeToNewChat({ appId, chatId });
+              queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+              onChatClick(appId, newChatId);
+              toast.success("Resumen completado con éxito", { id: tid });
+            } catch (e) { toast.error(`Error al resumir chat: ${(e as any).toString()}`, { id: tid }); }
+          }}
+        >
+          <Minimize2 size={14} className="opacity-60 shrink-0" />
+          Resumir a chat nuevo
+        </button>
+        {/* Archive */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); onArchive(chatId, chatTitle); }}
+        >
+          <Archive size={14} className="opacity-60 shrink-0" />
+          Archivar
+        </button>
+        {/* Delete */}
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-destructive/10 text-destructive transition-colors cursor-pointer whitespace-nowrap"
+          onClick={() => { onClose(); onDelete(chatId, chatTitle); }}
+        >
+          <Trash2 size={14} className="shrink-0" />
+          Eliminar
+        </button>
+      </div>
+    </>,
+    document.body
+  );
+});
+
+// --- Shared label dialog ---
+function LabelDialog({
+  chatId,
+  onClose,
+}: {
+  chatId: number | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [color, setColor] = useState("#3B82F6");
+
+  // Reset on open
+  useEffect(() => {
+    if (chatId !== null) { setName(""); setColor("#3B82F6"); }
+  }, [chatId]);
+
+  const handleAdd = useCallback(async () => {
+    if (!chatId || !name.trim()) return;
+    try {
+      await ipc.chat.addChatLabel({ chatId, label: name.trim(), color });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+      onClose();
+    } catch (e) { showError(e); }
+  }, [chatId, name, color, queryClient, onClose]);
+
+  return (
+    <Dialog open={chatId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[320px]">
+        <DialogHeader>
+          <DialogTitle>Añadir etiqueta</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Nombre de la etiqueta</label>
+            <input
+              autoFocus
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej: bug, feature, urgente"
+              onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { e.preventDefault(); handleAdd(); } }}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Color</label>
+            <div className="grid grid-cols-6 gap-x-2 gap-y-3.5">
+              {LABEL_COLORS.map((c) => {
+                const isSelected = color === c.hex;
+                return (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => setColor(c.hex)}
+                    title={c.name}
+                    className={`w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:ring-foreground/30"}`}
+                    style={{
+                      backgroundColor: c.hex,
+                      ...(isSelected ? { ["--tw-ring-color" as any]: c.hex } : {}),
+                    }}
+                  >
+                    {isSelected && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}><polyline points="20 6 9 17 4 12" /></svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleAdd}>Añadir</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- App chats sub-list (lazy loaded per app) ---
 interface AppChatsProps {
   appId: number;
@@ -70,6 +343,7 @@ interface AppChatsProps {
   onRenameChat: (chatId: number, currentTitle: string) => void;
   onArchiveChat: (chatId: number, chatTitle: string) => void;
   onMarkUnread: (chatId: number) => void;
+  onMarkRead: (chatId: number) => void;
   onPinChat: (chatId: number, appId: number, chatTitle: string) => void;
   onUnpinChat: (chatId: number) => void;
   pinnedChatIds: Set<number>;
@@ -83,6 +357,7 @@ const AppChats = memo(function AppChats({
   onRenameChat,
   onArchiveChat,
   onMarkUnread,
+  onMarkRead,
   onPinChat,
   onUnpinChat,
   pinnedChatIds,
@@ -123,7 +398,18 @@ const AppChats = memo(function AppChats({
   const renameInputRef = useRef<HTMLInputElement>(null);
   const menuBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
+  const [labelDialogChatId, setLabelDialogChatId] = useState<number | null>(null);
+
   const isSubmittingRename = useRef(false);
+
+  const handleRemoveLabel = useCallback(async (labelId: number) => {
+    try {
+      await ipc.chat.deleteChatLabel(labelId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
 
   const handleRenameSubmit = useCallback(async (chatId: number) => {
     if (isSubmittingRename.current) return;
@@ -245,6 +531,7 @@ const AppChats = memo(function AppChats({
                       ) : null}
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
+                        <ChatRowLabels labels={(chat as any).labels} onRemove={handleRemoveLabel} />
                         <span className="typo-micro opacity-60 mt-0.5">
                           {formatDistanceToNow(new Date(chat.createdAt), {
                             addSuffix: false,
@@ -325,144 +612,37 @@ const AppChats = memo(function AppChats({
       )}
     </div>
 
-    {/* Portal dropdown — rendered at body level to escape sidebar overflow */}
-    {openMenuId !== null && menuPos !== null && createPortal(
-      <>
-        <div className="fixed inset-0 z-[998]" onClick={closeMenu} />
-        <div
-          className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
-          style={{ top: menuPos.top, left: menuPos.left }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => {
-              const chatId = openMenuId;
-              closeMenu();
-              if (pinnedChatIds.has(chatId)) {
-                onUnpinChat(chatId);
-              } else {
-                const chat = sortedChats.find(c => c.id === chatId);
-                if (chat) onPinChat(chat.id, appId, chat.title || "Nuevo chat");
-              }
-            }}
-          >
-            {pinnedChatIds.has(openMenuId) ? (
-              <><PinOff size={14} className="opacity-60 shrink-0" /> Desfijar</>
-            ) : (
-              <><Pin size={14} className="opacity-60 shrink-0" /> Fijar</>
-            )}
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onMarkUnread(openMenuId); }}
-          >
-            <BellOff size={14} className="opacity-60 shrink-0" />
-            Marcar como no leído
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => {
-              const chat = sortedChats.find(c => c.id === openMenuId);
-              closeMenu();
-              if (chat) {
-                setRenamingId(chat.id);
-                setRenameValue(chat.title || "");
-                setTimeout(() => renameInputRef.current?.focus(), 50);
-              }
-            }}
-          >
-            <Pencil size={14} className="opacity-60 shrink-0" />
-            Renombrar
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={async () => {
-              const chatId = openMenuId;
-              const chat = sortedChats.find(c => c.id === chatId);
-              closeMenu();
-              if (!chatId || !chat) return;
-              try {
-                const fullChat = await ipc.chat.getChat(chatId);
-                const markdown = buildShareMarkdown(
-                  fullChat.title || "Chat sin título",
-                  fullChat.messages,
-                );
-                const result = await ipc.markdownShare.uploadDocument({
-                  title: fullChat.title || "Chat sin título",
-                  content: markdown,
-                  format: "md",
-                });
-                await navigator.clipboard.writeText(result.data.share_url);
-                showSuccess("URL copiada al portapapeles");
-              } catch (e) {
-                showError(e);
-              }
-            }}
-          >
-            <Share2 size={14} className="opacity-60 shrink-0" />
-            Compartir chat
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={async () => {
-              const chatId = openMenuId;
-              closeMenu();
-              if (!chatId) return;
-              try {
-                showSuccess("Condensando memoria del chat...");
-                await ipc.memory.condenseSessionMemories({ appId, chatId });
-                showSuccess("Memoria condensada correctamente");
-              } catch (e) {
-                showError(`Error al condensar memoria: ${(e as any).toString()}`);
-              }
-            }}
-          >
-            <Shrink size={14} className="opacity-60 shrink-0" />
-            Condensar memoria
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={async () => {
-              const chatId = openMenuId;
-              closeMenu();
-              if (!chatId) return;
-              const tid = toast.loading("Generando resumen y creando chat nuevo...");
-              try {
-                const newChatId = await ipc.chat.summarizeToNewChat({ appId, chatId });
-                queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-                onChatClick(appId, newChatId);
-                toast.success("Resumen completado con éxito", { id: tid });
-              } catch (e) {
-                toast.error(`Error al resumir chat: ${(e as any).toString()}`, { id: tid });
-              }
-            }}
-          >
-            <Minimize2 size={14} className="opacity-60 shrink-0" />
-            Resumir a chat nuevo
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-destructive/10 text-destructive transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => {
-              const chat = sortedChats.find(c => c.id === openMenuId);
-              closeMenu();
-              if (chat) onDeleteChat(chat.id, chat.title || "Nuevo chat");
-            }}
-          >
-            <Trash2 size={14} className="shrink-0" />
-            Eliminar
-          </button>
-        </div>
-      </>,
-      document.body
-    )}
+    {/* Shared context menu portal */}
+    {openMenuId !== null && menuPos !== null && (() => {
+      const chat = sortedChats.find(c => c.id === openMenuId);
+      return (
+        <ChatContextMenuPortal
+          chatId={openMenuId}
+          appId={appId}
+          chatTitle={chat?.title || "Nuevo chat"}
+          isPinned={pinnedChatIds.has(openMenuId)}
+          isUnread={isChatUnread(openMenuId)}
+          pos={menuPos}
+          onClose={closeMenu}
+          onPin={onPinChat}
+          onUnpin={onUnpinChat}
+          onMarkUnread={onMarkUnread}
+          onMarkRead={onMarkRead}
+          onRename={(chatId, _title) => {
+            setRenamingId(chatId);
+            setRenameValue(_title);
+            setTimeout(() => renameInputRef.current?.focus(), 50);
+          }}
+          onArchive={onArchiveChat}
+          onDelete={onDeleteChat}
+          onChatClick={onChatClick}
+          onLabelDialog={setLabelDialogChatId}
+        />
+      );
+    })()}
+
+    {/* Shared label dialog */}
+    <LabelDialog chatId={labelDialogChatId} onClose={() => setLabelDialogChatId(null)} />
   </>
   );
 });
@@ -541,6 +721,7 @@ interface WorkspaceAppItemProps {
   onArchiveChat: (chatId: number, chatTitle: string) => void;
   onRenameApp: (appId: number, appName: string) => void;
   onMarkUnread: (chatId: number) => void;
+  onMarkRead: (chatId: number) => void;
   onPinChat: (chatId: number, appId: number, chatTitle: string) => void;
   onUnpinChat: (chatId: number) => void;
   pinnedChatIds: Set<number>;
@@ -564,6 +745,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onArchiveChat,
   onRenameApp,
   onMarkUnread,
+  onMarkRead,
   onPinChat,
   onUnpinChat,
   pinnedChatIds,
@@ -585,13 +767,29 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
-  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | null>(null);
+  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | "planes" | null>(null);
 
   const [archivePanelOpen, setArchivePanelOpen] = useState(false);
   const [archivePanelPos, setArchivePanelPos] = useState<{ top: number; left: number } | null>(null);
-  const [archivedChats, setArchivedChats] = useState<Array<{ id: number; title: string | null; createdAt: Date }>>([]);
+  const [archivedChats, setArchivedChats] = useState<Array<{ id: number; title: string | null; createdAt: Date; labels?: Array<{ id: number; label: string; color: string }> }>>([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
+
+  // Plans panel state
+  const [plansPanelOpen, setPlansPanelOpen] = useState(false);
+  const [appPlans, setAppPlans] = useState<Array<{ id: number | null; path: string; title: string | null; chatId: number | null; chatTitle: string | null; accepted: number | null; createdAt: Date | null }>>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
+  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+
+  const handleRemoveLabel = useCallback(async (labelId: number) => {
+    try {
+      await ipc.chat.deleteChatLabel(labelId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
 
   const openMenu = useCallback(() => {
     const btn = menuBtnRef.current;
@@ -627,6 +825,20 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       showError(e);
     } finally {
       setLoadingArchived(false);
+    }
+  }, [app.id, closeMenu]);
+
+  const loadAndShowPlans = useCallback(async () => {
+    closeMenu();
+    setPlansPanelOpen(true);
+    setLoadingPlans(true);
+    try {
+      const result = await ipc.chat.getAppPlans(app.id);
+      setAppPlans(result as any);
+    } catch (e) {
+      showError(e);
+    } finally {
+      setLoadingPlans(false);
     }
   }, [app.id, closeMenu]);
 
@@ -730,6 +942,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           onRenameChat={onRenameChat}
           onArchiveChat={onArchiveChat}
           onMarkUnread={onMarkUnread}
+          onMarkRead={onMarkRead}
           onPinChat={onPinChat}
           onUnpinChat={onUnpinChat}
           pinnedChatIds={pinnedChatIds}
@@ -783,6 +996,20 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* ── Planes category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-pointer whitespace-nowrap ${
+              subMenuOpen === "planes" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("planes")}
+            onClick={loadAndShowPlans}
+          >
+            <span className="flex items-center gap-2">
+              <FileText size={14} className="opacity-60 shrink-0" />
+              Planes
+            </span>
           </div>
 
           {/* ── Código category ── */}
@@ -949,6 +1176,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm truncate font-medium">{chat.title || "Sin título"}</span>
+                      <ChatRowLabels labels={chat.labels} onRemove={(id) => { handleRemoveLabel(id); setArchivedChats(prev => prev.map(c => c.id === chat.id ? { ...c, labels: c.labels?.filter(ll => ll.id !== id) } : c)); }} />
                       <span className="text-xs text-muted-foreground/55 mt-0.5">
                         Archivado · {formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true, locale: es })}
                       </span>
@@ -984,6 +1212,125 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       </>,
       document.body
     )}
+
+    {/* Plans panel — centered modal */}
+    {plansPanelOpen && createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm"
+          onClick={() => setPlansPanelOpen(false)}
+        />
+        <div
+          className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-sidebar-accent/30">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <FileText size={15} className="text-primary" />
+              </div>
+              <div>
+                <span className="text-sm font-semibold block">Planes del workspace</span>
+                <span className="text-xs text-muted-foreground/60">{app.name}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+              onClick={() => setPlansPanelOpen(false)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Panel content */}
+          <div className="max-h-[420px] overflow-y-auto">
+            {loadingPlans ? (
+              <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-sm">Cargando planes...</span>
+              </div>
+            ) : appPlans.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                  <FileText size={28} className="opacity-50" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-muted-foreground/70">Sin planes</p>
+                  <p className="text-xs mt-0.5 text-muted-foreground/40">Los planes generados en .vibes/ aparecerán aquí</p>
+                </div>
+              </div>
+            ) : (
+              <div className="py-2">
+                {appPlans.map((plan) => (
+                  <div
+                    key={plan.path}
+                    className="group/plan flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setSelectedPath(plan.path);
+                      setSidebarOpen(true);
+                      setPlansPanelOpen(false);
+                    }}
+                  >
+                    <FileText size={14} className="text-muted-foreground/50 shrink-0" />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-sm truncate font-medium">{plan.title || plan.path}</span>
+                      <span className="text-xs text-muted-foreground/55 mt-0.5">
+                        {plan.chatTitle
+                          ? `Chat: ${plan.chatTitle}`
+                          : plan.chatId
+                          ? `Chat #${plan.chatId}`
+                          : "Sin chat asociado"}
+                        {plan.accepted ? " · ✅ Aceptado" : ""}
+                      </span>
+                    </div>
+                    {/* Attach to current chat action */}
+                    {selectedChatId && plan.chatId !== selectedChatId && (
+                      <button
+                        type="button"
+                        className="shrink-0 px-2 py-1 rounded-md text-xs text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/plan:opacity-100 whitespace-nowrap"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await ipc.chat.attachArtifactToChat({
+                              appId: app.id,
+                              path: plan.path,
+                              chatId: selectedChatId,
+                            });
+                            showSuccess("Plan adjuntado al chat actual");
+                            // Refresh plans
+                            const updated = await ipc.chat.getAppPlans(app.id);
+                            setAppPlans(updated as any);
+                            queryClient.invalidateQueries({ queryKey: ["chatArtifacts", selectedChatId] });
+                          } catch (err) {
+                            showError(err);
+                          }
+                        }}
+                        title="Adjuntar al chat actual"
+                      >
+                        Adjuntar a este chat
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {appPlans.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
+              <span className="text-xs text-muted-foreground/50">
+                {appPlans.length} {appPlans.length !== 1 ? 'planes' : 'plan'}
+              </span>
+              <span className="text-xs text-muted-foreground/35">Click para abrir · Hover para adjuntar</span>
+            </div>
+          )}
+        </div>
+      </>,
+      document.body
+    )}
     </>
   );
 });
@@ -994,6 +1341,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
+  const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const queryClient = useQueryClient();
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
@@ -1210,7 +1558,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [deleteChatTitle, setDeleteChatTitle] = useState("");
 
   // ── Pinned chats state (DB-backed via Bunny) ──
-  type PinnedChatRow = { id: number; appId: number; appName: string; title: string | null; createdAt: Date };
+  type PinnedChatRow = { id: number; appId: number; appName: string; title: string | null; createdAt: Date; labels?: LabelEntry[] };
   const { data: pinnedChatsRaw = [] } = useQuery<PinnedChatRow[]>({
     queryKey: ["pinned-chats"],
     queryFn: () => ipc.chat.getPinnedChats(),
@@ -1219,6 +1567,51 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [pinnedSectionOpen, setPinnedSectionOpen] = useState(true);
 
   const pinnedChatIds = useMemo(() => new Set(pinnedChats.map(p => p.id)), [pinnedChats]);
+
+  // ── Pinned chat row menu state ──
+  const [pinnedMenuId, setPinnedMenuId] = useState<number | null>(null);
+  const [pinnedMenuPos, setPinnedMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const pinnedMenuBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const [pinnedRenamingId, setPinnedRenamingId] = useState<number | null>(null);
+  const [pinnedRenameValue, setPinnedRenameValue] = useState("");
+  const pinnedRenameInputRef = useRef<HTMLInputElement>(null);
+  const isPinnedRenameSubmitting = useRef(false);
+  const [pinnedLabelDialogChatId, setPinnedLabelDialogChatId] = useState<number | null>(null);
+
+  const openPinnedMenu = useCallback((chatId: number) => {
+    const btn = pinnedMenuBtnRefs.current.get(chatId);
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuHeight = 240;
+    let top = rect.bottom + 4;
+    if (top + menuHeight > window.innerHeight) {
+      top = rect.top - menuHeight - 4;
+    }
+    setPinnedMenuPos({ top, left: rect.right + 8 });
+    setPinnedMenuId(chatId);
+  }, []);
+
+  const closePinnedMenu = useCallback(() => {
+    setPinnedMenuId(null);
+    setPinnedMenuPos(null);
+  }, []);
+
+  const handlePinnedRenameSubmit = useCallback(async (chatId: number) => {
+    if (isPinnedRenameSubmitting.current) return;
+    const trimmed = pinnedRenameValue.trim();
+    if (!trimmed) { setPinnedRenamingId(null); return; }
+    isPinnedRenameSubmitting.current = true;
+    try {
+      await ipc.chat.renameChat({ chatId, title: trimmed });
+      setPinnedRenamingId(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+    } catch (e) {
+      showError(e);
+    } finally {
+      isPinnedRenameSubmitting.current = false;
+    }
+  }, [pinnedRenameValue, queryClient]);
 
   // Load expanded apps from DB on mount
   useEffect(() => {
@@ -1415,6 +1808,26 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     }
   }, [setRecentStreamChatIds]);
 
+  const handleRemovePinnedLabel = useCallback(async (labelId: number) => {
+    try {
+      await ipc.chat.deleteChatLabel(labelId);
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
+
+  const handleMarkRead = useCallback(async (chatId: number) => {
+    setRecentStreamChatIds((prev) => {
+      if (!prev.has(chatId)) return prev;
+      const next = new Set(prev);
+      next.delete(chatId);
+      return next;
+    });
+    ipc.chat.markChatRead(chatId).catch(() => {});
+  }, [setRecentStreamChatIds]);
+
   const handleArchiveChatClick = useCallback(async (chatId: number, chatTitle: string) => {
     try {
       await ipc.chat.archiveChat({ chatId, archived: true });
@@ -1518,6 +1931,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         appName: renameAppInputValue.trim(),
       });
       await refreshApps();
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
       showSuccess("Nombre de la aplicación actualizado");
       setIsRenameAppDialogOpen(false);
     } catch (e) {
@@ -1669,50 +2083,157 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     {pinnedChats.map((pinned) => {
                       const isActive = selectedChatId === pinned.id;
                       const streaming = isStreamingById.get(pinned.id) ?? false;
+                      const isRenaming = pinnedRenamingId === pinned.id;
+                      const isMenuOpen = pinnedMenuId === pinned.id;
                       return (
                         <div
                           key={pinned.id}
-                          className="group/pin-row relative flex items-center rounded-xl transition-colors hover:bg-sidebar-accent/60"
+                          className={`group/pin-row relative flex items-center rounded-xl transition-colors hover:bg-sidebar-accent/60 ${
+                            isMenuOpen ? "bg-sidebar-accent/60" : ""
+                          }`}
                         >
-                          <button
-                            type="button"
-                            className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
-                              isActive ? "text-primary font-medium" : "text-foreground/80"
-                            }`}
-                            onClick={() => {
-                              navigate({ to: "/workspace", search: { appId: pinned.appId, chatId: pinned.id } });
-                            }}
-                          >
-                            <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                              {streaming && (
-                                <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-                              )}
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <span className="truncate">{pinned.title || "Nuevo chat"}</span>
-                                <span className="typo-micro opacity-60 mt-0.5 truncate">
-                                  {pinned.appName}
-                                </span>
+                          {isRenaming ? (
+                            <form
+                              className="flex-1 px-2 py-1"
+                              onSubmit={(e) => { e.preventDefault(); handlePinnedRenameSubmit(pinned.id); }}
+                            >
+                              <input
+                                ref={pinnedRenameInputRef}
+                                value={pinnedRenameValue}
+                                onChange={(e) => setPinnedRenameValue(e.target.value)}
+                                onBlur={() => handlePinnedRenameSubmit(pinned.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    setPinnedRenamingId(null);
+                                  } else if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handlePinnedRenameSubmit(pinned.id);
+                                  }
+                                }}
+                                autoFocus
+                                className="w-full bg-sidebar-accent/60 border border-primary/30 rounded-xl px-2 py-0.5 text-sm outline-none focus:border-primary"
+                              />
+                            </form>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                                isActive ? "text-primary font-medium" : "text-foreground/80"
+                              }`}
+                              onClick={() => {
+                                // Mark as read when navigating
+                                setRecentStreamChatIds((prev) => {
+                                  if (!prev.has(pinned.id)) return prev;
+                                  const next = new Set(prev);
+                                  next.delete(pinned.id);
+                                  return next;
+                                });
+                                ipc.chat.markChatRead(pinned.id).catch(() => {});
+                                navigate({ to: "/workspace", search: { appId: pinned.appId, chatId: pinned.id } });
+                              }}
+                            >
+                              <div className="flex items-center min-w-0 flex-1 gap-1.5">
+                                {streaming ? (
+                                  <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+                                ) : recentStreamChatIds.has(pinned.id) && selectedChatId !== pinned.id ? (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
+                                ) : null}
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className={`truncate ${recentStreamChatIds.has(pinned.id) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}>{pinned.title || "Nuevo chat"}</span>
+                                  <ChatRowLabels labels={pinned.labels} onRemove={handleRemovePinnedLabel} />
+                                  <span className="typo-micro opacity-60 mt-0.5 truncate">
+                                    {pinned.appName}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </button>
+                            </button>
+                          )}
 
-                          {/* Gradient + unpin action */}
-                          <div className="absolute right-0 top-0 bottom-0 w-20 pointer-events-none transition-opacity z-10 rounded-r-md opacity-0 group-hover/pin-row:opacity-100" style={{ background: "linear-gradient(to left, var(--sidebar-accent) 40%, transparent)" }} />
-                          <button
-                            type="button"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer opacity-0 group-hover/pin-row:opacity-100"
-                            title="Desfijar"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUnpinChat(pinned.id);
-                            }}
-                          >
-                            <PinOff size={14} />
-                          </button>
+                          {/* Gradient + quick actions + 3-dot menu */}
+                          {!isRenaming && (
+                            <>
+                              <div
+                                className={`absolute right-0 top-0 bottom-0 w-48 pointer-events-none transition-opacity z-10 rounded-r-md ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                                style={{ background: "linear-gradient(to left, var(--sidebar-accent) 55%, transparent)" }}
+                              />
+                              {/* Unpin quick action */}
+                              <button
+                                type="button"
+                                className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                                title="Desfijar"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnpinChat(pinned.id);
+                                }}
+                              >
+                                <PinOff size={15} />
+                              </button>
+                              {/* Archive quick action */}
+                              <button
+                                type="button"
+                                className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                                title="Archivar"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleArchiveChatClick(pinned.id, pinned.title || "Nuevo chat");
+                                }}
+                              >
+                                <Archive size={15} />
+                              </button>
+                              {/* 3-dot menu */}
+                              <button
+                                ref={(el) => { if (el) pinnedMenuBtnRefs.current.set(pinned.id, el); else pinnedMenuBtnRefs.current.delete(pinned.id); }}
+                                type="button"
+                                className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                                title="Opciones"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  isMenuOpen ? closePinnedMenu() : openPinnedMenu(pinned.id);
+                                }}
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       );
                     })}
                   </div>
+
+                {/* Shared context menu portal for pinned chats */}
+                {pinnedMenuId !== null && pinnedMenuPos !== null && (() => {
+                  const pin = pinnedChats.find(c => c.id === pinnedMenuId);
+                  if (!pin) return null;
+                  const isUnread = recentStreamChatIds.has(pinnedMenuId) && selectedChatId !== pinnedMenuId;
+                  return (
+                    <ChatContextMenuPortal
+                      chatId={pinnedMenuId}
+                      appId={pin.appId}
+                      chatTitle={pin.title || "Nuevo chat"}
+                      isPinned={true}
+                      isUnread={isUnread}
+                      pos={pinnedMenuPos}
+                      onClose={closePinnedMenu}
+                      onPin={handlePinChat}
+                      onUnpin={handleUnpinChat}
+                      onMarkUnread={handleMarkUnread}
+                      onMarkRead={handleMarkRead}
+                      onRename={(chatId, title) => {
+                        setPinnedRenamingId(chatId);
+                        setPinnedRenameValue(title);
+                        setTimeout(() => pinnedRenameInputRef.current?.focus(), 50);
+                      }}
+                      onArchive={handleArchiveChatClick}
+                      onDelete={handleDeleteChatClick}
+                      onChatClick={handleChatClick}
+                      onLabelDialog={setPinnedLabelDialogChatId}
+                    />
+                  );
+                })()}
+
+                {/* Shared label dialog for pinned chats */}
+                <LabelDialog chatId={pinnedLabelDialogChatId} onClose={() => setPinnedLabelDialogChatId(null)} />
               </div>
             )}
 
@@ -1794,6 +2315,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onArchiveChat={handleArchiveChatClick}
                     onRenameApp={handleRenameAppClick}
                     onMarkUnread={handleMarkUnread}
+                    onMarkRead={handleMarkRead}
                     onPinChat={handlePinChat}
                     onUnpinChat={handleUnpinChat}
                     pinnedChatIds={pinnedChatIds}

@@ -318,6 +318,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
+  {
+    id: "show-cost-display",
+    label: "Mostrar gasto en chats",
+    description: "Muestra el coste acumulado en la cabecera y el coste por mensaje",
+    keywords: ["gasto", "coste", "cost", "precio", "dinero", "tokens", "openrouter", "mostrar", "ocultar"],
+    section: "OpenRouter",
+    sectionId: "models-connectivity",
+  },
   // ─── Integraciones ───
   {
     id: "github",

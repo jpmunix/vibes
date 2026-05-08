@@ -353,6 +353,34 @@ export function OpenRouterSettings({
             </DialogContent>
           </Dialog>
 
+          {/* Show/hide cost display */}
+          <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
+            <div className="flex-1">
+              <h3 className="typo-label">Mostrar gasto en chats</h3>
+              <p className="typo-caption mt-1">
+                Muestra el coste acumulado en la cabecera y el coste por mensaje en el footer de cada respuesta
+              </p>
+            </div>
+            <div onClick={(e) => e.stopPropagation()}>
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {([false, true] as const).map((value) => (
+                  <button
+                    key={String(value)}
+                    onClick={() => updateSettings({ showCostDisplay: value })}
+                    className={cn(
+                      "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.showCostDisplay ?? false) === value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {value ? "Activado" : "Desactivado"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
 
 
           {/* Custom Models Section - Collapsible */}

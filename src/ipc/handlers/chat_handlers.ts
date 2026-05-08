@@ -113,6 +113,15 @@ export function registerChatHandlers() {
           isPlan: true,
           lastReadAt: true,
         },
+        with: {
+          labels: {
+            columns: {
+              id: true,
+              label: true,
+              color: true,
+            }
+          }
+        },
         orderBy: [desc(remoteSchema.chats.createdAt)],
       })
       : db.query.chats.findMany({
@@ -127,6 +136,15 @@ export function registerChatHandlers() {
           appId: true,
           isPlan: true,
           lastReadAt: true,
+        },
+        with: {
+          labels: {
+            columns: {
+              id: true,
+              label: true,
+              color: true,
+            }
+          }
         },
         orderBy: [desc(remoteSchema.chats.createdAt)],
       });
@@ -532,6 +550,15 @@ export function registerChatHandlers() {
         eq(remoteSchema.chats.isArchived, 1),
       ),
       columns: { id: true, title: true, createdAt: true, appId: true },
+      with: {
+        labels: {
+          columns: {
+            id: true,
+            label: true,
+            color: true,
+          }
+        }
+      },
       orderBy: [desc(remoteSchema.chats.createdAt)],
     });
     return archived as any;
@@ -637,23 +664,27 @@ export function registerChatHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    const pinned = await db
-      .select({
-        id: remoteSchema.chats.id,
-        appId: remoteSchema.chats.appId,
-        appName: remoteSchema.apps.name,
-        title: remoteSchema.chats.title,
-        createdAt: remoteSchema.chats.createdAt,
-      })
-      .from(remoteSchema.chats)
-      .innerJoin(remoteSchema.apps, eq(remoteSchema.chats.appId, remoteSchema.apps.id))
-      .where(and(
+    const pinnedChats = await db.query.chats.findMany({
+      where: and(
         eq(remoteSchema.chats.userId, context.userId!),
         eq(remoteSchema.chats.isPinned, 1),
-      ))
-      .orderBy(desc(remoteSchema.chats.createdAt));
+      ),
+      columns: { id: true, appId: true, title: true, createdAt: true },
+      with: {
+        app: { columns: { name: true } },
+        labels: { columns: { id: true, label: true, color: true } },
+      },
+      orderBy: [desc(remoteSchema.chats.createdAt)],
+    });
 
-    return pinned as any;
+    return pinnedChats.map(c => ({
+      id: c.id,
+      appId: c.appId,
+      appName: (c as any).app?.name || "",
+      title: c.title,
+      createdAt: c.createdAt,
+      labels: (c as any).labels || [],
+    })) as any;
   });
 
   // Summarize the current chat and output to a new chat
@@ -752,67 +783,55 @@ export function registerChatHandlers() {
     const fs = await import("fs");
     const pathMod = await import("path");
 
-    // ── Auto-discover .vibes/*.md from disk ──────────────────────────
-    // If the project has .vibes/ files on disk that aren't in the DB yet,
-    // register them automatically. This handles cases where the DB was
-    // recreated or the interceptor missed a write.
+    // Orphaned .vibes/ files are NOT auto-assigned here.
+    // Use getAppPlans to see all plans across chats, and
+    // attachArtifactToChat to explicitly link one.
+
+    // ── Auto-cleanup of duplicate artifacts (fix for old auto-sync bug) ──────
     try {
-      const chat = await db.query.chats.findFirst({
-        where: eq(remoteSchema.chats.id, chatId),
-        columns: { appId: true },
-        with: { app: { columns: { path: true } } },
+      const allForChat = await db.query.chatArtifacts.findMany({
+        where: eq(remoteSchema.chatArtifacts.chatId, chatId),
+        columns: { id: true, path: true, appId: true },
       });
-
-      if (chat?.app?.path) {
-        const projectDir = getVibesAppPath(chat.app.path);
-        const vibesDir = pathMod.join(projectDir, ".vibes");
-
-        if (fs.existsSync(vibesDir)) {
-          const mdFiles = fs.readdirSync(vibesDir).filter((f: string) => f.endsWith(".md"));
-
-          for (const file of mdFiles) {
-            const relativePath = `.vibes/${file}`;
-            // Check if this artifact is already registered for ANY chat (not just this one)
-            // to avoid cross-chat contamination
-            const existingAnywhere = await db.query.chatArtifacts.findFirst({
-              where: and(
-                eq(remoteSchema.chatArtifacts.appId, chat.appId),
-                eq(remoteSchema.chatArtifacts.path, relativePath)
-              ),
-            });
-
-            // Only register if truly orphaned (no chat owns it at all)
-            if (!existingAnywhere) {
-              // Try to extract H1 heading from the file content
-              let artifactTitle = file;
-              try {
-                const fullPath = pathMod.join(vibesDir, file);
-                const fileContent = fs.readFileSync(fullPath, "utf-8");
-                const h1Match = fileContent.match(/^#\s+(.+)$/m);
-                if (h1Match?.[1]) {
-                  artifactTitle = h1Match[1].trim();
-                }
-              } catch { /* non-fatal — fall back to filename */ }
-
-              await db.insert(remoteSchema.chatArtifacts).values({
-                userId: context.userId!,
-                appId: chat.appId,
-                chatId,
-                path: relativePath,
-                title: artifactTitle,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              });
-              logger.info(`[getChatArtifacts] Auto-registered orphaned artifact ${relativePath} for chat ${chatId}`);
-            }
+      if (allForChat.length > 0) {
+        const appId = allForChat[0].appId;
+        // Find all artifacts for this app
+        const allForApp = await db.query.chatArtifacts.findMany({
+          where: eq(remoteSchema.chatArtifacts.appId, appId),
+          columns: { id: true, path: true, createdAt: true },
+          orderBy: [desc(remoteSchema.chatArtifacts.createdAt)], // newest first
+        });
+        
+        // Group by path and find duplicates
+        const pathMap = new Map<string, number[]>();
+        for (const a of allForApp) {
+          if (!pathMap.has(a.path)) pathMap.set(a.path, []);
+          pathMap.get(a.path)!.push(a.id);
+        }
+        
+        const idsToDelete: number[] = [];
+        for (const [path, ids] of pathMap.entries()) {
+          if (ids.length > 1) {
+            // Keep the oldest one (last in the array since we ordered by desc)
+            const oldestId = ids[ids.length - 1];
+            // Delete all others
+            const toDelete = ids.filter(id => id !== oldestId);
+            idsToDelete.push(...toDelete);
           }
         }
+        
+        if (idsToDelete.length > 0) {
+          const { inArray } = await import("drizzle-orm");
+          await db.delete(remoteSchema.chatArtifacts)
+            .where(inArray(remoteSchema.chatArtifacts.id, idsToDelete));
+          logger.info(`Cleaned up ${idsToDelete.length} duplicate artifacts for appId ${appId}`);
+        }
       }
-    } catch (syncErr: any) {
-      logger.warn(`[getChatArtifacts] Auto-sync failed (non-fatal): ${syncErr.message}`);
+    } catch (err) {
+      logger.error("Failed to clean up duplicate artifacts:", err);
     }
 
-    // ── Return all artifacts for this chat ────────────────────────────
+    // ── Return all artifacts for this chat (strict chatId match) ──────
     const artifacts = await db.query.chatArtifacts.findMany({
       where: and(
         eq(remoteSchema.chatArtifacts.chatId, chatId),
@@ -960,6 +979,195 @@ export function registerChatHandlers() {
       );
 
     return true;
+  });
+
+  // ── getAppPlans: All .vibes/ plans for a workspace ─────────────────────
+  createTypedHandler(chatContracts.getAppPlans, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const fs = await import("fs");
+    const pathMod = await import("path");
+
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      columns: { path: true },
+    });
+    if (!app?.path) return [];
+
+    const projectDir = getVibesAppPath(app.path);
+    const vibesDir = pathMod.join(projectDir, ".vibes");
+    if (!fs.existsSync(vibesDir)) return [];
+
+    // 1. Read all .md files from disk
+    const mdFiles = fs.readdirSync(vibesDir).filter((f: string) => f.endsWith(".md"));
+
+    // 2. Get all DB-registered artifacts for this app
+    const dbArtifacts = await db.query.chatArtifacts.findMany({
+      where: and(
+        eq(remoteSchema.chatArtifacts.appId, appId),
+        eq(remoteSchema.chatArtifacts.userId, context.userId!)
+      ),
+    });
+
+    // 3. Build a map path → dbRecord
+    const dbMap = new Map(dbArtifacts.map(a => [a.path, a]));
+
+    // 4. Fetch chat titles for display
+    const chatIds = [...new Set(dbArtifacts.filter(a => a.chatId).map(a => a.chatId!))];
+    const chatTitleMap = new Map<number, string>();
+    if (chatIds.length > 0) {
+      const chats = await db.query.chats.findMany({
+        where: and(
+          eq(remoteSchema.chats.appId, appId),
+          eq(remoteSchema.chats.userId, context.userId!)
+        ),
+        columns: { id: true, title: true },
+      });
+      for (const c of chats) {
+        chatTitleMap.set(c.id, c.title || "Sin título");
+      }
+    }
+
+    // 5. Merge disk + DB
+    const plans: Array<{
+      id: number | null;
+      path: string;
+      title: string | null;
+      chatId: number | null;
+      chatTitle: string | null;
+      accepted: number | null;
+      createdAt: Date | null;
+    }> = [];
+
+    for (const file of mdFiles) {
+      const relativePath = `.vibes/${file}`;
+      const dbRecord = dbMap.get(relativePath);
+
+      let title: string | null = file;
+      try {
+        const fullPath = pathMod.join(vibesDir, file);
+        const content = fs.readFileSync(fullPath, "utf-8");
+        const h1 = content.match(/^#\s+(.+)$/m);
+        if (h1?.[1]) title = h1[1].trim();
+      } catch { /* fallback to filename */ }
+
+      if (dbRecord) {
+        plans.push({
+          id: dbRecord.id,
+          path: relativePath,
+          title: dbRecord.title || title,
+          chatId: dbRecord.chatId,
+          chatTitle: dbRecord.chatId ? (chatTitleMap.get(dbRecord.chatId) || null) : null,
+          accepted: dbRecord.accepted ?? null,
+          createdAt: dbRecord.createdAt,
+        });
+      } else {
+        // Orphaned: on disk but not in DB
+        plans.push({
+          id: null,
+          path: relativePath,
+          title,
+          chatId: null,
+          chatTitle: null,
+          accepted: null,
+          createdAt: null,
+        });
+      }
+    }
+
+    return plans;
+  });
+
+  // ── attachArtifactToChat: Attach a plan to a specific chat ──────────────
+  createTypedHandler(chatContracts.attachArtifactToChat, async (_, input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const fs = await import("fs");
+    const pathMod = await import("path");
+    const { appId, path: artifactPath, chatId } = input;
+
+    // Check if the artifact already exists in DB
+    const existing = await db.query.chatArtifacts.findFirst({
+      where: and(
+        eq(remoteSchema.chatArtifacts.appId, appId),
+        eq(remoteSchema.chatArtifacts.path, artifactPath)
+      ),
+    });
+
+    if (existing) {
+      // Re-assign to target chat
+      await db.update(remoteSchema.chatArtifacts)
+        .set({ chatId, updatedAt: new Date() })
+        .where(eq(remoteSchema.chatArtifacts.id, existing.id));
+    } else {
+      // Create new record for an orphaned file
+      const app = await db.query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
+        columns: { path: true },
+      });
+      let artifactTitle = pathMod.basename(artifactPath);
+      if (app?.path) {
+        try {
+          const fullPath = pathMod.join(getVibesAppPath(app.path), artifactPath);
+          const content = fs.readFileSync(fullPath, "utf-8");
+          const h1 = content.match(/^#\s+(.+)$/m);
+          if (h1?.[1]) artifactTitle = h1[1].trim();
+        } catch { /* fallback */ }
+      }
+
+      await db.insert(remoteSchema.chatArtifacts).values({
+        userId: context.userId!,
+        appId,
+        chatId,
+        path: artifactPath,
+        title: artifactTitle,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    logger.info(`[attachArtifactToChat] Attached ${artifactPath} to chat ${chatId}`);
+    return true;
+  });
+
+  // ── Chat Labels ───────────────────────────────────────────────────────────
+
+  createTypedHandler(chatContracts.addChatLabel, async (_, { chatId, label, color }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    
+    // verify ownership
+    const chat = await db.query.chats.findFirst({
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
+      columns: { id: true }
+    });
+    if (!chat) throw new Error("Chat not found");
+
+    const [newLabel] = await db.insert(remoteSchema.chatLabels).values({
+      chatId,
+      userId: context.userId!,
+      label,
+      color,
+      createdAt: new Date(),
+    }).returning({
+      id: remoteSchema.chatLabels.id,
+      label: remoteSchema.chatLabels.label,
+      color: remoteSchema.chatLabels.color,
+    });
+    
+    return newLabel;
+  });
+
+  createTypedHandler(chatContracts.deleteChatLabel, async (_, labelId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    
+    await db.delete(remoteSchema.chatLabels).where(
+      and(
+        eq(remoteSchema.chatLabels.id, labelId),
+        eq(remoteSchema.chatLabels.userId, context.userId!)
+      )
+    );
   });
 
   logger.debug("Registered chat IPC handlers");

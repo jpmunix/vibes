@@ -111,6 +111,24 @@ export const chats = sqliteTable("chats", {
 });
 
 // =============================================================================
+// CHAT LABELS
+// =============================================================================
+
+export const chatLabels = sqliteTable("chat_labels", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    label: text("label").notNull(),
+    color: text("color").notNull(), // hex color or similar
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+
+// =============================================================================
 // CHAT ARTIFACTS
 // =============================================================================
 
@@ -390,6 +408,7 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     app: one(apps, { fields: [chats.appId], references: [apps.id] }),
     messages: many(messages),
     artifacts: many(chatArtifacts),
+    labels: many(chatLabels),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -407,4 +426,9 @@ export const chatArtifactsRelations = relations(chatArtifacts, ({ one, many }) =
 export const artifactCommentsRelations = relations(artifactComments, ({ one }) => ({
     artifact: one(chatArtifacts, { fields: [artifactComments.artifactId], references: [chatArtifacts.id] }),
     user: one(users, { fields: [artifactComments.userId], references: [users.id] }),
+}));
+
+export const chatLabelsRelations = relations(chatLabels, ({ one }) => ({
+    chat: one(chats, { fields: [chatLabels.chatId], references: [chats.id] }),
+    user: one(users, { fields: [chatLabels.userId], references: [users.id] }),
 }));

@@ -21,10 +21,15 @@ Cuando le pides al agente que elabore un plan, ahora el resultado se guarda como
 
 Selecciona cualquier artefacto y se abrirá en un **panel lateral redimensionable** con el título destacado y el contenido completo. Desde la propia cabecera del panel puedes **compartir el documento** con un clic: se genera un enlace público y se copia al portapapeles, listo para enviar a quien necesites. Y si el agente incluyó **diagramas** en su respuesta —ya sea dentro de un artefacto o en el propio chat—, se dibujan directamente con los colores del tema activo. Cada diagrama tiene un botón de **pantalla completa** que lo abre a casi toda la pantalla para verlo en detalle, perfecto para flujos complejos o arquitecturas con muchos nodos.
 
+## Etiquetas de colores para tus chats
+
+Organiza tus conversaciones con **etiquetas personalizadas**. Desde el menú contextual de cualquier chat, elige un nombre y un color, y te aparecerá un badge debajo del título. Puedes poner varias por chat, y eliminarlas con un clic al pasar el cursor. Funcionan en chats normales, fijados y archivados. **Sólo modo agente**
+
 ## Correcciones y ajustes
 
-- **Markdown Sanitizado:** Los bloques de código se sanitizan intentando garantizar que el *parser* visual de la interfaz nunca se rompa al renderizarlos.
-- **Reparaciones en permisos:** Se han detectado bucles infinitos al solicitar o intentar usar ciertos permisos. Se ha solucionado el problema y en los ajustes de permisos se han añadido nuevos controles granulares.
+- Las **conversaciones fijadas** ahora tienen el mismo menú de opciones que los chats normales: archivar, renombrar, compartir, condensar memoria, resumir a chat nuevo y eliminar.
+- El explorador de archivos del visor de código ahora arranca con todos los directorios **colapsados por defecto**, con botones para colapsar todo o expandir el primer nivel.
+- Nuevo toggle en **Ajustes → OpenRouter** para **mostrar u ocultar el gasto** en los chats. Desactivado por defecto. Al activarlo se muestra el coste acumulado en la cabecera y el coste por mensaje en el footer de cada respuesta. Los datos de gasto se siguen guardando siempre, independientemente de esta opción.
 
 # v8.4
 *4 de mayo de 2026*

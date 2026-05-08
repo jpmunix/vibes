@@ -62,6 +62,7 @@ import logoSrc from "../../../assets/icon/logo.png";
 import { Button } from "@/components/ui/button";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import { useSettings } from "@/hooks/useSettings";
 
 interface ChatMessageProps {
   message: Message;
@@ -166,6 +167,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const { artifacts } = useChatArtifacts(selectedChatId);
   const [, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
   const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
+  const { settings: chatMsgSettings } = useSettings();
 
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
@@ -662,18 +664,17 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         const artifactPath = vibesMatch[0];
                         return (
                           <div className="mt-3 pt-3 border-t border-border/20">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="w-full sm:w-auto text-xs gap-2"
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
                               onClick={() => {
                                 setSelectedPath(artifactPath);
                                 setSidebarOpen(true);
                               }}
                             >
                               <FileText size={14} />
-                              Ver Plan
-                            </Button>
+                              Ver plan
+                            </button>
                           </div>
                         );
                       })()}
@@ -733,7 +734,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         >
                           <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                         </button>
-                        {messageCost && (
+                        {chatMsgSettings?.showCostDisplay && messageCost && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default" onClick={(e) => e.stopPropagation()}>
@@ -815,7 +816,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     >
                       <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                     </button>
-                    {messageCost && (
+                    {chatMsgSettings?.showCostDisplay && messageCost && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default">

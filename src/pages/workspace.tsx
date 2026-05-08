@@ -16,6 +16,7 @@ import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 import { useChats } from "@/hooks/useChats";
 import type { ChatSummary } from "@/lib/schemas";
 import { useSessionCost } from "@/hooks/useSessionCost";
+import { useSettings } from "@/hooks/useSettings";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { PanelGroup, Panel } from "react-resizable-panels";
@@ -58,6 +59,7 @@ export default function WorkspacePage() {
 
   // Session cost
   const { totalCostUsd, hasPricing } = useSessionCost(chatId);
+  const { settings } = useSettings();
 
   // Restore last selection from DB when landing without params
   useEffect(() => {
@@ -197,7 +199,7 @@ export default function WorkspacePage() {
             <WorkspaceArtifactsDropdown chatId={selectedChatId} />
 
             {/* Session cost — separated with a delicate divider */}
-            {hasPricing && (
+            {settings?.showCostDisplay && hasPricing && (
               <>
                 <div className="w-px h-4 bg-border/60 shrink-0" />
                 <Tooltip>

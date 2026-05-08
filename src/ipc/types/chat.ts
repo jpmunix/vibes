@@ -246,6 +246,11 @@ export const chatContracts = {
         createdAt: z.date(),
         isPlan: z.boolean().optional(),
         lastReadAt: z.date().nullable().optional(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -372,6 +377,11 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -399,6 +409,11 @@ export const chatContracts = {
         appName: z.string(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -439,6 +454,34 @@ export const chatContracts = {
   acceptArtifact: defineContract({
     channel: "accept-artifact",
     input: z.number(), // artifactId
+    output: z.boolean(),
+  }),
+
+  /** Get ALL .vibes/ plans for an app (across all chats). */
+  getAppPlans: defineContract({
+    channel: "get-app-plans",
+    input: z.number(), // appId
+    output: z.array(
+      z.object({
+        id: z.number().nullable(),        // null = orphaned (on disk only)
+        path: z.string(),
+        title: z.string().nullable(),
+        chatId: z.number().nullable(),     // which chat owns it (null = unattached)
+        chatTitle: z.string().nullable(),  // for display
+        accepted: z.number().nullable(),
+        createdAt: z.date().nullable(),
+      })
+    ),
+  }),
+
+  /** Attach (or re-attach) an artifact to a specific chat. */
+  attachArtifactToChat: defineContract({
+    channel: "attach-artifact-to-chat",
+    input: z.object({
+      appId: z.number(),
+      path: z.string(),      // .vibes/plan-xxx.md
+      chatId: z.number(),     // target chat
+    }),
     output: z.boolean(),
   }),
 
@@ -490,6 +533,28 @@ export const chatContracts = {
     channel: "delete-artifact-comment",
     input: z.number(), // commentId
     output: z.boolean(),
+  }),
+
+  // ── Chat Labels ───────────────────────────────────────────────────────────
+
+  addChatLabel: defineContract({
+    channel: "add-chat-label",
+    input: z.object({
+      chatId: z.number(),
+      label: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      label: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  deleteChatLabel: defineContract({
+    channel: "delete-chat-label",
+    input: z.number(), // labelId
+    output: z.void(),
   }),
 } as const;
 

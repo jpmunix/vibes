@@ -138,8 +138,20 @@ export async function initializeRemoteSchema(): Promise<void> {
     `);
     // Add accepted column if missing (added v8.5)
     await client.execute(`ALTER TABLE chat_artifacts ADD COLUMN accepted INTEGER DEFAULT 0`).catch(() => {});
+    
+    // Auto-create chat_labels if missing
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS chat_labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        label TEXT NOT NULL,
+        color TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `);
   } catch (e) {
-    logger.warn("artifact_comments migration (non-fatal):", e);
+    logger.warn("artifact_comments or chat_labels migration (non-fatal):", e);
   }
   _remoteSchemaInitialized = true;
 }

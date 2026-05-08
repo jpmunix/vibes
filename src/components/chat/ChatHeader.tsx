@@ -1,3 +1,13 @@
+// ============================================================================
+// ATENCION — ARCHIVO GEMELO: src/pages/workspace.tsx
+//
+// Si te han pedido editar la cabecera del chat (badges de coste, controles,
+// layout, etc.), ten en cuenta que workspace.tsx tiene su PROPIA cabecera
+// con funcionalidad duplicada (coste de sesion, selector de chat, branch, etc.).
+//
+// Cualquier cambio visual o funcional que hagas aqui probablemente necesite
+// replicarse tambien en workspace.tsx para mantener coherencia en la app.
+// ============================================================================
 import {
   PanelRightOpen,
   MessageSquarePlus,
@@ -386,7 +396,8 @@ export function ChatHeader({
           )}
           <ChatPositionToggleInline />
           <div className="w-px h-4 bg-border/60 shrink-0" />
-          <SessionCostBadge chatId={selectedChatId} />
+          {/* Gasto de sesion — ver tambien workspace.tsx (comentario arriba del archivo) */}
+          {settings?.showCostDisplay && <SessionCostBadge chatId={selectedChatId} />}
         </div>
 
       </div>

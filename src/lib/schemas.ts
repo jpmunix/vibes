@@ -37,6 +37,11 @@ export const ChatSummarySchema = z.object({
   createdAt: z.date(),
   isPlan: z.boolean().optional().default(false),
   lastReadAt: z.date().nullable().optional(),
+  labels: z.array(z.object({
+    id: z.number(),
+    label: z.string(),
+    color: z.string()
+  })).optional().default([]),
 });
 
 /**
@@ -59,6 +64,11 @@ export const ChatSearchResultSchema = z.object({
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
   isPlan: z.boolean().optional().default(false),
+  labels: z.array(z.object({
+    id: z.number(),
+    label: z.string(),
+    color: z.string()
+  })).optional().default([]),
 });
 
 /**
@@ -552,6 +562,8 @@ export const UserSettingsSchema = z
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
     // Git commit panel: persisted vertical split size (percentage, 0-100)
     gitCommitPanelSize: z.number().optional(),
+    // Show/hide cost display in chat headers and message footers (data is always saved)
+    showCostDisplay: z.boolean().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)
