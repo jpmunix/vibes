@@ -14,9 +14,6 @@ import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
 
-/** Track which appIds have already been cleaned for duplicate artifacts (once per process). */
-const _cleanedAppIds = new Set<number>();
-
 export function registerChatHandlers() {
   createTypedHandler(chatContracts.createChat, async (_, appId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -791,48 +788,38 @@ export function registerChatHandlers() {
     // attachArtifactToChat to explicitly link one.
 
     // ── Auto-cleanup of duplicate artifacts (fix for old auto-sync bug) ──────
+    // Only deduplicate within the SAME chat (same chatId + same path).
+    // Different chats legitimately reference the same path with independent
+    // comments and accepted status.
     // Only run once per app per process lifetime to avoid repeated DB churn.
     try {
       const allForChat = await db.query.chatArtifacts.findMany({
         where: eq(remoteSchema.chatArtifacts.chatId, chatId),
-        columns: { id: true, path: true, appId: true },
+        columns: { id: true, path: true, appId: true, createdAt: true },
+        orderBy: [desc(remoteSchema.chatArtifacts.createdAt)],
       });
       if (allForChat.length > 0) {
-        const appId = allForChat[0].appId;
-        if (!_cleanedAppIds.has(appId)) {
-          _cleanedAppIds.add(appId);
+        // Group by path within THIS chat only
+        const pathMap = new Map<string, typeof allForChat>();
+        for (const a of allForChat) {
+          if (!pathMap.has(a.path)) pathMap.set(a.path, []);
+          pathMap.get(a.path)!.push(a);
+        }
 
-          // Find all artifacts for this app
-          const allForApp = await db.query.chatArtifacts.findMany({
-            where: eq(remoteSchema.chatArtifacts.appId, appId),
-            columns: { id: true, path: true, chatId: true, createdAt: true },
-            orderBy: [desc(remoteSchema.chatArtifacts.createdAt)], // newest first
-          });
-
-          // Group by path and find duplicates
-          const pathMap = new Map<string, typeof allForApp>();
-          for (const a of allForApp) {
-            if (!pathMap.has(a.path)) pathMap.set(a.path, []);
-            pathMap.get(a.path)!.push(a);
+        const idsToDelete: number[] = [];
+        for (const [, entries] of pathMap.entries()) {
+          if (entries.length > 1) {
+            // Keep the oldest (last in array, ordered desc by createdAt)
+            const keeper = entries[entries.length - 1];
+            idsToDelete.push(...entries.filter(e => e.id !== keeper.id).map(e => e.id));
           }
+        }
 
-          const idsToDelete: number[] = [];
-          for (const [, entries] of pathMap.entries()) {
-            if (entries.length > 1) {
-              // Prefer the entry matching the current chatId, else keep oldest
-              const keeper =
-                entries.find(e => e.chatId === chatId)
-                ?? entries[entries.length - 1]; // oldest (array is desc by createdAt)
-              idsToDelete.push(...entries.filter(e => e.id !== keeper.id).map(e => e.id));
-            }
-          }
-
-          if (idsToDelete.length > 0) {
-            const { inArray } = await import("drizzle-orm");
-            await db.delete(remoteSchema.chatArtifacts)
-              .where(inArray(remoteSchema.chatArtifacts.id, idsToDelete));
-            logger.info(`Cleaned up ${idsToDelete.length} duplicate artifacts for appId ${appId}`);
-          }
+        if (idsToDelete.length > 0) {
+          const { inArray } = await import("drizzle-orm");
+          await db.delete(remoteSchema.chatArtifacts)
+            .where(inArray(remoteSchema.chatArtifacts.id, idsToDelete));
+          logger.info(`Cleaned up ${idsToDelete.length} duplicate artifacts within chat ${chatId}`);
         }
       }
     } catch (err) {
@@ -1087,6 +1074,8 @@ export function registerChatHandlers() {
   });
 
   // ── attachArtifactToChat: Attach a plan to a specific chat ──────────────
+  // Each chat gets its own independent artifact record (with its own comments
+  // and accepted status). The underlying file on disk is shared.
   createTypedHandler(chatContracts.attachArtifactToChat, async (_, input, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
@@ -1094,45 +1083,45 @@ export function registerChatHandlers() {
     const pathMod = await import("path");
     const { appId, path: artifactPath, chatId } = input;
 
-    // Check if the artifact already exists in DB
-    const existing = await db.query.chatArtifacts.findFirst({
+    // Check if THIS specific chat already has a record for this path
+    const existingForChat = await db.query.chatArtifacts.findFirst({
       where: and(
         eq(remoteSchema.chatArtifacts.appId, appId),
-        eq(remoteSchema.chatArtifacts.path, artifactPath)
+        eq(remoteSchema.chatArtifacts.path, artifactPath),
+        eq(remoteSchema.chatArtifacts.chatId, chatId)
       ),
     });
 
-    if (existing) {
-      // Re-assign to target chat
-      await db.update(remoteSchema.chatArtifacts)
-        .set({ chatId, updatedAt: new Date() })
-        .where(eq(remoteSchema.chatArtifacts.id, existing.id));
-    } else {
-      // Create new record for an orphaned file
-      const app = await db.query.apps.findFirst({
-        where: eq(remoteSchema.apps.id, appId),
-        columns: { path: true },
-      });
-      let artifactTitle = pathMod.basename(artifactPath);
-      if (app?.path) {
-        try {
-          const fullPath = pathMod.join(getVibesAppPath(app.path), artifactPath);
-          const content = fs.readFileSync(fullPath, "utf-8");
-          const h1 = content.match(/^#\s+(.+)$/m);
-          if (h1?.[1]) artifactTitle = h1[1].trim();
-        } catch { /* fallback */ }
-      }
-
-      await db.insert(remoteSchema.chatArtifacts).values({
-        userId: context.userId!,
-        appId,
-        chatId,
-        path: artifactPath,
-        title: artifactTitle,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    if (existingForChat) {
+      // Already attached to this chat — nothing to do
+      logger.info(`[attachArtifactToChat] ${artifactPath} already attached to chat ${chatId}`);
+      return true;
     }
+
+    // Create a NEW record for this chat (other chats keep theirs)
+    const app = await db.query.apps.findFirst({
+      where: eq(remoteSchema.apps.id, appId),
+      columns: { path: true },
+    });
+    let artifactTitle = pathMod.basename(artifactPath);
+    if (app?.path) {
+      try {
+        const fullPath = pathMod.join(getVibesAppPath(app.path), artifactPath);
+        const content = fs.readFileSync(fullPath, "utf-8");
+        const h1 = content.match(/^#\s+(.+)$/m);
+        if (h1?.[1]) artifactTitle = h1[1].trim();
+      } catch { /* fallback */ }
+    }
+
+    await db.insert(remoteSchema.chatArtifacts).values({
+      userId: context.userId!,
+      appId,
+      chatId,
+      path: artifactPath,
+      title: artifactTitle,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     logger.info(`[attachArtifactToChat] Attached ${artifactPath} to chat ${chatId}`);
     return true;

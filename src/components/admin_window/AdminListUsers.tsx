@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SettingsTable } from "@/components/admin_window/RecursiveTableViewer";
+import { UserPreferencesEditor } from "@/components/admin_window/UserPreferencesEditor";
 
 // ── Password generator ──────────────────────────────────────────────────────
 
@@ -491,8 +491,8 @@ export function AdminListUsers() {
                                             </div>
                                         )}
 
-                                        {/* Settings JSON tree */}
-                                        <UserSettingsViewer userId={user.id} />
+                                        {/* Preferences KV editor */}
+                                        <UserPreferencesEditor userId={user.id} />
                                     </div>
                                 )}
                             </div>
@@ -515,54 +515,5 @@ function downloadFile(filename: string, content: string, mimeType: string) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
-
-function UserSettingsViewer({ userId }: { userId: string }) {
-    const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setLoading(true);
-        setError(null);
-        ipc.admin.getUserSettings({ userId })
-            .then((result) => setSettings(result.settings))
-            .catch((err: any) => setError(err.message || "Error al cargar"))
-            .finally(() => setLoading(false));
-    }, [userId]);
-
-    if (loading) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50 flex items-center gap-2">
-                <Loader2 size={14} className="animate-spin text-muted-foreground" />
-                <span className="typo-caption">Cargando configuración…</span>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50">
-                <p className="typo-caption text-destructive">{error}</p>
-            </div>
-        );
-    }
-
-    if (!settings || Object.keys(settings).length === 0) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50">
-                <p className="typo-caption">Sin configuración guardada</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="rounded-xl border border-border/50 overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-border/50">
-                <p className="typo-label">Configuración del usuario</p>
-            </div>
-            <SettingsTable entries={Object.entries(settings)} />
-        </div>
-    );
 }
 

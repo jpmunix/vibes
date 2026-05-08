@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, memo, useCallback } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Copy, Check, Maximize2, X } from "@/components/ui/icons";
+import { Copy, Check, Maximize2, X, AlertTriangle } from "@/components/ui/icons";
 
 let initCounter = 0;
 
@@ -101,7 +101,7 @@ export const MermaidBlock = memo(function MermaidBlock({
           mermaid
         </span>
         {error && (
-          <span className="text-[10px] text-red-400 ml-2">⚠ parse error</span>
+          <span className="text-[10px] text-red-400 ml-2 flex items-center gap-0.5"><AlertTriangle size={10} /> parse error</span>
         )}
       </div>
       <div className="flex items-center gap-1">

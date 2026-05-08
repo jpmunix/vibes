@@ -6,7 +6,7 @@ import { MemoryBadge } from "./MemoryBadge";
 import {
   VibesMarkdownParser,
 } from "./VibesMarkdownParser";
-import { UserMessageContent } from "./UserMessageContent";
+import { UserMessageContent, extractImagesFromAiMessages } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import { TOOL_META, getToolDetail, getBgColorClass, formatPriceCost } from "./CompactToolBadge";
@@ -29,6 +29,7 @@ import {
   Share2,
   Coins,
   FileText,
+  Image as ImageIcon,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
@@ -37,7 +38,7 @@ import { useVersions } from "@/hooks/useVersions";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import {
   Tooltip,
@@ -58,11 +59,14 @@ import {
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import logoSrc from "../../../assets/icon/logo.png";
+import { VibesAvatar } from "@/components/ui/VibesAvatar";
 import { Button } from "@/components/ui/button";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
+
+/** Height threshold (px) above which user messages collapse (~6 lines of text) */
+const USER_COLLAPSE_HEIGHT = 120;
 
 interface ChatMessageProps {
   message: Message;
@@ -169,6 +173,28 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
   const { settings: chatMsgSettings } = useSettings();
 
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
+  const isSystem = message.role === "system";
+
+  // --- User message collapse state ---
+  const userContentRef = useRef<HTMLDivElement>(null);
+  const [isUserExpanded, setIsUserExpanded] = useState(false);
+  const [isUserLongMessage, setIsUserLongMessage] = useState(false);
+
+  // Measure natural height to decide if collapse is needed (runs before paint to avoid flash)
+  useLayoutEffect(() => {
+    if (!isUser || !userContentRef.current) return;
+    const natural = userContentRef.current.scrollHeight;
+    setIsUserLongMessage(natural > USER_COLLAPSE_HEIGHT);
+  }, [message.content, isUser]);
+
+  // Count images for the compact badge shown when collapsed
+  const userImageCount = useMemo(() => {
+    if (!isUser || !message.aiMessagesJson) return 0;
+    return extractImagesFromAiMessages(message.aiMessagesJson).length;
+  }, [isUser, message.aiMessagesJson]);
+
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
     if (isLastMessage && selectedMemories && selectedMemories.length > 0) {
@@ -185,10 +211,6 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   }, [isLastMessage, selectedMemories, message]);
 
   const activeUser = user || userAtomValue;
-
-  const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
-  const isSystem = message.role === "system";
 
   // System messages are completely hidden from the user interface
   // They only exist in the DB to provide context to the LLM
@@ -559,11 +581,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 ).toUpperCase()}
               />
             ) : (
-              <img
-                src={logoSrc}
-                alt="AI"
-                className="h-7 w-7 rounded-full object-cover"
-              />
+              <VibesAvatar className="h-7 w-7" />
             )}
           </div>
           )}
@@ -573,7 +591,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
-              <div className="absolute -left-24 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="absolute -left-24 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
                   onClick={handleQuote}
                   title="Citar"
@@ -684,15 +702,52 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
               )}
               {/* === User messages === */}
               {isUser && !isSelectingModel && (
-                <div
-                  className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
-                  suppressHydrationWarning
-                >
-                  <UserMessageContent
-                    content={message.content}
-                    aiMessagesJson={message.aiMessagesJson}
-                  />
-                </div>
+                <>
+                  <div style={{ position: 'relative' }}>
+                  <div
+                    ref={userContentRef}
+                    className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+                    style={{
+                      maxHeight: !isUserExpanded && isUserLongMessage ? `${USER_COLLAPSE_HEIGHT}px` : undefined,
+                      overflow: !isUserExpanded && isUserLongMessage ? 'hidden' : undefined,
+                      WebkitMaskImage: !isUserExpanded && isUserLongMessage
+                        ? 'linear-gradient(to bottom, black calc(100% - 36px), transparent 100%)'
+                        : undefined,
+                      maskImage: !isUserExpanded && isUserLongMessage
+                        ? 'linear-gradient(to bottom, black calc(100% - 36px), transparent 100%)'
+                        : undefined,
+                    }}
+                    suppressHydrationWarning
+                  >
+                    <UserMessageContent
+                      content={message.content}
+                      aiMessagesJson={message.aiMessagesJson}
+                      hideImages={isUserLongMessage && !isUserExpanded}
+                    />
+                  </div>
+                  </div>
+                  {/* Toggle + image count badge for long user messages */}
+                  {isUserLongMessage && (
+                    <div className="flex items-center gap-2 mt-1.5 not-prose">
+                      <button
+                        onClick={() => setIsUserExpanded(!isUserExpanded)}
+                        className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors cursor-pointer"
+                      >
+                        {isUserExpanded ? (
+                          <><ChevronUp size={12} /><span>Ver menos</span></>
+                        ) : (
+                          <><ChevronDown size={12} /><span>Ver más</span></>
+                        )}
+                      </button>
+                      {!isUserExpanded && userImageCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs text-primary/50">
+                          <ImageIcon size={12} />
+                          <span>{userImageCount}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {(isAssistant && message.content && !isZenMode) ? (

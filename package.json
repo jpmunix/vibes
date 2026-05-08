@@ -1,6 +1,6 @@
 {
-  "name": "minube-vibes",
-  "version": "8.5~beta3",
+  "name": "vibes",
+  "version": "8.5~beta5",
   "description": "Asistente de desarrollo con IA",
   "keywords": [],
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/minube/vibes.git"
+    "url": "https://github.com/jpmunix/vibes.git"
   },
   "main": ".vite/build/main.js",
   "scripts": {
@@ -198,5 +198,5 @@
   "engines": {
     "node": ">=20"
   },
-  "productName": "minube-vibes"
+  "productName": "Vibes"
 }

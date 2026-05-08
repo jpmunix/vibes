@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
+import { SWATCH_COLORS } from "@/components/PrimaryColorPicker";
 import { LanguageBadge } from "./LanguageBadge";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createPortal } from "react-dom";
@@ -66,21 +67,8 @@ const PREF_EXPANDED_APPS = "sidebar.expandedApps";
 const PREF_LAST_SELECTION = "sidebar.lastSelection";
 const MAX_PINNED_CHATS = 10;
 
-// --- Label color presets (hex from COLOR_PALETTE) ---
-const LABEL_COLORS = [
-  { hex: "#EF4444", name: "Rojo" },
-  { hex: "#F97316", name: "Naranja" },
-  { hex: "#F59E0B", name: "Ámbar" },
-  { hex: "#22C55E", name: "Verde" },
-  { hex: "#10B981", name: "Esmeralda" },
-  { hex: "#06B6D4", name: "Cian" },
-  { hex: "#3B82F6", name: "Azul" },
-  { hex: "#6366F1", name: "Índigo" },
-  { hex: "#8B5CF6", name: "Violeta" },
-  { hex: "#A855F7", name: "Púrpura" },
-  { hex: "#EC4899", name: "Rosa" },
-  { hex: "#F43F5E", name: "Rosado" },
-] as const;
+// Label color presets — shared with the Settings primary color picker
+// Imported from @/components/PrimaryColorPicker as SWATCH_COLORS
 
 // --- Shared label badge strip (used in chat rows, pinned section, and archived panel) ---
 type LabelEntry = { id: number; label: string; color: string };
@@ -284,7 +272,7 @@ function LabelDialog({
 
   return (
     <Dialog open={chatId !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[320px]">
+      <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle>Añadir etiqueta</DialogTitle>
         </DialogHeader>
@@ -302,8 +290,8 @@ function LabelDialog({
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Color</label>
-            <div className="grid grid-cols-6 gap-x-2 gap-y-3.5">
-              {LABEL_COLORS.map((c) => {
+            <div className="grid grid-cols-8 gap-x-2 gap-y-2.5">
+              {SWATCH_COLORS.map((c) => {
                 const isSelected = color === c.hex;
                 return (
                   <button
@@ -311,14 +299,14 @@ function LabelDialog({
                     type="button"
                     onClick={() => setColor(c.hex)}
                     title={c.name}
-                    className={`w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:ring-foreground/30"}`}
+                    className={`w-6 h-6 rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:ring-foreground/30"}`}
                     style={{
                       backgroundColor: c.hex,
                       ...(isSelected ? { ["--tw-ring-color" as any]: c.hex } : {}),
                     }}
                   >
                     {isSelected && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}><polyline points="20 6 9 17 4 12" /></svg>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}><polyline points="20 6 9 17 4 12" /></svg>
                     )}
                   </button>
                 );
@@ -1282,7 +1270,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           : plan.chatId
                           ? `Chat #${plan.chatId}`
                           : "Sin chat asociado"}
-                        {plan.accepted ? " · ✅ Aceptado" : ""}
+                        {plan.accepted ? " · Aceptado" : ""}
                       </span>
                     </div>
                     {/* Attach to current chat action */}

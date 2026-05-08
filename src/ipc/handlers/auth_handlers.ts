@@ -12,7 +12,7 @@ import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import type { VibesUserDto } from "../types/auth";
 import { writeSettings, resetSettingsToDefaults } from "../../main/settings";
-import { forceSyncRemoteSettingsToLocal } from "./settings_handlers";
+import { preferencesCache } from "../../main/preferences-cache";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
@@ -149,8 +149,8 @@ export function registerAuthHandlers(): void {
             sessionToken: { value: sessionToken, encryptionType: "plaintext" },
         });
 
-        // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
-        await forceSyncRemoteSettingsToLocal(user.id);
+        // Hydrate preferences cache from DB (replaces forceSyncRemoteSettingsToLocal)
+        await preferencesCache.hydrate(user.id);
 
         return {
             user: toUserDto(user),
@@ -191,8 +191,8 @@ export function registerAuthHandlers(): void {
                 sessionToken: { value: input.sessionToken, encryptionType: "plaintext" },
             });
 
-            // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
-            await forceSyncRemoteSettingsToLocal(user.id);
+            // Hydrate preferences cache from DB (replaces forceSyncRemoteSettingsToLocal)
+            await preferencesCache.hydrate(user.id);
 
             return {
                 valid: true,

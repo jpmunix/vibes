@@ -972,7 +972,7 @@ function PlaygroundPanel() {
             lines.push(`| Caracteres | ${r.text.length} |`);
             lines.push(``);
             if (r.error) {
-                lines.push(`> ⚠️ Error: ${r.text}`);
+                lines.push(`> Error: ${r.text}`);
             } else {
                 lines.push('```');
                 lines.push(r.text);

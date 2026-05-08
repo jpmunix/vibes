@@ -21,6 +21,7 @@ import {
     Edit2,
     Check,
     X,
+    Sparkles,
 } from "@/components/ui/icons";
 import { useState, useRef, useEffect } from "react";
 
@@ -250,8 +251,8 @@ export function ModelInfoDialog({
                     <div className="space-y-2">
                         <h4 className="typo-label">Precios</h4>
                         {isFree ? (
-                            <div className="typo-body font-medium text-emerald-600 dark:text-emerald-400">
-                                ✦ Gratis
+                            <div className="typo-body font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <Sparkles size={14} /> Gratis
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-3">

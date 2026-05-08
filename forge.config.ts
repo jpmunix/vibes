@@ -77,8 +77,8 @@ const isVibesProfile = process.env.VIBES_PROFILE === "vibes";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: isVibesProfile ? "vibes" : undefined,
-    executableName: isVibesProfile ? "vibes" : undefined,
+    name: "vibes",
+    executableName: "vibes",
     protocols: [
       {
         name: "Vibes",
@@ -103,8 +103,8 @@ const config: ForgeConfig = {
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
       options: {
-        name: isVibesProfile ? "vibes" : undefined,
-        productName: isVibesProfile ? "Vibes" : undefined,
+        name: "vibes",
+        productName: "Vibes",
         mimeType: ["x-scheme-handler/dyad"],
         icon: isVibesProfile ? "./assets/icon-vibes/logo.png" : "./assets/icon/logo.png",
       },

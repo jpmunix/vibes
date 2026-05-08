@@ -204,6 +204,13 @@ export const miscContracts = {
     output: z.record(z.string(), z.string().nullable()),
   }),
 
+  // Hydrate all preferences into renderer (called once on boot after auth)
+  hydratePreferences: defineContract({
+    channel: "prefs:hydrate",
+    input: z.void(),
+    output: z.record(z.string(), z.string()),
+  }),
+
   // Playground — single model completion (returns full response text)
   playgroundCompletion: defineContract({
     channel: "playground:completion",
@@ -269,6 +276,15 @@ export const miscEvents = {
     payload: z.object({
       /** Human-readable list of what was migrated, e.g. ["selectedModel → google/gemini-3-flash-preview"] */
       changes: z.array(z.string()),
+    }),
+  }),
+
+  /** Fired when a single preference is changed (for cross-window sync) */
+  preferenceChanged: defineEvent({
+    channel: "preference:changed",
+    payload: z.object({
+      key: z.string(),
+      value: z.string().nullable(),
     }),
   }),
 } as const;

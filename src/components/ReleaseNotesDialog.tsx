@@ -9,7 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ipc } from "@/ipc/types";
 import { useAppVersion } from "@/hooks/useAppVersion";
-import { ChevronRight, Share2 } from "@/components/ui/icons";
+import { ChevronRight, Share2, Rocket } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { showError, showSuccess } from "@/lib/toast";
 
@@ -139,7 +139,7 @@ export function ReleaseNotesDialog({
                 <DialogHeader className="mb-4 flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="flex items-center gap-3">
-                            🚀 ¿Qué hay de nuevo en v{appVersion}?
+                            <Rocket size={18} /> ¿Qué hay de nuevo en v{appVersion}?
                         </DialogTitle>
                         {content && !isLoading && (
                             <button
@@ -175,7 +175,7 @@ export function ReleaseNotesDialog({
                                 <ReleaseSectionItem
                                     key={section.title}
                                     section={section}
-                                    defaultOpen={index < 2}
+                                    defaultOpen={index < 1}
                                 />
                             ))}
                         </div>

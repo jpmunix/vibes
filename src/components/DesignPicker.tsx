@@ -709,7 +709,7 @@ export const DesignPicker: React.FC = () => {
               {/* Current custom indicator */}
               {selected?.id === "__custom__" && (
                 <div className="px-3 py-2 border-t border-border/40 typo-micro text-primary/80 text-center">
-                  ✓ Diseño personalizado cargado
+                  Diseño personalizado cargado
                 </div>
               )}
             </div>

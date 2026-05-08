@@ -8,6 +8,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ipc } from "@/ipc/types";
+import { BookOpen } from "@/components/ui/icons";
 
 interface DocumentationDialogProps {
     isOpen: boolean;
@@ -49,7 +50,7 @@ export function DocumentationDialog({
             <DialogContent className="!max-w-[1400px] !w-[95vw] max-h-[90vh] flex flex-col p-8 !gap-0 overflow-hidden">
                 <DialogHeader className="mb-6 flex-shrink-0">
                     <DialogTitle className="flex items-center gap-3">
-                        📚 Documentación
+                        <BookOpen size={18} /> Documentación
                     </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 w-full overflow-y-auto pr-6 custom-scrollbar">

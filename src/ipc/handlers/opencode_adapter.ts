@@ -1451,7 +1451,7 @@ async function getOpenCodeClient(appPath: string) {
                                 apiKey: "{env:OPENROUTER_API_KEY}",
                                 headers: {
                                     "X-Title": "Vibes",
-                                    "HTTP-Referer": "https://vibes.minube.com",
+                                    "HTTP-Referer": "https://github.com/jpmunix/vibes",
                                 },
                             },
                         } : providerID === "anthropic" ? {

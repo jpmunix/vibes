@@ -33,11 +33,24 @@ Organiza tus conversaciones con **etiquetas personalizadas**. Desde el menú con
 
 Al cambiar a modo **Plan** o **Preguntar**, el selector de modelo del chat deja de mostrar el modelo de agente y pasa a mostrar el **modelo estratega**. Puedes cambiarlo sobre la marcha sin que afecte al modelo que usas en modo Agente: la selección es transitoria y no se guarda en ajustes. Al volver a modo Agente, el picker recupera tu modelo habitual automáticamente.
 
+## Mensajes largos, sin ruido
+
+Cuando envías un mensaje de texto muy extenso, la burbuja ahora se **colapsa automáticamente** mostrando solo las primeras líneas con un degradado suave en la parte inferior que indica que hay más contenido. Pulsando **«Ver más»** se despliega el texto completo; pulsando **«Ver menos»** vuelve a comprimirse. El borde de la burbuja permanece intacto en todo momento: solo el contenido interior se recorta. Si el mensaje incluye capturas adjuntas, en el estado colapsado se muestra un **icono con el número de imágenes** en lugar de los thumbnails completos, que aparecen al expandir.
+
+El mismo tratamiento se aplica a los **bloques de pensamiento en modo Flow**: cuando un bloque de razonamiento supera las cuatro líneas, se pliega con el mismo degradado y un botón «Más / Menos» discreto que hereda el color del tema. Cada bloque es independiente, así que puedes expandir solo los que te interesen sin perder la lectura del texto de prosa intercalado.
+
 ## Correcciones y ajustes
 
 - Las **conversaciones fijadas** ahora tienen el mismo menú de opciones que los chats normales: archivar, renombrar, compartir, condensar memoria, resumir a chat nuevo y eliminar.
 - El explorador de archivos del visor de código ahora arranca con todos los directorios **colapsados por defecto**, con botones para colapsar todo o expandir el primer nivel.
 - Nuevo toggle en **Ajustes → OpenRouter** para **mostrar u ocultar el gasto** en los chats. Desactivado por defecto. Al activarlo se muestra el coste acumulado en la cabecera y el coste por mensaje en el footer de cada respuesta. Los datos de gasto se siguen guardando siempre, independientemente de esta opción.
+- Los **servidores de desarrollo** iniciados desde Vibes ahora se **detienen automáticamente** al cerrar, reiniciar o salir de la aplicación, evitando procesos huérfanos que seguían consumiendo recursos en segundo plano.
+- El sistema de ajustes migra internamente de un archivo JSON monolítico a un **almacén clave-valor** con caché en memoria. Las lecturas son instantáneas tras el login, las escrituras se sincronizan entre ventanas en tiempo real y la persistencia es asíncrona. El cambio es transparente: la experiencia de uso no varía.
+- El catálogo de modelos de OpenRouter se ha **limpiado a fondo**: se filtran más de 70 modelos irrelevantes para desarrollo (legacy, demasiado pequeños, de roleplay o duplicados) y se reactivan las variantes gratuitas (`:free`).
+- Los selectores de color de tipo «bolitas» (ajustes de tema y etiquetas de chat) ahora comparten una **paleta unificada de 56 colores vibrantes**, organizados por tono en una cuadrícula de 8 columnas. Muchos más tonos para elegir: rojos, naranjas, amarillos, verdes, turquesas, azules, violetas, rosas, pasteles y neutros.
+- Todas las **ventanas secundarias** (base de datos, Git, código, consola, mensaje, memorias y playground) ahora muestran un **skeleton loader animado** mientras carga el contenido, eliminando el flash de ventana vacía al abrir.
+- Los iconos de **copiar, citar y compartir** en los mensajes de usuario ahora se posicionan en la **parte inferior** de la burbuja, accesibles sin tener que volver arriba en mensajes largos.
+
 
 # v8.4
 *4 de mayo de 2026*

@@ -164,6 +164,29 @@ export function ArtifactSidebar() {
     enabled: isOpen && !!appId && !!path,
   });
 
+  // ── Auto-register artifact if missing from DB ──────────────────────────
+  // The content loads from disk (getChatArtifactContent), but accept/comment
+  // features need a DB record. If the record was lost (dedup cleanup, race
+  // condition during creation, etc.) we silently re-register it here.
+  const autoRegisterAttempted = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      isOpen &&
+      !currentArtifact &&
+      content && // file exists on disk
+      path &&
+      appId &&
+      selectedChatId &&
+      autoRegisterAttempted.current !== `${appId}:${path}:${selectedChatId}`
+    ) {
+      autoRegisterAttempted.current = `${appId}:${path}:${selectedChatId}`;
+      ipc.chat.attachArtifactToChat({ appId, path, chatId: selectedChatId })
+        .then(() => invalidateArtifacts())
+        .catch(() => {}); // non-fatal
+    }
+  }, [isOpen, currentArtifact, content, path, appId, selectedChatId, invalidateArtifacts]);
+
+
   const { title, body } = useMemo(() => {
     if (!content) return { title: null, body: "" };
     return extractH1(content);
@@ -435,7 +458,7 @@ export function ArtifactSidebar() {
                 className="h-7 text-xs gap-1 font-medium opacity-60 cursor-default"
                 disabled
               >
-                Aceptado ✓
+                Aceptado
                 {commentCount > 0 && (
                   <span className="inline-flex items-center gap-0.5 ml-0.5">
                     <MessageSquare size={11} />

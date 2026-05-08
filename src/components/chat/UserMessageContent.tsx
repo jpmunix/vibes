@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
-import { X, Wrench } from "@/components/ui/icons";
+import { X, Wrench, Paperclip } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -11,6 +11,8 @@ import {
 interface UserMessageContentProps {
     content: string;
     aiMessagesJson?: any;
+    /** When true, image thumbnails are hidden (parent renders a compact badge instead) */
+    hideImages?: boolean;
 }
 
 /**
@@ -18,7 +20,7 @@ interface UserMessageContentProps {
  * Supports both inline base64 data and CDN URLs (from Bunny storage).
  * Returns an array of { src, mimeType } where src is either a data URL or a CDN URL.
  */
-function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
+export function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
     src: string;
     mimeType: string;
 }> {
@@ -75,6 +77,7 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
 export const UserMessageContent = React.memo(function UserMessageContent({
     content,
     aiMessagesJson,
+    hideImages,
 }: UserMessageContentProps) {
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
@@ -164,8 +167,8 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 )
             )}
 
-            {/* Render image thumbnails — styled like quote cards */}
-            {images.length > 0 && (
+            {/* Render image thumbnails — styled like quote cards (hidden when parent collapses) */}
+            {!hideImages && images.length > 0 && (
                 <div className="not-prose flex flex-wrap gap-2 mt-2">
                     {images.map((img, index) => {
                         return (
@@ -192,9 +195,9 @@ export const UserMessageContent = React.memo(function UserMessageContent({
 
             {/* Fallback: if we have attachment text but no aiMessagesJson images,
           show a subtle indicator that there were attachments */}
-            {hasAttachmentText && images.length === 0 && (
+            {!hideImages && hasAttachmentText && images.length === 0 && (
                 <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
-                    <span>📎 Adjuntos enviados</span>
+                    <span className="flex items-center gap-1"><Paperclip size={11} /> Adjuntos enviados</span>
                 </div>
             )}
 

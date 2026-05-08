@@ -540,5 +540,82 @@ export function registerAdminHandlers(): void {
         }));
     });
 
+    // ─── ADMIN: GET USER PREFERENCES (KV table) ────────────────────────
+    createTypedHandler(adminContracts.getUserPreferences, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+
+        const rows = await db
+            .select({
+                key: remoteSchema.userPreferences.key,
+                value: remoteSchema.userPreferences.value,
+                updatedAt: remoteSchema.userPreferences.updatedAt,
+            })
+            .from(remoteSchema.userPreferences)
+            .where(
+                eq(remoteSchema.userPreferences.userId, input.userId),
+            );
+
+        const preferences = rows.map((r) => ({
+            key: r.key,
+            value: r.value,
+            updatedAt: r.updatedAt instanceof Date
+                ? r.updatedAt.toISOString()
+                : r.updatedAt ? String(r.updatedAt) : null,
+        }));
+
+        return { preferences };
+    });
+
+    // ─── ADMIN: SET USER PREFERENCE ─────────────────────────────────────
+    createTypedHandler(adminContracts.setUserPreference, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const now = new Date();
+
+        await db
+            .insert(remoteSchema.userPreferences)
+            .values({
+                userId: input.userId,
+                appId: 0,
+                key: input.key,
+                value: input.value,
+                updatedAt: now,
+            })
+            .onConflictDoUpdate({
+                target: [
+                    remoteSchema.userPreferences.userId,
+                    remoteSchema.userPreferences.key,
+                    remoteSchema.userPreferences.appId,
+                ],
+                set: { value: input.value, updatedAt: now },
+            });
+
+        logger.info(`Admin set preference: ${input.key} for user ${input.userId}`);
+        return { success: true };
+    });
+
+    // ─── ADMIN: DELETE USER PREFERENCE ──────────────────────────────────
+    createTypedHandler(adminContracts.deleteUserPreference, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { and } = await import("drizzle-orm");
+
+        await db
+            .delete(remoteSchema.userPreferences)
+            .where(
+                and(
+                    eq(remoteSchema.userPreferences.userId, input.userId),
+                    eq(remoteSchema.userPreferences.key, input.key),
+                ),
+            );
+
+        logger.info(`Admin deleted preference: ${input.key} for user ${input.userId}`);
+        return { success: true };
+    });
+
     logger.info("Admin handlers registered");
 }

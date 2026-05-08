@@ -1,7 +1,7 @@
 /**
  * Admin — API Keys overview.
- * Fetches all users' settings and extracts API keys / tokens / integrations,
- * grouped by user in collapsible SettingItem rows.
+ * Reads from `user_preferences` (KV table) and extracts API keys / tokens,
+ * grouped by user in collapsible rows with inline editing.
  */
 import { useState, useEffect, useCallback } from "react";
 import { ipc } from "@/ipc/types";
@@ -11,9 +11,15 @@ import {
     Copy,
     Download,
     Share2,
+    Check,
+    X,
+    Pencil,
+    Eye,
+    EyeOff,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { AdminUser } from "@/ipc/types/admin";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +30,10 @@ interface KeyEntry {
     label: string;
     /** The actual value */
     value: string;
+    /** The preference key in the KV store (for editing) */
+    prefKey: string;
+    /** JSON path within the preference value (for nested keys) */
+    jsonPath?: string;
 }
 
 interface UserKeys {
@@ -33,103 +43,137 @@ interface UserKeys {
     keys: KeyEntry[];
 }
 
-// ── Key extraction from raw settings ────────────────────────────────────────
+// ── Key extraction from KV preferences ──────────────────────────────────────
 
-function extractKeys(settings: Record<string, unknown>): KeyEntry[] {
+function extractKeysFromPrefs(prefs: { key: string; value: string }[]): KeyEntry[] {
     const keys: KeyEntry[] = [];
+    const prefsMap = new Map(prefs.map((p) => [p.key, p.value]));
 
-    // OpenRouter keys
-    const providerSettings = settings.providerSettings as Record<string, unknown> | undefined;
-    if (providerSettings && typeof providerSettings === "object") {
-        for (const [providerName, providerData] of Object.entries(providerSettings)) {
-            if (providerData && typeof providerData === "object") {
-                const pd = providerData as Record<string, unknown>;
-                const providerKeys = pd.keys as unknown[];
-                if (Array.isArray(providerKeys)) {
-                    for (const keyObj of providerKeys) {
-                        if (keyObj && typeof keyObj === "object") {
-                            const k = keyObj as Record<string, unknown>;
-                            const alias = (k.alias as string) || "sin alias";
-                            const keyData = k.key as Record<string, unknown> | undefined;
-                            const value = keyData?.value as string | undefined;
-                            if (value) {
-                                keys.push({
-                                    category: providerName,
-                                    label: alias,
-                                    value,
-                                });
+    // Provider settings (OpenRouter keys, apiKeys for other providers)
+    const providerSettingsRaw = prefsMap.get("providerSettings");
+    if (providerSettingsRaw) {
+        try {
+            const providerSettings = JSON.parse(providerSettingsRaw);
+            if (typeof providerSettings === "object" && providerSettings !== null) {
+                for (const [providerName, providerData] of Object.entries(providerSettings)) {
+                    if (providerData && typeof providerData === "object") {
+                        const pd = providerData as Record<string, unknown>;
+
+                        // Array of keys (OpenRouter style)
+                        const providerKeys = pd.keys as unknown[];
+                        if (Array.isArray(providerKeys)) {
+                            for (const keyObj of providerKeys) {
+                                if (keyObj && typeof keyObj === "object") {
+                                    const k = keyObj as Record<string, unknown>;
+                                    const alias = (k.alias as string) || "sin alias";
+                                    const keyData = k.key as Record<string, unknown> | undefined;
+                                    const value = keyData?.value as string | undefined;
+                                    if (value) {
+                                        keys.push({
+                                            category: providerName,
+                                            label: alias,
+                                            value,
+                                            prefKey: "providerSettings",
+                                        });
+                                    }
+                                }
                             }
+                        }
+
+                        // Selected key ID
+                        if (pd.selectedKeyId) {
+                            keys.push({
+                                category: providerName,
+                                label: "Key activa",
+                                value: String(pd.selectedKeyId),
+                                prefKey: "providerSettings",
+                            });
+                        }
+
+                        // Simple apiKey
+                        const apiKey = pd.apiKey as Record<string, unknown> | undefined;
+                        if (apiKey?.value) {
+                            keys.push({
+                                category: providerName,
+                                label: "API Key",
+                                value: String(apiKey.value),
+                                prefKey: "providerSettings",
+                            });
                         }
                     }
                 }
-                // Selected key ID
-                if (pd.selectedKeyId) {
-                    keys.push({
-                        category: providerName,
-                        label: "Key activa",
-                        value: String(pd.selectedKeyId),
-                    });
-                }
             }
-        }
+        } catch { /* skip */ }
     }
 
     // GitHub token
-    const githubToken = settings.githubAccessToken as Record<string, unknown> | undefined;
-    if (githubToken?.value) {
-        keys.push({ category: "GitHub", label: "Access Token", value: String(githubToken.value) });
-    }
-
-    // GitHub user
-    const githubUser = settings.githubUser as Record<string, unknown> | undefined;
-    if (githubUser?.email) {
-        keys.push({ category: "GitHub", label: "Email", value: String(githubUser.email) });
-    }
-
-    // Vercel token
-    const vercelToken = settings.vercelAccessToken as Record<string, unknown> | undefined;
-    if (vercelToken?.value) {
-        keys.push({ category: "Vercel", label: "Access Token", value: String(vercelToken.value) });
-    }
-
-    // Serper API key
-    const serperKey = settings.serperApiKey as Record<string, unknown> | undefined;
-    if (serperKey?.value) {
-        keys.push({ category: "Serper", label: "API Key", value: String(serperKey.value) });
-    }
-
-    // Supabase
-    const supabase = settings.supabase as Record<string, unknown> | undefined;
-    if (supabase && typeof supabase === "object") {
-        const orgs = supabase.organizations as Record<string, unknown> | undefined;
-        if (orgs && Object.keys(orgs).length > 0) {
-            for (const [orgId, orgData] of Object.entries(orgs)) {
-                if (orgData && typeof orgData === "object") {
-                    const org = orgData as Record<string, unknown>;
-                    const token = org.accessToken as string | undefined;
-                    if (token) {
-                        keys.push({ category: "Supabase", label: `Org ${orgId}`, value: token });
-                    }
-                }
+    const githubToken = prefsMap.get("githubAccessToken");
+    if (githubToken) {
+        try {
+            const parsed = JSON.parse(githubToken);
+            if (parsed?.value) {
+                keys.push({ category: "GitHub", label: "Access Token", value: String(parsed.value), prefKey: "githubAccessToken" });
+            }
+        } catch {
+            if (githubToken.trim()) {
+                keys.push({ category: "GitHub", label: "Access Token", value: githubToken, prefKey: "githubAccessToken" });
             }
         }
     }
 
-    // Neon
-    const neonToken = settings.neonAccessToken as Record<string, unknown> | undefined;
-    if (neonToken?.value) {
-        keys.push({ category: "Neon", label: "Access Token", value: String(neonToken.value) });
+    // GitHub user
+    const githubUser = prefsMap.get("githubUser");
+    if (githubUser) {
+        try {
+            const parsed = JSON.parse(githubUser);
+            if (parsed?.email) {
+                keys.push({ category: "GitHub", label: "Email", value: String(parsed.email), prefKey: "githubUser" });
+            }
+        } catch { /* skip */ }
     }
 
-    // Firebase
-    const firebaseToken = settings.firebaseAccessToken as Record<string, unknown> | undefined;
-    if (firebaseToken?.value) {
-        keys.push({ category: "Firebase", label: "Access Token", value: String(firebaseToken.value) });
+    // Vercel token
+    const vercelToken = prefsMap.get("vercelAccessToken");
+    if (vercelToken) {
+        try {
+            const parsed = JSON.parse(vercelToken);
+            if (parsed?.value) {
+                keys.push({ category: "Vercel", label: "Access Token", value: String(parsed.value), prefKey: "vercelAccessToken" });
+            }
+        } catch {
+            if (vercelToken.trim()) {
+                keys.push({ category: "Vercel", label: "Access Token", value: vercelToken, prefKey: "vercelAccessToken" });
+            }
+        }
     }
 
-    // Embeddings model (not a key, but relevant config)
-    if (settings.embeddingsModel) {
-        keys.push({ category: "Embeddings", label: "Modelo", value: String(settings.embeddingsModel) });
+    // Supabase
+    const supabaseRaw = prefsMap.get("supabase");
+    if (supabaseRaw) {
+        try {
+            const supabase = JSON.parse(supabaseRaw);
+            if (supabase?.organizations && typeof supabase.organizations === "object") {
+                for (const [orgId, orgData] of Object.entries(supabase.organizations)) {
+                    if (orgData && typeof orgData === "object") {
+                        const org = orgData as Record<string, unknown>;
+                        const token = org.accessToken as Record<string, unknown> | undefined;
+                        const tokenValue = token?.value ?? token;
+                        if (tokenValue && typeof tokenValue === "string") {
+                            keys.push({ category: "Supabase", label: `Org ${orgId}`, value: tokenValue, prefKey: "supabase" });
+                        }
+                    }
+                }
+            }
+        } catch { /* skip */ }
+    }
+
+    // Embeddings model
+    const embModel = prefsMap.get("embeddingsModel");
+    if (embModel) {
+        const val = embModel.replace(/^"|"$/g, "");
+        if (val) {
+            keys.push({ category: "Embeddings", label: "Modelo", value: val, prefKey: "embeddingsModel" });
+        }
     }
 
     return keys;
@@ -199,27 +243,51 @@ function generateMarkdown(data: UserKeys[]): string {
     return lines.join("\n");
 }
 
+function maskValue(value: string): string {
+    if (value.length <= 8) return "••••••••";
+    const start = value.slice(0, 6);
+    const end = value.slice(-4);
+    return `${start}${"•".repeat(Math.min(20, value.length - 10))}${end}`;
+}
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AdminApiKeys() {
     const [data, setData] = useState<UserKeys[]>([]);
+    const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const result = await ipc.admin.getAllUsersSettings({});
-            const extracted: UserKeys[] = result.usersSettings
-                .map((u) => ({
-                    userId: u.userId,
-                    displayName: u.displayName,
-                    email: u.email,
-                    keys: u.settings ? extractKeys(u.settings) : [],
-                }))
-                .filter((u) => u.keys.length > 0);
+            // Get all users first
+            const usersResult = await ipc.admin.listUsers({});
+            setUsers(usersResult.users);
 
-            setData(extracted);
+            // Get preferences for each user in parallel
+            const results = await Promise.all(
+                usersResult.users.map(async (user) => {
+                    try {
+                        const result = await ipc.admin.getUserPreferences({ userId: user.id });
+                        return {
+                            userId: user.id,
+                            displayName: user.displayName,
+                            email: user.email,
+                            keys: extractKeysFromPrefs(result.preferences),
+                        };
+                    } catch {
+                        return {
+                            userId: user.id,
+                            displayName: user.displayName,
+                            email: user.email,
+                            keys: [],
+                        };
+                    }
+                }),
+            );
+
+            setData(results.filter((u) => u.keys.length > 0));
         } catch (err: any) {
             toast.error(err.message || "Error al cargar API keys");
         } finally {
@@ -344,39 +412,16 @@ export function AdminApiKeys() {
                                                     </div>
 
                                                     {/* Keys table */}
-                                                    <table className="w-full text-sm">
-                                                        <tbody>
-                                                            {categoryKeys.map((keyEntry, idx) => (
-                                                                <tr
-                                                                    key={idx}
-                                                                    className="border-t border-border/20 first:border-t-0 hover:bg-muted/20 transition-colors"
-                                                                >
-                                                                    <td className="px-4 py-2.5 align-top text-left w-[160px]">
-                                                                        <span className="typo-caption text-muted-foreground">
-                                                                            {keyEntry.label}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-4 py-2.5 align-top text-right">
-                                                                        <div className="flex items-center justify-end gap-2">
-                                                                            <span className="typo-caption font-mono text-foreground/80 break-all select-all">
-                                                                                {keyEntry.value}
-                                                                            </span>
-                                                                            <button
-                                                                                type="button"
-                                                                                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleCopy(keyEntry.value);
-                                                                                }}
-                                                                            >
-                                                                                <Copy size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                    <div className="divide-y divide-border/20">
+                                                        {categoryKeys.map((keyEntry, idx) => (
+                                                            <ApiKeyRow
+                                                                key={idx}
+                                                                keyEntry={keyEntry}
+                                                                userId={user.userId}
+                                                                onCopy={handleCopy}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -387,6 +432,141 @@ export function AdminApiKeys() {
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ── Editable API Key row ────────────────────────────────────────────────────
+
+function ApiKeyRow({
+    keyEntry,
+    userId,
+    onCopy,
+}: {
+    keyEntry: KeyEntry;
+    userId: string;
+    onCopy: (value: string) => void;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [editValue, setEditValue] = useState(keyEntry.value);
+    const [saving, setSaving] = useState(false);
+    const [showSecret, setShowSecret] = useState(false);
+
+    const isSecret = keyEntry.value.startsWith("sk-") ||
+        keyEntry.value.startsWith("ghu_") ||
+        keyEntry.value.startsWith("sbp_") ||
+        keyEntry.label.toLowerCase().includes("token") ||
+        keyEntry.label.toLowerCase().includes("key") ||
+        keyEntry.category !== "Embeddings";
+
+    const handleSave = async () => {
+        // For now, only simple string values can be edited inline.
+        // Complex nested values (providerSettings) need the full preferences editor.
+        if (keyEntry.prefKey === "providerSettings" || keyEntry.prefKey === "supabase") {
+            toast.error("Usa el editor de preferencias del usuario para editar este campo");
+            setEditing(false);
+            return;
+        }
+
+        setSaving(true);
+        try {
+            // Wrap in Secret schema format if needed
+            const wrappedValue = JSON.stringify({ value: editValue, encryptionType: "plaintext" });
+            await ipc.admin.setUserPreference({ userId, key: keyEntry.prefKey, value: wrappedValue });
+            keyEntry.value = editValue; // Optimistic update
+            toast.success("Clave actualizada");
+            setEditing(false);
+        } catch (err: any) {
+            toast.error(err.message || "Error al guardar");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-muted/20 transition-colors group">
+            {/* Label */}
+            <div className="shrink-0 w-[160px]">
+                <span className="typo-caption text-muted-foreground">
+                    {keyEntry.label}
+                </span>
+            </div>
+
+            {/* Value */}
+            <div className="flex-1 flex items-center justify-end gap-2">
+                {editing ? (
+                    <div className="flex items-center gap-1.5 flex-1 justify-end">
+                        <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="flex-1 max-w-md px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-xs font-mono outline-none focus:border-primary"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSave();
+                                if (e.key === "Escape") { setEditing(false); setEditValue(keyEntry.value); }
+                            }}
+                        />
+                        <button
+                            type="button"
+                            className="p-1 rounded hover:bg-accent text-primary cursor-pointer transition-colors"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                        </button>
+                        <button
+                            type="button"
+                            className="p-1 rounded hover:bg-accent text-muted-foreground cursor-pointer transition-colors"
+                            onClick={() => { setEditing(false); setEditValue(keyEntry.value); }}
+                        >
+                            <X size={12} />
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <span className="typo-caption font-mono text-foreground/80 break-all select-all">
+                            {isSecret && !showSecret ? maskValue(keyEntry.value) : keyEntry.value}
+                        </span>
+                        {isSecret && (
+                            <button
+                                type="button"
+                                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
+                                onClick={() => setShowSecret(!showSecret)}
+                            >
+                                {showSecret ? <EyeOff size={12} /> : <Eye size={12} />}
+                            </button>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Actions */}
+            {!editing && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                        type="button"
+                        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onCopy(keyEntry.value);
+                        }}
+                    >
+                        <Copy size={12} />
+                    </button>
+                    <button
+                        type="button"
+                        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setEditValue(keyEntry.value);
+                            setEditing(true);
+                        }}
+                    >
+                        <Pencil size={12} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

@@ -215,6 +215,40 @@ export const adminContracts = {
             createdAt: z.string(),
         })),
     }),
+
+    /** Get all key-value preferences for a user (from user_preferences table) */
+    getUserPreferences: defineContract({
+        channel: "admin:get-user-preferences",
+        input: z.object({ userId: z.string() }),
+        output: z.object({
+            preferences: z.array(z.object({
+                key: z.string(),
+                value: z.string(),
+                updatedAt: z.string().nullable(),
+            })),
+        }),
+    }),
+
+    /** Set a single preference for a user (admin override) */
+    setUserPreference: defineContract({
+        channel: "admin:set-user-preference",
+        input: z.object({
+            userId: z.string(),
+            key: z.string(),
+            value: z.string(),
+        }),
+        output: z.object({ success: z.boolean() }),
+    }),
+
+    /** Delete a single preference for a user */
+    deleteUserPreference: defineContract({
+        channel: "admin:delete-user-preference",
+        input: z.object({
+            userId: z.string(),
+            key: z.string(),
+        }),
+        output: z.object({ success: z.boolean() }),
+    }),
 } as const;
 
 // =============================================================================

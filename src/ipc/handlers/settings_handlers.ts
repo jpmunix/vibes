@@ -7,20 +7,25 @@ import { eq } from "drizzle-orm";
 import log from "electron-log";
 import { BrowserWindow } from "electron";
 import { safeSend } from "../utils/safe_sender";
+import { preferencesCache } from "../../main/preferences-cache";
+import type { UserSettings } from "../../lib/schemas";
 
 const logger = log.scope("settings_handlers");
 
 /**
- * Fields that are LOCAL-ONLY and must NEVER be overwritten by remote settings.
- * - providerSettings: contains API keys encrypted with machine-specific electron safeStorage.
- *   They cannot be decrypted on other machines and would corrupt the local config.
- * - Session fields (userId, sessionToken) are stripped separately.
+ * Keys that live in `user-settings.json` only (not in the KV store).
+ * These are machine-specific state, not user preferences.
  */
-const LOCAL_ONLY_FIELDS = [
-  "providerSettings",
-  "githubAccessToken",
-  "vercelAccessToken",
-] as const;
+const LOCAL_DISK_ONLY_KEYS = new Set([
+  "userId",
+  "sessionToken",
+  "windowState",
+  "secondaryWindowStates",
+  "isRunning",
+  "lastKnownPerformance",
+  "hasRunBefore",
+  "isTestMode",
+]);
 
 /**
  * Keys removed by the v10 settings cleanup migration.
@@ -39,53 +44,74 @@ const V10_DEAD_KEYS = [
   'releaseChannel', 'dossierModel', 'enableTurboEditsV2',
 ] as const;
 
-export async function forceSyncRemoteSettingsToLocal(userId: string) {
-  const db = getRemoteDb();
-  try {
-    const remoteRecord = await db.query.userSettings.findFirst({
-      where: eq(remoteSchema.userSettings.userId, userId),
-    });
-    if (remoteRecord) {
-      const remoteSettings = JSON.parse(remoteRecord.settingsJson);
-
-      // --- SESSION DATA EXCLUSION ---
-      // We must NEVER overwrite local session data with remote settings data.
-      // Remote settings are for user preferences, not for session management.
-      // If we overwrite these, the user will be logged out on the next launch.
-      delete remoteSettings.userId;
-      delete remoteSettings.sessionToken;
-
-      // --- LOCAL-ONLY FIELDS EXCLUSION ---
-      // API keys and secrets are encrypted with machine-specific safeStorage.
-      // They MUST NOT be overwritten by remote data (which may contain stale or
-      // differently-encrypted values from another machine/session).
-      for (const field of LOCAL_ONLY_FIELDS) {
-        delete remoteSettings[field];
-      }
-
-      // --- MEMORY MODEL EXCLUSION ---
-      // Memory model fields are managed by local migrations (v9g+).
-      // They MUST NOT be overwritten by remote data.
-      delete remoteSettings.memoriesSynthesisModelV2;
-      delete remoteSettings.memoriesRouterModelV2;
-      // --- MIGRATION FLAGS EXCLUSION ---
-      // Migration state is local-only — remote may have stale flags.
-      delete remoteSettings._migrations;
-
-      // --- DEAD KEY EXCLUSION (v10) ---
-      for (const key of V10_DEAD_KEYS) {
-        delete remoteSettings[key];
-      }
-
-      // We must explicitly save these to disk so they immediately become the local truth
-      // without needing an initial save from the React frontend.
-      writeSettings(remoteSettings);
-      return true;
+/**
+ * Build a UserSettings-shaped object from the preferences cache.
+ * Falls back to local disk for LOCAL_DISK_ONLY_KEYS (windowState, session, etc.).
+ */
+function composeSettingsFromCache(userId: string): Record<string, any> {
+  // Start with local-only fields from disk
+  const localSettings = readSettings();
+  const localOnly: Record<string, any> = {};
+  for (const key of LOCAL_DISK_ONLY_KEYS) {
+    if (key in localSettings) {
+      localOnly[key] = (localSettings as any)[key];
     }
-  } catch (error) {
-    logger.error("Error force syncing remote user settings to local:", error);
   }
-  return false;
+
+  // Get all preferences from cache
+  const prefsMap = preferencesCache.getAll(userId, 0);
+
+  // Deserialize each value from JSON string to its native type
+  const deserialized: Record<string, any> = {};
+  for (const [key, rawValue] of Object.entries(prefsMap)) {
+    try {
+      deserialized[key] = JSON.parse(rawValue);
+    } catch {
+      // Plain string value (not JSON)
+      deserialized[key] = rawValue;
+    }
+  }
+
+  // Merge: local-only fields + deserialized preferences
+  return { ...deserialized, ...localOnly } as UserSettings;
+}
+
+/**
+ * Decompose a partial UserSettings into KV entries and persist them.
+ * Local-only fields are written to disk, everything else goes to the cache.
+ */
+function decomposeAndPersist(
+  userId: string,
+  settings: Record<string, any>,
+): void {
+  const localUpdates: Record<string, any> = {};
+  const kvUpdates: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(settings)) {
+    if (LOCAL_DISK_ONLY_KEYS.has(key)) {
+      localUpdates[key] = value;
+    } else {
+      // Serialize to JSON string for the KV store
+      kvUpdates[key] = typeof value === "string" ? value : JSON.stringify(value);
+    }
+  }
+
+  // Write local-only fields to disk
+  if (Object.keys(localUpdates).length > 0) {
+    writeSettings(localUpdates);
+  }
+
+  // Write preferences to cache (async DB persist happens inside)
+  if (Object.keys(kvUpdates).length > 0) {
+    preferencesCache.setMany(userId, kvUpdates, 0);
+  }
+}
+
+// Legacy export — kept for backward compat during migration period
+export async function forceSyncRemoteSettingsToLocal(userId: string) {
+  // Now just hydrates the preferences cache
+  await preferencesCache.hydrate(userId);
+  return true;
 }
 
 export function registerSettingsHandlers() {
@@ -93,77 +119,35 @@ export function registerSettingsHandlers() {
   // to avoid logging sensitive data (API keys, tokens, etc.) from args/return values.
 
   // ── getUserSettings ──────────────────────────────────────────────────
-  // Merges LOCAL settings (disk) with REMOTE settings (Bunny DB).
-  // Merge order: { ...local, ...remote } — remote wins for all fields
-  // EXCEPT those listed in LOCAL_ONLY_FIELDS (API keys, tokens) and
-  // session data (userId, sessionToken), which always come from local.
+  // Composes a UserSettings object from:
+  //   1. Preferences cache (KV store, hydrated from BunnyDB)
+  //   2. Local disk (machine-specific fields: windowState, session, etc.)
   //
-  // ⚠️  This means any setting written to disk via writeSettings() but NOT
-  //     synced to Bunny will be overwritten by stale remote values on
-  //     the next getUserSettings call. Always sync to Bunny after writing.
+  // No more blob merge, no LOCAL_ONLY_FIELDS exclusion, no V10_DEAD_KEYS stripping.
+  // The KV store IS the source of truth for all preferences.
   createTypedHandler(settingsContracts.getUserSettings, async (_, __, context) => {
-    const localSettings = readSettings();
-    if (context.userId) {
-      const db = getRemoteDb();
-      try {
-        const remoteRecord = await db.query.userSettings.findFirst({
-          where: eq(remoteSchema.userSettings.userId, context.userId),
-        });
-        if (remoteRecord) {
-          try {
-            const remoteSettings = JSON.parse(remoteRecord.settingsJson);
-
-            // Strip LOCAL-ONLY fields from remote to prevent stale/encrypted
-            // API keys from overwriting the local machine's current keys.
-            for (const field of LOCAL_ONLY_FIELDS) {
-              delete remoteSettings[field];
-            }
-            // Also strip session data
-            delete remoteSettings.userId;
-            delete remoteSettings.sessionToken;
-            // Strip memory model fields — managed by local migration v9
-            delete remoteSettings.memoriesSynthesisModelV2;
-            delete remoteSettings.memoriesRouterModelV2;
-            // Strip _migrations — always trust local migration state,
-            // otherwise remote overwrites local flags and re-triggers migrations
-            delete remoteSettings._migrations;
-
-            // Strip dead/abandoned keys (v10 cleanup) — remote may still hold stale values
-            for (const key of V10_DEAD_KEYS) {
-              delete remoteSettings[key];
-            }
-
-            // Merge: local wins for secrets, remote wins for preferences
-            const merged = { ...localSettings, ...remoteSettings };
-            // Hard migration: upgrade stale strategist model from remote
-            if (merged.strategistModel === "deepseek/deepseek-v3.2" || !merged.strategistModel) {
-              merged.strategistModel = "deepseek/deepseek-v4-flash";
-            }
-            return merged;
-          } catch (e) {
-            logger.error("Failed to parse remote settings JSON", e);
-          }
-        }
-      } catch (error) {
-        logger.error("Error fetching remote user settings:", error);
-      }
+    if (context.userId && preferencesCache.isHydrated) {
+      return composeSettingsFromCache(context.userId) as any;
     }
-    return localSettings;
+
+    // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
+    return readSettings();
   });
 
   // ── setUserSettings ──────────────────────────────────────────────────
-  // Canonical "full pipeline" for settings changes initiated by the renderer.
-  // Performs ALL sync steps in sequence:
-  //   1. writeSettings()      → local disk + in-memory cache
-  //   2. Hot-update OpenCode  → config/permissions applied to running daemon
-  //   3. Sync to Bunny DB     → remote persistence across devices
-  //   4. Returns `updated`    → renderer sets the Jotai atom
-  //
-  // ⚠️  Main-process code that needs the same pipeline must replicate these
-  //     steps manually — see persistPermissionToSettings() in opencode_adapter.ts.
-  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context) => {
-    writeSettings(settings);
-    const updated = readSettings();
+  // Canonical pipeline for settings changes from the renderer:
+  //   1. Decompose into local-only (disk) + preferences (cache → DB)
+  //   2. Hot-update OpenCode if model/variant/permissions changed
+  //   3. Broadcast to all windows
+  //   4. Also update the legacy blob backup in Bunny
+  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context): Promise<UserSettings> => {
+    if (context.userId && preferencesCache.isHydrated) {
+      // New path: decompose into KV cache + local disk
+      decomposeAndPersist(context.userId, settings as Record<string, any>);
+    } else {
+      // Fallback for pre-auth: write everything to disk
+      writeSettings(settings);
+    }
 
     // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or unified model keys changed
     if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.strategistModel || settings.executorModel || settings.reasoningEffort || settings.textVerbosity) {
@@ -187,14 +171,16 @@ export function registerSettingsHandlers() {
     if (settings.openCodePermissions2) {
       try {
         const { updateOpenCodePermissions } = await import("./opencode_adapter");
-        await updateOpenCodePermissions(updated);
+        const currentSettings = context.userId && preferencesCache.isHydrated
+          ? composeSettingsFromCache(context.userId)
+          : readSettings();
+        await updateOpenCodePermissions(currentSettings as any);
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode permissions: ${e.message}`);
       }
     }
 
-    // If provider settings (API keys) changed, we must completely shutdown the OpenCode
-    // daemon so it picks up the new process.env variables upon the next spawn.
+    // If provider settings (API keys) changed, shutdown OpenCode daemon
     if (settings.providerSettings) {
       try {
         const { shutdownOpenCode } = await import("./opencode_adapter");
@@ -205,11 +191,15 @@ export function registerSettingsHandlers() {
       }
     }
 
+    // Build the full updated settings to return to the renderer
+    const updated = context.userId && preferencesCache.isHydrated
+      ? composeSettingsFromCache(context.userId)
+      : readSettings();
+
+    // ── Backup: also update the legacy blob in Bunny (for disaster recovery) ──
     if (context.userId) {
       const db = getRemoteDb();
       try {
-        // --- SESSION DATA EXCLUSION ---
-        // We strip session data before saving to the remote DB to keep it clean.
         const { userId: _u, sessionToken: _s, ...syncableSettings } = updated;
         const settingsJson = JSON.stringify(syncableSettings);
 
@@ -220,10 +210,7 @@ export function registerSettingsHandlers() {
         if (existing) {
           await db
             .update(remoteSchema.userSettings)
-            .set({
-              settingsJson,
-              updatedAt: new Date(),
-            })
+            .set({ settingsJson, updatedAt: new Date() })
             .where(eq(remoteSchema.userSettings.userId, context.userId));
         } else {
           await db.insert(remoteSchema.userSettings).values({
@@ -233,13 +220,11 @@ export function registerSettingsHandlers() {
           });
         }
       } catch (error) {
-        logger.error("Error syncing settings to remote DB:", error);
+        logger.error("Error syncing settings backup blob:", error);
       }
     }
 
     // ── Broadcast to ALL other windows for real-time sync ──
-    // The calling window already receives `updated` as the return value;
-    // other windows (admin panel, chat sub-windows) need the IPC push.
     const senderWebContentsId = event?.sender?.id;
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed() && win.webContents && win.webContents.id !== senderWebContentsId) {
@@ -247,6 +232,6 @@ export function registerSettingsHandlers() {
       }
     }
 
-    return updated;
+    return updated as UserSettings;
   });
 }

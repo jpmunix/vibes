@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
-import { Info, X, Type, Image, Music, Video, FileText, ArrowRight, Edit2, Check } from "@/components/ui/icons";
+import { Info, X, Type, Image, Music, Video, FileText, ArrowRight, Edit2, Check, Sparkles } from "@/components/ui/icons";
 import {
     Tooltip,
     TooltipTrigger,
@@ -262,7 +262,7 @@ export function ModelItemContent({
                                     {hasPricing && (
                                         <div className="flex items-center gap-3 text-[13px]">
                                             {isFree ? (
-                                                <span className="text-emerald-400 font-medium">✦ Gratis</span>
+                                                <span className="text-emerald-400 font-medium flex items-center gap-1"><Sparkles size={11} /> Gratis</span>
                                             ) : (
                                                 <>
                                                     <span className="text-muted-foreground">In</span>

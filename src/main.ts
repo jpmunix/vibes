@@ -35,6 +35,49 @@ import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
 import { validateModelSettings } from "./ipc/utils/model_validator";
+import { stopAllRunningApps } from "./ipc/utils/process_manager";
+import { serializePendingBuffers } from "./ipc/utils/memory_extractor";
+
+// ─── Config migration: minube-vibes → Vibes ─────────────────────────────
+// productName changed to "Vibes" so Electron's userData moves to a new dir.
+// If the old dir exists, copy everything over (overwriting) and delete it.
+// On next startup the old dir is gone → migration is a no-op.
+{
+  const oldUserData = path.join(app.getPath("appData"), "minube-vibes");
+  if (fs.existsSync(oldUserData)) {
+    const newUserData = app.getPath("userData");
+    // Skip Chromium caches (~2GB, auto-regenerated) and auth/settings files
+    // (encrypted with old app identity — user will re-login and sync from BunnyDB)
+    const SKIP = new Set([
+      "Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "blob_storage",
+      "user-settings.json", "Cookies", "Cookies-journal",
+      "IndexedDB", "Local Storage", "Session Storage", "Preferences",
+    ]);
+    try {
+      fs.cpSync(oldUserData, newUserData, {
+        recursive: true,
+        force: true,
+        filter: (src) => !SKIP.has(path.basename(src)),
+      });
+      fs.rmSync(oldUserData, { recursive: true, force: true });
+      // Write flags for the next launch:
+      // - .migration-optimize: triggers DB VACUUM during splash
+      // - .migration-trust-remote: allows providerSettings from BunnyDB to overwrite empty local keys
+      fs.writeFileSync(path.join(newUserData, ".migration-optimize"), "", "utf-8");
+      fs.writeFileSync(path.join(newUserData, ".migration-trust-remote"), "", "utf-8");
+      console.log(`[Migration] Migrated ${oldUserData} → ${newUserData}`);
+      if (app.isPackaged) {
+        console.log("[Migration] Relaunching...");
+        app.relaunch();
+        app.exit(0);
+      } else {
+        console.log("[Migration] Dev mode — restart manually (rs + Enter)");
+      }
+    } catch (err: any) {
+      console.warn(`[Migration] Failed: ${(err as Error).message}`);
+    }
+  }
+}
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -85,6 +128,7 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("enable-smooth-scrolling");
 
 const logger = log.scope("main");
+
 
 // ─── Build Profile ───────────────────────────────────────────────────────
 // VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside vibes).
@@ -175,32 +219,69 @@ export async function onReady() {
 
   await onFirstRunMaybe(settings);
 
+  // ─── Post-migration optimization ──────────────────────────────────────
+  const migrationFlagPath = path.join(app.getPath("userData"), ".migration-optimize");
+  const needsOptimization = fs.existsSync(migrationFlagPath);
+
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 3;
+  const TOTAL_STEPS = needsOptimization ? 4 : 3;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Create main window (the critical path)
-  updateSplash(splash, 1, TOTAL_STEPS, "Preparando interfaz...");
+  // Step 1 (migration only): Optimize databases
+  if (needsOptimization) {
+    updateSplash(splash, 1, TOTAL_STEPS, "Optimizando base de datos...");
+    try {
+      const { execSync } = require("child_process");
+      const HOME = process.env.HOME || `/home/${process.env.USER}`;
+
+      // VACUUM + WAL checkpoint on OpenCode DB
+      const openCodeDbPath = path.join(HOME, ".local/share/opencode/opencode.db");
+      if (fs.existsSync(openCodeDbPath)) {
+        execSync(`sqlite3 "${openCodeDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        logger.info("[Migration] OpenCode DB optimized");
+      }
+
+      // VACUUM the app's local SQLite DB too
+      const appDbPath = path.join(app.getPath("userData"), "sqlite.db");
+      if (fs.existsSync(appDbPath)) {
+        execSync(`sqlite3 "${appDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        logger.info("[Migration] App DB optimized");
+      }
+
+      // Clean up the flag
+      fs.unlinkSync(migrationFlagPath);
+      logger.info("[Migration] Post-migration optimization completed");
+    } catch (err: any) {
+      logger.warn(`[Migration] Optimization failed (non-fatal): ${err.message}`);
+      // Remove flag anyway to avoid retrying on every launch
+      try { fs.unlinkSync(migrationFlagPath); } catch { /* ignore */ }
+    }
+  }
+
+  const stepOffset = needsOptimization ? 1 : 0;
+
+  // Step N+1: Create main window (the critical path)
+  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
 
-  // Step 2: Validate configured models still exist in OpenRouter
-  updateSplash(splash, 2, TOTAL_STEPS, "Validando modelos...");
+  // Step N+2: Validate configured models still exist in OpenRouter
+  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Validando modelos...");
   await validateModelSettings().catch((err) =>
     logger.warn("Model validation failed (non-fatal):", err),
   );
 
-  // Step 3: Show main window and close splash
+  // Step N+3: Show main window and close splash
   // The main window renders behind the splash (splash is alwaysOnTop).
   // No need to wait for did-finish-load — the window has backgroundColor
   // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
   // naturally while the splash fades away.
-  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
+  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     mainWindow.show();
   }
@@ -723,11 +804,12 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
+  // Kill all dev servers started from Vibes to prevent orphan processes
+  stopAllRunningApps();
   shutdownOpenCode();
   stopPerformanceMonitoring();
   // Persist any pending memory buffers so they're processed on next startup
   try {
-    const { serializePendingBuffers } = require("./ipc/utils/memory_extractor");
     serializePendingBuffers();
   } catch (err: any) {
     logger.warn("Failed to serialize pending memory buffers:", err.message);
