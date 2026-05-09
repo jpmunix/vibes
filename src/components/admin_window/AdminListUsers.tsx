@@ -186,15 +186,32 @@ export function AdminListUsers() {
 
     const handleDownloadUserSettings = async (userId: string, displayName: string) => {
         try {
-            const result = await ipc.admin.getUserSettings({ userId });
-            if (!result.settings) {
+            const result = await ipc.admin.getUserPreferences({ userId });
+            if (!result.preferences || result.preferences.length === 0) {
                 toast.error("Este usuario no tiene configuración guardada");
                 return;
             }
+            // Reconstruct a JSON object from KV pairs, parsing values intelligently
+            const settings: Record<string, any> = {};
+            for (const { key, value } of result.preferences) {
+                // Try JSON parse (objects, arrays)
+                const trimmed = value.trim();
+                if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+                    (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+                    try { settings[key] = JSON.parse(trimmed); continue; } catch { /* fall through */ }
+                }
+                // Booleans
+                if (value === "true") { settings[key] = true; continue; }
+                if (value === "false") { settings[key] = false; continue; }
+                // Numbers
+                if (/^-?\d+(\.\d+)?$/.test(trimmed)) { settings[key] = parseFloat(trimmed); continue; }
+                // String
+                settings[key] = value;
+            }
             const safeName = displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-            const json = JSON.stringify(result.settings, null, 2);
-            downloadFile(`${safeName}-settings.json`, json, "application/json");
-            toast.success(`${safeName}-settings.json descargado`);
+            const json = JSON.stringify(settings, null, 2);
+            downloadFile(`${safeName}-preferences.json`, json, "application/json");
+            toast.success(`${safeName}-preferences.json descargado`);
         } catch (err: any) {
             toast.error(err.message || "Error al descargar configuración");
         }

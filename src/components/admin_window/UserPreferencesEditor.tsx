@@ -11,6 +11,7 @@ import { SettingsModelSelector } from "@/components/SettingsModelSelector";
 import { UserSettingsSchema } from "@/lib/schemas";
 import { PrimaryColorPicker, getColorById } from "@/components/PrimaryColorPicker";
 import { FONT_OPTIONS } from "@/shared/fonts";
+import { localTemplatesData } from "@/shared/templates";
 import {
     Loader2,
     Check,
@@ -107,6 +108,14 @@ const COLOR_KEYS = new Set(["primaryColorLight", "primaryColorDark"]);
 /** Keys whose values are font IDs */
 const FONT_KEYS = new Set(["selectedFont", "selectedChatFont"]);
 
+/** Keys whose values are template IDs */
+const TEMPLATE_KEYS = new Set(["selectedTemplateId"]);
+
+/** Template options for the selector */
+const TEMPLATE_OPTIONS = localTemplatesData
+    .filter((t) => t.isOfficial && !t.isExperimental)
+    .map((t) => ({ value: t.id, label: t.title, description: t.description }));
+
 // ── Type detection helpers ──────────────────────────────────────────────────
 
 /** Keys whose values represent LLM model identifiers */
@@ -159,7 +168,7 @@ const JSON_KEYS = new Set([
     "_migrations",
 ]);
 
-type ValueType = "model" | "boolean" | "json" | "secret" | "string" | "enum" | "number" | "color" | "font";
+type ValueType = "model" | "boolean" | "json" | "secret" | "string" | "enum" | "number" | "color" | "font" | "template";
 
 function detectValueType(key: string, value: string): ValueType {
     if (MODEL_KEYS.has(key) && !key.includes("selectedModel")) return "model";
@@ -167,6 +176,7 @@ function detectValueType(key: string, value: string): ValueType {
     if (JSON_KEYS.has(key)) return "json";
     if (COLOR_KEYS.has(key)) return "color";
     if (FONT_KEYS.has(key)) return "font";
+    if (TEMPLATE_KEYS.has(key)) return "template";
     if (SCHEMA_ENUM_VALUES.has(key)) return "enum";
     if (SCHEMA_NUMBER_KEYS.has(key)) return "number";
 
@@ -216,7 +226,7 @@ function categorizeKey(key: string): Category {
     if (key.startsWith("enable") || key.startsWith("show") || key.startsWith("auto") ||
         key === "chatLanguage" || key === "defaultChatMode" || key === "selectedChatMode" ||
         key === "reasoningEffort" || key === "textVerbosity" || key === "runtimeMode2" ||
-        key === "proLazyEditsMode" || key === "telemetryConsent" ||
+        key === "proLazyEditsMode" || key === "telemetryConsent" || key === "selectedTemplateId" ||
         key === "maxChatTurnsInContext" || key === "agentMaxSteps" ||
         key === "aiQueryLogRotationThreshold" || key === "smartContextOption" ||
         key === "proSmartContextOption") return "behavior";
@@ -448,8 +458,11 @@ function PrefRow({
     const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleStartEdit = () => {
-        // Pretty-print JSON for editing
-        if (pref.valueType === "json") {
+        // Pretty-print any value that parses as JSON (secrets, json, etc.)
+        const trimmed = pref.value.trim();
+        const looksJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"));
+        if (looksJson) {
             try {
                 const parsed = JSON.parse(pref.value);
                 setEditValue(JSON.stringify(parsed, null, 2));
@@ -465,16 +478,22 @@ function PrefRow({
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Compact JSON before saving
+            // Compact JSON before saving (for any value that parses)
             let valueToSave = editValue;
-            if (pref.valueType === "json") {
+            const trimmedEdit = editValue.trim();
+            const looksJsonEdit = (trimmedEdit.startsWith("{") && trimmedEdit.endsWith("}")) ||
+                (trimmedEdit.startsWith("[") && trimmedEdit.endsWith("]"));
+            if (looksJsonEdit) {
                 try {
                     const parsed = JSON.parse(editValue);
                     valueToSave = JSON.stringify(parsed);
                 } catch {
-                    toast.error("JSON inválido");
-                    setSaving(false);
-                    return;
+                    if (pref.valueType === "json") {
+                        toast.error("JSON inválido");
+                        setSaving(false);
+                        return;
+                    }
+                    // Non-json types: save as-is if parse fails
                 }
             }
             await onSave(pref.key, valueToSave);
@@ -562,6 +581,15 @@ function PrefRow({
             );
         }
 
+        if (valueType === "template") {
+            const tpl = TEMPLATE_OPTIONS.find((t) => t.value === value);
+            return (
+                <span className="typo-caption text-foreground/80 select-all">
+                    {tpl?.label || value}
+                </span>
+            );
+        }
+
         if (valueType === "number") {
             return (
                 <span className="typo-caption font-mono text-foreground/80 tabular-nums select-all">
@@ -621,7 +649,10 @@ function PrefRow({
     // ── Render editor ──
 
     if (editing) {
-        const isJson = pref.valueType === "json";
+        const isJson = pref.valueType === "json" || (() => {
+            const t = editValue.trim();
+            return (t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"));
+        })();
         const isModel = pref.valueType === "model";
 
         // Model editing: inline within the compact row — no expanded panel
@@ -772,6 +803,44 @@ function PrefRow({
             );
         }
 
+        // Template editing: inline UnifiedSelector with template options
+        if (pref.valueType === "template") {
+            return (
+                <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
+                    <div className="shrink-0 min-w-[200px] max-w-[280px]">
+                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                    </div>
+                    <div className="flex-1 flex justify-end">
+                        <UnifiedSelector
+                            value={editValue}
+                            onChange={async (v) => {
+                                setEditValue(v);
+                                setSaving(true);
+                                try {
+                                    await onSave(pref.key, v);
+                                    setEditing(false);
+                                } finally {
+                                    setSaving(false);
+                                }
+                            }}
+                            options={TEMPLATE_OPTIONS}
+                            triggerVariant="default"
+                            triggerSize="sm"
+                            showCheckmark
+                            searchable
+                            searchPlaceholder="Buscar template…"
+                        />
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                        {saving && <Loader2 size={12} className="animate-spin text-primary" />}
+                        <button type="button" className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={handleCancel}>
+                            <X size={12} />
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         // Font editing: inline UnifiedSelector with font options
         if (pref.valueType === "font") {
             return (
@@ -814,7 +883,7 @@ function PrefRow({
             );
         }
 
-        // JSON / string / other: expanded panel (unchanged)
+        // JSON / string / other: expanded panel
         return (
             <div className="px-4 py-3 space-y-2 bg-muted/10">
                 <div className="flex items-center justify-between">
@@ -839,44 +908,22 @@ function PrefRow({
                 </div>
                 {isJson ? (
                     (() => {
-                        // Detect boolean-props JSON objects → visual toggle editor
                         let parsed: any = null;
                         try { parsed = JSON.parse(editValue); } catch {}
-                        const isBooleanRecord = parsed
-                            && typeof parsed === "object"
-                            && !Array.isArray(parsed)
-                            && Object.values(parsed).every((v) => typeof v === "boolean");
 
-                        if (isBooleanRecord) {
+                        // If parseable as an object or array, use recursive editor
+                        if (parsed !== null && typeof parsed === "object") {
                             return (
-                                <div className="flex flex-col gap-1">
-                                    {Object.entries(parsed).map(([propKey, propVal]) => (
-                                        <div key={propKey} className="flex items-center justify-between gap-3 px-2 py-1 rounded hover:bg-muted/30 transition-colors">
-                                            <span className="typo-caption font-mono text-foreground/70">{propKey}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const updated = { ...parsed, [propKey]: !propVal };
-                                                    setEditValue(JSON.stringify(updated, null, 2));
-                                                }}
-                                                className={cn(
-                                                    "px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer",
-                                                    propVal
-                                                        ? "bg-primary/15 text-primary hover:bg-primary/25"
-                                                        : "bg-muted/50 text-muted-foreground hover:bg-muted/80",
-                                                )}
-                                            >
-                                                {propVal
-                                                    ? <span className="flex items-center gap-1"><Check size={10} /> true</span>
-                                                    : <span className="flex items-center gap-1"><X size={10} /> false</span>
-                                                }
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+                                <RecursiveJsonEditor
+                                    value={parsed}
+                                    onChange={(updated) => setEditValue(JSON.stringify(updated, null, 2))}
+                                    allModels={allModels}
+                                    depth={0}
+                                />
                             );
                         }
 
+                        // Fallback: raw textarea
                         return (
                             <textarea
                                 value={editValue}
@@ -958,6 +1005,359 @@ function PrefRow({
             />
         </div>
     );
+}
+
+// ── RecursiveJsonEditor ─────────────────────────────────────────────────────
+// Renders any JSON value with type-aware inline editors for each property.
+// Supports: boolean toggles, number inputs, model selectors, color pickers,
+// font selectors, nested object recursion, array recursion, and string inputs.
+
+/** Heuristic: does this key name refer to an LLM model? */
+function looksLikeModelKey(key: string): boolean {
+    const k = key.toLowerCase();
+    return k.includes("model") && !k.includes("mode");
+}
+
+/** Heuristic: does this key name refer to a color? */
+function looksLikeColorKey(key: string): boolean {
+    const k = key.toLowerCase();
+    return k.includes("color") || k.includes("colour");
+}
+
+/** Heuristic: does this key name refer to a font? */
+function looksLikeFontKey(key: string): boolean {
+    const k = key.toLowerCase();
+    return k.includes("font");
+}
+
+interface RecursiveJsonEditorProps {
+    value: any;
+    onChange: (updated: any) => void;
+    allModels: LanguageModel[];
+    depth: number;
+    parentKey?: string;
+}
+
+function RecursiveJsonEditor({ value, onChange, allModels, depth }: RecursiveJsonEditorProps) {
+    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+    const toggleCollapse = (key: string) => {
+        setCollapsed((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    // ── Array rendering ──
+    if (Array.isArray(value)) {
+        return (
+            <div className="flex flex-col gap-0.5">
+                {value.map((item, idx) => {
+                    const isNested = typeof item === "object" && item !== null;
+
+                    if (isNested) {
+                        const isCollapsed = collapsed.has(String(idx));
+                        return (
+                            <div key={idx}>
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 w-full px-2 py-1 rounded hover:bg-muted/30 transition-colors cursor-pointer"
+                                    onClick={() => toggleCollapse(String(idx))}
+                                >
+                                    <ChevronDown
+                                        size={12}
+                                        className={cn(
+                                            "text-muted-foreground/50 transition-transform",
+                                            isCollapsed && "-rotate-90",
+                                        )}
+                                    />
+                                    <span className="typo-caption font-mono text-muted-foreground/50">{idx}</span>
+                                    <span className="typo-caption text-muted-foreground/40 ml-auto">
+                                        {Array.isArray(item) ? `[${item.length}]` : `{${Object.keys(item).length}}`}
+                                    </span>
+                                </button>
+                                {!isCollapsed && (
+                                    <div className="ml-4 pl-3 border-l border-border/30">
+                                        <RecursiveJsonEditor
+                                            value={item}
+                                            onChange={(updated) => {
+                                                const arr = [...value];
+                                                arr[idx] = updated;
+                                                onChange(arr);
+                                            }}
+                                            allModels={allModels}
+                                            depth={depth + 1}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div key={idx} className="flex items-center gap-2">
+                            <span className="typo-caption font-mono text-muted-foreground/50 shrink-0 w-6 text-right">{idx}</span>
+                            <div className="flex-1">
+                                <RecursiveJsonPropEditor
+                                    propKey={String(idx)}
+                                    propValue={item}
+                                    onPropChange={(updated) => {
+                                        const arr = [...value];
+                                        arr[idx] = updated;
+                                        onChange(arr);
+                                    }}
+                                    allModels={allModels}
+                                    depth={depth}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // ── Object rendering ──
+    if (typeof value === "object" && value !== null) {
+        const entries = Object.entries(value);
+        return (
+            <div className="flex flex-col gap-0.5">
+                {entries.map(([propKey, propVal]) => {
+                    const isNested = typeof propVal === "object" && propVal !== null;
+
+                    if (isNested) {
+                        const isCollapsed = collapsed.has(propKey);
+                        return (
+                            <div key={propKey}>
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 w-full px-2 py-1 rounded hover:bg-muted/30 transition-colors cursor-pointer group"
+                                    onClick={() => toggleCollapse(propKey)}
+                                >
+                                    <ChevronDown
+                                        size={12}
+                                        className={cn(
+                                            "text-muted-foreground/50 transition-transform",
+                                            isCollapsed && "-rotate-90",
+                                        )}
+                                    />
+                                    <span className="typo-caption font-mono text-foreground/70 font-medium">{propKey}</span>
+                                    <span className="typo-caption text-muted-foreground/40 ml-auto">
+                                        {Array.isArray(propVal) ? `[${propVal.length}]` : `{${Object.keys(propVal as object).length}}`}
+                                    </span>
+                                </button>
+                                {!isCollapsed && (
+                                    <div className="ml-4 pl-3 border-l border-border/30">
+                                        <RecursiveJsonEditor
+                                            value={propVal}
+                                            onChange={(updated) => onChange({ ...value, [propKey]: updated })}
+                                            allModels={allModels}
+                                            depth={depth + 1}
+                                            parentKey={propKey}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div key={propKey} className="flex items-center justify-between gap-3 px-2 py-1 rounded hover:bg-muted/30 transition-colors">
+                            <span className="typo-caption font-mono text-foreground/70 shrink-0">{propKey}</span>
+                            <div className="flex-1 flex justify-end">
+                                <RecursiveJsonPropEditor
+                                    propKey={propKey}
+                                    propValue={propVal}
+                                    onPropChange={(updated) => onChange({ ...value, [propKey]: updated })}
+                                    allModels={allModels}
+                                    depth={depth}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // Primitive at root
+    return <span className="typo-caption font-mono text-foreground/80">{String(value)}</span>;
+}
+
+/** Renders an inline editor for a single primitive JSON property value */
+function RecursiveJsonPropEditor({
+    propKey,
+    propValue,
+    onPropChange,
+    allModels,
+}: {
+    propKey: string;
+    propValue: any;
+    onPropChange: (updated: any) => void;
+    allModels: LanguageModel[];
+    depth: number;
+}) {
+    // ── Boolean ──
+    if (typeof propValue === "boolean") {
+        return (
+            <button
+                type="button"
+                onClick={() => onPropChange(!propValue)}
+                className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer",
+                    propValue
+                        ? "bg-primary/15 text-primary hover:bg-primary/25"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted/80",
+                )}
+            >
+                {propValue
+                    ? <span className="flex items-center gap-1"><Check size={10} /> true</span>
+                    : <span className="flex items-center gap-1"><X size={10} /> false</span>
+                }
+            </button>
+        );
+    }
+
+    // ── Number ──
+    if (typeof propValue === "number") {
+        return (
+            <input
+                type="number"
+                defaultValue={propValue}
+                onBlur={(e) => {
+                    const n = parseFloat(e.target.value);
+                    if (!isNaN(n) && n !== propValue) onPropChange(n);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        const n = parseFloat((e.target as HTMLInputElement).value);
+                        if (!isNaN(n)) onPropChange(n);
+                    }
+                }}
+                className="w-20 px-2 py-0.5 bg-secondary border border-border rounded text-foreground text-xs font-mono tabular-nums text-right focus:border-primary focus:ring-0 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                step="any"
+            />
+        );
+    }
+
+    // ── String ──
+    if (typeof propValue === "string") {
+        // Template key heuristic
+        if (propKey.toLowerCase().includes("template") && propKey.toLowerCase().includes("id")) {
+            const tplMatch = TEMPLATE_OPTIONS.find((t) => t.value === propValue);
+            if (tplMatch) {
+                return (
+                    <UnifiedSelector
+                        value={propValue}
+                        onChange={(v) => onPropChange(v)}
+                        options={TEMPLATE_OPTIONS}
+                        triggerVariant="default"
+                        triggerSize="xs"
+                        showCheckmark
+                    />
+                );
+            }
+        }
+
+        // Model key heuristic
+        if (looksLikeModelKey(propKey) && allModels.length > 0 && propValue.includes("/")) {
+            return (
+                <SettingsModelSelector
+                    selectedModel={propValue}
+                    onModelSelect={(apiName) => onPropChange(apiName)}
+                    models={allModels}
+                    disableEnabledFilter
+                    placeholder="Modelo"
+                    size="sm"
+                />
+            );
+        }
+
+        // Color key heuristic
+        if (looksLikeColorKey(propKey)) {
+            const colorEntry = getColorById(propValue);
+            if (colorEntry) {
+                return (
+                    <PrimaryColorPicker
+                        selectedColor={propValue}
+                        onColorSelect={(colorId) => onPropChange(colorId)}
+                        variant="dark"
+                    />
+                );
+            }
+        }
+
+        // Font key heuristic
+        if (looksLikeFontKey(propKey)) {
+            const fontMatch = FONT_OPTIONS.find((f) => f.id === propValue);
+            if (fontMatch) {
+                return (
+                    <UnifiedSelector
+                        value={propValue}
+                        onChange={(v) => onPropChange(v)}
+                        options={FONT_OPTIONS.map((f) => ({
+                            value: f.id,
+                            label: f.name,
+                            description: f.category,
+                        }))}
+                        triggerVariant="default"
+                        triggerSize="xs"
+                        showCheckmark
+                    />
+                );
+            }
+        }
+
+        // Enum from schema
+        const enumVals = SCHEMA_ENUM_VALUES.get(propKey);
+        if (enumVals && enumVals.includes(propValue)) {
+            return (
+                <UnifiedSelector
+                    value={propValue}
+                    onChange={(v) => onPropChange(v)}
+                    options={enumVals.map((v) => ({ value: v, label: v }))}
+                    triggerVariant="default"
+                    triggerSize="xs"
+                    showCheckmark
+                    itemLayout="compact"
+                />
+            );
+        }
+
+        // Default: auto-sized editable text (textarea for long values)
+        const isLong = propValue.length > 50 || propValue.includes("\n");
+        if (isLong) {
+            return (
+                <textarea
+                    defaultValue={propValue}
+                    onBlur={(e) => {
+                        if (e.target.value !== propValue) onPropChange(e.target.value);
+                    }}
+                    rows={Math.max(2, Math.min(8, propValue.split("\n").length + 1))}
+                    className="w-full px-2 py-1 bg-secondary border border-border rounded text-foreground text-xs font-mono focus:border-primary focus:ring-0 outline-none transition-colors resize-y min-h-[40px]"
+                    spellCheck={false}
+                />
+            );
+        }
+        return (
+            <input
+                type="text"
+                defaultValue={propValue}
+                onBlur={(e) => {
+                    if (e.target.value !== propValue) onPropChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") onPropChange((e.target as HTMLInputElement).value);
+                }}
+                className="w-full max-w-[300px] px-2 py-0.5 bg-secondary border border-border rounded text-foreground text-xs font-mono text-right focus:border-primary focus:ring-0 outline-none transition-colors"
+            />
+        );
+    }
+
+    // null / undefined
+    return <span className="typo-caption text-muted-foreground/50 italic">null</span>;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
