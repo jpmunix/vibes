@@ -630,10 +630,10 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 : isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
+                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-background-lighter dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
                 : isFixError
                   ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
-                  : "px-4 pt-2 pb-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
+                  : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
                 }`}
             >
               {/* === System messages === */}
