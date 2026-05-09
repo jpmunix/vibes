@@ -107,11 +107,11 @@ function extractH2Anchors(body: string): AnchorEntry[] {
 
 // ── Tree builder ────────────────────────────────────────────────────────────
 
-function getDocsBasePath(): string {
-  return path.join(app.getAppPath(), "assets", "vibes-docs");
+function getDocsBasePath(baseDir: string = "vibes-docs"): string {
+  return path.join(app.getAppPath(), "assets", baseDir);
 }
 
-function buildTreeNode(dirPath: string, parentId: string): DocTreeNode | null {
+function buildTreeNode(dirPath: string, parentId: string, rootBasePath: string): DocTreeNode | null {
   const indexPath = path.join(dirPath, "index.md");
   if (!fs.existsSync(indexPath)) {
     logger.warn(`No index.md found in ${dirPath}`);
@@ -135,7 +135,7 @@ function buildTreeNode(dirPath: string, parentId: string): DocTreeNode | null {
       const subDirName = directive.target.replace(/\/$/, "");
       const subDirPath = path.join(dirPath, subDirName);
       if (fs.existsSync(subDirPath) && fs.statSync(subDirPath).isDirectory()) {
-        const childNode = buildTreeNode(subDirPath, id);
+        const childNode = buildTreeNode(subDirPath, id, rootBasePath);
         if (childNode) {
           // Override title from the parent's directive (it takes precedence)
           childNode.title = directive.title;
@@ -149,7 +149,7 @@ function buildTreeNode(dirPath: string, parentId: string): DocTreeNode | null {
       const filePath = path.join(dirPath, directive.target);
       if (fs.existsSync(filePath)) {
         const pageId = `${id}/${directive.target.replace(/\.md$/, "")}`;
-        const relativePath = path.relative(getDocsBasePath(), filePath).replace(/\\/g, "/");
+        const relativePath = path.relative(rootBasePath, filePath).replace(/\\/g, "/");
 
         // Extract ## headings for sidebar sub-items
         const pageContent = fs.readFileSync(filePath, "utf-8");
@@ -169,7 +169,7 @@ function buildTreeNode(dirPath: string, parentId: string): DocTreeNode | null {
     }
   }
 
-  const relativePath = path.relative(getDocsBasePath(), dirPath).replace(/\\/g, "/");
+  const relativePath = path.relative(rootBasePath, dirPath).replace(/\\/g, "/");
 
   return {
     id: id || "root",
@@ -185,8 +185,8 @@ function buildTreeNode(dirPath: string, parentId: string): DocTreeNode | null {
 // Always rebuild from disk — the filesystem read is cheap enough,
 // and this allows the refresh button to pick up changes instantly.
 
-function getDocTree(): DocTree {
-  const basePath = getDocsBasePath();
+function getDocTree(baseDir: string = "vibes-docs"): DocTree {
+  const basePath = getDocsBasePath(baseDir);
   if (!fs.existsSync(basePath)) {
     logger.warn(`Documentation directory not found: ${basePath}`);
     return {
@@ -200,7 +200,7 @@ function getDocTree(): DocTree {
     };
   }
 
-  const root = buildTreeNode(basePath, "");
+  const root = buildTreeNode(basePath, "", basePath);
   return {
     root: root || {
       id: "root",
@@ -215,12 +215,12 @@ function getDocTree(): DocTree {
 // ── Handler registration ────────────────────────────────────────────────────
 
 export function registerDocsHandlers() {
-  createTypedHandler(systemContracts.getDocTree, async () => {
-    return getDocTree();
+  createTypedHandler(systemContracts.getDocTree, async (_, args) => {
+    return getDocTree(args?.baseDir);
   });
 
-  createTypedHandler(systemContracts.getDocPage, async (_, { relativePath }) => {
-    const basePath = getDocsBasePath();
+  createTypedHandler(systemContracts.getDocPage, async (_, { relativePath, baseDir }) => {
+    const basePath = getDocsBasePath(baseDir);
     const fullPath = path.join(basePath, relativePath);
 
     // Security: prevent path traversal
@@ -242,10 +242,10 @@ export function registerDocsHandlers() {
     } satisfies DocPageContent;
   });
 
-  createTypedHandler(systemContracts.searchDocs, async (_, { query }) => {
+  createTypedHandler(systemContracts.searchDocs, async (_, { query, baseDir }) => {
     if (!query || query.length < 2) return [];
 
-    const basePath = getDocsBasePath();
+    const basePath = getDocsBasePath(baseDir);
     if (!fs.existsSync(basePath)) return [];
 
     const results: DocSearchResult[] = [];
@@ -376,6 +376,16 @@ export function registerDocsHandlers() {
           matchLength: 0,
         });
       }
+    }
+
+    if (baseDir === "release-notes") {
+      // Sort by relative path descending for release notes (e.g., v8 > v7)
+      results.sort((a, b) =>
+        b.relativePath.localeCompare(a.relativePath, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
     }
 
     return results;

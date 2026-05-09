@@ -88,7 +88,6 @@ import { ChevronDown } from "@/components/ui/icons";
 
 
 import Fuse from "fuse.js";
-import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 import { cn } from "@/lib/utils";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
@@ -446,10 +445,9 @@ export default function SettingsPage() {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null,
   );
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
-  const [hasReleaseNotes, setHasReleaseNotes] = useState(false);
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -491,14 +489,7 @@ export default function SettingsPage() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Check if release notes file has content
-  useEffect(() => {
-    if (appVersion) {
-      ipc.system.doesReleaseNoteExist({ version: appVersion }).then((result) => {
-        setHasReleaseNotes(result.exists);
-      }).catch(() => setHasReleaseNotes(false));
-    }
-  }, [appVersion]);
+  // Check if release notes file has content removed (now using static new documentation system)
 
   // Fuse.js search configuration
   const fuse = useMemo(
@@ -723,18 +714,21 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       
-                      {hasReleaseNotes && (
-                        <div className="pt-3 border-t border-border/50">
-                          <Button 
-                            onClick={() => { setReleaseNotesOpen(true); }}
-                            className="w-full cursor-pointer bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-lg"
-                            variant="ghost"
-                          >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Novedades de la versión
-                          </Button>
-                        </div>
-                      )}
+                      <div className="pt-3 border-t border-border/50">
+                        <Button 
+                          onClick={() => { 
+                            ipc.system.openReleaseNotesWindow({
+                              theme: theme as "light" | "dark" | "system",
+                              themeIntensity: intensity,
+                            });
+                          }}
+                          className="w-full cursor-pointer bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-lg"
+                          variant="ghost"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Novedades de la versión
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="py-6 flex justify-center text-sm text-muted-foreground">Cargando...</div>
@@ -844,13 +838,6 @@ export default function SettingsPage() {
             appVersion={appVersion}
             isHighlighted={highlightedSection === "general-settings"}
           />
-
-          {hasReleaseNotes && (
-            <ReleaseNotesDialog
-              isOpen={releaseNotesOpen}
-              onOpenChange={setReleaseNotesOpen}
-            />
-          )}
 
           <ModelsAndConnectivity
             isHighlighted={highlightedSection === "models-connectivity"}

@@ -52,16 +52,8 @@ export const SelectAppLocationResultSchema = z.object({
   canceled: z.boolean(),
 });
 
-export const DoesReleaseNoteExistParamsSchema = z.object({
-  version: z.string(),
-});
-
-export type DoesReleaseNoteExistParams = z.infer<
-  typeof DoesReleaseNoteExistParamsSchema
->;
-
-export const DoesReleaseNoteExistResultSchema = z.object({
-  exists: z.boolean(),
+export const SaveBackupResultSchema = z.object({
+  success: z.boolean(),
   url: z.string().optional(),
 });
 
@@ -235,19 +227,6 @@ export const systemContracts = {
     channel: "reload-env-path",
     input: z.void(),
     output: z.void(),
-  }),
-
-  // Release notes
-  doesReleaseNoteExist: defineContract({
-    channel: "does-release-note-exist",
-    input: DoesReleaseNoteExistParamsSchema,
-    output: DoesReleaseNoteExistResultSchema,
-  }),
-
-  getReleaseNotesContent: defineContract({
-    channel: "get-release-notes-content",
-    input: z.void(),
-    output: z.string(),
   }),
 
 
@@ -485,7 +464,7 @@ export const systemContracts = {
   // Read the full documentation tree structure (recursive)
   getDocTree: defineContract({
     channel: "docs:get-tree",
-    input: z.void(),
+    input: z.object({ baseDir: z.string().optional() }).optional(),
     output: z.object({
       root: z.any(), // DocTreeNode — recursive, validated at runtime
     }),
@@ -494,7 +473,7 @@ export const systemContracts = {
   // Read a single documentation page by relative path
   getDocPage: defineContract({
     channel: "docs:get-page",
-    input: z.object({ relativePath: z.string() }),
+    input: z.object({ relativePath: z.string(), baseDir: z.string().optional() }),
     output: z.object({
       markdown: z.string(),
       meta: z.object({
@@ -508,7 +487,7 @@ export const systemContracts = {
   // Full-text search across all documentation pages
   searchDocs: defineContract({
     channel: "docs:search",
-    input: z.object({ query: z.string() }),
+    input: z.object({ query: z.string(), baseDir: z.string().optional() }),
     output: z.array(z.object({
       relativePath: z.string(),
       title: z.string(),
@@ -523,6 +502,16 @@ export const systemContracts = {
   // Documentation window — dedicated docs viewer
   openDocsWindow: defineContract({
     channel: "window:open-docs",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Release notes window — dedicated release notes viewer
+  openReleaseNotesWindow: defineContract({
+    channel: "window:open-release-notes",
     input: z.object({
       theme: z.enum(["light", "dark", "system"]).optional(),
       themeIntensity: z.number().optional(),

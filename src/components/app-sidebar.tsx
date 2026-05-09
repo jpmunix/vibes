@@ -20,6 +20,7 @@ import {
   FolderX,
   ShieldCheck,
   BookOpen,
+  Rocket,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -44,6 +45,7 @@ import { useRouter } from "@tanstack/react-router";
 import { AppList } from "./AppList";
 import { SettingsList } from "./SettingsList";
 import { WorkspaceList } from "./WorkspaceList";
+import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
 
 // Menu items.
 type NavMenuAction = { label: string; icon: React.ElementType; action: SidebarAction };
@@ -110,6 +112,8 @@ export function TopNavbar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const isAdmin = checkIsAdmin(user?.id);
+
+  const showReleaseNotesBadge = useAtomValue(showReleaseNotesBadgeAtom);
 
   const handleOpenAdmin = () => {
     ipc.system.openAdminWindow({
@@ -345,6 +349,23 @@ export function TopNavbar() {
 
         {/* Right side: Docs, Credits, Settings, Avatar */}
         <div className="flex items-center gap-1 ml-auto">
+          {showReleaseNotesBadge && (
+            <button
+              type="button"
+              className="topnav-util-btn no-app-region-drag relative"
+              title="Notas de Versión"
+              onClick={() => {
+                ipc.system.openReleaseNotesWindow({
+                  theme: theme as "light" | "dark" | "system",
+                  themeIntensity: intensity,
+                });
+              }}
+            >
+              <Rocket size={17} />
+              <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+            </button>
+          )}
+
           <button
             type="button"
             className="topnav-util-btn no-app-region-drag"

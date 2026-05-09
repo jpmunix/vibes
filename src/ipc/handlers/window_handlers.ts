@@ -101,6 +101,7 @@ export function registerWindowHandlers() {
   let adminWindow: BrowserWindow | null = null;
   let playgroundWindow: BrowserWindow | null = null;
   let docsWindow: BrowserWindow | null = null;
+  let releaseNotesWindow: BrowserWindow | null = null;
 
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -1285,5 +1286,98 @@ export function registerWindowHandlers() {
     });
 
     logger.info("Opened documentation window");
+  });
+
+  createTypedHandler(systemContracts.openReleaseNotesWindow, async (event, { theme, themeIntensity }) => {
+    // If window already exists, focus it
+    if (releaseNotesWindow && !releaseNotesWindow.isDestroyed()) {
+      releaseNotesWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const icon = nativeImage.createFromPath(iconPath);
+
+    const savedDocs = getSavedWindowBounds("release-notes", { width: 1000, height: 700 });
+
+    releaseNotesWindow = new BrowserWindow({
+      show: false,
+      width: savedDocs.width,
+      height: savedDocs.height,
+      x: savedDocs.x,
+      y: savedDocs.y,
+      minWidth: 700,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Notas de Versión",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: { x: 10, y: 8 },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    if (!icon.isEmpty()) {
+      releaseNotesWindow.setIcon(icon);
+    }
+
+    if (savedDocs.isMaximized) {
+      releaseNotesWindow.maximize();
+    }
+    releaseNotesWindow.show();
+
+    releaseNotesWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    releaseNotesWindow.removeMenu();
+
+    releaseNotesWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => releaseNotesWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    releaseNotesWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        releaseNotesWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        releaseNotesWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        releaseNotesWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=release-notes${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      releaseNotesWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      releaseNotesWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    releaseNotesWindow.on("close", () => saveSecondaryWindowState("release-notes", releaseNotesWindow!));
+    releaseNotesWindow.on("closed", () => {
+      releaseNotesWindow = null;
+    });
+
+    logger.info("Opened release notes window");
   });
 }

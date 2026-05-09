@@ -344,6 +344,29 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "release-notes") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Show skeleton immediately while JS bundle loads
+  const releaseNotesRoot = createRoot(document.getElementById("root")!);
+  releaseNotesRoot.render(<SecondaryWindowSkeleton />);
+
+  import("./components/release_notes_window/ReleaseNotesWindowApp").then(
+    ({ ReleaseNotesWindowApp }) => {
+      releaseNotesRoot.render(
+        <StrictMode>
+          <ReleaseNotesWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   // Main window — render immediately with eager imports.
   // AuthGate handles the loading skeleton internally (shows MainWindowSkeleton
