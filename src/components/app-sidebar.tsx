@@ -19,11 +19,12 @@ import {
   Search,
   FolderX,
   ShieldCheck,
+  BookOpen,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 import { useSettings } from "@/hooks/useSettings";
-import { DocumentationDialog } from "./DocumentationDialog";
+
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
   DropdownMenu,
@@ -99,7 +100,7 @@ export function TopNavbar() {
   const dispatchAction = useSetAtom(sidebarActionAtom);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isDocsOpen, setIsDocsOpen] = useState(false);
+
 
   // User avatar state
   const user = useAtomValue(userAtom);
@@ -342,8 +343,22 @@ export function TopNavbar() {
           </div>
         </div>
 
-        {/* Right side: Credits, Settings, Avatar */}
+        {/* Right side: Docs, Credits, Settings, Avatar */}
         <div className="flex items-center gap-1 ml-auto">
+          <button
+            type="button"
+            className="topnav-util-btn no-app-region-drag"
+            title="Documentación"
+            onClick={() => {
+              ipc.system.openDocsWindow({
+                theme: theme as "light" | "dark" | "system",
+                themeIntensity: intensity,
+              });
+            }}
+          >
+            <BookOpen size={17} />
+          </button>
+
           <OpenRouterCreditsButton />
 
           {/* User Avatar */}
@@ -418,7 +433,7 @@ export function TopNavbar() {
         </div>
       </div>
 
-      <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
+
 
       {/* User modals */}
       {user && (

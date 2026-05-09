@@ -321,6 +321,29 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "docs") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Show skeleton immediately while JS bundle loads
+  const docsRoot = createRoot(document.getElementById("root")!);
+  docsRoot.render(<SecondaryWindowSkeleton />);
+
+  import("./components/docs_window/DocsWindowApp").then(
+    ({ DocsWindowApp }) => {
+      docsRoot.render(
+        <StrictMode>
+          <DocsWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   // Main window — render immediately with eager imports.
   // AuthGate handles the loading skeleton internally (shows MainWindowSkeleton

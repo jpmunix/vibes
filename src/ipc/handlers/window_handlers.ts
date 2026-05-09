@@ -100,6 +100,7 @@ export function registerWindowHandlers() {
 
   let adminWindow: BrowserWindow | null = null;
   let playgroundWindow: BrowserWindow | null = null;
+  let docsWindow: BrowserWindow | null = null;
 
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -821,6 +822,7 @@ export function registerWindowHandlers() {
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
     if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
+    if (docsWindow && !docsWindow.isDestroyed()) trackedWindows.add(docsWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -862,6 +864,7 @@ export function registerWindowHandlers() {
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
     if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
+    if (docsWindow && !docsWindow.isDestroyed()) trackedWindows.add(docsWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -1183,5 +1186,104 @@ export function registerWindowHandlers() {
     });
 
     logger.info("Opened playground window");
+  });
+
+  // ── Documentation window handler (singleton, like admin/playground) ──
+
+  createTypedHandler(systemContracts.openDocsWindow, async (event, { theme, themeIntensity }) => {
+    // If window already exists, focus it
+    if (docsWindow && !docsWindow.isDestroyed()) {
+      docsWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const icon = nativeImage.createFromPath(iconPath);
+
+    const savedDocs = getSavedWindowBounds("docs", { width: 1000, height: 700 });
+
+    docsWindow = new BrowserWindow({
+      show: false,
+      width: savedDocs.width,
+      height: savedDocs.height,
+      x: savedDocs.x,
+      y: savedDocs.y,
+      minWidth: 700,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Documentación",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: { x: 10, y: 8 },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!icon.isEmpty()) {
+      docsWindow.setIcon(icon);
+    }
+
+    if (savedDocs.isMaximized) {
+      docsWindow.maximize();
+    }
+    docsWindow.show();
+
+    // Prevent the renderer from overriding our window title
+    docsWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    docsWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element
+    docsWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => docsWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts
+    docsWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        docsWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        docsWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        docsWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=docs${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      docsWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      docsWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    docsWindow.on("close", () => saveSecondaryWindowState("docs", docsWindow!));
+    docsWindow.on("closed", () => {
+      docsWindow = null;
+    });
+
+    logger.info("Opened documentation window");
   });
 }

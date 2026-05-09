@@ -250,11 +250,6 @@ export const systemContracts = {
     output: z.string(),
   }),
 
-  getDocumentationContent: defineContract({
-    channel: "get-documentation-content",
-    input: z.void(),
-    output: z.string(),
-  }),
 
   // Upload
   uploadToSignedUrl: defineContract({
@@ -483,6 +478,56 @@ export const systemContracts = {
       errors: z.number(),
       report: z.string(),
     }),
+  }),
+
+  // ── Documentation system ──────────────────────────────────────────────────
+
+  // Read the full documentation tree structure (recursive)
+  getDocTree: defineContract({
+    channel: "docs:get-tree",
+    input: z.void(),
+    output: z.object({
+      root: z.any(), // DocTreeNode — recursive, validated at runtime
+    }),
+  }),
+
+  // Read a single documentation page by relative path
+  getDocPage: defineContract({
+    channel: "docs:get-page",
+    input: z.object({ relativePath: z.string() }),
+    output: z.object({
+      markdown: z.string(),
+      meta: z.object({
+        title: z.string(),
+        icon: z.string().optional(),
+        description: z.string().optional(),
+      }),
+    }),
+  }),
+
+  // Full-text search across all documentation pages
+  searchDocs: defineContract({
+    channel: "docs:search",
+    input: z.object({ query: z.string() }),
+    output: z.array(z.object({
+      relativePath: z.string(),
+      title: z.string(),
+      snippet: z.string(),
+      matchStart: z.number(),
+      matchLength: z.number(),
+      anchor: z.string().optional(),
+      sectionTitle: z.string().optional(),
+    })),
+  }),
+
+  // Documentation window — dedicated docs viewer
+  openDocsWindow: defineContract({
+    channel: "window:open-docs",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
   }),
 } as const;
 

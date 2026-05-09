@@ -39,6 +39,12 @@ Cuando envías un mensaje de texto muy extenso, la burbuja ahora se **colapsa au
 
 El mismo tratamiento se aplica a los **bloques de pensamiento en modo Flow**: cuando un bloque de razonamiento supera las cuatro líneas, se pliega con el mismo degradado y un botón «Más / Menos» discreto que hereda el color del tema. Cada bloque es independiente, así que puedes expandir solo los que te interesen sin perder la lectura del texto de prosa intercalado.
 
+## Documentación integrada
+
+Vibes incluye ahora una **ventana de documentación** accesible desde la barra de herramientas. Toda la información que necesitas para sacarle partido a la plataforma está organizada en un panel lateral navegable con carpetas y artículos. Al seleccionar un documento, se despliegan automáticamente sus secciones para que localices lo que buscas de un vistazo.
+
+El **buscador** integrado rastrea todo el contenido a texto completo, sin distinguir mayúsculas ni acentos, y te lleva directamente a la línea donde está el resultado, resaltándola con un destello suave que se desvanece solo. La documentación irá creciendo con cada versión, incluyendo guías, referencias y ejemplos prácticos.
+
 ## Correcciones y ajustes
 
 - Las **conversaciones fijadas** ahora tienen el mismo menú de opciones que los chats normales: archivar, renombrar, compartir, condensar memoria, resumir a chat nuevo y eliminar.

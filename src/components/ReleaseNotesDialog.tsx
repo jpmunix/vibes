@@ -5,8 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { VibesMarkdownRenderer } from "@/components/ui/VibesMarkdownRenderer";
 import { ipc } from "@/ipc/types";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { ChevronRight, Share2, Rocket } from "@/components/ui/icons";
@@ -96,9 +95,7 @@ function ReleaseSectionItem({
 
             {isOpen && (
                 <div className="pl-7 pb-6 pr-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-left">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.body}</ReactMarkdown>
-                    </div>
+                    <VibesMarkdownRenderer content={section.body} />
                 </div>
             )}
         </div>
@@ -180,8 +177,8 @@ export function ReleaseNotesDialog({
                             ))}
                         </div>
                     ) : (
-                        <div className="prose prose-sm dark:prose-invert max-w-none pb-8 text-left">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                        <div className="pb-8 text-left">
+                            <VibesMarkdownRenderer content={content} />
                         </div>
                     )}
                 </div>
