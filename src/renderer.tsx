@@ -1,3 +1,12 @@
+// Web Transport — must initialize BEFORE any React components load.
+// In Electron mode: no-op (preload already set up window.electron).
+// In Web mode: installs window.electron shim with HTTP+Socket.io transport.
+import { isElectron } from "./lib/transport";
+import { installWebTransport } from "./lib/transport-web";
+if (!isElectron) {
+  installWebTransport();
+}
+
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -13,7 +22,7 @@ import { AuthGate } from "./components/AuthGate";
 const AppRoot = lazy(() => import("./AppRoot"));
 
 // @ts-ignore
-console.log("Running in mode:", import.meta.env.MODE);
+console.log("Running in mode:", import.meta.env.MODE, isElectron ? "(Electron)" : "(Web)");
 
 interface MyMeta extends Record<string, unknown> {
   showErrorToast: boolean;
