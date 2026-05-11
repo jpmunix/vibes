@@ -157,35 +157,37 @@ export function AIBehaviorSettings({
         />
 
         {/* Caveman Mode — ultra-terse token-saving mode */}
-        <SettingRow
-          label="Modo Hombre de las Cavernas"
-          description={
-            settings?.enableCavemanMode
-              ? "🦴 Unga bunga. Yo escribir poco. Ahorrar tokens. Bug morir."
-              : "Fuerza al agente a responder con el mínimo de palabras posible (~20-30% menos tokens)"
-          }
-          control={
-            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              {([
-                { value: false, label: "Desactivado" },
-                { value: true, label: "🦴 Activado" },
-              ] as const).map((option) => (
-                <button
-                  key={String(option.value)}
-                  onClick={() => updateSettings({ enableCavemanMode: option.value })}
-                  className={cn(
-                    "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                    (settings?.enableCavemanMode ?? false) === option.value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "hover:bg-primary/10",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          }
-        />
+        {isAdminUser && (
+          <SettingRow
+            label="Modo Hombre de las Cavernas"
+            description={
+              settings?.enableCavemanMode
+                ? "🦴 Unga bunga. Yo escribir poco. Ahorrar tokens. Bug morir."
+                : "Fuerza al agente a responder con el mínimo de palabras posible para ahorrar tokens en el chat."
+            }
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {([
+                  { value: false, label: "Desactivado" },
+                  { value: true, label: "🦴 Activado" },
+                ] as const).map((option) => (
+                  <button
+                    key={String(option.value)}
+                    onClick={() => updateSettings({ enableCavemanMode: option.value })}
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.enableCavemanMode ?? false) === option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+        )}
 
         {/* Vista del chat: Completo / Flow / Zen */}
         <SettingRow
