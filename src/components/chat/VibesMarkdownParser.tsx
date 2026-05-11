@@ -378,7 +378,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
     // Buffer for consecutive flow-mode think blocks (merged into one FlowThinkBlock)
     let flowThinkBuffer: string[] = [];
-    const flushFlowThinkBuffer = () => {
+    const flushFlowThinkBuffer = (isActivelyStreaming = false) => {
       if (flowThinkBuffer.length > 0) {
         const merged = flowThinkBuffer.join("\n\n");
         elements.push(
@@ -386,7 +386,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             key={`flow-think-merged-${elements.length}`}
             content={merged}
             markdownComponents={MARKDOWN_COMPONENTS}
-            isStreaming={isStreaming}
+            isStreaming={isActivelyStreaming}
           />
         );
         flowThinkBuffer = [];
@@ -554,7 +554,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       }
     });
 
-    flushFlowThinkBuffer();
+    flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
     return elements;
   };

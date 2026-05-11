@@ -324,6 +324,7 @@ export function ArtifactSidebar() {
       prompt: reviewMessage.trim() || "Acepto. Procede con lo propuesto.",
       chatId: selectedChatId,
       priorMessages,
+      chatModeOverride: "agent",
     });
     setIsOpen(false);
     setIsReviewOpen(false);

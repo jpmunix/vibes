@@ -15,6 +15,7 @@ import { Worker } from "worker_threads";
 import fixPath from "fix-path";
 import killPort from "kill-port";
 import log from "electron-log";
+import treeKill from "tree-kill";
 
 import { AppOutput } from "../types/misc";
 import { safeSend } from "../utils/safe_sender";
@@ -424,7 +425,32 @@ function listenToProcess({
 
     if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
       const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;
-      if (missingModulePattern.test(stderrBuffer)) {
+      const nextServerRunningPattern = /Another next dev server is already running.*?Run kill (\d+) to stop it/is;
+      const portConflictMatch = stderrBuffer.match(nextServerRunningPattern);
+
+      if (portConflictMatch) {
+        const pidToKill = parseInt(portConflictMatch[1], 10);
+        logger.info(`[AutoRecovery] App ${appId} crashed due to port conflict. Attempting to tree-kill PID ${pidToKill}...`);
+        autoRecoveryAttempted.add(appId);
+        safeSend(event.sender, "app:output", {
+          type: "stderr",
+          message: `[vibes] Servidor previo detectado. Cerrando proceso ${pidToKill} automáticamente e intentando de nuevo...`,
+          appId,
+        });
+
+        treeKill(pidToKill, "SIGKILL", (err) => {
+          if (err) {
+            logger.warn(`[AutoRecovery] Failed to kill process ${pidToKill}:`, err);
+          } else {
+            logger.info(`[AutoRecovery] Successfully killed process ${pidToKill}. Restarting app...`);
+          }
+          setTimeout(() => {
+            executeApp({ appPath, appId, event, isNeon, installCommand, startCommand }).catch((e) => {
+              logger.error(`[AutoRecovery] Failed to recover app ${appId} after killing port conflict:`, e);
+            });
+          }, 1000);
+        });
+      } else if (missingModulePattern.test(stderrBuffer)) {
         logger.info(`[AutoRecovery] App ${appId} crashed with missing module error. Attempting auto-recovery...`);
         autoRecoveryAttempted.add(appId);
         safeSend(event.sender, "app:output", {

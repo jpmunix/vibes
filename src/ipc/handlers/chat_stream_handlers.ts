@@ -1333,6 +1333,13 @@ This conversation includes one or more image attachments. When the user uploads 
             getEffectivePrompt("ctx_task_management", settings)
           );
 
+          // 7. Caveman mode — ultra-terse responses to save ~20-30% tokens
+          if (settings.enableCavemanMode) {
+            contextInstructions.push(
+              getEffectivePrompt("ctx_caveman_mode", settings)
+            );
+          }
+
 
           // 6. Plan mode — interactive question-driven planning
           if (resolvedChatMode === "plan") {
