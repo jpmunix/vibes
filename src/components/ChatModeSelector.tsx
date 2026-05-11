@@ -6,6 +6,7 @@ import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { detectIsMac } from "@/hooks/useChatModeToggle";
 import { useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useSetAtom } from "jotai";
 import { planModelOverrideAtom } from "@/atoms/chatAtoms";
 
@@ -18,6 +19,16 @@ export function ChatModeSelector() {
   const setPlanModelOverride = useSetAtom(planModelOverrideAtom);
 
   const selectedMode: ChatMode = settings?.selectedChatMode || "agent";
+
+  // Initialize the override atom on mount if already in plan/ask mode
+  // (covers the case where the app starts with plan mode from a previous session)
+  useEffect(() => {
+    if (selectedMode === "plan" || selectedMode === "ask") {
+      setPlanModelOverride(settings?.strategistModel || DEFAULT_STRATEGIST_MODEL);
+    }
+    // Only run when selectedMode changes (settings load or mode switch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMode]);
 
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;
