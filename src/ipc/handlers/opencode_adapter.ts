@@ -981,6 +981,21 @@ export async function updateOpenCodeConfig(changes: {
             logger.info(`[OpenCode] Background model updated: strategist=${changes.strategistModel}`);
         }
 
+        // ── Register variant models in provider.models for the hot-update ──
+        // Same workaround as createOpencode: if the model has a colon-variant,
+        // register it so OpenCode doesn't choke on the \":\" in internal lookup.
+        const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
+        if (currentModelID && (currentModelID.includes(":free") || currentModelID.includes(":nitro") || currentModelID.includes(":exacto"))) {
+            body.provider = {
+                openrouter: {
+                    models: {
+                        [currentModelID]: {},
+                    },
+                },
+            };
+            logger.info(`[OpenCode] Hot-registered variant model: ${currentModelID}`);
+        }
+
         await clientInstance.config.update({ body: body as any });
         logger.info(`[OpenCode] Config updated in-place: ${JSON.stringify(body)}`);
     } catch (error: any) {
@@ -1433,10 +1448,22 @@ async function getOpenCodeClient(appPath: string) {
 
         // Dynamic instructions are written to docs/vibes-context.md per-request
         // and registered in the project's opencode.json (same pattern as DESIGN.md).
+        // ── Build dynamic models registry for free-variant models ──
+        // OpenCode's model parser chokes on the ":" in ":free" suffixes.
+        // Workaround: register the model explicitly in provider.models so
+        // OpenCode skips its internal model lookup and passes the ID straight
+        // to OpenRouter's API.
+        const openrouterModels: Record<string, object> = {};
+        if (modelID.includes(":free") || modelID.includes(":nitro") || modelID.includes(":exacto")) {
+            openrouterModels[modelID] = {};
+            logger.info(`[OpenCode] Registered variant model in provider config: ${modelID}`);
+        }
+
         const config = {
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
+                            ...(Object.keys(openrouterModels).length > 0 ? { models: openrouterModels } : {}),
                             options: {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
