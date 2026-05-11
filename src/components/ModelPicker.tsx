@@ -28,8 +28,12 @@ export function ModelPicker() {
   const [search, setSearch] = useState("");
   const [planModelOverride, setPlanModelOverride] = useAtom(planModelOverrideAtom);
 
+  // The atom is THE ONLY source of truth for plan mode in this component.
+  // ChatModeSelector sets it on mode change AND on mount.
+  const isPlanMode = planModelOverride !== null;
+
   const onModelSelect = (model: LargeLanguageModel) => {
-    if (planModelOverride !== null) {
+    if (isPlanMode) {
       // In plan/ask mode: write to the transient override atom — do NOT persist to settings
       setPlanModelOverride(model.name);
     } else {
@@ -81,13 +85,9 @@ export function ModelPicker() {
     return null;
   }
 
-  // Determine if we're in plan/ask mode from either source (atom is sync, settings is async)
-  const settingsIsPlan = settings.selectedChatMode === "plan" || settings.selectedChatMode === "ask";
-  const isPlanMode = planModelOverride !== null || settingsIsPlan;
-
-  // In plan mode, show the override model (or strategist default); in agent mode, show selectedModel
+  // In plan mode, show the override model; in agent mode, show selectedModel
   const selectedModel = isPlanMode
-    ? { name: planModelOverride || settings.strategistModel || "deepseek/deepseek-v4-flash", provider: "openrouter" as const }
+    ? { name: planModelOverride, provider: "openrouter" as const }
     : settings.selectedModel;
   const selectedVariant = isPlanMode ? "" : (settings.selectedModelVariant ?? "");
   const modelDisplayName = getModelDisplayName();

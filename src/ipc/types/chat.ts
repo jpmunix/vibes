@@ -98,6 +98,8 @@ export const ChatStreamParamsSchema = z.object({
   selectedComponents: z.array(ComponentSelectionSchema).optional(),
   /** Transient model override for plan/ask mode (non-persisted). */
   modelOverride: z.string().optional(),
+  /** The current mode of the chat from the frontend UI (e.g. 'agent', 'plan', 'ask'). Avoids async DB race conditions. */
+  chatMode: z.string().optional(),
   /** Messages to inject into the AI session before the main prompt (via noReply:true). */
   priorMessages: z
     .array(

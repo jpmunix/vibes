@@ -327,6 +327,7 @@ export function useStreamChat({
             undoRedo,
             priorMessages,
             modelOverride: planModelOverride ?? undefined,
+            chatMode: settings?.selectedChatMode || "agent",
           },
           {
             onChunk: ({ messages: updatedMessages }) => {

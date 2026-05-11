@@ -552,7 +552,7 @@ ${componentSnippet}
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
-      const resolvedChatMode = settings.selectedChatMode || "agent";
+      const resolvedChatMode = req.chatMode || settings.selectedChatMode || "agent";
       const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
         agent: "build",
         "crush-agent": "build",
@@ -705,11 +705,12 @@ ${componentSnippet}
 
         // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
-        const isAgentMode = settings.selectedChatMode === "agent" ||
-          settings.selectedChatMode === "ask" ||
-          settings.selectedChatMode === "plan" ||
-          settings.selectedChatMode === "mockup" ||
-          (settings.selectedChatMode as unknown as string) === "crush-agent";
+        const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
+        const isAgentMode = currentChatMode === "agent" ||
+          currentChatMode === "ask" ||
+          currentChatMode === "plan" ||
+          currentChatMode === "mockup" ||
+          currentChatMode === "crush-agent";
 
         if (isAgentMode) {
           logger.log(
@@ -768,10 +769,11 @@ ${componentSnippet}
             mentionedAppNames,
             updatedChat.app.id, // Exclude current app
           );
+          const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
           willUseAgentStream =
-            (settings.selectedChatMode === "agent" ||
-              settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "mockup") &&
+            (currentChatMode === "agent" ||
+              currentChatMode === "ask" ||
+              currentChatMode === "mockup") &&
             !mentionedAppsCodebases.length;
 
           isDeepContextEnabled = Boolean(
@@ -847,7 +849,7 @@ ${componentSnippet}
           }
 
           systemPrompt = constructSystemPrompt({
-            chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
+            chatMode: (req.chatMode || settings.selectedChatMode || "agent") as "ask" | "agent" | "plan",
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -1013,8 +1015,8 @@ This conversation includes one or more image attachments. When the user uploads 
           // Thinking tags are generally not critical for the context
           // and eats up extra tokens.
           content:
-            settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "plan"
+            (req.chatMode || settings.selectedChatMode || "agent") === "ask" ||
+              (req.chatMode || settings.selectedChatMode || "agent") === "plan"
               ? removeVibesTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
@@ -1293,13 +1295,12 @@ This conversation includes one or more image attachments. When the user uploads 
           ask: "explore",
           mockup: "mockup",
         };
-        const resolvedChatMode: string = (settings.selectedChatMode || "agent");
 
         const agentId = agentIdMap[resolvedChatMode] || "build";
 
         if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${resolvedChatMode})`);
 
 
           // Context instructions for the OpenCode session.
