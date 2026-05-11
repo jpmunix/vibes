@@ -566,8 +566,10 @@ ${componentSnippet}
       if (agentId === "plan" || agentId === "explore") {
         // Prioritize transient override from the frontend (plan mode picker)
         effectiveModelName = (req.modelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL).replace(/^openrouter\//, "");
+        selectedModel = { name: effectiveModelName, provider: "openrouter" };
       } else if (agentId === "mockup") {
         effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
+        selectedModel = { name: effectiveModelName, provider: "openrouter" };
       }
 
       // Check if this is a test prompt
@@ -1334,10 +1336,12 @@ This conversation includes one or more image attachments. When the user uploads 
           );
 
           // 7. Caveman mode — ultra-terse responses to save ~20-30% tokens
+          logger.info(`[OPENCODE] 🦴 enableCavemanMode = ${settings.enableCavemanMode} (type: ${typeof settings.enableCavemanMode})`);
           if (settings.enableCavemanMode) {
             contextInstructions.push(
               getEffectivePrompt("ctx_caveman_mode", settings)
             );
+            logger.info("[OPENCODE] 🦴 Caveman mode ACTIVE — injecting ultra-terse directive");
           }
 
 

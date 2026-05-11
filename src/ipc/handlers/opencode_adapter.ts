@@ -2417,6 +2417,28 @@ export async function handleOpenCodeStream(
             }
         }
 
+        // ── Hot-update agent model for transient overrides ────────────────
+        // When the user picks a different model from the dropdown (plan/ask mode),
+        // the override lives in req.modelOverride (transient, not persisted).
+        // OpenCode's agent configs are set at server creation time and take
+        // precedence over the per-prompt model field, so we must hot-update
+        // the agent config before sending the prompt.
+        if (req.modelOverride && effectiveAgent !== "build") {
+            const overrideModel = `${providerID}/${modelID}`;
+            try {
+                await client.config.update({
+                    body: {
+                        agent: {
+                            [effectiveAgent]: { model: overrideModel },
+                        },
+                    } as any,
+                });
+                logger.info(`${LP} 🔄 Hot-updated agent "${effectiveAgent}" model to ${overrideModel} (transient override)`);
+            } catch (e: any) {
+                logger.warn(`${LP} config.update for transient model override failed (non-fatal): ${e.message}`);
+            }
+        }
+
         // Fire the prompt (non-blocking)
         // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
         // internal system prompt. All Vibes context flows via noReply above.

@@ -1,6 +1,6 @@
 import { createTypedHandler, HandlerContext } from "./base";
 import { settingsContracts } from "../types/settings";
-import { writeSettings, readSettings } from "../../main/settings";
+import { writeSettings, readSettings, resetSettingsCache } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
@@ -146,6 +146,9 @@ export function registerSettingsHandlers() {
     if (context.userId && preferencesCache.isHydrated) {
       // New path: decompose into KV cache + local disk
       decomposeAndPersist(context.userId, settings as Record<string, any>);
+      // Invalidate in-memory cache so readSettings() recomposes from fresh KV data.
+      // Without this, the cached object retains stale values for non-LOCAL_DISK_ONLY keys.
+      resetSettingsCache();
     } else {
       // Fallback for pre-auth: write everything to disk
       writeSettings(settings);
