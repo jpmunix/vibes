@@ -48,7 +48,7 @@ const V10_DEAD_KEYS = [
  * Build a UserSettings-shaped object from the preferences cache.
  * Falls back to local disk for LOCAL_DISK_ONLY_KEYS (windowState, session, etc.).
  */
-function composeSettingsFromCache(userId: string): Record<string, any> {
+export function composeSettingsFromCache(userId: string): Record<string, any> {
   // Start with local-only fields from disk
   const localSettings = readSettings();
   const localOnly: Record<string, any> = {};
@@ -109,8 +109,10 @@ function decomposeAndPersist(
 
 // Legacy export — kept for backward compat during migration period
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
-  // Now just hydrates the preferences cache
-  await preferencesCache.hydrate(userId);
+  // Now just hydrates the preferences cache if needed
+  if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+    await preferencesCache.hydrate(userId);
+  }
   return true;
 }
 
