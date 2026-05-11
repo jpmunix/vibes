@@ -1338,9 +1338,9 @@ This conversation includes one or more image attachments. When the user uploads 
           // 7. Caveman mode — ultra-terse responses to save ~20-30% tokens
           logger.info(`[OPENCODE] 🦴 enableCavemanMode = ${settings.enableCavemanMode} (type: ${typeof settings.enableCavemanMode})`);
           if (settings.enableCavemanMode) {
-            contextInstructions.push(
-              getEffectivePrompt("ctx_caveman_mode", settings)
-            );
+            const cavemanText = getEffectivePrompt("ctx_caveman_mode", settings);
+            logger.info(`[OPENCODE] 🦴 Caveman text length: ${cavemanText.length} chars`);
+            contextInstructions.push(cavemanText);
             logger.info("[OPENCODE] 🦴 Caveman mode ACTIVE — injecting ultra-terse directive");
           }
 
