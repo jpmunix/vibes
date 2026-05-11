@@ -15,8 +15,6 @@ import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import { getVariantLabel } from "@/ipc/shared/model_variants";
 import { matchesModelSearch } from "@/lib/modelSearch";
-import { useAtom } from "jotai";
-import { planModelOverrideAtom } from "@/atoms/chatAtoms";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -26,19 +24,11 @@ export function ModelPicker() {
   const { stats, incrementUsage, removeUsage } = useModelUsageStats();
   const { aliases, setAlias, removeAlias, resolveDisplayName } = useModelAliases();
   const [search, setSearch] = useState("");
-  const [planModelOverride, setPlanModelOverride] = useAtom(planModelOverrideAtom);
 
-  // The atom is THE ONLY source of truth for plan mode in this component.
-  // ChatModeSelector sets it on mode change AND on mount.
-  const isPlanMode = planModelOverride !== null;
-
+  // The model picker ALWAYS controls selectedModel, regardless of chat mode.
+  // Plan/ask modes use the same selectedModel as agent mode.
   const onModelSelect = (model: LargeLanguageModel) => {
-    if (isPlanMode) {
-      // In plan/ask mode: write to the transient override atom — do NOT persist to settings
-      setPlanModelOverride(model.name);
-    } else {
-      updateSettings({ selectedModel: model });
-    }
+    updateSettings({ selectedModel: model });
     incrementUsage(`${model.provider}:${model.name}`);
     // Invalidate token count when model changes since different models have different context windows
     queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
@@ -85,11 +75,9 @@ export function ModelPicker() {
     return null;
   }
 
-  // In plan mode, show the override model; in agent mode, show selectedModel
-  const selectedModel = isPlanMode
-    ? { name: planModelOverride, provider: "openrouter" as const }
-    : settings.selectedModel;
-  const selectedVariant = isPlanMode ? "" : (settings.selectedModelVariant ?? "");
+  // Always show the selectedModel — no mode-based switching
+  const selectedModel = settings.selectedModel;
+  const selectedVariant = settings.selectedModelVariant ?? "";
   const modelDisplayName = getModelDisplayName();
 
 

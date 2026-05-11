@@ -229,7 +229,7 @@ export function AIBehaviorSettings({
         {/* ── Modelo Estratega ── */}
         <SettingRow
           label="Modelo estratega"
-          description="Planificación, exploración del código y tareas de razonamiento"
+          description="Títulos, resúmenes, compactación y tareas auxiliares de fondo"
           control={<StrategistModelSelector />}
         />
 
