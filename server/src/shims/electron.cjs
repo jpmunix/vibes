@@ -18,6 +18,7 @@ const app = {
     if (n === "sessionData") return process.env.VIBES_SESSION_DATA || path.resolve("./sessionData");
     return path.resolve("./" + n);
   },
+  getAppPath: () => path.resolve("."),
   getVersion: () => "1.0.0-cloud",
   isReady: () => true,
   getName: () => "Vibes",

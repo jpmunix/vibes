@@ -48,10 +48,13 @@ export function registerIpcRoutes(app: FastifyInstance, io: SocketIOServer) {
       const fakeEvent = {
         sender: {
           id: userId,
+          userId, // Picked up by base.ts createTypedHandler for HandlerContext
           send: (ch: string, data: any) => {
             if (userId) io.to(userId).emit(ch, data);
             else io.emit(ch, data);
           },
+          // Electron WebContents stubs — handlers call these to check window state
+          isDestroyed: () => false,
         },
       };
 
@@ -59,10 +62,26 @@ export function registerIpcRoutes(app: FastifyInstance, io: SocketIOServer) {
         // JSON serialization turns undefined → null, but Zod void schemas
         // require undefined (not null). Convert null back to undefined.
         const input = args[0] === null ? undefined : args[0];
+
+        // Auto-hydrate preferences cache on first request for this user.
+        // In Electron this happens at login; in web mode the auth middleware
+        // gives us userId but the cache may not be warm yet.
+        if (userId) {
+          const { preferencesCache } = await import("../../../src/main/preferences-cache.ts");
+          if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+            try {
+              await preferencesCache.hydrate(userId);
+              app.log.info(`[IPC] Auto-hydrated preferences for user ${userId}`);
+            } catch (hydrateErr: any) {
+              app.log.warn(`[IPC] Failed to auto-hydrate preferences: ${hydrateErr.message}`);
+            }
+          }
+        }
+
         const result = await (handler as any)(fakeEvent, input);
         reply.send({ result: result ?? null });
       } catch (err: any) {
-        app.log.error(`[IPC] ${channel}:`, err);
+        console.error(`[IPC] ${channel} error:`, err?.message || err);
         reply.code(500).send({ error: err.message || "Internal error" });
       }
     },

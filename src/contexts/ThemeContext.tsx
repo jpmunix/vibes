@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { ipc } from "@/ipc/types";
 import {
   getColorById,
   adjustChroma,
@@ -175,9 +176,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyBubbleWidthToDOM(pct);
   }, []);
 
+  // Track whether the initial settings-driven theme has been loaded.
+  // Prevents persisting the localStorage default back to BunnyDB on first mount.
+  const themeBootedRef = useRef(false);
+  useEffect(() => {
+    // Allow settings hydration to complete before enabling writes
+    const timer = setTimeout(() => { themeBootedRef.current = true; }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     // Save theme preference to localStorage
     localStorage.setItem("theme", theme);
+
+    // Persist to BunnyDB via standard settings path (fire-and-forget)
+    if (themeBootedRef.current) {
+      ipc.settings.setUserSettings({ theme }).catch(() => {});
+    }
 
     // Handle system theme changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");

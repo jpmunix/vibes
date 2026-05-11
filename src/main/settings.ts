@@ -81,6 +81,12 @@ export const DEFAULT_SETTINGS: UserSettings = {
 
 const SETTINGS_FILE = "user-settings.json";
 
+// ── Cloud mode guard ────────────────────────────────────────────────────────
+// When running as a web server (multi-user), the local user-settings.json
+// MUST NOT be used: it's a shared file and causes race conditions.
+// Set VIBES_CLOUD_MODE=1 to disable all disk I/O in this module.
+const IS_CLOUD_MODE = process.env.VIBES_CLOUD_MODE === "1";
+
 // In-memory cache for settings to avoid blocking I/O
 let cachedSettings: UserSettings | null = null;
 
@@ -95,6 +101,11 @@ export function resetSettingsCache() {
  * Unlike writeSettings() this does NOT merge — it writes from scratch.
  */
 export function resetSettingsToDefaults(): void {
+  if (IS_CLOUD_MODE) {
+    cachedSettings = null;
+    logger.info("[Cloud] Settings cache cleared (no disk write)");
+    return;
+  }
   try {
     const filePath = getSettingsFilePath();
     fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SETTINGS, null, 2));
@@ -110,6 +121,32 @@ export function getSettingsFilePath(): string {
 }
 
 export function readSettings(): UserSettings {
+  // Cloud mode: never touch disk — all real settings come from PreferencesCache
+  if (IS_CLOUD_MODE) {
+    // If cache is hydrated, compose real settings from BunnyDB preferences.
+    // This is critical for OpenCode which calls readSettings() directly to get
+    // the user's model selection and API keys.
+    try {
+      const { preferencesCache } = require("./preferences-cache");
+      if (preferencesCache.isHydrated && preferencesCache.currentUserId) {
+        const userId = preferencesCache.currentUserId;
+        const prefsMap = preferencesCache.getAll(userId, 0);
+        const deserialized: Record<string, any> = {};
+        for (const [key, rawValue] of Object.entries(prefsMap)) {
+          try {
+            deserialized[key] = JSON.parse(rawValue as string);
+          } catch {
+            deserialized[key] = rawValue;
+          }
+        }
+        return { ...DEFAULT_SETTINGS, ...deserialized, userId } as UserSettings;
+      }
+    } catch {
+      // PreferencesCache not available yet — fall through to defaults
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
   // Return cached settings if available
   if (cachedSettings) {
     return cachedSettings;
@@ -250,7 +287,7 @@ export function readSettings(): UserSettings {
       if (shouldMigrate((validatedSettings as any).todoAnalysisModel))
         (migrated as any).todoAnalysisModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate((validatedSettings as any).knowledgeExtractionModel))
-        (migrated as any).knowledgeExtractionModel = FALLBACK_PRO_MODEL;
+        (migrated as any).knowledgeExtractionModel = "google/gemini-2.5-pro";
 
 
       // Mark migration as done and persist
@@ -426,7 +463,7 @@ export function readSettings(): UserSettings {
       if (proCandidate && proCandidate !== "SAME_AS_CHAT") {
         (migrated as any).proModeModel = proCandidate;
       } else {
-        (migrated as any).proModeModel = FALLBACK_PRO_MODEL;
+        (migrated as any).proModeModel = "google/gemini-2.5-pro";
       }
 
       const migratedSettings = {
@@ -667,6 +704,10 @@ export function readSettings(): UserSettings {
  *     See `persistPermissionToSettings()` in opencode_adapter.ts for an example.
  */
 export function writeSettings(settings: Partial<UserSettings>): void {
+  // Cloud mode: no disk writes — settings live in PreferencesCache + BunnyDB
+  if (IS_CLOUD_MODE) {
+    return;
+  }
   try {
     const filePath = getSettingsFilePath();
 

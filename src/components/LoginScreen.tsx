@@ -42,7 +42,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full bg-background app-region-drag">
+    <div className="flex items-center justify-center min-h-screen w-full bg-background app-region-drag web-safe">
       <div className="w-full max-w-[400px] p-10 bg-card rounded-3xl border border-border shadow-lg no-app-region-drag">
         {/* Logo & Brand */}
         <div className="text-center mb-8">

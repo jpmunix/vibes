@@ -33,6 +33,9 @@ export default defineConfig({
   define: {
     // Make sure Electron-specific code can be tree-shaken
     "process.versions.electron": "undefined",
+    // Polyfill process.env for node-only libs running in browser (e.g. vscode-textmate)
+    "process.env.VSCODE_TEXTMATE_DEBUG": "false",
+    "process.env.NODE_ENV": JSON.stringify("development"),
   },
   server: {
     port: 5173,

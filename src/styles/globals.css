@@ -63,6 +63,12 @@
   app-region: no-drag;
 }
 
+/* Web mode: hide Electron-style window title bars (drag regions).
+   .web-safe exempts non-titlebar uses like LoginScreen background. */
+html[data-platform="web"] .app-region-drag:not(.web-safe) {
+  display: none;
+}
+
 /* 
  * Disable drag region when select is open.
  * See: https://github.com/dyad-sh/dyad/issues/1717

@@ -17,6 +17,7 @@ export const app = {
     return path.resolve("./"+n);
   },
   getVersion:()=>"1.0.0-cloud", isReady:()=>true, getName:()=>"Vibes",
+  getAppPath:()=>process.cwd(),
   isPackaged:false, quit(){}, relaunch(){}, on(){},
 };
 export const dialog = {
@@ -43,21 +44,11 @@ transports:{file:{level:false},console:{level:false}}};return l;};
 const log=mk(); export default log;
 `;
 
-// Stub for @opencode-ai/sdk — ESM-only package that can't be require()'d.
-// In web mode we use OpenCodeManager (spawns binary) instead of the SDK.
-const OPENCODE_SDK_SRC = `
-export function createOpencode() { return { config:{}, session:{} }; }
-export function createOpencodeClient() { return {}; }
-export default { createOpencode, createOpencodeClient };
-`;
+
 
 export function resolve(specifier, context, nextResolve) {
   if (SHIMMED.has(specifier)) {
     return { url: "vibes-shim://" + specifier, shortCircuit: true };
-  }
-  // Intercept @opencode-ai/sdk and any sub-paths
-  if (specifier === "@opencode-ai/sdk" || specifier.startsWith("@opencode-ai/sdk/")) {
-    return { url: "vibes-shim://opencode-sdk", shortCircuit: true };
   }
   return nextResolve(specifier, context);
 }
@@ -68,9 +59,6 @@ export function load(url, context, nextLoad) {
   }
   if (url === "vibes-shim://electron-log") {
     return { format: "module", source: ELECTRON_LOG_SRC, shortCircuit: true };
-  }
-  if (url === "vibes-shim://opencode-sdk") {
-    return { format: "module", source: OPENCODE_SDK_SRC, shortCircuit: true };
   }
   return nextLoad(url, context);
 }

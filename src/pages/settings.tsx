@@ -960,6 +960,16 @@ export function GeneralSettings({
 
   useEffect(() => {
     if (
+      settings?.theme !== undefined &&
+      settings.theme !== theme
+    ) {
+      setTheme(settings.theme);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.theme, setTheme]);
+
+  useEffect(() => {
+    if (
       settings?.themeIntensity !== undefined &&
       settings.themeIntensity !== intensity
     ) {
@@ -1024,7 +1034,7 @@ export function GeneralSettings({
               {(["system", "light", "dark"] as const).map((option) => (
                 <button
                   key={option}
-                  onClick={() => setTheme(option)}
+                  onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                     theme === option

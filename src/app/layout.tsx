@@ -4,6 +4,7 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 import { DeepLinkProvider } from "../contexts/DeepLinkContext";
 import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
+import { isElectron } from "@/lib/transport";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
@@ -183,8 +184,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <DeepLinkProvider>
           <SidebarProvider>
             <TitleBar />
-            {/* Layout: TitleBar (fixed 44px) → TopNavbar (40px) → [SecondarySidebar + Content] */}
-            <div className="flex flex-col w-full h-[calc(100vh-44px)] mt-11">
+            {/* Layout: TitleBar (fixed 44px, Electron only) → TopNavbar (40px) → [SecondarySidebar + Content] */}
+            <div className={`flex flex-col w-full ${isElectron ? "h-[calc(100vh-44px)] mt-11" : "h-screen"}`}>
               <TopNavbar />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <SecondarySidebar />

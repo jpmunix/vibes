@@ -482,6 +482,7 @@ export const UserSettingsSchema = z
 
     chatLanguage: ChatLanguageSchema.optional(),
 
+    theme: z.enum(["system", "light", "dark"]).optional(),
     themeIntensity: z.number().optional(),
     primaryColorLight: z.string().optional(),
     primaryColorDark: z.string().optional(),

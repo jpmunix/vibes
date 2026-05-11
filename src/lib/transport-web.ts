@@ -15,7 +15,7 @@ let socket: Socket | null = null;
 
 function getSocket(): Socket {
   if (!socket) {
-    const token = localStorage.getItem("vibes-session-token") || "";
+    const token = localStorage.getItem("vibes_session_token") || "";
     socket = io("/", {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -33,7 +33,7 @@ function getSocket(): Socket {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("vibes-session-token") || "";
+  const token = localStorage.getItem("vibes_session_token") || "";
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -134,7 +134,7 @@ export function installWebTransport(): void {
  * Reconnect the socket with a new auth token (e.g. after login).
  */
 export function reconnectWithToken(token: string): void {
-  localStorage.setItem("vibes-session-token", token);
+  localStorage.setItem("vibes_session_token", token);
   if (socket) {
     socket.auth = { token };
     socket.disconnect().connect();

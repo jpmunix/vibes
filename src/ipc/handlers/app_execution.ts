@@ -36,6 +36,8 @@ const logger = log.scope("app_execution");
 class LogBuffer {
   private buffers = new Map<number, AppOutput[]>();
   private timeouts = new Map<number, NodeJS.Timeout>();
+  /** Track the event sender per app so we can broadcast in web mode (no BrowserWindow) */
+  private senders = new Map<number, { send: (ch: string, ...args: any[]) => void }>();
   private readonly FLUSH_INTERVAL_MS = 200;
   private readonly MAX_BATCH_SIZE = 100;
 
@@ -55,6 +57,11 @@ class LogBuffer {
     }
   }
 
+  /** Register the event sender for an app so logs can be routed in web mode */
+  registerSender(appId: number, sender: { send: (ch: string, ...args: any[]) => void }) {
+    this.senders.set(appId, sender);
+  }
+
   flush(appId: number) {
     const buffer = this.buffers.get(appId);
     if (!buffer || buffer.length === 0) return;
@@ -71,9 +78,19 @@ class LogBuffer {
 
     // Broadcast to ALL open windows so console windows also receive logs
     const payload = { appId, logs };
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed() && win.webContents) {
-        safeSend(win.webContents, "app:logs-batch", payload);
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length > 0) {
+      // Electron mode: broadcast to all Electron windows
+      for (const win of windows) {
+        if (!win.isDestroyed() && win.webContents) {
+          safeSend(win.webContents, "app:logs-batch", payload);
+        }
+      }
+    } else {
+      // Web mode: use the registered sender (Socket.IO)
+      const sender = this.senders.get(appId);
+      if (sender) {
+        try { sender.send("app:logs-batch", payload); } catch { /* sender may be gone */ }
       }
     }
   }
@@ -95,7 +112,7 @@ export const autoRecoveryAttempted = new Set<number>();
 export const actualPortByApp = new Map<number, number>();
 
 // Needed, otherwise electron in MacOS/Linux will not be able to find node/pnpm.
-fixPath();
+try { fixPath(); } catch { /* safe to ignore in server/web mode */ }
 
 // ─── Port / process helpers ─────────────────────────────────────────
 
@@ -287,6 +304,9 @@ async function executeAppLocalNode({
     isDocker: false,
   });
 
+  // Register sender for web mode log broadcasting
+  logBuffer.registerSender(appId, event.sender);
+
   listenToProcess({
     process: spawnedProcess, appId, isNeon, event, appPath, installCommand, startCommand,
   });
@@ -312,9 +332,25 @@ function listenToProcess({
   let stderrBuffer = "";
   let proxyStarted = false;
 
+  const IS_CLOUD_MODE = process.env.VIBES_CLOUD_MODE === "1";
+
   const startProxyForApp = async (targetUrl: string) => {
     if (proxyStarted) return;
     proxyStarted = true;
+
+    // In web/cloud mode, skip the proxy worker (requires compiled worker from Electron build).
+    // The browser can access the dev server URL directly — the proxy is only needed in
+    // Electron to bypass file:// → http:// iframe restrictions.
+    if (IS_CLOUD_MODE) {
+      proxyUrlByApp.set(appId, { proxyUrl: targetUrl, originalUrl: targetUrl });
+      safeSend(event.sender, "app:output", {
+        type: "stdout",
+        message: `[vibes-proxy-server]started=[${targetUrl}] original=[${targetUrl}]`,
+        appId,
+      });
+      logger.info(`[App ${appId}] Cloud mode: serving dev server directly at ${targetUrl} (no proxy)`);
+      return;
+    }
 
     const proxyPort = getProxyPort(appId);
 
@@ -413,14 +449,9 @@ function listenToProcess({
       appId,
     };
     addLog(stopEntry);
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed() && win.webContents) {
-        safeSend(win.webContents, "app:logs-batch", {
-          appId,
-          logs: [{ type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() }],
-        });
-      }
-    }
+    // Use logBuffer for consistent broadcasting (works in both Electron + web mode)
+    logBuffer.add(appId, { type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() });
+    logBuffer.flush(appId);
 
     if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
       const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;

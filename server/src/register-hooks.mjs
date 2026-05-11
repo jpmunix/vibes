@@ -20,6 +20,11 @@ const CJS_SHIM_MAP = {
 
 const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
+  // Skip shimming when the shim itself is doing the import (avoid circular)
+  const parentFile = parent?.filename || "";
+  if (parentFile.includes("opencode-sdk.cjs") && (request === "@opencode-ai/sdk" || request.startsWith("@opencode-ai/sdk/"))) {
+    return origResolve.call(this, request, parent, isMain, options);
+  }
   // Exact match
   if (CJS_SHIM_MAP[request]) return CJS_SHIM_MAP[request];
   // Sub-path match for @opencode-ai/sdk/*

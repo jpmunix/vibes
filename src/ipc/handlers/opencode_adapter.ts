@@ -1390,8 +1390,15 @@ async function getOpenCodeClient(appPath: string) {
         // Electron's CWD (our project root) and writes config.json there, which
         // triggers Vite page reloads that kill SSE streaming.
         // Fix: temporarily change cwd before spawning, then restore it.
-        const { app } = require("electron");
-        const opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+        let opencodeDataDir: string;
+        try {
+            const { app } = require("electron");
+            opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+        } catch {
+            // Server/web mode — no Electron, use a temp-like directory
+            const os = require("os");
+            opencodeDataDir = path.join(os.homedir(), ".config", "vibes-server", "opencode-server");
+        }
         const fs = require("fs");
         if (!fs.existsSync(opencodeDataDir)) {
             fs.mkdirSync(opencodeDataDir, { recursive: true });

@@ -49,7 +49,9 @@ const V10_DEAD_KEYS = [
  * Falls back to local disk for LOCAL_DISK_ONLY_KEYS (windowState, session, etc.).
  */
 function composeSettingsFromCache(userId: string): Record<string, any> {
-  // Start with local-only fields from disk
+  // Local-only fields (windowState, session, isRunning, etc.)
+  // In Electron: from per-user disk file.
+  // In cloud mode: readSettings() returns DEFAULT_SETTINGS (no disk).
   const localSettings = readSettings();
   const localOnly: Record<string, any> = {};
   for (const key of LOCAL_DISK_ONLY_KEYS) {
@@ -57,6 +59,9 @@ function composeSettingsFromCache(userId: string): Record<string, any> {
       localOnly[key] = (localSettings as any)[key];
     }
   }
+
+  // Always override userId from auth context (not from disk)
+  localOnly.userId = userId;
 
   // Get all preferences from cache
   const prefsMap = preferencesCache.getAll(userId, 0);
@@ -126,8 +131,18 @@ export function registerSettingsHandlers() {
   // No more blob merge, no LOCAL_ONLY_FIELDS exclusion, no V10_DEAD_KEYS stripping.
   // The KV store IS the source of truth for all preferences.
   createTypedHandler(settingsContracts.getUserSettings, async (_, __, context) => {
-    if (context.userId && preferencesCache.isHydrated) {
-      return composeSettingsFromCache(context.userId) as any;
+    if (context.userId) {
+      // Auto-hydrate if cache isn't ready (covers first web request)
+      if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== context.userId) {
+        try {
+          await preferencesCache.hydrate(context.userId);
+        } catch (e: any) {
+          logger.warn(`Failed to auto-hydrate preferences in getUserSettings: ${e.message}`);
+        }
+      }
+      if (preferencesCache.isHydrated) {
+        return composeSettingsFromCache(context.userId) as any;
+      }
     }
 
     // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
