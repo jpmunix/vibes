@@ -366,19 +366,21 @@ export function TopNavbar() {
             </button>
           )}
 
-          <button
-            type="button"
-            className="topnav-util-btn no-app-region-drag"
-            title="Documentación"
-            onClick={() => {
-              ipc.system.openDocsWindow({
-                theme: theme as "light" | "dark" | "system",
-                themeIntensity: intensity,
-              });
-            }}
-          >
-            <BookOpen size={17} />
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className="topnav-util-btn no-app-region-drag"
+              title="Documentación"
+              onClick={() => {
+                ipc.system.openDocsWindow({
+                  theme: theme as "light" | "dark" | "system",
+                  themeIntensity: intensity,
+                });
+              }}
+            >
+              <BookOpen size={17} />
+            </button>
+          )}
 
           <OpenRouterCreditsButton />
 
