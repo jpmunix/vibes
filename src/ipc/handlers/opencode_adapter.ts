@@ -981,11 +981,11 @@ export async function updateOpenCodeConfig(changes: {
             logger.info(`[OpenCode] Background model updated: strategist=${changes.strategistModel}`);
         }
 
-        // ── Register variant models in provider.models for the hot-update ──
-        // Same workaround as createOpencode: if the model has a colon-variant,
-        // register it so OpenCode doesn't choke on the \":\" in internal lookup.
+        // ── Always register the model in provider.models for hot-update ──
+        // Same workaround as createOpencode: register any OpenRouter model
+        // so OpenCode passes it straight to the API without internal parsing.
         const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
-        if (currentModelID && (currentModelID.includes(":free") || currentModelID.includes(":nitro") || currentModelID.includes(":exacto"))) {
+        if (currentModelID) {
             body.provider = {
                 openrouter: {
                     models: {
@@ -993,7 +993,7 @@ export async function updateOpenCodeConfig(changes: {
                     },
                 },
             };
-            logger.info(`[OpenCode] Hot-registered variant model: ${currentModelID}`);
+            logger.info(`[OpenCode] Hot-registered model: ${currentModelID}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1448,15 +1448,14 @@ async function getOpenCodeClient(appPath: string) {
 
         // Dynamic instructions are written to docs/vibes-context.md per-request
         // and registered in the project's opencode.json (same pattern as DESIGN.md).
-        // ── Build dynamic models registry for free-variant models ──
-        // OpenCode's model parser chokes on the ":" in ":free" suffixes.
-        // Workaround: register the model explicitly in provider.models so
-        // OpenCode skips its internal model lookup and passes the ID straight
-        // to OpenRouter's API.
+        // ── Always register the model in provider.models ──
+        // OpenCode's model parser can't handle special characters (:, @) in
+        // model IDs. Workaround: always register the model explicitly so
+        // OpenCode passes the ID straight to the provider's API.
         const openrouterModels: Record<string, object> = {};
-        if (modelID.includes(":free") || modelID.includes(":nitro") || modelID.includes(":exacto")) {
+        if (providerID === "openrouter") {
             openrouterModels[modelID] = {};
-            logger.info(`[OpenCode] Registered variant model in provider config: ${modelID}`);
+            logger.info(`[OpenCode] Registered model in provider config: ${modelID}`);
         }
 
         const config = {

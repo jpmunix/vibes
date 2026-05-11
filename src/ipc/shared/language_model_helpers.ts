@@ -6,6 +6,13 @@ import {
   PROVIDER_TO_ENV_VAR,
 } from "./language_model_constants";
 import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
+import { eq } from "drizzle-orm";
+import log from "electron-log";
+
+const logger = log.scope("language_model_helpers");
+
 /**
  * Fetches language model providers from both the database (custom) and hardcoded constants (cloud),
  * merging them with custom providers taking precedence.
@@ -49,6 +56,34 @@ export async function getLanguageModelProviders(_userId?: string): Promise<
   }
 
   return hardcodedProviders;
+}
+
+/**
+ * Fetch user's custom models from BunnyDB for a given provider.
+ */
+async function getCustomModels(providerId: string, userId?: string): Promise<LanguageModel[]> {
+  if (!userId) return [];
+  try {
+    const db = getRemoteDb();
+    const rows = await db.select().from(remoteSchema.languageModels).where(
+      eq(remoteSchema.languageModels.userId, userId),
+    );
+    // Filter to the requested provider (or return all if provider matches)
+    return rows
+      .filter(r => (r.builtinProviderId || "openrouter") === providerId)
+      .map(r => ({
+        id: r.id,
+        apiName: r.apiName,
+        displayName: r.displayName,
+        description: r.description ?? undefined,
+        maxOutputTokens: r.maxOutputTokens ?? undefined,
+        contextWindow: r.contextWindow ?? undefined,
+        type: "custom" as const,
+      }));
+  } catch (err: any) {
+    logger.warn(`Failed to fetch custom models: ${err.message}`);
+    return [];
+  }
 }
 
 /**
@@ -100,6 +135,19 @@ export async function getLanguageModels({
         type: "cloud",
       }));
     }
+  }
+
+  // ── Merge custom models from BunnyDB ──
+  // Custom models appear first, then cloud models.
+  // If a custom model has the same apiName as a cloud model, the custom one wins
+  // (allows overriding display name, context window, etc.)
+  const customModels = await getCustomModels(providerId, userId);
+  if (customModels.length > 0) {
+    const customApiNames = new Set(customModels.map(m => m.apiName));
+    // Remove cloud models that are overridden by custom ones
+    hardcodedModels = hardcodedModels.filter(m => !customApiNames.has(m.apiName));
+    // Prepend custom models
+    hardcodedModels = [...customModels, ...hardcodedModels];
   }
 
   return hardcodedModels;

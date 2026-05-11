@@ -386,6 +386,27 @@ export const memoryDebugLogs = sqliteTable("memory_debug_logs", {
 });
 
 // =============================================================================
+// CUSTOM LANGUAGE MODELS (user-defined models, presets, arbitrary IDs)
+// =============================================================================
+
+export const languageModels = sqliteTable("language_models", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    displayName: text("display_name").notNull(),
+    apiName: text("api_name").notNull(),
+    /** "openrouter" for standard models, or the custom provider id */
+    builtinProviderId: text("builtin_provider_id"),
+    customProviderId: text("custom_provider_id"),
+    description: text("description"),
+    maxOutputTokens: integer("max_output_tokens"),
+    contextWindow: integer("context_window"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

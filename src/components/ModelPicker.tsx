@@ -105,6 +105,7 @@ export function ModelPicker() {
   if (modelsByProviders?.["openrouter"]) {
     const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
     modelsByProviders["openrouter"].forEach((model) => {
+      const isCustom = model.type === "custom";
       const isEnabled = enabledModels.includes(model.apiName);
       const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
       
@@ -113,7 +114,7 @@ export function ModelPicker() {
            allAvailableModels.push({ provider: "openrouter", model });
         }
       } else {
-        if (isEnabled || isUsed) {
+        if (isCustom || isEnabled || isUsed) {
            allAvailableModels.push({ provider: "openrouter", model });
         }
       }

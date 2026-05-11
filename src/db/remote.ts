@@ -150,8 +150,24 @@ export async function initializeRemoteSchema(): Promise<void> {
         created_at INTEGER NOT NULL
       )
     `);
+    // Auto-create language_models if missing (custom model presets)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS language_models (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        display_name TEXT NOT NULL,
+        api_name TEXT NOT NULL,
+        builtin_provider_id TEXT,
+        custom_provider_id TEXT,
+        description TEXT,
+        max_output_tokens INTEGER,
+        context_window INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `).catch(() => {});
   } catch (e) {
-    logger.warn("artifact_comments or chat_labels migration (non-fatal):", e);
+    logger.warn("schema migration (non-fatal):", e);
   }
   _remoteSchemaInitialized = true;
 }
