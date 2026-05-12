@@ -17,10 +17,12 @@ import {
     Copy,
     RefreshCw,
     Download,
+    ArrowRightLeft,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { UserPreferencesEditor } from "@/components/admin_window/UserPreferencesEditor";
+import { PreferencesCopyDialog } from "@/components/admin_window/PreferencesCopyDialog";
 
 // ── Password generator ──────────────────────────────────────────────────────
 
@@ -70,6 +72,9 @@ export function AdminListUsers() {
 
     // Expand user details
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+    // Preferences copy dialog
+    const [copySourceUser, setCopySourceUser] = useState<AdminUser | null>(null);
 
     const toggleExpandUser = (userId: string) => {
         setExpandedUserId((prev) => (prev === userId ? null : userId));
@@ -421,6 +426,18 @@ export function AdminListUsers() {
                                         >
                                             <Lock size={14} />
                                         </button>
+                                        {/* Copy preferences to other users */}
+                                        <button
+                                            type="button"
+                                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCopySourceUser(user);
+                                            }}
+                                            title="Copiar preferencias a otros usuarios"
+                                        >
+                                            <ArrowRightLeft size={14} />
+                                        </button>
                                         {/* Download settings JSON */}
                                         <button
                                             type="button"
@@ -517,6 +534,16 @@ export function AdminListUsers() {
                     })}
                 </div>
             </div>
+
+            {/* Preferences copy dialog */}
+            {copySourceUser && (
+                <PreferencesCopyDialog
+                    isOpen={!!copySourceUser}
+                    onClose={() => setCopySourceUser(null)}
+                    sourceUser={copySourceUser}
+                    allUsers={users}
+                />
+            )}
         </div>
     );
 }

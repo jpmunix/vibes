@@ -706,15 +706,32 @@ export function registerChatHandlers() {
       throw new Error("Chat not found or is empty");
     }
 
-    // 2. Format history for the prompt
+    // 2. Clean messages: strip all XML tool tags, thinking blocks, and noise
+    //    Keep only the human-readable prose from each message.
+    const { stripAllNoise } = await import("../utils/memory_guardian");
+
     const formattedHistory = oldChat.messages
-      .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .map((m) => {
+        const cleaned = stripAllNoise(m.content);
+        if (!cleaned) return null; // skip messages that were 100% tool noise
+        const role = m.role === "user" ? "User" : "Agent";
+        return `${role}: ${cleaned}`;
+      })
+      .filter(Boolean)
       .join("\n\n");
 
+    if (!formattedHistory.trim()) {
+      throw new Error("El chat no contiene mensajes legibles después de limpiar el ruido");
+    }
+
+    logger.info(`[summarizeToNewChat] Cleaned history: ${formattedHistory.length} chars from ${oldChat.messages.length} messages`);
+
     // 3. Generate summary using openRouterCompletion
+    //    Use strategist model for better reasoning and larger context window.
     const { readSettings } = await import("../../main/settings");
+    const { DEFAULT_STRATEGIST_MODEL } = await import("../../lib/schemas");
     const settings = readSettings();
-    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
 
     let generatedSummary = "";
     try {
@@ -722,7 +739,6 @@ export function registerChatHandlers() {
         model,
         title: "summarize-to-new-chat",
         temperature: 0.2,
-        max_tokens: 2000,
         messages: [
           {
             role: "system",

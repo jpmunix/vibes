@@ -249,6 +249,24 @@ export const adminContracts = {
         }),
         output: z.object({ success: z.boolean() }),
     }),
+
+    /** Copy/overwrite selected preferences from one user to multiple target users */
+    copyPreferencesToUsers: defineContract({
+        channel: "admin:copy-preferences-to-users",
+        input: z.object({
+            sourceUserId: z.string(),
+            targetUserIds: z.array(z.string()).min(1),
+            keys: z.array(z.string()).min(1),
+            mode: z.enum(["copy", "overwrite"]),
+        }),
+        output: z.object({
+            success: z.boolean(),
+            /** Number of preference writes actually performed */
+            written: z.number(),
+            /** Number of preferences skipped (copy mode, already existed) */
+            skipped: z.number(),
+        }),
+    }),
 } as const;
 
 // =============================================================================

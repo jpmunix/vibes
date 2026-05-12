@@ -18,7 +18,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, inArray } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
 import { getEffectivePrompt } from "../../prompts";
-import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
+import { stripAllNoise, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
@@ -211,7 +211,7 @@ export async function extractMemoriesFromBatch(params: {
         // Strip thinking blocks from all responses
         const cleanRounds = rounds.map(r => ({
             userPrompt: r.userPrompt,
-            assistantResponse: stripThinkingBlocks(r.assistantResponse),
+            assistantResponse: stripAllNoise(r.assistantResponse),
         }));
 
         // Guardian check on the combined content
@@ -491,10 +491,14 @@ export async function forceCondenseChatSession(params: {
         if (msg.role === "user") {
             currentPrompt = msg.content;
         } else if (msg.role === "assistant" && currentPrompt) {
-            rounds.push({
-                userPrompt: currentPrompt,
-                assistantResponse: msg.content || ""
-            });
+            // Strip all XML tool tags and thinking blocks before condensation
+            const cleanedResponse = stripAllNoise(msg.content || "");
+            if (cleanedResponse) {
+                rounds.push({
+                    userPrompt: currentPrompt,
+                    assistantResponse: cleanedResponse,
+                });
+            }
             currentPrompt = null;
         }
     }
@@ -541,7 +545,7 @@ export async function extractMemoriesFromChatCycle(params: {
 
     try {
         // 0. Strip thinking blocks from the assistant response
-        const cleanResponse = stripThinkingBlocks(assistantResponse);
+        const cleanResponse = stripAllNoise(assistantResponse);
 
         // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
         const guardianResult = shouldProcessInteraction(userPrompt, cleanResponse);
