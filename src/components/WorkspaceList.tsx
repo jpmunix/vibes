@@ -40,7 +40,10 @@ import {
   Minimize2,
   FileText,
   Hash,
+  Eye,
+  ArrowLeft,
 } from "@/components/ui/icons";
+import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -770,6 +773,26 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
   const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
 
+  // Plan preview state
+  const [previewPlanPath, setPreviewPlanPath] = useState<string | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const previewPlan = useMemo(() => appPlans.find(p => p.path === previewPlanPath), [appPlans, previewPlanPath]);
+
+  const handlePreviewPlan = useCallback(async (path: string) => {
+    setPreviewPlanPath(path);
+    setLoadingPreview(true);
+    setPreviewContent(null);
+    try {
+      const content = await ipc.chat.getChatArtifactContent({ appId: app.id, path });
+      setPreviewContent(content);
+    } catch (e) {
+      setPreviewContent(`> Error al cargar el plan: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [app.id]);
+
   const handleRemoveLabel = useCallback(async (labelId: number) => {
     try {
       await ipc.chat.deleteChatLabel(labelId);
@@ -820,9 +843,18 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     closeMenu();
     setPlansPanelOpen(true);
     setLoadingPlans(true);
+    setPreviewPlanPath(null);
+    setPreviewContent(null);
     try {
       const result = await ipc.chat.getAppPlans(app.id);
-      setAppPlans(result as any);
+      // Sort newest-first; orphaned plans (no date) go to the bottom
+      const sorted = [...(result as any[])].sort((a, b) => {
+        if (!a.createdAt && !b.createdAt) return 0;
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setAppPlans(sorted as any);
     } catch (e) {
       showError(e);
     } finally {
@@ -1209,7 +1241,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           onClick={() => setPlansPanelOpen(false)}
         />
         <div
-          className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+          className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[1200px] h-[85vh] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Panel header */}
@@ -1220,7 +1252,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               </div>
               <div>
                 <span className="text-sm font-semibold block">Planes del workspace</span>
-                <span className="text-xs text-muted-foreground/60">{app.name}</span>
+                <span className="text-xs text-muted-foreground/60">{app.name} · Más recientes primero</span>
               </div>
             </div>
             <button
@@ -1233,63 +1265,54 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           </div>
 
           {/* Panel content */}
-          <div className="max-h-[420px] overflow-y-auto">
-            {loadingPlans ? (
-              <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
-                <Loader2 size={16} className="animate-spin" />
-                <span className="text-sm">Cargando planes...</span>
-              </div>
-            ) : appPlans.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
-                <div className="p-4 rounded-2xl bg-sidebar-accent/40">
-                  <FileText size={28} className="opacity-50" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-muted-foreground/70">Sin planes</p>
-                  <p className="text-xs mt-0.5 text-muted-foreground/40">Los planes generados en .vibes/ aparecerán aquí</p>
-                </div>
-              </div>
-            ) : (
-              <div className="py-2">
-                {appPlans.map((plan) => (
-                  <div
-                    key={plan.path}
-                    className="group/plan flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setSelectedPath(plan.path);
-                      setSidebarOpen(true);
-                      setPlansPanelOpen(false);
-                    }}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {/* ── Preview mode ── */}
+            {previewPlanPath ? (
+              <div className="flex flex-col h-full">
+                {/* Preview header */}
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50 bg-sidebar-accent/15 shrink-0">
+                  <button
+                    type="button"
+                    className="p-1 rounded-md hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                    onClick={() => { setPreviewPlanPath(null); setPreviewContent(null); }}
+                    title="Volver a la lista"
                   >
-                    <FileText size={14} className="text-muted-foreground/50 shrink-0" />
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-sm truncate font-medium">{plan.title || plan.path}</span>
-                      <span className="text-xs text-muted-foreground/55 mt-0.5">
-                        {plan.chatTitle
-                          ? `Chat: ${plan.chatTitle}`
-                          : plan.chatId
-                          ? `Chat #${plan.chatId}`
-                          : "Sin chat asociado"}
-                        {plan.accepted ? " · Aceptado" : ""}
+                    <ArrowLeft size={16} />
+                  </button>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-sm font-semibold truncate">{previewPlan?.title || previewPlanPath}</span>
+                    <span className="text-[11px] text-muted-foreground/50">
+                      {previewPlan?.chatTitle ? `Chat: ${previewPlan.chatTitle}` : previewPlan?.chatId ? `Chat #${previewPlan.chatId}` : "Sin chat asociado"}
+                      {previewPlan?.createdAt ? ` · ${formatDistanceToNow(new Date(previewPlan.createdAt), { addSuffix: true, locale: es })}` : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {previewPlan?.accepted ? (
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                        Aceptado
                       </span>
-                    </div>
-                    {/* Attach to current chat action */}
-                    {selectedChatId && plan.chatId !== selectedChatId && (
+                    ) : null}
+                    {/* Attach */}
+                    {selectedChatId && previewPlan && previewPlan.chatId !== selectedChatId && (
                       <button
                         type="button"
-                        className="shrink-0 px-2 py-1 rounded-md text-xs text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/plan:opacity-100 whitespace-nowrap"
-                        onClick={async (e) => {
-                          e.stopPropagation();
+                        className="px-2.5 py-1 rounded-md text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={async () => {
                           try {
                             await ipc.chat.attachArtifactToChat({
                               appId: app.id,
-                              path: plan.path,
+                              path: previewPlanPath,
                               chatId: selectedChatId,
                             });
                             showSuccess("Plan adjuntado al chat actual");
-                            // Refresh plans
                             const updated = await ipc.chat.getAppPlans(app.id);
-                            setAppPlans(updated as any);
+                            const sorted = [...(updated as any[])].sort((a, b) => {
+                              if (!a.createdAt && !b.createdAt) return 0;
+                              if (!a.createdAt) return 1;
+                              if (!b.createdAt) return -1;
+                              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                            });
+                            setAppPlans(sorted as any);
                             queryClient.invalidateQueries({ queryKey: ["chatArtifacts", selectedChatId] });
                           } catch (err) {
                             showError(err);
@@ -1301,18 +1324,99 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       </button>
                     )}
                   </div>
-                ))}
+                </div>
+                {/* Preview content */}
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  {loadingPreview ? (
+                    <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="text-sm">Cargando preview...</span>
+                    </div>
+                  ) : previewContent ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <VibesMarkdownParser content={previewContent} forceFullMode />
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground text-sm text-center mt-10">
+                      No se encontró contenido.
+                    </div>
+                  )}
+                </div>
               </div>
+            ) : (
+              /* ── Plan list mode ── */
+              <>
+                {loadingPlans ? (
+                  <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm">Cargando planes...</span>
+                  </div>
+                ) : appPlans.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                    <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                      <FileText size={28} className="opacity-50" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-muted-foreground/70">Sin planes</p>
+                      <p className="text-xs mt-0.5 text-muted-foreground/40">Los planes generados en .vibes/ aparecerán aquí</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    {appPlans.map((plan) => (
+                      <div
+                        key={plan.path}
+                        className="group/plan flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+                        onClick={() => handlePreviewPlan(plan.path)}
+                      >
+                        <FileText size={14} className="text-muted-foreground/50 shrink-0 mt-0.5" />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm truncate font-medium">{plan.title || plan.path}</span>
+                            {plan.accepted ? (
+                              <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                Aceptado
+                              </span>
+                            ) : null}
+                            {selectedChatId && plan.chatId === selectedChatId ? (
+                              <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                                Adjuntado
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="text-xs text-muted-foreground/55 mt-0.5">
+                            {plan.chatTitle
+                              ? `Chat: ${plan.chatTitle}`
+                              : plan.chatId
+                              ? `Chat #${plan.chatId}`
+                              : "Sin chat asociado"}
+                          </span>
+                          {plan.createdAt ? (
+                            <span className="text-[11px] text-muted-foreground/40 mt-0.5">
+                              {formatDistanceToNow(new Date(plan.createdAt), { addSuffix: true, locale: es })}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground/30 mt-0.5 italic">
+                              Sin fecha registrada
+                            </span>
+                          )}
+                        </div>
+                        <ChevronRight size={14} className="text-muted-foreground/30 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           {/* Footer */}
-          {appPlans.length > 0 && (
+          {appPlans.length > 0 && !previewPlanPath && (
             <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
               <span className="text-xs text-muted-foreground/50">
                 {appPlans.length} {appPlans.length !== 1 ? 'planes' : 'plan'}
               </span>
-              <span className="text-xs text-muted-foreground/35">Click para abrir · Hover para adjuntar</span>
+              <span className="text-xs text-muted-foreground/35">Click para ver el plan</span>
             </div>
           )}
         </div>

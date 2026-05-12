@@ -42,6 +42,11 @@ import {
     Database,
     DollarSign,
     AlignLeft,
+    Brain,
+    Trophy,
+    Award,
+    BarChart3,
+    Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -79,6 +84,7 @@ import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
 import { isFreeModel } from "@/ipc/shared/model_variants";
+import { SettingsModelSelector } from "@/components/SettingsModelSelector";
 
 import "@/styles/globals.css";
 
@@ -471,7 +477,7 @@ function PlaygroundPanel() {
     const [runFinished, setRunFinished] = useState(false);
     const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc' | 'price-in-asc' | 'price-in-desc' | 'price-out-asc' | 'price-out-desc'>('speed-asc');
     const [retryingModel, setRetryingModel] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'memorias' | 'raw'>('memorias');
+    const [viewMode, setViewMode] = useState<'memorias' | 'raw'>('raw');
     const [morphActive, setMorphActive] = useState(false);
     const [nitroActive, setNitroActive] = useState(false);
     const [timeoutSeconds, setTimeoutSeconds] = useState(15);
@@ -507,6 +513,12 @@ function PlaygroundPanel() {
     const [pendingDeletePromptPreset, setPendingDeletePromptPreset] = useState<string | null>(null);
     const [pendingRenamePromptPreset, setPendingRenamePromptPreset] = useState<string | null>(null);
     const [promptRenameValue, setPromptRenameValue] = useState("");
+
+    // ── Analysis state ──
+    const [analysisModel, setAnalysisModel] = useState('xiaomi/mimo-v2.5-pro');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
 
     // One-shot migration from settings JSON → user_preferences DB
     useEffect(() => {
@@ -683,10 +695,60 @@ function PlaygroundPanel() {
         setPrompt("");
         setActivePresetName(null);
         setActivePromptPreset(null);
+        setAnalysisResult(null);
+        setAnalysisError(null);
+        setIsAnalyzing(false);
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
     }, []);
+
+
+    // Run analysis
+    const handleAnalyze = useCallback(async () => {
+        if (isAnalyzing || !runFinished) return;
+        const completedResults = results.filter(r => r.text && !r.error && !r.timeout && !r.text.startsWith('Error:') && !r.text.startsWith('⏱️'));
+        if (completedResults.length === 0) return;
+
+        setIsAnalyzing(true);
+        setAnalysisResult(null);
+        setAnalysisError(null);
+
+        try {
+            const response = await ipc.misc.playgroundAnalyze({
+                model: analysisModel,
+                originalPrompt: prompt,
+                results: completedResults.map(r => ({
+                    modelApiName: r.modelApiName,
+                    modelDisplayName: modelDisplayNameMap.get(r.modelApiName) || r.modelApiName,
+                    text: r.text,
+                    durationMs: r.durationMs || 0,
+                    inputTokens: r.inputTokens,
+                    outputTokens: r.outputTokens,
+                })),
+            });
+
+            let parsed: any;
+            try {
+                let raw = response.text.trim();
+                const fence = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+                if (fence) raw = fence[1].trim();
+                parsed = JSON.parse(raw);
+            } catch {
+                parsed = { error: 'No se pudo parsear la respuesta del analista.', raw: response.text };
+            }
+
+            if (parsed.error) {
+                setAnalysisError(parsed.error);
+            } else {
+                setAnalysisResult(parsed);
+            }
+        } catch (error: any) {
+            setAnalysisError(error?.message || String(error));
+        } finally {
+            setIsAnalyzing(false);
+        }
+    }, [isAnalyzing, runFinished, results, analysisModel, prompt]);
 
     // Retry a single model
     const handleRetryModel = useCallback(async (modelApiName: string) => {
@@ -741,6 +803,8 @@ function PlaygroundPanel() {
         setModelTimes(new Map());
         setExpandedCards(new Set());
         setCurrentModelIndex(0);
+        setAnalysisResult(null);
+        setAnalysisError(null);
         cancelledRef.current = false;
         skipCurrentRef.current = false;
         userScrolledRef.current = false;
@@ -1187,6 +1251,16 @@ function PlaygroundPanel() {
                     opacity: 0.5;
                     cursor: not-allowed;
                 }
+                .playground-send-btn--cancel {
+                    background: oklch(0.55 0.2 25);
+                    color: white;
+                    border: 1px solid oklch(0.55 0.2 25 / 0.3);
+                }
+                .playground-send-btn--cancel:hover:not(:disabled) {
+                    opacity: 1;
+                    background: oklch(0.50 0.22 25);
+                    box-shadow: 0 2px 12px oklch(0.55 0.2 25 / 0.3);
+                }
 
                 .playground-results {
                     display: flex;
@@ -1307,6 +1381,140 @@ function PlaygroundPanel() {
                     color: var(--muted-foreground);
                     opacity: 0.6;
                 }
+
+                /* ── Analysis Section ── */
+                .playground-analysis-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    animation: resultIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+                .playground-analysis-bar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    padding: 10px 16px;
+                    border: 1px solid oklch(from var(--primary) l c h / 0.2);
+                    border-radius: 12px;
+                    background: oklch(from var(--primary) l c h / 0.04);
+                }
+                .playground-analyze-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 8px;
+                    background: linear-gradient(135deg, oklch(from var(--primary) l c h), oklch(from var(--primary) calc(l - 0.08) calc(c + 0.02) calc(h + 15)));
+                    color: var(--primary-foreground);
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+                    white-space: nowrap;
+                }
+                .playground-analyze-btn:hover:not(:disabled) {
+                    opacity: 0.92;
+                    box-shadow: 0 2px 12px oklch(from var(--primary) l c h / 0.25);
+                }
+                .playground-analyze-btn:active:not(:disabled) { transform: scale(0.97); }
+                .playground-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+                .playground-analysis-results {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    animation: resultIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+                .playground-analysis-summary {
+                    display: flex;
+                    gap: 10px;
+                    padding: 14px 16px;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--card, var(--background));
+                }
+                .playground-analysis-winners {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+                .playground-winner-card {
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    background: var(--card, var(--background));
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                }
+                .playground-winner-card:hover { box-shadow: 0 2px 16px oklch(0 0 0 / 0.08); }
+                .playground-winner-card.ratio { border-color: oklch(0.75 0.15 85 / 0.3); }
+                .playground-winner-card.quality { border-color: oklch(0.65 0.18 160 / 0.3); }
+
+                .winner-header { display: flex; align-items: center; gap: 10px; }
+                .winner-icon {
+                    width: 36px; height: 36px;
+                    border-radius: 10px;
+                    display: flex; align-items: center; justify-content: center;
+                    flex-shrink: 0;
+                }
+                .winner-icon.ratio { background: oklch(0.75 0.15 85 / 0.15); color: oklch(0.75 0.15 85); }
+                .winner-icon.quality { background: oklch(0.65 0.18 160 / 0.15); color: oklch(0.65 0.18 160); }
+                .winner-score {
+                    margin-left: auto;
+                    font-size: 28px; font-weight: 800; line-height: 1;
+                    color: var(--primary);
+                    font-variant-numeric: tabular-nums;
+                    opacity: 0.8;
+                }
+
+                .playground-rankings {
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    background: var(--card, var(--background));
+                }
+                .rankings-grid { display: flex; flex-direction: column; gap: 2px; }
+                .rankings-header {
+                    display: grid;
+                    grid-template-columns: 32px 1fr 120px 120px 120px;
+                    gap: 8px; padding: 6px 8px;
+                    font-size: 10px; font-weight: 600;
+                    text-transform: uppercase; letter-spacing: 0.05em;
+                    color: var(--muted-foreground); opacity: 0.5;
+                }
+                .rankings-row {
+                    display: grid;
+                    grid-template-columns: 32px 1fr 120px 120px 120px;
+                    gap: 8px; padding: 8px;
+                    border-radius: 8px; align-items: center;
+                    transition: background 0.15s;
+                }
+                .rankings-row:hover { background: var(--muted); }
+                .ranking-pos {
+                    font-size: 12px; font-weight: 700;
+                    text-align: center; color: var(--muted-foreground);
+                }
+                .ranking-pos.gold { color: #f59e0b; }
+                .ranking-pos.silver { color: #94a3b8; }
+                .ranking-pos.bronze { color: #d97706; }
+                .score-cell {
+                    display: flex; align-items: center; gap: 6px;
+                    font-size: 11px; font-weight: 500;
+                    font-variant-numeric: tabular-nums;
+                    color: var(--muted-foreground);
+                }
+                .score-bar {
+                    flex: 1; height: 6px; border-radius: 3px;
+                    background: var(--muted); overflow: hidden;
+                }
+                .score-fill {
+                    height: 100%; border-radius: 3px;
+                    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+                .score-fill.quality { background: oklch(0.65 0.18 160); }
+                .score-fill.speed { background: oklch(0.75 0.15 85); }
+                .score-fill.overall { background: var(--primary); }
             `}</style>
 
             {/* ── Row 1: Model search + chips ── */}
@@ -1664,6 +1872,7 @@ function PlaygroundPanel() {
                     )}
                 </div>
 
+
                 {/* ── Row 2: Options bar ── */}
                 <div className="playground-toolbar">
                     {/* Sort selector */}
@@ -1850,10 +2059,9 @@ function PlaygroundPanel() {
                     {/* Send / Cancel */}
                     <button
                         type="button"
-                        className="playground-send-btn"
+                        className={cn("playground-send-btn", isRunning && "playground-send-btn--cancel")}
                         onClick={isRunning ? handleCancel : handleSubmit}
                         disabled={!isRunning && (!prompt.trim() || activeModels.length === 0)}
-                        style={isRunning ? { background: 'var(--destructive)', color: 'var(--destructive-foreground)' } : undefined}
                     >
                         {isRunning ? (
                             <>
@@ -1868,6 +2076,99 @@ function PlaygroundPanel() {
                         )}
                     </button>
                 </div>
+
+                {/* ── Analysis row (appears after run finishes) ── */}
+                {runFinished && results.filter(r => r.text && !r.text.startsWith('Error:') && !r.text.startsWith('⏱️')).length > 0 && (
+                    <div className="playground-analysis-section">
+                        <div className="playground-analysis-bar">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Brain size={16} className="text-primary shrink-0" />
+                                <span className="typo-label text-sm font-semibold">Analizar resultados</span>
+                                <span className="typo-micro text-muted-foreground">
+                                    ({results.filter(r => r.text && !r.text.startsWith('Error:') && !r.text.startsWith('⏱️')).length} completados)
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <SettingsModelSelector
+                                    selectedModel={analysisModel}
+                                    onModelSelect={setAnalysisModel}
+                                    models={[...allModels].sort((a, b) => {
+                                        if (a.apiName === analysisModel) return -1;
+                                        if (b.apiName === analysisModel) return 1;
+                                        return 0;
+                                    })}
+                                    placeholder="Modelo analista"
+                                    size="sm"
+                                    variant="pill"
+                                    disableEnabledFilter
+                                />
+                                <button type="button" className="playground-analyze-btn" onClick={handleAnalyze} disabled={isAnalyzing}>
+                                    {isAnalyzing ? (<><Loader2 size={14} className="animate-spin" /> Analizando…</>) : (<><BarChart3 size={14} /> Analizar</>)}
+                                </button>
+                            </div>
+                        </div>
+                        {analysisError && (
+                            <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive typo-body text-sm">
+                                <AlertCircle size={14} /> {analysisError}
+                            </div>
+                        )}
+                        {analysisResult && (
+                            <div className="playground-analysis-results">
+                                {analysisResult.summary && (
+                                    <div className="playground-analysis-summary">
+                                        <Sparkles size={14} className="text-primary shrink-0 mt-0.5" />
+                                        <p className="typo-body text-sm leading-relaxed">{analysisResult.summary}</p>
+                                    </div>
+                                )}
+                                <div className="playground-analysis-winners">
+                                    {analysisResult.bestQualityTime && (
+                                        <div className="playground-winner-card ratio">
+                                            <div className="winner-header">
+                                                <div className="winner-icon ratio"><Zap size={16} /></div>
+                                                <div>
+                                                    <h4 className="typo-label text-xs uppercase tracking-wider opacity-60">Mejor Calidad / Tiempo</h4>
+                                                    <p className="typo-label text-sm font-bold mt-0.5">{analysisResult.bestQualityTime.modelDisplayName}</p>
+                                                </div>
+                                                <div className="winner-score">{analysisResult.bestQualityTime.score}</div>
+                                            </div>
+                                            <p className="typo-body text-xs leading-relaxed text-muted-foreground mt-3">{analysisResult.bestQualityTime.justification}</p>
+                                        </div>
+                                    )}
+                                    {analysisResult.bestQualityOnly && (
+                                        <div className="playground-winner-card quality">
+                                            <div className="winner-header">
+                                                <div className="winner-icon quality"><Trophy size={16} /></div>
+                                                <div>
+                                                    <h4 className="typo-label text-xs uppercase tracking-wider opacity-60">Mejor Calidad Absoluta</h4>
+                                                    <p className="typo-label text-sm font-bold mt-0.5">{analysisResult.bestQualityOnly.modelDisplayName}</p>
+                                                </div>
+                                                <div className="winner-score">{analysisResult.bestQualityOnly.score}</div>
+                                            </div>
+                                            <p className="typo-body text-xs leading-relaxed text-muted-foreground mt-3">{analysisResult.bestQualityOnly.justification}</p>
+                                        </div>
+                                    )}
+                                </div>
+                                {analysisResult.rankings && analysisResult.rankings.length > 0 && (
+                                    <div className="playground-rankings">
+                                        <h4 className="typo-label text-xs uppercase tracking-wider opacity-60 mb-3 flex items-center gap-2"><Award size={13} /> Ranking completo</h4>
+                                        <div className="rankings-grid">
+                                            <div className="rankings-header"><span>#</span><span>Modelo</span><span>Calidad</span><span>Velocidad</span><span>Global</span></div>
+                                            {analysisResult.rankings.map((r: any, idx: number) => (
+                                                <div key={r.modelApiName || idx} className="rankings-row">
+                                                    <div className={cn("ranking-pos", idx === 0 && "gold", idx === 1 && "silver", idx === 2 && "bronze")}>{idx + 1}</div>
+                                                    <div className="text-sm font-medium truncate" title={r.modelApiName}>{r.modelDisplayName}</div>
+                                                    <div className="score-cell"><div className="score-bar"><div className="score-fill quality" style={{ width: `${r.qualityScore || 0}%` }} /></div><span>{r.qualityScore}</span></div>
+                                                    <div className="score-cell"><div className="score-bar"><div className="score-fill speed" style={{ width: `${r.speedScore || 0}%` }} /></div><span>{r.speedScore}</span></div>
+                                                    <div className="score-cell"><div className="score-bar"><div className="score-fill overall" style={{ width: `${r.overallScore || 0}%` }} /></div><span className="font-bold">{r.overallScore}</span></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* ── Row 3: Collapsible prompt + Prompt Presets ── */}
                 <div

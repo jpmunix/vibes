@@ -231,6 +231,28 @@ export const miscContracts = {
     input: z.object({}),
     output: z.object({ cancelled: z.boolean() }),
   }),
+
+  // Playground — AI analysis of model results
+  playgroundAnalyze: defineContract({
+    channel: "playground:analyze",
+    input: z.object({
+      model: z.string(),
+      originalPrompt: z.string(),
+      results: z.array(z.object({
+        modelApiName: z.string(),
+        modelDisplayName: z.string(),
+        text: z.string(),
+        durationMs: z.number(),
+        inputTokens: z.number().optional(),
+        outputTokens: z.number().optional(),
+        error: z.boolean().optional(),
+        timeout: z.boolean().optional(),
+      })),
+    }),
+    output: z.object({
+      text: z.string(),
+    }),
+  }),
 } as const;
 
 export const AppLogsBatchSchema = z.object({
