@@ -64,87 +64,85 @@ export function registerPlaygroundHandlers() {
     return { cancelled: false };
   });
 
-  // ── Playground analysis ──────────────────────────────────────────────────
+  // ── Playground Analysis ──────────────────────────────────────────────
   createTypedHandler(miscContracts.playgroundAnalyze, async (_, { model, originalPrompt, results }) => {
     logger.info(`Playground analysis request: model=${model}, results=${results.length}`);
 
-    const completedResults = results.filter(r => !r.error && !r.timeout);
-    if (completedResults.length === 0) {
-      return { text: JSON.stringify({ error: "No hay resultados completados para analizar." }) };
+    // Filter out errored/timed-out results
+    const valid = results.filter(r => !r.error && !r.timeout && r.text?.trim());
+    if (valid.length === 0) {
+      return { text: JSON.stringify({ error: "No hay resultados válidos para analizar." }) };
     }
 
-    const systemPrompt = `Eres un analista experto de primer nivel especializado en evaluar y comparar respuestas generadas por modelos de inteligencia artificial. Tu misión es determinar cuáles son las mejores respuestas entre un conjunto de candidatos.
+    // Build context block for the analyst
+    const resultsBlock = valid.map((r, i) => {
+      return `### Modelo ${i + 1}: ${r.modelDisplayName} (${r.modelApiName})
+- Latencia: ${r.durationMs}ms
+- Tokens entrada: ${r.inputTokens ?? "N/A"}
+- Tokens salida: ${r.outputTokens ?? "N/A"}
 
-Se te proporcionará:
-1. El prompt original que se envió a todos los modelos
-2. Las respuestas de cada modelo junto con sus métricas de rendimiento (tiempo de respuesta, tokens de entrada/salida)
+Respuesta:
+${r.text}`;
+    }).join("\n\n---\n\n");
 
-Debes responder EXCLUSIVAMENTE en formato JSON válido con la siguiente estructura exacta:
+    const systemPrompt = `Eres un analista experto en evaluar respuestas de modelos de inteligencia artificial. Tu trabajo es analizar las respuestas dadas por múltiples modelos al mismo prompt y determinar cuál es el mejor.
 
+Tu análisis DEBE ser en formato JSON estricto con esta estructura exacta:
 {
-  "best_quality_time_ratio": {
-    "model_api_name": "<apiName del modelo ganador>",
-    "model_display_name": "<nombre visible del modelo ganador>",
-    "score": <número de 1 a 100>,
-    "reasoning": "<explicación detallada de por qué este modelo ofrece la mejor relación calidad/tiempo>"
+  "summary": "Resumen ejecutivo del análisis en 2-3 frases",
+  "bestQualityTime": {
+    "modelApiName": "nombre_api_del_modelo",
+    "modelDisplayName": "Nombre visible",
+    "score": 85,
+    "justification": "Explicación de por qué gana en relación calidad/tiempo"
   },
-  "best_quality_only": {
-    "model_api_name": "<apiName del modelo ganador>",
-    "model_display_name": "<nombre visible del modelo ganador>",
-    "score": <número de 1 a 100>,
-    "reasoning": "<explicación detallada de por qué este modelo tiene la mejor calidad absoluta>"
+  "bestQualityOnly": {
+    "modelApiName": "nombre_api_del_modelo",
+    "modelDisplayName": "Nombre visible",
+    "score": 92,
+    "justification": "Explicación de por qué gana en calidad pura"
   },
   "rankings": [
     {
-      "model_api_name": "<apiName>",
-      "model_display_name": "<nombre visible>",
-      "quality_score": <1-100>,
-      "speed_score": <1-100>,
-      "overall_score": <1-100>,
-      "brief": "<resumen breve de fortalezas/debilidades>"
+      "position": 1,
+      "modelApiName": "nombre_api_del_modelo",
+      "modelDisplayName": "Nombre visible",
+      "qualityScore": 92,
+      "speedScore": 78,
+      "overallScore": 87,
+      "shortVerdict": "Breve veredicto de 1 frase"
     }
-  ],
-  "summary": "<resumen ejecutivo general de la comparativa en 2-3 frases>"
+  ]
 }
 
-CRITERIOS DE EVALUACIÓN:
-- Calidad: Precisión, completitud, coherencia, relevancia al prompt, y profundidad de la respuesta
-- Velocidad: Tiempo de respuesta (menor = mejor) 
-- Relación calidad/tiempo: Un modelo puede ser ligeramente inferior en calidad pero mucho más rápido, lo que lo hace más eficiente
-- Los rankings deben estar ordenados de mejor a peor en puntuación general (overall_score)
+Criterios de evaluación:
+- **Calidad**: precisión, completitud, claridad, estructura y relevancia de la respuesta
+- **Velocidad**: tiempo de respuesta (latencia) — menor es mejor
+- **Relación calidad/tiempo**: el balance óptimo entre ambos factores
+- Los scores van de 0 a 100
+- El ranking debe incluir TODOS los modelos ordenados por overallScore descendente
+- Responde ÚNICAMENTE con el JSON, sin texto adicional`;
 
-Responde SOLO con el JSON, sin texto adicional ni markdown.`;
+    const userMessage = `Prompt original del usuario:
+"${originalPrompt}"
 
-    const userContent = `## Prompt Original
-${originalPrompt}
+Resultados de los modelos:
 
-## Respuestas de los Modelos
-
-${completedResults.map((r, i) => `### Modelo ${i + 1}: ${r.modelDisplayName} (${r.modelApiName})
-- Tiempo de respuesta: ${(r.durationMs / 1000).toFixed(2)}s (${r.durationMs}ms)
-${r.inputTokens != null ? `- Tokens de entrada: ${r.inputTokens}` : ''}
-${r.outputTokens != null ? `- Tokens de salida: ${r.outputTokens}` : ''}
-- Longitud de respuesta: ${r.text.length} caracteres
-
-**Respuesta:**
-\`\`\`
-${r.text.slice(0, 8000)}${r.text.length > 8000 ? '\n... (truncado)' : ''}
-\`\`\`
-`).join('\n---\n\n')}`;
+${resultsBlock}`;
 
     try {
       const data = await openRouterCompletion({
         model,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
+          { role: "user", content: userMessage },
         ],
         temperature: 0.3,
         title: "playground-analysis",
         response_format: { type: "json_object" },
       });
 
-      const text = data?.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
+      const text = data?.choices?.[0]?.message?.content || "{}";
       return { text };
     } catch (error: any) {
       logger.error("Playground analysis failed:", error);

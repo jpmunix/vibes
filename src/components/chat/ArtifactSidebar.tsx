@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { Panel, PanelResizeHandle } from "react-resizable-panels";
@@ -138,6 +138,8 @@ export function ArtifactSidebar() {
   const path = useAtomValue(selectedArtifactPathAtom);
   const appId = useAtomValue(selectedAppIdAtom);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
+  const isStreamingById = useAtomValue(isStreamingByIdAtom);
+  const isStreaming = !!(selectedChatId && isStreamingById.get(selectedChatId));
 
   // Close sidebar when switching chats
   const prevChatId = useRef(selectedChatId);
@@ -162,6 +164,9 @@ export function ArtifactSidebar() {
       return await ipc.chat.getChatArtifactContent({ appId, path });
     },
     enabled: isOpen && !!appId && !!path,
+    // Poll every 5s ONLY when sidebar is open AND agent finished responding.
+    // This detects file changes post-acceptance so the backend can reset accepted.
+    refetchInterval: (isOpen && !isStreaming) ? 5000 : false,
   });
 
   // ── Auto-register artifact if missing from DB ──────────────────────────
@@ -185,6 +190,16 @@ export function ArtifactSidebar() {
         .catch(() => {}); // non-fatal
     }
   }, [isOpen, currentArtifact, content, path, appId, selectedChatId, invalidateArtifacts]);
+
+  // ── Re-verify acceptance when content changes (post-agent modification) ─
+  const prevContentRef2 = useRef<string | null>(null);
+  useEffect(() => {
+    if (content && prevContentRef2.current !== null && content !== prevContentRef2.current) {
+      // Content changed on disk → force getChatArtifacts which checks mtime vs updatedAt
+      invalidateArtifacts();
+    }
+    prevContentRef2.current = content ?? null;
+  }, [content, invalidateArtifacts]);
 
 
   const { title, body } = useMemo(() => {
@@ -324,6 +339,7 @@ export function ArtifactSidebar() {
       prompt: reviewMessage.trim() || "Acepto. Procede con lo propuesto.",
       chatId: selectedChatId,
       priorMessages,
+      chatModeOverride: "agent",
     });
     setIsOpen(false);
     setIsReviewOpen(false);

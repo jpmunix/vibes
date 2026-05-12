@@ -6,8 +6,10 @@ import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
 const DEFAULT_MODEL = DEFAULT_STRATEGIST_MODEL;
 
 /**
- * Selector for the "Modelo Estratega" — reasoning agents (plan, explore, general).
- * Uses the `strategistModel` settings key.
+ * Selector for the "Modelo Estratega" — used for background/auxiliary tasks
+ * (titles, summaries, compaction, mockups).
+ * The main chat model for all modes (agent, plan, ask) is controlled by
+ * the global ModelPicker in the chat input area.
  */
 export function StrategistModelSelector() {
     const { settings, updateSettings } = useSettings();

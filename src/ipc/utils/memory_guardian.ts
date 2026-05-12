@@ -57,6 +57,60 @@ export function stripThinkingBlocks(text: string): string {
 }
 
 // =============================================================================
+// Strip Vibes Tool Tags (XML noise from agent messages)
+// =============================================================================
+
+/**
+ * All custom XML tags used by the Vibes agent for tool calls, file writes,
+ * command execution, etc. Their content is operational noise — not useful
+ * for summarization or memory extraction.
+ */
+const VIBES_TOOL_TAG_NAMES = [
+    "vibes-write", "vibes-rename", "vibes-delete", "vibes-add-dependency",
+    "vibes-execute-sql", "vibes-read-logs", "vibes-add-integration",
+    "vibes-output", "vibes-problem-report", "vibes-chat-summary",
+    "set_chat_summary", "vibes-edit", "vibes-grep", "vibes-search-replace",
+    "vibes-codebase-context", "vibes-web-crawl", "vibes-code-search-result",
+    "vibes-code-search", "vibes-read", "vibes-command",
+    "vibes-mcp-tool-call", "vibes-mcp-tool-result", "vibes-list-files",
+    "vibes-database-schema", "vibes-supabase-table-schema",
+    "vibes-supabase-project-info", "vibes-pocketbase-info",
+    "vibes-pocketbase-storage-info", "vibes-bunny-db-info",
+    "vibes-bunny-storage-info", "vibes-status", "vibes-think", "vibes-git",
+    "vibes-ask-user", "vibes-patch", "vibes-run-command",
+    "vibes-start-process", "vibes-stop-process", "vibes-list-processes",
+    "vibes-wait-http", "vibes-typecheck-summary", "vibes-token-usage",
+    "vibes-cancelled",
+];
+
+const VIBES_TOOL_TAG_GROUP = VIBES_TOOL_TAG_NAMES.join("|");
+
+const VIBES_TOOL_TAG_REGEX = new RegExp(
+    `<(?:${VIBES_TOOL_TAG_GROUP})(?:\\s[^>]*)?>[\\s\\S]*?<\\/(?:${VIBES_TOOL_TAG_GROUP})>`,
+    "gi",
+);
+
+/**
+ * Remove all Vibes custom XML tool tags and their content from a message.
+ * Keeps only the human-readable prose (explanations, decisions, etc.).
+ */
+export function stripVibesToolTags(text: string): string {
+    return text.replace(VIBES_TOOL_TAG_REGEX, "");
+}
+
+/**
+ * Full noise cleanup: strip thinking blocks + Vibes tool tags + collapse whitespace.
+ * Use this when preparing message content for summarization or memory extraction.
+ */
+export function stripAllNoise(text: string): string {
+    let cleaned = stripThinkingBlocks(text);
+    cleaned = stripVibesToolTags(cleaned);
+    // Collapse excessive blank lines left behind
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+    return cleaned;
+}
+
+// =============================================================================
 // Trivial Ack Detection
 // =============================================================================
 

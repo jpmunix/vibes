@@ -1381,11 +1381,16 @@ export function registerAppHandlers() {
     logger.log("deleting settings...");
     // 2. Remove settings
     const userDataPath = getUserDataPath();
-    const settingsPath = path.join(userDataPath, "user-settings.json");
+    const sessionPath = path.join(userDataPath, "session.json");
+    const runtimePath = path.join(userDataPath, "runtime-state.json");
 
-    if (fs.existsSync(settingsPath)) {
-      await fsPromises.unlink(settingsPath);
-      logger.log(`Settings file deleted: ${settingsPath}`);
+    if (fs.existsSync(sessionPath)) {
+      await fsPromises.unlink(sessionPath);
+      logger.log(`Session file deleted: ${sessionPath}`);
+    }
+    if (fs.existsSync(runtimePath)) {
+      await fsPromises.unlink(runtimePath);
+      logger.log(`Runtime state file deleted: ${runtimePath}`);
     }
     logger.log("settings deleted.");
     // 3. Remove all app files recursively

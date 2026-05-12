@@ -2,15 +2,14 @@ import React, { useRef, useState, useCallback } from "react";
 import type { FileAttachment } from "@/ipc/types";
 import { useAtom } from "jotai";
 import { attachmentsAtom } from "@/atoms/chatAtoms";
-import { showWarning, showWarningLong } from "@/lib/toast";
-import { useSelectedModelSupportsImages, useIsStrategistMode } from "./useSelectedModelSupportsImages";
+import { showWarning } from "@/lib/toast";
+import { useSelectedModelSupportsImages } from "./useSelectedModelSupportsImages";
 
 export function useAttachments() {
   const [attachments, setAttachments] = useAtom(attachmentsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const supportsImages = useSelectedModelSupportsImages();
-  const isStrategistMode = useIsStrategistMode();
 
   const handleAttachmentClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -79,11 +78,7 @@ export function useAttachments() {
         if (!supportsImages) {
           const hasImages = files.some(f => f.type.startsWith("image/"));
           if (hasImages) {
-             if (isStrategistMode) {
-               showWarningLong("El modelo estratega no soporta imágenes. Cámbialo en Ajustes → Agente → Modelo Estratega.");
-             } else {
-               showWarning("El modelo actual no soporta imágenes");
-             }
+             showWarning("El modelo actual no soporta imágenes");
              files = files.filter(f => !f.type.startsWith("image/"));
              if (files.length === 0) return;
           }
@@ -130,11 +125,7 @@ export function useAttachments() {
         e.preventDefault(); // Prevent default paste behavior for images
 
         if (!supportsImages) {
-          if (isStrategistMode) {
-            showWarningLong("El modelo estratega no soporta imágenes. Cámbialo en Ajustes → Agente → Modelo Estratega.");
-          } else {
-            showWarning("El modelo actual no soporta imágenes");
-          }
+          showWarning("El modelo actual no soporta imágenes");
           return;
         }
 

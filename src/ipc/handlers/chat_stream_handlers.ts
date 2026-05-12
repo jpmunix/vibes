@@ -93,7 +93,6 @@ import z from "zod";
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
-  DEFAULT_STRATEGIST_MODEL,
   DEFAULT_EXECUTOR_MODEL
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
@@ -563,11 +562,11 @@ ${componentSnippet}
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
-      if (agentId === "plan" || agentId === "explore") {
-        // Prioritize transient override from the frontend (plan mode picker)
-        effectiveModelName = (req.modelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL).replace(/^openrouter\//, "");
-      } else if (agentId === "mockup") {
+      // All modes (agent, plan, ask) use the selectedModel from the dropdown.
+      // Only mockup uses the executorModel (lightweight, fast).
+      if (agentId === "mockup") {
         effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
+        selectedModel = { name: effectiveModelName, provider: "openrouter" };
       }
 
       // Check if this is a test prompt
@@ -1332,6 +1331,15 @@ This conversation includes one or more image attachments. When the user uploads 
           contextInstructions.push(
             getEffectivePrompt("ctx_task_management", settings)
           );
+
+          // 7. Caveman mode — ultra-terse responses to save ~20-30% tokens
+          logger.info(`[OPENCODE] 🦴 enableCavemanMode = ${settings.enableCavemanMode} (type: ${typeof settings.enableCavemanMode})`);
+          if (settings.enableCavemanMode) {
+            const cavemanText = getEffectivePrompt("ctx_caveman_mode", settings);
+            logger.info(`[OPENCODE] 🦴 Caveman text length: ${cavemanText.length} chars`);
+            contextInstructions.push(cavemanText);
+            logger.info("[OPENCODE] 🦴 Caveman mode ACTIVE — injecting ultra-terse directive");
+          }
 
 
           // 6. Plan mode — interactive question-driven planning

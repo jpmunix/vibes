@@ -565,6 +565,9 @@ export const UserSettingsSchema = z
     gitCommitPanelSize: z.number().optional(),
     // Show/hide cost display in chat headers and message footers (data is always saved)
     showCostDisplay: z.boolean().optional(),
+    // Caveman mode — forces the agent into ultra-terse, minimal-token communication
+    // to save ~20-30% of output tokens. Off by default.
+    enableCavemanMode: z.boolean().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

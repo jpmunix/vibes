@@ -1,47 +1,19 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 import { useMemo } from "react";
-import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
-import { useAtomValue } from "jotai";
-import { planModelOverrideAtom } from "@/atoms/chatAtoms";
 
 /**
- * Returns whether the *effective* model for the current chat mode supports image inputs.
+ * Returns whether the currently selected model supports image inputs.
  *
- * - In **plan** / **ask** mode the effective model is the transient override
- *   (from `planModelOverrideAtom`) if set, otherwise `strategistModel` from settings.
- * - In **agent** / other modes the effective model is `selectedModel` (any provider).
- *
- * Also exposes `isStrategistMode` so consumers can craft targeted warning messages.
+ * Always checks `selectedModel` — the same model is used for all chat modes
+ * (agent, plan, ask).
  */
 export function useSelectedModelSupportsImages(): boolean {
   const { settings } = useSettings();
-  // We use the language models hook to get the latest cached list
   const { data: modelsByProviders } = useLanguageModelsByProviders();
-  const planModelOverride = useAtomValue(planModelOverrideAtom);
 
   return useMemo(() => {
     if (!settings || !modelsByProviders) return true;
-
-    const mode = settings.selectedChatMode || "agent";
-    const isStrategistMode = mode === "plan" || mode === "ask" || planModelOverride !== null;
-
-    if (isStrategistMode) {
-      // ── Strategist path (plan / ask) ─────────────────────────────
-      // Prioritize the transient override from the plan-mode picker
-      const strategistName = planModelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
-      const openRouterModels = modelsByProviders["openrouter"];
-      if (!openRouterModels) return true; // models not loaded yet
-
-      const model = openRouterModels.find((m) => m.apiName === strategistName);
-      if (model?.inputModalities) {
-        return model.inputModalities.includes("image");
-      }
-      // Default to true for models that don't explicitly specify their modalities.
-      return true;
-    }
-
-    // ── Agent / default path ─────────────────────────────────────
     if (!settings.selectedModel) return true;
 
     const selectedProvider = settings.selectedModel.provider;
@@ -62,16 +34,16 @@ export function useSelectedModelSupportsImages(): boolean {
 
     // Default to true for models that don't explicitly specify their modalities.
     return true;
-  }, [settings?.selectedModel, settings?.selectedChatMode, settings?.strategistModel, modelsByProviders, planModelOverride]);
+  }, [settings?.selectedModel, modelsByProviders]);
 }
 
 /**
- * Returns `true` when the current chat mode routes through the strategist model
- * (plan or ask). Uses the planModelOverride atom as the primary signal.
+ * Returns `true` when the current chat mode is plan or ask.
+ * These modes use the same selectedModel but have different agent behavior
+ * (restricted tools, read-only, etc.).
  */
 export function useIsStrategistMode(): boolean {
   const { settings } = useSettings();
-  const planModelOverride = useAtomValue(planModelOverrideAtom);
   const mode = settings?.selectedChatMode || "agent";
-  return planModelOverride !== null || mode === "plan" || mode === "ask";
+  return mode === "plan" || mode === "ask";
 }

@@ -9,6 +9,7 @@ import {
   Trash2,
   Plus,
   ChevronRight,
+  Wand2,
 } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,6 +41,7 @@ import { AddModelDialog } from "./AddModelDialog";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { useTheme } from "@/contexts/ThemeContext";
+import { CreateCustomModelDialog } from "@/components/CreateCustomModelDialog";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -66,6 +68,7 @@ export function OpenRouterSettings({
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
   const [modelsExpanded, setModelsExpanded] = useState(false);
+  const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
   const openAddModelsRef = useRef<(() => void) | null>(null);
 
 
@@ -381,7 +384,35 @@ export function OpenRouterSettings({
             </div>
           </div>
 
+          {/* Custom Model — opens the create dialog for presets / arbitrary IDs */}
+          <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
+            <div className="flex-1">
+              <h3 className="typo-label">Modelo personalizado</h3>
+              <p className="typo-caption mt-1">
+                Añade presets de OpenRouter o cualquier ID de modelo arbitrario
+              </p>
+            </div>
+            <div onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setIsCustomModelDialogOpen(true)}
+                className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-2"
+              >
+                Crear
+              </button>
+            </div>
+          </div>
 
+          <CreateCustomModelDialog
+            isOpen={isCustomModelDialogOpen}
+            onClose={() => setIsCustomModelDialogOpen(false)}
+            onSuccess={() => {
+              setIsCustomModelDialogOpen(false);
+              queryClient.invalidateQueries({ queryKey: queryKeys.languageModels.byProviders });
+              queryClient.invalidateQueries({ queryKey: queryKeys.languageModels.forProvider({ providerId }) });
+            }}
+            providerId={providerId}
+          />
 
           {/* Custom Models Section - Collapsible */}
           <div className="space-y-4">

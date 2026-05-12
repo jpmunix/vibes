@@ -256,6 +256,17 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
   {
+    id: "caveman-mode",
+    label: "Modo Hombre de las Cavernas",
+    description: "Fuerza al agente a responder con el mínimo de palabras posible para ahorrar tokens",
+    keywords: [
+      "cavernas", "caveman", "unga", "bunga", "tokens", "ahorrar",
+      "minimo", "terse", "corto", "breve", "economico",
+    ],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  {
     id: "chat-view",
     label: "Vista del chat",
     description: "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",

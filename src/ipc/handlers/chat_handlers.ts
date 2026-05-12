@@ -347,6 +347,9 @@ export function registerChatHandlers() {
           return { title: "Nuevo chat" };
         }
 
+        const { getEffectivePrompt } = await import("../../prompts");
+        const chatTitleSystemPrompt = getEffectivePrompt("chat_title", settings);
+
         const data = await openRouterCompletion({
           model,
           title: "chat-title",
@@ -355,12 +358,11 @@ export function registerChatHandlers() {
           messages: [
             {
               role: "system",
-              content:
-                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 100 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
+              content: chatTitleSystemPrompt,
             },
             {
               role: "user",
-              content: `Genera un título corto en español en formato objetivo (sin primera persona) para este chat: "${messageContent.slice(0, 500)}"`,
+              content: messageContent.slice(0, 500),
             },
           ],
         });
@@ -706,15 +708,32 @@ export function registerChatHandlers() {
       throw new Error("Chat not found or is empty");
     }
 
-    // 2. Format history for the prompt
+    // 2. Clean messages: strip all XML tool tags, thinking blocks, and noise
+    //    Keep only the human-readable prose from each message.
+    const { stripAllNoise } = await import("../utils/memory_guardian");
+
     const formattedHistory = oldChat.messages
-      .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .map((m) => {
+        const cleaned = stripAllNoise(m.content);
+        if (!cleaned) return null; // skip messages that were 100% tool noise
+        const role = m.role === "user" ? "User" : "Agent";
+        return `${role}: ${cleaned}`;
+      })
+      .filter(Boolean)
       .join("\n\n");
 
+    if (!formattedHistory.trim()) {
+      throw new Error("El chat no contiene mensajes legibles después de limpiar el ruido");
+    }
+
+    logger.info(`[summarizeToNewChat] Cleaned history: ${formattedHistory.length} chars from ${oldChat.messages.length} messages`);
+
     // 3. Generate summary using openRouterCompletion
+    //    Use strategist model for better reasoning and larger context window.
     const { readSettings } = await import("../../main/settings");
+    const { DEFAULT_STRATEGIST_MODEL } = await import("../../lib/schemas");
     const settings = readSettings();
-    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
 
     let generatedSummary = "";
     try {
@@ -722,7 +741,6 @@ export function registerChatHandlers() {
         model,
         title: "summarize-to-new-chat",
         temperature: 0.2,
-        max_tokens: 2000,
         messages: [
           {
             role: "system",
@@ -867,6 +885,39 @@ export function registerChatHandlers() {
       }
     } catch { /* non-fatal */ }
 
+    // ── Auto-reset accepted if file was modified after acceptance ────
+    // When an artifact is accepted but the agent later modifies the file,
+    // the user needs to review the updated version. Detect this by comparing
+    // the file's mtime against the DB updatedAt (stamped at acceptance time).
+    try {
+      if (chat?.app?.path) {
+        const projectDir2 = getVibesAppPath(chat.app.path);
+        for (const artifact of artifacts) {
+          if (artifact.accepted && artifact.updatedAt) {
+            try {
+              const fullPath = pathMod.join(projectDir2, artifact.path);
+              if (fs.existsSync(fullPath)) {
+                const stat = fs.statSync(fullPath);
+                if (stat.mtime > artifact.updatedAt) {
+                  // File modified AFTER acceptance → reset for re-review
+                  await db.update(remoteSchema.chatArtifacts)
+                    .set({ accepted: 0, updatedAt: new Date() })
+                    .where(eq(remoteSchema.chatArtifacts.id, artifact.id));
+
+                  // Purge stale comments (they reference old content)
+                  await db.delete(remoteSchema.artifactComments)
+                    .where(eq(remoteSchema.artifactComments.artifactId, artifact.id));
+
+                  artifact.accepted = 0;
+                  logger.info(`Auto-reset accepted artifact ${artifact.id} (${artifact.path}) — file modified post-acceptance`);
+                }
+              }
+            } catch { /* non-fatal per artifact */ }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
     return artifacts as any;
   });
 
@@ -901,7 +952,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
 
     await db.update(remoteSchema.chatArtifacts)
-      .set({ accepted: 1 })
+      .set({ accepted: 1, updatedAt: new Date() })
       .where(
         and(
           eq(remoteSchema.chatArtifacts.id, artifactId),

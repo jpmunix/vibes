@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { Plus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
-import { useSelectedModelSupportsImages, useIsStrategistMode } from "@/hooks/useSelectedModelSupportsImages";
+import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AuxiliaryActionsMenuProps {
@@ -20,7 +20,6 @@ export function AuxiliaryActionsMenu({
 }: AuxiliaryActionsMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supportsImages = useSelectedModelSupportsImages();
-  const isStrategistMode = useIsStrategistMode();
 
   const handleClick = () => {
     if (!supportsImages) return;
@@ -54,10 +53,7 @@ export function AuxiliaryActionsMenu({
           </TooltipTrigger>
           {!supportsImages && (
             <TooltipContent>
-              <p>{isStrategistMode
-                ? "El modelo estratega no soporta imágenes. Cámbialo en Ajustes → Agente."
-                : "El modelo actual no soporta imágenes"}
-              </p>
+              <p>El modelo actual no soporta imágenes</p>
             </TooltipContent>
           )}
         </Tooltip>

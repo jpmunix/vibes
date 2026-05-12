@@ -1,6 +1,6 @@
 import { createTypedHandler, HandlerContext } from "./base";
 import { settingsContracts } from "../types/settings";
-import { writeSettings, readSettings } from "../../main/settings";
+import { writeSettings, readSettings, resetSettingsCache } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
@@ -48,10 +48,8 @@ const V10_DEAD_KEYS = [
  * Build a UserSettings-shaped object from the preferences cache.
  * Falls back to local disk for LOCAL_DISK_ONLY_KEYS (windowState, session, etc.).
  */
-function composeSettingsFromCache(userId: string): Record<string, any> {
-  // Local-only fields (windowState, session, isRunning, etc.)
-  // In Electron: from per-user disk file.
-  // In cloud mode: readSettings() returns DEFAULT_SETTINGS (no disk).
+export function composeSettingsFromCache(userId: string): Record<string, any> {
+  // Start with local-only fields from disk
   const localSettings = readSettings();
   const localOnly: Record<string, any> = {};
   for (const key of LOCAL_DISK_ONLY_KEYS) {
@@ -59,9 +57,6 @@ function composeSettingsFromCache(userId: string): Record<string, any> {
       localOnly[key] = (localSettings as any)[key];
     }
   }
-
-  // Always override userId from auth context (not from disk)
-  localOnly.userId = userId;
 
   // Get all preferences from cache
   const prefsMap = preferencesCache.getAll(userId, 0);
@@ -114,8 +109,10 @@ function decomposeAndPersist(
 
 // Legacy export — kept for backward compat during migration period
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
-  // Now just hydrates the preferences cache
-  await preferencesCache.hydrate(userId);
+  // Now just hydrates the preferences cache if needed
+  if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+    await preferencesCache.hydrate(userId);
+  }
   return true;
 }
 
@@ -131,18 +128,8 @@ export function registerSettingsHandlers() {
   // No more blob merge, no LOCAL_ONLY_FIELDS exclusion, no V10_DEAD_KEYS stripping.
   // The KV store IS the source of truth for all preferences.
   createTypedHandler(settingsContracts.getUserSettings, async (_, __, context) => {
-    if (context.userId) {
-      // Auto-hydrate if cache isn't ready (covers first web request)
-      if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== context.userId) {
-        try {
-          await preferencesCache.hydrate(context.userId);
-        } catch (e: any) {
-          logger.warn(`Failed to auto-hydrate preferences in getUserSettings: ${e.message}`);
-        }
-      }
-      if (preferencesCache.isHydrated) {
-        return composeSettingsFromCache(context.userId) as any;
-      }
+    if (context.userId && preferencesCache.isHydrated) {
+      return composeSettingsFromCache(context.userId) as any;
     }
 
     // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
@@ -159,6 +146,9 @@ export function registerSettingsHandlers() {
     if (context.userId && preferencesCache.isHydrated) {
       // New path: decompose into KV cache + local disk
       decomposeAndPersist(context.userId, settings as Record<string, any>);
+      // Invalidate in-memory cache so readSettings() recomposes from fresh KV data.
+      // Without this, the cached object retains stale values for non-LOCAL_DISK_ONLY keys.
+      resetSettingsCache();
     } else {
       // Fallback for pre-auth: write everything to disk
       writeSettings(settings);

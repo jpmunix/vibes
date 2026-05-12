@@ -8,10 +8,12 @@ import dotenv from "dotenv";
 import started from "electron-squirrel-startup";
 import log from "electron-log";
 import {
-  getSettingsFilePath,
   readSettings,
   writeSettings,
 } from "./main/settings";
+import { readSession } from "./main/session";
+import { preferencesCache } from "./main/preferences-cache";
+import { initializeRemoteSchema } from "./db/remote";
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
 import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
@@ -226,7 +228,7 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = needsOptimization ? 4 : 3;
+  const TOTAL_STEPS = needsOptimization ? 5 : 4;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -276,12 +278,27 @@ export async function onReady() {
     logger.warn("Model validation failed (non-fatal):", err),
   );
 
-  // Step N+3: Show main window and close splash
+  // Step N+3: Hydrate KV preferences from BunnyDB
+  const sessionData = readSession();
+  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Cargando preferencias...");
+  if (sessionData?.userId) {
+    try {
+      await initializeRemoteSchema();
+      await preferencesCache.hydrate(sessionData.userId);
+      logger.info(`Splash: hydrated preferences for ${sessionData.userId}`);
+    } catch (err) {
+      logger.warn("Splash: preferences hydration failed (non-fatal):", err);
+    }
+  } else {
+    logger.info("Splash: no session found, skipping preferences hydration");
+  }
+
+  // Step N+4: Show main window and close splash
   // The main window renders behind the splash (splash is alwaysOnTop).
   // No need to wait for did-finish-load — the window has backgroundColor
   // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
   // naturally while the splash fades away.
-  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Cargando...");
+  updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     mainWindow.show();
   }

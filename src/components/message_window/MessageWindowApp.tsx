@@ -109,18 +109,18 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
 
     return (
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6 pb-4 border-b">
-            <h1 className="text-lg font-medium">Debug de Mensaje</h1>
-            <div className="text-xs text-muted-foreground flex gap-4 mt-2">
-              <span>Chat: {chat.title} (ID: {chatId})</span>
-              <span>App ID: {appId}</span>
-              <span>Mensaje ID: {messageId}</span>
-            </div>
+        {/* Header - full width */}
+        <div className="mb-6 pb-4 border-b w-full">
+          <h1 className="text-lg font-medium">Debug de Mensaje</h1>
+          <div className="text-xs text-muted-foreground flex gap-4 mt-2">
+            <span>Chat: {chat.title} (ID: {chatId})</span>
+            <span>App ID: {appId}</span>
+            <span>Mensaje ID: {messageId}</span>
           </div>
-          <div className="chat-container">
-              <ChatMessage message={message} isLastMessage={false} forceFullMode={true} />
-          </div>
+        </div>
+        {/* Message - min 80% width */}
+        <div className="chat-container" style={{ minWidth: '80%', width: '80%', margin: '0 auto' }}>
+            <ChatMessage message={message} isLastMessage={false} forceFullMode={true} />
         </div>
       </div>
     );

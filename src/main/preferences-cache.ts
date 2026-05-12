@@ -11,6 +11,7 @@ import { getRemoteDb } from "../db/remote";
 import { userPreferences } from "../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import log from "electron-log";
+import { resetSettingsCache } from "./settings";
 
 const logger = log.scope("prefs-cache");
 
@@ -75,6 +76,8 @@ class PreferencesCache {
         this.cache.set(ck, row.value);
       }
 
+      resetSettingsCache();
+
       logger.info(`Hydrated ${rows.length} preferences for user ${userId}`);
       return rows.length;
     } catch (err) {
@@ -137,6 +140,7 @@ class PreferencesCache {
   set(userId: string, key: string, value: string, appId = 0): void {
     const ck = this.cacheKey(userId, key, appId);
     this.cache.set(ck, value);
+    resetSettingsCache();
 
     // Async DB write — fire and forget with error logging
     this.writeToDb(userId, key, value, appId).catch((err) => {
@@ -159,6 +163,7 @@ class PreferencesCache {
   delete(userId: string, key: string, appId = 0): void {
     const ck = this.cacheKey(userId, key, appId);
     this.cache.delete(ck);
+    resetSettingsCache();
 
     this.deleteFromDb(userId, key, appId).catch((err) => {
       logger.error(`Failed to delete preference "${key}":`, err);
@@ -187,6 +192,7 @@ class PreferencesCache {
       const ck = this.cacheKey(userId, key, appId);
       this.cache.set(ck, value);
     }
+    resetSettingsCache();
 
     // Async batch write
     this.writeManyToDb(userId, entries, appId).catch((err) => {

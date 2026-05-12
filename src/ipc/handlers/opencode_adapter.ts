@@ -52,21 +52,22 @@ export function getOpenCodeClientInstance() {
 }
 
 /**
- * Resolve the effective model for a given agent.
+ * Resolves the model configuration for a given agent.
  *
- * Three tiers:
- *   - `build` → selectedModel (the chat picker model, user-chosen per session)
- *   - `plan`, `explore`, `general` → strategistModel (reasoning agents)
- *   - `compaction`, `title`, `summary`, `mockup` → executorModel (lightweight tasks)
+ * Model tiers (simplified):
+ *   - `build`, `plan`, `explore`, `general` → selectedModel (the user's chosen model)
+ *   - `compaction`, `title`, `summary`, `mockup` → strategistModel (lightweight background tasks)
  */
 export function resolveModelForAgent(
     agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
     settings: any, // UserSettings
-    /** Transient model override from the plan-mode picker (non-persisted). */
+    /** @deprecated No longer used — kept for API compat. */
     modelOverride?: string,
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
-    // Build always uses the global selectedModel (chat picker)
-    if (agentId === "build") {
+    // Primary agents (build, plan, explore, general) all use selectedModel
+    const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
+
+    if (PRIMARY_AGENTS.has(agentId)) {
         const model = settings.selectedModel;
         const result = {
             model,
@@ -76,18 +77,12 @@ export function resolveModelForAgent(
                 settings.selectedModelVariant ?? "",
             ),
         };
-        logger.info(`[AgentModel] BUILD → ${result.providerID}/${result.modelID} (selectedModel)`);
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
         return result;
     }
 
-    // Reasoning agents: strategistModel (or transient override)
-    const STRATEGIST_AGENTS = new Set(["plan", "explore", "general"]);
-    const isStrategist = STRATEGIST_AGENTS.has(agentId);
-
-    const effectiveModelName = isStrategist
-        ? sanitizeModelName(modelOverride || settings.strategistModel || DEFAULT_STRATEGIST_MODEL)
-        : (settings.executorModel || DEFAULT_EXECUTOR_MODEL);
-    const tier = isStrategist ? "strategist" : "executor";
+    // Background/auxiliary agents use strategistModel (lightweight tasks)
+    const effectiveModelName = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
 
     const agentModel = {
         name: effectiveModelName,
@@ -98,7 +93,7 @@ export function resolveModelForAgent(
         providerID: "openrouter",
         modelID: sanitizeModelName(effectiveModelName),
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (${tier}${modelOverride ? ", override" : ""})`);
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (background/strategist)`);
     return result;
 }
 
@@ -953,7 +948,14 @@ export async function updateOpenCodeConfig(changes: {
             const settings = readSettings();
             const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
             const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
-            body.model = `${providerID}/${modelID}`;
+            const fullModel = `${providerID}/${modelID}`;
+            body.model = fullModel;
+            // Also update plan/explore/general agents to use the same model
+            const agentConfig: Record<string, any> = body.agent || {};
+            for (const id of ["plan", "explore", "general"]) {
+                agentConfig[id] = { ...agentConfig[id], model: fullModel };
+            }
+            body.agent = agentConfig;
         }
         // Executor model → small_model (used for lightweight tasks)
         if (changes.executorModel) {
@@ -968,25 +970,30 @@ export async function updateOpenCodeConfig(changes: {
                 },
             };
         }
-        // Hot-update unified model tiers for agents
-        if (changes.strategistModel || changes.executorModel) {
+        // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
+        if (changes.strategistModel) {
             const agentConfig: Record<string, any> = body.agent || {};
-
-            if (changes.strategistModel) {
-                const model = `openrouter/${sanitizeModelName(changes.strategistModel)}`;
-                for (const id of ["plan", "explore", "general"]) {
-                    agentConfig[id] = { ...agentConfig[id], model };
-                }
+            const model = `openrouter/${sanitizeModelName(changes.strategistModel)}`;
+            for (const id of ["compaction", "title", "summary", "mockup"]) {
+                agentConfig[id] = { ...agentConfig[id], model };
             }
-            if (changes.executorModel) {
-                const model = `openrouter/${changes.executorModel}`;
-                for (const id of ["compaction", "title", "summary", "mockup"]) {
-                    agentConfig[id] = { ...agentConfig[id], model };
-                }
-            }
-
             body.agent = agentConfig;
-            logger.info(`[OpenCode] Model tiers updated: strategist=${changes.strategistModel || '(unchanged)'}, executor=${changes.executorModel || '(unchanged)'}`);
+            logger.info(`[OpenCode] Background model updated: strategist=${changes.strategistModel}`);
+        }
+
+        // ── Always register the model in provider.models for hot-update ──
+        // Same workaround as createOpencode: register any OpenRouter model
+        // so OpenCode passes it straight to the API without internal parsing.
+        const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
+        if (currentModelID) {
+            body.provider = {
+                openrouter: {
+                    models: {
+                        [currentModelID]: {},
+                    },
+                },
+            };
+            logger.info(`[OpenCode] Hot-registered model: ${currentModelID}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1448,10 +1455,21 @@ async function getOpenCodeClient(appPath: string) {
 
         // Dynamic instructions are written to docs/vibes-context.md per-request
         // and registered in the project's opencode.json (same pattern as DESIGN.md).
+        // ── Always register the model in provider.models ──
+        // OpenCode's model parser can't handle special characters (:, @) in
+        // model IDs. Workaround: always register the model explicitly so
+        // OpenCode passes the ID straight to the provider's API.
+        const openrouterModels: Record<string, object> = {};
+        if (providerID === "openrouter") {
+            openrouterModels[modelID] = {};
+            logger.info(`[OpenCode] Registered model in provider config: ${modelID}`);
+        }
+
         const config = {
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
+                            ...(Object.keys(openrouterModels).length > 0 ? { models: openrouterModels } : {}),
                             options: {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
@@ -1478,29 +1496,24 @@ async function getOpenCodeClient(appPath: string) {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
                     },
-                    // Strategist tier — reasoning agents
+                    // All primary agents use selectedModel (same as global `model` above)
                     plan: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        // model inherited from global `model` — no override needed
                         permission: {
                             edit: "allow",
                             bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
                         }
                     },
-                    explore: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
-                    },
-                    general: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
-                    },
-                    // Executor tier — lightweight tasks
+                    // explore and general inherit the global model automatically
+                    // Background/auxiliary tasks use strategistModel
                     compaction: {
-                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     title: {
-                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     summary: {
-                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.

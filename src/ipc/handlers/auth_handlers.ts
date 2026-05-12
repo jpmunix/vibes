@@ -149,8 +149,10 @@ export function registerAuthHandlers(): void {
             sessionToken: { value: sessionToken, encryptionType: "plaintext" },
         });
 
-        // Hydrate preferences cache from DB (replaces forceSyncRemoteSettingsToLocal)
-        await preferencesCache.hydrate(user.id);
+        // Hydrate preferences cache from DB only if needed
+        if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== user.id) {
+            await preferencesCache.hydrate(user.id);
+        }
 
         return {
             user: toUserDto(user),
@@ -191,8 +193,10 @@ export function registerAuthHandlers(): void {
                 sessionToken: { value: input.sessionToken, encryptionType: "plaintext" },
             });
 
-            // Hydrate preferences cache from DB (replaces forceSyncRemoteSettingsToLocal)
-            await preferencesCache.hydrate(user.id);
+            // Hydrate preferences cache from DB only if needed
+            if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== user.id) {
+                await preferencesCache.hydrate(user.id);
+            }
 
             return {
                 valid: true,

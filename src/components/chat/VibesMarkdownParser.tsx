@@ -378,7 +378,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
     // Buffer for consecutive flow-mode think blocks (merged into one FlowThinkBlock)
     let flowThinkBuffer: string[] = [];
-    const flushFlowThinkBuffer = () => {
+    const flushFlowThinkBuffer = (isActivelyStreaming = false) => {
       if (flowThinkBuffer.length > 0) {
         const merged = flowThinkBuffer.join("\n\n");
         elements.push(
@@ -386,7 +386,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             key={`flow-think-merged-${elements.length}`}
             content={merged}
             markdownComponents={MARKDOWN_COMPONENTS}
-            isStreaming={isStreaming}
+            isStreaming={isActivelyStreaming}
           />
         );
         flowThinkBuffer = [];
@@ -469,9 +469,20 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           } else if (isFlowMode && isThinkTag && piece.tagInfo.content?.trim()) {
             // Flow mode: accumulate consecutive think tags into the buffer
             flowThinkBuffer.push(piece.tagInfo.content);
-            // If the next piece is NOT another think tag, flush now
+            // If the next piece is NOT another think tag, flush now —
+            // BUT only if there's actual visible content after us (prose, output, etc.).
+            // If we're just at the end of the parsed content during streaming,
+            // let the final flush handle it (it knows about streaming state).
             if (!isNextPieceFlowThink(index)) {
-              flushFlowThinkBuffer();
+              const hasVisibleContentAfter = contentPieces.slice(index + 1).some((p) => {
+                if (p.type === "markdown") return !!(p.content && p.content.trim());
+                if (p.type === "custom-tag") return ZEN_ALLOWED_TAGS.has(p.tagInfo.tag);
+                return false;
+              });
+              if (hasVisibleContentAfter || !isStreaming) {
+                flushFlowThinkBuffer(); // non-think content follows → think block is done
+              }
+              // else: streaming and nothing visible after → let final flush handle it
             }
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
@@ -554,7 +565,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       }
     });
 
-    flushFlowThinkBuffer();
+    flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
     return elements;
   };

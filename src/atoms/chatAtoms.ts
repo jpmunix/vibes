@@ -123,8 +123,6 @@ export interface SelectedMemoryMeta {
 }
 export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[]>>(new Map());
 
-// Transient (non-persisted) model override for Plan mode.
-// When the user switches to "plan" mode, this atom is initialized with the strategistModel
-// from settings. The user can change it via ModelPicker without persisting to settings.
-// When switching back to "agent", this atom is cleared (null).
+// @deprecated — No longer used. All modes use selectedModel now.
+// Kept for backwards compat; safe to remove after confirming no consumers.
 export const planModelOverrideAtom = atom<string | null>(null);

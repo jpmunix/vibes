@@ -5,7 +5,7 @@ import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 import { selectedDesignAtom } from "@/atoms/chatAtoms";
 import { cn } from "@/lib/utils";
-import { useSelectedModelSupportsImages, useIsStrategistMode } from "@/hooks/useSelectedModelSupportsImages";
+import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
 import { useSettings } from "@/hooks/useSettings";
 import {
   Popover,
@@ -314,7 +314,7 @@ export const DesignPicker: React.FC = () => {
 
   // Vision check — disable screenshot option if model doesn't support images
   const supportsImages = useSelectedModelSupportsImages();
-  const isStrategistMode = useIsStrategistMode();
+
   const { settings } = useSettings();
 
   const { data: designs, isLoading } = useQuery({
@@ -697,9 +697,7 @@ export const DesignPicker: React.FC = () => {
                     <div className="flex flex-col gap-0 min-w-0">
                       <span className="typo-select font-medium text-muted-foreground">Desde captura</span>
                       <span className="typo-micro text-muted-foreground/80 leading-tight">
-                        {isStrategistMode
-                          ? "El modelo estratega no soporta imágenes"
-                          : "El modelo actual no soporta imágenes"}
+                        El modelo actual no soporta imágenes
                       </span>
                     </div>
                   </div>

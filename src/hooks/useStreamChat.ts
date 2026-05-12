@@ -14,7 +14,6 @@ import {
   selectedChatIdAtom,
   pendingMessageQueueByIdAtom,
   selectedMemoriesByChatIdAtom,
-  planModelOverrideAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -84,7 +83,6 @@ export function useStreamChat({
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
   const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
-  const planModelOverride = useAtomValue(planModelOverrideAtom);
 
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
@@ -112,13 +110,14 @@ export function useStreamChat({
     async ({
       prompt,
       chatId,
-      redo,
-      attachments,
-      selectedComponents,
+      redo = false,
+      attachments = [],
+      selectedComponents = [],
       onSettled,
       isSystemPrompt = false,
-      undoRedo,
+      undoRedo = false,
       priorMessages,
+      chatModeOverride,
     }: {
       prompt: string;
       chatId: number;
@@ -130,6 +129,8 @@ export function useStreamChat({
       undoRedo?: boolean;
       /** Pre-converted prior messages to inject into OpenCode via noReply:true */
       priorMessages?: import("@/ipc/types").ChatStreamParams["priorMessages"];
+      /** Synchronously force a specific chat mode for this stream regardless of react state lag */
+      chatModeOverride?: string;
     }) => {
       // Setup listener for undo-redo content restoring
       // This needs to be outside the ipc.chatStream.start call as it's a separate event
@@ -326,8 +327,7 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
-            modelOverride: planModelOverride ?? undefined,
-            chatMode: settings?.selectedChatMode || "agent",
+            chatMode: chatModeOverride || settings?.selectedChatMode || "agent",
           },
           {
             onChunk: ({ messages: updatedMessages }) => {
