@@ -42,6 +42,11 @@ import {
     Database,
     DollarSign,
     AlignLeft,
+    Brain,
+    Trophy,
+    Award,
+    BarChart3,
+    Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -507,6 +512,13 @@ function PlaygroundPanel() {
     const [pendingDeletePromptPreset, setPendingDeletePromptPreset] = useState<string | null>(null);
     const [pendingRenamePromptPreset, setPendingRenamePromptPreset] = useState<string | null>(null);
     const [promptRenameValue, setPromptRenameValue] = useState("");
+    // Analysis state
+    const [analysisModel, setAnalysisModel] = useState('xiaomi/mimo-v2.5-pro');
+    const [analysisModelSearch, setAnalysisModelSearch] = useState('');
+    const [analysisModelPickerOpen, setAnalysisModelPickerOpen] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
 
     // One-shot migration from settings JSON → user_preferences DB
     useEffect(() => {
@@ -683,10 +695,70 @@ function PlaygroundPanel() {
         setPrompt("");
         setActivePresetName(null);
         setActivePromptPreset(null);
+        setAnalysisResult(null);
+        setAnalysisError(null);
+        setIsAnalyzing(false);
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
     }, []);
+
+    // Analysis models picker (filtered)
+    const analysisPickerModels = useMemo(() => {
+        if (!analysisModelSearch.trim()) return allModels;
+        return allModels.filter(m => matchesModelSearch(
+            analysisModelSearch,
+            aliases[m.apiName] || m.displayName,
+            m.apiName,
+        ));
+    }, [analysisModelSearch, allModels, aliases]);
+
+    // Run analysis
+    const handleAnalyze = useCallback(async () => {
+        if (isAnalyzing || !runFinished) return;
+        const completedResults = results.filter(r => !r.error && !r.timeout);
+        if (completedResults.length === 0) return;
+
+        setIsAnalyzing(true);
+        setAnalysisResult(null);
+        setAnalysisError(null);
+
+        try {
+            const response = await ipc.misc.playgroundAnalyze({
+                model: analysisModel,
+                originalPrompt: prompt,
+                results: completedResults.map(r => ({
+                    modelApiName: r.modelApiName,
+                    modelDisplayName: r.modelDisplayName,
+                    text: r.text,
+                    durationMs: r.durationMs,
+                    inputTokens: r.inputTokens,
+                    outputTokens: r.outputTokens,
+                })),
+            });
+
+            let parsed: any;
+            try {
+                let raw = response.text.trim();
+                // Strip markdown code fences if present
+                const fence = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+                if (fence) raw = fence[1].trim();
+                parsed = JSON.parse(raw);
+            } catch {
+                parsed = { error: 'No se pudo parsear la respuesta del analista.', raw: response.text };
+            }
+
+            if (parsed.error) {
+                setAnalysisError(parsed.error);
+            } else {
+                setAnalysisResult(parsed);
+            }
+        } catch (error: any) {
+            setAnalysisError(error?.message || String(error));
+        } finally {
+            setIsAnalyzing(false);
+        }
+    }, [isAnalyzing, runFinished, results, analysisModel, prompt]);
 
     // Retry a single model
     const handleRetryModel = useCallback(async (modelApiName: string) => {
@@ -1307,6 +1379,200 @@ function PlaygroundPanel() {
                     color: var(--muted-foreground);
                     opacity: 0.6;
                 }
+
+                /* ── Analysis Section ── */
+                .playground-analysis-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    animation: resultIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+
+                .playground-analysis-bar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    padding: 10px 16px;
+                    border: 1px solid oklch(from var(--primary) l c h / 0.2);
+                    border-radius: 12px;
+                    background: oklch(from var(--primary) l c h / 0.04);
+                }
+
+                .playground-analyze-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 8px;
+                    background: linear-gradient(135deg, oklch(from var(--primary) l c h), oklch(from var(--primary) calc(l - 0.08) calc(c + 0.02) calc(h + 15)));
+                    color: var(--primary-foreground);
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+                    white-space: nowrap;
+                }
+                .playground-analyze-btn:hover:not(:disabled) {
+                    opacity: 0.92;
+                    box-shadow: 0 2px 12px oklch(from var(--primary) l c h / 0.25);
+                }
+                .playground-analyze-btn:active:not(:disabled) {
+                    transform: scale(0.97);
+                }
+                .playground-analyze-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                .playground-analysis-results {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    animation: resultIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+
+                .playground-analysis-summary {
+                    display: flex;
+                    gap: 10px;
+                    padding: 14px 16px;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--card, var(--background));
+                }
+
+                .playground-analysis-winners {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+
+                .playground-winner-card {
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    background: var(--card, var(--background));
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                }
+                .playground-winner-card:hover {
+                    box-shadow: 0 2px 16px oklch(0 0 0 / 0.08);
+                }
+                .playground-winner-card.ratio {
+                    border-color: oklch(0.75 0.15 85 / 0.3);
+                }
+                .playground-winner-card.quality {
+                    border-color: oklch(0.65 0.18 160 / 0.3);
+                }
+
+                .winner-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .winner-icon {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                }
+                .winner-icon.ratio {
+                    background: oklch(0.75 0.15 85 / 0.15);
+                    color: oklch(0.75 0.15 85);
+                }
+                .winner-icon.quality {
+                    background: oklch(0.65 0.18 160 / 0.15);
+                    color: oklch(0.65 0.18 160);
+                }
+
+                .winner-score {
+                    margin-left: auto;
+                    font-size: 28px;
+                    font-weight: 800;
+                    line-height: 1;
+                    color: var(--primary);
+                    font-variant-numeric: tabular-nums;
+                    opacity: 0.8;
+                }
+
+                .playground-rankings {
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    background: var(--card, var(--background));
+                }
+
+                .rankings-grid {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .rankings-header {
+                    display: grid;
+                    grid-template-columns: 32px 1fr 120px 120px 120px;
+                    gap: 8px;
+                    padding: 6px 8px;
+                    font-size: 10px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    color: var(--muted-foreground);
+                    opacity: 0.5;
+                }
+
+                .rankings-row {
+                    display: grid;
+                    grid-template-columns: 32px 1fr 120px 120px 120px;
+                    gap: 8px;
+                    padding: 8px;
+                    border-radius: 8px;
+                    align-items: center;
+                    transition: background 0.15s;
+                }
+                .rankings-row:hover {
+                    background: var(--muted);
+                }
+
+                .ranking-pos {
+                    font-size: 12px;
+                    font-weight: 700;
+                    text-align: center;
+                    color: var(--muted-foreground);
+                }
+                .ranking-pos.gold { color: #f59e0b; }
+                .ranking-pos.silver { color: #94a3b8; }
+                .ranking-pos.bronze { color: #d97706; }
+
+                .score-cell {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    font-variant-numeric: tabular-nums;
+                    color: var(--muted-foreground);
+                }
+
+                .score-bar {
+                    flex: 1;
+                    height: 6px;
+                    border-radius: 3px;
+                    background: var(--muted);
+                    overflow: hidden;
+                }
+                .score-fill {
+                    height: 100%;
+                    border-radius: 3px;
+                    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+                }
+                .score-fill.quality { background: oklch(0.65 0.18 160); }
+                .score-fill.speed { background: oklch(0.75 0.15 85); }
+                .score-fill.overall { background: var(--primary); }
             `}</style>
 
             {/* ── Row 1: Model search + chips ── */}
@@ -2198,6 +2464,182 @@ function PlaygroundPanel() {
                                 Exportar .md
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* ── Analysis row (appears after run finishes) ── */}
+                {runFinished && results.filter(r => !r.error && !r.timeout).length > 0 && (
+                    <div className="playground-analysis-section">
+                        <div className="playground-analysis-bar">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Brain size={16} className="text-primary shrink-0" />
+                                <span className="typo-label text-sm font-semibold">Analizar resultados</span>
+                                <span className="typo-micro text-muted-foreground">
+                                    ({results.filter(r => !r.error && !r.timeout).length} completados)
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {/* Model picker for analysis */}
+                                <Popover open={analysisModelPickerOpen} onOpenChange={setAnalysisModelPickerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-2 px-3 py-1.5 h-[32px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground max-w-[280px]"
+                                            disabled={isAnalyzing}
+                                        >
+                                            <Sparkles size={12} className="shrink-0 text-primary" />
+                                            <span className="truncate text-xs">{modelDisplayNameMap.get(analysisModel) || analysisModel}</span>
+                                            <ChevronDown size={12} className="shrink-0 opacity-50" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="end" className="w-[360px] p-0" sideOffset={8}>
+                                        <Command shouldFilter={false}>
+                                            <CommandInput
+                                                placeholder="Buscar modelo analista..."
+                                                value={analysisModelSearch}
+                                                onValueChange={setAnalysisModelSearch}
+                                            />
+                                            <CommandList className="max-h-[250px]">
+                                                {analysisPickerModels.length === 0 ? (
+                                                    <div className="py-4 text-center typo-caption">Sin resultados</div>
+                                                ) : (
+                                                    <CommandGroup>
+                                                        {analysisPickerModels.slice(0, 50).map(m => (
+                                                            <CommandItem
+                                                                key={m.apiName}
+                                                                value={m.apiName}
+                                                                onSelect={() => {
+                                                                    setAnalysisModel(m.apiName);
+                                                                    setAnalysisModelPickerOpen(false);
+                                                                    setAnalysisModelSearch('');
+                                                                }}
+                                                                className={cn("cursor-pointer", analysisModel === m.apiName && "bg-primary/8")}
+                                                            >
+                                                                <span className="w-5 shrink-0 flex items-center justify-start">
+                                                                    {analysisModel === m.apiName && <Check size={14} className="text-primary" />}
+                                                                </span>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="text-sm font-medium truncate">{aliases[m.apiName] || m.displayName}</div>
+                                                                    <div className="typo-caption truncate mt-0.5 opacity-60">{m.apiName}</div>
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                )}
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+
+                                <button
+                                    type="button"
+                                    className="playground-analyze-btn"
+                                    onClick={handleAnalyze}
+                                    disabled={isAnalyzing}
+                                >
+                                    {isAnalyzing ? (
+                                        <><Loader2 size={14} className="animate-spin" /> Analizando…</>
+                                    ) : (
+                                        <><BarChart3 size={14} /> Analizar</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Analysis error */}
+                        {analysisError && (
+                            <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive typo-body text-sm">
+                                <AlertCircle size={14} />
+                                {analysisError}
+                            </div>
+                        )}
+
+                        {/* Analysis results */}
+                        {analysisResult && (
+                            <div className="playground-analysis-results">
+                                {/* Summary */}
+                                {analysisResult.summary && (
+                                    <div className="playground-analysis-summary">
+                                        <Sparkles size={14} className="text-primary shrink-0 mt-0.5" />
+                                        <p className="typo-body text-sm leading-relaxed">{analysisResult.summary}</p>
+                                    </div>
+                                )}
+
+                                {/* Winner cards */}
+                                <div className="playground-analysis-winners">
+                                    {/* Best quality/time ratio */}
+                                    {analysisResult.best_quality_time_ratio && (
+                                        <div className="playground-winner-card ratio">
+                                            <div className="winner-header">
+                                                <div className="winner-icon ratio"><Zap size={16} /></div>
+                                                <div>
+                                                    <h4 className="typo-label text-xs uppercase tracking-wider opacity-60">Mejor Calidad / Tiempo</h4>
+                                                    <p className="typo-label text-sm font-bold mt-0.5">{analysisResult.best_quality_time_ratio.model_display_name}</p>
+                                                </div>
+                                                <div className="winner-score">{analysisResult.best_quality_time_ratio.score}</div>
+                                            </div>
+                                            <p className="typo-body text-xs leading-relaxed text-muted-foreground mt-3">{analysisResult.best_quality_time_ratio.reasoning}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Best quality only */}
+                                    {analysisResult.best_quality_only && (
+                                        <div className="playground-winner-card quality">
+                                            <div className="winner-header">
+                                                <div className="winner-icon quality"><Trophy size={16} /></div>
+                                                <div>
+                                                    <h4 className="typo-label text-xs uppercase tracking-wider opacity-60">Mejor Calidad Absoluta</h4>
+                                                    <p className="typo-label text-sm font-bold mt-0.5">{analysisResult.best_quality_only.model_display_name}</p>
+                                                </div>
+                                                <div className="winner-score">{analysisResult.best_quality_only.score}</div>
+                                            </div>
+                                            <p className="typo-body text-xs leading-relaxed text-muted-foreground mt-3">{analysisResult.best_quality_only.reasoning}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Rankings table */}
+                                {analysisResult.rankings && analysisResult.rankings.length > 0 && (
+                                    <div className="playground-rankings">
+                                        <h4 className="typo-label text-xs uppercase tracking-wider opacity-60 mb-3 flex items-center gap-2">
+                                            <Award size={13} /> Ranking completo
+                                        </h4>
+                                        <div className="rankings-grid">
+                                            <div className="rankings-header">
+                                                <span>#</span>
+                                                <span>Modelo</span>
+                                                <span className="text-center">Calidad</span>
+                                                <span className="text-center">Velocidad</span>
+                                                <span className="text-center">General</span>
+                                            </div>
+                                            {analysisResult.rankings.map((r: any, idx: number) => (
+                                                <div key={r.model_api_name} className="rankings-row">
+                                                    <span className={cn("ranking-pos", idx === 0 && "gold", idx === 1 && "silver", idx === 2 && "bronze")}>
+                                                        {idx + 1}
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <p className="typo-label text-xs font-semibold truncate">{r.model_display_name}</p>
+                                                        <p className="typo-micro text-muted-foreground truncate">{r.brief}</p>
+                                                    </div>
+                                                    <div className="score-cell">
+                                                        <div className="score-bar"><div className="score-fill quality" style={{ width: `${r.quality_score}%` }} /></div>
+                                                        <span>{r.quality_score}</span>
+                                                    </div>
+                                                    <div className="score-cell">
+                                                        <div className="score-bar"><div className="score-fill speed" style={{ width: `${r.speed_score}%` }} /></div>
+                                                        <span>{r.speed_score}</span>
+                                                    </div>
+                                                    <div className="score-cell">
+                                                        <div className="score-bar"><div className="score-fill overall" style={{ width: `${r.overall_score}%` }} /></div>
+                                                        <span className="font-bold">{r.overall_score}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

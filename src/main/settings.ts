@@ -121,29 +121,59 @@ export function getSettingsFilePath(): string {
 }
 
 export function readSettings(): UserSettings {
-  // Cloud mode: never touch disk — all real settings come from PreferencesCache
-  if (IS_CLOUD_MODE) {
-    // If cache is hydrated, compose real settings from BunnyDB preferences.
-    // This is critical for OpenCode which calls readSettings() directly to get
-    // the user's model selection and API keys.
-    try {
-      const { preferencesCache } = require("./preferences-cache");
-      if (preferencesCache.isHydrated && preferencesCache.currentUserId) {
-        const userId = preferencesCache.currentUserId;
-        const prefsMap = preferencesCache.getAll(userId, 0);
-        const deserialized: Record<string, any> = {};
-        for (const [key, rawValue] of Object.entries(prefsMap)) {
-          try {
-            deserialized[key] = JSON.parse(rawValue as string);
-          } catch {
-            deserialized[key] = rawValue;
-          }
+  // ── Preferences-first path ────────────────────────────────────────────
+  // When the KV cache is hydrated (post-login), compose settings from it.
+  // This is the canonical source of truth — both in Cloud and Electron mode.
+  // The local user-settings.json only stores machine-specific state
+  // (windowState, session tokens, etc.), NOT API keys or user preferences.
+  try {
+    const { preferencesCache } = require("./preferences-cache");
+    if (preferencesCache.isHydrated && preferencesCache.currentUserId) {
+      const userId = preferencesCache.currentUserId;
+      const prefsMap = preferencesCache.getAll(userId, 0);
+      const deserialized: Record<string, any> = {};
+      for (const [key, rawValue] of Object.entries(prefsMap)) {
+        try {
+          deserialized[key] = JSON.parse(rawValue as string);
+        } catch {
+          deserialized[key] = rawValue;
         }
-        return { ...DEFAULT_SETTINGS, ...deserialized, userId } as UserSettings;
       }
-    } catch {
-      // PreferencesCache not available yet — fall through to defaults
+      // In Electron, also merge local-disk fields (windowState, session, etc.)
+      if (!IS_CLOUD_MODE) {
+        const LOCAL_KEYS = [
+          "userId", "sessionToken", "windowState", "secondaryWindowStates",
+          "isRunning", "lastKnownPerformance", "hasRunBefore", "isTestMode",
+          "supabase",
+        ];
+        // Use in-memory cache if available, otherwise do a one-shot disk read
+        let diskSettings = cachedSettings;
+        if (!diskSettings) {
+          try {
+            const filePath = getSettingsFilePath();
+            if (fs.existsSync(filePath)) {
+              diskSettings = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+            }
+          } catch { /* disk read failed, skip local fields */ }
+        }
+        if (diskSettings) {
+          const localOnly: Record<string, any> = {};
+          for (const key of LOCAL_KEYS) {
+            if (key in diskSettings) {
+              localOnly[key] = (diskSettings as any)[key];
+            }
+          }
+          return { ...DEFAULT_SETTINGS, ...deserialized, ...localOnly, userId } as UserSettings;
+        }
+      }
+      return { ...DEFAULT_SETTINGS, ...deserialized, userId } as UserSettings;
     }
+  } catch {
+    // PreferencesCache not available yet — fall through to disk/defaults
+  }
+
+  // Cloud mode without cache: return defaults (no disk)
+  if (IS_CLOUD_MODE) {
     return { ...DEFAULT_SETTINGS };
   }
 
