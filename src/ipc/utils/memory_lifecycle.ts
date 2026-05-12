@@ -10,7 +10,7 @@
 import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, sql, inArray } from "drizzle-orm";
 
 const logger = log.scope("memory_lifecycle");
 
@@ -490,14 +490,11 @@ export async function compactOldSessions(
             lastUsed: now,
         });
 
-        // 7. Disable originals
+        // 7. Hard-delete originals (already compacted into the new memory)
         const oldIds = oldSessions.map(m => m.id);
-        for (const id of oldIds) {
-            await db
-                .update(remoteSchema.memories)
-                .set({ enabled: 0, updatedAt: now })
-                .where(eq(remoteSchema.memories.id, id));
-        }
+        await db
+            .delete(remoteSchema.memories)
+            .where(inArray(remoteSchema.memories.id, oldIds));
 
         logger.info(`[Compaction] Merged ${oldSessions.length} old sessions → 1 compacted memory (key: ${compactedKey}, ${durationMs}ms) for appId=${appId}`);
         return oldSessions.length;

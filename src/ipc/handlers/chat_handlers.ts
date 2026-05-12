@@ -885,6 +885,39 @@ export function registerChatHandlers() {
       }
     } catch { /* non-fatal */ }
 
+    // ── Auto-reset accepted if file was modified after acceptance ────
+    // When an artifact is accepted but the agent later modifies the file,
+    // the user needs to review the updated version. Detect this by comparing
+    // the file's mtime against the DB updatedAt (stamped at acceptance time).
+    try {
+      if (chat?.app?.path) {
+        const projectDir2 = getVibesAppPath(chat.app.path);
+        for (const artifact of artifacts) {
+          if (artifact.accepted && artifact.updatedAt) {
+            try {
+              const fullPath = pathMod.join(projectDir2, artifact.path);
+              if (fs.existsSync(fullPath)) {
+                const stat = fs.statSync(fullPath);
+                if (stat.mtime > artifact.updatedAt) {
+                  // File modified AFTER acceptance → reset for re-review
+                  await db.update(remoteSchema.chatArtifacts)
+                    .set({ accepted: 0, updatedAt: new Date() })
+                    .where(eq(remoteSchema.chatArtifacts.id, artifact.id));
+
+                  // Purge stale comments (they reference old content)
+                  await db.delete(remoteSchema.artifactComments)
+                    .where(eq(remoteSchema.artifactComments.artifactId, artifact.id));
+
+                  artifact.accepted = 0;
+                  logger.info(`Auto-reset accepted artifact ${artifact.id} (${artifact.path}) — file modified post-acceptance`);
+                }
+              }
+            } catch { /* non-fatal per artifact */ }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
     return artifacts as any;
   });
 
@@ -919,7 +952,7 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
 
     await db.update(remoteSchema.chatArtifacts)
-      .set({ accepted: 1 })
+      .set({ accepted: 1, updatedAt: new Date() })
       .where(
         and(
           eq(remoteSchema.chatArtifacts.id, artifactId),

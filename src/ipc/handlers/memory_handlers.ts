@@ -452,6 +452,39 @@ export function registerMemoryHandlers(): void {
     restorePendingBuffers()
         .catch(e => logger.warn(`[Memory] Buffer restoration failed: ${e.message}`));
 
+    // ── Startup cleanup: purge stale auxiliary data ──────────────────
+    // Prevents unbounded growth of telemetry/log tables and cleans up
+    // inactive memories that are no longer useful.
+    (async () => {
+        try {
+            const db = getRemoteDb();
+            const cutoff7d = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
+            // Pipeline logs > 7 days → DELETE
+            await db.delete(remoteSchema.memoryPipelineLogs)
+                .where(sql`${remoteSchema.memoryPipelineLogs.createdAt} < ${cutoff7d}`);
+
+            // Telemetry > 7 days → DELETE
+            await db.delete(remoteSchema.memoryTelemetry)
+                .where(sql`${remoteSchema.memoryTelemetry.createdAt} < ${cutoff7d}`);
+
+            // Debug logs > 7 days → DELETE
+            await db.delete(remoteSchema.memoryDebugLogs)
+                .where(sql`${remoteSchema.memoryDebugLogs.createdAt} < ${cutoff7d}`);
+
+            // Inactive memories > 7 days → hard DELETE
+            await db.delete(remoteSchema.memories)
+                .where(and(
+                    eq(remoteSchema.memories.enabled, 0),
+                    sql`${remoteSchema.memories.updatedAt} < ${cutoff7d}`,
+                ));
+
+            logger.info("[Memory] Startup cleanup: purged stale pipeline logs, telemetry, debug logs, and inactive memories (>7d)");
+        } catch (e: any) {
+            logger.warn(`[Memory] Startup cleanup failed: ${e.message}`);
+        }
+    })();
+
     logger.info("[Memory] Handlers registered");
 }
 

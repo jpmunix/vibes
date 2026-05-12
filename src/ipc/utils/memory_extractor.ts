@@ -22,7 +22,7 @@ import { stripAllNoise, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
-import { compactOldSessions } from "./memory_lifecycle";
+// compactOldSessions removed from auto-trigger — now manual-only (Memory Panel / chat archive)
 
 const logger = log.scope("memory_extractor");
 
@@ -339,26 +339,20 @@ export async function extractMemoriesFromBatch(params: {
             return [];
         }
 
-        logPipelineCall({
-            userId, appId, chatId,
-            stage: "synthesis", model,
-            systemPrompt: synthesisPrompt,
-            userMessage,
-            rawResponse: rawContent,
-            parsedResult: JSON.stringify({
-                operations,
-                meta: {
-                    batchSize: rounds.length,
-                    existingMemoriesCount: existingRows.length,
-                    operationsGenerated: operations.length,
-                },
-            }),
-            resultCount: operations.length, durationMs, success: true,
-        });
+        if (operations.length === 0) {
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                parsedResult: JSON.stringify({ operations: [], meta: { batchSize: rounds.length, existingMemoriesCount: existingRows.length, operationsGenerated: 0 } }),
+                resultCount: 0, durationMs, success: true,
+            });
+            return [];
+        }
 
-        if (operations.length === 0) return [];
-
-        // Process operations
+        // Process operations FIRST (critical path — memory persistence before telemetry)
         const persisted: MemoryEntry[] = [];
         const now = new Date();
         const VALID_TYPES = new Set(["session", "preference", "issue"]);
@@ -376,9 +370,35 @@ export async function extractMemoriesFromBatch(params: {
                     if (result) persisted.push(result);
                 }
             } catch (opErr: any) {
-                logger.warn(`[Memory] Batch op failed: ${opErr.message}`);
+                logger.error(`[Memory] ❌ Batch op failed: ${opErr.message}`);
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis",
+                    resultCount: 0,
+                    success: false,
+                    error: `Op ${op.action} failed: ${opErr.message}`,
+                });
             }
         }
+
+        // THEN log telemetry (non-critical, fire-and-forget)
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    batchSize: rounds.length,
+                    existingMemoriesCount: existingRows.length,
+                    operationsGenerated: operations.length,
+                    operationsPersisted: persisted.length,
+                },
+            }),
+            resultCount: persisted.length, durationMs, success: true,
+        });
 
         if (persisted.length > 0) {
             logTelemetry({
@@ -386,10 +406,6 @@ export async function extractMemoriesFromBatch(params: {
                 action: "synthesized",
                 extractedKeys: persisted.map(p => p.key || "—"),
             });
-
-            // P2: Trigger compaction after successful extraction (fire-and-forget)
-            compactOldSessions(appId, userId)
-                .catch(err => logger.warn("[Memory] Compaction failed:", err));
         }
 
         logger.info(`[Memory] Batch synthesis: ${persisted.length} memories from ${rounds.length} rounds (chat ${chatId})`);
@@ -707,33 +723,21 @@ export async function extractMemoriesFromChatCycle(params: {
         }
 
 
-        // Log the successful synthesis call (raw) with enriched metadata
-        logPipelineCall({
-            userId, appId, chatId,
-            stage: "synthesis", model,
-            systemPrompt: synthesisPrompt,
-            userMessage,
-            rawResponse: rawContent,
-            parsedResult: JSON.stringify({
-                operations,
-                meta: {
-                    existingMemoriesCount: existingRows.length,
-                    promptLength: userPrompt.length,
-                    responseLength: cleanResponse.length,
-                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
-                    operationsGenerated: operations.length,
-                    operationsRatio: `${operations.length}/${existingRows.length}`,
-                },
-            }),
-            resultCount: operations.length, durationMs, success: true,
-        });
-
         if (operations.length === 0) {
             logger.info("[Memory] LLM found nothing worth extracting");
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                parsedResult: JSON.stringify({ operations: [], meta: { existingMemoriesCount: existingRows.length, operationsGenerated: 0 } }),
+                resultCount: 0, durationMs, success: true,
+            });
             return [];
         }
 
-        // 6. Process operations
+        // 6. Process operations FIRST (critical path — memory persistence before telemetry)
         const persisted: MemoryEntry[] = [];
         const now = new Date();
         const VALID_TYPES = new Set(["session", "preference", "issue"]);
@@ -753,13 +757,41 @@ export async function extractMemoriesFromChatCycle(params: {
                     logger.info(`[Memory] Unknown operation action: "${(op as any).action}"`);
                 }
             } catch (opErr: any) {
-                logger.warn(`[Memory] Failed to process operation: ${opErr.message}`);
+                logger.error(`[Memory] ❌ Op failed: ${opErr.message}`);
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis",
+                    resultCount: 0,
+                    success: false,
+                    error: `Op ${op.action} failed: ${opErr.message}`,
+                });
             }
         }
 
         logger.info(`[Memory] Synthesis complete: ${persisted.length} memories persisted from chat ${chatId}`);
 
-        // Log telemetry for successful extraction
+        // THEN log telemetry (non-critical, fire-and-forget)
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    existingMemoriesCount: existingRows.length,
+                    promptLength: userPrompt.length,
+                    responseLength: cleanResponse.length,
+                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
+                    operationsGenerated: operations.length,
+                    operationsPersisted: persisted.length,
+                    operationsRatio: `${persisted.length}/${existingRows.length}`,
+                },
+            }),
+            resultCount: persisted.length, durationMs, success: true,
+        });
+
         if (persisted.length > 0) {
             logTelemetry({
                 userId,
@@ -851,24 +883,33 @@ export async function handleAdd(
     }
 
     // Insert new memory
-    const [inserted] = await db
-        .insert(remoteSchema.memories)
-        .values({
-            userId,
-            appId,
-            type: op.type,
-            key: op.key || null,
-            content: op.content,
-            importance: importanceInt,
-            status: op.type === "issue" ? "active" : null,
-            source: "auto",
-            sourceChatId: chatId,
-            enabled: 1,
-            createdAt: now,
-            updatedAt: now,
-            lastUsed: now,
-        })
-        .returning({ id: remoteSchema.memories.id });
+    let inserted: { id: number };
+    try {
+        const [row] = await db
+            .insert(remoteSchema.memories)
+            .values({
+                userId,
+                appId,
+                type: op.type,
+                key: op.key || null,
+                content: op.content,
+                importance: importanceInt,
+                status: op.type === "issue" ? "active" : null,
+                source: "auto",
+                sourceChatId: chatId,
+                enabled: 1,
+                createdAt: now,
+                updatedAt: now,
+                lastUsed: now,
+            })
+            .returning({ id: remoteSchema.memories.id });
+        inserted = row;
+    } catch (insertErr: any) {
+        logger.error(`[Memory] ❌ INSERT FAILED: ${insertErr.message}`, {
+            key: op.key, type: op.type, appId,
+        });
+        throw insertErr;
+    }
 
     logger.info(`[Memory] Created: type=${op.type} key="${op.key || "—"}" id=${inserted.id}`);
 
