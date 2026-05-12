@@ -180,9 +180,9 @@ const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] =
     ],
   },
   {
-    title: "Generación de Nombres",
-    description: "Prompts usados al crear y nombrar aplicaciones",
-    ids: ["app_title_short", "app_name_pro"],
+    title: "Generación de Nombres y Títulos",
+    description: "Prompts usados para nombrar apps y generar títulos de chats",
+    ids: ["chat_title", "app_title_short", "app_name_pro"],
   },
   {
     title: "Git y Automatización",

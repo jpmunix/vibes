@@ -347,6 +347,9 @@ export function registerChatHandlers() {
           return { title: "Nuevo chat" };
         }
 
+        const { getEffectivePrompt } = await import("../../prompts");
+        const chatTitleSystemPrompt = getEffectivePrompt("chat_title", settings);
+
         const data = await openRouterCompletion({
           model,
           title: "chat-title",
@@ -355,12 +358,11 @@ export function registerChatHandlers() {
           messages: [
             {
               role: "system",
-              content:
-                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 100 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
+              content: chatTitleSystemPrompt,
             },
             {
               role: "user",
-              content: `Genera un título corto en español en formato objetivo (sin primera persona) para este chat: "${messageContent.slice(0, 500)}"`,
+              content: messageContent.slice(0, 500),
             },
           ],
         });

@@ -1,6 +1,7 @@
 import { UserSettings } from "@/lib/schemas";
 
 export type PromptId =
+  | "chat_title"
   | "app_title_short"
   | "app_name_pro"
   | "auto_commit_message"
@@ -17,6 +18,15 @@ export type PromptId =
   | "ctx_caveman_mode";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
+  chat_title: [
+    "Genera un título en español para este chat.",
+    "Devuelve SOLO el título, sin comillas. Máximo 60 caracteres.",
+    "",
+    "Reglas:",
+    "- Voz objetiva, NUNCA primera persona (prohibido: 'he creado', 'he implementado')",
+    "- Describe el tema o acción principal, no los detalles",
+    "- Varía el estilo: 'Configurar auth con JWT', 'Bug en el sidebar', 'Nuevo componente de filtros', 'Migración a Drizzle ORM'",
+  ].join("\n"),
   app_title_short:
     "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters.",
   app_name_pro: [
@@ -467,6 +477,7 @@ export function getEffectivePrompt(
 }
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
+  chat_title: "Títulos de Chat",
   app_title_short: "Títulos de App",
   app_name_pro: "Nombres de App",
   auto_commit_message: "Mensaje de Commit",
@@ -484,6 +495,8 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
+  chat_title:
+    "Genera títulos automáticos para los chats a partir del primer mensaje del usuario.",
   app_title_short:
     "Genera títulos cortos y atractivos para las apps.",
   app_name_pro: "Genera nombres funcionales y descriptivos al crear apps.",
