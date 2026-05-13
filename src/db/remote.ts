@@ -166,6 +166,21 @@ export async function initializeRemoteSchema(): Promise<void> {
         updated_at INTEGER NOT NULL
       )
     `).catch(() => {});
+    // Auto-create stream_tasks if missing (durable stream state — v8.6)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS stream_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+        message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'running',
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        model TEXT,
+        agent_id TEXT,
+        error TEXT
+      )
+    `).catch(() => {});
   } catch (e) {
     logger.warn("schema migration (non-fatal):", e);
   }

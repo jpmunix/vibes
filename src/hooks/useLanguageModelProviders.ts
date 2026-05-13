@@ -6,7 +6,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { isProviderSetup as isProviderSetupUtil } from "@/lib/providerUtils";
 
 export function useLanguageModelProviders() {
-  const { settings, envVars } = useSettings();
+  const { settings, envVars, loading: settingsLoading } = useSettings();
 
   const queryResult = useQuery<LanguageModelProvider[], Error>({
     queryKey: queryKeys.languageModels.providers,
@@ -15,12 +15,17 @@ export function useLanguageModelProviders() {
     },
   });
 
+  // Composite loading: true while EITHER settings or providers are still loading.
+  // This prevents consumers from seeing "no provider configured" during the
+  // initial hydration window when providerSettings is still the empty default.
+  const isLoading = settingsLoading || queryResult.isLoading;
+
   const isProviderSetup = (provider: string) => {
     return isProviderSetupUtil(provider, {
       settings,
       envVars,
       providerData: queryResult.data,
-      isLoading: queryResult.isLoading,
+      isLoading,
     });
   };
 
@@ -41,6 +46,7 @@ export function useLanguageModelProviders() {
 
   return {
     ...queryResult,
+    isLoading,
     isProviderSetup,
     isAnyProviderSetup,
   };

@@ -26,6 +26,8 @@ export const MessageSchema = z.object({
   totalTokens: z.number().nullable().optional(),
   durationMs: z.number().nullable().optional(),
   model: z.string().nullable().optional(),
+  // Message lifecycle status: streaming (in-progress), completed, incomplete, failed
+  status: z.string().nullable().optional(),
   // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
   // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
   aiMessagesJson: z.any().nullable().optional(),
@@ -559,6 +561,25 @@ export const chatContracts = {
     channel: "delete-chat-label",
     input: z.number(), // labelId
     output: z.void(),
+  }),
+
+  // ── Stream Tasks ──────────────────────────────────────────────────────────
+
+  /** Get the active/latest stream task for a chat (used by frontend to detect in-progress or completed background streams). */
+  getStreamTask: defineContract({
+    channel: "get-stream-task",
+    input: z.number(), // chatId
+    output: z.object({
+      id: z.number(),
+      chatId: z.number(),
+      messageId: z.number(),
+      status: z.string(),
+      startedAt: z.union([z.date(), z.string()]),
+      completedAt: z.union([z.date(), z.string()]).nullable(),
+      model: z.string().nullable(),
+      agentId: z.string().nullable(),
+      error: z.string().nullable(),
+    }).nullable(),
   }),
 } as const;
 

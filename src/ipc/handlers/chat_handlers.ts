@@ -1218,5 +1218,36 @@ export function registerChatHandlers() {
     );
   });
 
+  // ── Stream Tasks ─────────────────────────────────────────────────────────
+  // Query the latest stream task for a chat — used by frontend to detect
+  // background streams that are still running or recently completed.
+  createTypedHandler(chatContracts.getStreamTask, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // Get the most recent stream task for this chat (belongs to this user)
+    const task = await db.query.streamTasks.findFirst({
+      where: and(
+        eq(remoteSchema.streamTasks.chatId, chatId),
+        eq(remoteSchema.streamTasks.userId, context.userId!),
+      ),
+      orderBy: (st, { desc }) => [desc(st.startedAt)],
+    });
+
+    if (!task) return null;
+
+    return {
+      id: task.id,
+      chatId: task.chatId,
+      messageId: task.messageId,
+      status: task.status,
+      startedAt: task.startedAt,
+      completedAt: task.completedAt ?? null,
+      model: task.model ?? null,
+      agentId: task.agentId ?? null,
+      error: task.error ?? null,
+    };
+  });
+
   logger.debug("Registered chat IPC handlers");
 }

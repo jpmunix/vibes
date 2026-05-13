@@ -132,6 +132,22 @@ export function registerSettingsHandlers() {
       return composeSettingsFromCache(context.userId) as any;
     }
 
+    // If we have a userId but cache isn't hydrated yet (splash hydration still running),
+    // wait for it instead of returning empty defaults.  This prevents the renderer from
+    // getting providerSettings: {} on first render and flashing "configure OpenRouter" banners.
+    if (context.userId && !preferencesCache.isHydrated) {
+      const MAX_WAIT_MS = 5000;
+      const POLL_MS = 50;
+      const start = Date.now();
+      while (!preferencesCache.isHydrated && Date.now() - start < MAX_WAIT_MS) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
+      if (preferencesCache.isHydrated) {
+        return composeSettingsFromCache(context.userId) as any;
+      }
+      logger.warn("getUserSettings: preferences cache did not hydrate within timeout, returning disk settings");
+    }
+
     // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
     return readSettings();
   });

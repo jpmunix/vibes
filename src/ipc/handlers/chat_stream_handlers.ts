@@ -638,6 +638,7 @@ ${componentSnippet}
             chatId: req.chatId,
             role: "assistant",
             content: "",
+            status: "streaming",
             requestId: vibesRequestId,
             model: effectiveModelName,
             sourceCommitHash: await getCurrentCommitHash({
@@ -647,6 +648,17 @@ ${componentSnippet}
           })
           .returning();
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
+
+        // ── A1: Register durable stream task in DB ──────────────────────
+        await db.insert(remoteSchema.streamTasks).values({
+          userId: currentUserId as string,
+          chatId: req.chatId,
+          messageId: placeholderAssistantMessage.id,
+          status: "running",
+          startedAt: new Date(),
+          model: effectiveModelName,
+          agentId: agentIdMap[resolvedChatMode] || "build",
+        }).catch(err => logger.error("[StreamTask] Failed to insert stream task:", err));
 
         // Reset stream start time for the actual streaming phase
         streamStartedAt = Date.now();
@@ -1576,6 +1588,13 @@ This conversation includes one or more image attachments. When the user uploads 
               // Fire-and-forget DB cleanup — doesn't block the UI
               void (async () => {
                 try {
+                  // Mark stream task as cancelled
+                  await db.update(remoteSchema.streamTasks)
+                    .set({ status: "cancelled", completedAt: new Date() })
+                    .where(and(
+                      eq(remoteSchema.streamTasks.chatId, req.chatId),
+                      eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+                    ));
                   await db
                     .delete(remoteSchema.messages)
                     .where(
@@ -1636,6 +1655,7 @@ This conversation includes one or more image attachments. When the user uploads 
               .update(remoteSchema.messages)
               .set({
                 content: fullResponse,
+                status: "completed",
                 durationMs: openCodeDurationMs,
                 injectedMemories: selectedMemories.length > 0
                   ? JSON.stringify(selectedMemories) as any
@@ -1647,6 +1667,14 @@ This conversation includes one or more image attachments. When the user uploads 
                   eq(remoteSchema.messages.userId, currentUserId as string),
                 ),
               );
+
+            // Mark stream task as cancelled (with partial content)
+            await db.update(remoteSchema.streamTasks)
+              .set({ status: "cancelled", completedAt: new Date() })
+              .where(and(
+                eq(remoteSchema.streamTasks.chatId, req.chatId),
+                eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+              )).catch(err => logger.error("[StreamTask] Failed to update on cancel:", err));
 
             safeSend(event.sender, "chat:response:chunk", {
               chatId: req.chatId,
@@ -1727,6 +1755,7 @@ This conversation includes one or more image attachments. When the user uploads 
             .update(remoteSchema.messages)
             .set({
               content: fullResponse,
+              status: "completed",
               durationMs: openCodeDurationMs,
               injectedMemories: selectedMemories.length > 0
                 ? JSON.stringify(selectedMemories) as any
@@ -1738,6 +1767,14 @@ This conversation includes one or more image attachments. When the user uploads 
                 eq(remoteSchema.messages.userId, currentUserId as string),
               ),
             );
+
+          // ── A1: Mark stream task as completed in DB ──────────────────────
+          await db.update(remoteSchema.streamTasks)
+            .set({ status: "completed", completedAt: new Date() })
+            .where(and(
+              eq(remoteSchema.streamTasks.chatId, req.chatId),
+              eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+            )).catch(err => logger.error("[StreamTask] Failed to mark completed:", err));
 
           // Send the final response to the frontend
           const finalMessages = [
@@ -1831,6 +1868,13 @@ This conversation includes one or more image attachments. When the user uploads 
           .set({ content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`, status: "failed" as any })
           .where(eq(remoteSchema.messages.id, outerPlaceholderMessageId))
           .catch((err) => logger.error("Failed to persist error in message content", err));
+        // Mark stream task as failed
+        void db.update(remoteSchema.streamTasks)
+          .set({ status: "failed", completedAt: new Date(), error: String(error) })
+          .where(and(
+            eq(remoteSchema.streamTasks.chatId, req.chatId),
+            eq(remoteSchema.streamTasks.messageId, outerPlaceholderMessageId),
+          )).catch(err => logger.error("[StreamTask] Failed to mark as failed:", err));
       }
 
       return "error";

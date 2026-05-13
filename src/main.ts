@@ -264,23 +264,16 @@ export async function onReady() {
     }
   }
 
+
   const stepOffset = needsOptimization ? 1 : 0;
 
-  // Step N+1: Create main window (the critical path)
-  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Preparando interfaz...");
-  createWindow();
-  createApplicationMenu();
-
-
-  // Step N+2: Validate configured models still exist in OpenRouter
-  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Validando modelos...");
-  await validateModelSettings().catch((err) =>
-    logger.warn("Model validation failed (non-fatal):", err),
-  );
-
-  // Step N+3: Hydrate KV preferences from BunnyDB
+  // Step N+1: Hydrate KV preferences from BunnyDB (BEFORE creating the window)
+  // This must happen first so that when the renderer starts and calls getUserSettings,
+  // the preferences cache is already populated with the real data (API keys, model selections, etc.).
+  // Previously this ran after createWindow(), causing a race condition where the renderer
+  // got empty defaults and flashed "configure OpenRouter" banners.
   const sessionData = readSession();
-  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Cargando preferencias...");
+  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Cargando preferencias...");
   if (sessionData?.userId) {
     try {
       await initializeRemoteSchema();
@@ -292,6 +285,17 @@ export async function onReady() {
   } else {
     logger.info("Splash: no session found, skipping preferences hydration");
   }
+
+  // Step N+2: Create main window (now preferences are ready for the renderer)
+  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Preparando interfaz...");
+  createWindow();
+  createApplicationMenu();
+
+  // Step N+3: Validate configured models still exist in OpenRouter
+  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Validando modelos...");
+  await validateModelSettings().catch((err) =>
+    logger.warn("Model validation failed (non-fatal):", err),
+  );
 
   // Step N+4: Show main window and close splash
   // The main window renders behind the splash (splash is alwaysOnTop).

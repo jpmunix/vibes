@@ -2448,9 +2448,34 @@ export async function handleOpenCodeStream(
 
         logger.info(`${LP} Prompt sent (async). Waiting for events...`);
 
+        // ── A2: Periodic content checkpoint to DB ──────────────────────────
+        // Every 10 seconds, flush accumulated partial content to the messages
+        // table. This ensures that even if the server or connection dies mid-
+        // stream, the user sees partial progress instead of an empty bubble.
+        let lastCheckpointLength = 0;
+        const checkpointIntervalId = setInterval(async () => {
+            try {
+                const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+                // Only write if content has grown since last checkpoint
+                if (currentPartial.length > lastCheckpointLength && currentPartial.length > 0) {
+                    lastCheckpointLength = currentPartial.length;
+                    const db = getRemoteDb();
+                    await db.update(remoteSchema.messages)
+                        .set({ content: currentPartial })
+                        .where(eq(remoteSchema.messages.id, placeholderMessageId));
+                    logger.debug(`${LP} 💾 Checkpoint: ${currentPartial.length}ch written to DB for message ${placeholderMessageId}`);
+                }
+            } catch (cpErr: any) {
+                logger.warn(`${LP} ⚠️ Checkpoint write failed (non-fatal): ${cpErr.message}`);
+            }
+        }, 10_000);
+
         // Wait for the event stream to signal completion.
         // processEvents returns when session goes idle or the stream ends.
         await eventProcessingDone;
+
+        // Stop checkpoint timer — final content will be written by chat_stream_handlers
+        clearInterval(checkpointIntervalId);
 
         const getAbortedResponse = () => {
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
@@ -2607,6 +2632,10 @@ export async function handleOpenCodeStream(
             costUsd: totalCostUsd,
         };
     } finally {
+        // Clean up the checkpoint timer if still running
+        if (typeof checkpointIntervalId !== 'undefined') {
+            clearInterval(checkpointIntervalId);
+        }
         // Clean up the abort listener to avoid leaks
         abortController.signal.removeEventListener("abort", onUserAbort);
         // Ensure SSE is always closed when we exit
