@@ -122,6 +122,17 @@ const lastSmartModeForChat = new Map<number, string>();
 // Directory for storing temporary files
 const TEMP_DIR = path.join(os.tmpdir(), "vibes-attachments");
 
+// Agent ID mapping: chat mode → OpenCode agent identity.
+// IMPORTANT: must be at module scope — duplicate local `const` declarations
+// caused esbuild to hoist/merge them, triggering a TDZ ReferenceError at runtime.
+const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+  agent: "build",
+  "crush-agent": "build",
+  plan: "plan",
+  ask: "explore",
+  mockup: "mockup",
+};
+
 // Common helper functions
 const TEXT_FILE_EXTENSIONS = [
   ".md",
@@ -552,13 +563,6 @@ ${componentSnippet}
       let selectedModel = settings.selectedModel;
 
       const resolvedChatMode = req.chatMode || settings.selectedChatMode || "agent";
-      const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
-        agent: "build",
-        "crush-agent": "build",
-        plan: "plan",
-        ask: "explore",
-        mockup: "mockup",
-      };
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
@@ -1299,14 +1303,6 @@ This conversation includes one or more image attachments. When the user uploads 
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
-        const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
-          agent: "build",
-          "crush-agent": "build",
-          plan: "plan",
-          ask: "explore",
-          mockup: "mockup",
-        };
-
         const agentId = agentIdMap[resolvedChatMode] || "build";
 
         if (!mentionedAppsCodebases.length) {
