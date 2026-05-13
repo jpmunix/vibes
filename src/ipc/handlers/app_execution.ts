@@ -115,6 +115,25 @@ export const actualPortByApp = new Map<number, number>();
 // Needed, otherwise electron in MacOS/Linux will not be able to find node/pnpm.
 try { fixPath(); } catch { /* safe to ignore in server/web mode */ }
 
+// ─── URL rewriting for cloud mode ───────────────────────────────────
+// In cloud mode, dev servers bind to 0.0.0.0 but the remote browser
+// cannot reach "localhost" or "0.0.0.0" — rewrite to the server's
+// actual hostname (derived from the Vibes API URL or OS hostname).
+function rewriteDevServerUrl(url: string): string {
+  if (process.env.VIBES_CLOUD_MODE !== "1") return url;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      // Use the hostname the user connected to (the API server's hostname)
+      const serverHost = process.env.VIBES_PUBLIC_HOST || require("os").hostname();
+      parsed.hostname = serverHost;
+      return parsed.toString().replace(/\/$/, ""); // strip trailing slash
+    }
+  } catch { /* malformed URL, return as-is */ }
+  return url;
+}
+
 // ─── Port / process helpers ─────────────────────────────────────────
 
 export async function killProcessOnPort(port: number): Promise<void> {
@@ -204,7 +223,12 @@ export async function getCommand({
   // Store the actual port for polling-based readiness detection
   actualPortByApp.set(appId, port);
   const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
-  const start = (startCommand?.trim() || `npm run dev -- --port ${port}`).replace(/\{port\}/g, String(port));
+  // In cloud mode, bind to 0.0.0.0 so the dev server is accessible from external browsers
+  const IS_CLOUD = process.env.VIBES_CLOUD_MODE === "1";
+  const defaultStart = IS_CLOUD
+    ? `npm run dev -- --port ${port} --host 0.0.0.0`
+    : `npm run dev -- --port ${port}`;
+  const start = (startCommand?.trim() || defaultStart).replace(/\{port\}/g, String(port));
   return `${install} && ${start}`;
 }
 
@@ -397,7 +421,7 @@ function listenToProcess({
     if (isOpen && !proxyStarted) {
       logger.info(`[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`);
       clearInterval(pollingInterval);
-      await startProxyForApp(`http://localhost:${appPort}`);
+      await startProxyForApp(rewriteDevServerUrl(`http://localhost:${appPort}`));
     }
   }, 3000);
 
@@ -419,9 +443,10 @@ function listenToProcess({
       safeSend(event.sender, "app:output", { type: "input-requested", message, appId });
     } else {
       logBuffer.add(appId, { type: "stdout", message, appId, timestamp: Date.now() });
-      const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
+      // Match localhost, 0.0.0.0, or 127.0.0.1 URLs emitted by dev servers
+      const urlMatch = message.match(/(https?:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):\d+\/?)/);
       if (urlMatch) {
-        await startProxyForApp(urlMatch[1]);
+        await startProxyForApp(rewriteDevServerUrl(urlMatch[1]));
       }
     }
   });

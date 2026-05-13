@@ -261,7 +261,12 @@ export const ExpandPreviewButton = ({ position }: { position: "left" | "right" }
 
 // Open in external browser button
 export const OpenExternalButton = () => {
-  const { originalUrl } = useAtomValue(appUrlAtom);
+  const { appUrl, originalUrl } = useAtomValue(appUrlAtom);
+  // In web mode, appUrl is already the accessible URL (rewritten by the server).
+  // In Electron, originalUrl is the direct dev-server URL (before proxy).
+  const urlToOpen = appUrl || originalUrl;
+  const isElectron = !!(window as any).electron;
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -269,12 +274,16 @@ export const OpenExternalButton = () => {
           <button
             data-testid="preview-open-browser-button"
             onClick={() => {
-              if (originalUrl) {
-                ipc.system.openExternalUrl(originalUrl);
+              if (!urlToOpen) return;
+              if (isElectron) {
+                ipc.system.openExternalUrl(urlToOpen);
+              } else {
+                // Web mode: open directly in a new browser tab
+                window.open(urlToOpen, "_blank", "noopener,noreferrer");
               }
             }}
             className="p-1 rounded hover:bg-accent text-foreground transition-colors"
-            disabled={!originalUrl}
+            disabled={!urlToOpen}
           >
             <ExternalLink size={16} />
           </button>
