@@ -407,6 +407,29 @@ export const languageModels = sqliteTable("language_models", {
 });
 
 // =============================================================================
+// STREAM TASKS (durable stream state — survives server restarts)
+// =============================================================================
+
+export const streamTasks = sqliteTable("stream_tasks", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    messageId: integer("message_id")
+        .notNull()
+        .references(() => messages.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("running"), // running | completed | failed | cancelled
+    startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
+    model: text("model"),
+    agentId: text("agent_id"), // build | plan | explore | mockup
+    error: text("error"),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 
@@ -430,6 +453,7 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     messages: many(messages),
     artifacts: many(chatArtifacts),
     labels: many(chatLabels),
+    streamTasks: many(streamTasks),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -452,4 +476,10 @@ export const artifactCommentsRelations = relations(artifactComments, ({ one }) =
 export const chatLabelsRelations = relations(chatLabels, ({ one }) => ({
     chat: one(chats, { fields: [chatLabels.chatId], references: [chats.id] }),
     user: one(users, { fields: [chatLabels.userId], references: [users.id] }),
+}));
+
+export const streamTasksRelations = relations(streamTasks, ({ one }) => ({
+    user: one(users, { fields: [streamTasks.userId], references: [users.id] }),
+    chat: one(chats, { fields: [streamTasks.chatId], references: [chats.id] }),
+    message: one(messages, { fields: [streamTasks.messageId], references: [messages.id] }),
 }));
