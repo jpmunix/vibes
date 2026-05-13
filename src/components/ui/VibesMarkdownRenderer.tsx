@@ -115,10 +115,13 @@ function preprocessCustomMarks(content: string): string {
         },
     );
     // Single-line block marks (no custom title): <!-- @type "text" -->
+    // Note: uses a greedy pattern that allows escaped quotes inside the text
     result = result.replace(
-        /<!--\s*@(tip|info|warning|danger)\s+"([^"]+)"\s*-->/g,
+        /<!-- *@(tip|info|warning|danger) +"((?:[^"\\]|\\.)*)" *-->/g,
         (_match, type: string, text: string) => {
-            return `${TOKEN_PREFIX}${type}:${encodeBody(text)}${TOKEN_SUFFIX}`;
+            // Unescape any escaped quotes in the content
+            const cleanText = text.replace(/\\"/g, '"');
+            return `${TOKEN_PREFIX}${type}:${encodeBody(cleanText)}${TOKEN_SUFFIX}`;
         },
     );
 
@@ -351,7 +354,7 @@ function renderTokensInText(text: string): React.ReactNode[] | null {
             const parts3 = rawPayload.split("|");
             const collapseTitle = decodeBody(parts3[0] || "");
             const collapseLevel = Number(decodeBody(parts3[1] || "1")) || 1;
-            const collapseBody = decodeBody(parts3.slice(2).join("|"));
+            const collapseBody = preprocessCustomMarks(decodeBody(parts3.slice(2).join("|")));
             parts.push(
                 <CollapseBlock key={match.index} title={collapseTitle || "Detalles"} level={collapseLevel}>
                     <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={INNER_COMPONENTS}>
@@ -615,7 +618,7 @@ const DocsImage = ({ src, alt, ...props }: any) => (
 
 // ─── Component maps ─────────────────────────────────────────────────────────
 
-// Inner components for rendering markdown inside callout blocks (no token interception)
+// Inner components for rendering markdown inside callout/collapse blocks
 const INNER_COMPONENTS = {
     a: DocsLink,
     code: DocsCodeBlock,
@@ -623,6 +626,14 @@ const INNER_COMPONENTS = {
     ul: DocsUnorderedList,
     ol: DocsOrderedList,
     li: DocsListItem,
+    p: DocsParagraph,
+    table: DocsTable,
+    thead: DocsTableHead,
+    tr: DocsTableRow,
+    td: DocsTableCell,
+    th: DocsTableHeaderCell,
+    hr: DocsHr,
+    img: DocsImage,
 };
 
 const DOCS_COMPONENTS = {

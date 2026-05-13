@@ -24,6 +24,7 @@ import { type IpcMainInvokeEvent, BrowserWindow } from "electron";
 import { readSettings, writeSettings, decrypt } from "../../main/settings";
 import { getVibesAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
+import { extractReadableError, classifyError } from "../utils/error_classifier";
 import type { ChatStreamParams } from "@/ipc/types";
 import * as path from "node:path";
 import { getRemoteDb } from "../../db/remote";
@@ -32,8 +33,41 @@ import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
 import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
+import { app } from "electron";
+import * as fs from "node:fs";
 
 const logger = log.scope("opencode_adapter");
+
+/**
+ * Read ALL model names from a custom provider's on-disk cache and build
+ * an OpenCode models registry. This ensures every model is pre-registered
+ * so the user can switch between them without restarting the server.
+ */
+function buildCustomProviderModels(providerId: string, selectedModelID: string): Record<string, object> {
+    const models: Record<string, object> = {};
+    // Always include the selected model
+    models[selectedModelID] = {};
+
+    try {
+        const sanitized = providerId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const cachePath = path.join(app.getPath("userData"), `${sanitized}-models-cache.json`);
+        const raw = fs.readFileSync(cachePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed?.models && Array.isArray(parsed.models)) {
+            for (const m of parsed.models) {
+                if (m.name && typeof m.name === "string") {
+                    models[m.name] = {};
+                }
+            }
+            logger.info(`[OpenCode] Pre-registered ${Object.keys(models).length} models from cache for ${providerId}`);
+        }
+    } catch (err: any) {
+        // Cache file doesn't exist or is corrupt — fall back to just the selected model
+        logger.warn(`[OpenCode] Could not read models cache for ${providerId}: ${err.message}`);
+    }
+
+    return models;
+}
 
 // ============================================================================
 // Singleton: OpenCode server + client instance
@@ -42,6 +76,11 @@ const logger = log.scope("opencode_adapter");
 let opencodeInstance: Awaited<ReturnType<typeof createOpencode>> | null = null;
 let clientInstance: ReturnType<typeof createOpencodeClient> | null = null;
 let serverUrl: string | null = null;
+
+// Track which provider the OpenCode singleton was started with.
+// When the user switches providers, the singleton must be destroyed and
+// recreated with the new provider's config (baseURL, apiKey, etc.).
+let lastActiveProviderId: string | null = null;
 
 // Track the last project directory used — needed for question reply routing
 let lastProjectDir: string | null = null;
@@ -66,6 +105,7 @@ export function resolveModelForAgent(
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
     // Primary agents (build, plan, explore, general) all use selectedModel
     const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
+    const activeProvider = settings.activeProviderId || "openrouter";
 
     if (PRIMARY_AGENTS.has(agentId)) {
         const model = settings.selectedModel;
@@ -84,16 +124,19 @@ export function resolveModelForAgent(
     // Background/auxiliary agents use strategistModel (lightweight tasks)
     const effectiveModelName = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
 
+    // Use the active provider for background tasks too
+    const providerForBackground = mapProviderForOpenCode({ provider: activeProvider, name: effectiveModelName });
+
     const agentModel = {
         name: effectiveModelName,
-        provider: "openrouter",
+        provider: activeProvider,
     };
     const result = {
         model: agentModel,
-        providerID: "openrouter",
+        providerID: providerForBackground,
         modelID: sanitizeModelName(effectiveModelName),
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → openrouter/${result.modelID} (background/strategist)`);
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist)`);
     return result;
 }
 
@@ -941,14 +984,24 @@ export async function updateOpenCodeConfig(changes: {
 
     try {
         const body: Record<string, any> = {};
+        const settings = readSettings();
+        const activeProvider = settings.activeProviderId || "openrouter";
+        const isCustom = activeProvider.startsWith("custom::");
+
+        // Determine the providerID that OpenCode uses for routing
+        let activeProviderID: string;
+        if (changes.selectedModel) {
+            activeProviderID = mapProviderForOpenCode(changes.selectedModel);
+        } else {
+            // No model change — infer from current settings
+            activeProviderID = mapProviderForOpenCode(settings.selectedModel || { name: "", provider: isCustom ? activeProvider : "openrouter" });
+        }
 
         if (changes.selectedModel) {
-            const providerID = mapProviderForOpenCode(changes.selectedModel);
             // Apply variant suffix if set (variant is ignored for free models)
-            const settings = readSettings();
             const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
             const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
-            const fullModel = `${providerID}/${modelID}`;
+            const fullModel = `${activeProviderID}/${modelID}`;
             body.model = fullModel;
             // Also update plan/explore/general agents to use the same model
             const agentConfig: Record<string, any> = body.agent || {};
@@ -959,7 +1012,7 @@ export async function updateOpenCodeConfig(changes: {
         }
         // Executor model → small_model (used for lightweight tasks)
         if (changes.executorModel) {
-            body.small_model = `openrouter/${changes.executorModel}`;
+            body.small_model = `${activeProviderID}/${sanitizeModelName(changes.executorModel)}`;
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
@@ -973,7 +1026,7 @@ export async function updateOpenCodeConfig(changes: {
         // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
         if (changes.strategistModel) {
             const agentConfig: Record<string, any> = body.agent || {};
-            const model = `openrouter/${sanitizeModelName(changes.strategistModel)}`;
+            const model = `${activeProviderID}/${sanitizeModelName(changes.strategistModel)}`;
             for (const id of ["compaction", "title", "summary", "mockup"]) {
                 agentConfig[id] = { ...agentConfig[id], model };
             }
@@ -982,18 +1035,31 @@ export async function updateOpenCodeConfig(changes: {
         }
 
         // ── Always register the model in provider.models for hot-update ──
-        // Same workaround as createOpencode: register any OpenRouter model
-        // so OpenCode passes it straight to the API without internal parsing.
+        // Register under the correct providerID so OpenCode can find the model.
         const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
         if (currentModelID) {
-            body.provider = {
-                openrouter: {
-                    models: {
-                        [currentModelID]: {},
-                    },
-                },
+            const allModels = isCustom
+                ? buildCustomProviderModels(activeProvider, currentModelID)
+                : { [currentModelID]: {} };
+            const providerSection: Record<string, any> = {
+                models: allModels,
             };
-            logger.info(`[OpenCode] Hot-registered model: ${currentModelID}`);
+
+            // For custom providers, inject npm + baseURL + apiKey
+            if (isCustom) {
+                const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
+                if (customConfig) {
+                    providerSection.npm = "@ai-sdk/openai-compatible";
+                    providerSection.name = customConfig.name || activeProvider.replace(/^custom::/, "");
+                    providerSection.options = {
+                        baseURL: customConfig.apiBaseUrl,
+                        ...(customConfig.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
+                    };
+                }
+            }
+
+            body.provider = { [activeProviderID]: providerSection };
+            logger.info(`[OpenCode] Hot-registered model: ${activeProviderID}/${currentModelID}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -1331,6 +1397,22 @@ export async function handleVisualQuickEdit(params: {
  * The server runs on localhost and the client communicates via HTTP.
  */
 async function getOpenCodeClient(appPath: string) {
+    // ── Detect provider change → force restart ──
+    const currentSettings = readSettings();
+    const currentProvider = currentSettings.activeProviderId || "openrouter";
+    if (clientInstance && opencodeInstance && lastActiveProviderId && lastActiveProviderId !== currentProvider) {
+        logger.info(`[OpenCode] Provider changed: ${lastActiveProviderId} → ${currentProvider}. Restarting server...`);
+        try {
+            opencodeInstance.server.close();
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Error closing old server: ${e.message}`);
+        }
+        opencodeInstance = null;
+        clientInstance = null;
+        serverUrl = null;
+        // Keep session maps — they're per-chat, not per-provider
+    }
+
     if (clientInstance && opencodeInstance) {
         return { client: clientInstance, opencode: opencodeInstance };
     }
@@ -1455,21 +1537,21 @@ async function getOpenCodeClient(appPath: string) {
 
         // Dynamic instructions are written to docs/vibes-context.md per-request
         // and registered in the project's opencode.json (same pattern as DESIGN.md).
-        // ── Always register the model in provider.models ──
-        // OpenCode's model parser can't handle special characters (:, @) in
-        // model IDs. Workaround: always register the model explicitly so
-        // OpenCode passes the ID straight to the provider's API.
-        const openrouterModels: Record<string, object> = {};
-        if (providerID === "openrouter") {
-            openrouterModels[modelID] = {};
-            logger.info(`[OpenCode] Registered model in provider config: ${modelID}`);
-        }
+        // ── Register models in provider.models ──
+        // OpenCode can't resolve models that aren't in its built-in catalogue.
+        // For custom providers, register ALL cached models so the user can switch
+        // without restarting. For built-in providers, just register the selected one.
+        const activeProvider = settings.activeProviderId || "openrouter";
+        const registeredModels: Record<string, object> = activeProvider.startsWith("custom::")
+            ? buildCustomProviderModels(activeProvider, modelID)
+            : { [modelID]: {} };
+        logger.info(`[OpenCode] Registered ${Object.keys(registeredModels).length} model(s) for ${providerID}`);
 
         const config = {
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
-                            ...(Object.keys(openrouterModels).length > 0 ? { models: openrouterModels } : {}),
+                            models: registeredModels,
                             options: {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
@@ -1480,16 +1562,33 @@ async function getOpenCodeClient(appPath: string) {
                                 },
                             },
                         } : providerID === "anthropic" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
                         } : providerID === "google" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:GEMINI_API_KEY}" },
                         } : providerID === "openai" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:OPENAI_API_KEY}" },
-                        } : {}),
+                        } : providerID.startsWith("custom-") ? (() => {
+                            // Custom providers use @ai-sdk/openai-compatible
+                            const activeProvider = settings.activeProviderId || "openrouter";
+                            const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
+                            const providerName = customConfig?.name || activeProvider.replace(/^custom::/, "");
+                            return {
+                                npm: "@ai-sdk/openai-compatible",
+                                name: providerName,
+                                models: registeredModels,
+                                options: {
+                                    baseURL: customConfig?.apiBaseUrl || "",
+                                    ...(customConfig?.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
+                                },
+                            };
+                        })() : { models: registeredModels }),
                 },
                 model: `${providerID}/${modelID}`,
                 // Executor model for lightweight tasks (titles, summaries, commit messages)
-                small_model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                small_model: `${providerID}/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                 // Agent-level config: reasoning effort + text verbosity + unified model tiers
                 agent: {
                     build: {
@@ -1507,13 +1606,13 @@ async function getOpenCodeClient(appPath: string) {
                     // explore and general inherit the global model automatically
                     // Background/auxiliary tasks use strategistModel
                     compaction: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     title: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     summary: {
-                        model: `openrouter/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
+                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -1546,7 +1645,7 @@ async function getOpenCodeClient(appPath: string) {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
-                        model: `openrouter/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                        model: `${providerID}/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
                         tools: {
                             write: true,
                             edit: true,
@@ -1609,20 +1708,40 @@ async function getOpenCodeClient(appPath: string) {
 
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
-        try {
-            opencode = await createOpencode({
-                hostname: "127.0.0.1",
-                port: 0, // auto-assign port
-                config: config as any,
-            });
-        } finally {
-            // Always restore CWD, even if createOpencode fails
-            process.chdir(originalCwd);
+        // Timeout: 15s to accommodate macOS Gatekeeper/code-signing delays on first spawn.
+        // The SDK defaults to 5s which is too aggressive for some environments.
+        const STARTUP_TIMEOUT_MS = 15_000;
+        const MAX_RETRIES = 1;
+        let lastError: Error | null = null;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                opencode = await createOpencode({
+                    hostname: "127.0.0.1",
+                    port: 0, // auto-assign port
+                    timeout: STARTUP_TIMEOUT_MS,
+                    config: config as any,
+                });
+                lastError = null;
+                break;
+            } catch (err: any) {
+                lastError = err;
+                if (attempt < MAX_RETRIES && err.message?.includes("Timeout")) {
+                    logger.warn(`[OpenCode] Startup timed out (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying...`);
+                    // Small delay before retry to let the system settle
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+        }
+        // Always restore CWD, even if createOpencode fails
+        process.chdir(originalCwd);
+        if (lastError || !opencode!) {
+            throw lastError || new Error("OpenCode failed to start after retries");
         }
 
         opencodeInstance = opencode;
         clientInstance = opencode.client;
         serverUrl = opencode.server.url;
+        lastActiveProviderId = settings.activeProviderId || "openrouter";
 
         logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
@@ -1633,8 +1752,8 @@ async function getOpenCodeClient(appPath: string) {
         logger.info(
             `[OpenCode] Agent model map:\n` +
             `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
-            `  STRATEGIST  → openrouter/${strat} (plan, explore, general)\n` +
-            `  EXECUTOR    → openrouter/${exec} (compaction, title, summary, mockup)\n` +
+            `  STRATEGIST  → ${providerID}/${strat} (plan, explore, general)\n` +
+            `  EXECUTOR    → ${providerID}/${exec} (compaction, title, summary, mockup)\n` +
             `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`
         );
 
@@ -1797,6 +1916,13 @@ function mapProviderForOpenCode(model: { provider?: string; name: string }): str
     if (provider.includes("openai")) return "openai";
     if (provider.includes("google")) return "google";
 
+    // Custom providers (custom::*) get their own dedicated provider ID.
+    // OpenCode will be configured with npm: "@ai-sdk/openai-compatible" for these.
+    if (provider.startsWith("custom::")) {
+        // "custom::cortecs" → "custom-cortecs"
+        return provider.replace(/^custom::/, "custom-").replace(/[^a-z0-9-]/g, "-");
+    }
+
     // Default to openrouter
     return "openrouter";
 }
@@ -1842,6 +1968,8 @@ export async function handleOpenCodeStream(
          */
         priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
     },
+    /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
+    _retryCount = 0,
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
 
@@ -1901,9 +2029,9 @@ export async function handleOpenCodeStream(
         const result = await getOpenCodeClient(projectDir);
         client = result.client;
     } catch (error: any) {
-        const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
-        logger.error(`${LP} ${errorMsg}`);
-        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
+        const classified = classifyError(error);
+        logger.error(`${LP} Error al iniciar OpenCode: ${classified.technicalDetail}`);
+        return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
     }
 
     // Get or create session for this chat
@@ -2102,9 +2230,9 @@ export async function handleOpenCodeStream(
             }
 
         } catch (error: any) {
-            const errorMsg = `❌ Error al crear sesión: ${error.message}`;
-            logger.error(`${LP} ${errorMsg}`);
-            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
+            const classified = classifyError(error);
+            logger.error(`${LP} Error al crear sesion: ${classified.technicalDetail}`);
+            return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
         }
     }
 
@@ -2627,10 +2755,46 @@ export async function handleOpenCodeStream(
             };
         }
 
-        logger.error(`${LP} Stream error:`, error.message);
+        const classified = classifyError(error);
+        logger.error(`${LP} Stream error: ${classified.technicalDetail}`);
+
+        // Auto-recovery silencioso: intentar reparar antes de fallar (max 1 retry)
+        if (classified.autoFix && _retryCount === 0) {
+            logger.info(`${LP} Auto-recovery: estrategia=${classified.autoFix} (intento ${_retryCount + 1})`);
+            try {
+                switch (classified.autoFix) {
+                    case "restart_opencode":
+                        await shutdownOpenCode();
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+
+                    case "recreate_session":
+                        chatSessionMap.delete(req.chatId);
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+
+                    case "abort_and_retry": {
+                        const sid = chatSessionMap.get(req.chatId);
+                        if (sid) {
+                            try {
+                                await client.session.abort({ path: { id: sid }, query: { directory: projectDir } });
+                            } catch { /* ignorar si ya no existe */ }
+                        }
+                        await new Promise(r => setTimeout(r, 2000));
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+                    }
+
+                    case "retry_with_backoff":
+                        await new Promise(r => setTimeout(r, 5000));
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+                }
+            } catch (recoveryErr: any) {
+                logger.error(`${LP} Auto-recovery fallo: ${recoveryErr.message}`);
+                // Continuar con el error original
+            }
+        }
+
         const errText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         return {
-            fullResponse: errText || `❌ Error: ${error.message}`,
+            fullResponse: errText || classified.userMessage,
             success: false,
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
@@ -2964,25 +3128,8 @@ async function processEvents(
 
                 // Session errors — log full details for debugging custom agents
                 case "session.error": {
-                    let errorObj = props.error || props.message || props;
-                    let errorMsg = "Unknown error";
-                    if (typeof errorObj === "string") {
-                        errorMsg = errorObj;
-                    } else if (errorObj instanceof Error) {
-                        errorMsg = errorObj.message;
-                    } else {
-                        try {
-                            // Some OpenRouter errors come nested in .error mapped cleanly
-                            if (errorObj?.error?.message) {
-                                errorMsg = errorObj.error.message;
-                            } else {
-                                errorMsg = JSON.stringify(errorObj);
-                            }
-                        } catch (e) {
-                            errorMsg = String(errorObj);
-                        }
-                    }
-                    logger.error(`[OC:Event] ❌ SESSION ERROR: ${errorMsg}`);
+                    const errorMsg = extractReadableError(props.error || props.message || props);
+                    logger.error(`[OC:Event] SESSION ERROR: ${errorMsg}`);
                     throw new Error(`Session Error: ${errorMsg}`);
                 }
 

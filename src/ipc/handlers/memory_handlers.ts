@@ -479,7 +479,14 @@ export function registerMemoryHandlers(): void {
                     sql`${remoteSchema.memories.updatedAt} < ${cutoff7d}`,
                 ));
 
-            logger.info("[Memory] Startup cleanup: purged stale pipeline logs, telemetry, debug logs, and inactive memories (>7d)");
+            // Finished stream tasks > 7 days → DELETE (running tasks are never purged)
+            await db.delete(remoteSchema.streamTasks)
+                .where(and(
+                    sql`${remoteSchema.streamTasks.status} != 'running'`,
+                    sql`${remoteSchema.streamTasks.startedAt} < ${cutoff7d}`,
+                ));
+
+            logger.info("[Memory] Startup cleanup: purged stale pipeline logs, telemetry, debug logs, inactive memories, and old stream tasks (>7d)");
         } catch (e: any) {
             logger.warn(`[Memory] Startup cleanup failed: ${e.message}`);
         }

@@ -1,10 +1,16 @@
 import React from "react";
 import { OpenRouterSettings } from "./OpenRouterSettings";
+import { AIProvidersSection } from "./AIProvidersSection";
 
 export function ModelsAndConnectivity({
   isHighlighted,
 }: {
   isHighlighted?: boolean;
 }) {
-  return <OpenRouterSettings isHighlighted={isHighlighted} />;
+  return (
+    <>
+      <AIProvidersSection />
+      <OpenRouterSettings isHighlighted={isHighlighted} />
+    </>
+  );
 }

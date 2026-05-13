@@ -311,6 +311,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Agente",
     sectionId: "ai-behavior",
   },
+  // ─── Proveedores de IA ───
+  {
+    id: "ai-providers",
+    label: "Proveedores de IA",
+    description: "Configurar y cambiar entre proveedores de modelos de IA",
+    keywords: ["proveedor", "provider", "proxy", "endpoint", "custom", "litellm", "openai", "compatible"],
+    section: "Proveedores de IA",
+    sectionId: "models-connectivity",
+  },
   // ─── OpenRouter ───
   {
     id: "enabled-models",

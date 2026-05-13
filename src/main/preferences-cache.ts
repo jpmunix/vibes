@@ -189,6 +189,7 @@ class PreferencesCache {
     appId = 0,
   ): void {
     for (const [key, value] of Object.entries(entries)) {
+      if (value == null) continue; // Skip null/undefined — DB column is NOT NULL
       const ck = this.cacheKey(userId, key, appId);
       this.cache.set(ck, value);
     }
@@ -294,7 +295,9 @@ class PreferencesCache {
     const BATCH_SIZE = 20;
     for (let i = 0; i < keys.length; i += BATCH_SIZE) {
       const batch = keys.slice(i, i + BATCH_SIZE);
-      const promises = batch.map((key) =>
+      const promises = batch
+        .filter((key) => entries[key] != null) // Guard: skip null/undefined values (NOT NULL column)
+        .map((key) =>
         db
           .insert(userPreferences)
           .values({ userId, appId, key, value: entries[key], updatedAt: now })

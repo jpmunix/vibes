@@ -5,7 +5,7 @@ import { DeepLinkProvider } from "../contexts/DeepLinkContext";
 import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
 import { isElectron } from "@/lib/transport";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { showWarning } from "@/lib/toast";
@@ -22,6 +22,10 @@ import { ipc } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
+
+const OpenRouterSetupWizard = lazy(() =>
+  import("@/components/onboarding/OpenRouterSetupWizard").then(m => ({ default: m.OpenRouterSetupWizard }))
+);
 
 // Routes that can be restored on startup
 const RESTORABLE_ROUTES = ["/", "/workspace"];
@@ -182,6 +186,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <>
       <ThemeProvider>
         <DeepLinkProvider>
+          {/* Blocking wizard: shown after login if OpenRouter is not configured */}
+          <Suspense fallback={null}>
+            <OpenRouterSetupWizard />
+          </Suspense>
           <SidebarProvider>
             <TitleBar />
             {/* Layout: TitleBar (fixed 44px, Electron only) → TopNavbar (40px) → [SecondarySidebar + Content] */}

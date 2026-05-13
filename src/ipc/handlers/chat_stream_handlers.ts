@@ -96,6 +96,7 @@ import {
   DEFAULT_EXECUTOR_MODEL
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
+import { classifyError } from "../utils/error_classifier";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
@@ -566,11 +567,12 @@ ${componentSnippet}
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
+      const activeProvider = settings.activeProviderId || "openrouter";
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
       // Only mockup uses the executorModel (lightweight, fast).
       if (agentId === "mockup") {
         effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
-        selectedModel = { name: effectiveModelName, provider: "openrouter" };
+        selectedModel = { name: effectiveModelName, provider: activeProvider };
       }
 
       // Check if this is a test prompt
@@ -1224,12 +1226,8 @@ This conversation includes one or more image attachments. When the user uploads 
               }
             },
             onError: (error: any) => {
-              let errorMessage = (error as any)?.error?.message;
-              const responseBody = error?.error?.responseBody;
-              if (errorMessage && responseBody) {
-                errorMessage += "\n\nDetails: " + responseBody;
-              }
-              const message = errorMessage || JSON.stringify(error);
+              const classified = classifyError(error);
+              const message = classified.userMessage;
               const requestIdPrefix = isEngineEnabled
                 ? `[Request ID: ${vibesRequestId}] `
                 : "";
@@ -1852,7 +1850,8 @@ This conversation includes one or more image attachments. When the user uploads 
       }
     } catch (error) {
       logger.error("Error calling LLM:", error);
-      const catchErrorText = `Sorry, there was an error processing your request: ${error}`;
+      const classified = classifyError(error);
+      const catchErrorText = classified.userMessage;
       safeSend(event.sender, "chat:response:error", {
         chatId: req.chatId,
         error: catchErrorText,

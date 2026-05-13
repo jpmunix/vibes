@@ -158,6 +158,29 @@ export const OpenRouterProviderSettingSchema = z.object({
   selectedKeyId: z.string().optional(),
 });
 
+// ── Custom AI Provider (OpenAI-compatible endpoints) ──
+export const CustomProviderConfigSchema = z.object({
+  id: z.string(),          // e.g. "custom::litellm-proxy"
+  name: z.string(),        // Display name: "Mi Proxy LiteLLM"
+  apiBaseUrl: z.string(),  // "https://my-proxy.example.com/v1"
+  apiKey: SecretSchema.optional(),
+  // How to discover models:
+  modelsSource: z.enum([
+    "openai-compatible",  // GET /models (standard OpenAI endpoint)
+    "manual",             // User adds them manually
+  ]).optional(),          // default: "openai-compatible"
+});
+export type CustomProviderConfig = z.infer<typeof CustomProviderConfigSchema>;
+
+// ── Per-provider model snapshot (restored when switching providers) ──
+export const ProviderModelConfigSchema = z.object({
+  selectedModel: LargeLanguageModelSchema.optional(),
+  strategistModel: z.string().optional(),
+  executorModel: z.string().optional(),
+  enabledModels: z.array(z.string()).optional(),
+});
+export type ProviderModelConfig = z.infer<typeof ProviderModelConfigSchema>;
+
 export const ProviderSettingSchema = z.union([
   // Must use more specific type first!
   // Zod uses the first type that matches.
@@ -416,6 +439,15 @@ export const UserSettingsSchema = z
     // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")
     // Applied globally; ignored for free models at runtime.
     selectedModelVariant: z.string().optional(),
+
+    // ── Multi-provider support ──
+    // Active provider for all AI operations. "openrouter" when undefined (backward-compat).
+    activeProviderId: z.string().optional(),
+    // User-configured custom OpenAI-compatible providers
+    customProviders: z.array(CustomProviderConfigSchema).optional(),
+    // Per-provider model snapshots — restored when switching back to a provider
+    providerModelConfigs: z.record(z.string(), ProviderModelConfigSchema).optional(),
+
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),
