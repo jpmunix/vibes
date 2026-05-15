@@ -5,7 +5,7 @@ import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
-import { openRouterRequest } from "../utils/openrouter";
+import { openRouterRequest, hasOpenRouterApiKey } from "../utils/openrouter";
 
 const logger = log.scope("session_handlers");
 
@@ -27,6 +27,11 @@ export const registerSessionHandlers = () => {
   });
 
   createTypedHandler(systemContracts.getOpenRouterCredits, async () => {
+    // Don't attempt API call if no key is configured — avoid spamming error logs
+    if (!hasOpenRouterApiKey()) {
+      return { totalCredits: 0, totalUsage: 0, availableCredits: 0, label: "OpenRouter" };
+    }
+
     const settings = readSettings();
     try {
       const response = await openRouterRequest("/credits", {

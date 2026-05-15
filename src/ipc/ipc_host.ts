@@ -49,7 +49,6 @@ import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";
-import { warmUpScaffoldCache } from "./utils/scaffold_cache";
 import log from "electron-log";
 
 export function registerIpcHandlers() {
@@ -123,8 +122,6 @@ export function registerIpcHandlers() {
   // Documentation system — recursive vibes-docs tree
   registerDocsHandlers();
 
-  // Pre-cache scaffold node_modules in background (non-blocking)
-  warmUpScaffoldCache().catch(err =>
-    log.error("Scaffold cache warmup failed:", err),
-  );
+  // Scaffold cache warmup has been moved to main.ts onReady() to ensure
+  // Node.js runtime is available before npm commands are executed.
 }

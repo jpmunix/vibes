@@ -176,6 +176,15 @@ async function _ensureScaffoldCachedImpl(scaffoldDirName: string): Promise<void>
     logger.info(`[${scaffoldDirName}] Running npm install --legacy-peer-deps in: ${cachePath}`);
     const startTime = Date.now();
 
+    // Pre-flight: verify npm is accessible before attempting install
+    try {
+        const { execFileSync } = require("node:child_process");
+        execFileSync("npm", ["--version"], { timeout: 5000, stdio: "pipe" });
+    } catch {
+        logger.warn(`[${scaffoldDirName}] npm not found in PATH, skipping cache warmup`);
+        return;
+    }
+
     try {
         const result = await runCommand("npm install --legacy-peer-deps", cachePath);
         if (result.stderr) {
