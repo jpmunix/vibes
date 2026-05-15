@@ -1,6 +1,7 @@
 import { ipc } from "@/ipc/types";
 import { useEffect, useState } from "react";
 import { Minus, Square, Copy, X } from "@/components/ui/icons";
+import { isElectron } from "@/lib/transport";
 
 interface WindowsControlsProps {
     className?: string;
@@ -8,6 +9,8 @@ interface WindowsControlsProps {
 }
 
 export function WindowsControls({ className = "", buttonClassName = "" }: WindowsControlsProps) {
+    // In web mode, the browser has its own window controls — don't render anything
+    if (!isElectron) return null;
 
     const [showWindowControls, setShowWindowControls] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);

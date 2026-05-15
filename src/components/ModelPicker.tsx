@@ -87,6 +87,7 @@ export function ModelPicker() {
   const allAvailableModels: Array<{ provider: string; model: LanguageModel }> = [];
 
   const searchLower = search.toLowerCase();
+  const activeProviderId = settings.activeProviderId || "openrouter";
 
   const doesModelMatchSearch = (m: LanguageModel) => {
      if (!searchLower) return true;
@@ -94,7 +95,8 @@ export function ModelPicker() {
      return matchesModelSearch(search, m.displayName, m.apiName, alias);
   };
 
-  if (modelsByProviders?.["auto-router"]) {
+  // Auto-router — only for OpenRouter
+  if (activeProviderId === "openrouter" && modelsByProviders?.["auto-router"]) {
     modelsByProviders["auto-router"].forEach((model) => {
       if (!searchLower || doesModelMatchSearch(model)) {
         allAvailableModels.push({ provider: "auto-router", model });
@@ -102,23 +104,35 @@ export function ModelPicker() {
     });
   }
 
-  if (modelsByProviders?.["openrouter"]) {
-    const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
-    modelsByProviders["openrouter"].forEach((model) => {
-      const isCustom = model.type === "custom";
-      const isEnabled = enabledModels.includes(model.apiName);
-      const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
-      
-      if (searchLower) {
-        if (doesModelMatchSearch(model)) {
-           allAvailableModels.push({ provider: "openrouter", model });
+  if (activeProviderId === "openrouter") {
+    // OpenRouter: filtered by enabled models + usage
+    if (modelsByProviders?.["openrouter"]) {
+      const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+      modelsByProviders["openrouter"].forEach((model) => {
+        const isCustom = model.type === "custom";
+        const isEnabled = enabledModels.includes(model.apiName);
+        const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
+        
+        if (searchLower) {
+          if (doesModelMatchSearch(model)) {
+             allAvailableModels.push({ provider: "openrouter", model });
+          }
+        } else {
+          if (isCustom || isEnabled || isUsed) {
+             allAvailableModels.push({ provider: "openrouter", model });
+          }
         }
-      } else {
-        if (isCustom || isEnabled || isUsed) {
-           allAvailableModels.push({ provider: "openrouter", model });
+      });
+    }
+  } else {
+    // Custom provider: show ALL models (they have a small, curated set)
+    if (modelsByProviders?.[activeProviderId]) {
+      modelsByProviders[activeProviderId].forEach((model) => {
+        if (!searchLower || doesModelMatchSearch(model)) {
+          allAvailableModels.push({ provider: activeProviderId, model });
         }
-      }
-    });
+      });
+    }
   }
 
   // Sort: selected first, then by most-recently-used (timestamp descending)
@@ -151,13 +165,13 @@ export function ModelPicker() {
     <>
       <ModelVariantPicker
         models={sortedModels}
-        selectedValue={`${selectedModel.provider}:${selectedModel.name}`}
+        selectedValue={`${selectedModel.provider}|||${selectedModel.name}`}
         selectedVariant={selectedVariant}
         modelAliases={aliases}
         onModelSelect={(val) => {
-          const sepIdx = val.indexOf(":");
+          const sepIdx = val.indexOf("|||");
           const prov = val.slice(0, sepIdx);
-          const apiName = val.slice(sepIdx + 1);
+          const apiName = val.slice(sepIdx + 3);
           const found = sortedModels.find(
             (sm) => sm.provider === prov && sm.model.apiName === apiName,
           );

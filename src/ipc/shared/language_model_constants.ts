@@ -310,3 +310,5 @@ export const LOCAL_PROVIDERS: Record<
     hasFreeTier: true,
   },
 };
+
+export const CUSTOM_PROVIDER_PREFIX = "custom::";

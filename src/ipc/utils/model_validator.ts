@@ -40,6 +40,18 @@ const logger = log.scope("model_validator");
  */
 export async function validateModelSettings(): Promise<void> {
     try {
+        const settings = readSettings();
+
+        // ── Skip validation when using a custom provider ──
+        // The validator checks against the OpenRouter model catalogue.
+        // If the active provider is NOT OpenRouter, all its models would be
+        // falsely flagged as "dead" and replaced with OpenRouter fallbacks.
+        const activeProvider = settings.activeProviderId || "openrouter";
+        if (activeProvider !== "openrouter") {
+            logger.info(`[ModelValidator] Skipped — active provider is "${activeProvider}", not OpenRouter`);
+            return;
+        }
+
         const models = await fetchOpenRouterModels();
 
         // If we got zero models (network down, API error), skip validation
@@ -50,7 +62,6 @@ export async function validateModelSettings(): Promise<void> {
         }
 
         const availableNames = new Set(models.map(m => m.name));
-        const settings = readSettings();
         const migrated: string[] = [];
 
         // ── 1. selectedModel (the main chat model) ──

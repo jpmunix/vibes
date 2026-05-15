@@ -1,3 +1,13 @@
+// Web Transport — must initialize BEFORE any React components load.
+// In Electron mode: no-op (preload already set up window.electron).
+// In Web mode: installs window.electron shim with HTTP+Socket.io transport.
+import { isElectron } from "./lib/transport";
+import { installWebTransport } from "./lib/transport-web";
+if (!isElectron) {
+  installWebTransport();
+  document.documentElement.dataset.platform = "web";
+}
+
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -13,7 +23,7 @@ import { AuthGate } from "./components/AuthGate";
 const AppRoot = lazy(() => import("./AppRoot"));
 
 // @ts-ignore
-console.log("Running in mode:", import.meta.env.MODE);
+console.log("Running in mode:", import.meta.env.MODE, isElectron ? "(Electron)" : "(Web)");
 
 interface MyMeta extends Record<string, unknown> {
   showErrorToast: boolean;
@@ -320,7 +330,44 @@ if (windowType === "database" && appIdStr) {
         </StrictMode>,
       );
     },
-  );
+  ).catch((err) => {
+    console.error("Failed to load AdminWindowApp:", err);
+    adminRoot.render(
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "var(--background, #1a1a1a)",
+        color: "var(--foreground, #e5e5e5)",
+        fontFamily: "system-ui, sans-serif",
+        gap: "12px",
+        padding: "24px",
+        textAlign: "center",
+      }}>
+        <div style={{ fontSize: "24px" }}>⚠️</div>
+        <p style={{ fontSize: "14px", opacity: 0.8 }}>Error al cargar Admin</p>
+        <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "500px", wordBreak: "break-all" }}>
+          {String(err?.message || err)}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "rgba(255,255,255,0.1)",
+            color: "inherit",
+            cursor: "pointer",
+            fontSize: "13px",
+          }}
+        >
+          Reintentar
+        </button>
+      </div>,
+    );
+  });
 } else if (windowType === "docs") {
   // Sync theme from parent window via URL params
   if (themeParam) {

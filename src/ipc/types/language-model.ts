@@ -145,6 +145,12 @@ export const languageModelContracts = {
     output: z.void(),
   }),
 
+  refreshCustomProviderModels: defineContract({
+    channel: "refresh-custom-provider-models",
+    input: z.object({ providerId: z.string() }),
+    output: z.void(),
+  }),
+
   listOllamaModels: defineContract({
     channel: "local-models:list-ollama",
     input: z.void(),

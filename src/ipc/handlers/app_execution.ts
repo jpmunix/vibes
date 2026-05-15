@@ -37,6 +37,8 @@ const logger = log.scope("app_execution");
 class LogBuffer {
   private buffers = new Map<number, AppOutput[]>();
   private timeouts = new Map<number, NodeJS.Timeout>();
+  /** Track the event sender per app so we can broadcast in web mode (no BrowserWindow) */
+  private senders = new Map<number, { send: (ch: string, ...args: any[]) => void }>();
   private readonly FLUSH_INTERVAL_MS = 200;
   private readonly MAX_BATCH_SIZE = 100;
 
@@ -56,6 +58,11 @@ class LogBuffer {
     }
   }
 
+  /** Register the event sender for an app so logs can be routed in web mode */
+  registerSender(appId: number, sender: { send: (ch: string, ...args: any[]) => void }) {
+    this.senders.set(appId, sender);
+  }
+
   flush(appId: number) {
     const buffer = this.buffers.get(appId);
     if (!buffer || buffer.length === 0) return;
@@ -72,9 +79,19 @@ class LogBuffer {
 
     // Broadcast to ALL open windows so console windows also receive logs
     const payload = { appId, logs };
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed() && win.webContents) {
-        safeSend(win.webContents, "app:logs-batch", payload);
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length > 0) {
+      // Electron mode: broadcast to all Electron windows
+      for (const win of windows) {
+        if (!win.isDestroyed() && win.webContents) {
+          safeSend(win.webContents, "app:logs-batch", payload);
+        }
+      }
+    } else {
+      // Web mode: use the registered sender (Socket.IO)
+      const sender = this.senders.get(appId);
+      if (sender) {
+        try { sender.send("app:logs-batch", payload); } catch { /* sender may be gone */ }
       }
     }
   }
@@ -96,7 +113,26 @@ export const autoRecoveryAttempted = new Set<number>();
 export const actualPortByApp = new Map<number, number>();
 
 // Needed, otherwise electron in MacOS/Linux will not be able to find node/pnpm.
-fixPath();
+try { fixPath(); } catch { /* safe to ignore in server/web mode */ }
+
+// ─── URL rewriting for cloud mode ───────────────────────────────────
+// In cloud mode, dev servers bind to 0.0.0.0 but the remote browser
+// cannot reach "localhost" or "0.0.0.0" — rewrite to the server's
+// actual hostname (derived from the Vibes API URL or OS hostname).
+function rewriteDevServerUrl(url: string): string {
+  if (process.env.VIBES_CLOUD_MODE !== "1") return url;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      // Use the hostname the user connected to (the API server's hostname)
+      const serverHost = process.env.VIBES_PUBLIC_HOST || require("os").hostname();
+      parsed.hostname = serverHost;
+      return parsed.toString().replace(/\/$/, ""); // strip trailing slash
+    }
+  } catch { /* malformed URL, return as-is */ }
+  return url;
+}
 
 // ─── Port / process helpers ─────────────────────────────────────────
 
@@ -187,7 +223,12 @@ export async function getCommand({
   // Store the actual port for polling-based readiness detection
   actualPortByApp.set(appId, port);
   const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
-  const start = (startCommand?.trim() || `npm run dev -- --port ${port}`).replace(/\{port\}/g, String(port));
+  // In cloud mode, bind to 0.0.0.0 so the dev server is accessible from external browsers
+  const IS_CLOUD = process.env.VIBES_CLOUD_MODE === "1";
+  const defaultStart = IS_CLOUD
+    ? `npm run dev -- --port ${port} --host 0.0.0.0`
+    : `npm run dev -- --port ${port}`;
+  const start = (startCommand?.trim() || defaultStart).replace(/\{port\}/g, String(port));
   return `${install} && ${start}`;
 }
 
@@ -288,6 +329,9 @@ async function executeAppLocalNode({
     isDocker: false,
   });
 
+  // Register sender for web mode log broadcasting
+  logBuffer.registerSender(appId, event.sender);
+
   listenToProcess({
     process: spawnedProcess, appId, isNeon, event, appPath, installCommand, startCommand,
   });
@@ -313,9 +357,25 @@ function listenToProcess({
   let stderrBuffer = "";
   let proxyStarted = false;
 
+  const IS_CLOUD_MODE = process.env.VIBES_CLOUD_MODE === "1";
+
   const startProxyForApp = async (targetUrl: string) => {
     if (proxyStarted) return;
     proxyStarted = true;
+
+    // In web/cloud mode, skip the proxy worker (requires compiled worker from Electron build).
+    // The browser can access the dev server URL directly — the proxy is only needed in
+    // Electron to bypass file:// → http:// iframe restrictions.
+    if (IS_CLOUD_MODE) {
+      proxyUrlByApp.set(appId, { proxyUrl: targetUrl, originalUrl: targetUrl });
+      safeSend(event.sender, "app:output", {
+        type: "stdout",
+        message: `[vibes-proxy-server]started=[${targetUrl}] original=[${targetUrl}]`,
+        appId,
+      });
+      logger.info(`[App ${appId}] Cloud mode: serving dev server directly at ${targetUrl} (no proxy)`);
+      return;
+    }
 
     const proxyPort = getProxyPort(appId);
 
@@ -361,7 +421,7 @@ function listenToProcess({
     if (isOpen && !proxyStarted) {
       logger.info(`[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`);
       clearInterval(pollingInterval);
-      await startProxyForApp(`http://localhost:${appPort}`);
+      await startProxyForApp(rewriteDevServerUrl(`http://localhost:${appPort}`));
     }
   }, 3000);
 
@@ -383,9 +443,10 @@ function listenToProcess({
       safeSend(event.sender, "app:output", { type: "input-requested", message, appId });
     } else {
       logBuffer.add(appId, { type: "stdout", message, appId, timestamp: Date.now() });
-      const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
+      // Match localhost, 0.0.0.0, or 127.0.0.1 URLs emitted by dev servers
+      const urlMatch = message.match(/(https?:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):\d+\/?)/);
       if (urlMatch) {
-        await startProxyForApp(urlMatch[1]);
+        await startProxyForApp(rewriteDevServerUrl(urlMatch[1]));
       }
     }
   });
@@ -414,14 +475,9 @@ function listenToProcess({
       appId,
     };
     addLog(stopEntry);
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed() && win.webContents) {
-        safeSend(win.webContents, "app:logs-batch", {
-          appId,
-          logs: [{ type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() }],
-        });
-      }
-    }
+    // Use logBuffer for consistent broadcasting (works in both Electron + web mode)
+    logBuffer.add(appId, { type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() });
+    logBuffer.flush(appId);
 
     if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
       const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;

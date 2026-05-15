@@ -4,12 +4,15 @@ import {
   CLOUD_PROVIDERS,
   MODEL_OPTIONS,
   PROVIDER_TO_ENV_VAR,
+  CUSTOM_PROVIDER_PREFIX,
 } from "./language_model_constants";
 import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
+import { fetchCompatibleModels } from "../utils/openai_compatible_models_service";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 import log from "electron-log";
+import { readSettings } from "@/main/settings";
 
 const logger = log.scope("language_model_helpers");
 
@@ -55,7 +58,17 @@ export async function getLanguageModelProviders(_userId?: string): Promise<
     }
   }
 
-  return hardcodedProviders;
+  // ── Custom providers from user settings ──
+  const settings = readSettings();
+  const customProviders: LanguageModelProvider[] = (settings.customProviders ?? []).map(cp => ({
+    id: cp.id,
+    name: cp.name,
+    apiBaseUrl: cp.apiBaseUrl,
+    type: "custom" as const,
+    isCustom: true,
+  }));
+
+  return [...hardcodedProviders, ...customProviders];
 }
 
 /**
@@ -135,6 +148,26 @@ export async function getLanguageModels({
         type: "cloud",
       }));
     }
+  } else if (provider.type === "custom") {
+    // Fetch from generic OpenAI-compatible endpoint
+    const settings = readSettings();
+    const customConfig = settings.customProviders?.find(p => p.id === providerId);
+    if (customConfig && customConfig.modelsSource !== "manual") {
+      try {
+        const dynamicModels = await fetchCompatibleModels(
+          providerId,
+          customConfig.apiBaseUrl,
+          customConfig.apiKey?.value,
+        );
+        hardcodedModels = dynamicModels.map((model) => ({
+          ...model,
+          apiName: model.name,
+          type: "cloud" as const,
+        }));
+      } catch (err: any) {
+        logger.warn(`Failed to fetch models for custom provider ${providerId}: ${err.message}`);
+      }
+    }
   }
 
   // ── Merge custom models from BunnyDB ──
@@ -186,4 +219,5 @@ export function isCustomProvider({ providerId }: { providerId: string }) {
   return providerId.startsWith(CUSTOM_PROVIDER_PREFIX);
 }
 
-export const CUSTOM_PROVIDER_PREFIX = "custom::";
+// Re-export from constants for backward compatibility
+export { CUSTOM_PROVIDER_PREFIX };

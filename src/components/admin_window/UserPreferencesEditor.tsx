@@ -211,7 +211,7 @@ const CATEGORY_LABELS: Record<Category, { icon: LucideIcon; label: string }> = {
 const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "other"];
 
 const APPEARANCE_KEYS = new Set([
-    "selectedFont", "selectedChatFont", "fontScaleUI", "fontScaleSidebar",
+    "theme", "selectedFont", "selectedChatFont", "fontScaleUI", "fontScaleSidebar",
     "fontScaleChat", "fontScaleBubbleWidth", "primaryColorLight", "primaryColorDark",
     "primaryChromaLight", "primaryChromaDark", "themeIntensity", "zoomLevel",
     "iconLibrary", "chatRenderMode", "previewDeviceMode", "previewPosition",

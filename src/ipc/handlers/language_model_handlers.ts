@@ -9,6 +9,8 @@ import {
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
 import { eq, and } from "drizzle-orm";
+import { readSettings, writeSettings } from "@/main/settings";
+import type { CustomProviderConfig } from "@/lib/schemas";
 
 const logger = log.scope("language_model_handlers");
 
@@ -17,17 +19,85 @@ export function registerLanguageModelHandlers() {
     return getLanguageModelProviders(context.userId);
   });
 
-  // Custom provider CRUD — disabled (not needed, we use openrouter for everything)
-  createTypedHandler(languageModelContracts.createCustomProvider, async () => {
-    throw new Error("Custom providers are no longer supported");
+  // Custom provider CRUD — manages settings.customProviders[]
+  createTypedHandler(languageModelContracts.createCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
+
+    // Check for duplicate ID
+    if (existing.some(p => p.id === params.id)) {
+      throw new Error(`Provider with ID "${params.id}" already exists`);
+    }
+
+    const newProvider: CustomProviderConfig = {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      modelsSource: "openai-compatible",
+    };
+
+    writeSettings({
+      customProviders: [...existing, newProvider],
+    });
+
+    logger.info(`[CustomProvider] Created: ${params.id} (${params.name})`);
+
+    return {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      type: "custom" as const,
+    };
   });
 
-  createTypedHandler(languageModelContracts.editCustomProvider, async () => {
-    throw new Error("Custom providers are no longer supported");
+  createTypedHandler(languageModelContracts.editCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
+    const idx = existing.findIndex(p => p.id === params.id);
+
+    if (idx === -1) {
+      throw new Error(`Provider "${params.id}" not found`);
+    }
+
+    const updated = [...existing];
+    updated[idx] = {
+      ...updated[idx],
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+    };
+
+    writeSettings({ customProviders: updated });
+    logger.info(`[CustomProvider] Updated: ${params.id}`);
+
+    return {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      type: "custom" as const,
+    };
   });
 
-  createTypedHandler(languageModelContracts.deleteCustomProvider, async () => {
-    throw new Error("Custom providers are no longer supported");
+  createTypedHandler(languageModelContracts.deleteCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
+    const filtered = existing.filter(p => p.id !== params.providerId);
+
+    const updates: Record<string, any> = { customProviders: filtered };
+
+    // If deleting the active provider, fall back to openrouter
+    if (settings.activeProviderId === params.providerId) {
+      updates.activeProviderId = undefined;
+    }
+
+    // Clean up provider model config snapshot
+    if (settings.providerModelConfigs?.[params.providerId]) {
+      const configs = { ...settings.providerModelConfigs };
+      delete configs[params.providerId];
+      updates.providerModelConfigs = configs;
+    }
+
+    writeSettings(updates);
+    logger.info(`[CustomProvider] Deleted: ${params.providerId}`);
   });
 
   // ── Custom Model CRUD (reactivated for presets / arbitrary model IDs) ──
@@ -126,4 +196,16 @@ export function registerLanguageModelHandlers() {
       await fetchOpenRouterModels();
     },
   );
+
+  createTypedHandler(languageModelContracts.refreshCustomProviderModels, async (_event, params) => {
+    if (!params?.providerId) throw new Error("providerId is required");
+    logger.info(`Manual refresh of custom provider models: ${params.providerId}`);
+    const settings = readSettings();
+    const config = settings.customProviders?.find(p => p.id === params.providerId);
+    if (!config) throw new Error(`Custom provider "${params.providerId}" not found`);
+
+    const { clearCompatibleModelsCache, fetchCompatibleModels } = await import("../utils/openai_compatible_models_service");
+    clearCompatibleModelsCache(params.providerId);
+    await fetchCompatibleModels(params.providerId, config.apiBaseUrl, config.apiKey?.value);
+  });
 }

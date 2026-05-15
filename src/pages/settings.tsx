@@ -311,6 +311,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Agente",
     sectionId: "ai-behavior",
   },
+  // ─── Proveedores de IA ───
+  {
+    id: "ai-providers",
+    label: "Proveedores de IA",
+    description: "Configurar y cambiar entre proveedores de modelos de IA",
+    keywords: ["proveedor", "provider", "proxy", "endpoint", "custom", "litellm", "openai", "compatible"],
+    section: "Proveedores de IA",
+    sectionId: "models-connectivity",
+  },
   // ─── OpenRouter ───
   {
     id: "enabled-models",
@@ -971,6 +980,16 @@ export function GeneralSettings({
 
   useEffect(() => {
     if (
+      settings?.theme !== undefined &&
+      settings.theme !== theme
+    ) {
+      setTheme(settings.theme);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.theme, setTheme]);
+
+  useEffect(() => {
+    if (
       settings?.themeIntensity !== undefined &&
       settings.themeIntensity !== intensity
     ) {
@@ -1035,7 +1054,7 @@ export function GeneralSettings({
               {(["system", "light", "dark"] as const).map((option) => (
                 <button
                   key={option}
-                  onClick={() => setTheme(option)}
+                  onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                     theme === option

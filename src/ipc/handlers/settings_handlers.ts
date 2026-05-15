@@ -201,14 +201,15 @@ export function registerSettingsHandlers() {
       }
     }
 
-    // If provider settings (API keys) changed, shutdown OpenCode daemon
-    if (settings.providerSettings) {
+    // If provider settings (API keys) or active provider changed, shutdown OpenCode daemon
+    // so it restarts with the correct baseURL/apiKey configuration.
+    if (settings.providerSettings || settings.activeProviderId !== undefined) {
       try {
         const { shutdownOpenCode } = await import("./opencode_adapter");
         await shutdownOpenCode();
-        logger.info("Shutdown OpenCode daemon to apply new API keys");
+        logger.info("Shutdown OpenCode daemon to apply provider change");
       } catch (e: any) {
-        logger.warn(`Failed to shutdown OpenCode for API key reload: ${e.message}`);
+        logger.warn(`Failed to shutdown OpenCode for provider change: ${e.message}`);
       }
     }
 
