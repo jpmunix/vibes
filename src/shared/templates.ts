@@ -19,11 +19,11 @@ export interface ApiTemplate {
   imageUrl: string;
 }
 
-export const DEFAULT_TEMPLATE_ID = "react-beta";
+export const DEFAULT_TEMPLATE_ID = "react";
 export const DEFAULT_TEMPLATE = {
-  id: "react-beta",
+  id: "react",
   title: "React.js",
-  description: "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui.",
+  description: "React.js, Vite, Shadcn, Tailwind y TypeScript.",
   isOfficial: true,
   tags: ["SPA", "Frontend"],
 };
@@ -38,7 +38,8 @@ export const NEON_TEMPLATE_IDS = new Set<string>([PORTAL_MINI_STORE_ID]);
  * are not cached or used until explicitly enabled.
  */
 export const SCAFFOLD_TEMPLATE_IDS: Record<string, string> = {
-  "react-beta": "scaffold-react-beta",
+  react: "scaffold",
+  react19: "scaffold-react-beta",
   express: "scaffold-express",
   next: "scaffold-next",
   // vue: "scaffold-vue",       // Available but not active
@@ -66,8 +67,29 @@ export interface TemplateTechStack {
 }
 
 export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
-  "react-beta": {
+  react: {
     title: "React.js",
+    stack: "React 19, Vite, TypeScript, Tailwind CSS 3, Shadcn/ui, React Router DOM 6",
+    context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
+    requiredFiles: [
+      "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
+      "vite.config.ts — con plugin React",
+      "tsconfig.json, tsconfig.app.json, tsconfig.node.json",
+      "eslint.config.js",
+      "postcss.config.js",
+      "tailwind.config.ts (o .js)",
+      "index.html — con div#root, script type=module apuntando a src/main.tsx",
+      "src/main.tsx — entry point con ReactDOM.createRoot",
+      "src/App.tsx — componente raíz con contenido mínimo visible",
+      "src/index.css — con @tailwind base/components/utilities",
+      "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
+      "vercel.json — rewrites para SPA: [{\"source\":\"/(.*)\",\"destination\":\"/index.html\"}]",
+    ],
+    verifyCommand: "npx tsc --noEmit",
+  },
+  react19: {
+    title: "React 19",
     stack: "React 19, Vite 6, TypeScript, Tailwind CSS 4 (plugin Vite), Shadcn/ui, React Router DOM 7",
     context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
     scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
@@ -184,6 +206,13 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
 
 export const localTemplatesData: Template[] = [
   DEFAULT_TEMPLATE,
+  {
+    id: "react19",
+    title: "React 19",
+    description: "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui. Última tecnología.",
+    isOfficial: true,
+    tags: ["SPA", "Frontend"],
+  },
   {
     id: "express",
     title: "Express",

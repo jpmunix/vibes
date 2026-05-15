@@ -179,10 +179,6 @@ const BLOCKED_MODEL_IDS = new Set([
     "kwaipilot/kat-coder-pro-v2",
 
     // Too small for agentic coding (≤14B effective params)
-    "qwen/qwen-2.5-7b-instruct",
-    "qwen/qwen3-8b",
-    "qwen/qwen3-14b",
-    "qwen/qwen3-30b-a3b",
     "nvidia/nemotron-nano-9b-v2",
     "ibm-granite/granite-4.1-8b",
     "baidu/ernie-4.5-21b-a3b",

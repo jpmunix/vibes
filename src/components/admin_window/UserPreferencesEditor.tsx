@@ -27,6 +27,7 @@ import {
     Palette,
     Settings2,
     Package,
+    Database,
     ChevronDown,
 } from "@/components/ui/icons";
 import type { LucideIcon } from "@/components/ui/icons";
@@ -198,38 +199,71 @@ function detectValueType(key: string, value: string): ValueType {
 
 // ── Category grouping ───────────────────────────────────────────────────────
 
-type Category = "models" | "keys" | "appearance" | "behavior" | "other";
+type Category = "models" | "keys" | "appearance" | "behavior" | "internal" | "other";
 
 const CATEGORY_LABELS: Record<Category, { icon: LucideIcon; label: string }> = {
-    models: { icon: Bot, label: "Modelos" },
+    models: { icon: Bot, label: "Modelos y Proveedores" },
     keys: { icon: KeyRound, label: "Claves API e Integraciones" },
-    appearance: { icon: Palette, label: "Apariencia" },
+    appearance: { icon: Palette, label: "Apariencia y Layout" },
     behavior: { icon: Settings2, label: "Comportamiento" },
+    internal: { icon: Database, label: "Estado Interno" },
     other: { icon: Package, label: "Otros" },
 };
 
-const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "other"];
+const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "internal", "other"];
 
 const APPEARANCE_KEYS = new Set([
-    "theme", "selectedFont", "selectedChatFont", "fontScaleUI", "fontScaleSidebar",
-    "fontScaleChat", "fontScaleBubbleWidth", "primaryColorLight", "primaryColorDark",
-    "primaryChromaLight", "primaryChromaDark", "themeIntensity", "zoomLevel",
-    "iconLibrary", "chatRenderMode", "previewDeviceMode", "previewPosition",
+    // Theme & colors
+    "theme", "selectedThemeId", "ui.theme",
+    "primaryColorLight", "primaryColorDark",
+    "primaryChromaLight", "primaryChromaDark", "themeIntensity",
+    // Fonts
+    "selectedFont", "selectedChatFont", "fontScale",
+    "fontScaleUI", "fontScaleSidebar", "fontScaleChat", "fontScaleBubbleWidth",
+    // Layout & window state
+    "zoomLevel", "iconLibrary", "chatRenderMode", "previewDeviceMode", "previewPosition",
+    "windowState", "secondaryWindowStates",
+    "docs.sidebarWidth", "releaseNotes.sidebarWidth", "gitCommitPanelSize",
+]);
+
+/** Keys that belong to the "internal" (app state / housekeeping) category */
+const INTERNAL_KEYS = new Set([
+    "_migrations", "hasRunBefore", "isRunning",
+    "lastKnownPerformance", "lastOpenCodeUpdateCheck",
+    "lastShownReleaseNotesVersion",
+    "app.lastView", "lastView",
 ]);
 
 function categorizeKey(key: string): Category {
-    if (MODEL_KEYS.has(key) || key === "selectedModel" || key === "selectedModelVariant") return "models";
-    if (SECRET_KEYS.has(key) || key.includes("AccessToken") || key.includes("apiKey")) return "keys";
-    if (APPEARANCE_KEYS.has(key)) return "appearance";
+    // ── Models & providers ──
+    if (MODEL_KEYS.has(key) || key === "selectedModel" || key === "selectedModelVariant" ||
+        key === "activeProviderId" || key === "agentModels" || key === "model_aliases" ||
+        key === "model_usage_stats" || key === "providerModelConfigs" || key === "customProviders" ||
+        key === "playgroundModelSets" || key === "playground_model_presets" ||
+        key === "enabledOpenRouterModels" || key === "memoriesSynthesisModel") return "models";
 
-    // Booleans and enums → behavior
+    // ── API keys & integrations ──
+    if (SECRET_KEYS.has(key) || key.includes("AccessToken") || key.toLowerCase().includes("apikey") ||
+        key === "supabase" || key === "telemetryUserId" || key === "githubUser" ||
+        key === "neon" || key === "firebase") return "keys";
+
+    // ── Appearance & layout ──
+    if (APPEARANCE_KEYS.has(key) || key.startsWith("sidebar.")) return "appearance";
+
+    // ── Behavior: feature toggles, permissions, agent config ──
     if (key.startsWith("enable") || key.startsWith("show") || key.startsWith("auto") ||
+        key.startsWith("memories") || key.startsWith("embeddings") ||
+        key.startsWith("openCode") || key.startsWith("agentTool") ||
         key === "chatLanguage" || key === "defaultChatMode" || key === "selectedChatMode" ||
         key === "reasoningEffort" || key === "textVerbosity" || key === "runtimeMode2" ||
         key === "proLazyEditsMode" || key === "telemetryConsent" || key === "selectedTemplateId" ||
         key === "maxChatTurnsInContext" || key === "agentMaxSteps" ||
         key === "aiQueryLogRotationThreshold" || key === "smartContextOption" ||
-        key === "proSmartContextOption") return "behavior";
+        key === "proSmartContextOption" || key === "customPrompts" ||
+        key === "playground_prompt_presets") return "behavior";
+
+    // ── Internal state ──
+    if (INTERNAL_KEYS.has(key)) return "internal";
 
     return "other";
 }
