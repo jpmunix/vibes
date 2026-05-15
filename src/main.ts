@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, Menu, screen } from "electron";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
 import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
+import { ensureNodeRuntime } from "./main/node_runtime";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
 // @ts-ignore
@@ -228,7 +229,7 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = needsOptimization ? 5 : 4;
+  const TOTAL_STEPS = needsOptimization ? 6 : 5;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -266,21 +267,43 @@ export async function onReady() {
 
   const stepOffset = needsOptimization ? 1 : 0;
 
-  // Step N+1: Create main window (the critical path)
-  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Preparando interfaz...");
+  // Step N+1: Ensure Node.js runtime is available
+  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Verificando entorno...");
+  const nodeResult = await ensureNodeRuntime((msg) => {
+    updateSplash(splash, stepOffset + 1, TOTAL_STEPS, msg);
+  });
+  if (nodeResult.source === "portable") {
+    logger.info(`Using portable Node.js from ${nodeResult.nodeBinDir}`);
+  } else {
+    logger.info(`Using system Node.js from ${nodeResult.nodeBinDir}`);
+  }
+
+  // Pre-cache node status so the renderer's SetupBanner gets an instant
+  // response (no flash of "install Node.js" banner).
+  try {
+    const { execSync } = require("child_process");
+    const ver = execSync("node --version", { timeout: 5000, encoding: "utf-8" }).trim();
+    const { preCacheNodeStatus } = require("./ipc/handlers/node_handlers");
+    preCacheNodeStatus(ver);
+  } catch (e) {
+    logger.warn("Failed to pre-cache node status (non-fatal):", e);
+  }
+
+  // Step N+2: Create main window (the critical path)
+  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
 
-  // Step N+2: Validate configured models still exist in OpenRouter
-  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Validando modelos...");
+  // Step N+3: Validate configured models still exist in OpenRouter
+  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Validando modelos...");
   await validateModelSettings().catch((err) =>
     logger.warn("Model validation failed (non-fatal):", err),
   );
 
-  // Step N+3: Hydrate KV preferences from BunnyDB
+  // Step N+4: Hydrate KV preferences from BunnyDB
   const sessionData = readSession();
-  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Cargando preferencias...");
+  updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Cargando preferencias...");
   if (sessionData?.userId) {
     try {
       await initializeRemoteSchema();
@@ -293,12 +316,12 @@ export async function onReady() {
     logger.info("Splash: no session found, skipping preferences hydration");
   }
 
-  // Step N+4: Show main window and close splash
+  // Step N+5: Show main window and close splash
   // The main window renders behind the splash (splash is alwaysOnTop).
   // No need to wait for did-finish-load — the window has backgroundColor
   // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
   // naturally while the splash fades away.
-  updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Cargando...");
+  updateSplash(splash, stepOffset + 5, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     mainWindow.show();
   }
@@ -306,6 +329,13 @@ export async function onReady() {
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
+    // Warm up scaffold caches now that Node.js is guaranteed in PATH.
+    // Previously in ipc_host.ts, moved here to avoid race condition.
+    const { warmUpScaffoldCache } = await import("./ipc/utils/scaffold_cache");
+    warmUpScaffoldCache().catch(err =>
+      logger.error("Scaffold cache warmup failed:", err),
+    );
+
     // Check/install OpenCode binary in background (was blocking splash for ~2.2s)
     const openCodeResult = await ensureOpenCodeInstalled();
     if (!openCodeResult.ok) {

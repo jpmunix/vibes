@@ -54,46 +54,22 @@ function getOpenCodeBinDir(): string {
 }
 
 /**
- * Prepend NVM bin directories to PATH so we can find npm/node
- * even when launched from a GUI context (not a terminal).
- * Also prepends our local opencode bin dir.
+ * Prepend OpenCode-specific bin directories to PATH.
+ * System Node.js detection (NVM, Homebrew, fnm, etc.) is handled by
+ * node_runtime.ts which runs earlier in the startup sequence.
  */
-function ensurePathDirs(): void {
-    const HOME = process.env.HOME || "/home/" + process.env.USER;
-    const nvmDir = path.join(HOME, ".nvm/versions/node");
+function ensureOpenCodePathDirs(): void {
     const dirsToAdd: string[] = [];
 
     // Add our local opencode bin dir
     dirsToAdd.push(getOpenCodeBinDir());
-
-    try {
-        if (fs.existsSync(nvmDir)) {
-            const versions = fs.readdirSync(nvmDir);
-            versions.sort((a: string, b: string) => {
-                const numA = a.replace("v", "").split(".").map(Number);
-                const numB = b.replace("v", "").split(".").map(Number);
-                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
-                    const partA = numA[i] || 0;
-                    const partB = numB[i] || 0;
-                    if (partA !== partB) return partB - partA;
-                }
-                return 0;
-            });
-
-            const nvmBins = versions.map((v: string) => path.join(nvmDir, v, "bin"));
-            dirsToAdd.push(...nvmBins);
-            logger.info(`Injected ${nvmBins.length} NVM bin dirs (latest: ${versions[0]})`);
-        }
-    } catch (e) {
-        logger.warn("Could not scan NVM dirs:", e);
-    }
 
     // Also add node_modules/.bin from our prefix (npm --prefix puts binaries here)
     const localBinDir = path.join(getOpenCodePrefix(), "node_modules", ".bin");
     dirsToAdd.push(localBinDir);
 
     const currentPath = process.env.PATH || "";
-    process.env.PATH = [...dirsToAdd, currentPath].join(":");
+    process.env.PATH = [...dirsToAdd, currentPath].join(path.delimiter);
 }
 
 /**
@@ -206,7 +182,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
     version: string | null;
     updated?: boolean;
 }> {
-    ensurePathDirs();
+    ensureOpenCodePathDirs();
 
     const installed = await isOpenCodeInstalled();
 
