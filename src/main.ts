@@ -284,7 +284,7 @@ export async function onReady() {
   try {
     const { execSync } = require("child_process");
     const ver = execSync("node --version", { timeout: 5000, encoding: "utf-8" }).trim();
-    const { preCacheNodeStatus } = require("./ipc/handlers/node_handlers");
+    const { preCacheNodeStatus } = await import("./ipc/handlers/node_handlers");
     preCacheNodeStatus(ver);
   } catch (e) {
     logger.warn("Failed to pre-cache node status (non-fatal):", e);

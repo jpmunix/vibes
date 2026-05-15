@@ -218,32 +218,38 @@ export function registerSettingsHandlers() {
       ? composeSettingsFromCache(context.userId)
       : readSettings();
 
-    // ── Backup: also update the legacy blob in Bunny (for disaster recovery) ──
+    // ── Backup: also update the legacy blob in Bunny (fire-and-forget) ──
+    // The real settings are already persisted locally in the KV cache above.
+    // This backup is purely for disaster recovery — no need to block the UI.
     if (context.userId) {
-      const db = getRemoteDb();
-      try {
-        const { userId: _u, sessionToken: _s, ...syncableSettings } = updated;
-        const settingsJson = JSON.stringify(syncableSettings);
+      const capturedUserId = context.userId;
+      const capturedUpdated = { ...updated };
+      setImmediate(async () => {
+        try {
+          const db = getRemoteDb();
+          const { userId: _u, sessionToken: _s, ...syncableSettings } = capturedUpdated;
+          const settingsJson = JSON.stringify(syncableSettings);
 
-        const existing = await db.query.userSettings.findFirst({
-          where: eq(remoteSchema.userSettings.userId, context.userId),
-        });
-
-        if (existing) {
-          await db
-            .update(remoteSchema.userSettings)
-            .set({ settingsJson, updatedAt: new Date() })
-            .where(eq(remoteSchema.userSettings.userId, context.userId));
-        } else {
-          await db.insert(remoteSchema.userSettings).values({
-            userId: context.userId,
-            settingsJson,
-            updatedAt: new Date(),
+          const existing = await db.query.userSettings.findFirst({
+            where: eq(remoteSchema.userSettings.userId, capturedUserId),
           });
+
+          if (existing) {
+            await db
+              .update(remoteSchema.userSettings)
+              .set({ settingsJson, updatedAt: new Date() })
+              .where(eq(remoteSchema.userSettings.userId, capturedUserId));
+          } else {
+            await db.insert(remoteSchema.userSettings).values({
+              userId: capturedUserId,
+              settingsJson,
+              updatedAt: new Date(),
+            });
+          }
+        } catch (error) {
+          logger.error("Error syncing settings backup blob:", error);
         }
-      } catch (error) {
-        logger.error("Error syncing settings backup blob:", error);
-      }
+      });
     }
 
     // ── Broadcast to ALL other windows for real-time sync ──
