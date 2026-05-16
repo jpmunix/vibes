@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
-import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
-import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
+import { DEFAULT_STRATEGIST_MODEL, MODEL_PROVIDER_SEPARATOR } from "@/lib/schemas";
 
 const DEFAULT_MODEL = DEFAULT_STRATEGIST_MODEL;
 
@@ -10,11 +10,12 @@ const DEFAULT_MODEL = DEFAULT_STRATEGIST_MODEL;
  * (titles, summaries, compaction, mockups).
  * The main chat model for all modes (agent, plan, ask) is controlled by
  * the global ModelPicker in the chat input area.
+ *
+ * v2: Shows models from ALL providers (OpenRouter + Ollama).
  */
 export function StrategistModelSelector() {
     const { settings, updateSettings } = useSettings();
-    const { data: openRouterModels, isLoading } =
-        useLanguageModelsForProvider("openrouter");
+    const { data: allModels, isLoading } = useMultiProviderModels();
 
     const currentValue =
         !settings?.strategistModel || settings?.strategistModel === ""
@@ -28,8 +29,12 @@ export function StrategistModelSelector() {
         );
     };
 
-    const defaultModelInList = openRouterModels?.find(
+    const defaultModelInList = allModels?.find(
         (m) => m.apiName === DEFAULT_MODEL,
+    );
+
+    const filteredModels = (allModels || []).filter(
+        (m) => m.apiName !== DEFAULT_MODEL,
     );
 
     return (
@@ -37,12 +42,11 @@ export function StrategistModelSelector() {
             variant="pill"
             selectedModel={currentValue}
             onModelSelect={handleChange}
-            models={(openRouterModels || []).filter(
-                (m) => m.apiName !== DEFAULT_MODEL,
-            )}
+            models={filteredModels}
             loading={isLoading}
             placeholder="Selecciona un modelo"
             disableEnabledFilter
+            showProviderBadge
             specialOptions={[
                 {
                     value: DEFAULT_MODEL,
@@ -54,3 +58,4 @@ export function StrategistModelSelector() {
         />
     );
 }
+

@@ -157,6 +157,16 @@ export const languageModelContracts = {
     output: z.object({ models: z.array(LocalModelSchema) }),
   }),
 
+  checkOllamaStatus: defineContract({
+    channel: "local-models:check-ollama-status",
+    input: z.void(),
+    output: z.object({
+      online: z.boolean(),
+      modelCount: z.number(),
+      url: z.string(),
+    }),
+  }),
+
   listLMStudioModels: defineContract({
     channel: "local-models:list-lmstudio",
     input: z.void(),

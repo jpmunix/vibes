@@ -162,14 +162,14 @@ export function AIBehaviorSettings({
             label="Modo Hombre de las Cavernas"
             description={
               settings?.enableCavemanMode
-                ? "🦴 Unga bunga. Yo escribir poco. Ahorrar tokens. Bug morir."
+                ? "Unga bunga. Yo escribir poco. Ahorrar tokens. Bug morir."
                 : "Fuerza al agente a responder con el mínimo de palabras posible para ahorrar tokens en el chat."
             }
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                 {([
                   { value: false, label: "Desactivado" },
-                  { value: true, label: "🦴 Activado" },
+                  { value: true, label: "Activado" },
                 ] as const).map((option) => (
                   <button
                     key={String(option.value)}

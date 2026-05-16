@@ -21,6 +21,36 @@ export const DEFAULT_STANDARD_MODEL = DEFAULT_EXECUTOR_MODEL;
 /** @deprecated Use DEFAULT_STRATEGIST_MODEL */
 export const DEFAULT_AGENT_MODEL = DEFAULT_STRATEGIST_MODEL;
 
+// ── Multi-provider model string utilities ──────────────────────────────────
+// Format: "provider::model-name" e.g. "ollama::qwen2.5-coder:7b"
+// Legacy format (plain string without ::) defaults to the active provider.
+
+/** Separator used in multi-provider model strings */
+export const MODEL_PROVIDER_SEPARATOR = "::" as const;
+
+/**
+ * Parse a model string that may include a provider prefix.
+ * Examples:
+ *   "ollama::qwen2.5-coder:7b"  → { provider: "ollama", name: "qwen2.5-coder:7b" }
+ *   "google/gemini-2.5-flash-lite" → { provider: fallbackProvider, name: "google/gemini-2.5-flash-lite" }
+ */
+export function parseModelString(raw: string, fallbackProvider: string): { provider: string; name: string } {
+  const sep = raw.indexOf(MODEL_PROVIDER_SEPARATOR);
+  if (sep > 0) {
+    return { provider: raw.slice(0, sep), name: raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length) };
+  }
+  return { provider: fallbackProvider, name: raw };
+}
+
+/**
+ * Compose a provider::model string.
+ * If provider matches fallbackProvider, returns just the model name (backward compat).
+ */
+export function composeModelString(provider: string, name: string, fallbackProvider?: string): string {
+  if (fallbackProvider && provider === fallbackProvider) return name;
+  return `${provider}${MODEL_PROVIDER_SEPARATOR}${name}`;
+}
+
 export const SecretSchema = z.object({
   value: z.string(),
   encryptionType: z.enum(["electron-safe-storage", "plaintext"]).optional(),
@@ -410,7 +440,9 @@ export const UserSettingsSchema = z
     // DEPRECATED — superseded by strategistModel + executorModel
     standardModeModel: z.string().optional(),
     proModeModel: z.string().optional(),
-    // ── Active unified model keys ──
+    // ── Active unified model keys (v2: support provider::model format) ──
+    // Format: "provider::model-name" (e.g. "ollama::qwen2.5-coder:7b")
+    // Legacy plain strings (e.g. "google/gemini-2.5-flash-lite") default to activeProviderId.
     strategistModel: z.string().optional(),   // reasoning agents (plan, explore, general)
     executorModel: z.string().optional(),     // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
@@ -536,6 +568,13 @@ export const UserSettingsSchema = z
     // OpenCode LSP: when true, language servers send diagnostics after each file write
     // (auto-corrects TS errors inline). When false, the agent must run tsc manually.
     enableOpenCodeLsp: z.boolean().optional(),
+    // Ollama server configuration (default: http://localhost:11434)
+    ollamaBaseUrl: z.string().optional(),
+    // Whether the Ollama local provider is enabled in the UI + model pickers
+    ollamaEnabled: z.boolean().optional(),
+    // List of provider IDs that the user has explicitly disabled (e.g. ["custom-cortecs", "openrouter"])
+    // Models from disabled providers are hidden from all selectors.
+    disabledProviders: z.array(z.string()).optional(),
     // Chat render mode: "full" (all badges/modals/tools) or "zen" (minimal DOM, only prose + cost)
     chatRenderMode: ChatRenderModeSchema.optional(),
     // Selected UI font family (id from shared/fonts.ts)

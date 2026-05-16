@@ -31,7 +31,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
-import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL } from "../../lib/schemas";
+import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL, parseModelString } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
 import { app } from "electron";
 import * as fs from "node:fs";
@@ -121,22 +121,23 @@ export function resolveModelForAgent(
         return result;
     }
 
-    // Background/auxiliary agents use strategistModel (lightweight tasks)
-    const effectiveModelName = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+    // Background/auxiliary agents use strategistModel.
+    // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+    const rawStratModel = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+    const { provider: bgProvider, name: bgModelName } = parseModelString(rawStratModel, activeProvider);
 
-    // Use the active provider for background tasks too
-    const providerForBackground = mapProviderForOpenCode({ provider: activeProvider, name: effectiveModelName });
+    const providerForBackground = mapProviderForOpenCode({ provider: bgProvider, name: bgModelName });
 
     const agentModel = {
-        name: effectiveModelName,
-        provider: activeProvider,
+        name: bgModelName,
+        provider: bgProvider,
     };
     const result = {
         model: agentModel,
         providerID: providerForBackground,
-        modelID: sanitizeModelName(effectiveModelName),
+        modelID: sanitizeModelName(bgModelName),
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist)`);
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist, provider=${bgProvider})`);
     return result;
 }
 
@@ -1011,8 +1012,15 @@ export async function updateOpenCodeConfig(changes: {
             body.agent = agentConfig;
         }
         // Executor model → small_model (used for lightweight tasks)
+        // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
         if (changes.executorModel) {
-            body.small_model = `${activeProviderID}/${sanitizeModelName(changes.executorModel)}`;
+            const { provider: eProv, name: eName } = parseModelString(changes.executorModel, activeProvider);
+            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
+            body.small_model = `${eProvID}/${sanitizeModelName(eName)}`;
+            // Register the provider if it's a different one (e.g. Ollama)
+            if (eProvID !== activeProviderID) {
+                registerExtraProvider(body, eProv, eName, settings);
+            }
         }
         if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
@@ -1024,14 +1032,21 @@ export async function updateOpenCodeConfig(changes: {
             };
         }
         // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
+        // v2: supports provider::model format
         if (changes.strategistModel) {
+            const { provider: sProv, name: sName } = parseModelString(changes.strategistModel, activeProvider);
+            const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
             const agentConfig: Record<string, any> = body.agent || {};
-            const model = `${activeProviderID}/${sanitizeModelName(changes.strategistModel)}`;
+            const model = `${sProvID}/${sanitizeModelName(sName)}`;
             for (const id of ["compaction", "title", "summary", "mockup"]) {
                 agentConfig[id] = { ...agentConfig[id], model };
             }
             body.agent = agentConfig;
-            logger.info(`[OpenCode] Background model updated: strategist=${changes.strategistModel}`);
+            // Register the provider if different
+            if (sProvID !== activeProviderID) {
+                registerExtraProvider(body, sProv, sName, settings);
+            }
+            logger.info(`[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`);
         }
 
         // ── Always register the model in provider.models for hot-update ──
@@ -1056,6 +1071,14 @@ export async function updateOpenCodeConfig(changes: {
                         ...(customConfig.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
                     };
                 }
+            }
+
+            // For Ollama as primary provider, inject npm + baseURL
+            if (activeProviderID === "ollama") {
+                const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                providerSection.npm = "@ai-sdk/openai-compatible";
+                providerSection.name = "Ollama (local)";
+                providerSection.options = { baseURL: `${ollamaUrl}/v1` };
             }
 
             body.provider = { [activeProviderID]: providerSection };
@@ -1570,7 +1593,16 @@ async function getOpenCodeClient(appPath: string) {
                         } : providerID === "openai" ? {
                             models: registeredModels,
                             options: { apiKey: "{env:OPENAI_API_KEY}" },
-                        } : providerID.startsWith("custom-") ? (() => {
+                        } : providerID === "ollama" ? (() => {
+                            // Ollama as primary provider — local inference via openai-compatible API
+                            const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                            return {
+                                npm: "@ai-sdk/openai-compatible",
+                                name: "Ollama (local)",
+                                models: registeredModels,
+                                options: { baseURL: `${ollamaUrl}/v1` },
+                            };
+                        })() : providerID.startsWith("custom-") ? (() => {
                             // Custom providers use @ai-sdk/openai-compatible
                             const activeProvider = settings.activeProviderId || "openrouter";
                             const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
@@ -1585,10 +1617,43 @@ async function getOpenCodeClient(appPath: string) {
                                 },
                             };
                         })() : { models: registeredModels }),
+                    // ── Multi-provider registration ──
+                    // If strategistModel or executorModel point to a different provider
+                    // (e.g. "ollama::qwen2.5-coder:7b"), register that provider too.
+                    ...(() => {
+                        const extraProviders: Record<string, any> = {};
+                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+                        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
+                        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+
+                        // Register Ollama provider if either tier uses it
+                        for (const [prov, mName] of [[stratProv, stratName], [execProv, execName]] as const) {
+                            if (prov === "ollama" && mapProviderForOpenCode({ provider: prov, name: mName }) !== providerID) {
+                                const ollamaProvID = "ollama";
+                                if (!extraProviders[ollamaProvID]) {
+                                    const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                                    extraProviders[ollamaProvID] = {
+                                        npm: "@ai-sdk/openai-compatible",
+                                        name: "ollama",
+                                        models: {},
+                                        options: { baseURL: `${ollamaUrl}/v1` },
+                                    };
+                                }
+                                extraProviders["ollama"].models[sanitizeModelName(mName)] = {};
+                            }
+                        }
+                        return extraProviders;
+                    })(),
                 },
                 model: `${providerID}/${modelID}`,
                 // Executor model for lightweight tasks (titles, summaries, commit messages)
-                small_model: `${providerID}/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                small_model: (() => {
+                    const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                    const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+                    const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
+                    return `${execProvID}/${sanitizeModelName(execName)}`;
+                })(),
                 // Agent-level config: reasoning effort + text verbosity + unified model tiers
                 agent: {
                     build: {
@@ -1605,15 +1670,17 @@ async function getOpenCodeClient(appPath: string) {
                     },
                     // explore and general inherit the global model automatically
                     // Background/auxiliary tasks use strategistModel
-                    compaction: {
-                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
-                    },
-                    title: {
-                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
-                    },
-                    summary: {
-                        model: `${providerID}/${sanitizeModelName(settings.strategistModel || DEFAULT_STRATEGIST_MODEL)}`,
-                    },
+                    ...(() => {
+                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+                        const { provider: sProv, name: sName } = parseModelString(rawStrat, activeProvider);
+                        const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
+                        const sModelFull = `${sProvID}/${sanitizeModelName(sName)}`;
+                        return {
+                            compaction: { model: sModelFull },
+                            title: { model: sModelFull },
+                            summary: { model: sModelFull },
+                        };
+                    })(),
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
                     "visual-edit": {
@@ -1645,7 +1712,12 @@ async function getOpenCodeClient(appPath: string) {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
-                        model: `${providerID}/${sanitizeModelName(settings.executorModel || DEFAULT_EXECUTOR_MODEL)}`,
+                        model: (() => {
+                            const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                            const { provider: eProv, name: eName } = parseModelString(rawExec, activeProvider);
+                            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
+                            return `${eProvID}/${sanitizeModelName(eName)}`;
+                        })(),
                         tools: {
                             write: true,
                             edit: true,
@@ -1747,13 +1819,18 @@ async function getOpenCodeClient(appPath: string) {
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
 
         // Log full agent→model mapping for visibility
-        const strat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
-        const exec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+        // v2: parse provider::model to show correct provider per tier
+        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
+        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+        const stratProvID = mapProviderForOpenCode({ provider: stratProv, name: stratName });
+        const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
         logger.info(
             `[OpenCode] Agent model map:\n` +
             `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
-            `  STRATEGIST  → ${providerID}/${strat} (plan, explore, general)\n` +
-            `  EXECUTOR    → ${providerID}/${exec} (compaction, title, summary, mockup)\n` +
+            `  STRATEGIST  → ${stratProvID}/${sanitizeModelName(stratName)} (plan, explore, general)\n` +
+            `  EXECUTOR    → ${execProvID}/${sanitizeModelName(execName)} (compaction, title, summary, mockup)\n` +
             `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`
         );
 
@@ -1915,6 +1992,7 @@ function mapProviderForOpenCode(model: { provider?: string; name: string }): str
     if (provider.includes("anthropic")) return "anthropic";
     if (provider.includes("openai")) return "openai";
     if (provider.includes("google")) return "google";
+    if (provider === "ollama") return "ollama";
 
     // Custom providers (custom::*) get their own dedicated provider ID.
     // OpenCode will be configured with npm: "@ai-sdk/openai-compatible" for these.
@@ -1925,6 +2003,25 @@ function mapProviderForOpenCode(model: { provider?: string; name: string }): str
 
     // Default to openrouter
     return "openrouter";
+}
+
+/**
+ * Register an extra provider in the OpenCode config body (hot-update path).
+ * Used when strategistModel or executorModel points to a provider different
+ * from the active one (e.g. "ollama::qwen2.5-coder:7b").
+ */
+function registerExtraProvider(body: Record<string, any>, providerKey: string, modelName: string, settings: any) {
+    if (providerKey === "ollama") {
+        const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+        if (!body.provider) body.provider = {};
+        body.provider.ollama = {
+            npm: "@ai-sdk/openai-compatible",
+            name: "ollama",
+            models: { [sanitizeModelName(modelName)]: {} },
+            options: { baseURL: `${ollamaUrl}/v1` },
+        };
+    }
+    // Future: add support for other cross-provider registrations here
 }
 
 // ============================================================================

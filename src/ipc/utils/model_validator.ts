@@ -28,7 +28,7 @@ import {
     FALLBACK_SELECTED_MODEL,
     DEFAULT_ENABLED_MODELS,
 } from "../shared/language_model_constants";
-import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
+import { DEFAULT_STANDARD_MODEL, MODEL_PROVIDER_SEPARATOR } from "../../lib/schemas";
 
 const logger = log.scope("model_validator");
 
@@ -75,14 +75,16 @@ export async function validateModelSettings(): Promise<void> {
         }
 
         // ── 2. executorModel (lightweight tasks) ──
-        if (settings.executorModel && !availableNames.has(settings.executorModel)) {
+        // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
+        if (settings.executorModel && !settings.executorModel.includes(MODEL_PROVIDER_SEPARATOR) && !availableNames.has(settings.executorModel)) {
             logger.warn(`[ModelValidator] executorModel "${settings.executorModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`);
             settings.executorModel = DEFAULT_STANDARD_MODEL;
             migrated.push(`executorModel → ${DEFAULT_STANDARD_MODEL}`);
         }
 
         // ── 2b. strategistModel (reasoning agents) ──
-        if (settings.strategistModel && !availableNames.has(settings.strategistModel)) {
+        // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
+        if (settings.strategistModel && !settings.strategistModel.includes(MODEL_PROVIDER_SEPARATOR) && !availableNames.has(settings.strategistModel)) {
             const fallback = "deepseek/deepseek-v3.2";
             logger.warn(`[ModelValidator] strategistModel "${settings.strategistModel}" no longer exists → "${fallback}"`);
             settings.strategistModel = fallback;

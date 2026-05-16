@@ -570,9 +570,13 @@ ${componentSnippet}
       const activeProvider = settings.activeProviderId || "openrouter";
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
       // Only mockup uses the executorModel (lightweight, fast).
+      // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
       if (agentId === "mockup") {
-        effectiveModelName = (settings.executorModel || DEFAULT_EXECUTOR_MODEL).replace(/^openrouter\//, "");
-        selectedModel = { name: effectiveModelName, provider: activeProvider };
+        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+        const { parseModelString } = await import("../../lib/schemas");
+        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+        effectiveModelName = execName.replace(/^openrouter\//, "");
+        selectedModel = { name: effectiveModelName, provider: execProv };
       }
 
       // Check if this is a test prompt

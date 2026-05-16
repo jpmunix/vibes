@@ -5,8 +5,9 @@ import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProvide
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { ipc } from "@/ipc/types";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
@@ -15,6 +16,22 @@ import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import { getVariantLabel } from "@/ipc/shared/model_variants";
 import { matchesModelSearch } from "@/lib/modelSearch";
+
+// ── Provider badge styles (same palette as SettingsModelSelector) ──────────
+const PROVIDER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
+    openrouter: { bg: "bg-sky-500/10", text: "text-sky-500", label: "OR" },
+    ollama: { bg: "bg-emerald-500/10", text: "text-emerald-500", label: "Ollama" },
+};
+
+function getProviderBadge(provider: string, customProviders?: any[]): { bg: string; text: string; label: string } | null {
+    if (PROVIDER_BADGES[provider]) return PROVIDER_BADGES[provider];
+    // Custom providers get a purple badge with their configured name
+    const cp = customProviders?.find((p: any) => p.id === provider);
+    if (cp) {
+        return { bg: "bg-purple-500/10", text: "text-purple-400", label: cp.name || provider };
+    }
+    return null;
+}
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -42,6 +59,14 @@ export function ModelPicker() {
 
   const { isLoading: providersLoading } = useLanguageModelProviders();
 
+  // Ollama models (local) — graceful when server is offline
+  const { data: ollamaResult } = useQuery({
+    queryKey: ["ollama-models"],
+    queryFn: () => ipc.languageModel.listOllamaModels(),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
   const loading = modelsByProvidersLoading || providersLoading;
 
   // Get display name for the selected model
@@ -67,6 +92,14 @@ export function ModelPicker() {
       }
     }
 
+    // Check Ollama models
+    if (selectedModel.provider === "ollama" && ollamaResult?.models) {
+      const ollamaModel = ollamaResult.models.find(
+        (m) => m.modelName === selectedModel.name,
+      );
+      if (ollamaModel) return ollamaModel.displayName;
+    }
+
     // Fallback if not found
     return selectedModel.name;
   };
@@ -88,6 +121,11 @@ export function ModelPicker() {
 
   const searchLower = search.toLowerCase();
   const activeProviderId = settings.activeProviderId || "openrouter";
+  const customProviders = settings.customProviders ?? [];
+  const disabledProviders = settings.disabledProviders ?? [];
+  const ollamaEnabled = settings.ollamaEnabled !== false;
+
+  const isProviderDisabled = (id: string) => disabledProviders.includes(id);
 
   const doesModelMatchSearch = (m: LanguageModel) => {
      if (!searchLower) return true;
@@ -95,8 +133,8 @@ export function ModelPicker() {
      return matchesModelSearch(search, m.displayName, m.apiName, alias);
   };
 
-  // Auto-router — only for OpenRouter
-  if (activeProviderId === "openrouter" && modelsByProviders?.["auto-router"]) {
+  // Auto-router — only when OpenRouter is active
+  if (!isProviderDisabled("openrouter") && modelsByProviders?.["auto-router"]) {
     modelsByProviders["auto-router"].forEach((model) => {
       if (!searchLower || doesModelMatchSearch(model)) {
         allAvailableModels.push({ provider: "auto-router", model });
@@ -104,34 +142,50 @@ export function ModelPicker() {
     });
   }
 
-  if (activeProviderId === "openrouter") {
-    // OpenRouter: filtered by enabled models + usage
-    if (modelsByProviders?.["openrouter"]) {
-      const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
-      modelsByProviders["openrouter"].forEach((model) => {
-        const isCustom = model.type === "custom";
-        const isEnabled = enabledModels.includes(model.apiName);
-        const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
-        
-        if (searchLower) {
-          if (doesModelMatchSearch(model)) {
-             allAvailableModels.push({ provider: "openrouter", model });
-          }
-        } else {
-          if (isCustom || isEnabled || isUsed) {
-             allAvailableModels.push({ provider: "openrouter", model });
-          }
+  // OpenRouter models (filtered by enabled + usage)
+  if (!isProviderDisabled("openrouter") && modelsByProviders?.["openrouter"]) {
+    const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+    modelsByProviders["openrouter"].forEach((model) => {
+      const isCustom = model.type === "custom";
+      const isEnabled = enabledModels.includes(model.apiName);
+      const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
+      
+      if (searchLower) {
+        if (doesModelMatchSearch(model)) {
+           allAvailableModels.push({ provider: "openrouter", model });
+        }
+      } else {
+        if (isCustom || isEnabled || isUsed) {
+           allAvailableModels.push({ provider: "openrouter", model });
+        }
+      }
+    });
+  }
+
+  // Custom provider models (all models, skip disabled)
+  for (const cp of customProviders) {
+    if (isProviderDisabled(cp.id)) continue;
+    if (modelsByProviders?.[cp.id]) {
+      modelsByProviders[cp.id].forEach((model) => {
+        if (!searchLower || doesModelMatchSearch(model)) {
+          allAvailableModels.push({ provider: cp.id, model });
         }
       });
     }
-  } else {
-    // Custom provider: show ALL models (they have a small, curated set)
-    if (modelsByProviders?.[activeProviderId]) {
-      modelsByProviders[activeProviderId].forEach((model) => {
-        if (!searchLower || doesModelMatchSearch(model)) {
-          allAvailableModels.push({ provider: activeProviderId, model });
-        }
-      });
+  }
+
+  // Ollama models (skip if disabled)
+  if (ollamaEnabled && ollamaResult?.models && ollamaResult.models.length > 0) {
+    for (const m of ollamaResult.models) {
+      const syntheticModel: LanguageModel = {
+        apiName: m.modelName,
+        displayName: m.displayName,
+        description: `Ollama local · ${m.modelName}`,
+        type: "local",
+      };
+      if (!searchLower || doesModelMatchSearch(syntheticModel)) {
+        allAvailableModels.push({ provider: "ollama", model: syntheticModel });
+      }
     }
   }
 
@@ -160,6 +214,10 @@ export function ModelPicker() {
 
     return a.model.displayName.localeCompare(b.model.displayName);
   });
+
+  // Detect if we have multiple providers to show badges
+  const uniqueProviders = new Set(sortedModels.map((m) => m.provider));
+  const showBadges = uniqueProviders.size > 1;
 
   return (
     <>
@@ -205,17 +263,27 @@ export function ModelPicker() {
              (settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS).includes(model.apiName);
           const isSelectedReal = selectedModel.provider === provider && selectedModel.name === model.apiName;
           const isRemovable = provider === "openrouter" && !isEnabled && !isSelectedReal;
+          const badge = showBadges ? getProviderBadge(provider, customProviders as any) : null;
 
           return (
-            <ModelItemContent
-              model={model}
-              showAutoRouterBadge={provider === "auto-router"}
-              isAutoRouter={provider === "auto-router"}
-              onRemoveClick={isRemovable ? (m) => removeUsage(`${provider}:${m.apiName}`) : undefined}
-              alias={aliases[model.apiName]}
-              onSetAlias={(m, newAlias) => setAlias({ modelId: m.apiName, alias: newAlias })}
-              onRemoveAlias={(m) => removeAlias(m.apiName)}
-            />
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex-1 min-w-0">
+                <ModelItemContent
+                  model={model}
+                  showAutoRouterBadge={provider === "auto-router"}
+                  isAutoRouter={provider === "auto-router"}
+                  onRemoveClick={isRemovable ? (m) => removeUsage(`${provider}:${m.apiName}`) : undefined}
+                  alias={aliases[model.apiName]}
+                  onSetAlias={(m, newAlias) => setAlias({ modelId: m.apiName, alias: newAlias })}
+                  onRemoveAlias={(m) => removeAlias(m.apiName)}
+                />
+              </div>
+              {badge && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${badge.bg} ${badge.text}`}>
+                  {badge.label}
+                </span>
+              )}
+            </div>
           );
         }}
         searchPlaceholder="Buscar modelos..."
