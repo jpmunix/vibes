@@ -120,7 +120,6 @@ export function ModelPicker() {
   const allAvailableModels: Array<{ provider: string; model: LanguageModel }> = [];
 
   const searchLower = search.toLowerCase();
-  const activeProviderId = settings.activeProviderId || "openrouter";
   const customProviders = settings.customProviders ?? [];
   const disabledProviders = settings.disabledProviders ?? [];
   const ollamaEnabled = settings.ollamaEnabled !== false;
