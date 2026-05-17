@@ -567,7 +567,7 @@ ${componentSnippet}
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
-      const activeProvider = settings.activeProviderId || "openrouter";
+      const activeProvider = settings.selectedModel?.provider || "openrouter";
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
       // Only mockup uses the executorModel (lightweight, fast).
       // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
@@ -1176,6 +1176,9 @@ This conversation includes one or more image attachments. When the user uploads 
             }),
             maxOutputTokens: finalMaxOutputTokens,
             temperature: await getTemperature(settings.selectedModel),
+            // User-tunable hyperparameters from the Inference Tuner (always sent)
+            topP: settings.inferenceTopP ?? 0.95,
+            frequencyPenalty: settings.inferenceRepetitionPenalty ?? 1.05,
             maxRetries: 2,
             model: modelClient.model,
             stopWhen: [stepCountIs(20), hasToolCall("edit-code")],

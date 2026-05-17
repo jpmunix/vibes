@@ -46,7 +46,7 @@ export async function validateModelSettings(): Promise<void> {
         // The validator checks against the OpenRouter model catalogue.
         // If the active provider is NOT OpenRouter, all its models would be
         // falsely flagged as "dead" and replaced with OpenRouter fallbacks.
-        const activeProvider = settings.activeProviderId || "openrouter";
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
         if (activeProvider !== "openrouter") {
             logger.info(`[ModelValidator] Skipped — active provider is "${activeProvider}", not OpenRouter`);
             return;

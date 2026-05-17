@@ -466,6 +466,10 @@ export const UserSettingsSchema = z
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
     agentMaxSteps: z.number().optional(), // retained for migration compat — no longer used
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
+    // ── Inference hyperparameters (user-tunable from chat input) ──
+    inferenceTemperature: z.number().min(0).max(2).optional(),
+    inferenceTopP: z.number().min(0).max(1).optional(),
+    inferenceRepetitionPenalty: z.number().min(0.5).max(2).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
     // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")

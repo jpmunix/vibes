@@ -171,7 +171,7 @@ export function registerSettingsHandlers() {
     }
 
     // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or unified model keys changed
-    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.strategistModel || settings.executorModel || settings.reasoningEffort || settings.textVerbosity) {
+    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.strategistModel || settings.executorModel || settings.reasoningEffort || settings.textVerbosity || settings.inferenceTemperature !== undefined || settings.inferenceTopP !== undefined || settings.inferenceRepetitionPenalty !== undefined) {
       try {
         const { updateOpenCodeConfig } = await import("./opencode_adapter");
         await updateOpenCodeConfig({
@@ -182,6 +182,9 @@ export function registerSettingsHandlers() {
           executorModel: settings.executorModel,
           reasoningEffort: settings.reasoningEffort,
           textVerbosity: settings.textVerbosity,
+          inferenceTemperature: settings.inferenceTemperature,
+          inferenceTopP: settings.inferenceTopP,
+          inferenceRepetitionPenalty: settings.inferenceRepetitionPenalty,
         });
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);

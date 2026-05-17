@@ -105,7 +105,7 @@ export function resolveModelForAgent(
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
     // Primary agents (build, plan, explore, general) all use selectedModel
     const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
-    const activeProvider = settings.activeProviderId || "openrouter";
+    const activeProvider = settings.selectedModel?.provider || "openrouter";
 
     if (PRIMARY_AGENTS.has(agentId)) {
         const model = settings.selectedModel;
@@ -980,13 +980,16 @@ export async function updateOpenCodeConfig(changes: {
     executorModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    inferenceTemperature?: number;
+    inferenceTopP?: number;
+    inferenceRepetitionPenalty?: number;
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
     try {
         const body: Record<string, any> = {};
         const settings = readSettings();
-        const activeProvider = settings.activeProviderId || "openrouter";
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
         const isCustom = activeProvider.startsWith("custom::");
 
         // Determine the providerID that OpenCode uses for routing
@@ -1022,12 +1025,15 @@ export async function updateOpenCodeConfig(changes: {
                 registerExtraProvider(body, eProv, eName, settings);
             }
         }
-        if (changes.reasoningEffort || changes.textVerbosity) {
+        if (changes.reasoningEffort || changes.textVerbosity || changes.inferenceTemperature !== undefined || changes.inferenceTopP !== undefined || changes.inferenceRepetitionPenalty !== undefined) {
             body.agent = {
                 ...body.agent,
                 build: {
                     ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
                     ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
+                    ...(changes.inferenceTemperature !== undefined ? { temperature: changes.inferenceTemperature } : {}),
+                    ...(changes.inferenceTopP !== undefined ? { topP: changes.inferenceTopP } : {}),
+                    ...(changes.inferenceRepetitionPenalty !== undefined ? { repetitionPenalty: changes.inferenceRepetitionPenalty } : {}),
                 },
             };
         }
@@ -1422,7 +1428,7 @@ export async function handleVisualQuickEdit(params: {
 async function getOpenCodeClient(appPath: string) {
     // ── Detect provider change → force restart ──
     const currentSettings = readSettings();
-    const currentProvider = currentSettings.activeProviderId || "openrouter";
+    const currentProvider = currentSettings.selectedModel?.provider || "openrouter";
     if (clientInstance && opencodeInstance && lastActiveProviderId && lastActiveProviderId !== currentProvider) {
         logger.info(`[OpenCode] Provider changed: ${lastActiveProviderId} → ${currentProvider}. Restarting server...`);
         try {
@@ -1564,7 +1570,7 @@ async function getOpenCodeClient(appPath: string) {
         // OpenCode can't resolve models that aren't in its built-in catalogue.
         // For custom providers, register ALL cached models so the user can switch
         // without restarting. For built-in providers, just register the selected one.
-        const activeProvider = settings.activeProviderId || "openrouter";
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
         const registeredModels: Record<string, object> = activeProvider.startsWith("custom::")
             ? buildCustomProviderModels(activeProvider, modelID)
             : { [modelID]: {} };
@@ -1604,8 +1610,8 @@ async function getOpenCodeClient(appPath: string) {
                             };
                         })() : providerID.startsWith("custom-") ? (() => {
                             // Custom providers use @ai-sdk/openai-compatible
-                            const activeProvider = settings.activeProviderId || "openrouter";
-                            const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
+                            const customProvId = settings.selectedModel?.provider || "openrouter";
+                            const customConfig = settings.customProviders?.find((p: any) => p.id === customProvId);
                             const providerName = customConfig?.name || activeProvider.replace(/^custom::/, "");
                             return {
                                 npm: "@ai-sdk/openai-compatible",
@@ -1813,7 +1819,7 @@ async function getOpenCodeClient(appPath: string) {
         opencodeInstance = opencode;
         clientInstance = opencode.client;
         serverUrl = opencode.server.url;
-        lastActiveProviderId = settings.activeProviderId || "openrouter";
+        lastActiveProviderId = settings.selectedModel?.provider || "openrouter";
 
         logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
