@@ -17,7 +17,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, inArray } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
-import { getEffectivePrompt } from "../../prompts";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { stripAllNoise, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
@@ -277,7 +277,7 @@ export async function extractMemoriesFromBatch(params: {
             || settings.executorModel
             || DEFAULT_STANDARD_MODEL;
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
-        const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
+        const synthesisPrompt = await getSystemPrompt("memory_synthesis", settings.userId);
 
         debugPlayground("Synthesis-Batch", model, synthesisPrompt, userMessage);
 
@@ -656,7 +656,7 @@ export async function extractMemoriesFromChatCycle(params: {
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 
         // Use memory_synthesis prompt (the Synthesizer V3)
-        const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
+        const synthesisPrompt = await getSystemPrompt("memory_synthesis", settings.userId);
 
         // Dump clean prompts to /tmp/opencode/{app}.md for playground testing
         debugPlayground("Synthesis", model, synthesisPrompt, userMessage);

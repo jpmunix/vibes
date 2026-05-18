@@ -17,7 +17,7 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
-import { getEffectivePrompt } from "../../prompts";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { handleAdd } from "./memory_extractor";
 import { logPipelineCall } from "./memory_telemetry";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
@@ -229,7 +229,7 @@ async function bootstrapFromDNA(params: {
     // Transparent nitro: use fastest provider for memory calls
     const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 
-    const onboardingPrompt = getEffectivePrompt("memory_onboarding", settings);
+    const onboardingPrompt = await getSystemPrompt("memory_onboarding", settings.userId);
     const userMessage = formatDNAForLLM(dna);
 
     debugSection("Phase 1: bootstrapFromDNA");

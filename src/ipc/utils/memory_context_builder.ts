@@ -18,7 +18,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { shouldInjectMemories } from "./memory_guardian";
-import { getEffectivePrompt } from "../../prompts";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
@@ -233,8 +233,8 @@ async function routerSelect(
             .map(m => `- [#${m.id}] [${m.type}] key:${m.key || "—"} | imp:${m.importance} | ${m.content}`)
             .join("\n");
 
-        const selectionPrompt = getEffectivePrompt("memory_selection", settings)
-            .replace("__NUM_MEMORIES__", String(maxSelection));
+        const rawSelectionPrompt = await getSystemPrompt("memory_selection", settings.userId);
+        const selectionPrompt = rawSelectionPrompt.replace("__NUM_MEMORIES__", String(maxSelection));
 
         // Build conversation context — use up to 3 recent messages for better selection
         let conversationContext: string;

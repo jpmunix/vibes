@@ -67,7 +67,7 @@ import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils"
 import { AppSearchResult, DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
-import { getEffectivePrompt } from "../../prompts";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
 import { shutdownOpenCode } from "./opencode_adapter";
 import { detectProjectLanguage } from "../utils/detect_language";
@@ -2054,7 +2054,7 @@ export function registerAppHandlers() {
         messages: [
           {
             role: "system",
-            content: getEffectivePrompt("app_title_short", settings),
+            content: await getSystemPrompt("app_title_short", settings.userId),
           },
           {
             role: "user",
@@ -2129,7 +2129,7 @@ export function registerAppHandlers() {
           messages: [
             {
               role: "system",
-              content: getEffectivePrompt("app_name_pro", settings),
+              content: await getSystemPrompt("app_name_pro", settings.userId),
             },
             {
               role: "user",

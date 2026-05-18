@@ -1,6 +1,7 @@
 import { getRemoteDb } from "../src/db/remote";
 import * as remoteSchema from "../src/db/remote-schema";
-import { DEFAULT_PROMPTS, PROMPT_LABELS, PROMPT_DESCRIPTIONS, PromptId } from "../src/prompts/index";
+import { PROMPT_LABELS, PROMPT_DESCRIPTIONS, PromptId } from "../src/prompts/index";
+import { DEFAULT_PROMPTS } from "../src/prompts/defaults";
 
 const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] = [
   {

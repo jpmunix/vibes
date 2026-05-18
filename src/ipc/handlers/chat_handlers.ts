@@ -347,8 +347,8 @@ export function registerChatHandlers() {
           return { title: "Nuevo chat" };
         }
 
-        const { getEffectivePrompt } = await import("../../prompts");
-        const chatTitleSystemPrompt = getEffectivePrompt("chat_title", settings);
+        const { getSystemPrompt } = await import("../../ipc/utils/prompt_utils");
+        const chatTitleSystemPrompt = await getSystemPrompt("chat_title", settings.userId);
 
         const data = await openRouterCompletion({
           model,

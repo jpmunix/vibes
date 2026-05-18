@@ -10,7 +10,7 @@ import {
   openRouterCompletion,
   type OpenRouterMessage,
 } from "@/ipc/utils/openrouter";
-import { getEffectivePrompt } from "@/prompts";
+import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import { FALLBACK_PRO_MODEL } from "@/ipc/shared/language_model_constants";
 
 export const VIBES_ENGINE_URL =
@@ -81,7 +81,7 @@ function buildTurboEditMessages(
   return [
     {
       role: "system",
-      content: getEffectivePrompt("turbo_edit_system", settings),
+      content: await getSystemPrompt("turbo_edit_system", settings.userId),
     },
 
     {

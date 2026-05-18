@@ -565,6 +565,31 @@ export function registerAdminHandlers(): void {
                 : r.updatedAt ? String(r.updatedAt) : null,
         }));
 
+        // Fetch prompts
+        const promptRows = await db
+            .select({
+                systemId: remoteSchema.prompts.systemId,
+                content: remoteSchema.prompts.content,
+                title: remoteSchema.prompts.title,
+                updatedAt: remoteSchema.prompts.updatedAt,
+                categoryName: remoteSchema.promptsCategories.name,
+            })
+            .from(remoteSchema.prompts)
+            .leftJoin(remoteSchema.promptsCategories, eq(remoteSchema.prompts.categoryId, remoteSchema.promptsCategories.id))
+            .where(eq(remoteSchema.prompts.userId, input.userId));
+            
+        for (const pr of promptRows) {
+            preferences.push({
+                key: "prompt:" + pr.systemId,
+                value: pr.content || "",
+                updatedAt: pr.updatedAt instanceof Date
+                    ? pr.updatedAt.toISOString()
+                    : pr.updatedAt ? String(pr.updatedAt) : null,
+                displayCategory: pr.categoryName || "Prompts y Contexto",
+                displayName: pr.title || pr.systemId,
+            });
+        }
+
         return { preferences };
     });
 
@@ -574,6 +599,20 @@ export function registerAdminHandlers(): void {
         await initializeRemoteSchema();
         const db = getRemoteDb();
         const now = new Date();
+
+        if (input.key.startsWith("prompt:")) {
+            const systemId = input.key.substring(7);
+            await db.update(remoteSchema.prompts)
+                .set({ content: input.value, updatedAt: now })
+                .where(
+                    and(
+                        eq(remoteSchema.prompts.userId, input.userId),
+                        eq(remoteSchema.prompts.systemId, systemId)
+                    )
+                );
+            logger.info(`Admin updated prompt: ${systemId} for user ${input.userId}`);
+            return { success: true };
+        }
 
         await db
             .insert(remoteSchema.userPreferences)

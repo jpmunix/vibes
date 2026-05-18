@@ -21,7 +21,6 @@ import type { SmartContextMode } from "../../lib/schemas";
 import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
-import { getEffectivePrompt } from "../../prompts";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -1319,37 +1318,32 @@ This conversation includes one or more image attachments. When the user uploads 
           // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
-          // 1. Language & Behavior instructions
+          // 1. Fetch active prompts from database (Single Source of Truth)
+          const activePromptsRows = await db.query.prompts.findMany({
+            where: and(
+              eq(remoteSchema.prompts.userId, currentUserId as string),
+              eq(remoteSchema.prompts.enabled, 1)
+            ),
+            orderBy: (p: any, { asc }: any) => [asc(p.id)],
+          });
+          
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
-          contextInstructions.push(
-            getEffectivePrompt("ctx_language", settings).replace(/\{\{LANGUAGE\}\}/g, langName) + "\n" +
-            getEffectivePrompt("ctx_no_run_locally", settings)
-          );
 
-
-          // 4. Context7 docs — always fetch fresh docs for libraries
-          contextInstructions.push(
-            getEffectivePrompt("ctx_context7_docs", settings)
-          );
-
-          // 5. Efficiency & Task Triage (Prevent over-thinking simple tasks)
-          contextInstructions.push(
-            getEffectivePrompt("ctx_efficiency_triage", settings)
-          );
-
-          // 6. Smart todowrite usage — task management for complex requests
-          contextInstructions.push(
-            getEffectivePrompt("ctx_task_management", settings)
-          );
-
-
-          // 6. Plan mode — interactive question-driven planning
-          if (resolvedChatMode === "plan") {
-            contextInstructions.push(
-              getEffectivePrompt("ctx_plan_mode", settings)
-            );
+          for (const prompt of activePromptsRows) {
+            // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
+            if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
+              if (prompt.systemId === "ctx_plan_mode" && resolvedChatMode !== "plan") {
+                continue; // Skip plan mode instructions if not in plan mode
+              }
+              
+              let content = prompt.content;
+              if (prompt.systemId === "ctx_language") {
+                content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
+              }
+              contextInstructions.push(content);
+            }
           }
 
           // Supabase

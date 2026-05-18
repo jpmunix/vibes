@@ -197,20 +197,55 @@ function detectValueType(key: string, value: string): ValueType {
     return "string";
 }
 
+// ── Nested Category ─────────────────────────────────────────────────────────
+
+function NestedCategory({ title, entries, onSave, onDelete, allModels }: any) {
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    return (
+        <div className="border-b border-border/20 last:border-0 bg-muted/5">
+            <button
+                type="button"
+                className="w-full flex items-center justify-between px-5 py-2 hover:bg-muted/20 transition-colors cursor-pointer"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+                <span className="typo-caption text-foreground font-medium flex items-center gap-2">
+                    {title}
+                    <span className="text-muted-foreground/60">({entries.length})</span>
+                </span>
+                <ChevronDown
+                    size={12}
+                    className={cn(
+                        "text-muted-foreground/50 transition-transform duration-150",
+                        isCollapsed && "-rotate-90",
+                    )}
+                />
+            </button>
+            {!isCollapsed && (
+                <div className="divide-y divide-border/20 border-t border-border/10 bg-background">
+                    {entries.map((pref: any) => (
+                        <PrefRow key={pref.key} pref={pref} onSave={onSave} onDelete={onDelete} allModels={allModels} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── Category grouping ───────────────────────────────────────────────────────
 
-type Category = "models" | "keys" | "appearance" | "behavior" | "internal" | "other";
+type Category = string;
 
-const CATEGORY_LABELS: Record<Category, { icon: LucideIcon; label: string }> = {
+const CATEGORY_LABELS: Record<string, { icon: LucideIcon; label: string }> = {
     models: { icon: Bot, label: "Modelos y Proveedores" },
     keys: { icon: KeyRound, label: "Claves API e Integraciones" },
     appearance: { icon: Palette, label: "Apariencia y Layout" },
     behavior: { icon: Settings2, label: "Comportamiento" },
     internal: { icon: Database, label: "Estado Interno" },
+    prompts: { icon: Bot, label: "Prompts y Contexto" },
     other: { icon: Package, label: "Otros" },
 };
 
-const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "internal", "other"];
+const CATEGORY_ORDER: string[] = ["models", "keys", "appearance", "behavior", "prompts", "internal", "other"];
 
 const APPEARANCE_KEYS = new Set([
     // Theme & colors
@@ -234,7 +269,8 @@ const INTERNAL_KEYS = new Set([
     "app.lastView", "lastView",
 ]);
 
-function categorizeKey(key: string): Category {
+function categorizeKey(key: string): string {
+    if (key.startsWith("prompt:")) return "prompts";
     // ── Models & providers ──
     if (MODEL_KEYS.has(key) || key === "selectedModel" || key === "selectedModelVariant" ||
         key === "activeProviderId" || key === "agentModels" || key === "model_aliases" ||
@@ -275,7 +311,8 @@ interface PrefEntry {
     value: string;
     updatedAt: string | null;
     valueType: ValueType;
-    category: Category;
+    category: string;
+    displayName?: string;
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
@@ -285,7 +322,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState("");
-    const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(new Set(CATEGORY_ORDER));
+    const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(CATEGORY_ORDER));
     const [allModels, setAllModels] = useState<LanguageModel[]>([]);
 
     // Fetch all available models once for model-type selectors
@@ -307,6 +344,8 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
                 updatedAt: p.updatedAt,
                 valueType: detectValueType(p.key, p.value),
                 category: categorizeKey(p.key),
+                subCategory: (p as any).displayCategory === "Prompts y Contexto" ? undefined : (p as any).displayCategory,
+                displayName: (p as any).displayName,
             }));
             // Sort by key within each category
             entries.sort((a, b) => a.key.localeCompare(b.key));
@@ -330,9 +369,10 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
     }, [prefs, filter]);
 
     const groupedPrefs = useMemo(() => {
-        const groups = new Map<Category, PrefEntry[]>();
+        const groups = new Map<string, PrefEntry[]>();
         for (const cat of CATEGORY_ORDER) groups.set(cat, []);
         for (const p of filteredPrefs) {
+            if (!groups.has(p.category)) groups.set(p.category, []);
             groups.get(p.category)!.push(p);
         }
         // Remove empty groups
@@ -342,7 +382,19 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
         return groups;
     }, [filteredPrefs]);
 
-    const toggleCategory = (cat: Category) => {
+    const categoriesToRender = useMemo(() => {
+        const cats = Array.from(groupedPrefs.keys());
+        return cats.sort((a, b) => {
+            const idxA = CATEGORY_ORDER.indexOf(a);
+            const idxB = CATEGORY_ORDER.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+    }, [groupedPrefs]);
+
+    const toggleCategory = (cat: string) => {
         setCollapsedCategories((prev) => {
             const next = new Set(prev);
             if (next.has(cat)) next.delete(cat);
@@ -421,10 +473,10 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
             </div>
 
             {/* Grouped preferences */}
-            {CATEGORY_ORDER.map((cat) => {
+            {categoriesToRender.map((cat) => {
                 const entries = groupedPrefs.get(cat);
                 if (!entries || entries.length === 0) return null;
-                const info = CATEGORY_LABELS[cat];
+                const info = CATEGORY_LABELS[cat] || { icon: Bot, label: cat };
                 const isCollapsed = collapsedCategories.has(cat);
 
                 return (
@@ -454,15 +506,36 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
                         {/* Entries */}
                         {!isCollapsed && (
                             <div className="divide-y divide-border/20">
-                                {entries.map((pref) => (
-                                    <PrefRow
-                                        key={pref.key}
-                                        pref={pref}
-                                        onSave={handleSave}
-                                        onDelete={handleDelete}
-                                        allModels={allModels}
-                                    />
-                                ))}
+                                {(() => {
+                                    const subGroups = new Map<string, PrefEntry[]>();
+                                    const standalone: PrefEntry[] = [];
+                                    
+                                    for (const pref of entries) {
+                                        if ((pref as any).subCategory) {
+                                            if (!subGroups.has((pref as any).subCategory)) subGroups.set((pref as any).subCategory, []);
+                                            subGroups.get((pref as any).subCategory)!.push(pref);
+                                        } else {
+                                            standalone.push(pref);
+                                        }
+                                    }
+                                    
+                                    const elements = [];
+                                    
+                                    const sortedSubCats = Array.from(subGroups.keys()).sort();
+                                    for (const subCat of sortedSubCats) {
+                                        elements.push(
+                                            <NestedCategory key={subCat} title={subCat} entries={subGroups.get(subCat)!} onSave={handleSave} onDelete={handleDelete} allModels={allModels} />
+                                        );
+                                    }
+                                    
+                                    for (const pref of standalone) {
+                                        elements.push(
+                                            <PrefRow key={pref.key} pref={pref} onSave={handleSave} onDelete={handleDelete} allModels={allModels} />
+                                        );
+                                    }
+                                    
+                                    return elements;
+                                })()}
                             </div>
                         )}
                     </div>
@@ -488,6 +561,19 @@ function PrefRow({
     const [editing, setEditing] = useState(false);
     const [editValue, setEditValue] = useState(pref.value);
     const [saving, setSaving] = useState(false);
+
+    const renderKey = () => (
+        <div className="flex flex-col gap-0.5">
+            {pref.displayName ? (
+                <>
+                    <span className="typo-caption text-foreground font-medium line-clamp-1" title={pref.displayName}>{pref.displayName}</span>
+                    <span className="text-[10px] text-muted-foreground/60 break-all" title={pref.key}>{pref.key}</span>
+                </>
+            ) : (
+                <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+            )}
+        </div>
+    );
     const [showSecret, setShowSecret] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -694,7 +780,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <SettingsModelSelector
@@ -735,7 +821,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <UnifiedSelector
@@ -776,7 +862,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <input
@@ -809,7 +895,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <PrimaryColorPicker
@@ -842,7 +928,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <UnifiedSelector
@@ -880,7 +966,7 @@ function PrefRow({
             return (
                 <div className="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted/10 transition-colors">
                     <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                        <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                        {renderKey()}
                     </div>
                     <div className="flex-1 flex justify-end">
                         <UnifiedSelector
@@ -921,7 +1007,7 @@ function PrefRow({
         return (
             <div className="px-4 py-3 space-y-2 bg-muted/10">
                 <div className="flex items-center justify-between">
-                    <span className="typo-caption text-muted-foreground font-medium">{pref.key}</span>
+                    {renderKey()}
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
@@ -968,6 +1054,15 @@ function PrefRow({
                             />
                         );
                     })()
+                ) : pref.key.startsWith("prompt:") ? (
+                    <textarea
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-foreground text-sm font-mono placeholder:text-muted-foreground/50 focus:border-primary focus:ring-0 outline-none transition-colors resize-y min-h-[120px]"
+                        rows={Math.min(20, editValue.split("\n").length + 2)}
+                        spellCheck={false}
+                        autoFocus
+                    />
                 ) : (
                     <input
                         type="text"
@@ -991,7 +1086,7 @@ function PrefRow({
         <div className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-muted/20 transition-colors group">
             {/* Key */}
             <div className="shrink-0 min-w-[200px] max-w-[280px]">
-                <span className="typo-caption text-muted-foreground break-all">{pref.key}</span>
+                {renderKey()}
             </div>
 
             {/* Value */}

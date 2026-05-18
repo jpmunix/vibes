@@ -225,6 +225,8 @@ export const adminContracts = {
                 key: z.string(),
                 value: z.string(),
                 updatedAt: z.string().nullable(),
+                displayCategory: z.string().optional(),
+                displayName: z.string().optional(),
             })),
         }),
     }),

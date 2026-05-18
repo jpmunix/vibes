@@ -5,8 +5,7 @@ const BUNNY_DB_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJwIjp7InJvIjpudWx
 async function run() {
   const client = createClient({ url: BUNNY_DB_URL, authToken: BUNNY_DB_TOKEN });
   
-  // Get latest prompts to see the new one
-  const res = await client.execute("SELECT * FROM prompts ORDER BY id DESC LIMIT 10");
+  const res = await client.execute("SELECT * FROM prompts WHERE system_id IS NULL OR system_id = 'null'");
   console.log(res.rows);
 }
 run().catch(console.error);

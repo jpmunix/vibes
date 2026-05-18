@@ -10,7 +10,7 @@ import {
   hasOpenRouterApiKey,
 } from "@/ipc/utils/openrouter";
 import { gitDiffFile } from "@/ipc/utils/git_utils";
-import { getEffectivePrompt } from "@/prompts";
+import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
 const logger = log.scope("auto_commit_message");
@@ -92,7 +92,7 @@ export async function generateAutoCommitMessage({
     const diffsContext = diffs.join("\n\n");
 
     // Use the editable prompt from settings
-    const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+    const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
 
     const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
 

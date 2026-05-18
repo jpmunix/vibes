@@ -1,0 +1,12 @@
+--- src/prompts/index.ts
++++ src/prompts/index.ts
+@@ -445,7 +445,7 @@
+   settings?: UserSettings,
+ ): string {
+   const custom = settings?.customPrompts?.[id];
+-  if (custom !== undefined) {
++  if (typeof custom === "string") {
+     return custom;
+   }
+   return DEFAULT_PROMPTS[id];
+}

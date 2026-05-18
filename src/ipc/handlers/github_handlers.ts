@@ -48,7 +48,7 @@ import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
 import { openRouterCompletion, hasOpenRouterApiKey, openRouterStreamCompletion } from "../utils/openrouter";
-import { getEffectivePrompt } from "@/prompts";
+import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
 import { streamText } from "ai";
 import { getModelClient } from "../utils/get_model_client";
@@ -1739,7 +1739,7 @@ async function generateSquashCommitMessage({
     return fallbackMessage;
   }
 
-  const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+  const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
   const prompt = `${systemPrompt}\n\nEsta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}`;
 
   const data = await openRouterCompletion({
@@ -1962,7 +1962,7 @@ export function registerCommitMessageStreamHandler() {
       const diffs = await Promise.all(diffsPromises);
       const diffsContext = diffs.join("\n\n");
 
-      const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+      const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
 
       // NOTE: We intentionally bypass getModelClient here.
       // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.

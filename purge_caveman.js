@@ -5,8 +5,12 @@ const BUNNY_DB_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJwIjp7InJvIjpudWx
 async function run() {
   const client = createClient({ url: BUNNY_DB_URL, authToken: BUNNY_DB_TOKEN });
   
-  // Get latest prompts to see the new one
-  const res = await client.execute("SELECT * FROM prompts ORDER BY id DESC LIMIT 10");
-  console.log(res.rows);
+  // 1. Delete the specific system_id
+  const res1 = await client.execute("DELETE FROM prompts WHERE system_id = 'ctx_caveman_mode'");
+  console.log("Deleted ctx_caveman_mode rows:", res1.rowsAffected);
+  
+  // 2. Also search if the user manually pasted "MODO HOMBRE DE LAS CAVERNAS" into a custom prompt and delete that too
+  const res2 = await client.execute("DELETE FROM prompts WHERE content LIKE '%MODO HOMBRE DE LAS CAVERNAS%'");
+  console.log("Deleted any remaining prompts containing caveman text:", res2.rowsAffected);
 }
 run().catch(console.error);
