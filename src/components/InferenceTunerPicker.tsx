@@ -9,12 +9,13 @@ import {
     ChevronDown,
     Zap,
     Brain,
+    RotateCcw,
+    Cog,
 } from "@/components/ui/icons";
 import * as Lucide from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 
 const Scale = Lucide.Scale;
-const Cog = Lucide.Cog;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -242,16 +243,20 @@ export function InferenceTunerPicker() {
                             <span className="typo-menu-header uppercase tracking-wider opacity-70">
                                 Hiperparámetros
                             </span>
-                            {hasCustom && (
-                                <button
+                            <button
                                     type="button"
                                     onClick={handleResetHyperParams}
-                                    className="typo-micro text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                                    disabled={!hasCustom}
+                                    className={cn(
+                                        "p-0.5 rounded transition-colors cursor-pointer",
+                                        hasCustom
+                                            ? "text-primary hover:bg-primary/10"
+                                            : "text-muted-foreground/30 cursor-default",
+                                    )}
                                     title="Restaurar valores por defecto"
                                 >
-                                    Reset
+                                    <RotateCcw size={12} />
                                 </button>
-                            )}
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-4">
                             {HYPER_PARAMS.map((param) => {

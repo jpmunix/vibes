@@ -194,10 +194,12 @@ export async function getLanguageModelsByProviders(userId?: string): Promise<
   Record<string, LanguageModel[]>
 > {
   const providers = await getLanguageModelProviders(userId);
+  const settings = readSettings();
+  const disabledProviders = settings.disabledProviders ?? [];
 
   // Fetch all models concurrently, including auto-router
   const modelPromises = providers
-    .filter((p) => p.type !== "local")
+    .filter((p) => p.type !== "local" && !disabledProviders.includes(p.id))
     .map(async (provider) => {
       const models = await getLanguageModels({ providerId: provider.id, userId });
       return { providerId: provider.id, models };

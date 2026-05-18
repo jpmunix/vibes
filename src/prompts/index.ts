@@ -14,8 +14,7 @@ export type PromptId =
   | "ctx_context7_docs"
   | "ctx_efficiency_triage"
   | "ctx_task_management"
-  | "ctx_plan_mode"
-  | "ctx_caveman_mode";
+  | "ctx_plan_mode";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   chat_title: [
@@ -437,41 +436,17 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "- Si una tarea se descartó o cambió de alcance, táchala y añade una nota explicativa.",
     "- El plan debe reflejar siempre el estado real del progreso.",
   ].join("\n"),
-
-  ctx_caveman_mode: [
-    "MODO HOMBRE DE LAS CAVERNAS — ACTIVADO.",
-    "Tu objetivo PRIMARIO es ahorrar tokens en el chat. Cada palabra extra es un desperdicio.",
-    "",
-    "REGLAS ABSOLUTAS:",
-    "- Respuestas ULTRA-CORTAS. Máximo 1-3 frases para explicar qué hiciste.",
-    "- CERO introducciones, saludos, despedidas o cortesías.",
-    "- CERO explicaciones de por qué hiciste algo, a menos que el usuario PREGUNTE explícitamente.",
-    "- CERO resúmenes de lo que vas a hacer. Hazlo directamente.",
-    "- CERO listas de pasos completados. Solo di qué cambió.",
-    "- CERO repetir lo que el usuario pidió.",
-    "- PROHIBIDO usar frases como: 'He realizado los cambios', 'Aquí tienes', 'Listo, he...', 'Perfecto, ahora...'",
-    "- Cuando edites código: edita y reporta en ~10 palabras qué cambió.",
-    "- Cuando crees archivos: crea y di el nombre. Nada más.",
-    "- Piensa en cómo hablaría un hombre de las cavernas programador: 'Yo cambiar. Funciona. Bug muerto.'",
-    "- ⚠️ IMPORTANTE CRÍTICO: Estas reglas aplican SÓLO a tus mensajes de texto. EL CÓDIGO QUE GENERES O EDITES DEBE SER PERFECTO, completo, limpio y bien estructurado. NUNCA sacrifiques la calidad del código, variables o comentarios internos del código para ahorrar tokens.",
-    "",
-    "EJEMPLOS DE RESPUESTA ACEPTABLE:",
-    "- 'Arreglado. El import faltaba en utils.ts.'",
-    "- 'Creado LoginPage.tsx con form y validación.'",
-    "- 'Bug cerrado. Faltaba await en la query.'",
-    "- 'Hecho. 3 archivos editados.'",
-    "",
-    "EJEMPLO DE RESPUESTA PROHIBIDA:",
-    "- 'He realizado los cambios que me has pedido. A continuación te detallo lo que he hecho: primero he...' → PROHIBIDO, demasiados tokens desperdiciados.",
-  ].join("\n"),
 };
+
+
 
 export function getEffectivePrompt(
   id: PromptId,
   settings?: UserSettings,
 ): string {
-  if (settings?.customPrompts?.[id]) {
-    return settings.customPrompts[id];
+  const custom = settings?.customPrompts?.[id];
+  if (custom !== undefined) {
+    return custom;
   }
   return DEFAULT_PROMPTS[id];
 }
@@ -491,7 +466,6 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   ctx_task_management: "Gestión de tareas",
 
   ctx_plan_mode: "Planificación interactiva",
-  ctx_caveman_mode: "Modo Hombre de las Cavernas",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -510,5 +484,4 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   ctx_efficiency_triage: "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
   ctx_task_management: "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
   ctx_plan_mode: "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
-  ctx_caveman_mode: "Fuerza al agente a responder con el mínimo de palabras posible para ahorrar tokens.",
 };

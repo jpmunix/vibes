@@ -221,14 +221,27 @@ export const versions = sqliteTable("versions", {
 // PROMPTS
 // =============================================================================
 
+export const promptsCategories = sqliteTable("prompts_categories", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    name: text("name").notNull(),
+    description: text("description"),
+});
+
 export const prompts = sqliteTable("prompts", {
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: text("user_id")
         .notNull()
         .references(() => users.id),
+    categoryId: integer("category_id")
+        .references(() => promptsCategories.id),
+    systemId: text("system_id"),
     title: text("title").notNull(),
     description: text("description"),
     content: text("content").notNull(),
+    enabled: integer("enabled").notNull().default(1),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -482,4 +495,14 @@ export const streamTasksRelations = relations(streamTasks, ({ one }) => ({
     user: one(users, { fields: [streamTasks.userId], references: [users.id] }),
     chat: one(chats, { fields: [streamTasks.chatId], references: [chats.id] }),
     message: one(messages, { fields: [streamTasks.messageId], references: [messages.id] }),
+}));
+
+export const promptsCategoriesRelations = relations(promptsCategories, ({ one, many }) => ({
+    user: one(users, { fields: [promptsCategories.userId], references: [users.id] }),
+    prompts: many(prompts),
+}));
+
+export const promptsRelations = relations(prompts, ({ one }) => ({
+    user: one(users, { fields: [prompts.userId], references: [users.id] }),
+    category: one(promptsCategories, { fields: [prompts.categoryId], references: [promptsCategories.id] }),
 }));

@@ -9,7 +9,7 @@ import { useSetAtom } from "jotai";
 import { userAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
 import { toast } from "sonner";
-import logoSrc from "../../assets/icon/logo.png";
+import logoSrc from "../logo";
 
 interface LoginScreenProps {
   onAuthSuccess: () => void;

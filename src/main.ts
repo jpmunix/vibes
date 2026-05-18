@@ -133,16 +133,17 @@ app.commandLine.appendSwitch("enable-smooth-scrolling");
 const logger = log.scope("main");
 
 
+import { getActiveFlavor } from "./flavors";
+
 // ─── Build Profile ───────────────────────────────────────────────────────
-// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside vibes).
-// Override userData BEFORE any settings/paths are accessed so the two instances
+// Get the active flavor which defines app name, user data folder, and icon.
+const activeFlavor = getActiveFlavor();
+
+// Always override userData BEFORE any settings/paths are accessed so the instances
 // get completely independent config directories and single-instance locks.
-const IS_VIBES_PROFILE = process.env.VIBES_PROFILE === "vibes";
-if (IS_VIBES_PROFILE) {
-  const vibesUserData = path.join(app.getPath("appData"), "vibes");
-  app.setPath("userData", vibesUserData);
-  app.name = "Vibes";
-}
+const flavorUserData = path.join(app.getPath("appData"), activeFlavor.userDataFolder);
+app.setPath("userData", flavorUserData);
+app.name = activeFlavor.productName;
 
 // Load environment variables from .env file
 dotenv.config();
@@ -476,7 +477,7 @@ const createWindow = () => {
       // Prevent Chromium from throttling timers/animations when window loses focus
       backgroundThrottling: false,
     },
-    icon: path.join(app.getAppPath(), IS_VIBES_PROFILE ? "assets/icon-vibes/logo.png" : "assets/icon/logo.png"),
+    icon: path.join(app.getAppPath(), `assets/${activeFlavor.iconFolder}/logo.png`),
   });
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);

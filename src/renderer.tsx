@@ -8,6 +8,9 @@ if (!isElectron) {
   document.documentElement.dataset.platform = "web";
 }
 
+import { getActiveFlavor } from "./flavors";
+document.title = getActiveFlavor().productName;
+
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {

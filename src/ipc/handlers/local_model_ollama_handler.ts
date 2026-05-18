@@ -69,6 +69,11 @@ interface OllamaModel {
 }
 
 export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
+  const settings = readSettings();
+  if (settings.ollamaEnabled === false) {
+    return { models: [] };
+  }
+
   try {
     const response = await fetch(`${getOllamaApiUrl()}/api/tags`);
     if (!response.ok) {
@@ -123,6 +128,11 @@ export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
  */
 export async function checkOllamaStatus(): Promise<{ online: boolean; modelCount: number; url: string }> {
   const url = getOllamaApiUrl();
+  const settings = readSettings();
+  if (settings.ollamaEnabled === false) {
+    return { online: false, modelCount: 0, url };
+  }
+
   try {
     const response = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(3000),

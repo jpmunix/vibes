@@ -65,6 +65,7 @@ export function ModelPicker() {
     queryFn: () => ipc.languageModel.listOllamaModels(),
     refetchInterval: 30_000,
     retry: false,
+    enabled: settings?.ollamaEnabled !== false,
   });
 
   const loading = modelsByProvidersLoading || providersLoading;

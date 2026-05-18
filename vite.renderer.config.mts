@@ -7,6 +7,9 @@ const ReactCompilerConfig = {};
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_FLAVOR": JSON.stringify(process.env.VIBES_FLAVOR || "default"),
+  },
   server: {
     // HMR enabled for faster development iteration.
   },

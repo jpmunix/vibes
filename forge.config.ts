@@ -127,20 +127,21 @@ const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
 const isCrossCompile = process.env.CROSS_COMPILE === "true";
 
 // ─── Build Profile ───────────────────────────────────────────────────────
-// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside minube-vibes)
-const isVibesProfile = process.env.VIBES_PROFILE === "vibes";
+import { getActiveFlavor } from "./src/flavors";
+
+const activeFlavor = getActiveFlavor();
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: "vibes",
-    executableName: "vibes",
+    name: activeFlavor.name,
+    executableName: activeFlavor.executableName,
     protocols: [
       {
-        name: "Vibes",
+        name: activeFlavor.productName,
         schemes: ["dyad"],
       },
     ],
-    icon: isVibesProfile ? "./assets/icon-vibes/logo" : "./assets/icon/logo",
+    icon: `./assets/${activeFlavor.iconFolder}/logo`,
     asar: {
       // styled-jsx y geist se desempaquetan para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
@@ -158,10 +159,10 @@ const config: ForgeConfig = {
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
       options: {
-        name: "vibes",
-        productName: "Vibes",
+        name: activeFlavor.name,
+        productName: activeFlavor.productName,
         mimeType: ["x-scheme-handler/dyad"],
-        icon: isVibesProfile ? "./assets/icon-vibes/logo.png" : "./assets/icon/logo.png",
+        icon: `./assets/${activeFlavor.iconFolder}/logo.png`,
       },
     }),
   ],

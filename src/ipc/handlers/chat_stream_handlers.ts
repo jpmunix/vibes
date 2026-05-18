@@ -1176,9 +1176,8 @@ This conversation includes one or more image attachments. When the user uploads 
             }),
             maxOutputTokens: finalMaxOutputTokens,
             temperature: await getTemperature(settings.selectedModel),
-            // User-tunable hyperparameters from the Inference Tuner (always sent)
+            // User-tunable hyperparameters from the Inference Tuner
             topP: settings.inferenceTopP ?? 0.95,
-            frequencyPenalty: settings.inferenceRepetitionPenalty ?? 1.05,
             maxRetries: 2,
             model: modelClient.model,
             stopWhen: [stepCountIs(20), hasToolCall("edit-code")],
@@ -1344,15 +1343,6 @@ This conversation includes one or more image attachments. When the user uploads 
           contextInstructions.push(
             getEffectivePrompt("ctx_task_management", settings)
           );
-
-          // 7. Caveman mode — ultra-terse responses to save ~20-30% tokens
-          logger.info(`[OPENCODE] 🦴 enableCavemanMode = ${settings.enableCavemanMode} (type: ${typeof settings.enableCavemanMode})`);
-          if (settings.enableCavemanMode) {
-            const cavemanText = getEffectivePrompt("ctx_caveman_mode", settings);
-            logger.info(`[OPENCODE] 🦴 Caveman text length: ${cavemanText.length} chars`);
-            contextInstructions.push(cavemanText);
-            logger.info("[OPENCODE] 🦴 Caveman mode ACTIVE — injecting ultra-terse directive");
-          }
 
 
           // 6. Plan mode — interactive question-driven planning

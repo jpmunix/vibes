@@ -9,6 +9,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { readSettings, writeSettings } from "../../main/settings";
 import { isAdmin } from "../../lib/admin";
+import { getActiveFlavor } from "../../flavors";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -270,7 +271,7 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for git window title: ${e}`);
     }
 
-    const gitIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const gitIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const gitIcon = nativeImage.createFromPath(gitIconPath);
 
     const savedGit = getSavedWindowBounds("git", { width: 1100, height: 750 });
@@ -709,7 +710,7 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for code window title: ${e}`);
     }
 
-    const codeIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const codeIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const codeIcon = nativeImage.createFromPath(codeIconPath);
 
     const savedCode = getSavedWindowBounds("code", { width: 1100, height: 750 });
@@ -1000,7 +1001,7 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedAdmin = getSavedWindowBounds("admin", { width: 1000, height: 700 });
@@ -1099,7 +1100,7 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedPlayground = getSavedWindowBounds("playground", { width: 900, height: 700 });
@@ -1198,7 +1199,7 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedDocs = getSavedWindowBounds("docs", { width: 1000, height: 700 });
@@ -1295,7 +1296,7 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedDocs = getSavedWindowBounds("release-notes", { width: 1000, height: 700 });

@@ -6,7 +6,7 @@
  * makes the cyan→purple gradient pop and gives the avatar a
  * recognisable, app-icon-like presence at any size.
  */
-import logoSrc from "../../../assets/icon/logo.png";
+import logoSrc from "../../logo";
 
 interface VibesAvatarProps {
   /** Outer size class (width + height). Default: "h-7 w-7" */

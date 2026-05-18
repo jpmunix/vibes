@@ -151,7 +151,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
     let initialArgs = "";
     if (existingServer?.args) {
         try {
-            initialArgs = (typeof existingServer.args === "string" ? JSON.parse(existingServer.args) : existingServer.args).join("\\n");
+            initialArgs = (typeof existingServer.args === "string" ? JSON.parse(existingServer.args) : existingServer.args).join("\n");
         } catch(e) {}
     }
     const [argsStr, setArgsStr] = useState(initialArgs);
@@ -161,7 +161,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
     if (existingServer?.envJson) {
         try {
             const parsed = typeof existingServer.envJson === "string" ? JSON.parse(existingServer.envJson) : existingServer.envJson;
-            initialEnv = Object.entries(parsed).map(([k,v]) => `${k}=${v}`).join("\\n");
+            initialEnv = Object.entries(parsed).map(([k,v]) => `${k}=${v}`).join("\n");
         } catch(e) {}
     }
     const [envStr, setEnvStr] = useState(initialEnv);
@@ -171,7 +171,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
     if (existingServer?.headersJson) {
         try {
             const parsed = typeof existingServer.headersJson === "string" ? JSON.parse(existingServer.headersJson) : existingServer.headersJson;
-            initialHeaders = Object.entries(parsed).map(([k,v]) => `${k}=${v}`).join("\\n");
+            initialHeaders = Object.entries(parsed).map(([k,v]) => `${k}=${v}`).join("\n");
         } catch(e) {}
     }
     const [headersStr, setHeadersStr] = useState(initialHeaders);
@@ -185,13 +185,13 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
        
        let parsedArgs: string[] | null = null;
        if (argsStr.trim()) {
-          parsedArgs = argsStr.split("\\n").map(s => s.trim()).filter(s => s);
+          parsedArgs = argsStr.split("\n").map(s => s.trim()).filter(s => s);
        }
        
        let parsedEnv: Record<string, string> | null = null;
        if (envStr.trim()) {
           parsedEnv = {};
-          const lines = envStr.split("\\n");
+          const lines = envStr.split("\n");
           for (const line of lines) {
              const idx = line.indexOf("=");
              if (idx > 0) {
@@ -205,7 +205,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
        let parsedHeaders: Record<string, string> | null = null;
        if (headersStr.trim()) {
           parsedHeaders = {};
-          const lines = headersStr.split("\\n");
+          const lines = headersStr.split("\n");
           for (const line of lines) {
              const idx = line.indexOf("=");
              if (idx > 0) {
