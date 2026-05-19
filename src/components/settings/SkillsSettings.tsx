@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { currentAppAtom } from "@/atoms/appAtoms";
-import { appClient } from "@/ipc/types/app";
+import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, Trash2, Check, BookOpen } from "@/components/ui/icons";
+import { Pencil, Plus, Trash2, Check, BookOpen, Globe, Folder } from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { showError, showSuccess } from "@/lib/toast";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 interface SkillData {
     name: string;
@@ -22,24 +23,57 @@ interface SkillData {
 
 export function SkillsSettings() {
     const currentApp = useAtomValue(currentAppAtom);
+    const [apps, setApps] = useState<{ id: number; name: string; path: string }[]>([]);
+    const [selectedScope, setSelectedScope] = useState<string>("global");
     const [skills, setSkills] = useState<SkillData[]>([]);
     const [loading, setLoading] = useState(false);
-    
+
+    // List all apps registered in Vibes
+    useEffect(() => {
+        ipc.app.listApps()
+            .then(res => {
+                if (res && res.apps) {
+                    setApps(res.apps.map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        path: a.path || ""
+                    })));
+                }
+            })
+            .catch(err => {
+                console.error("Error listing apps for skills selector:", err);
+            });
+    }, []);
+
+    // Set default scope based on the active project
+    useEffect(() => {
+        if (currentApp) {
+            setSelectedScope(String(currentApp.id));
+        } else {
+            setSelectedScope("global");
+        }
+    }, [currentApp]);
+
     const loadSkills = async () => {
-        if (!currentApp) return;
         setLoading(true);
         try {
-            const appData = await appClient.getApp(currentApp.id);
-            const skillFiles = appData.files.filter(f => f.startsWith(".opencode/skills/") && f.endsWith("/SKILL.md"));
-            
-            const loadedSkills = skillFiles.map(path => {
-                const parts = path.split("/");
-                const name = parts[parts.length - 2];
-                return { name, path };
-            });
-            setSkills(loadedSkills);
+            if (selectedScope === "global") {
+                const globalSkills = await ipc.settings.listGlobalSkills();
+                setSkills(globalSkills);
+            } else {
+                const appId = Number(selectedScope);
+                const appData = await ipc.app.getApp(appId);
+                const skillFiles = appData.files.filter(f => f.startsWith(".claude/skills/") && f.endsWith("/SKILL.md"));
+                
+                const loadedSkills = skillFiles.map(path => {
+                    const parts = path.split("/");
+                    const name = parts[parts.length - 2];
+                    return { name, path };
+                });
+                setSkills(loadedSkills);
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Error loading skills:", e);
         } finally {
             setLoading(false);
         }
@@ -47,70 +81,97 @@ export function SkillsSettings() {
 
     useEffect(() => {
         loadSkills();
-    }, [currentApp]);
+    }, [selectedScope]);
 
-    if (!currentApp) {
-        return (
-            <div className="space-y-6">
-                <div className="p-6 bg-muted/20 border border-border/50 rounded-lg text-center">
-                    <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
-                    <h3 className="typo-subsection-title mb-1">Skills del Proyecto</h3>
-                    <p className="typo-caption text-muted-foreground">
-                        Abre un proyecto para gestionar sus skills. Los skills son herramientas personalizadas que le enseñan al agente cómo usar librerías específicas o realizar tareas en tu proyecto.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    const getResolvedPath = () => {
+        if (selectedScope === "global") {
+            return "~/.config/opencode/skills/";
+        }
+        const app = apps.find(a => String(a.id) === selectedScope);
+        return app ? `${app.path}/.claude/skills/` : "";
+    };
+
+    const scopeOptions = [
+        { 
+            value: "global", 
+            label: "Global (Vibes)", 
+            description: "Disponible en todos los proyectos",
+            leftIcon: <Globe className="h-3.5 w-3.5 text-primary" />
+        },
+        ...apps.map(app => ({
+            value: String(app.id),
+            label: `Proyecto: ${app.name}`,
+            description: app.path,
+            leftIcon: <Folder className="h-3.5 w-3.5 text-muted-foreground" />
+        }))
+    ];
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="typo-subsection-title">Skills (Agentes de Conocimiento)</h3>
-                    <p className="typo-caption mt-1">
-                        Proyecto activo: <strong>{currentApp.name}</strong>. Los skills definen patrones y herramientas personalizadas.
+        <div className="space-y-6">
+            {/* Control Panel Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border border-border bg-card rounded-xl shadow-sm">
+                <div className="space-y-1 min-w-0">
+                    <h3 className="typo-subsection-title text-foreground">Skills (Agentes de Conocimiento)</h3>
+                    <p className="typo-mono-xs text-muted-foreground truncate" title={getResolvedPath()}>
+                        {getResolvedPath()}
                     </p>
                 </div>
-                <SkillDialog appId={currentApp.id} onSave={loadSkills} />
+                <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                    <UnifiedSelector
+                        value={selectedScope}
+                        onChange={setSelectedScope}
+                        options={scopeOptions}
+                        triggerVariant="default"
+                        triggerSize="sm"
+                        popoverWidth="w-[280px]"
+                        itemLayout="default"
+                    />
+                    <SkillDialog scope={selectedScope} onSave={loadSkills} />
+                </div>
             </div>
 
+            {/* List Section */}
             {loading ? (
-                <div className="py-8 text-center text-muted-foreground typo-caption">
+                <div className="py-12 text-center text-muted-foreground typo-caption">
                     Cargando skills...
                 </div>
             ) : skills.length === 0 ? (
-                <div className="py-8 text-center border border-dashed rounded-lg">
-                    <p className="typo-caption text-muted-foreground">No hay skills configurados en este proyecto.</p>
+                <div className="py-12 text-center border border-dashed border-border/80 rounded-xl bg-muted/2">
+                    <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
+                    <p className="typo-caption text-muted-foreground">No hay skills configurados en este ámbito.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {skills.map(skill => (
-                        <div key={skill.path} className="flex items-center justify-between p-4 border border-border/50 rounded-lg bg-muted/5 group hover:border-primary/30 transition-colors">
-                            <div className="flex items-start gap-3 overflow-hidden">
-                                <div className="mt-0.5 bg-primary/10 p-2 rounded-md">
-                                    <BookOpen className="h-4 w-4 text-primary" />
+                        <div key={skill.path} className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-card hover:bg-muted/3 hover:border-primary/20 hover:shadow-sm transition-all duration-200 group">
+                            <div className="flex items-start gap-3.5 overflow-hidden">
+                                <div className="mt-0.5 bg-primary/8 p-2 rounded-lg shrink-0">
+                                    <BookOpen className="h-4.5 w-4.5 text-primary" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h4 className="typo-label truncate">{skill.name}</h4>
+                                    <h4 className="typo-label text-foreground font-medium truncate">{skill.name}</h4>
                                     <p className="typo-mono-xs opacity-50 truncate mt-1">
-                                        .opencode/skills/{skill.name}/
+                                        {selectedScope === "global" ? `${skill.name}/` : `.claude/skills/${skill.name}/`}
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <SkillDialog appId={currentApp.id} existingSkill={skill} onSave={loadSkills} />
+                            <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 shrink-0">
+                                <SkillDialog scope={selectedScope} existingSkill={skill} onSave={loadSkills} />
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-8 w-8"
+                                    className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10 h-8 w-8 rounded-lg"
                                     onClick={async () => {
-                                        if (confirm(`¿Eliminar el skill ${skill.name}?`)) {
+                                        if (confirm(`¿Eliminar el skill "${skill.name}"?`)) {
                                             try {
-                                                await appClient.deleteAppFile({ 
-                                                    appId: currentApp.id, 
-                                                    filePath: `.opencode/skills/${skill.name}` 
-                                                });
+                                                if (selectedScope === "global") {
+                                                    await ipc.settings.deleteGlobalSkill({ filePath: skill.name });
+                                                } else {
+                                                    await ipc.app.deleteAppFile({ 
+                                                        appId: Number(selectedScope), 
+                                                        filePath: `.claude/skills/${skill.name}` 
+                                                    });
+                                                }
                                                 showSuccess("Skill eliminado");
                                                 loadSkills();
                                             } catch(e) {
@@ -130,7 +191,7 @@ export function SkillsSettings() {
     );
 }
 
-function SkillDialog({ appId, existingSkill, onSave }: { appId: number, existingSkill?: SkillData, onSave: () => void }) {
+function SkillDialog({ scope, existingSkill, onSave }: { scope: string, existingSkill?: SkillData, onSave: () => void }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(existingSkill?.name || "");
     const [content, setContent] = useState("");
@@ -139,10 +200,17 @@ function SkillDialog({ appId, existingSkill, onSave }: { appId: number, existing
     useEffect(() => {
         if (open && existingSkill) {
             setIsLoading(true);
-            appClient.readAppFile({ appId, filePath: existingSkill.path })
-                .then(setContent)
-                .catch(() => showError("No se pudo cargar el skill"))
-                .finally(() => setIsLoading(false));
+            if (scope === "global") {
+                ipc.settings.readGlobalSkill({ filePath: existingSkill.path })
+                    .then(setContent)
+                    .catch(() => showError("No se pudo cargar el skill global"))
+                    .finally(() => setIsLoading(false));
+            } else {
+                ipc.app.readAppFile({ appId: Number(scope), filePath: existingSkill.path })
+                    .then(setContent)
+                    .catch(() => showError("No se pudo cargar el skill local"))
+                    .finally(() => setIsLoading(false));
+            }
         } else if (open && !existingSkill) {
             setName("");
             setContent(`---
@@ -157,7 +225,7 @@ allowed-tools:
 
 Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         }
-    }, [open, existingSkill, appId]);
+    }, [open, existingSkill, scope]);
 
     const handleSave = async () => {
         if (!name.trim() || !content.trim()) return;
@@ -165,18 +233,34 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         setIsLoading(true);
         try {
             const skillSlug = name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-            const filePath = `.opencode/skills/${skillSlug}/SKILL.md`;
             
-            // If renaming, delete old first
-            if (existingSkill && existingSkill.name !== skillSlug) {
-                await appClient.deleteAppFile({ appId, filePath: `.opencode/skills/${existingSkill.name}` }).catch(() => {});
+            if (scope === "global") {
+                const filePath = `${skillSlug}/SKILL.md`;
+                
+                // If renaming, delete old first
+                if (existingSkill && existingSkill.name !== skillSlug) {
+                    await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
+                }
+                
+                await ipc.settings.editGlobalSkill({
+                    filePath,
+                    content
+                });
+            } else {
+                const appId = Number(scope);
+                const filePath = `.claude/skills/${skillSlug}/SKILL.md`;
+                
+                // If renaming, delete old first
+                if (existingSkill && existingSkill.name !== skillSlug) {
+                    await ipc.app.deleteAppFile({ appId, filePath: `.claude/skills/${existingSkill.name}` }).catch(() => {});
+                }
+                
+                await ipc.app.editAppFile({
+                    appId,
+                    filePath,
+                    content
+                });
             }
-            
-            await appClient.editAppFile({
-                appId,
-                filePath,
-                content
-            });
             
             showSuccess("Skill guardado con éxito");
             setOpen(false);
@@ -192,37 +276,40 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {existingSkill ? (
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-muted h-8 w-8">
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-muted h-8 w-8 rounded-lg">
                         <Pencil className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button size="sm" className="gap-2">
+                    <Button size="sm" className="gap-2 rounded-lg font-medium">
                         <Plus className="h-4 w-4" />
                         Crear Skill
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col">
+            <DialogContent className="sm:max-w-[720px] max-h-[85vh] flex flex-col rounded-2xl">
                 <DialogHeader>
-                    <DialogTitle>{existingSkill ? "Editar Skill" : "Crear Skill"}</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold text-foreground">
+                        {existingSkill ? "Editar Skill" : "Crear Skill"}
+                    </DialogTitle>
                 </DialogHeader>
                 
-                <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
-                    <div className="space-y-2">
-                        <label className="typo-label">Nombre del Skill</label>
+                <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
+                    <div className="space-y-1.5">
+                        <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Nombre del Skill</label>
                         <Input 
-                            placeholder="mi-skill-personalizado" 
+                            placeholder="ej: mis-preferencias-de-codigo" 
                             value={name} 
                             onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} 
                             disabled={isLoading}
+                            className="rounded-lg border-border"
                         />
-                        <p className="typo-caption">Se usará como identificador en la carpeta del proyecto.</p>
+                        <p className="typo-caption text-muted-foreground/75">Identificador único (letras, números y guiones).</p>
                     </div>
                     
-                    <div className="space-y-2 flex-1 flex flex-col">
-                        <label className="typo-label">Contenido (SKILL.md)</label>
+                    <div className="space-y-1.5 flex-1 flex flex-col min-h-[350px]">
+                        <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Contenido (SKILL.md)</label>
                         <textarea 
-                            className="flex-1 min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                            className="flex-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 typo-mono-xs ring-offset-background placeholder:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono text-sm leading-relaxed"
                             value={content}
                             onChange={e => setContent(e.target.value)}
                             disabled={isLoading}
@@ -231,10 +318,10 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                     </div>
                 </div>
                 
-                <DialogFooter className="pt-2">
-                    <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>Cancelar</Button>
-                    <Button onClick={handleSave} disabled={!name.trim() || !content.trim() || isLoading}>
-                        <Check className="h-4 w-4 mr-2" /> Guardar
+                <DialogFooter className="pt-3 border-t border-border/40 gap-2">
+                    <Button variant="outline" className="rounded-lg" onClick={() => setOpen(false)} disabled={isLoading}>Cancelar</Button>
+                    <Button className="rounded-lg" onClick={handleSave} disabled={!name.trim() || !content.trim() || isLoading}>
+                        <Check className="h-4 w-4 mr-2" /> Guardar Skill
                     </Button>
                 </DialogFooter>
             </DialogContent>

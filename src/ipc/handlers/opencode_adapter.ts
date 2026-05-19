@@ -1116,10 +1116,10 @@ export async function updateOpenCodePermissions(settings: any): Promise<void> {
 /**
  * Hot update OpenCode MCP servers config without restarting
  */
-export async function updateOpenCodeMcpConfig(servers: McpServer[]): Promise<void> {
+export async function updateOpenCodeMcpConfig(servers: McpServer[], appPath?: string): Promise<void> {
     if (!clientInstance) return;
     try {
-        const mcpConfig = buildMcpConfig(servers);
+        const mcpConfig = buildMcpConfig(servers, appPath);
         if (mcpConfig) {
             await clientInstance.config.update({ body: { mcp: mcpConfig } as any });
             logger.info(`[OpenCode] MCP config updated in-place`);
@@ -1147,11 +1147,20 @@ function buildMcpConfig(servers: McpServer[], appPath?: string) {
             const serverKey = s.name.replace(/[^a-zA-Z0-9_-]/g, "");
             
             if (s.transport === "stdio") {
-                const resolvedArgs = (s.args ?? []).map(resolveArg);
+                let resolvedArgs = (s.args ?? []).map(resolveArg);
                 const hadPlaceholder = (s.args ?? []).some((a: string) => a.includes("{{PROJECT_PATH}}"));
                 
                 if (appPath && hadPlaceholder) {
                     logger.info(`[MCP] ${s.name}: resolved {{PROJECT_PATH}} → ${appPath}`);
+                }
+
+                // Autocomplete path for codegraph MCP if not explicitly specified
+                if (s.name.toLowerCase() === "codegraph" && appPath) {
+                    const hasPathArg = resolvedArgs.some(a => a === "-p" || a === "--path");
+                    if (!hasPathArg) {
+                        resolvedArgs = [...resolvedArgs, "-p", appPath];
+                        logger.info(`[MCP] Automatically appended project path -p "${appPath}" for server: ${s.name}`);
+                    }
                 }
                 
                 return [serverKey, {
@@ -1159,7 +1168,7 @@ function buildMcpConfig(servers: McpServer[], appPath?: string) {
                     command: [s.command!, ...resolvedArgs],
                     enabled: true,
                     environment: {
-                        ...(s.envJson ?? {}),
+                        ...s.envJson,
                         // Generic env var — any MCP server can read it
                         ...(appPath ? { PROJECT_PATH: appPath } : {}),
                     },
@@ -2175,6 +2184,46 @@ export async function handleOpenCodeStream(
         const classified = classifyError(error);
         logger.error(`${LP} Error al iniciar OpenCode: ${classified.technicalDetail}`);
         return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
+    }
+
+    // Ensure MCP configuration is synchronized with the active project's path
+    try {
+        const db = getRemoteDb();
+        const settingsRecord = await db.query.userSettings.findFirst();
+        if (settingsRecord?.userId) {
+            const enabledServers = await db.query.mcpServers.findMany({
+                where: and(
+                    eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
+                    eq(remoteSchema.mcpServers.enabled, 1)
+                ),
+            });
+            const safeParseField = (raw: any): any => {
+                if (raw == null) return null;
+                if (typeof raw !== "string") return raw;
+                let parsed: any = raw;
+                let rounds = 0;
+                while (typeof parsed === "string" && rounds < 3) {
+                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
+                }
+                return parsed;
+            };
+            const mappedServers = enabledServers.map(s => ({
+                id: s.id,
+                name: s.name,
+                transport: s.transport as "stdio" | "sse" | "http",
+                command: s.command,
+                args: safeParseField(s.args),
+                envJson: safeParseField(s.envJson),
+                headersJson: safeParseField(s.headersJson),
+                url: s.url,
+                enabled: s.enabled === 1,
+                createdAt: s.createdAt,
+                updatedAt: s.updatedAt,
+            }));
+            await updateOpenCodeMcpConfig(mappedServers, projectDir);
+        }
+    } catch (e: any) {
+        logger.warn(`${LP} Failed to sync MCP configuration with current project path: ${e.message}`);
     }
 
     // Get or create session for this chat

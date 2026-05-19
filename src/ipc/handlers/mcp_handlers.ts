@@ -370,6 +370,25 @@ async function ensureDefaultServers(userId: string, db: any) {
       )
     });
     
+    const OLD_CONTEXT7_PROMPT = `CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated.`;
+
+    const DEFAULT_CONTEXT7_PROMPT = `## Context7 Integration (Server: \`{{SERVER_PREFIX}}\`)
+
+Context7 retrieves real-time, version-specific API references and code examples directly from official documentation sources to prevent hallucinations of deprecated or incorrect APIs.
+
+### Rules & Workflow:
+1. **Always Verify**: Before writing, configuring, or upgrading code involving any external libraries or frameworks (such as React, Next.js, Drizzle, TailwindCSS, Vite, Vue, Astro, Express, etc.), ALWAYS query their official up-to-date documentation using Context7. Do not rely on memorized training data.
+2. **Retrieve Library ID**:
+   - Call \`{{SERVER_PREFIX}}_resolve-library-id\` with \`libraryName\` (e.g., "tailwindcss") to find the exact \`libraryId\` (e.g., "tailwindlabs/tailwindcss").
+   - If you already know the library's exact ID, you may skip the resolution step and use it directly.
+3. **Query Documentation**:
+   - Call \`{{SERVER_PREFIX}}_query-docs\` with the resolved \`libraryId\` and your specific question or task \`query\` (e.g., "how to define a grid layout with responsive columns").
+4. **Authoritativeness**: Ground all library-specific implementations in the documentation retrieved. Live documentation from Context7 is authoritative and must take precedence over your internal training data.`;
+
+    const isOldPrompt = !existing?.instructions ||
+      existing.instructions === OLD_CONTEXT7_PROMPT ||
+      existing.instructions.includes("Context7 retrieves real-time, version-specific API references and examples to avoid hallucinating");
+
     if (!existing) {
       logger.info(`Seeding default Context7 server for user ${userId}`);
       await db.insert(remoteSchema.mcpServers).values({
@@ -379,9 +398,18 @@ async function ensureDefaultServers(userId: string, db: any) {
         url: "https://mcp.context7.com/mcp",
         headersJson: JSON.stringify({ "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" }),
         enabled: 1,
+        instructions: DEFAULT_CONTEXT7_PROMPT,
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();
+    } else if (isOldPrompt) {
+      logger.info(`Updating default instructions for existing Context7 server of user ${userId}`);
+      await db.update(remoteSchema.mcpServers)
+        .set({
+          instructions: DEFAULT_CONTEXT7_PROMPT,
+          updatedAt: new Date(),
+        })
+        .where(eq(remoteSchema.mcpServers.id, existing.id));
     }
   } catch (e: any) {
     logger.warn(`Failed to seed default servers: ${e.message}`);

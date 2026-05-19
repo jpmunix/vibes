@@ -383,7 +383,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "skills-settings",
     label: "Skills del Proyecto",
-    description: "Gestionar agentes de conocimiento y directivas personalizadas (.opencode/skills)",
+    description: "Gestionar agentes de conocimiento y directivas personalizadas (.claude/skills)",
     keywords: ["skills", "opencode", "agentes", "conocimiento", "personalizar", "directivas", "markdown"],
     section: "Skills",
     sectionId: "tools-skills",

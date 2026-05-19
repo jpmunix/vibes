@@ -9,6 +9,10 @@ import { BrowserWindow } from "electron";
 import { safeSend } from "../utils/safe_sender";
 import { preferencesCache } from "../../main/preferences-cache";
 import type { UserSettings } from "../../lib/schemas";
+import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
 const logger = log.scope("settings_handlers");
 
@@ -264,5 +268,97 @@ export function registerSettingsHandlers() {
     }
 
     return updated as UserSettings;
+  });
+
+  // ── Global Skills Handlers ───────────────────────────────────────────
+  const getGlobalSkillsDir = () => path.join(os.homedir(), ".config", "opencode", "skills");
+
+  const isSafePath = (targetPath: string) => {
+    const relative = path.relative(getGlobalSkillsDir(), targetPath);
+    return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+  };
+
+  createTypedHandler(settingsContracts.listGlobalSkills, async () => {
+    const baseDir = getGlobalSkillsDir();
+    if (!existsSync(baseDir)) {
+      return [];
+    }
+    
+    try {
+      const skills: { name: string; path: string }[] = [];
+      const entries = await fs.readdir(baseDir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const skillPath = path.join(baseDir, entry.name, "SKILL.md");
+          if (existsSync(skillPath)) {
+            skills.push({
+              name: entry.name,
+              path: `${entry.name}/SKILL.md`,
+            });
+          }
+        }
+      }
+      return skills;
+    } catch (err: any) {
+      logger.error("Failed to list global skills:", err);
+      return [];
+    }
+  });
+
+  createTypedHandler(settingsContracts.readGlobalSkill, async (event, { filePath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    if (!existsSync(fullPath)) {
+      throw new Error("El archivo de skill no existe.");
+    }
+    
+    try {
+      return await fs.readFile(fullPath, "utf-8");
+    } catch (err: any) {
+      logger.error("Failed to read global skill:", err);
+      throw err;
+    }
+  });
+
+  createTypedHandler(settingsContracts.editGlobalSkill, async (event, { filePath, content }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      const parentDir = path.dirname(fullPath);
+      await fs.mkdir(parentDir, { recursive: true });
+      await fs.writeFile(fullPath, content, "utf-8");
+    } catch (err: any) {
+      logger.error("Failed to write global skill:", err);
+      throw err;
+    }
+  });
+
+  createTypedHandler(settingsContracts.deleteGlobalSkill, async (event, { filePath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      if (existsSync(fullPath)) {
+        await fs.rm(fullPath, { recursive: true, force: true });
+      }
+    } catch (err: any) {
+      logger.error("Failed to delete global skill:", err);
+      throw err;
+    }
   });
 }

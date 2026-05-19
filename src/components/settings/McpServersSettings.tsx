@@ -102,26 +102,24 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                  checked={server.enabled}
                  onCheckedChange={(c) => onUpdate(server.id, c)}
                />
-             )}
-             {server.name !== "context7" && (
-               <>
-                 <McpServerDialog existingServer={server} />
-                 <DeleteConfirmationDialog 
-                     itemName={server.name}
-                     itemType="servidor"
-                     onDelete={() => onDelete(server.id)}
-                     trigger={
-                         <Button 
-                           variant="ghost" 
-                           size="icon" 
-                           className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8 rounded-lg"
-                         >
-                           <Trash2 className="h-4 w-4" />
-                         </Button>
-                     }
-                 />
-               </>
-             )}
+              )}
+              <McpServerDialog existingServer={server} />
+              {server.name !== "context7" && (
+                <DeleteConfirmationDialog 
+                    itemName={server.name}
+                    itemType="servidor"
+                    onDelete={() => onDelete(server.id)}
+                    trigger={
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8 rounded-lg"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                    }
+                />
+              )}
           </div>
           <div className="text-muted-foreground/50 transition-transform">
              {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
@@ -179,89 +177,100 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
     const [url, setUrl] = useState(existingServer?.url || "");
     const [instructionsStr, setInstructionsStr] = useState(existingServer?.instructions || "");
     
-    const handleSave = async () => {
-       if (!name.trim()) return;
-       if (transport === "stdio" && !command.trim()) return;
-       if (transport === "http" && !url.trim()) return;
-       
-       let parsedArgs: string[] | null = null;
-       if (argsStr.trim()) {
-          parsedArgs = argsStr.split("\n").map(s => s.trim()).filter(s => s);
-       }
-       
-       let parsedEnv: Record<string, string> | null = null;
-       if (envStr.trim()) {
-          parsedEnv = {};
-          const lines = envStr.split("\n");
-          for (const line of lines) {
-             const idx = line.indexOf("=");
-             if (idx > 0) {
-                 const k = line.slice(0, idx).trim();
-                 const v = line.slice(idx + 1).trim();
-                 if (k) parsedEnv[k] = v;
-             }
-          }
-       }
-       
-       let parsedHeaders: Record<string, string> | null = null;
-       if (headersStr.trim()) {
-          parsedHeaders = {};
-          const lines = headersStr.split("\n");
-          for (const line of lines) {
-             const idx = line.indexOf("=");
-             if (idx > 0) {
-                 const k = line.slice(0, idx).trim();
-                 const v = line.slice(idx + 1).trim();
-                 if (k) parsedHeaders[k] = v;
-             } else {
-                 const headerIdx = line.indexOf(":");
-                 if (headerIdx > 0) {
-                     const k = line.slice(0, headerIdx).trim();
-                     const v = line.slice(headerIdx + 1).trim();
-                     if (k) parsedHeaders[k] = v;
-                 }
-             }
-          }
-       }
-       
-       if (existingServer) {
-           await updateServer({
-               id: existingServer.id,
-               name: name.trim(),
-               transport,
-               command: command.trim() || undefined,
-               args: parsedArgs || undefined,
-               envJson: parsedEnv || undefined,
-               headersJson: parsedHeaders || undefined,
-               url: url.trim() || undefined,
-               instructions: instructionsStr.trim() || undefined,
-           });
-       } else {
-           await createServer({
-               name: name.trim(),
-               transport,
-               command: command.trim() || undefined,
-               args: parsedArgs || undefined,
-               envJson: parsedEnv || undefined,
-               headersJson: parsedHeaders || undefined,
-               url: url.trim() || undefined,
-               instructions: instructionsStr.trim() || undefined,
-               enabled: true,
-           });
-       }
-       
-       setOpen(false);
-       if (!existingServer) {
-           setName("");
-           setTransport("stdio");
-           setCommand("");
-           setArgsStr("");
-           setEnvStr("");
-           setHeadersStr("");
-           setUrl("");
-           setInstructionsStr("");
-       }
-    };
+     const isContext7 = existingServer?.name === "context7";
+
+     const handleSave = async () => {
+        if (!isContext7) {
+           if (!name.trim()) return;
+           if (transport === "stdio" && !command.trim()) return;
+           if (transport === "http" && !url.trim()) return;
+        }
+        
+        let parsedArgs: string[] | null = null;
+        if (!isContext7 && argsStr.trim()) {
+           parsedArgs = argsStr.split("\n").map(s => s.trim()).filter(s => s);
+        }
+        
+        let parsedEnv: Record<string, string> | null = null;
+        if (!isContext7 && envStr.trim()) {
+           parsedEnv = {};
+           const lines = envStr.split("\n");
+           for (const line of lines) {
+              const idx = line.indexOf("=");
+              if (idx > 0) {
+                  const k = line.slice(0, idx).trim();
+                  const v = line.slice(idx + 1).trim();
+                  if (k) parsedEnv[k] = v;
+              }
+           }
+        }
+        
+        let parsedHeaders: Record<string, string> | null = null;
+        if (!isContext7 && headersStr.trim()) {
+           parsedHeaders = {};
+           const lines = headersStr.split("\n");
+           for (const line of lines) {
+              const idx = line.indexOf("=");
+              if (idx > 0) {
+                  const k = line.slice(0, idx).trim();
+                  const v = line.slice(idx + 1).trim();
+                  if (k) parsedHeaders[k] = v;
+              } else {
+                  const headerIdx = line.indexOf(":");
+                  if (headerIdx > 0) {
+                      const k = line.slice(0, headerIdx).trim();
+                      const v = line.slice(headerIdx + 1).trim();
+                      if (k) parsedHeaders[k] = v;
+                  }
+              }
+           }
+        }
+        
+        if (existingServer) {
+            if (isContext7) {
+                await updateServer({
+                    id: existingServer.id,
+                    instructions: instructionsStr.trim() || undefined,
+                });
+            } else {
+                await updateServer({
+                    id: existingServer.id,
+                    name: name.trim(),
+                    transport,
+                    command: command.trim() || undefined,
+                    args: parsedArgs || undefined,
+                    envJson: parsedEnv || undefined,
+                    headersJson: parsedHeaders || undefined,
+                    url: url.trim() || undefined,
+                    instructions: instructionsStr.trim() || undefined,
+                });
+            }
+        } else {
+            await createServer({
+                name: name.trim(),
+                transport,
+                command: command.trim() || undefined,
+                args: parsedArgs || undefined,
+                envJson: parsedEnv || undefined,
+                headersJson: parsedHeaders || undefined,
+                url: url.trim() || undefined,
+                instructions: instructionsStr.trim() || undefined,
+                enabled: true,
+            });
+        }
+        
+        setOpen(false);
+        if (!existingServer) {
+            setName("");
+            setTransport("stdio");
+            setCommand("");
+            setArgsStr("");
+            setEnvStr("");
+            setHeadersStr("");
+            setUrl("");
+            setInstructionsStr("");
+        }
+     };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -279,75 +288,83 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
       </DialogTrigger>
       <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
-          <DialogTitle>{existingServer ? "Editar Servidor MCP" : "Añadir Servidor MCP"}</DialogTitle>
+          <DialogTitle>{isContext7 ? "Editar Instrucciones de Context7" : (existingServer ? "Editar Servidor MCP" : "Añadir Servidor MCP")}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-             <label className="typo-label">Nombre</label>
-             <Input placeholder="github, notion, postgres..." value={name} onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} />
-             <p className="typo-caption">Usado en referencias de tools. Usa minúsculas y guiones.</p>
-          </div>
-          
-          <div className="space-y-2">
-             <label className="typo-label">Tipo</label>
-             <UnifiedSelector
-               value={transport}
-               onChange={(v) => setTransport(v as "stdio" | "http")}
-               options={[
-                 { value: "stdio", label: "Local (Stdio / Comando)" },
-                 { value: "http", label: "Remoto (HTTP / SSE)" },
-               ]}
-               triggerVariant="default"
-               triggerSize="md"
-               popoverWidth="w-[260px]"
-               itemLayout="compact"
-             />
-          </div>
-          
-          {transport === "stdio" ? (
-             <>
-               <div className="space-y-2">
-                  <label className="typo-label">Comando</label>
-                  <Input placeholder="npx, python, docker..." value={command} onChange={e => setCommand(e.target.value)} />
-               </div>
-               <div className="space-y-2">
-                  <label className="typo-label flex justify-between">Argumentos <span className="typo-caption">Uno por línea</span></label>
-                  <textarea 
-                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                     placeholder="-y\n@modelcontextprotocol/server-github"
-                     value={argsStr}
-                     onChange={e => setArgsStr(e.target.value)}
-                  />
-                   <p className="typo-caption opacity-70">
-                     Variables disponibles: <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded">{"{{PROJECT_PATH}}"}</code> — se sustituye por la ruta del proyecto activo.
-                   </p>
-               </div>
-               <div className="space-y-2">
-                  <label className="typo-label flex justify-between">Variables de Entorno <span className="typo-caption">Opcional, KEY=value por línea</span></label>
-                  <textarea 
-                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                     placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=ghp_..."
-                     value={envStr}
-                     onChange={e => setEnvStr(e.target.value)}
-                  />
-               </div>
-             </>
+          {isContext7 ? (
+             <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl mb-2 text-sm text-muted-foreground">
+               <p><strong>Context7</strong> es un servicio integrado obligatorio. Sus parámetros de conexión (URL, API Key) están gestionados por Vibes de manera interna. Puedes personalizar las instrucciones de inyección del agente para guiar su interacción con las herramientas de Context7.</p>
+             </div>
           ) : (
              <>
                <div className="space-y-2">
-                 <label className="typo-label">URL</label>
-                 <Input placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} />
+                  <label className="typo-label">Nombre</label>
+                  <Input placeholder="github, notion, postgres..." value={name} onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} />
+                  <p className="typo-caption">Usado en referencias de tools. Usa minúsculas y guiones.</p>
                </div>
+               
                <div className="space-y-2">
-                  <label className="typo-label flex justify-between">Cabeceras HTTP (Headers) <span className="typo-caption">Opcional, KEY: value por línea</span></label>
-                  <textarea 
-                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                     placeholder="Authorization: Bearer my-key..."
-                     value={headersStr}
-                     onChange={e => setHeadersStr(e.target.value)}
+                  <label className="typo-label">Tipo</label>
+                  <UnifiedSelector
+                    value={transport}
+                    onChange={(v) => setTransport(v as "stdio" | "http")}
+                    options={[
+                      { value: "stdio", label: "Local (Stdio / Comando)" },
+                      { value: "http", label: "Remoto (HTTP / SSE)" },
+                    ]}
+                    triggerVariant="default"
+                    triggerSize="md"
+                    popoverWidth="w-[260px]"
+                    itemLayout="compact"
                   />
                </div>
+               
+               {transport === "stdio" ? (
+                  <>
+                    <div className="space-y-2">
+                       <label className="typo-label">Comando</label>
+                       <Input placeholder="npx, python, docker..." value={command} onChange={e => setCommand(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="typo-label flex justify-between">Argumentos <span className="typo-caption">Uno por línea</span></label>
+                       <textarea 
+                          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="-y\n@modelcontextprotocol/server-github"
+                          value={argsStr}
+                          onChange={e => setArgsStr(e.target.value)}
+                       />
+                        <p className="typo-caption opacity-70">
+                          Variables disponibles: <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded">{"{{PROJECT_PATH}}"}</code> — se sustituye por la ruta del proyecto activo.
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="typo-label flex justify-between">Variables de Entorno <span className="typo-caption">Opcional, KEY=value por línea</span></label>
+                       <textarea 
+                          className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=ghp_..."
+                          value={envStr}
+                          onChange={e => setEnvStr(e.target.value)}
+                       />
+                    </div>
+                  </>
+               ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="typo-label">URL</label>
+                      <Input placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="typo-label flex justify-between">Cabeceras HTTP (Headers) <span className="typo-caption">Opcional, KEY: value por línea</span></label>
+                       <textarea 
+                          className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Authorization: Bearer my-key..."
+                          value={headersStr}
+                          onChange={e => setHeadersStr(e.target.value)}
+                       />
+                    </div>
+                  </>
+               )}
              </>
           )}
           
@@ -357,7 +374,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                <span className="typo-caption">Opcional</span>
              </label>
              <textarea 
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Instrucciones para el agente cuando este servidor MCP esté activo. Usa {{SERVER_PREFIX}} para referirte a los tools de este servidor."
                 value={instructionsStr}
                 onChange={e => setInstructionsStr(e.target.value)}
@@ -372,7 +389,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
         
         <DialogFooter>
            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-           <Button onClick={handleSave} disabled={!name || (transport === "stdio" ? !command : !url) || isCreating || isUpdating}>
+           <Button onClick={handleSave} disabled={(!isContext7 && (!name || (transport === "stdio" ? !command : !url))) || isCreating || isUpdating}>
               <Check className="h-4 w-4 mr-2" /> Guardar
            </Button>
         </DialogFooter>
