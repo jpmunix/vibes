@@ -139,6 +139,9 @@ export async function initializeRemoteSchema(): Promise<void> {
     // Add accepted column if missing (added v8.5)
     await client.execute(`ALTER TABLE chat_artifacts ADD COLUMN accepted INTEGER DEFAULT 0`).catch(() => {});
     
+    // Add instructions column to mcp_servers if missing
+    await client.execute(`ALTER TABLE mcp_servers ADD COLUMN instructions TEXT`).catch(() => {});
+    
     // Auto-create chat_labels if missing
     await client.execute(`
       CREATE TABLE IF NOT EXISTS chat_labels (

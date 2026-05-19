@@ -1345,6 +1345,30 @@ This conversation includes one or more image attachments. When the user uploads 
               contextInstructions.push(content);
             }
           }
+          
+          // MCP Server instructions
+          try {
+            const enabledMcpServers = await db.query.mcpServers.findMany({
+              where: and(
+                eq(remoteSchema.mcpServers.userId, currentUserId as string),
+                eq(remoteSchema.mcpServers.enabled, 1)
+              ),
+            });
+            for (const server of enabledMcpServers) {
+              if (server.instructions?.trim()) {
+                const serverKey = server.name.replace(/[^a-zA-Z0-9_-]/g, "");
+                let inst = server.instructions;
+                inst = inst.replace(/\{\{SERVER_PREFIX\}\}/g, serverKey);
+                if (updatedChat.app?.path) {
+                  inst = inst.replace(/\{\{PROJECT_PATH\}\}/g, getVibesAppPath(updatedChat.app.path));
+                }
+                contextInstructions.push(inst);
+                logger.log(`[OPENCODE] Injected instructions for MCP server ${server.name}`);
+              }
+            }
+          } catch (e: any) {
+            logger.warn(`[OPENCODE] Failed to inject MCP instructions: ${e.message}`);
+          }
 
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {

@@ -42,6 +42,12 @@ import {
   Hash,
   Eye,
   ArrowLeft,
+  ExternalLink,
+  Settings,
+  Github,
+  BunnyIcon,
+  SupabaseIcon,
+  PocketBaseIcon,
 } from "@/components/ui/icons";
 import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -63,6 +69,13 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import type { ListedApp } from "@/ipc/types/app";
+import { GitHubConnector } from "@/components/GitHubConnector";
+import { BunnyConnector } from "@/components/BunnyConnector";
+import { SupabaseConnector } from "@/components/SupabaseConnector";
+import { PocketBaseConnector } from "@/components/PocketBaseConnector";
+import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 
 // --- Preference keys ---
@@ -703,7 +716,7 @@ const SidebarServerDot = memo(function SidebarServerDot({ appId }: { appId: numb
 
 // --- Collapsible App Item ---
 interface WorkspaceAppItemProps {
-  app: { id: number; name: string; createdAt: string; primaryLanguage?: string | null };
+  app: ListedApp;
   isExpanded: boolean;
   onToggle: (appId: number) => void;
   onChatClick: (appId: number, chatId: number) => void;
@@ -758,7 +771,26 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
-  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | "planes" | null>(null);
+  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | "planes" | "integraciones" | null>(null);
+
+  // Integrations modal state
+  const [integrationsPanelOpen, setIntegrationsPanelOpen] = useState(false);
+
+  // DESIGN.md / AGENTS.md availability (lazy queries)
+  const { data: designData } = useQuery({
+    queryKey: ["design-read", app.path],
+    queryFn: () => ipc.design.readDesign({ appPath: app.path }),
+    enabled: !!app.path,
+    staleTime: 30_000,
+  });
+  const { data: agentsData } = useQuery({
+    queryKey: ["agents-md-read", app.path],
+    queryFn: () => ipc.design.readAgentsMd({ appPath: app.path }),
+    enabled: !!app.path,
+    staleTime: 30_000,
+  });
+  const hasDesignMd = !!designData?.content;
+  const hasAgentsMd = !!agentsData?.content;
 
   const [archivePanelOpen, setArchivePanelOpen] = useState(false);
   const [archivePanelPos, setArchivePanelPos] = useState<{ top: number; left: number } | null>(null);
@@ -1009,6 +1041,17 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => {
+                    closeMenu();
+                    ipc.system.openChatWindow({ appId: app.id, theme, themeIntensity: intensity });
+                  }}
+                >
+                  <ExternalLink size={14} className="opacity-60 shrink-0" />
+                  Abrir en Chat
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
                   onClick={loadAndShowArchived}
                 >
                   <Archive size={14} className="opacity-60 shrink-0" />
@@ -1074,6 +1117,51 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   <Database size={14} className="opacity-60 shrink-0" />
                   Memorias
                 </button>
+                {(hasDesignMd || hasAgentsMd) && (
+                  <>
+                    <div className="my-1 mx-2 border-t border-border/50" />
+                    {hasDesignMd && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => {
+                          closeMenu();
+                          if (!designData?.content) return;
+                          const blob = new Blob([designData.content], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "DESIGN.md";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download size={14} className="opacity-60 shrink-0" />
+                        DESIGN.md
+                      </button>
+                    )}
+                    {hasAgentsMd && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => {
+                          closeMenu();
+                          if (!agentsData?.content) return;
+                          const blob = new Blob([agentsData.content], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "AGENTS.md";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download size={14} className="opacity-60 shrink-0" />
+                        AGENTS.md
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1131,6 +1219,107 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   <X size={14} className="shrink-0" />
                   Cerrar workspace
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Integraciones ── */}
+          <div className="my-1 mx-2 border-t border-border/50" />
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onMouseEnter={() => setSubMenuOpen("integraciones")}
+            onClick={() => { closeMenu(); setIntegrationsPanelOpen(true); }}
+          >
+            <Settings size={14} className="opacity-60 shrink-0" />
+            Integraciones
+          </button>
+        </div>
+      </>,
+      document.body
+    )}
+
+    {/* ── Integrations modal ── */}
+    {integrationsPanelOpen && createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm"
+          onClick={() => setIntegrationsPanelOpen(false)}
+        />
+        <div
+          className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[90vw] max-h-[85vh] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-sidebar-accent/30 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <Settings size={15} className="text-primary" />
+              </div>
+              <div>
+                <span className="text-sm font-semibold block">Integraciones</span>
+                <span className="text-xs text-muted-foreground/60">{app.name}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+              onClick={() => setIntegrationsPanelOpen(false)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-2">
+            {/* GitHub */}
+            {app.githubOrg && app.githubRepo ? (
+              <CollapsibleCard
+                title="GitHub"
+                icon={<Github className="h-5 w-5" />}
+                description={`${app.githubOrg}/${app.githubRepo}`}
+              >
+                <GitHubConnector appId={app.id} folderName={app.path} />
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
+                  <GithubCollaboratorManager appId={app.id} />
+                </div>
+              </CollapsibleCard>
+            ) : (
+              <div className="opacity-50 hover:opacity-80 transition-opacity">
+                <CollapsibleCard
+                  title="GitHub"
+                  icon={<Github className="h-5 w-5" />}
+                  description="No conectado"
+                >
+                  <GitHubConnector appId={app.id} folderName={app.path} />
+                </CollapsibleCard>
+              </div>
+            )}
+
+            {/* Bunny */}
+            {app.bunnyConfig ? (
+              <BunnyConnector appId={app.id} />
+            ) : (
+              <div className="opacity-50 hover:opacity-80 transition-opacity">
+                <BunnyConnector appId={app.id} />
+              </div>
+            )}
+
+            {/* Supabase */}
+            {app.supabaseProjectId ? (
+              <SupabaseConnector appId={app.id} />
+            ) : (
+              <div className="opacity-50 hover:opacity-80 transition-opacity">
+                <SupabaseConnector appId={app.id} />
+              </div>
+            )}
+
+            {/* PocketBase */}
+            {app.pocketbaseConfig ? (
+              <PocketBaseConnector appId={app.id} />
+            ) : (
+              <div className="opacity-50 hover:opacity-80 transition-opacity">
+                <PocketBaseConnector appId={app.id} />
               </div>
             )}
           </div>
@@ -1482,7 +1671,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     setApps(prev => prev.filter(a => a.id !== appId));
     if (selectedAppId === appId) {
       setSelectedAppId(null);
-      navigate({ to: "/workspace", search: {} });
+      navigate({ to: "/", search: {} });
     }
     try {
       await ipc.app.archiveApp({ appId, archived: true });
@@ -1569,7 +1758,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       if (selectedAppId !== null && ids.includes(selectedAppId)) {
         setSelectedAppId(null);
         setSelectedChatId(null);
-        navigate({ to: "/workspace", search: {} });
+        navigate({ to: "/", search: {} });
       }
     } catch (error) {
       showError(error);
@@ -1613,7 +1802,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
     try {
       setIsCreatingEmptyApp(true);
-      const result = await createApp({ name: emptyAppName.trim() });
+      const result = await createApp({ name: emptyAppName.trim(), empty: true });
 
       setSelectedAppId(result.app.id);
       setEmptyAppName("");
@@ -1622,7 +1811,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
       // Navigate to workspace using the chat already created by createApp
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-      navigate({ to: "/workspace", search: { appId: result.app.id, chatId: result.chatId } });
+      navigate({ to: "/", search: { appId: result.app.id, chatId: result.chatId } });
     } catch (error) {
       showError(error);
     } finally {
@@ -1787,7 +1976,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const handleChatClick = useCallback(
     (appId: number, chatId: number) => {
       navigate({
-        to: "/workspace",
+        to: "/",
         search: { appId, chatId },
       });
     },
@@ -1801,7 +1990,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         // Invalidate chat list so sidebar updates immediately
         queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
         navigate({
-          to: "/workspace",
+          to: "/",
           search: { appId, chatId },
         });
       } catch (error) {
@@ -1836,7 +2025,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         // App already registered — navigate directly
         setSelectedAppId(nameCheck.existingAppId);
         const chatId = await ipc.chat.createChat(nameCheck.existingAppId);
-        navigate({ to: "/workspace", search: { appId: nameCheck.existingAppId, chatId } });
+        navigate({ to: "/", search: { appId: nameCheck.existingAppId, chatId } });
         showSuccess(`"${folderName}" ya estaba registrada. Abierta directamente.`);
         return;
       }
@@ -1851,7 +2040,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       setSelectedAppId(importResult.appId);
       await refreshApps();
 
-      navigate({ to: "/workspace", search: { appId: importResult.appId, chatId: importResult.chatId } });
+      navigate({ to: "/", search: { appId: importResult.appId, chatId: importResult.chatId } });
 
       showSuccess(`Workspace "${folderName}" abierto con éxito.`);
     } catch (error) {
@@ -1932,7 +2121,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       }
       if (selectedChatId === chatId) {
         setSelectedChatId(null);
-        navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
+        navigate({ to: "/", search: selectedAppId ? { appId: selectedAppId } : {} });
       }
     } catch (e) {
       showError(e);
@@ -1973,7 +2162,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       if (selectedChatId === deleteChatId) {
         setSelectedChatId(null);
         // Navigate to workspace without chatId — will show empty state
-        navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
+        navigate({ to: "/", search: selectedAppId ? { appId: selectedAppId } : {} });
       }
     } catch (error) {
       showError(`Error al eliminar el chat: ${(error as any).toString()}`);
@@ -1994,7 +2183,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       if (selectedAppId === closeAppId) {
         setSelectedAppId(null);
         setSelectedChatId(null);
-        navigate({ to: "/workspace", search: {} });
+        navigate({ to: "/", search: {} });
         // Clear persisted selection so workspace doesn't restore a stale app/chat
         ipc.misc.setPreference({ key: PREF_LAST_SELECTION, value: "" }).catch(() => {});
       }
@@ -2222,7 +2411,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                   return next;
                                 });
                                 ipc.chat.markChatRead(pinned.id).catch(() => {});
-                                navigate({ to: "/workspace", search: { appId: pinned.appId, chatId: pinned.id } });
+                                navigate({ to: "/", search: { appId: pinned.appId, chatId: pinned.id } });
                               }}
                             >
                               <div className="flex items-center min-w-0 flex-1 gap-1.5">

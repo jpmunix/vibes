@@ -32,11 +32,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * /workspace route — renders ChatPanel inline (no preview, no dev server).
+ * / route — renders ChatPanel inline (no preview, no dev server).
  * Text-focused chat mode without starting any preview or server infrastructure.
  */
 export default function WorkspacePage() {
-  const search = useSearch({ from: "/workspace" });
+  const search = useSearch({ from: "/" });
   const navigate = useNavigate();
   const appId = search.appId ? Number(search.appId) : null;
   const chatId = search.chatId ? Number(search.chatId) : null;
@@ -84,7 +84,7 @@ export default function WorkspacePage() {
               return;
             }
             navigate({
-              to: "/workspace",
+              to: "/",
               search: { appId: sel.appId, chatId: sel.chatId },
               replace: true,
             });
@@ -136,7 +136,7 @@ export default function WorkspacePage() {
           {/* App dropdown selector */}
           <UnifiedSelector
             value={String(appId)}
-            onChange={(id) => navigate({ to: "/workspace", search: { appId: Number(id) } })}
+            onChange={(id) => navigate({ to: "/", search: { appId: Number(id) } })}
             options={appsList.filter((a: any) => a.localPathExists !== false).map((app) => ({
               value: String(app.id),
               label: app.name,
@@ -157,7 +157,7 @@ export default function WorkspacePage() {
               {/* Chat dropdown selector */}
               <UnifiedSelector
                 value={String(chatId)}
-                onChange={(cId) => navigate({ to: "/workspace", search: { appId: appId!, chatId: Number(cId) } })}
+                onChange={(cId) => navigate({ to: "/", search: { appId: appId!, chatId: Number(cId) } })}
                 options={(chats as ChatSummary[]).map((chat) => {
                   const chatStreaming = isStreamingById.get(chat.id) ?? false;
                   return {

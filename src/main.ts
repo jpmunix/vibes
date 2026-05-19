@@ -461,10 +461,7 @@ const createWindow = () => {
     backgroundColor: "#1e1e24", // Match dark theme to prevent white flash
     titleBarStyle: "hidden",
     titleBarOverlay: false,
-    trafficLightPosition: {
-      x: 10,
-      y: 8,
-    },
+    ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

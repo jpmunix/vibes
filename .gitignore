@@ -113,3 +113,6 @@ userData/
 # Server (Vibes Cloud backend)
 server/dist/
 server/node_modules/
+
+# CodeGraph
+.codegraph/

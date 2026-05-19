@@ -6,7 +6,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   Bot,
-  Home,
   Settings,
   LogOut,
   User as UserIcon,
@@ -42,7 +41,7 @@ import { isAdmin as checkIsAdmin } from "@/lib/admin";
 
 import { useRouter } from "@tanstack/react-router";
 
-import { AppList } from "./AppList";
+
 import { SettingsList } from "./SettingsList";
 import { WorkspaceList } from "./WorkspaceList";
 import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
@@ -58,22 +57,9 @@ const items: {
   menuItems?: NavMenuAction[];
 }[] = [
   {
-    title: "Apps",
-    tabKey: "Aplicaciones",
-    to: "/",
-    icon: Home,
-    menuItems: [
-      { label: "Nueva aplicación", icon: Plus, action: "apps:new" },
-      { label: "Importar aplicación", icon: FolderOpen, action: "apps:import" },
-      { label: "Buscar aplicaciones", icon: Search, action: "apps:search" },
-      { label: "_separator", icon: Plus, action: null },
-      { label: "Cerrar aplicaciones", icon: FolderX, action: "apps:bulk-close" },
-    ],
-  },
-  {
     title: "Agente",
     tabKey: "Workspace",
-    to: "/workspace",
+    to: "/",
     icon: Bot,
     menuItems: [
       { label: "Nuevo proyecto", icon: FolderPlus, action: "workspace:new-project" },
@@ -669,7 +655,6 @@ export function SecondarySidebar() {
         }
       `}</style>
 
-      <AppList show={activeTab === "Aplicaciones"} />
       <WorkspaceList show={activeTab === "Workspace"} />
       <SettingsList show={activeTab === "Ajustes"} />
 
@@ -703,22 +688,16 @@ function useActiveTab(): [string | null, (tab: string) => void] {
   const [activeTab, setActiveTab] = useAtom(activeTabAtom);
   const routerState = useRouterState();
 
-  const isAppRoute =
-    routerState.location.pathname === "/" ||
-    routerState.location.pathname.startsWith("/app-details");
   const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
 
   // Sync activeTab with route changes
   useEffect(() => {
-    if (isAppRoute) {
-      setActiveTab("Aplicaciones");
-    } else if (isSettingsRoute) {
+    if (isSettingsRoute) {
       setActiveTab("Ajustes");
-    } else if (routerState.location.pathname.startsWith("/workspace")) {
+    } else {
       setActiveTab("Workspace");
     }
   }, [
-    isAppRoute,
     isSettingsRoute,
     routerState.location.pathname,
   ]);

@@ -162,8 +162,7 @@ export function InferenceTunerPicker() {
                     className={cn(
                         "flex items-center justify-between cursor-pointer",
                         "h-auto w-fit px-2.5 py-1 typo-select gap-1",
-                        "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-all duration-200",
-                        "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30",
+                        "border border-input bg-muted/80 text-foreground rounded-lg shadow-none hover:bg-muted transition-colors duration-200",
                     )}
                     data-testid="inference-tuner-picker"
                 >

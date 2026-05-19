@@ -1129,26 +1129,55 @@ export async function updateOpenCodeMcpConfig(servers: McpServer[]): Promise<voi
     }
 }
 
-function buildMcpConfig(servers: McpServer[]) {
+/**
+ * Build OpenCode MCP config from user-configured servers.
+ * Supports generic {{PROJECT_PATH}} placeholder in stdio server args,
+ * and injects PROJECT_PATH env var into all stdio servers.
+ */
+function buildMcpConfig(servers: McpServer[], appPath?: string) {
     if (!servers || servers.length === 0) return undefined;
-    return Object.fromEntries(
-        servers.map(s => [
-            s.name.replace(/[^a-zA-Z0-9_-]/g, ""),
-            s.transport === "stdio"
-                ? {
-                      type: "local" as const,
-                      command: [s.command!, ...(s.args ?? [])],
-                      enabled: true,
-                      environment: s.envJson ?? {},
-                  }
-                : {
-                      type: "remote" as const,
-                      url: s.url!,
-                      enabled: true,
-                      headers: { ...s.headersJson, ...s.envJson },
-                  }
-        ])
+    
+    const resolveArg = (arg: string): string => {
+        if (!appPath) return arg;
+        return arg.replace(/\{\{PROJECT_PATH\}\}/g, appPath);
+    };
+    
+    const result = Object.fromEntries(
+        servers.map(s => {
+            const serverKey = s.name.replace(/[^a-zA-Z0-9_-]/g, "");
+            
+            if (s.transport === "stdio") {
+                const resolvedArgs = (s.args ?? []).map(resolveArg);
+                const hadPlaceholder = (s.args ?? []).some((a: string) => a.includes("{{PROJECT_PATH}}"));
+                
+                if (appPath && hadPlaceholder) {
+                    logger.info(`[MCP] ${s.name}: resolved {{PROJECT_PATH}} → ${appPath}`);
+                }
+                
+                return [serverKey, {
+                    type: "local" as const,
+                    command: [s.command!, ...resolvedArgs],
+                    enabled: true,
+                    environment: {
+                        ...(s.envJson ?? {}),
+                        // Generic env var — any MCP server can read it
+                        ...(appPath ? { PROJECT_PATH: appPath } : {}),
+                    },
+                }];
+            }
+            
+            // Remote servers (http/sse) — unchanged
+            return [serverKey, {
+                type: "remote" as const,
+                url: s.url!,
+                enabled: true,
+                headers: { ...s.headersJson, ...s.envJson },
+            }];
+        })
     );
+    
+    logger.info(`[MCP] Built config for ${servers.length} server(s)${appPath ? ` (appPath: ${appPath})` : ""}`);
+    return result;
 }
 
 /**
@@ -1555,12 +1584,23 @@ async function getOpenCodeClient(appPath: string) {
                     eq(remoteSchema.mcpServers.enabled, 1)
                 ),
             });
-            // Parse arguments just in case
+            // Parse arguments — handle double/triple encoding from Turso DB
+            const safeParseField = (raw: any): any => {
+                if (raw == null) return null;
+                if (typeof raw !== "string") return raw;
+                let parsed: any = raw;
+                let rounds = 0;
+                while (typeof parsed === "string" && rounds < 3) {
+                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
+                }
+                if (rounds > 1) logger.info(`[MCP] Fixed multi-encoded field in opencode_adapter (${rounds} rounds)`);
+                return parsed;
+            };
             enabledServers = enabledServers.map(s => ({
                 ...s,
-                args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-                envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-                headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+                args: safeParseField(s.args),
+                envJson: safeParseField(s.envJson),
+                headersJson: safeParseField(s.headersJson),
             }));
         }
 
@@ -1780,7 +1820,7 @@ async function getOpenCodeClient(appPath: string) {
                         enabled: true,
                         headers: { "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" },
                     },
-                    ...buildMcpConfig(enabledServers),
+                    ...buildMcpConfig(enabledServers, appPath),
                 },
         };
 

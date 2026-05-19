@@ -285,12 +285,10 @@ export async function copyScaffoldNodeModules(targetAppPath: string): Promise<bo
     const startTime = Date.now();
 
     try {
-        await fs.copy(cachedNodeModules, targetNodeModules, {
-            // IMPORTANT: Preserve symlinks (dereference: false).
-            // npm creates symlinks in node_modules/.bin/ (e.g. vite → ../vite/bin/vite.cjs).
-            // Dereferencing them breaks the relative paths and causes MODULE_NOT_FOUND errors.
-            // On Windows, symlinks might need admin privileges, but fs-extra handles this gracefully.
-            dereference: false,
+        await fsNode.cp(cachedNodeModules, targetNodeModules, {
+            recursive: true,
+            force: true,
+            verbatimSymlinks: true, // Preserve symlinks (like node_modules/.bin)
         });
 
         const elapsedMs = Date.now() - startTime;

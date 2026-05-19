@@ -169,6 +169,7 @@ export function registerWindowHandlers() {
     const saved = getSavedWindowBounds("database", { width: 1000, height: 700 });
 
     const dbWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: saved.width,
       height: saved.height,
@@ -182,10 +183,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -277,6 +275,7 @@ export function registerWindowHandlers() {
     const savedGit = getSavedWindowBounds("git", { width: 1100, height: 750 });
 
     const gitWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedGit.width,
       height: savedGit.height,
@@ -287,14 +286,10 @@ export function registerWindowHandlers() {
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
       title: `${appName} – Git`,
-      icon: gitIcon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -403,6 +398,7 @@ export function registerWindowHandlers() {
     const savedChat = getSavedWindowBounds("chat", { width: 1200, height: 800 });
 
     const chatWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedChat.width,
       height: savedChat.height,
@@ -416,10 +412,7 @@ export function registerWindowHandlers() {
       title: `${appName} – Chat`,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -519,6 +512,7 @@ export function registerWindowHandlers() {
     const savedMsg = getSavedWindowBounds("message", { width: 800, height: 600 });
 
     const messageWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedMsg.width,
       height: savedMsg.height,
@@ -531,10 +525,7 @@ export function registerWindowHandlers() {
       title: windowTitle,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -636,6 +627,7 @@ export function registerWindowHandlers() {
     const savedConsole = getSavedWindowBounds("console", { width: 900, height: 550 });
 
     const consoleWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedConsole.width,
       height: savedConsole.height,
@@ -649,10 +641,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -716,6 +705,7 @@ export function registerWindowHandlers() {
     const savedCode = getSavedWindowBounds("code", { width: 1100, height: 750 });
 
     const codeWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedCode.width,
       height: savedCode.height,
@@ -730,10 +720,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -908,6 +895,7 @@ export function registerWindowHandlers() {
     const savedMemory = getSavedWindowBounds("memory", { width: 900, height: 650 });
 
     const memoryWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedMemory.width,
       height: savedMemory.height,
@@ -920,7 +908,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1007,6 +995,7 @@ export function registerWindowHandlers() {
     const savedAdmin = getSavedWindowBounds("admin", { width: 1000, height: 700 });
 
     adminWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedAdmin.width,
       height: savedAdmin.height,
@@ -1020,7 +1009,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1106,6 +1095,7 @@ export function registerWindowHandlers() {
     const savedPlayground = getSavedWindowBounds("playground", { width: 900, height: 700 });
 
     playgroundWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedPlayground.width,
       height: savedPlayground.height,
@@ -1119,7 +1109,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1205,6 +1195,7 @@ export function registerWindowHandlers() {
     const savedDocs = getSavedWindowBounds("docs", { width: 1000, height: 700 });
 
     docsWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedDocs.width,
       height: savedDocs.height,
@@ -1218,7 +1209,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1302,6 +1293,7 @@ export function registerWindowHandlers() {
     const savedDocs = getSavedWindowBounds("release-notes", { width: 1000, height: 700 });
 
     releaseNotesWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedDocs.width,
       height: savedDocs.height,
@@ -1315,7 +1307,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

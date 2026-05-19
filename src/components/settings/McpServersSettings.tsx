@@ -177,6 +177,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
     const [headersStr, setHeadersStr] = useState(initialHeaders);
     
     const [url, setUrl] = useState(existingServer?.url || "");
+    const [instructionsStr, setInstructionsStr] = useState(existingServer?.instructions || "");
     
     const handleSave = async () => {
        if (!name.trim()) return;
@@ -233,6 +234,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                envJson: parsedEnv || undefined,
                headersJson: parsedHeaders || undefined,
                url: url.trim() || undefined,
+               instructions: instructionsStr.trim() || undefined,
            });
        } else {
            await createServer({
@@ -243,6 +245,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                envJson: parsedEnv || undefined,
                headersJson: parsedHeaders || undefined,
                url: url.trim() || undefined,
+               instructions: instructionsStr.trim() || undefined,
                enabled: true,
            });
        }
@@ -256,6 +259,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
            setEnvStr("");
            setHeadersStr("");
            setUrl("");
+           setInstructionsStr("");
        }
     };
 
@@ -273,7 +277,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
             </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <DialogTitle>{existingServer ? "Editar Servidor MCP" : "Añadir Servidor MCP"}</DialogTitle>
         </DialogHeader>
@@ -281,7 +285,7 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
         <div className="space-y-4 py-4">
           <div className="space-y-2">
              <label className="typo-label">Nombre</label>
-             <Input placeholder="github, notion, postgres..." value={name} onChange={e => setName(e.target.value)} />
+             <Input placeholder="github, notion, postgres..." value={name} onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} />
              <p className="typo-caption">Usado en referencias de tools. Usa minúsculas y guiones.</p>
           </div>
           
@@ -315,6 +319,9 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                      value={argsStr}
                      onChange={e => setArgsStr(e.target.value)}
                   />
+                   <p className="typo-caption opacity-70">
+                     Variables disponibles: <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded">{"{{PROJECT_PATH}}"}</code> — se sustituye por la ruta del proyecto activo.
+                   </p>
                </div>
                <div className="space-y-2">
                   <label className="typo-label flex justify-between">Variables de Entorno <span className="typo-caption">Opcional, KEY=value por línea</span></label>
@@ -343,6 +350,24 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                </div>
              </>
           )}
+          
+          <div className="space-y-2">
+             <label className="typo-label flex justify-between">
+               Instrucciones del Agente 
+               <span className="typo-caption">Opcional</span>
+             </label>
+             <textarea 
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Instrucciones para el agente cuando este servidor MCP esté activo. Usa {{SERVER_PREFIX}} para referirte a los tools de este servidor."
+                value={instructionsStr}
+                onChange={e => setInstructionsStr(e.target.value)}
+             />
+             <p className="typo-caption opacity-70">
+               Se inyecta como contexto al agente. Variables: 
+               <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded mx-1">{"{{SERVER_PREFIX}}"}</code> — prefijo de tools, 
+               <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded mx-1">{"{{PROJECT_PATH}}"}</code> — ruta activa.
+             </p>
+          </div>
         </div>
         
         <DialogFooter>

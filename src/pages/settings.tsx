@@ -48,6 +48,7 @@ import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
+import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
 
@@ -378,6 +379,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     keywords: ["mcp", "tools", "herramientas", "servidor", "protocolo", "context", "plugin"],
     section: "Herramientas MCP",
     sectionId: "tools-mcp",
+  },
+  {
+    id: "skills-settings",
+    label: "Skills del Proyecto",
+    description: "Gestionar agentes de conocimiento y directivas personalizadas (.opencode/skills)",
+    keywords: ["skills", "opencode", "agentes", "conocimiento", "personalizar", "directivas", "markdown"],
+    section: "Skills",
+    sectionId: "tools-skills",
   },
   // ─── Otros ───
   {
@@ -938,7 +947,12 @@ export default function SettingsPage() {
             <McpServersSettings />
           </div>
 
-
+          <div
+            id="tools-skills"
+            className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
+          >
+            <SkillsSettings />
+          </div>
         </div>
       </div>
 

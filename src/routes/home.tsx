@@ -4,17 +4,18 @@ import { createRoute } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 import { z } from "zod";
 
-const HomePage = React.lazy(() => import("../pages/home"));
+const WorkspacePage = React.lazy(() => import("../pages/workspace"));
 
 export const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: () => (
     <Suspense fallback={<PageLoader />}>
-      <HomePage />
+      <WorkspacePage />
     </Suspense>
   ),
   validateSearch: z.object({
     appId: z.number().optional(),
+    chatId: z.number().optional(),
   }),
 });

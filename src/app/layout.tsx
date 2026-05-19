@@ -28,7 +28,7 @@ const OpenRouterSetupWizard = lazy(() =>
 );
 
 // Routes that can be restored on startup
-const RESTORABLE_ROUTES = ["/", "/workspace"];
+const RESTORABLE_ROUTES = ["/"];
 const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";

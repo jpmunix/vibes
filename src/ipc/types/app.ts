@@ -74,6 +74,16 @@ export const CreateAppResultSchema = z.object({
   chatId: z.number(),
 });
 
+export const ApplyTemplateParamsSchema = z.object({
+  appId: z.number(),
+  templateId: z.string().optional(),
+});
+
+export const ApplyTemplateResultSchema = z.object({
+  success: z.boolean(),
+});
+
+
 /**
  * Schema for delete app params.
  */
@@ -359,6 +369,11 @@ export const appContracts = {
     channel: "create-app",
     input: CreateAppParamsSchema,
     output: CreateAppResultSchema,
+  }),
+  applyTemplate: defineContract({
+    channel: "apply-template",
+    input: ApplyTemplateParamsSchema,
+    output: ApplyTemplateResultSchema,
   }),
 
   getApp: defineContract({

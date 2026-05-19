@@ -16,10 +16,6 @@ export const workspaceModeAtom = atomWithStorage<boolean>("workspace-mode", fals
 // sidebar list components (AppList, WorkspaceList) to trigger their actions.
 // The timestamp ensures each trigger is unique.
 export type SidebarAction =
-  | "apps:new"
-  | "apps:import"
-  | "apps:search"
-  | "apps:bulk-close"
   | "workspace:new-project"
   | "workspace:open-folder"
   | "workspace:search"

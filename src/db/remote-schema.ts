@@ -264,6 +264,7 @@ export const mcpServers = sqliteTable("mcp_servers", {
     envJson: text("env_json", { mode: "json" }),
     headersJson: text("headers_json", { mode: "json" }),
     url: text("url"),
+    instructions: text("instructions"),
     enabled: integer("enabled").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),

@@ -9,7 +9,7 @@ import {
 import { UserMessageContent, extractImagesFromAiMessages } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
-import { TOOL_META, getToolDetail, getBgColorClass, formatPriceCost } from "./CompactToolBadge";
+import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 import { ErrorBubble } from "./ErrorBubble";
 import {
@@ -27,7 +27,6 @@ import {
   User as UserIcon,
   Quote,
   Share2,
-  Coins,
   FileText,
   Image as ImageIcon,
   type LucideIcon,
@@ -40,11 +39,7 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../ui/tooltip";
+
 import { showSuccess, showError } from "@/lib/toast";
 import { cleanAssistantContent, cleanUserContent, extractImageUrls } from "@/lib/markdown_share_cleaner";
 import {
@@ -543,45 +538,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     return null;
   }, [message.commitHash, message.role, liveVersions]);
 
-  // Extract total message cost from vibes-token-usage tags
-  const messageCost = useMemo(() => {
-    if (!normalizedMessageContent || !isAssistant) return null;
-    const tokenTagPattern = /<vibes-token-usage\s([^>]*)>[\s\S]*?<\/vibes-token-usage>/g;
-    let totalCost = 0;
-    let hasCost = false;
-    let match;
-    while ((match = tokenTagPattern.exec(normalizedMessageContent)) !== null) {
-      const attrsStr = match[1];
-      const getAttr = (name: string) => {
-        const m = new RegExp(`${name}="([^"]*)"`).exec(attrsStr);
-        return m ? m[1] : "";
-      };
 
-      // Path 1: direct cost from OpenCode (ground truth)
-      const directCostStr = getAttr("cost");
-      if (directCostStr) {
-        const directCost = parseFloat(directCostStr);
-        if (!isNaN(directCost)) {
-          hasCost = true;
-          totalCost += directCost;
-          continue;
-        }
-      }
-
-      // Path 2: legacy — compute from token counts × price
-      const inp = parseInt(getAttr("input"), 10);
-      const out = parseInt(getAttr("output"), 10);
-      const cached = parseInt(getAttr("cached"), 10);
-      const webSearches = parseInt(getAttr("web-searches"), 10);
-      const priceIn = parseFloat(getAttr("price-input"));
-      const priceOut = parseFloat(getAttr("price-output"));
-      if (priceIn > 0 || priceOut > 0 || webSearches > 0) {
-        hasCost = true;
-        totalCost += (inp - cached) * priceIn + cached * priceIn * 0.5 + out * priceOut + webSearches * 0.02;
-      }
-    }
-    return hasCost ? formatPriceCost(totalCost) : null;
-  }, [normalizedMessageContent, isAssistant]);
 
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
@@ -828,18 +785,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         >
                           <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                         </button>
-                        {chatMsgSettings?.showCostDisplay && messageCost && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default" onClick={(e) => e.stopPropagation()}>
-                                <Coins size={12} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                              {messageCost}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+
                         {resolvedMemories && resolvedMemories.length > 0 && (
                           <div onClick={(e) => e.stopPropagation()}>
                             <MemoryBadge memories={resolvedMemories} />
@@ -910,18 +856,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     >
                       <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                     </button>
-                    {chatMsgSettings?.showCostDisplay && messageCost && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default">
-                            <Coins size={12} />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {messageCost}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+
                     {resolvedMemories && resolvedMemories.length > 0 && (
                       <MemoryBadge memories={resolvedMemories} />
                     )}
