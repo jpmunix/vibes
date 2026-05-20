@@ -273,12 +273,12 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
     try {
       if (mode.type === "new-file") {
         const filePath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath, content: "" });
+        await ipc.app.editAppFile({ appId, filePath, content: "", skipCommit: true });
         onRefresh();
         setSelectedFile({ path: filePath, line: null });
       } else if (mode.type === "new-folder") {
         const folderPath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath: `${folderPath}/.gitkeep`, content: "" });
+        await ipc.app.editAppFile({ appId, filePath: `${folderPath}/.gitkeep`, content: "", skipCommit: true });
         onRefresh();
       } else if (mode.type === "rename" && menu.node) {
         const parts = menu.node.path.split("/");

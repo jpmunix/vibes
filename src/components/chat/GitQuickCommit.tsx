@@ -44,7 +44,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
 
   const formatSyntheticMessage = (title: string) => {
     const filesList = uncommittedFiles.map(f => `- \`${f.path}\``).join('\n');
-    return `**${title}**\n\n**Mensaje del commit**\n> ${commitMessage.split('\n').join('\n> ')}\n\n**Archivos modificados**\n${filesList}`;
+    return `**${title}**\n\n**Mensaje del commit**\n${commitMessage}\n\n**Archivos modificados**\n${filesList}`;
   };
 
   const injectSyntheticMessage = (content: string) => {
@@ -175,7 +175,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
                   {isCommitting ? (
                     <Loader2 size={12} className="mr-1.5 animate-spin" />
                   ) : null}
-                  Commit local
+                  Commit
                 </Button>
 
                 <Button

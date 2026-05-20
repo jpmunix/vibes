@@ -833,7 +833,7 @@ export function registerAppHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    let { appId, filePath, content } = params;
+    let { appId, filePath, content, skipCommit } = params;
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
@@ -873,8 +873,8 @@ export function registerAppHandlers() {
     try {
       await fsPromises.writeFile(fullPath, content, "utf-8");
 
-      // Check if git repository exists and commit the change
-      if (fs.existsSync(path.join(appPath, ".git"))) {
+      // Check if git repository exists and commit the change (unless skipCommit is set)
+      if (!skipCommit && fs.existsSync(path.join(appPath, ".git"))) {
         await gitAdd({ path: appPath, filepath: filePath });
 
         await gitCommit({

@@ -159,6 +159,8 @@ export const EditAppFileParamsSchema = z.object({
   appId: z.number(),
   filePath: z.string(),
   content: z.string(),
+  /** When true, skip the automatic git add+commit after writing the file */
+  skipCommit: z.boolean().optional(),
 });
 
 /**
