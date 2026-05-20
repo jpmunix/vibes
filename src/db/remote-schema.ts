@@ -111,6 +111,22 @@ export const chats = sqliteTable("chats", {
 });
 
 // =============================================================================
+// LABELS (global reusable labels)
+// =============================================================================
+
+export const labels = sqliteTable("labels", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => ({
+    userLabelUniqueIdx: uniqueIndex("idx_labels_user_name").on(table.userId, table.name),
+}));
+
+// =============================================================================
 // CHAT LABELS
 // =============================================================================
 
@@ -119,6 +135,8 @@ export const chatLabels = sqliteTable("chat_labels", {
     chatId: integer("chat_id")
         .notNull()
         .references(() => chats.id, { onDelete: "cascade" }),
+    labelId: integer("label_id")
+        .references(() => labels.id, { onDelete: "cascade" }),
     userId: text("user_id")
         .notNull()
         .references(() => users.id),
@@ -490,6 +508,12 @@ export const artifactCommentsRelations = relations(artifactComments, ({ one }) =
 export const chatLabelsRelations = relations(chatLabels, ({ one }) => ({
     chat: one(chats, { fields: [chatLabels.chatId], references: [chats.id] }),
     user: one(users, { fields: [chatLabels.userId], references: [users.id] }),
+    label: one(labels, { fields: [chatLabels.labelId], references: [labels.id] }),
+}));
+
+export const labelsRelations = relations(labels, ({ one, many }) => ({
+    user: one(users, { fields: [labels.userId], references: [users.id] }),
+    chatLabels: many(chatLabels),
 }));
 
 export const streamTasksRelations = relations(streamTasks, ({ one }) => ({

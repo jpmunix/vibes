@@ -58,6 +58,7 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
+import { useSettings } from "@/hooks/useSettings";
 import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useChats } from "@/hooks/useChats";
 import { useCreateApp } from "@/hooks/useCreateApp";
@@ -132,6 +133,8 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
   onPin, onUnpin, onMarkUnread, onMarkRead, onRename, onArchive, onDelete, onChatClick, onLabelDialog,
 }: ChatMenuAction) {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const memoriesEnabled = settings?.memoriesEnabled !== false;
 
   return createPortal(
     <>
@@ -202,21 +205,23 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           Compartir chat
         </button>
         {/* Condense memory */}
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-          onClick={async () => {
-            onClose();
-            try {
-              showSuccess("Condensando memoria del chat...");
-              await ipc.memory.condenseSessionMemories({ appId, chatId });
-              showSuccess("Memoria condensada correctamente");
-            } catch (e) { showError(`Error al condensar memoria: ${(e as any).toString()}`); }
-          }}
-        >
-          <Shrink size={14} className="opacity-60 shrink-0" />
-          Condensar memoria
-        </button>
+        {memoriesEnabled && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              onClose();
+              try {
+                showSuccess("Condensando memoria del chat...");
+                await ipc.memory.condenseSessionMemories({ appId, chatId });
+                showSuccess("Memoria condensada correctamente");
+              } catch (e) { showError(`Error al condensar memoria: ${(e as any).toString()}`); }
+            }}
+          >
+            <Shrink size={14} className="opacity-60 shrink-0" />
+            Condensar memoria
+          </button>
+        )}
         {/* Summarize to new chat */}
         <button
           type="button"
@@ -268,71 +273,488 @@ function LabelDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("#3B82F6");
+  const [search, setSearch] = useState("");
+  const [selectedColor, setSelectedColor] = useState("#3B82F6");
+  const [selectedLabels, setSelectedLabels] = useState<Array<{ id?: number; name: string; color: string }>>([]);
+  const [saving, setSaving] = useState(false);
 
-  // Reset on open
+  // Editing state for a global label
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("#3B82F6");
+
+  // Deleting state for a global label
+  const [deletingLabel, setDeletingLabel] = useState<{ id: number; name: string } | null>(null);
+
+  // Load global labels via React Query
+  const { data: globalLabels = [], refetch: refetchGlobalLabels } = useQuery({
+    queryKey: ["global-labels"],
+    queryFn: async () => {
+      try {
+        return await ipc.chat.getGlobalLabels();
+      } catch (e) {
+        showError(e);
+        return [];
+      }
+    },
+    enabled: chatId !== null,
+  });
+
+  const lastInitializedChatIdRef = useRef<number | null>(null);
+
+  // Reset/Initialize state when chatId changes
+  // NOTE: we use globalLabels.length (not globalLabels) as dep to avoid infinite
+  // re-render loops — React Query returns a new array reference every render.
+  const globalLabelsLen = globalLabels.length;
   useEffect(() => {
-    if (chatId !== null) { setName(""); setColor("#3B82F6"); }
-  }, [chatId]);
+    if (chatId === null) {
+      lastInitializedChatIdRef.current = null;
+      setSelectedLabels([]);
+      setSearch("");
+      setEditingLabelId(null);
+    } else if (chatId !== lastInitializedChatIdRef.current && globalLabelsLen > 0) {
+      lastInitializedChatIdRef.current = chatId;
+      setSearch("");
+      setSelectedColor("#3B82F6");
+      setEditingLabelId(null);
 
-  const handleAdd = useCallback(async () => {
-    if (!chatId || !name.trim()) return;
+      // Find current labels from the chats queries in cache
+      const queries = queryClient.getQueryCache().getAll();
+      let currentLabels: LabelEntry[] = [];
+      for (const q of queries) {
+        if (Array.isArray(q.state.data)) {
+          const foundChat = q.state.data.find((c: any) => c.id === chatId);
+          if (foundChat && foundChat.labels) {
+            currentLabels = foundChat.labels;
+            break;
+          }
+        }
+      }
+      setSelectedLabels(currentLabels.map(l => {
+        const globalMatch = globalLabels.find(gl => gl.name.toLowerCase() === l.label.toLowerCase());
+        return { id: globalMatch?.id, name: l.label, color: l.color };
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, globalLabelsLen]);
+
+  // Filter global labels matching search
+  const filteredGlobalLabels = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return globalLabels;
+    return globalLabels.filter(l => l.name.toLowerCase().includes(query));
+  }, [globalLabels, search]);
+
+  // Check if search query exactly matches any global label (case-insensitive)
+  const exactMatch = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return globalLabels.some(l => l.name.toLowerCase() === query) ||
+           selectedLabels.some(l => l.name.toLowerCase() === query);
+  }, [globalLabels, selectedLabels, search]);
+
+  // Toggle selection of a global label
+  const handleToggleGlobalLabel = useCallback((gLabel: { id: number; name: string; color: string }) => {
+    setSelectedLabels(prev => {
+      const exists = prev.some(l => l.name.toLowerCase() === gLabel.name.toLowerCase());
+      if (exists) {
+        return prev.filter(l => l.name.toLowerCase() !== gLabel.name.toLowerCase());
+      } else {
+        return [...prev, { id: gLabel.id, name: gLabel.name, color: gLabel.color }];
+      }
+    });
+  }, []);
+
+  // Create a new tag from search input
+  const handleCreateAndAdd = useCallback(() => {
+    const name = search.trim();
+    if (!name) return;
+    const alreadySelected = selectedLabels.some(l => l.name.toLowerCase() === name.toLowerCase());
+    if (alreadySelected) return;
+
+    const existingGlobal = globalLabels.find(l => l.name.toLowerCase() === name.toLowerCase());
+    if (existingGlobal) {
+      setSelectedLabels(prev => [...prev, { id: existingGlobal.id, name: existingGlobal.name, color: existingGlobal.color }]);
+    } else {
+      setSelectedLabels(prev => [...prev, { name, color: selectedColor }]);
+    }
+    setSearch("");
+  }, [search, selectedLabels, globalLabels, selectedColor]);
+
+  // Start editing a global label
+  const startEditing = useCallback((gLabel: { id: number; name: string; color: string }) => {
+    setEditingLabelId(gLabel.id);
+    setEditName(gLabel.name);
+    setEditColor(gLabel.color);
+  }, []);
+
+  // Save updated global label
+  const handleSaveEdit = useCallback(async () => {
+    if (editingLabelId === null || !editName.trim()) return;
     try {
-      await ipc.chat.addChatLabel({ chatId, label: name.trim(), color });
+      const updated = await ipc.chat.updateGlobalLabel({
+        id: editingLabelId,
+        name: editName.trim(),
+        color: editColor
+      });
+      
+      refetchGlobalLabels();
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+
+      setSelectedLabels(prev => prev.map(l => l.id === editingLabelId ? { ...l, name: updated.name, color: updated.color } : l));
+      setEditingLabelId(null);
+    } catch (e) {
+      showError(e);
+    }
+  }, [editingLabelId, editName, editColor, refetchGlobalLabels, queryClient]);
+
+  // Delete global label executor
+  const executeDeleteGlobal = useCallback(async (gLabelId: number) => {
+    try {
+      await ipc.chat.deleteGlobalLabel(gLabelId);
+      
+      refetchGlobalLabels();
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+
+      setSelectedLabels(prev => prev.filter(l => l.id !== gLabelId));
+
+      if (editingLabelId === gLabelId) {
+        setEditingLabelId(null);
+      }
+    } catch (e) {
+      showError(e);
+    }
+  }, [editingLabelId, refetchGlobalLabels, queryClient]);
+
+  // Save selections to the chat
+  const handleSave = useCallback(async () => {
+    if (chatId === null) return;
+    setSaving(true);
+    try {
+      await ipc.chat.setChatLabels({
+        chatId,
+        labels: selectedLabels.map(l => ({
+          id: l.id,
+          name: l.name,
+          color: l.color
+        }))
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
       onClose();
-    } catch (e) { showError(e); }
-  }, [chatId, name, color, queryClient, onClose]);
+    } catch (e) {
+      showError(e);
+    } finally {
+      setSaving(false);
+    }
+  }, [chatId, selectedLabels, queryClient, onClose]);
 
   return (
-    <Dialog open={chatId !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[380px]">
-        <DialogHeader>
-          <DialogTitle>Añadir etiqueta</DialogTitle>
+    <Dialog open={chatId !== null} onOpenChange={(open) => !open && !saving && onClose()}>
+      <DialogContent className="sm:max-w-[460px] h-[80vh] max-h-[750px] min-h-[580px] flex flex-col bg-background border border-border shadow-2xl rounded-2xl p-6 overflow-hidden">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
+            <Hash size={18} className="text-primary" />
+            Gestionar etiquetas del chat
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Asigna etiquetas existentes o crea nuevas con colores personalizados.
+          </p>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
+
+        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 py-1 scrollbar-thin">
+          {/* Deletion Confirmation Card */}
+          {deletingLabel !== null && (
+            <div className="flex flex-col gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+              <span className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                <Trash2 size={12} className="text-destructive animate-pulse" />
+                ¿Eliminar etiqueta permanentemente?
+              </span>
+              <p className="text-xs text-muted-foreground leading-normal">
+                ¿Estás seguro de que quieres eliminar la etiqueta <strong>"{deletingLabel.name}"</strong>? Se quitará de todos los chats de todos los proyectos. Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDeletingLabel(null)}
+                  className="flex-1 rounded-lg h-8 text-xs font-medium cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={async () => {
+                    await executeDeleteGlobal(deletingLabel.id);
+                    setDeletingLabel(null);
+                  }}
+                  className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg h-8 text-xs font-medium cursor-pointer"
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Search/Filter or Edit section */}
+          {deletingLabel === null && (
+            editingLabelId === null ? (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <input
+                autoFocus
+                className="flex h-10 w-full rounded-xl border border-input bg-background/50 pl-10 pr-4 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:bg-background"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar o escribir nueva etiqueta..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (search.trim() && !exactMatch) {
+                      handleCreateAndAdd();
+                    }
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 p-3 bg-muted/40 border border-border/60 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Pencil size={12} className="text-primary" />
+                Editar etiqueta global
+              </span>
+              <div className="flex flex-col gap-2">
+                <input
+                  autoFocus
+                  className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Nombre de la etiqueta..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (editName.trim()) {
+                        handleSaveEdit();
+                      }
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {SWATCH_COLORS.map((c) => {
+                    const isSelected = editColor === c.hex;
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => setEditColor(c.hex)}
+                        title={c.name}
+                        className={`w-[30px] h-[30px] rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
+                        style={{
+                          backgroundColor: c.hex,
+                          ...(isSelected ? { ["--tw-ring-color" as any]: c.hex } : {}),
+                        }}
+                      >
+                        {isSelected && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingLabelId(null)}
+                  className="flex-1 rounded-lg h-8 text-xs font-medium cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={!editName.trim()}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg h-8 text-xs font-medium cursor-pointer"
+                >
+                  Guardar
+                </Button>
+              </div>
+            </div>
+          )
+        )}
+
+          {/* New Tag Creator (shows only if search text doesn't exactly match any existing/selected label) */}
+          {deletingLabel === null && editingLabelId === null && search.trim().length > 0 && !exactMatch && (
+            <div className="flex flex-col gap-3 p-3 bg-muted/40 border border-border/60 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+              <span className="text-xs font-semibold text-muted-foreground">Crear nueva etiqueta:</span>
+              <div className="flex items-center gap-3">
+                <span
+                  className="px-2 py-0.5 rounded text-xs font-medium border"
+                  style={{
+                    backgroundColor: `${selectedColor}15`,
+                    color: selectedColor,
+                    borderColor: `${selectedColor}30`,
+                  }}
+                >
+                  {search.trim()}
+                </span>
+                <span className="text-xs text-muted-foreground">elegir color:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SWATCH_COLORS.map((c) => {
+                  const isSelected = selectedColor === c.hex;
+                  return (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      onClick={() => setSelectedColor(c.hex)}
+                      title={c.name}
+                      className={`w-[30px] h-[30px] rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
+                      style={{
+                        backgroundColor: c.hex,
+                        ...(isSelected ? { ["--tw-ring-color" as any]: c.hex } : {}),
+                      }}
+                    >
+                      {isSelected && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleCreateAndAdd}
+                className="w-full mt-1 flex items-center justify-center gap-1 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl h-8 text-xs font-medium cursor-pointer"
+              >
+                <Plus size={14} /> Crear y seleccionar
+              </Button>
+            </div>
+          )}
+
+          {/* List of Global Tags */}
+          {deletingLabel === null && editingLabelId === null && (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">Etiquetas disponibles:</span>
+              {filteredGlobalLabels.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border/60 rounded-xl bg-muted/20">
+                  {search.trim() ? "No se encontraron etiquetas" : "No hay etiquetas creadas todavía"}
+                </div>
+              ) : (
+                <div className="max-h-[240px] overflow-y-auto pr-1 flex flex-col gap-1.5 border border-border/40 rounded-xl p-2 bg-muted/10">
+                  {filteredGlobalLabels.map((gLabel) => {
+                    const isSelected = selectedLabels.some(l => l.name.toLowerCase() === gLabel.name.toLowerCase());
+                    return (
+                      <div
+                        key={gLabel.id}
+                        className={`group flex items-center justify-between w-full p-2 text-left rounded-lg transition-all hover:bg-muted/85 ${isSelected ? "bg-muted/60 font-medium" : ""}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGlobalLabel(gLabel)}
+                          className="flex items-center gap-2 flex-1 text-left cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="w-3.5 h-3.5 rounded border-gray-300 text-primary focus:ring-primary pointer-events-none"
+                          />
+                          <span
+                            className="px-2 py-0.5 rounded text-[11px] font-medium border"
+                            style={{
+                              backgroundColor: `${gLabel.color}15`,
+                              color: gLabel.color,
+                              borderColor: `${gLabel.color}30`,
+                            }}
+                          >
+                            {gLabel.name}
+                          </span>
+                        </button>
+                        
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => startEditing(gLabel)}
+                            title="Editar etiqueta"
+                            className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingLabel({ id: gLabel.id, name: gLabel.name })}
+                            title="Eliminar etiqueta permanentemente"
+                            className="p-1 text-muted-foreground hover:text-destructive hover:bg-muted rounded transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Selected Tags list */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Nombre de la etiqueta</label>
-            <input
-              autoFocus
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: bug, feature, urgente"
-              onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { e.preventDefault(); handleAdd(); } }}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Color</label>
-            <div className="grid grid-cols-8 gap-x-2 gap-y-2.5">
-              {SWATCH_COLORS.map((c) => {
-                const isSelected = color === c.hex;
-                return (
-                  <button
-                    key={c.hex}
-                    type="button"
-                    onClick={() => setColor(c.hex)}
-                    title={c.name}
-                    className={`w-6 h-6 rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:ring-foreground/30"}`}
+            <span className="text-xs font-semibold text-muted-foreground">Seleccionadas ({selectedLabels.length}):</span>
+            {selectedLabels.length === 0 ? (
+              <div className="text-xs text-muted-foreground py-2 text-center border border-dashed border-border/60 rounded-xl bg-muted/20">
+                Ninguna etiqueta seleccionada
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto p-2 bg-muted/25 rounded-xl border border-border/40">
+                {selectedLabels.map((l, idx) => (
+                  <div
+                    key={l.id ?? `new-${idx}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border animate-in zoom-in-95 duration-100"
                     style={{
-                      backgroundColor: c.hex,
-                      ...(isSelected ? { ["--tw-ring-color" as any]: c.hex } : {}),
+                      backgroundColor: `${l.color}15`,
+                      color: l.color,
+                      borderColor: `${l.color}30`,
                     }}
                   >
-                    {isSelected && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}><polyline points="20 6 9 17 4 12" /></svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                    {l.name}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLabels(prev => prev.filter((_, i) => i !== idx))}
+                      className="ml-1 text-foreground/50 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleAdd}>Añadir</Button>
+
+        <DialogFooter className="mt-6 pt-4 border-t border-border flex gap-2 sm:justify-end">
+          <Button variant="outline" className="rounded-xl h-9" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-xl h-9 bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-1.5 cursor-pointer"
+          >
+            {saving && <Loader2 size={14} className="animate-spin" />}
+            Guardar cambios
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -767,6 +1189,8 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const { isServerRunning } = useAppServerStatus(app.id);
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const memoriesEnabled = settings?.memoriesEnabled !== false;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -1109,14 +1533,16 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     <GitBranch size={14} className="opacity-60 shrink-0" />
                     {hasUnpushedChanges ? "Revisar cambios" : "Git"}
                   </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                  onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
-                >
-                  <Database size={14} className="opacity-60 shrink-0" />
-                  Memorias
-                </button>
+                {memoriesEnabled && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
+                  >
+                    <Database size={14} className="opacity-60 shrink-0" />
+                    Memorias
+                  </button>
+                )}
                 {(hasDesignMd || hasAgentsMd) && (
                   <>
                     <div className="my-1 mx-2 border-t border-border/50" />

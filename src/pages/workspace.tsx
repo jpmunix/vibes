@@ -6,13 +6,15 @@ import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { ChevronRight, Loader2, MessagesSquare, FileText } from "@/components/ui/icons";
+import { ChevronRight, Loader2, MessagesSquare, FileText, Trash2 } from "@/components/ui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { showError, showSuccess } from "@/lib/toast";
 import { useChats } from "@/hooks/useChats";
 import type { ChatSummary } from "@/lib/schemas";
 import { useSessionCost } from "@/hooks/useSessionCost";
@@ -259,47 +261,92 @@ function formatWorkspaceCost(usd: number): string {
 }
 
 function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
-  const { artifacts } = useChatArtifacts(chatId);
-  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
-  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+  const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
+  const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
+  const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
+  const [artifactToDecouple, setArtifactToDecouple] = useState<{ id: number; title: string; path: string } | null>(null);
 
   if (!artifacts || artifacts.length === 0) return null;
 
   const hasUnreviewed = artifacts.some((a) => !a.accepted);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="relative p-1.5 rounded-md transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer"
-          title="Ver planificaciones y artefactos"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
-        {artifacts.map((artifact) => (
-          <DropdownMenuItem
-            key={artifact.id}
-            onClick={() => {
-              setSelectedPath(artifact.path);
-              setSidebarOpen(true);
-            }}
-            className="cursor-pointer py-2"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="relative p-1.5 rounded-md transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer"
+            title="Ver planificaciones y artefactos"
           >
-            <div className="flex flex-col gap-0.5 w-full">
-              <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
-              {artifact.createdAt && (
-                <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                  {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              )}
-            </div>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <FileText className="h-3.5 w-3.5" />
+            {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
+          {artifacts.map((artifact) => (
+            <DropdownMenuItem
+              key={artifact.id}
+              onClick={() => {
+                setSelectedPath(artifact.path);
+                setSidebarOpen(true);
+              }}
+              className="group cursor-pointer py-2 flex items-center justify-between gap-2"
+            >
+              <div className="flex flex-col gap-0.5 w-full min-w-0">
+                <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
+                {artifact.createdAt && (
+                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                    {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+              <button
+                title="Desacoplar plan del chat"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setArtifactToDecouple({
+                    id: artifact.id,
+                    title: artifact.title || artifact.path,
+                    path: artifact.path,
+                  });
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmationDialog
+        isOpen={!!artifactToDecouple}
+        title="¿Desacoplar plan?"
+        message={`Se quitará la relación del plan "${artifactToDecouple?.title}" con este chat. Esto no eliminará el archivo en el disco, pero sí borrará los comentarios asociados en este chat.`}
+        confirmText="Desacoplar"
+        cancelText="Cancelar"
+        confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
+        showOverlay={false}
+        onConfirm={async () => {
+          if (!artifactToDecouple) return;
+          try {
+            await ipc.chat.decoupleArtifact(artifactToDecouple.id);
+            if (selectedPath === artifactToDecouple.path) {
+              setSidebarOpen(false);
+              setSelectedPath(null);
+            }
+            await invalidateArtifacts();
+            showSuccess("Plan desacoplado del chat");
+          } catch (error) {
+            showError(`Error al desacoplar el plan: ${(error as any).toString()}`);
+          } finally {
+            setArtifactToDecouple(null);
+          }
+        }}
+        onCancel={() => setArtifactToDecouple(null)}
+      />
+    </>
   );
 }
 

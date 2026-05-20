@@ -153,6 +153,69 @@ export async function initializeRemoteSchema(): Promise<void> {
         created_at INTEGER NOT NULL
       )
     `);
+
+    // Auto-create labels if missing
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        color TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(user_id, name)
+      )
+    `);
+
+    // Add label_id column to chat_labels if missing
+    await client.execute(`
+      ALTER TABLE chat_labels ADD COLUMN label_id INTEGER REFERENCES labels(id) ON DELETE CASCADE
+    `).catch(() => {});
+
+    // Migrate existing data from old chat_labels asynchronously to avoid blocking app startup
+    (async () => {
+      try {
+        const oldRows = await client.execute(`
+          SELECT id, user_id, label, color, created_at FROM chat_labels WHERE label_id IS NULL
+        `);
+        if (oldRows.rows && oldRows.rows.length > 0) {
+          logger.info(`[Migration] Starting async migration of ${oldRows.rows.length} chat labels...`);
+          for (const row of oldRows.rows) {
+            const rowId = row.id as number;
+            const userId = row.user_id as string;
+            const labelName = row.label as string;
+            const color = row.color as string;
+            const createdAt = row.created_at as number;
+
+            // Find or create label
+            let labelId: number;
+            const existingLabel = await client.execute({
+              sql: `SELECT id FROM labels WHERE user_id = ? AND name = ?`,
+              args: [userId, labelName]
+            });
+            if (existingLabel.rows && existingLabel.rows.length > 0) {
+              labelId = existingLabel.rows[0].id as number;
+            } else {
+              const insertResult = await client.execute({
+                sql: `INSERT INTO labels (user_id, name, color, created_at) VALUES (?, ?, ?, ?)`,
+                args: [userId, labelName, color, createdAt]
+              });
+              labelId = Number(insertResult.lastInsertRowid);
+            }
+
+            // Update chat_labels with the label_id
+            await client.execute({
+              sql: `UPDATE chat_labels SET label_id = ? WHERE id = ?`,
+              args: [labelId, rowId]
+            });
+          }
+          logger.info("[Migration] Async migration of chat labels completed successfully.");
+        }
+      } catch (err) {
+        logger.warn("[Migration] chat_labels migration error:", err);
+      }
+    })().catch(err => {
+      logger.warn("[Migration] chat_labels migration promise exception:", err);
+    });
     // Auto-create language_models if missing (custom model presets)
     await client.execute(`
       CREATE TABLE IF NOT EXISTS language_models (

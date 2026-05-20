@@ -1,13 +1,13 @@
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { desc, asc, eq, and, like, ne, gte, sql } from "drizzle-orm";
+import { desc, asc, eq, and, like, ne, gte, sql, notInArray } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
 import log from "electron-log";
 import { getVibesAppPath } from "../../paths/paths";
 import { getCurrentCommitHash } from "../utils/git_utils";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
@@ -63,7 +63,7 @@ export function registerChatHandlers() {
     return chat.id;
   });
 
-  createTypedHandler(chatContracts.getChat as any, async (_, chatId: number, context: HandlerContext) => {
+  createTypedHandler(chatContracts.getChat, async (_, chatId: number, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
@@ -90,7 +90,7 @@ export function registerChatHandlers() {
       })),
       isPlan: chat.isPlan ?? false,
       planData: chat.planData ?? null,
-    };
+    } as any;
   });
 
   createTypedHandler(chatContracts.getChats, async (_, appId, context) => {
@@ -246,6 +246,7 @@ export function registerChatHandlers() {
       createdAt: c.createdAt,
       matchedMessageContent: null,
       isPlan: c.isPlan ? true : false,
+      labels: [],
     }));
 
     // 2) Find messages that match and join to chats to build one result per message
@@ -275,7 +276,8 @@ export function registerChatHandlers() {
       title: c.title || "",
       createdAt: c.createdAt,
       matchedMessageContent: c.matchedMessageContent,
-      isPlan: c.isPlan ? true : false
+      isPlan: c.isPlan ? true : false,
+      labels: [],
     }));
 
     const combined: ChatSearchResult[] = [...titleResults, ...messageResultsMapped];
@@ -855,8 +857,9 @@ export function registerChatHandlers() {
     });
 
     // ── Auto-heal stale titles (raw filenames → H1) ─────────────────
+    let chat: any = null;
     try {
-      const chat = await db.query.chats.findFirst({
+      chat = await db.query.chats.findFirst({
         where: eq(remoteSchema.chats.id, chatId),
         columns: { appId: true },
         with: { app: { columns: { path: true } } },
@@ -960,6 +963,34 @@ export function registerChatHandlers() {
         )
       );
 
+    return true;
+  });
+
+  // ── Decouple artifact from chat ──────────────────────────────────────────
+
+  createTypedHandler(chatContracts.decoupleArtifact, async (_, artifactId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // 1. Delete comments associated with this artifact for safety
+    await db.delete(remoteSchema.artifactComments)
+      .where(
+        and(
+          eq(remoteSchema.artifactComments.artifactId, artifactId),
+          eq(remoteSchema.artifactComments.userId, context.userId!)
+        )
+      );
+
+    // 2. Delete the chat artifact record itself
+    await db.delete(remoteSchema.chatArtifacts)
+      .where(
+        and(
+          eq(remoteSchema.chatArtifacts.id, artifactId),
+          eq(remoteSchema.chatArtifacts.userId, context.userId!)
+        )
+      );
+
+    logger.info(`Decoupled artifact ${artifactId} from chat`);
     return true;
   });
 
@@ -1216,6 +1247,217 @@ export function registerChatHandlers() {
         eq(remoteSchema.chatLabels.userId, context.userId!)
       )
     );
+  });
+
+  createTypedHandler(chatContracts.getGlobalLabels, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const list = await db.query.labels.findMany({
+      where: eq(remoteSchema.labels.userId, context.userId!),
+      orderBy: [asc(remoteSchema.labels.name)],
+    });
+    return list.map(l => ({
+      id: l.id,
+      name: l.name,
+      color: l.color,
+    }));
+  });
+
+  createTypedHandler(chatContracts.createGlobalLabel, async (_, { name, color }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    
+    const existing = await db.query.labels.findFirst({
+      where: and(
+        eq(remoteSchema.labels.name, name.trim()),
+        eq(remoteSchema.labels.userId, context.userId!)
+      )
+    });
+    if (existing) {
+      return {
+        id: existing.id,
+        name: existing.name,
+        color: existing.color,
+      };
+    }
+
+    const [inserted] = await db.insert(remoteSchema.labels).values({
+      userId: context.userId!,
+      name: name.trim(),
+      color: color,
+      createdAt: new Date(),
+    }).returning();
+
+    return {
+      id: inserted.id,
+      name: inserted.name,
+      color: inserted.color,
+    };
+  });
+
+  createTypedHandler(chatContracts.deleteGlobalLabel, async (_, labelId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.labels).where(
+      and(
+        eq(remoteSchema.labels.id, labelId),
+        eq(remoteSchema.labels.userId, context.userId!)
+      )
+    );
+  });
+
+  createTypedHandler(chatContracts.updateGlobalLabel, async (_, { id, name, color }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const duplicate = await db.query.labels.findFirst({
+      where: and(
+        eq(remoteSchema.labels.name, name.trim()),
+        eq(remoteSchema.labels.userId, context.userId!),
+        ne(remoteSchema.labels.id, id)
+      )
+    });
+    if (duplicate) {
+      throw new Error("Ya existe otra etiqueta con ese nombre");
+    }
+
+    const [updated] = await db.update(remoteSchema.labels)
+      .set({ name: name.trim(), color })
+      .where(and(eq(remoteSchema.labels.id, id), eq(remoteSchema.labels.userId, context.userId!)))
+      .returning();
+
+    if (!updated) throw new Error("Etiqueta no encontrada");
+
+    await db.update(remoteSchema.chatLabels)
+      .set({ label: updated.name, color: updated.color })
+      .where(eq(remoteSchema.chatLabels.labelId, id));
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      color: updated.color,
+    };
+  });
+
+  createTypedHandler(chatContracts.setChatLabels, async (_, { chatId, labels }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    
+    const chat = await db.query.chats.findFirst({
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
+      columns: { id: true }
+    });
+    if (!chat) throw new Error("Chat not found");
+
+    const targetLabelIds: number[] = [];
+    const chatLabelValues: Array<{
+      chatId: number;
+      userId: string;
+      labelId: number;
+      label: string;
+      color: string;
+      createdAt: Date;
+    }> = [];
+
+    for (const item of labels) {
+      let globalLabelId = item.id;
+      let labelName = item.name.trim();
+      let labelColor = item.color || "#3B82F6";
+
+      if (!labelName) continue;
+
+      let globalLabel: any = null;
+      if (globalLabelId) {
+        globalLabel = await db.query.labels.findFirst({
+          where: and(
+            eq(remoteSchema.labels.id, globalLabelId),
+            eq(remoteSchema.labels.userId, context.userId!)
+          )
+        });
+      } else {
+        globalLabel = await db.query.labels.findFirst({
+          where: and(
+            eq(remoteSchema.labels.name, labelName),
+            eq(remoteSchema.labels.userId, context.userId!)
+          )
+        });
+      }
+
+      if (!globalLabel) {
+        const [inserted] = await db.insert(remoteSchema.labels).values({
+          userId: context.userId!,
+          name: labelName,
+          color: labelColor,
+          createdAt: new Date(),
+        }).returning();
+        globalLabel = inserted;
+      } else if (item.color && item.color !== globalLabel.color) {
+        const [updated] = await db.update(remoteSchema.labels)
+          .set({ color: labelColor })
+          .where(eq(remoteSchema.labels.id, globalLabel.id))
+          .returning();
+        globalLabel = updated;
+
+        await db.update(remoteSchema.chatLabels)
+          .set({ color: labelColor })
+          .where(eq(remoteSchema.chatLabels.labelId, globalLabel.id));
+      }
+
+      targetLabelIds.push(globalLabel.id);
+      chatLabelValues.push({
+        chatId,
+        userId: context.userId!,
+        labelId: globalLabel.id,
+        label: globalLabel.name,
+        color: globalLabel.color,
+        createdAt: new Date(),
+      });
+    }
+
+    if (targetLabelIds.length > 0) {
+      await db.delete(remoteSchema.chatLabels).where(
+        and(
+          eq(remoteSchema.chatLabels.chatId, chatId),
+          eq(remoteSchema.chatLabels.userId, context.userId!),
+          notInArray(remoteSchema.chatLabels.labelId, targetLabelIds)
+        )
+      );
+    } else {
+      await db.delete(remoteSchema.chatLabels).where(
+        and(
+          eq(remoteSchema.chatLabels.chatId, chatId),
+          eq(remoteSchema.chatLabels.userId, context.userId!)
+        )
+      );
+    }
+
+    const results: any[] = [];
+    for (const val of chatLabelValues) {
+      const existing = await db.query.chatLabels.findFirst({
+        where: and(
+          eq(remoteSchema.chatLabels.chatId, chatId),
+          eq(remoteSchema.chatLabels.labelId, val.labelId),
+          eq(remoteSchema.chatLabels.userId, context.userId!)
+        )
+      });
+
+      if (existing) {
+        if (existing.label !== val.label || existing.color !== val.color) {
+          const [updated] = await db.update(remoteSchema.chatLabels)
+            .set({ label: val.label, color: val.color })
+            .where(eq(remoteSchema.chatLabels.id, existing.id))
+            .returning();
+          results.push(updated);
+        } else {
+          results.push(existing);
+        }
+      } else {
+        const [inserted] = await db.insert(remoteSchema.chatLabels).values(val).returning();
+        results.push(inserted);
+      }
+    }
+
+    return results;
   });
 
   // ── Stream Tasks ─────────────────────────────────────────────────────────

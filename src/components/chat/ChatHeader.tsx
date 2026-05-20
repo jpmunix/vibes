@@ -96,6 +96,7 @@ export function ChatHeader({
 
 
   const { settings } = useSettings();
+  const memoriesEnabled = settings?.memoriesEnabled !== false;
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
@@ -313,23 +314,25 @@ export function ChatHeader({
                         <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
                           {chat.title || `Chat ${chat.id}`}
                         </span>
-                        <button
-                          title="Condensar memoria"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!appId) return;
-                            try {
-                              showSuccess("Condensando memoria del chat...");
-                              await ipc.memory.condenseSessionMemories({ appId, chatId: chat.id });
-                              showSuccess("Memoria condensada correctamente");
-                            } catch (err) {
-                              showError(`Error: ${(err as any).toString()}`);
-                            }
-                          }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
-                        >
-                          <Shrink size={12} className="text-muted-foreground" />
-                        </button>
+                        {memoriesEnabled && (
+                          <button
+                            title="Condensar memoria"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!appId) return;
+                              try {
+                                showSuccess("Condensando memoria del chat...");
+                                await ipc.memory.condenseSessionMemories({ appId, chatId: chat.id });
+                                showSuccess("Memoria condensada correctamente");
+                              } catch (err) {
+                                showError(`Error: ${(err as any).toString()}`);
+                              }
+                            }}
+                            className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                          >
+                            <Shrink size={12} className="text-muted-foreground" />
+                          </button>
+                        )}
                         <button
                           title="Resumir a chat nuevo"
                           onClick={async (e) => {
@@ -636,43 +639,88 @@ function ExpandChatButton({
 }
 
 function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
-  const { artifacts } = useChatArtifacts(chatId);
-  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
-  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+  const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
+  const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
+  const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
+  const [artifactToDecouple, setArtifactToDecouple] = useState<{ id: number; title: string; path: string } | null>(null);
 
   if (!artifacts || artifacts.length === 0) return null;
 
   const hasUnreviewed = artifacts.some((a) => !a.accepted);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-8 w-8" title="Ver planificaciones y artefactos">
-          <FileText size={16} />
-          {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
-        {artifacts.map((artifact) => (
-          <DropdownMenuItem
-            key={artifact.id}
-            onClick={() => {
-              setSelectedPath(artifact.path);
-              setSidebarOpen(true);
-            }}
-            className="cursor-pointer py-2"
-          >
-            <div className="flex flex-col gap-0.5 w-full">
-              <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
-              {artifact.createdAt && (
-                <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                  {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              )}
-            </div>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative h-8 w-8" title="Ver planificaciones y artefactos">
+            <FileText size={16} />
+            {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
+          {artifacts.map((artifact) => (
+            <DropdownMenuItem
+              key={artifact.id}
+              onClick={() => {
+                setSelectedPath(artifact.path);
+                setSidebarOpen(true);
+              }}
+              className="group cursor-pointer py-2 flex items-center justify-between gap-2"
+            >
+              <div className="flex flex-col gap-0.5 w-full min-w-0">
+                <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
+                {artifact.createdAt && (
+                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                    {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+              <button
+                title="Desacoplar plan del chat"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setArtifactToDecouple({
+                    id: artifact.id,
+                    title: artifact.title || artifact.path,
+                    path: artifact.path,
+                  });
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmationDialog
+        isOpen={!!artifactToDecouple}
+        title="¿Desacoplar plan?"
+        message={`Se quitará la relación del plan "${artifactToDecouple?.title}" con este chat. Esto no eliminará el archivo en el disco, pero sí borrará los comentarios asociados en este chat.`}
+        confirmText="Desacoplar"
+        cancelText="Cancelar"
+        confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
+        showOverlay={false}
+        onConfirm={async () => {
+          if (!artifactToDecouple) return;
+          try {
+            await ipc.chat.decoupleArtifact(artifactToDecouple.id);
+            if (selectedPath === artifactToDecouple.path) {
+              setSidebarOpen(false);
+              setSelectedPath(null);
+            }
+            await invalidateArtifacts();
+            showSuccess("Plan desacoplado del chat");
+          } catch (error) {
+            showError(`Error al desacoplar el plan: ${(error as any).toString()}`);
+          } finally {
+            setArtifactToDecouple(null);
+          }
+        }}
+        onCancel={() => setArtifactToDecouple(null)}
+      />
+    </>
   );
 }

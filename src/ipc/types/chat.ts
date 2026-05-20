@@ -250,7 +250,7 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
-        isPlan: z.boolean().optional(),
+        isPlan: z.boolean().optional().default(false),
         lastReadAt: z.date().nullable().optional(),
         labels: z.array(z.object({
           id: z.number(),
@@ -293,7 +293,12 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         matchedMessageContent: z.string().nullable(),
-        isPlan: z.boolean().optional(),
+        isPlan: z.boolean().optional().default(false),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -463,6 +468,12 @@ export const chatContracts = {
     output: z.boolean(),
   }),
 
+  decoupleArtifact: defineContract({
+    channel: "decouple-artifact",
+    input: z.number(), // artifactId
+    output: z.boolean(),
+  }),
+
   /** Get ALL .vibes/ plans for an app (across all chats). */
   getAppPlans: defineContract({
     channel: "get-app-plans",
@@ -561,6 +572,67 @@ export const chatContracts = {
     channel: "delete-chat-label",
     input: z.number(), // labelId
     output: z.void(),
+  }),
+
+  getGlobalLabels: defineContract({
+    channel: "get-global-labels",
+    input: z.void(),
+    output: z.array(z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    })),
+  }),
+
+  createGlobalLabel: defineContract({
+    channel: "create-global-label",
+    input: z.object({
+      name: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  deleteGlobalLabel: defineContract({
+    channel: "delete-global-label",
+    input: z.number(), // labelId
+    output: z.void(),
+  }),
+
+  updateGlobalLabel: defineContract({
+    channel: "update-global-label",
+    input: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  setChatLabels: defineContract({
+    channel: "set-chat-labels",
+    input: z.object({
+      chatId: z.number(),
+      labels: z.array(z.object({
+        id: z.number().optional(),
+        name: z.string(),
+        color: z.string().optional(),
+      })),
+    }),
+    output: z.array(z.object({
+      id: z.number(),
+      labelId: z.number().nullable(),
+      label: z.string(),
+      color: z.string(),
+    })),
   }),
 
   // ── Stream Tasks ──────────────────────────────────────────────────────────
