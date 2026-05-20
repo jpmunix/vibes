@@ -73,7 +73,7 @@ export const LiveThinkingPanel: React.FC<{
         className="live-think-scroll px-3 py-2 max-h-[150px] overflow-y-auto text-xs leading-relaxed text-muted-foreground/70 prose prose-xs dark:prose-invert max-w-none"
       >
         <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
-          {content}
+          {content.length > 10000 ? "..." + content.slice(-10000) : content}
         </ReactMarkdown>
       </div>
     </div>

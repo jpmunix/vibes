@@ -3,8 +3,9 @@ import { useAtomValue } from "jotai";
 import { currentAppAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
+import { AiStrategistAssistant } from "./AiStrategistAssistant";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, Trash2, Check, BookOpen, Globe, Folder } from "@/components/ui/icons";
+import { Pencil, Plus, Trash2, Check, ChevronRight } from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,
@@ -13,121 +14,176 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { showError, showSuccess } from "@/lib/toast";
-import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import { cn } from "@/lib/utils";
 
 interface SkillData {
     name: string;
     path: string;
 }
 
+interface SkillGroupProps {
+    title: string;
+    skills: SkillData[];
+    scope: string;
+    apps: { id: number; name: string; path: string }[];
+    onDelete: (skill: SkillData, scope: string) => void;
+    onRefresh: () => void;
+}
+
+function SkillGroup({
+    title,
+    skills,
+    scope,
+    apps,
+    onDelete,
+    onRefresh
+}: SkillGroupProps) {
+    const [expanded, setExpanded] = useState(false);
+
+    return (
+        <div className="space-y-2">
+            <div
+                className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4 bg-muted/20"
+                onClick={() => setExpanded(e => !e)}
+            >
+                <div className="flex-1">
+                    <h3 className="typo-label flex items-center gap-2">
+                        {title}
+                        <span className="text-muted-foreground typo-caption">({skills.length})</span>
+                    </h3>
+                </div>
+                <ChevronRight
+                    className={cn(
+                        "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+                        expanded && "rotate-90"
+                    )}
+                />
+            </div>
+
+            {expanded && (
+                <div className="pl-4 space-y-2">
+                    {skills.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic py-2 pl-2">No hay skills creados.</p>
+                    ) : (
+                        skills.map(skill => (
+                            <div key={skill.path} className="flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 group">
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="typo-label text-foreground font-medium truncate">{skill.name}</h4>
+                                    <p className="typo-mono-xs text-muted-foreground/70 mt-1 truncate">
+                                        {scope === "global" ? `${skill.name}/` : `.claude/skills/${skill.name}/`}
+                                    </p>
+                                </div>
+                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 shrink-0 ml-4">
+                                    <SkillDialog apps={apps} existingSkill={skill} existingScope={scope} onSave={onRefresh} />
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10 h-8 w-8 rounded-lg"
+                                        onClick={() => onDelete(skill, scope)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function SkillsSettings() {
     const currentApp = useAtomValue(currentAppAtom);
     const [apps, setApps] = useState<{ id: number; name: string; path: string }[]>([]);
-    const [selectedScope, setSelectedScope] = useState<string>("global");
-    const [skills, setSkills] = useState<SkillData[]>([]);
+    const [globalSkills, setGlobalSkills] = useState<SkillData[]>([]);
+    const [projectsWithSkills, setProjectsWithSkills] = useState<{ app: { id: number; name: string; path: string }; skills: SkillData[] }[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // List all apps registered in Vibes
-    useEffect(() => {
-        ipc.app.listApps()
-            .then(res => {
-                if (res && res.apps) {
-                    setApps(res.apps.map(a => ({
-                        id: a.id,
-                        name: a.name,
-                        path: a.path || ""
-                    })));
-                }
-            })
-            .catch(err => {
-                console.error("Error listing apps for skills selector:", err);
-            });
-    }, []);
-
-    // Set default scope based on the active project
-    useEffect(() => {
-        if (currentApp) {
-            setSelectedScope(String(currentApp.id));
-        } else {
-            setSelectedScope("global");
-        }
-    }, [currentApp]);
-
-    const loadSkills = async () => {
+    const loadAllSkills = async () => {
         setLoading(true);
         try {
-            if (selectedScope === "global") {
-                const globalSkills = await ipc.settings.listGlobalSkills();
-                setSkills(globalSkills);
-            } else {
-                const appId = Number(selectedScope);
-                const appData = await ipc.app.getApp(appId);
-                const skillFiles = appData.files.filter(f => f.startsWith(".claude/skills/") && f.endsWith("/SKILL.md"));
-                
-                const loadedSkills = skillFiles.map(path => {
-                    const parts = path.split("/");
-                    const name = parts[parts.length - 2];
-                    return { name, path };
-                });
-                setSkills(loadedSkills);
-            }
+            // 1. Load global skills
+            const gSkills = await ipc.settings.listGlobalSkills();
+            setGlobalSkills(gSkills);
+
+            // 2. Load apps list
+            const res = await ipc.app.listApps();
+            const appsList = res?.apps || [];
+            const mappedApps = appsList.map(a => ({
+                id: a.id,
+                name: a.name,
+                path: a.path || ""
+            }));
+            setApps(mappedApps);
+
+            // 3. Scan each app for local skills
+            const projectsWithSkillsList: { app: { id: number; name: string; path: string }; skills: SkillData[] }[] = [];
+            
+            await Promise.all(mappedApps.map(async (app) => {
+                try {
+                    const appData = await ipc.app.getApp(app.id);
+                    const skillFiles = (appData.files || []).filter(f => f.startsWith(".claude/skills/") && f.endsWith("/SKILL.md"));
+                    const loadedSkills = skillFiles.map(path => {
+                        const parts = path.split("/");
+                        const name = parts[parts.length - 2];
+                        return { name, path };
+                    });
+                    if (loadedSkills.length > 0) {
+                        projectsWithSkillsList.push({
+                            app,
+                            skills: loadedSkills
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Error loading skills for app ${app.name}:`, err);
+                }
+            }));
+            
+            setProjectsWithSkills(projectsWithSkillsList);
         } catch (e) {
-            console.error("Error loading skills:", e);
+            console.error("Error loading all skills:", e);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        loadSkills();
-    }, [selectedScope]);
+        loadAllSkills();
+    }, []);
 
-    const getResolvedPath = () => {
-        if (selectedScope === "global") {
-            return "~/.config/opencode/skills/";
+    const handleDelete = async (skill: SkillData, scope: string) => {
+        if (confirm(`¿Eliminar el skill "${skill.name}"?`)) {
+            try {
+                if (scope === "global") {
+                    await ipc.settings.deleteGlobalSkill({ filePath: skill.name });
+                } else {
+                    await ipc.app.deleteAppFile({ 
+                        appId: Number(scope), 
+                        filePath: `.claude/skills/${skill.name}` 
+                    });
+                }
+                showSuccess("Skill eliminado");
+                loadAllSkills();
+            } catch {
+                showError("Error al eliminar skill");
+            }
         }
-        const app = apps.find(a => String(a.id) === selectedScope);
-        return app ? `${app.path}/.claude/skills/` : "";
     };
 
-    const scopeOptions = [
-        { 
-            value: "global", 
-            label: "Global (Vibes)", 
-            description: "Disponible en todos los proyectos",
-            leftIcon: <Globe className="h-3.5 w-3.5 text-primary" />
-        },
-        ...apps.map(app => ({
-            value: String(app.id),
-            label: `Proyecto: ${app.name}`,
-            description: app.path,
-            leftIcon: <Folder className="h-3.5 w-3.5 text-muted-foreground" />
-        }))
-    ];
-
     return (
-        <div className="space-y-6">
-            {/* Control Panel Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border border-border bg-card rounded-xl shadow-sm">
-                <div className="space-y-1 min-w-0">
-                    <h3 className="typo-subsection-title text-foreground">Skills (Agentes de Conocimiento)</h3>
-                    <p className="typo-mono-xs text-muted-foreground truncate" title={getResolvedPath()}>
-                        {getResolvedPath()}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                    <UnifiedSelector
-                        value={selectedScope}
-                        onChange={setSelectedScope}
-                        options={scopeOptions}
-                        triggerVariant="default"
-                        triggerSize="sm"
-                        popoverWidth="w-[280px]"
-                        itemLayout="default"
-                    />
-                    <SkillDialog scope={selectedScope} onSave={loadSkills} />
-                </div>
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-sm font-semibold">Skills del Agente</h3>
+                <SkillDialog apps={apps} currentAppId={currentApp?.id} onSave={loadAllSkills} />
             </div>
 
             {/* List Section */}
@@ -135,55 +191,33 @@ export function SkillsSettings() {
                 <div className="py-12 text-center text-muted-foreground typo-caption">
                     Cargando skills...
                 </div>
-            ) : skills.length === 0 ? (
-                <div className="py-12 text-center border border-dashed border-border/80 rounded-xl bg-muted/2">
-                    <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
-                    <p className="typo-caption text-muted-foreground">No hay skills configurados en este ámbito.</p>
+            ) : globalSkills.length === 0 && projectsWithSkills.length === 0 ? (
+                <div className="py-12 text-center border border-dashed border-border/80 rounded-xl bg-muted/10">
+                    <p className="typo-caption text-muted-foreground">No hay ningún skill configurado. Haz clic en "Crear Skill" para empezar.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {skills.map(skill => (
-                        <div key={skill.path} className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-card hover:bg-muted/3 hover:border-primary/20 hover:shadow-sm transition-all duration-200 group">
-                            <div className="flex items-start gap-3.5 overflow-hidden">
-                                <div className="mt-0.5 bg-primary/8 p-2 rounded-lg shrink-0">
-                                    <BookOpen className="h-4.5 w-4.5 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h4 className="typo-label text-foreground font-medium truncate">{skill.name}</h4>
-                                    <p className="typo-mono-xs opacity-50 truncate mt-1">
-                                        {selectedScope === "global" ? `${skill.name}/` : `.claude/skills/${skill.name}/`}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex gap-1 ml-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 shrink-0">
-                                <SkillDialog scope={selectedScope} existingSkill={skill} onSave={loadSkills} />
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10 h-8 w-8 rounded-lg"
-                                    onClick={async () => {
-                                        if (confirm(`¿Eliminar el skill "${skill.name}"?`)) {
-                                            try {
-                                                if (selectedScope === "global") {
-                                                    await ipc.settings.deleteGlobalSkill({ filePath: skill.name });
-                                                } else {
-                                                    await ipc.app.deleteAppFile({ 
-                                                        appId: Number(selectedScope), 
-                                                        filePath: `.claude/skills/${skill.name}` 
-                                                    });
-                                                }
-                                                showSuccess("Skill eliminado");
-                                                loadSkills();
-                                            } catch(e) {
-                                                showError("Error al eliminar skill");
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
+                <div className="space-y-3">
+                    {/* Global Skill Group */}
+                    <SkillGroup 
+                        title="Global" 
+                        skills={globalSkills} 
+                        scope="global" 
+                        apps={apps} 
+                        onDelete={handleDelete} 
+                        onRefresh={loadAllSkills} 
+                    />
+
+                    {/* Local Skill Groups */}
+                    {projectsWithSkills.map(project => (
+                        <SkillGroup 
+                            key={project.app.id}
+                            title={`Proyecto: ${project.app.name}`} 
+                            skills={project.skills} 
+                            scope={String(project.app.id)} 
+                            apps={apps} 
+                            onDelete={handleDelete} 
+                            onRefresh={loadAllSkills} 
+                        />
                     ))}
                 </div>
             )}
@@ -191,29 +225,42 @@ export function SkillsSettings() {
     );
 }
 
-function SkillDialog({ scope, existingSkill, onSave }: { scope: string, existingSkill?: SkillData, onSave: () => void }) {
+interface SkillDialogProps {
+    apps: { id: number; name: string; path: string }[];
+    currentAppId?: number;
+    existingSkill?: SkillData;
+    existingScope?: string; // "global" or String(appId)
+    onSave: () => void;
+}
+
+function SkillDialog({ apps, currentAppId, existingSkill, existingScope, onSave }: SkillDialogProps) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(existingSkill?.name || "");
     const [content, setContent] = useState("");
+    const [scope, setScope] = useState<string>("global");
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (open && existingSkill) {
-            setIsLoading(true);
-            if (scope === "global") {
-                ipc.settings.readGlobalSkill({ filePath: existingSkill.path })
-                    .then(setContent)
-                    .catch(() => showError("No se pudo cargar el skill global"))
-                    .finally(() => setIsLoading(false));
+        if (open) {
+            if (existingSkill && existingScope) {
+                setName(existingSkill.name);
+                setScope(existingScope);
+                setIsLoading(true);
+                if (existingScope === "global") {
+                    ipc.settings.readGlobalSkill({ filePath: existingSkill.path })
+                        .then(setContent)
+                        .catch(() => showError("No se pudo cargar el skill global"))
+                        .finally(() => setIsLoading(false));
+                } else {
+                    ipc.app.readAppFile({ appId: Number(existingScope), filePath: existingSkill.path })
+                        .then(setContent)
+                        .catch(() => showError("No se pudo cargar el skill local"))
+                        .finally(() => setIsLoading(false));
+                }
             } else {
-                ipc.app.readAppFile({ appId: Number(scope), filePath: existingSkill.path })
-                    .then(setContent)
-                    .catch(() => showError("No se pudo cargar el skill local"))
-                    .finally(() => setIsLoading(false));
-            }
-        } else if (open && !existingSkill) {
-            setName("");
-            setContent(`---
+                setName("");
+                setScope("global");
+                setContent(`---
 name: nombre-del-skill
 description: Breve descripción de para qué sirve este skill
 allowed-tools:
@@ -224,8 +271,9 @@ allowed-tools:
 # Instrucciones
 
 Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
+            }
         }
-    }, [open, existingSkill, scope]);
+    }, [open, existingSkill, existingScope, currentAppId]);
 
     const handleSave = async () => {
         if (!name.trim() || !content.trim()) return;
@@ -239,7 +287,11 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 
                 // If renaming, delete old first
                 if (existingSkill && existingSkill.name !== skillSlug) {
-                    await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
+                    if (existingScope === "global") {
+                        await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
+                    } else {
+                        await ipc.app.deleteAppFile({ appId: Number(existingScope), filePath: `.claude/skills/${existingSkill.name}` }).catch(() => {});
+                    }
                 }
                 
                 await ipc.settings.editGlobalSkill({
@@ -252,7 +304,11 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 
                 // If renaming, delete old first
                 if (existingSkill && existingSkill.name !== skillSlug) {
-                    await ipc.app.deleteAppFile({ appId, filePath: `.claude/skills/${existingSkill.name}` }).catch(() => {});
+                    if (existingScope === "global") {
+                        await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
+                    } else {
+                        await ipc.app.deleteAppFile({ appId: Number(existingScope), filePath: `.claude/skills/${existingSkill.name}` }).catch(() => {});
+                    }
                 }
                 
                 await ipc.app.editAppFile({
@@ -294,18 +350,48 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 </DialogHeader>
                 
                 <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
-                    <div className="space-y-1.5">
-                        <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Nombre del Skill</label>
-                        <Input 
-                            placeholder="ej: mis-preferencias-de-codigo" 
-                            value={name} 
-                            onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} 
-                            disabled={isLoading}
-                            className="rounded-lg border-border"
-                        />
-                        <p className="typo-caption text-muted-foreground/75">Identificador único (letras, números y guiones).</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Nombre del Skill</label>
+                            <Input 
+                                placeholder="ej: mis-preferencias-de-codigo" 
+                                value={name} 
+                                onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))} 
+                                disabled={isLoading}
+                                className="rounded-lg border-border"
+                            />
+                            <p className="typo-caption text-muted-foreground/75">Letras, números y guiones.</p>
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                            <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Ámbito (Scope)</label>
+                            <Select 
+                                value={scope} 
+                                onValueChange={setScope}
+                                disabled={!!existingSkill || isLoading}
+                            >
+                                <SelectTrigger className="w-full h-9 rounded-lg border-border bg-background">
+                                    <SelectValue placeholder="Selecciona el ámbito" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="global">
+                                        Global
+                                    </SelectItem>
+                                    {apps.map(app => (
+                                        <SelectItem key={app.id} value={String(app.id)}>
+                                            Proyecto: {app.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="typo-caption text-muted-foreground/75">Dónde guardar el skill.</p>
+                        </div>
                     </div>
                     
+                    <div className="space-y-4">
+                        <AiStrategistAssistant type="skill" currentContent={content} onAccept={setContent} />
+                    </div>
+
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-[350px]">
                         <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Contenido (SKILL.md)</label>
                         <textarea 

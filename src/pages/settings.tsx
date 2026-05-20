@@ -951,6 +951,12 @@ export default function SettingsPage() {
             id="tools-skills"
             className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
           >
+            <h2 className="typo-section-title mb-2">
+              Skills
+            </h2>
+            <p className="typo-caption mb-8">
+              Instrucciones y guías de comportamiento personalizadas para el agente, aplicadas de forma global o específicas por proyecto.
+            </p>
             <SkillsSettings />
           </div>
         </div>

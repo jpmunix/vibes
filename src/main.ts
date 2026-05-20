@@ -484,6 +484,30 @@ const createWindow = () => {
     );
   }
 
+  mainWindow.webContents.on("render-process-gone", (event, details) => {
+    logger.error("Render process gone:", details);
+    if (details.reason === "crashed" || details.reason === "oom" || details.reason === "integrity-failure" || details.reason === "killed") {
+      try {
+        const choice = dialog.showMessageBoxSync({
+          type: "error",
+          title: "Vibes Renderer Crashed",
+          message: `El proceso de renderizado ha finalizado inesperadamente (${details.reason}, exit code: ${details.exitCode}).`,
+          detail: "Vibes intentará recargar la ventana para recuperar su estado.",
+          buttons: ["Recargar", "Salir"],
+          defaultId: 0,
+        });
+        if (choice === 0) {
+          mainWindow?.reload();
+        } else {
+          app.quit();
+        }
+      } catch (err) {
+        logger.error("Failed to show crash dialog:", err);
+        app.quit();
+      }
+    }
+  });
+
   // Show window is handled by the splash manager in onReady().
   // The splash closes first, then mainWindow.show() is called.
 

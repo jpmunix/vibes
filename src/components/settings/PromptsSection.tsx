@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { ipc } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { AiStrategistAssistant } from "./AiStrategistAssistant";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, Loader2, RotateCcw, Check, Plus, Trash2, Edit2 } from "@/components/ui/icons";
+import { ChevronRight, Loader2, Check, Plus, Trash2, Edit2 } from "@/components/ui/icons";
 import { toast } from "sonner";
 import type { PromptDto, PromptCategoryDto } from "@/ipc/types";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
@@ -146,6 +146,7 @@ function PromptEditor({
               </SelectContent>
             </Select>
           </div>
+          <AiStrategistAssistant type="prompt" currentContent={localContent} onAccept={setLocalContent} />
           <div className="rounded-xl border border-border overflow-hidden">
             <textarea
               ref={textareaRef}
@@ -388,7 +389,7 @@ export function PromptsSection() {
       ]);
       setCategories(cats);
       setPrompts(prmpts);
-    } catch (err) {
+    } catch {
       toast.error("Error al cargar prompts");
     } finally {
       if (isInitial) setLoading(false);
