@@ -77,6 +77,7 @@ export const GitStateSchema = z.object({
   mergeInProgress: z.boolean(),
   rebaseInProgress: z.boolean(),
   ahead: z.number().optional(),
+  hasRemote: z.boolean().optional(),
 });
 
 export const GitDiffFileSchema = z.object({

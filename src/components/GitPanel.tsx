@@ -354,7 +354,7 @@ function TreeNodeRow({
 }) {
     const isDir = !node.file;
     const isExpanded = expandedDirs.has(node.fullPath);
-    const isSelected = !isDir && selectedFile === node.file!.path;
+    const isSelected = selectedFile === node.fullPath;
     const sortedChildren = Object.values(node.children).sort((a, b) => {
         const aIsDir = !a.file;
         const bIsDir = !b.file;
@@ -367,14 +367,18 @@ function TreeNodeRow({
             <div
                 className={cn(
                     "group flex items-center gap-1.5 py-1 pr-2.5 cursor-pointer select-none transition-colors typo-body",
-                    isDir ? "hover:bg-muted/40" : isSelected
+                    isSelected
                         ? "bg-primary/10 border-l-[2px] border-primary"
                         : "hover:bg-muted/40 border-l-[2px] border-transparent",
                 )}
                 style={{ paddingLeft: `${4 + depth * 16}px` }}
                 onClick={() => {
-                    if (isDir) toggleDir(node.fullPath);
-                    else onSelectFile(node.file!.path);
+                    if (isDir) {
+                        toggleDir(node.fullPath);
+                        onSelectFile(node.fullPath);
+                    } else {
+                        onSelectFile(node.file!.path);
+                    }
                 }}
             >
                 {isDir ? (
@@ -382,7 +386,7 @@ function TreeNodeRow({
                         <ChevronRight
                             size={14}
                             className={cn("text-muted-foreground/60 shrink-0 transition-transform", isExpanded && "rotate-90")}
-                            onClick={(e) => { e.stopPropagation(); toggleDir(node.fullPath); }}
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleDir(node.fullPath); }}
                         />
                         <TreeCheckbox 
                             state={getDirCheckState(node, checkedFiles)} 
@@ -438,11 +442,17 @@ function FileContentViewer({
     fullContent,
     filepath,
     isLoading,
+    fileStatus,
+    isDirectory,
+    changedFilesCount,
 }: {
     diff: string;
     fullContent: string;
     filepath: string | null;
     isLoading: boolean;
+    fileStatus?: "added" | "modified" | "deleted" | "renamed";
+    isDirectory?: boolean;
+    changedFilesCount?: number;
 }) {
     const { isDarkMode } = useTheme();
     const lang = filepath ? getLanguageFromPath(filepath) : undefined;
@@ -452,13 +462,38 @@ function FileContentViewer({
 
     useEffect(() => {
         scrollRef.current?.scrollTo(0, 0);
-    }, [filepath]);
+        if (fileStatus === "added") {
+            setViewMode("full");
+        } else {
+            setViewMode("diff");
+        }
+    }, [filepath, fileStatus]);
 
     if (!filepath) {
         return (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
                 <Diff size={36} className="opacity-15" />
                 <p className="text-sm">Selecciona un archivo para ver diferencias</p>
+            </div>
+        );
+    }
+
+    if (isDirectory) {
+        const parts = filepath.split("/");
+        const fileName = parts.pop() || filepath;
+        return (
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-background/30 p-6 text-center select-none animate-in fade-in duration-200">
+                <div className="p-4 bg-muted/30 rounded-full border border-border/40 text-primary/70">
+                    <FolderOpen size={40} className="opacity-80" />
+                </div>
+                <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground truncate max-w-md">
+                        {fileName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground/60">
+                        Directorio con {changedFilesCount} archivo{changedFilesCount !== 1 ? "s" : ""} modificado{changedFilesCount !== 1 ? "s" : ""}
+                    </p>
+                </div>
             </div>
         );
     }
@@ -521,6 +556,11 @@ function FileContentViewer({
             // Flush remaining deleted at end
             if (pendingDeleted.length > 0) {
                 deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+            }
+        } else if (fileStatus === "added") {
+            const linesCount = fullContent.split("\n").length;
+            for (let l = 1; l <= linesCount; l++) {
+                addedLines.add(l);
             }
         }
 
@@ -602,9 +642,35 @@ function FileContentViewer({
     };
 
     const renderDiffOnly = () => {
-        if (!diff) return (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
-        );
+        if (!diff) {
+            if (fileStatus === "added" && fullContent) {
+                const lines = fullContent.split("\n");
+                const elements: React.ReactNode[] = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const lineNum = i + 1;
+                    elements.push(
+                        <div key={i} className="flex min-h-[20px] bg-green-950/40">
+                            <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                            </span>
+                            <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                                {lineNum}
+                            </span>
+                            <span className="px-3 flex-1 whitespace-pre text-green-400">
+                                {lines[i] || " "}
+                            </span>
+                        </div>
+                    );
+                }
+                return (
+                    <pre className="typo-mono-xs leading-5 min-w-max">
+                        {elements}
+                    </pre>
+                );
+            }
+            return (
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
+            );
+        }
 
         const lines = diff.split("\n");
         const elements: React.ReactNode[] = [];
@@ -890,6 +956,14 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     // ── select file → load diff + full content ──
     const handleSelectFile = useCallback(async (filepath: string) => {
         setSelectedFile(filepath);
+        const isDir = uncommittedFiles.some(f => f.path.startsWith(filepath + "/"));
+        if (isDir) {
+            setFileDiff("");
+            setFullContent("");
+            setIsLoadingDiff(false);
+            return;
+        }
+
         setIsLoadingDiff(true);
         setFileDiff("");
         setFullContent("");
@@ -906,7 +980,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         } finally {
             setIsLoadingDiff(false);
         }
-    }, [getFileDiff, appId]);
+    }, [getFileDiff, appId, uncommittedFiles]);
 
     const handleViewConflictDiff = useCallback(async (filepath: string) => {
         if (expandedConflictFile === filepath) { setExpandedConflictFile(null); return; }
@@ -1403,6 +1477,9 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 fullContent={fullContent}
                                 filepath={selectedFile}
                                 isLoading={isLoadingDiff}
+                                fileStatus={uncommittedFiles.find(f => f.path === selectedFile)?.status}
+                                isDirectory={selectedFile ? uncommittedFiles.some(f => f.path.startsWith(selectedFile + "/")) : false}
+                                changedFilesCount={selectedFile ? uncommittedFiles.filter(f => f.path.startsWith(selectedFile + "/")).length : 0}
                             />
                         </Panel>
                     </PanelGroup>
