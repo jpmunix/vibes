@@ -276,7 +276,7 @@ function registerChatStreamHandlers() {
         where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
           },
           app: true, // Include app information
         },
@@ -611,7 +611,7 @@ ${componentSnippet}
           where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
             },
             app: true,
           },
@@ -677,7 +677,7 @@ ${componentSnippet}
           where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
             },
             app: true,
           },

@@ -67,6 +67,7 @@ import { ChatInputControls } from "../ChatInputControls";
 import { VibesPermissionBanner } from "./VibesPermissionBanner";
 import { TodoList } from "./TodoList";
 import { VibesAskUser } from "./VibesAskUser";
+import { GitQuickCommit } from "./GitQuickCommit";
 import {
   selectedComponentsPreviewAtom,
   previewIframeRefAtom,
@@ -145,8 +146,18 @@ export function ChatInput({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isUndoLoading, setIsUndoLoading] = useState(false);
+  const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  // Reset quick commit dismissal state when streaming completes
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      setIsQuickCommitDismissed(false);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -686,6 +697,14 @@ export function ChatInput({
                     isRejecting={isRejecting}
                   />
                 )}
+
+              {appId && chatId && !isStreaming && !isQuickCommitDismissed && (
+                <GitQuickCommit
+                  appId={appId}
+                  chatId={chatId}
+                  onDismiss={() => setIsQuickCommitDismissed(true)}
+                />
+              )}
 
               <VisualEditingChangesDialog
                 iframeRef={

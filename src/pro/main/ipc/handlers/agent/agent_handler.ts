@@ -153,7 +153,7 @@ export async function handleAgentStream(
     where: eq(remoteSchema.chats.id, req.chatId),
     with: {
       messages: {
-        orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
       },
       app: true,
     },

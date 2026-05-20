@@ -71,7 +71,7 @@ export function registerChatHandlers() {
       where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
       with: {
         messages: {
-          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+          orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
         },
       },
     });
@@ -701,7 +701,7 @@ export function registerChatHandlers() {
       where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)),
       with: {
         messages: {
-          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+          orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
         },
       },
     });
@@ -1489,6 +1489,32 @@ export function registerChatHandlers() {
       agentId: task.agentId ?? null,
       error: task.error ?? null,
     };
+  });
+
+  createTypedHandler(chatContracts.addSyntheticMessage, async (_, { chatId, content, model }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // Verify chat belongs to user
+    const chat = await db.query.chats.findFirst({
+      where: and(
+        eq(remoteSchema.chats.id, chatId),
+        eq(remoteSchema.chats.userId, context.userId!)
+      )
+    });
+    if (!chat) throw new Error("Chat not found");
+
+    await db.insert(remoteSchema.messages).values({
+      userId: context.userId!,
+      chatId: chatId,
+      role: "assistant",
+      content: content,
+      model: model || null,
+      aiMessagesJson: null,
+      createdAt: new Date(),
+    });
+
+    logger.info(`Inserted synthetic message into chat ${chatId}`);
   });
 
   logger.debug("Registered chat IPC handlers");

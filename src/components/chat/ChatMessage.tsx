@@ -814,13 +814,25 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div
-                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
-                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
-                          >
-                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span className="typo-micro">{message.model}</span>
-                          </div>
+                            <div
+                              className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                              onClick={message.model === "vibes/git-assistant" ? () => {
+                                const theme = localStorage.getItem("theme");
+                                const intensity = localStorage.getItem("theme-intensity");
+                                ipc.system.openGitWindow({ 
+                                  appId: appId!, 
+                                  theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined, 
+                                  themeIntensity: intensity ? parseFloat(intensity) : undefined 
+                                });
+                              } : (isStreaming && isLastMessage ? undefined : openDebugMessage)}
+                            >
+                              {message.model === "vibes/git-assistant" ? (
+                                <GitCommit className="h-4 w-4 flex-shrink-0 text-primary" />
+                              ) : (
+                                <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                              )}
+                              <span className="typo-micro">{message.model}</span>
+                            </div>
                         )}
                       </>
                     )}
@@ -881,13 +893,25 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div
-                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
-                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
-                          >
-                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span className="typo-micro">{message.model}</span>
-                          </div>
+                            <div
+                              className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                              onClick={message.model === "vibes/git-assistant" ? () => {
+                                const theme = localStorage.getItem("theme");
+                                const intensity = localStorage.getItem("theme-intensity");
+                                ipc.system.openGitWindow({ 
+                                  appId: appId!, 
+                                  theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined, 
+                                  themeIntensity: intensity ? parseFloat(intensity) : undefined 
+                                });
+                              } : (isStreaming && isLastMessage ? undefined : openDebugMessage)}
+                            >
+                              {message.model === "vibes/git-assistant" ? (
+                                <GitCommit className="h-4 w-4 flex-shrink-0 text-primary" />
+                              ) : (
+                                <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                              )}
+                              <span className="typo-micro">{message.model}</span>
+                            </div>
                         )}
                       </>
                     )}

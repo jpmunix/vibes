@@ -111,7 +111,7 @@ export async function generateAutoCommitMessage({
     generated = generated.replace(/^["'`]+|["'`]+$/g, "");
 
     // Sanity check: if the generated message is too long or empty, use fallback
-    if (!generated || generated.length > 120) {
+    if (!generated || generated.length > 1500) {
       return fallbackMessage;
     }
 

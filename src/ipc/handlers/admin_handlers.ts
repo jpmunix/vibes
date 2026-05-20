@@ -474,7 +474,7 @@ export function registerAdminHandlers(): void {
             where: eq(remoteSchema.chats.id, input.chatId),
             with: {
                 messages: {
-                    orderBy: (messages: any, ops: any) => [ops.asc(messages.createdAt)],
+                    orderBy: (messages: any, ops: any) => [ops.asc(messages.createdAt), ops.asc(messages.id)],
                 },
             },
         });

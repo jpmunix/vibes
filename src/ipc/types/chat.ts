@@ -404,6 +404,16 @@ export const chatContracts = {
     output: z.void(),
   }),
 
+  addSyntheticMessage: defineContract({
+    channel: "add-synthetic-message",
+    input: z.object({
+      chatId: z.number(),
+      content: z.string(),
+      model: z.string().optional(),
+    }),
+    output: z.void(),
+  }),
+
   pinChat: defineContract({
     channel: "pin-chat",
     input: z.object({ chatId: z.number(), pinned: z.boolean() }),

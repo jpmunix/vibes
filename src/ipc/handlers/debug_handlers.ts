@@ -139,7 +139,7 @@ export function registerDebugHandlers() {
         where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
           },
         },
       });
