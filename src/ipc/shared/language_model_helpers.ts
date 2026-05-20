@@ -119,6 +119,13 @@ export async function getLanguageModels({
     return [];
   }
 
+  const settings = readSettings();
+  const disabledProviders = settings.disabledProviders ?? [];
+  if (disabledProviders.includes(providerId)) {
+    logger.info(`Skipping model loading for disabled provider: ${providerId}`);
+    return [];
+  }
+
   // Get models for cloud providers
   let hardcodedModels: LanguageModel[] = [];
   if (provider.type === "cloud") {

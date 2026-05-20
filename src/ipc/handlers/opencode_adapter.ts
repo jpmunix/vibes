@@ -1130,6 +1130,82 @@ export async function updateOpenCodeMcpConfig(servers: McpServer[], appPath?: st
 }
 
 /**
+ * Ensure a `.codegraph/` entry exists in the project's `.gitignore`.
+ * Does nothing if the entry already exists or the file doesn't exist.
+ */
+function ensureGitignoreEntry(projectPath: string, entry: string): void {
+    const fs = require("fs");
+    const gitignorePath = path.join(projectPath, ".gitignore");
+    try {
+        if (fs.existsSync(gitignorePath)) {
+            const content = fs.readFileSync(gitignorePath, "utf-8");
+            if (!content.includes(entry.replace("/", ""))) {
+                fs.appendFileSync(gitignorePath, `\n# CodeGraph index\n${entry}\n`);
+                logger.info(`[CodeGraph] Added ${entry} to ${gitignorePath}`);
+            }
+        }
+    } catch (e: any) {
+        logger.warn(`[CodeGraph] Failed to update .gitignore: ${e.message}`);
+    }
+}
+
+/**
+ * Transparently auto-initialize CodeGraph for the active project.
+ *
+ * Checks whether a CodeGraph MCP server is enabled among the given servers.
+ * If so, verifies that `<appPath>/.codegraph/codegraph.db` exists.
+ * When the index is missing, runs `codegraph init -i <appPath>` in the background
+ * (timeout 90s) and adds `.codegraph/` to the project's `.gitignore`.
+ *
+ * This function is intentionally fail-safe: if `codegraph` is not installed or
+ * the init command fails for any reason, it logs a warning and returns without
+ * blocking the agent stream.
+ */
+async function ensureCodeGraphInit(appPath: string, enabledServers: any[]): Promise<void> {
+    const hasCodeGraph = enabledServers.some(
+        (s: any) => s.name?.toLowerCase() === "codegraph" && (s.enabled === true || s.enabled === 1)
+    );
+    if (!hasCodeGraph) return;
+
+    const fs = require("fs");
+    const dbPath = path.join(appPath, ".codegraph", "codegraph.db");
+
+    if (fs.existsSync(dbPath)) {
+        logger.info(`[CodeGraph] Already initialized at ${appPath}`);
+        return;
+    }
+
+    logger.info(`[CodeGraph] Initializing index for ${appPath}...`);
+    try {
+        const { execFile } = require("child_process");
+        await new Promise<void>((resolve, reject) => {
+            execFile(
+                "codegraph",
+                ["init", "-i", appPath],
+                { timeout: 90_000, env: process.env },
+                (err: any, stdout: string, stderr: string) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        const out = (stdout || stderr || "").trim();
+                        logger.info(`[CodeGraph] Auto-initialized for ${appPath}: ${out}`);
+                        resolve();
+                    }
+                },
+            );
+        });
+        // Add .codegraph/ to the project's .gitignore so it doesn't get committed
+        ensureGitignoreEntry(appPath, ".codegraph/");
+    } catch (err: any) {
+        if (err.code === "ENOENT") {
+            logger.warn(`[CodeGraph] 'codegraph' binary not found in PATH — skipping auto-init`);
+        } else {
+            logger.warn(`[CodeGraph] Auto-init failed (non-fatal): ${err.message}`);
+        }
+    }
+}
+
+/**
  * Build OpenCode MCP config from user-configured servers.
  * Supports generic {{PROJECT_PATH}} placeholder in stdio server args,
  * and injects PROJECT_PATH env var into all stdio servers.
@@ -1484,7 +1560,9 @@ async function getOpenCodeClient(appPath: string) {
         return { client: clientInstance, opencode: opencodeInstance };
     }
 
-    logger.info("[OpenCode] Starting server + client...");
+    // Set OpenCode config directory to Vibes' custom directory to avoid conflicts
+    // with any system-wide opencode installation.
+    process.env.OPENCODE_CONFIG_DIR = path.join(app.getPath("userData"), "opencode-config");
 
     // ─── Fix PATH for Electron ─────────────────────────────
     // Electron doesn't inherit the terminal's NVM-managed PATH.
@@ -1572,7 +1650,7 @@ async function getOpenCodeClient(appPath: string) {
 
             if (morphEnabled) {
                 deployMorphTools();
-                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ~/.config/opencode/tools/`);
+                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ${path.join(app.getPath("userData"), "opencode-config", "tools")}`);
             } else {
                 removeMorphTools();
                 logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
@@ -2220,6 +2298,10 @@ export async function handleOpenCodeStream(
                 createdAt: s.createdAt,
                 updatedAt: s.updatedAt,
             }));
+
+            // Auto-initialize CodeGraph if enabled and not yet initialized for this project
+            await ensureCodeGraphInit(projectDir, mappedServers);
+
             await updateOpenCodeMcpConfig(mappedServers, projectDir);
         }
     } catch (e: any) {

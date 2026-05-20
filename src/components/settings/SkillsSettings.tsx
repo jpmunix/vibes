@@ -23,10 +23,13 @@ import {
 } from "@/components/ui/select";
 import { showError, showSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 interface SkillData {
     name: string;
     path: string;
+    enabled: boolean;
 }
 
 interface SkillGroupProps {
@@ -35,6 +38,7 @@ interface SkillGroupProps {
     scope: string;
     apps: { id: number; name: string; path: string }[];
     onDelete: (skill: SkillData, scope: string) => void;
+    onToggleEnabled: (skill: SkillData, scope: string, checked: boolean) => void;
     onRefresh: () => void;
 }
 
@@ -44,6 +48,7 @@ function SkillGroup({
     scope,
     apps,
     onDelete,
+    onToggleEnabled,
     onRefresh
 }: SkillGroupProps) {
     const [expanded, setExpanded] = useState(false);
@@ -74,23 +79,42 @@ function SkillGroup({
                         <p className="text-xs text-muted-foreground italic py-2 pl-2">No hay skills creados.</p>
                     ) : (
                         skills.map(skill => (
-                            <div key={skill.path} className="flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 group">
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="typo-label text-foreground font-medium truncate">{skill.name}</h4>
-                                    <p className="typo-mono-xs text-muted-foreground/70 mt-1 truncate">
-                                        {scope === "global" ? `${skill.name}/` : `.claude/skills/${skill.name}/`}
-                                    </p>
+                            <div key={skill.path} className={cn("flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 group gap-4", !skill.enabled && "opacity-60")}>
+                                <div className="flex-1 flex items-center gap-3 min-w-0">
+                                    <Switch
+                                        checked={skill.enabled}
+                                        onCheckedChange={(checked) => onToggleEnabled(skill, scope, checked)}
+                                    />
+                                    <div className="min-w-0">
+                                        <h4 className="typo-label text-foreground font-medium truncate flex items-center gap-2">
+                                            {skill.name}
+                                            {!skill.enabled && (
+                                                <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-normal">
+                                                    DESACTIVADO
+                                                </span>
+                                            )}
+                                        </h4>
+                                        <p className="typo-mono-xs text-muted-foreground/70 mt-1 truncate">
+                                            {scope === "global" ? `${skill.name}/` : `.claude/skills/${skill.name}/`}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 shrink-0 ml-4">
                                     <SkillDialog apps={apps} existingSkill={skill} existingScope={scope} onSave={onRefresh} />
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10 h-8 w-8 rounded-lg"
-                                        onClick={() => onDelete(skill, scope)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <DeleteConfirmationDialog
+                                        itemName={skill.name}
+                                        itemType="Skill"
+                                        onDelete={() => onDelete(skill, scope)}
+                                        trigger={
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10 h-8 w-8 rounded-lg"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        }
+                                    />
                                 </div>
                             </div>
                         ))
@@ -131,11 +155,12 @@ export function SkillsSettings() {
             await Promise.all(mappedApps.map(async (app) => {
                 try {
                     const appData = await ipc.app.getApp(app.id);
-                    const skillFiles = (appData.files || []).filter(f => f.startsWith(".claude/skills/") && f.endsWith("/SKILL.md"));
+                    const skillFiles = (appData.files || []).filter(f => f.startsWith(".claude/skills/") && (f.endsWith("/SKILL.md") || f.endsWith("/SKILL.disabled")));
                     const loadedSkills = skillFiles.map(path => {
                         const parts = path.split("/");
                         const name = parts[parts.length - 2];
-                        return { name, path };
+                        const enabled = path.endsWith("/SKILL.md");
+                        return { name, path, enabled };
                     });
                     if (loadedSkills.length > 0) {
                         projectsWithSkillsList.push({
@@ -161,21 +186,42 @@ export function SkillsSettings() {
     }, []);
 
     const handleDelete = async (skill: SkillData, scope: string) => {
-        if (confirm(`¿Eliminar el skill "${skill.name}"?`)) {
-            try {
-                if (scope === "global") {
-                    await ipc.settings.deleteGlobalSkill({ filePath: skill.name });
-                } else {
-                    await ipc.app.deleteAppFile({ 
-                        appId: Number(scope), 
-                        filePath: `.claude/skills/${skill.name}` 
-                    });
-                }
-                showSuccess("Skill eliminado");
-                loadAllSkills();
-            } catch {
-                showError("Error al eliminar skill");
+        try {
+            if (scope === "global") {
+                await ipc.settings.deleteGlobalSkill({ filePath: skill.name });
+            } else {
+                await ipc.app.deleteAppFile({ 
+                    appId: Number(scope), 
+                    filePath: `.claude/skills/${skill.name}` 
+                });
             }
+            showSuccess("Skill eliminado");
+            loadAllSkills();
+        } catch {
+            showError("Error al eliminar skill");
+        }
+    };
+
+    const handleToggleEnabled = async (skill: SkillData, scope: string, checked: boolean) => {
+        try {
+            const oldName = checked ? "SKILL.disabled" : "SKILL.md";
+            const newName = checked ? "SKILL.md" : "SKILL.disabled";
+            if (scope === "global") {
+                await ipc.settings.renameGlobalSkill({
+                    oldPath: `${skill.name}/${oldName}`,
+                    newPath: `${skill.name}/${newName}`
+                });
+            } else {
+                await ipc.app.renameAppFile({
+                    appId: Number(scope),
+                    oldPath: `.claude/skills/${skill.name}/${oldName}`,
+                    newPath: `.claude/skills/${skill.name}/${newName}`
+                });
+            }
+            showSuccess(checked ? "Skill activado" : "Skill desactivado");
+            loadAllSkills();
+        } catch {
+            showError("Error al cambiar estado del skill");
         }
     };
 
@@ -204,6 +250,7 @@ export function SkillsSettings() {
                         scope="global" 
                         apps={apps} 
                         onDelete={handleDelete} 
+                        onToggleEnabled={handleToggleEnabled}
                         onRefresh={loadAllSkills} 
                     />
 
@@ -216,6 +263,7 @@ export function SkillsSettings() {
                             scope={String(project.app.id)} 
                             apps={apps} 
                             onDelete={handleDelete} 
+                            onToggleEnabled={handleToggleEnabled}
                             onRefresh={loadAllSkills} 
                         />
                     ))}
@@ -281,12 +329,14 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         setIsLoading(true);
         try {
             const skillSlug = name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+            const isEnabled = existingSkill ? existingSkill.enabled : true;
+            const ext = isEnabled ? "SKILL.md" : "SKILL.disabled";
             
             if (scope === "global") {
-                const filePath = `${skillSlug}/SKILL.md`;
+                const filePath = `${skillSlug}/${ext}`;
                 
-                // If renaming, delete old first
-                if (existingSkill && existingSkill.name !== skillSlug) {
+                // If renaming or changing scope, delete old first
+                if (existingSkill && (existingSkill.name !== skillSlug || existingScope !== scope)) {
                     if (existingScope === "global") {
                         await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
                     } else {
@@ -300,10 +350,10 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 });
             } else {
                 const appId = Number(scope);
-                const filePath = `.claude/skills/${skillSlug}/SKILL.md`;
+                const filePath = `.claude/skills/${skillSlug}/${ext}`;
                 
-                // If renaming, delete old first
-                if (existingSkill && existingSkill.name !== skillSlug) {
+                // If renaming or changing scope, delete old first
+                if (existingSkill && (existingSkill.name !== skillSlug || existingScope !== scope)) {
                     if (existingScope === "global") {
                         await ipc.settings.deleteGlobalSkill({ filePath: existingSkill.name }).catch(() => {});
                     } else {

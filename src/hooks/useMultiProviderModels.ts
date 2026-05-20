@@ -27,6 +27,8 @@ export interface MultiProviderModel extends LanguageModel {
 export function useMultiProviderModels() {
   const { settings } = useSettings();
   const customProviders = settings?.customProviders ?? [];
+  const disabledProviders = settings?.disabledProviders ?? [];
+  const ollamaEnabled = settings?.ollamaEnabled !== false;
 
   // 1. OpenRouter models
   const {
@@ -35,12 +37,15 @@ export function useMultiProviderModels() {
   } = useQuery<LanguageModel[]>({
     queryKey: queryKeys.languageModels.forProvider({ providerId: "openrouter" }),
     queryFn: () => ipc.languageModel.getModels({ providerId: "openrouter" }),
+    enabled: !disabledProviders.includes("openrouter"),
   });
 
   // 2. Custom provider models (one query per custom provider)
   const customProviderIds = useMemo(
-    () => customProviders.map((cp: any) => cp.id as string),
-    [customProviders],
+    () => customProviders
+      .map((cp: any) => cp.id as string)
+      .filter((id) => !disabledProviders.includes(id)),
+    [customProviders, disabledProviders],
   );
 
   const {
@@ -74,10 +79,8 @@ export function useMultiProviderModels() {
     queryFn: () => ipc.languageModel.listOllamaModels(),
     refetchInterval: 30_000,
     retry: false,
+    enabled: ollamaEnabled,
   });
-
-  const disabledProviders = settings?.disabledProviders ?? [];
-  const ollamaEnabled = settings?.ollamaEnabled !== false;
 
   const models = useMemo<MultiProviderModel[]>(() => {
     const result: MultiProviderModel[] = [];

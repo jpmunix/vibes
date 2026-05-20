@@ -1,18 +1,17 @@
-import { createTypedHandler, HandlerContext } from "./base";
+import { createTypedHandler } from "./base";
 import { settingsContracts } from "../types/settings";
 import { writeSettings, readSettings, resetSettingsCache } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import log from "electron-log";
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 import { safeSend } from "../utils/safe_sender";
 import { preferencesCache } from "../../main/preferences-cache";
 import type { UserSettings } from "../../lib/schemas";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import os from "node:os";
 
 const logger = log.scope("settings_handlers");
 
@@ -36,7 +35,7 @@ const LOCAL_DISK_ONLY_KEYS = new Set([
  * Must be stripped from remote settings during merge to prevent stale Bunny data
  * from re-introducing them after the local migration has cleaned them up.
  */
-const V10_DEAD_KEYS = [
+const _V10_DEAD_KEYS = [
   'turboEditModel', 'todoAnalysisModel', 'debateModel',
   'summaryModel', 'appTitleGenerationModel',
   'memoriesExtractionModel', 'hideLocalAgentNewChatToast',
@@ -271,7 +270,7 @@ export function registerSettingsHandlers() {
   });
 
   // ── Global Skills Handlers ───────────────────────────────────────────
-  const getGlobalSkillsDir = () => path.join(os.homedir(), ".config", "opencode", "skills");
+  const getGlobalSkillsDir = () => path.join(app.getPath("userData"), "opencode-config", "skills");
 
   const isSafePath = (targetPath: string) => {
     const relative = path.relative(getGlobalSkillsDir(), targetPath);
@@ -285,16 +284,24 @@ export function registerSettingsHandlers() {
     }
     
     try {
-      const skills: { name: string; path: string }[] = [];
+      const skills: { name: string; path: string; enabled: boolean }[] = [];
       const entries = await fs.readdir(baseDir, { withFileTypes: true });
       
       for (const entry of entries) {
         if (entry.isDirectory()) {
-          const skillPath = path.join(baseDir, entry.name, "SKILL.md");
-          if (existsSync(skillPath)) {
+          const enabledPath = path.join(baseDir, entry.name, "SKILL.md");
+          const disabledPath = path.join(baseDir, entry.name, "SKILL.disabled");
+          if (existsSync(enabledPath)) {
             skills.push({
               name: entry.name,
               path: `${entry.name}/SKILL.md`,
+              enabled: true,
+            });
+          } else if (existsSync(disabledPath)) {
+            skills.push({
+              name: entry.name,
+              path: `${entry.name}/SKILL.disabled`,
+              enabled: false,
             });
           }
         }
@@ -303,6 +310,23 @@ export function registerSettingsHandlers() {
     } catch (err: any) {
       logger.error("Failed to list global skills:", err);
       return [];
+    }
+  });
+
+  createTypedHandler(settingsContracts.renameGlobalSkill, async (event, { oldPath, newPath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullOld = path.join(baseDir, oldPath);
+    const fullNew = path.join(baseDir, newPath);
+    
+    if (!isSafePath(fullOld) || !isSafePath(fullNew)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      await fs.rename(fullOld, fullNew);
+    } catch (err: any) {
+      logger.error("Failed to rename global skill:", err);
+      throw err;
     }
   });
 

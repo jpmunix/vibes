@@ -41,8 +41,18 @@ export const settingsContracts = {
       z.object({
         name: z.string(),
         path: z.string(),
+        enabled: z.boolean(),
       })
     ),
+  }),
+
+  /**
+   * Rename/move a global skill file.
+   */
+  renameGlobalSkill: defineContract({
+    channel: "rename-global-skill",
+    input: z.object({ oldPath: z.string(), newPath: z.string() }),
+    output: z.void(),
   }),
 
   /**
