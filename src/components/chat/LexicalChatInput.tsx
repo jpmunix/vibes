@@ -4,6 +4,16 @@ import {
   $createParagraphNode,
   $createTextNode,
   EditorState,
+  KEY_ENTER_COMMAND,
+  KEY_ARROW_DOWN_COMMAND,
+  INSERT_LINE_BREAK_COMMAND,
+  COMMAND_PRIORITY_HIGH,
+  $getSelection,
+  $isRangeSelection,
+  $isTextNode,
+  $isLineBreakNode,
+  $isElementNode,
+  type LexicalNode,
 } from "lexical";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
@@ -19,7 +29,6 @@ import {
   type BeautifulMentionsTheme,
   type BeautifulMentionsMenuItemProps,
 } from "lexical-beautiful-mentions";
-import { KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH } from "lexical";
 import { usePrompts } from "@/hooks/usePrompts";
 import { forwardRef } from "react";
 import { useAtomValue } from "jotai";
@@ -45,7 +54,7 @@ const CustomMenuItem = forwardRef<
   const isArtifact = item.data?.type === "artifact";
   const label = isPrompt ? "Prompt" : isArtifact ? "Plan/Artifact" : "Archivo";
   const value = (item as any)?.value;
-  
+
   return (
     <li
       className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors ${
@@ -84,7 +93,10 @@ function CustomMenu({ loading: _loading, ...props }: any) {
       }}
       data-mentions-menu="true"
     >
-      <div className="flex items-center border-b border-border px-3" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center border-b border-border px-3"
+        onClick={(e) => e.stopPropagation()}
+      >
         <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
         <span className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 border-none text-muted-foreground opacity-70">
           Escribe para buscar...
@@ -98,8 +110,17 @@ function CustomMenu({ loading: _loading, ...props }: any) {
   );
 }
 
-// Plugin to handle Enter key
-function EnterKeyPlugin({
+// Helper to get all leaf nodes of a node recursively
+function getLeafNodes(node: LexicalNode): LexicalNode[] {
+  if ($isElementNode(node)) {
+    const children = node.getChildren();
+    return children.flatMap(getLeafNodes);
+  }
+  return [node];
+}
+
+// Plugin to handle keyboard shortcuts
+function KeyboardHandlersPlugin({
   onSubmit,
   disableSendButton,
 }: {
@@ -109,7 +130,7 @@ function EnterKeyPlugin({
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    return editor.registerCommand(
+    const unregisterEnter = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event: KeyboardEvent) => {
         // Check if mentions menu is open by looking for our custom menu element
@@ -124,6 +145,13 @@ function EnterKeyPlugin({
           return false;
         }
 
+        // Support Ctrl+Enter (or Cmd+Enter) for line break
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
+          return true;
+        }
+
         if (!event.shiftKey && !disableSendButton) {
           event.preventDefault();
           onSubmit();
@@ -133,6 +161,62 @@ function EnterKeyPlugin({
       },
       COMMAND_PRIORITY_HIGH, // Use higher priority to catch before mentions plugin
     );
+
+    const unregisterArrowDown = editor.registerCommand(
+      KEY_ARROW_DOWN_COMMAND,
+      (event: KeyboardEvent) => {
+        const mentionsMenu = document.querySelector(
+          '[data-mentions-menu="true"]',
+        );
+        const hasVisibleItems =
+          mentionsMenu && mentionsMenu.children.length > 0;
+
+        if (hasVisibleItems) {
+          return false;
+        }
+
+        let isLastLine = false;
+        editor.getEditorState().read(() => {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection) && selection.isCollapsed()) {
+            const anchor = selection.anchor;
+            const anchorNode = anchor.getNode();
+            const root = $getRoot();
+            const leaves = getLeafNodes(root);
+
+            let cursorOffset = 0;
+            for (const leaf of leaves) {
+              if (leaf.getKey() === anchorNode.getKey()) {
+                cursorOffset += anchor.offset;
+                break;
+              }
+              if ($isLineBreakNode(leaf)) {
+                cursorOffset += 1;
+              } else {
+                cursorOffset += leaf.getTextContent().length;
+              }
+            }
+
+            const textContent = root.getTextContent();
+            const textAfter = textContent.slice(cursorOffset);
+            isLastLine = !textAfter.includes("\n");
+          }
+        });
+
+        if (isLastLine) {
+          event.preventDefault();
+          editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
+          return true;
+        }
+        return false;
+      },
+      COMMAND_PRIORITY_HIGH,
+    );
+
+    return () => {
+      unregisterEnter();
+      unregisterArrowDown();
+    };
   }, [editor, onSubmit, disableSendButton]);
 
   return null;
@@ -394,7 +478,7 @@ export function LexicalChatInput({
         />
         <OnChangePlugin onChange={handleEditorChange} />
         <HistoryPlugin />
-        <EnterKeyPlugin
+        <KeyboardHandlersPlugin
           onSubmit={handleSubmit}
           disableSendButton={disableSendButton}
         />
