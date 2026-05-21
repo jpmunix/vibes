@@ -327,7 +327,10 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
-            chatMode: chatModeOverride || settings?.selectedChatMode || "agent",
+            chatMode: (() => {
+              const cachedChat = queryClient.getQueryData<any>(["chat", chatId]);
+              return chatModeOverride || cachedChat?.chatMode || settings?.selectedChatMode || "agent";
+            })(),
           },
           {
             onChunk: ({ messages: updatedMessages }) => {

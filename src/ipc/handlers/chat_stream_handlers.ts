@@ -292,7 +292,7 @@ function registerChatStreamHandlers() {
         .from(remoteSchema.customAgents)
         .where(eq(remoteSchema.customAgents.userId, currentUserId as string));
 
-      let effectiveChatMode: string = chat.chatMode || settings.selectedChatMode || "agent";
+      let effectiveChatMode: string = req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
 
       // Detect slash command at the beginning of the prompt
       const commandMatch = req.prompt.trim().match(/^\/(\w+)(?:\s+(.*))?$/s);
@@ -765,7 +765,7 @@ ${componentSnippet}
 
         // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
-        const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
+        const currentChatMode = effectiveChatMode;
         const isAgentMode = currentChatMode === "agent" ||
           currentChatMode === "ask" ||
           currentChatMode === "plan" ||
@@ -1630,6 +1630,8 @@ This conversation includes one or more image attachments. When the user uploads 
               pkgJsonHashBefore = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
             }
           } catch { /* ignore — if we can't read it, we skip the optimization */ }
+
+          logger.info(`[ChatStream] Invoking handleOpenCodeStream. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`);
 
           const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
             event,

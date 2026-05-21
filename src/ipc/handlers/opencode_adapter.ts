@@ -2870,21 +2870,61 @@ export async function handleOpenCodeStream(
         }
 
         // Fire the prompt (non-blocking)
-        // NOTE: If customPromptMode is "replace", we pass the customSystemPrompt
-        // directly in the `system` parameter to override OpenCode's internal system prompt.
+        const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
+        const useAgentName = effectiveAgent;
+
+        // Determine permission config based on the base agent
+        let permissionConfig: any;
+        if (effectiveAgent === "plan") {
+            permissionConfig = {
+                edit: "allow",
+                bash: { "*": "deny" }
+            };
+        } else if (effectiveAgent === "explore") {
+            permissionConfig = {
+                edit: "deny",
+                bash: "deny",
+                webfetch: "deny",
+                websearch: "deny"
+            };
+        } else {
+            permissionConfig = buildPermissionConfig(settings);
+        }
+
+        logger.info(`${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}`);
+        try {
+            await client.config.update({
+                body: {
+                    agent: {
+                        [effectiveAgent]: {
+                            prompt: hasReplacePrompt ? options.customSystemPrompt : null,
+                            permission: permissionConfig,
+                            reasoningEffort: settings.reasoningEffort || "medium",
+                            textVerbosity: settings.textVerbosity || "low",
+                        }
+                    }
+                } as any
+            });
+            if (hasReplacePrompt) {
+                logger.info(`${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`);
+            } else {
+                logger.info(`${LP} [CustomAgent] Successfully cleared custom system prompt override for agent '${effectiveAgent}'`);
+            }
+        } catch (err: any) {
+            logger.warn(`${LP} [CustomAgent] Failed to update agent config in OpenCode: ${err.message}`);
+        }
+
         const promptBody: any = {
             model: {
                 providerID,
                 modelID,
             },
-            agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
+            agent: useAgentName !== "build" ? useAgentName : undefined,
             parts: promptParts,
+            ...(options.customSystemPrompt && options.customPromptMode === "replace" ? {
+                system: options.customSystemPrompt
+            } : {})
         };
-
-        if (options.customPromptMode === "replace" && options.customSystemPrompt) {
-            promptBody.system = options.customSystemPrompt;
-            logger.info(`${LP} Overriding internal system prompt with custom agent prompt (length: ${options.customSystemPrompt.length})`);
-        }
 
         await client.session.promptAsync({
             path: { id: sessionId },
