@@ -9,6 +9,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { ChevronRight, Loader2, MessagesSquare, FileText, Trash2 } from "@/components/ui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
@@ -143,7 +144,7 @@ export default function WorkspacePage() {
               value: String(app.id),
               label: app.name,
               description: app.createdAt
-                ? formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })
+                ? formatDistanceToNow(safeDate(app.createdAt), { addSuffix: true, locale: es })
                 : undefined,
             }))}
             triggerVariant="inline"
@@ -166,7 +167,7 @@ export default function WorkspacePage() {
                     value: String(chat.id),
                     label: chat.title || "Sin título",
                     description: chat.createdAt
-                      ? formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true, locale: es })
+                      ? formatDistanceToNow(safeDate(chat.createdAt), { addSuffix: true, locale: es })
                       : undefined,
                     leftIcon: chatStreaming ? <Loader2 size={14} className="animate-spin text-primary" /> : undefined,
                   };

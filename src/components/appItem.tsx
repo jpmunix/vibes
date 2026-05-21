@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 import { Pin, ExternalLink, AlertTriangle, CloudDownload, Loader2, Archive } from "@/components/ui/icons";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,7 @@ export function AppItem({
             <span
               className={`typo-micro mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "opacity-90" : "opacity-50"}`}
             >
-              {formatDistanceToNow(new Date(app.createdAt), {
+              {formatDistanceToNow(safeDate(app.createdAt), {
                 addSuffix: true,
                 locale: es,
               })}

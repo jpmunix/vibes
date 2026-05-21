@@ -434,6 +434,10 @@ export function LexicalChatInput({
         const root = $getRoot();
         let textContent = root.getTextContent();
 
+        // Strip zero-width characters injected by Beautiful Mentions around mention nodes.
+        // These invisible chars break slash command detection on the backend.
+        textContent = textContent.replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
+
         // Transform @AppName mentions to @app:AppName format
         // This regex matches @AppName where AppName is one of our actual app names
 

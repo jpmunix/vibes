@@ -266,6 +266,14 @@ export async function initializeRemoteSchema(): Promise<void> {
 
     // Add chat_mode column to chats if missing (added v8.7)
     await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});
+
+    // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
+    // Bug: some records had created_at stored as Date.now() (millis) instead of
+    // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.
+    for (const table of ['chats', 'messages', 'chat_artifacts']) {
+      await client.execute(`UPDATE ${table} SET created_at = created_at / 1000 WHERE created_at > 1000000000000`).catch(() => {});
+    }
+    logger.info('Auto-heal: normalized any millisecond timestamps to seconds');
   } catch (e) {
     logger.warn("schema migration (non-fatal):", e);
   }

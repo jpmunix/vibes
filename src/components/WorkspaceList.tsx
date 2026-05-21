@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 import {
   ChevronRight,
   ChevronDown,
@@ -1209,7 +1210,7 @@ const AppChats = memo(function AppChats({
                             onRemove={handleRemoveLabel}
                           />
                           <span className="typo-micro opacity-60 mt-0.5">
-                            {formatDistanceToNow(new Date(chat.createdAt), {
+                            {formatDistanceToNow(safeDate(chat.createdAt), {
                               addSuffix: false,
                               locale: es,
                             })}
@@ -1812,7 +1813,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               <span
                 className={`typo-micro mt-0.5 ${isActive ? "opacity-90 text-primary" : "opacity-50 text-foreground"}`}
               >
-                {formatDistanceToNow(new Date(app.createdAt), {
+                {formatDistanceToNow(safeDate(app.createdAt), {
                   addSuffix: true,
                   locale: es,
                 })}
@@ -2420,7 +2421,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           />
                           <span className="text-xs text-muted-foreground/55 mt-1.5">
                             Archivado ·{" "}
-                            {formatDistanceToNow(new Date(chat.createdAt), {
+                            {formatDistanceToNow(safeDate(chat.createdAt), {
                               addSuffix: true,
                               locale: es,
                             })}
@@ -2539,7 +2540,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               ? `Chat #${previewPlan.chatId}`
                               : "Sin chat asociado"}
                           {previewPlan?.createdAt
-                            ? ` · ${formatDistanceToNow(new Date(previewPlan.createdAt), { addSuffix: true, locale: es })}`
+                            ? ` · ${formatDistanceToNow(safeDate(previewPlan.createdAt), { addSuffix: true, locale: es })}`
                             : ""}
                         </span>
                       </div>
@@ -2676,7 +2677,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               {plan.createdAt ? (
                                 <span className="text-[11px] text-muted-foreground/40 mt-0.5">
                                   {formatDistanceToNow(
-                                    new Date(plan.createdAt),
+                                    safeDate(plan.createdAt),
                                     { addSuffix: true, locale: es },
                                   )}
                                 </span>
@@ -3981,7 +3982,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                           {app.name}
                         </span>
                         <span className="text-xs text-muted-foreground/45 mt-0.5">
-                          {formatDistanceToNow(new Date(app.createdAt), {
+                          {formatDistanceToNow(safeDate(app.createdAt), {
                             addSuffix: true,
                             locale: es,
                           })}

@@ -15,6 +15,7 @@ import { VibesMarkdownParser, VanillaMarkdownParser } from "@/components/chat/Vi
 import { UserMessageContent } from "@/components/chat/UserMessageContent";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 
 interface AdminApp {
     id: number; userId: string; name: string; path: string;
@@ -296,7 +297,7 @@ function formatDate(iso: string | number) {
 function formatRelativeDate(ts: number | null) {
     if (!ts) return "—";
     try {
-        return formatDistanceToNow(new Date(ts), { addSuffix: true, locale: es });
+        return formatDistanceToNow(safeDate(ts), { addSuffix: true, locale: es });
     } catch { return "—"; }
 }
 function formatDuration(ms: number) {
