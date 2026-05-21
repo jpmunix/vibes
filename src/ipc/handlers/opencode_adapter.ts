@@ -2178,6 +2178,73 @@ function registerExtraProvider(body: Record<string, any>, providerKey: string, m
 // ============================================================================
 
 /**
+ * ============================================================================
+ * 🚨 ATENCIÓN / IMPORTANT NOTICE FOR ALL FUTURE VIBES DEVELOPERS 🚨
+ * ============================================================================
+ *
+ * ¡¡¡ ESTE ES EL MÉTODO ÚNICO Y OFICIAL PARA ADJUNTAR PROMPTS DE SISTEMA EN OPENCODE !!!
+ *
+ * HISTORIAL DEL PROBLEMA:
+ * Anteriormente, todas las instrucciones estáticas del sistema (las reglas de idioma,
+ * esquemas e instrucciones de MCP Servers, Supabase, Bunny, PocketBase, Artifacts,
+ * docs/DESIGN.md, etc.) se inyectaban en la sesión de OpenCode de manera silenciosa
+ * enviando un mensaje de rol 'user' con la propiedad { noReply: true } antes del
+ * prompt principal.
+ *
+ * ¿Por qué era una mala solución?
+ * 1. Hacía que las directrices de sistema compitieran en peso con los mensajes del usuario.
+ * 2. Ensuciaba el historial interno de la sesión de OpenCode.
+ * 3. Hacía que el modelo las acatara peor (debido a no estar en el System prompt).
+ *
+ * LA SOLUCIÓN DEFINITIVA:
+ * OpenCode acepta una propiedad `system` en el cuerpo del método de envío del prompt
+ * (`prompt` / `promptAsync`). Cuando el servidor de OpenCode recibe esta propiedad,
+ * la concatena de forma NATAL al final de su System Prompt maestro (el que contiene
+ * las instrucciones de build, la lista de tools habilitadas y las skills).
+ *
+ * CÓMO FUNCIONA ESTE MÉTODO:
+ * `attachToSystemPrompt` unifica toda la lista de instrucciones de contexto estáticas
+ * (`contextInstructions` que vienen del pipeline de chat y bases de datos) junto con
+ * el `customSystemPrompt` (definido por el usuario en agentes personalizados como "moco").
+ * Devuelve un único string formateado que se inyecta en el campo `system` de la
+ * petición a OpenCode.
+ *
+ * REGLAS DE ORO:
+ * 1. NO utilices inyección `noReply` de tipo usuario para directrices de comportamiento
+ *    estáticas.
+ * 2. La inyección de usuario silenciosa (`noReply`) queda reservada ÚNICAMENTE para
+ *    contexto dinámico que cambia en cada mensaje (como los recuerdos/memories de la base
+ *    de datos extraídos por el router de memoria `memoryBlock`).
+ * 3. Al usar este método, asegúrate de eliminar `contextInstructions` del bloque
+ *    `noReply` para no enviar las instrucciones duplicadas.
+ *
+ * ============================================================================
+ */
+export function attachToSystemPrompt(
+    contextInstructions?: string[],
+    customSystemPrompt?: string
+): string | undefined {
+    const parts: string[] = [];
+
+    // 1. Inyectar primero la ristra de instrucciones estáticas del pipeline
+    // (Idioma, esquemas DB, MCPs, artefactos, etc.)
+    if (contextInstructions && contextInstructions.length > 0) {
+        parts.push(contextInstructions.join("\n\n"));
+    }
+
+    // 2. Inyectar el system prompt de agente personalizado (si existe)
+    if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+        parts.push(customSystemPrompt);
+    }
+
+    if (parts.length === 0) {
+        return undefined;
+    }
+
+    return parts.join("\n\n---\n\n");
+}
+
+/**
  * Handle a chat stream using OpenCode AI SDK.
  * Creates a session, subscribes to events for real-time streaming,
  * sends the user prompt, and forwards all events to the frontend.
@@ -2835,16 +2902,11 @@ export async function handleOpenCodeStream(
         logger.info(`------------------------------------------`);
 
         // ── Inject Vibes context via noReply (invisible to user) ─────────
-        // All Vibes context (instructions + memories) is injected as a single
-        // silent user message. Only exists in OpenCode's session history.
+        // All Vibes context (memories) is injected as a single silent user message.
+        // Static instructions are now attached to the system prompt instead.
         // Not saved to our DB → not shown in chat UI → invisible.
         {
             const contextParts: string[] = [];
-
-            // Static instructions (language, integrations, efficiency, etc.)
-            if (options.contextInstructions && options.contextInstructions.length > 0) {
-                contextParts.push(options.contextInstructions.join("\n\n"));
-            }
 
             // Dynamic memories (selected per-prompt by the memory router)
             if (options.memoryBlock) {
@@ -2862,9 +2924,9 @@ export async function handleOpenCodeStream(
                             parts: [{ type: "text", text: contextText }],
                         } as any,
                     });
-                    logger.info(`${LP} 📋 Context injected via noReply (${contextText.length} chars: ${options.contextInstructions?.length || 0} instructions + ${options.memoryBlock ? 'memories' : 'no memories'})`);
+                    logger.info(`${LP} 📋 Memories context injected via noReply (${contextText.length} chars)`);
                 } catch (ctxErr: any) {
-                    logger.warn(`${LP} 📋 Context noReply injection failed (non-fatal): ${ctxErr.message}`);
+                    logger.warn(`${LP} 📋 Memories context noReply injection failed (non-fatal): ${ctxErr.message}`);
                 }
             }
         }
@@ -2872,6 +2934,11 @@ export async function handleOpenCodeStream(
         // Fire the prompt (non-blocking)
         const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
         const useAgentName = effectiveAgent;
+
+        const systemPromptOverride = attachToSystemPrompt(
+            options.contextInstructions,
+            hasReplacePrompt ? options.customSystemPrompt : undefined
+        );
 
         // Determine permission config based on the base agent
         let permissionConfig: any;
@@ -2891,13 +2958,13 @@ export async function handleOpenCodeStream(
             permissionConfig = buildPermissionConfig(settings);
         }
 
-        logger.info(`${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}`);
+        logger.info(`${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}, hasSystemPromptOverride=${!!systemPromptOverride}`);
         try {
             await client.config.update({
                 body: {
                     agent: {
                         [effectiveAgent]: {
-                            prompt: hasReplacePrompt ? options.customSystemPrompt : null,
+                            prompt: systemPromptOverride || null,
                             permission: permissionConfig,
                             reasoningEffort: settings.reasoningEffort || "medium",
                             textVerbosity: settings.textVerbosity || "low",
@@ -2905,8 +2972,8 @@ export async function handleOpenCodeStream(
                     }
                 } as any
             });
-            if (hasReplacePrompt) {
-                logger.info(`${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`);
+            if (systemPromptOverride) {
+                logger.info(`${LP} [CustomAgent] Successfully registered system prompt override for agent '${effectiveAgent}'. Prompt: "${systemPromptOverride.substring(0, 100)}..."`);
             } else {
                 logger.info(`${LP} [CustomAgent] Successfully cleared custom system prompt override for agent '${effectiveAgent}'`);
             }
@@ -2921,8 +2988,8 @@ export async function handleOpenCodeStream(
             },
             agent: useAgentName !== "build" ? useAgentName : undefined,
             parts: promptParts,
-            ...(options.customSystemPrompt && options.customPromptMode === "replace" ? {
-                system: options.customSystemPrompt
+            ...(systemPromptOverride ? {
+                system: systemPromptOverride
             } : {})
         };
 
