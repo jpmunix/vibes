@@ -16,10 +16,6 @@ export const workspaceModeAtom = atomWithStorage<boolean>("workspace-mode", fals
 // sidebar list components (AppList, WorkspaceList) to trigger their actions.
 // The timestamp ensures each trigger is unique.
 export type SidebarAction =
-  | "apps:new"
-  | "apps:import"
-  | "apps:search"
-  | "apps:bulk-close"
   | "workspace:new-project"
   | "workspace:open-folder"
   | "workspace:search"
@@ -28,3 +24,9 @@ export type SidebarAction =
 
 export const sidebarActionAtom = atom<{ action: SidebarAction; ts: number } | null>(null);
 
+// Atoms for artifacts UI
+export const artifactsSidebarOpenAtom = atom<boolean>(false);
+export const selectedArtifactPathAtom = atom<string | null>(null);
+
+// Atom to track if the release notes rocket button should be shown (transient state for the session)
+export const showReleaseNotesBadgeAtom = atom<boolean>(false);

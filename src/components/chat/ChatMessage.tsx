@@ -6,12 +6,12 @@ import { MemoryBadge } from "./MemoryBadge";
 import {
   VibesMarkdownParser,
 } from "./VibesMarkdownParser";
-import { UserMessageContent } from "./UserMessageContent";
+import { UserMessageContent, extractImagesFromAiMessages } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
-import { TOOL_META, getToolDetail, getBgColorClass, formatPriceCost } from "./CompactToolBadge";
+import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
-import { AlertTriangle } from "@/components/ui/icons";
+import { ErrorBubble } from "./ErrorBubble";
 import {
   CheckCircle,
   XCircle,
@@ -27,7 +27,8 @@ import {
   User as UserIcon,
   Quote,
   Share2,
-  Coins,
+  FileText,
+  Image as ImageIcon,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
@@ -36,13 +37,9 @@ import { useVersions } from "@/hooks/useVersions";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../ui/tooltip";
+
 import { showSuccess, showError } from "@/lib/toast";
 import { cleanAssistantContent, cleanUserContent, extractImageUrls } from "@/lib/markdown_share_cleaner";
 import {
@@ -50,6 +47,7 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
   chatErrorByIdAtom,
+  chatMessagesByIdAtom,
   quotedMessagesAtom,
   isZenModeAtom,
   pendingAskUsersAtom,
@@ -57,7 +55,14 @@ import {
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import logoSrc from "../../../assets/icon/logo.png";
+import { VibesAvatar } from "@/components/ui/VibesAvatar";
+import { Button } from "@/components/ui/button";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import { useSettings } from "@/hooks/useSettings";
+
+/** Height threshold (px) above which user messages collapse (~6 lines of text) */
+const USER_COLLAPSE_HEIGHT = 120;
 
 interface ChatMessageProps {
   message: Message;
@@ -72,43 +77,64 @@ function translateError(raw: string): string {
   // Strip common prefixes
   let msg = raw
     .replace(/^Sorry, there was an error from the AI:\s*/i, "")
+    .replace(/^Sorry, there was an error processing your request:\s*/i, "")
+    .replace(/^Session Error:\s*/i, "")
     .replace(/^\[req:[^\]]*\]\s*/i, "")
     .replace(/^AI error:\s*/i, "")
+    .replace(/^Error de la IA:\s*/i, "")
+    .replace(/^❌\s*(Error:?\s*)?/i, "")
     .trim();
 
-  // Map common patterns
-  if (/rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(msg)) {
-    return "Se ha superado el límite de solicitudes. Espera un momento e inténtalo de nuevo.";
-  }
-  if (/provider returned error/i.test(msg)) {
-    return "El proveedor de IA devolvió un error. Inténtalo de nuevo.";
-  }
-  if (/exceeded.*budget|ExceededBudget/i.test(msg)) {
-    return "Se han agotado los créditos de IA de este mes.";
-  }
-  if (/no.?output.?generated|empty.*response|zero.*tokens/i.test(msg)) {
-    return "La IA no generó ninguna respuesta. Inténtalo de nuevo.";
+  // --- Irrecuperables: "Parece que..." ---
+  if (/insufficient.*(credit|fund|balance)|ExceededBudget|exceeded.*budget/i.test(msg)) {
+    return "Parece que se agotaron los creditos de IA de tu cuenta.";
   }
   if (/API key|unauthorized|authentication|forbidden|401|403/i.test(msg)) {
-    return "Error de autenticación con el proveedor de IA. Revisa tu clave API en ajustes.";
+    return "Parece que hay un problema con tu clave API. Revisala en ajustes.";
   }
-  if (/network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket/i.test(msg)) {
-    return "Error de conexión con el proveedor de IA. Comprueba tu conexión a internet.";
+  if (/model.*not.*found|does not exist|invalid.*model|No endpoints found/i.test(msg)) {
+    return "Parece que el modelo seleccionado no esta disponible. Prueba con otro.";
   }
-  if (/context.*(too long|exceeded|limit)|max.*tokens|token.*limit/i.test(msg)) {
-    return "El mensaje es demasiado largo para el modelo. Intenta resumir o abrir un nuevo chat.";
+  if (/context.*(too long|exceeded|limit)|max.*tokens|token.*limit|context_length/i.test(msg)) {
+    return "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.";
   }
-  if (/model.*not.*found|does not exist|invalid.*model/i.test(msg)) {
-    return "El modelo seleccionado no está disponible. Prueba con otro modelo.";
+  if (/content.*filter|safety|blocked|moderation|content_policy/i.test(msg)) {
+    return "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.";
   }
-  if (/timeout|timed?\s*out/i.test(msg)) {
-    return "La solicitud tardó demasiado. Inténtalo de nuevo.";
+  if (/spawn.*ENOENT|opencode.*not found|binary not found/i.test(msg)) {
+    return "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.";
+  }
+  if (/ENOSPC|no space left/i.test(msg)) {
+    return "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.";
+  }
+
+  // --- Recuperables ---
+  if (/rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(msg)) {
+    return "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.";
+  }
+  if (/provider returned error/i.test(msg)) {
+    return "El proveedor de IA devolvio un error. Intentalo de nuevo.";
+  }
+  if (/no.?output.?generated|empty.*response|zero.*tokens/i.test(msg)) {
+    return "La IA no genero ninguna respuesta. Intentalo de nuevo.";
+  }
+  if (/network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket|APIConnectionError/i.test(msg)) {
+    return "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.";
+  }
+  if (/timeout|timed?\s*out|APIConnectionTimeoutError/i.test(msg)) {
+    return "La solicitud tardo demasiado. Intentalo de nuevo.";
   }
   if (/server.*error|internal.*error|500|502|503/i.test(msg)) {
-    return "Error del servidor de IA. Inténtalo de nuevo en unos segundos.";
+    return "Error del servidor de IA. Intentalo de nuevo en unos segundos.";
   }
-  if (/content.*filter|safety|blocked|moderation/i.test(msg)) {
-    return "El contenido fue bloqueado por los filtros de seguridad del modelo.";
+  if (/session.*busy|SessionBusy/i.test(msg)) {
+    return "El agente esta ocupado con otra tarea. Espera a que termine.";
+  }
+  if (/Session creation returned no data/i.test(msg)) {
+    return "No se pudo crear la sesion del agente. Intentalo de nuevo.";
+  }
+  if (/cannot access.*before initialization|ReferenceError/i.test(msg)) {
+    return "Error interno de la aplicacion. Reinicia Vibes para resolverlo.";
   }
 
   // Fallback: return stripped message as-is
@@ -153,11 +179,39 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   // Error state for this chat
   const errorById = useAtomValue(chatErrorByIdAtom);
   const chatError = selectedChatId ? (errorById.get(selectedChatId) ?? null) : null;
+  const messagesById = useAtomValue(chatMessagesByIdAtom);
   const userAtomValue = useAtomValue(userAtom);
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
   const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
+
+  const { artifacts } = useChatArtifacts(selectedChatId);
+  const [, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
+  const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
+  const { settings: chatMsgSettings } = useSettings();
+
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
+  const isSystem = message.role === "system";
+
+  // --- User message collapse state ---
+  const userContentRef = useRef<HTMLDivElement>(null);
+  const [isUserExpanded, setIsUserExpanded] = useState(false);
+  const [isUserLongMessage, setIsUserLongMessage] = useState(false);
+
+  // Measure natural height to decide if collapse is needed (runs before paint to avoid flash)
+  useLayoutEffect(() => {
+    if (!isUser || !userContentRef.current) return;
+    const natural = userContentRef.current.scrollHeight;
+    setIsUserLongMessage(natural > USER_COLLAPSE_HEIGHT);
+  }, [message.content, isUser]);
+
+  // Count images for the compact badge shown when collapsed
+  const userImageCount = useMemo(() => {
+    if (!isUser || !message.aiMessagesJson) return 0;
+    return extractImagesFromAiMessages(message.aiMessagesJson).length;
+  }, [isUser, message.aiMessagesJson]);
 
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
@@ -175,10 +229,6 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   }, [isLastMessage, selectedMemories, message]);
 
   const activeUser = user || userAtomValue;
-
-  const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
-  const isSystem = message.role === "system";
 
   // System messages are completely hidden from the user interface
   // They only exist in the DB to provide context to the LLM
@@ -382,8 +432,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
         const activeLabel = meta.pendingLabel ?? meta.label;
 
         let contentExcerpt: string | undefined = undefined;
-        // If it's a thinking tag, extract a short, clean snippet of the ongoing thought
-        if (["think", "thought", "vibes-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
+        // Extract a short excerpt from the ongoing tool/thinking content
+        if (lastOpenIndex !== -1) {
           const ongoingContent = normalizedMessageContent.slice(lastOpenIndex);
           // Strip basic markdown to get clean text for the excerpt
           const cleanText = ongoingContent
@@ -488,45 +538,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     return null;
   }, [message.commitHash, message.role, liveVersions]);
 
-  // Extract total message cost from vibes-token-usage tags
-  const messageCost = useMemo(() => {
-    if (!normalizedMessageContent || !isAssistant) return null;
-    const tokenTagPattern = /<vibes-token-usage\s([^>]*)>[\s\S]*?<\/vibes-token-usage>/g;
-    let totalCost = 0;
-    let hasCost = false;
-    let match;
-    while ((match = tokenTagPattern.exec(normalizedMessageContent)) !== null) {
-      const attrsStr = match[1];
-      const getAttr = (name: string) => {
-        const m = new RegExp(`${name}="([^"]*)"`).exec(attrsStr);
-        return m ? m[1] : "";
-      };
 
-      // Path 1: direct cost from OpenCode (ground truth)
-      const directCostStr = getAttr("cost");
-      if (directCostStr) {
-        const directCost = parseFloat(directCostStr);
-        if (!isNaN(directCost)) {
-          hasCost = true;
-          totalCost += directCost;
-          continue;
-        }
-      }
-
-      // Path 2: legacy — compute from token counts × price
-      const inp = parseInt(getAttr("input"), 10);
-      const out = parseInt(getAttr("output"), 10);
-      const cached = parseInt(getAttr("cached"), 10);
-      const webSearches = parseInt(getAttr("web-searches"), 10);
-      const priceIn = parseFloat(getAttr("price-input"));
-      const priceOut = parseFloat(getAttr("price-output"));
-      if (priceIn > 0 || priceOut > 0 || webSearches > 0) {
-        hasCost = true;
-        totalCost += (inp - cached) * priceIn + cached * priceIn * 0.5 + out * priceOut + webSearches * 0.02;
-      }
-    }
-    return hasCost ? formatPriceCost(totalCost) : null;
-  }, [normalizedMessageContent, isAssistant]);
 
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
@@ -549,11 +561,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 ).toUpperCase()}
               />
             ) : (
-              <img
-                src={logoSrc}
-                alt="AI"
-                className="h-7 w-7 rounded-full object-cover"
-              />
+              <VibesAvatar className="h-7 w-7" />
             )}
           </div>
           )}
@@ -563,7 +571,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
-              <div className="absolute -left-24 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="absolute -left-24 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
                   onClick={handleQuote}
                   title="Citar"
@@ -602,10 +610,10 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 : isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
+                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-background-lighter dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
                 : isFixError
                   ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
-                  : "px-4 pt-2 pb-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
+                  : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
                 }`}
             >
               {/* === System messages === */}
@@ -621,11 +629,27 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
               {isAssistant && !isSelectingModel && (
                 <>
                   {isErrorMessage ? (
-                    /* Error state: show translated error inline */
-                    <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                       <AlertTriangle size={16} className="flex-shrink-0" />
-                       <span className="typo-label">{translateError(effectiveError!)}</span>
-                    </div>
+                    /* Error state: ErrorBubble with actions */
+                    <ErrorBubble
+                      rawError={effectiveError!}
+                      onRetry={() => {
+                        // Encontrar el ultimo mensaje del usuario para restaurarlo
+                        const msgs = messagesById.get(selectedChatId!);
+                        const lastUserMsg = msgs?.slice().reverse().find((m: any) => m.role === "user");
+                        if (lastUserMsg?.content) {
+                          window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", {
+                            detail: { prompt: lastUserMsg.content },
+                          }));
+                        }
+                      }}
+                      onNewChat={() => {
+                        if (appId) {
+                          ipc.chat.createChat(appId).then((newChatId: number) => {
+                            window.location.hash = `/chat?id=${newChatId}`;
+                          });
+                        }
+                      }}
+                    />
                   ) : (
                     <>
                       <div
@@ -644,21 +668,82 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             contentExcerpt={effectiveStreamingInfo.contentExcerpt}
                          />
                       )}
+
+                      {/* Per-message artifact button: if this message mentions a .vibes/ path,
+                          show a direct button to open that specific artifact in the sidebar */}
+                      {isAssistant && !isStreaming && !isCollapsed && (() => {
+                        // Extract .vibes/xxx.md references from the message content
+                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-.]+\.md/);
+                        if (!vibesMatch) return null;
+                        const artifactPath = vibesMatch[0];
+                        return (
+                          <div className="mt-3 pt-3 border-t border-border/20">
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedPath(artifactPath);
+                                setSidebarOpen(true);
+                              }}
+                            >
+                              <FileText size={14} />
+                              Ver plan
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </>
                   )}
                 </>
               )}
               {/* === User messages === */}
               {isUser && !isSelectingModel && (
-                <div
-                  className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
-                  suppressHydrationWarning
-                >
-                  <UserMessageContent
-                    content={message.content}
-                    aiMessagesJson={message.aiMessagesJson}
-                  />
-                </div>
+                <>
+                  <div style={{ position: 'relative' }}>
+                  <div
+                    ref={userContentRef}
+                    className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+                    style={{
+                      maxHeight: !isUserExpanded && isUserLongMessage ? `${USER_COLLAPSE_HEIGHT}px` : undefined,
+                      overflow: !isUserExpanded && isUserLongMessage ? 'hidden' : undefined,
+                      WebkitMaskImage: !isUserExpanded && isUserLongMessage
+                        ? 'linear-gradient(to bottom, black calc(100% - 36px), transparent 100%)'
+                        : undefined,
+                      maskImage: !isUserExpanded && isUserLongMessage
+                        ? 'linear-gradient(to bottom, black calc(100% - 36px), transparent 100%)'
+                        : undefined,
+                    }}
+                    suppressHydrationWarning
+                  >
+                    <UserMessageContent
+                      content={message.content}
+                      aiMessagesJson={message.aiMessagesJson}
+                      hideImages={isUserLongMessage && !isUserExpanded}
+                    />
+                  </div>
+                  </div>
+                  {/* Toggle + image count badge for long user messages */}
+                  {isUserLongMessage && (
+                    <div className="flex items-center gap-2 mt-1.5 not-prose">
+                      <button
+                        onClick={() => setIsUserExpanded(!isUserExpanded)}
+                        className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors cursor-pointer"
+                      >
+                        {isUserExpanded ? (
+                          <><ChevronUp size={12} /><span>Ver menos</span></>
+                        ) : (
+                          <><ChevronDown size={12} /><span>Ver más</span></>
+                        )}
+                      </button>
+                      {!isUserExpanded && userImageCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs text-primary/50">
+                          <ImageIcon size={12} />
+                          <span>{userImageCount}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {(isAssistant && message.content && !isZenMode) ? (
@@ -700,18 +785,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         >
                           <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                         </button>
-                        {messageCost && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default" onClick={(e) => e.stopPropagation()}>
-                                <Coins size={12} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                              {messageCost}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+
                         {resolvedMemories && resolvedMemories.length > 0 && (
                           <div onClick={(e) => e.stopPropagation()}>
                             <MemoryBadge memories={resolvedMemories} />
@@ -740,13 +814,25 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div
-                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
-                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
-                          >
-                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span className="typo-micro">{message.model}</span>
-                          </div>
+                            <div
+                              className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                              onClick={message.model === "vibes/git-assistant" ? () => {
+                                const theme = localStorage.getItem("theme");
+                                const intensity = localStorage.getItem("theme-intensity");
+                                ipc.system.openGitWindow({ 
+                                  appId: appId!, 
+                                  theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined, 
+                                  themeIntensity: intensity ? parseFloat(intensity) : undefined 
+                                });
+                              } : (isStreaming && isLastMessage ? undefined : openDebugMessage)}
+                            >
+                              {message.model === "vibes/git-assistant" ? (
+                                <GitCommit className="h-4 w-4 flex-shrink-0 text-primary" />
+                              ) : (
+                                <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                              )}
+                              <span className="typo-micro">{message.model}</span>
+                            </div>
                         )}
                       </>
                     )}
@@ -782,18 +868,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     >
                       <Share2 size={12} className={isSharing ? "animate-pulse text-primary" : ""} />
                     </button>
-                    {messageCost && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex items-center p-1.5 rounded-md text-muted-foreground cursor-default">
-                            <Coins size={12} />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {messageCost}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+
                     {resolvedMemories && resolvedMemories.length > 0 && (
                       <MemoryBadge memories={resolvedMemories} />
                     )}
@@ -818,13 +893,25 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div
-                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
-                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
-                          >
-                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span className="typo-micro">{message.model}</span>
-                          </div>
+                            <div
+                              className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                              onClick={message.model === "vibes/git-assistant" ? () => {
+                                const theme = localStorage.getItem("theme");
+                                const intensity = localStorage.getItem("theme-intensity");
+                                ipc.system.openGitWindow({ 
+                                  appId: appId!, 
+                                  theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined, 
+                                  themeIntensity: intensity ? parseFloat(intensity) : undefined 
+                                });
+                              } : (isStreaming && isLastMessage ? undefined : openDebugMessage)}
+                            >
+                              {message.model === "vibes/git-assistant" ? (
+                                <GitCommit className="h-4 w-4 flex-shrink-0 text-primary" />
+                              ) : (
+                                <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                              )}
+                              <span className="typo-micro">{message.model}</span>
+                            </div>
                         )}
                       </>
                     )}

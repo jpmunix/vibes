@@ -33,7 +33,16 @@ import {
   ChevronDown,
   ChevronRight,
   Dna,
+  RefreshCw,
+  MoreHorizontal,
+  Layers,
 } from "@/components/ui/icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 // =============================================================================
@@ -92,7 +101,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
   const [contextPreview, setContextPreview] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<string>("all");
-  const [showDisabled, setShowDisabled] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("score");
   const [isContextOpen, setIsContextOpen] = useState(false);
 
   // Create dialog
@@ -105,8 +114,9 @@ export function MemoryPanel({ appId }: { appId: number }) {
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  // Bootstrap
+  // Bootstrap & Compaction
   const [bootstrapRunning, setBootstrapRunning] = useState(false);
+  const [compacting, setCompacting] = useState(false);
 
   // Edit dialog
   const [editMemory, setEditMemory] = useState<MemoryEntry | null>(null);
@@ -198,14 +208,54 @@ export function MemoryPanel({ appId }: { appId: number }) {
     }
   };
 
-  // ── Filters ────────────────────────────────────────────────────────────
+  const normalizeImportance = (imp: unknown): number => {
+    if (typeof imp !== "number") return 50;
+    return imp > 1 ? imp : Math.round(imp * 100);
+  };
+
+  // ── Filters & Sort ──────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    return memories.filter(m => {
-      if (!showDisabled && !m.enabled) return false;
-      if (filter !== "all" && m.type !== filter) return false;
-      return true;
+    let result = memories.filter(m => {
+      if (filter === "disabled") return !m.enabled;
+      if (!m.enabled) return false; // all other filters exclude disabled
+      if (filter === "all") return true;
+      if (filter === "auto") return m.source === "auto";
+      if (filter === "manual") return m.source === "manual";
+      return m.type === filter; // session, preference, issue
     });
-  }, [memories, filter, showDisabled]);
+
+    // Sort
+    switch (sortBy) {
+      case "score":
+        result.sort((a, b) => b._score - a._score);
+        break;
+      case "imp_desc":
+        result.sort((a, b) => normalizeImportance(b.importance) - normalizeImportance(a.importance));
+        break;
+      case "imp_asc":
+        result.sort((a, b) => normalizeImportance(a.importance) - normalizeImportance(b.importance));
+        break;
+      case "score_asc":
+        result.sort((a, b) => a._score - b._score);
+        break;
+      case "date":
+        result.sort((a, b) => {
+          const da = typeof a.updatedAt === "number" ? a.updatedAt : new Date(a.updatedAt).getTime() / 1000;
+          const db_ = typeof b.updatedAt === "number" ? b.updatedAt : new Date(b.updatedAt).getTime() / 1000;
+          return db_ - da;
+        });
+        break;
+      case "date_asc":
+        result.sort((a, b) => {
+          const da = typeof a.updatedAt === "number" ? a.updatedAt : new Date(a.updatedAt).getTime() / 1000;
+          const db_ = typeof b.updatedAt === "number" ? b.updatedAt : new Date(b.updatedAt).getTime() / 1000;
+          return da - db_;
+        });
+        break;
+    }
+
+    return result;
+  }, [memories, filter, sortBy]);
 
   // ── Stats ──────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -228,94 +278,46 @@ export function MemoryPanel({ appId }: { appId: number }) {
     } catch { return "—"; }
   };
 
-  const normalizeImportance = (imp: unknown): number => {
-    if (typeof imp !== "number") return 50;
-    return imp > 1 ? imp : Math.round(imp * 100);
-  };
-
   return (
     <div className="space-y-4">
       {/* Toolbar: filters + new button */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-          {["all", "session", "preference", "issue"].map(t => (
-            <button
-              key={t}
-              onClick={() => setFilter(t)}
-              className={`px-3 py-1.5 typo-select rounded-lg border transition-colors ${
-                filter === t
-                  ? "bg-primary/10 text-primary border-primary/20"
-                  : "bg-transparent text-muted-foreground border-border hover:bg-muted/50"
-              }`}
-            >
-              {t === "all" ? "Todas" : TYPE_LABELS[t] || t}
-              {t !== "all" && stats.byType[t] ? ` (${stats.byType[t]})` : ""}
-            </button>
-          ))}
-          <div className="mx-0.5 h-5 w-px bg-border" />
-          <button
-            onClick={() => setShowDisabled(!showDisabled)}
-            className={`px-3 py-1.5 typo-select rounded-lg border transition-colors flex items-center gap-1.5 ${
-              showDisabled
-                ? "bg-primary/10 text-primary border-primary/20"
-                : "bg-transparent text-muted-foreground border-border hover:bg-muted/50"
-            }`}
-          >
-            {showDisabled ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            Desactivadas
-          </button>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <UnifiedSelector
+            value={filter}
+            onChange={(v) => setFilter(v as string)}
+            triggerVariant="outline"
+            triggerSize="sm"
+            triggerClassName="min-w-[140px]"
+            showCheckmark
+            options={[
+              { value: "all", label: `Todas (${stats.total})` },
+              { value: "session", label: `Sesión (${stats.byType.session || 0})` },
+              { value: "preference", label: `Preferencia (${stats.byType.preference || 0})` },
+              { value: "issue", label: `Problema (${stats.byType.issue || 0})` },
+              { value: "auto", label: `Auto (${stats.auto})` },
+              { value: "manual", label: `Manual (${stats.manual})` },
+              { value: "disabled", label: `Desactivadas (${stats.disabled})` },
+            ]}
+          />
+          <UnifiedSelector
+            value={sortBy}
+            onChange={(v) => setSortBy(v as string)}
+            triggerVariant="outline"
+            triggerSize="sm"
+            triggerClassName="min-w-[140px]"
+            showCheckmark
+            options={[
+              { value: "score", label: "Score ↓" },
+              { value: "score_asc", label: "Score ↑" },
+              { value: "imp_desc", label: "Importancia ↓" },
+              { value: "imp_asc", label: "Importancia ↑" },
+              { value: "date", label: "Más recientes" },
+              { value: "date_asc", label: "Más antiguas" },
+            ]}
+          />
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            className="typo-button gap-1.5"
-            disabled={bootstrapRunning}
-            onClick={async () => {
-              setBootstrapRunning(true);
-              try {
-                const result = await ipc.memory.bootstrapProjectMemories({ appId });
-                toast.success(
-                  `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
-                );
-                await loadMemories();
-              } catch (err: any) {
-                toast.error(`Bootstrap falló: ${err.message}`);
-              } finally {
-                setBootstrapRunning(false);
-              }
-            }}
-          >
-            {bootstrapRunning ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Escaneando...</>
-            ) : (
-              <><Dna className="h-4 w-4" /> Escanear proyecto</>
-            )}
-          </Button>
-          {stats.total > 0 && (
-            <DeleteConfirmationDialog
-              itemName={`las ${stats.total} memorias de esta app`}
-              itemType="memorias"
-              onDelete={async () => {
-                try {
-                  const count = await ipc.memory.deleteAllMemories(appId);
-                  toast.success(`${count} memorias eliminadas`);
-                  await loadMemories();
-                } catch (err: any) {
-                  toast.error(`Error: ${err.message}`);
-                }
-              }}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="typo-button gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar todas
-                </Button>
-              }
-            />
-          )}
           <Button
             className="typo-button gap-1.5"
             onClick={() => setIsCreateOpen(true)}
@@ -323,6 +325,94 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <Plus className="h-4 w-4" />
             Nueva memoria
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              <DropdownMenuItem onClick={loadMemories}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refrescar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={bootstrapRunning}
+                onClick={async () => {
+                  setBootstrapRunning(true);
+                  try {
+                    const result = await ipc.memory.bootstrapProjectMemories({ appId });
+                    toast.success(
+                      `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
+                    );
+                    await loadMemories();
+                  } catch (err: any) {
+                    toast.error(`Bootstrap falló: ${err.message}`);
+                  } finally {
+                    setBootstrapRunning(false);
+                  }
+                }}
+              >
+                {bootstrapRunning
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Escaneando...</>
+                  : <><Dna className="mr-2 h-4 w-4" /> Escanear proyecto</>
+                }
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={compacting}
+                onClick={async () => {
+                  setCompacting(true);
+                  const toastId = toast.loading("Compactando memorias…");
+                  try {
+                    const compacted = await ipc.memory.compactMemories({ appId });
+                    if (compacted > 0) {
+                      toast.success(`${compacted} memorias compactadas en 1 resumen`, { id: toastId });
+                      await loadMemories();
+                    } else {
+                      toast.info("No hay suficientes memorias para compactar (mín. 2 sesiones)", { id: toastId });
+                    }
+                  } catch (err: any) {
+                    toast.error(`Error al compactar: ${err.message}`, { id: toastId });
+                  } finally {
+                    setCompacting(false);
+                  }
+                }}
+              >
+                {compacting
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Compactando...</>
+                  : <><Layers className="mr-2 h-4 w-4" /> Compactar</>
+                }
+              </DropdownMenuItem>
+              {stats.total > 0 && (
+                <DeleteConfirmationDialog
+                  itemName={`las ${stats.total} memorias de esta app`}
+                  itemType="memorias"
+                  onDelete={async () => {
+                    try {
+                      const count = await ipc.memory.deleteAllMemories(appId);
+                      toast.success(`${count} memorias eliminadas`);
+                      await loadMemories();
+                    } catch (err: any) {
+                      toast.error(`Error: ${err.message}`);
+                    }
+                  }}
+                  trigger={
+                    <DropdownMenuItem
+                      className="text-destructive/70 focus:text-destructive"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar todas
+                    </DropdownMenuItem>
+                  }
+                />
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -387,79 +477,113 @@ export function MemoryPanel({ appId }: { appId: number }) {
             )}
           </div>
         )}
-        {filtered.map(mem => (
+        {filtered.map(mem => {
+          const imp = normalizeImportance(mem.importance);
+          const impColor = imp >= 90 ? "bg-rose-500" : imp >= 70 ? "bg-amber-500" : imp >= 50 ? "bg-blue-500" : "bg-muted-foreground/30";
+          const impLabel = imp >= 90 ? "Crítico" : imp >= 70 ? "Alto" : imp >= 50 ? "Medio" : "Bajo";
+          const typeColors: Record<string, string> = {
+            session: "bg-sky-500/10 text-sky-500 border-sky-500/20",
+            preference: "bg-violet-500/10 text-violet-500 border-violet-500/20",
+            issue: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+          };
+
+          return (
           <div
             key={mem.id}
-            className={`group border rounded-xl px-4 py-3 transition-all hover:bg-muted/30 ${
+            className={`group border rounded-xl overflow-hidden transition-all hover:bg-muted/20 ${
               mem.enabled
                 ? "border-border"
                 : "border-border/50 opacity-50"
             }`}
           >
-            {/* Row 1: type badge + content + actions */}
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 px-2 py-0.5 typo-micro rounded-md bg-muted text-muted-foreground border border-border">
-                {TYPE_LABELS[mem.type] || mem.type}
-                {mem.type === "issue" && mem.status ? `:${mem.status}` : ""}
-              </span>
-              <p className="flex-1 typo-body leading-relaxed min-w-0">
+
+            <div className="px-4 py-3 space-y-2">
+              {/* Row 1: metadata chips + actions */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  {/* Type badge */}
+                  <span className={`shrink-0 px-2 py-0.5 typo-micro rounded-md border ${typeColors[mem.type] || "bg-muted text-muted-foreground border-border"}`}>
+                    {TYPE_LABELS[mem.type] || mem.type}
+                    {mem.type === "issue" && mem.status ? ` · ${mem.status}` : ""}
+                  </span>
+                  {/* Key pill */}
+                  {mem.key && (
+                    <span className="typo-mono-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded-md border border-border/50">
+                      {mem.key}
+                    </span>
+                  )}
+                  {/* Source badge */}
+                  <span className={`typo-micro px-1.5 py-0.5 rounded-md ${
+                    mem.source === "manual"
+                      ? "bg-primary/10 text-primary/70"
+                      : "bg-muted/40 text-muted-foreground/60"
+                  }`}>
+                    {mem.source === "manual" ? "manual" : "auto"}
+                  </span>
+                  {/* Importance chip */}
+                  <span className="flex items-center gap-1 typo-micro text-muted-foreground/70">
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${impColor}`} />
+                    {imp} · {impLabel}
+                  </span>
+                </div>
+                {/* Actions — visible on hover */}
+                <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => {
+                      setEditMemory(mem);
+                      setEditForm({
+                        content: mem.content,
+                        importance: normalizeImportance(mem.importance),
+                        key: mem.key || "",
+                      });
+                    }}
+                    className="p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleToggle(mem)}
+                    className="p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    title={mem.enabled ? "Desactivar" : "Activar"}
+                  >
+                    {mem.enabled
+                      ? <EyeOff className="h-3 w-3" />
+                      : <Eye className="h-3 w-3 text-primary" />
+                    }
+                  </button>
+                  <DeleteConfirmationDialog
+                    itemName={mem.content.slice(0, 60) + (mem.content.length > 60 ? "..." : "")}
+                    itemType="memoria"
+                    onDelete={() => handleDelete(mem.id)}
+                    trigger={
+                      <button
+                        className="p-1.5 text-destructive/50 hover:bg-destructive/10 rounded-lg transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: content */}
+              <p className="typo-body leading-relaxed text-foreground/90">
                 {mem.content}
               </p>
-              <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => {
-                    setEditMemory(mem);
-                    setEditForm({
-                      content: mem.content,
-                      importance: normalizeImportance(mem.importance),
-                      key: mem.key || "",
-                    });
-                  }}
-                  className="flex items-center gap-1 px-2 py-1 typo-micro text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                  <Pencil className="h-3 w-3" />
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleToggle(mem)}
-                  className="flex items-center gap-1 px-2 py-1 typo-micro text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                  {mem.enabled
-                    ? <><EyeOff className="h-3 w-3" /> Desactivar</>
-                    : <><Eye className="h-3 w-3 text-primary" /> Activar</>
-                  }
-                </button>
-                <DeleteConfirmationDialog
-                  itemName={mem.content.slice(0, 60) + (mem.content.length > 60 ? "..." : "")}
-                  itemType="memoria"
-                  onDelete={() => handleDelete(mem.id)}
-                  trigger={
-                    <button
-                      className="flex items-center gap-1 px-2 py-1 typo-micro text-destructive/60 hover:bg-destructive/10 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Eliminar
-                    </button>
-                  }
-                />
+
+              {/* Row 3: footer — date */}
+              <div className="flex items-center gap-3 typo-micro text-muted-foreground/50">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-2.5 w-2.5" />
+                  {formatDate(mem.updatedAt)}
+                </span>
               </div>
             </div>
-            {/* Row 2: metadata */}
-            <div className="flex items-center gap-3 mt-2 typo-micro text-muted-foreground">
-              {mem.key && (
-                <span className="typo-mono-xs bg-muted/50 px-1.5 py-0.5 rounded">key:{mem.key}</span>
-              )}
-              <span>imp:{normalizeImportance(mem.importance)}</span>
-              <span>score:{mem._score.toFixed(2)}</span>
-              <span>{mem.source}</span>
-              <span className="flex items-center gap-0.5">
-                <Clock className="h-2.5 w-2.5" />
-                {formatDate(mem.updatedAt)}
-              </span>
-              <span className="text-muted-foreground/40">#{mem.id}</span>
-            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Create Dialog ── */}

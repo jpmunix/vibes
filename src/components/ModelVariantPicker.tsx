@@ -82,7 +82,7 @@ export function ModelVariantPicker({
     const focusedEntry = useMemo(() => {
         const target = focusedValue ?? selectedValue;
         return models.find(
-            (m) => `${m.provider}:${m.model.apiName}` === target,
+            (m) => `${m.provider}|||${m.model.apiName}` === target,
         );
     }, [focusedValue, selectedValue, models]);
 
@@ -162,7 +162,7 @@ export function ModelVariantPicker({
                                 )}
                                 <CommandGroup>
                                     {models.map(({ provider, model }) => {
-                                        const value = `${provider}:${model.apiName}`;
+                                        const value = `${provider}|||${model.apiName}`;
                                         const isSelected = selectedValue === value;
                                         return (
                                             <CommandItem

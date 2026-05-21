@@ -215,6 +215,60 @@ export const adminContracts = {
             createdAt: z.string(),
         })),
     }),
+
+    /** Get all key-value preferences for a user (from user_preferences table) */
+    getUserPreferences: defineContract({
+        channel: "admin:get-user-preferences",
+        input: z.object({ userId: z.string() }),
+        output: z.object({
+            preferences: z.array(z.object({
+                key: z.string(),
+                value: z.string(),
+                updatedAt: z.string().nullable(),
+                displayCategory: z.string().optional(),
+                displayName: z.string().optional(),
+            })),
+        }),
+    }),
+
+    /** Set a single preference for a user (admin override) */
+    setUserPreference: defineContract({
+        channel: "admin:set-user-preference",
+        input: z.object({
+            userId: z.string(),
+            key: z.string(),
+            value: z.string(),
+        }),
+        output: z.object({ success: z.boolean() }),
+    }),
+
+    /** Delete a single preference for a user */
+    deleteUserPreference: defineContract({
+        channel: "admin:delete-user-preference",
+        input: z.object({
+            userId: z.string(),
+            key: z.string(),
+        }),
+        output: z.object({ success: z.boolean() }),
+    }),
+
+    /** Copy/overwrite selected preferences from one user to multiple target users */
+    copyPreferencesToUsers: defineContract({
+        channel: "admin:copy-preferences-to-users",
+        input: z.object({
+            sourceUserId: z.string(),
+            targetUserIds: z.array(z.string()).min(1),
+            keys: z.array(z.string()).min(1),
+            mode: z.enum(["copy", "overwrite"]),
+        }),
+        output: z.object({
+            success: z.boolean(),
+            /** Number of preference writes actually performed */
+            written: z.number(),
+            /** Number of preferences skipped (copy mode, already existed) */
+            skipped: z.number(),
+        }),
+    }),
 } as const;
 
 // =============================================================================

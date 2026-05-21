@@ -6,12 +6,15 @@ import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { useEffect, useState } from "react";
+import { isElectron } from "@/lib/transport";
 
 import { ipc } from "@/ipc/types";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { WindowsControls } from "@/components/WindowsControls";
 
 export const TitleBar = () => {
+  // In web mode, no title bar — browser provides its own chrome
+  if (!isElectron) return null;
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { apps } = useLoadApps();
   const { navigate } = useRouter();

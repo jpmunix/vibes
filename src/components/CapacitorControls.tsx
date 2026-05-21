@@ -143,7 +143,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               onClick={() => {
                 // TODO: Add actual help link
                 ipc.system.openExternalUrl(
-                  "https://github.com/minube/vibes/guides/mobile-app#troubleshooting",
+                  "https://github.com/jpmunix/vibes/guides/mobile-app#troubleshooting",
                 );
               }}
               className="typo-caption text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground flex items-center gap-1"

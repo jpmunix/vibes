@@ -256,9 +256,65 @@ export function ChatPanel({
       setIsLoadingMessages(true);
     }
   }, [chatId, messagesById]);
-
+  // ── Derived state (needed early for recovery polling effect) ─────────
   const messages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
+
+  // ── A2: Recovery polling for disconnected streams ───────────────────────
+  // Detects assistant messages with status="streaming" but no active local
+  // stream. This happens when the user disconnected (reload, close browser)
+  // while the backend was still processing. We query the stream_task from DB
+  // to decide whether to poll (still running) or one-shot refresh (completed).
+  useEffect(() => {
+    if (!chatId || isStreaming) return;
+
+    const currentMessages = messagesById.get(chatId) ?? [];
+    const lastMsg = currentMessages[currentMessages.length - 1];
+
+    // Only trigger if the last message is an assistant message that looks incomplete
+    if (!lastMsg || lastMsg.role !== "assistant") return;
+    const isStreamingStatus = (lastMsg as any).status === "streaming";
+    const isEmpty = !lastMsg.content || lastMsg.content.length === 0;
+    if (!isStreamingStatus && !isEmpty) return;
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    const checkStreamTask = async () => {
+      try {
+        const task = await ipc.chat.getStreamTask(chatId);
+
+        if (cancelled) return;
+
+        if (task?.status === "running") {
+          // Stream is still active in the backend — poll every 5s to pick up
+          // checkpointed content from DB
+          console.log(`[Recovery] Chat ${chatId}: backend stream still running — starting poll`);
+          if (!pollTimer) {
+            pollTimer = setInterval(() => {
+              if (!cancelled) fetchChatMessages();
+            }, 5_000);
+          }
+        } else {
+          // Stream finished (completed/failed/cancelled) — one-time DB refresh
+          console.log(`[Recovery] Chat ${chatId}: backend stream ${task?.status ?? "not found"} — refreshing from DB`);
+          fetchChatMessages();
+        }
+      } catch (err) {
+        console.warn("[Recovery] Failed to check stream task:", err);
+      }
+    };
+
+    // Small delay so the initial fetchChatMessages has time to complete first
+    const initTimer = setTimeout(checkStreamTask, 1_000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initTimer);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [chatId, isStreaming, messagesById, fetchChatMessages]);
+
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,
   // load more in chunks when scrolling up. Prevents render storms on long chats.

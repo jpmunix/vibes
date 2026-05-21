@@ -134,6 +134,16 @@ export const memoryContracts = {
         output: z.array(MemoryEntrySchema),
     }),
 
+    /** Force condense session memories for a specific chat */
+    condenseSessionMemories: defineContract({
+        channel: "condense-session-memories",
+        input: z.object({
+            appId: z.number(),
+            chatId: z.number(),
+        }),
+        output: z.void(),
+    }),
+
     /** Decay importance of stale auto-extracted memories */
     decayMemories: defineContract({
         channel: "decay-memories",
@@ -255,6 +265,13 @@ export const memoryContracts = {
         channel: "purge-debug-logs",
         input: z.void(),
         output: z.number(), // number deleted
+    }),
+
+    /** Manually trigger compaction of old session memories */
+    compactMemories: defineContract({
+        channel: "compact-memories",
+        input: z.object({ appId: z.number() }),
+        output: z.number(), // number of memories compacted
     }),
 } as const;
 

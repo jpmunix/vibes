@@ -34,6 +34,7 @@ export async function getMaxTokens(
 export async function getTemperature(
   model: LargeLanguageModel,
 ): Promise<number> {
-  const modelOption = await findLanguageModel(model);
-  return modelOption?.temperature ?? 0;
+  // Always use the user-configured value from the Inference Tuner (default: 1.0)
+  const settings = readSettings();
+  return settings.inferenceTemperature ?? 0.2;
 }

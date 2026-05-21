@@ -6,6 +6,45 @@ import { useModelAliases } from "@/hooks/useModelAliases";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { UnifiedSelector, type SelectorOption, type SelectorGroup } from "@/components/ui/UnifiedSelector";
 
+// ── Provider badge styles ──────────────────────────────────────────────────
+// Maps a sourceProvider key to visual badge styling.
+const PROVIDER_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    openrouter: { bg: "bg-sky-500/10", text: "text-sky-500", label: "OpenRouter" },
+    ollama: { bg: "bg-emerald-500/10", text: "text-emerald-500", label: "Ollama" },
+    local: { bg: "bg-amber-500/10", text: "text-amber-500", label: "Local" },
+};
+
+/** Get a badge for any provider. Custom providers get a dynamic purple badge. */
+function getBadgeForProvider(provider: string, providerLabel?: string): { bg: string; text: string; label: string } | null {
+    if (!provider) return null;
+    if (PROVIDER_BADGE_STYLES[provider]) return PROVIDER_BADGE_STYLES[provider];
+    // Custom providers (e.g. "custom::cortecs") get a purple badge with their name
+    if (provider.startsWith("custom::")) {
+        return {
+            bg: "bg-purple-500/10",
+            text: "text-purple-400",
+            label: providerLabel || provider.replace("custom::", ""),
+        };
+    }
+    return { bg: "bg-zinc-500/10", text: "text-zinc-400", label: providerLabel || provider };
+}
+
+/** Resolve the sourceProvider from a model object (MultiProviderModel carries it) */
+function getSourceProvider(model: LanguageModel): string {
+    return (model as any).sourceProvider || "openrouter";
+}
+function getSourceProviderLabel(model: LanguageModel): string {
+    return (model as any).sourceProviderLabel || "";
+}
+
+/** Classify a provider into a group ID for the selector */
+function getGroupId(provider: string): string {
+    if (provider === "ollama") return "ollama";
+    if (provider === "openrouter") return "openrouter";
+    if (provider.startsWith("custom::")) return provider; // each custom gets its own group
+    return "other";
+}
+
 interface SettingsModelSelectorProps {
     selectedModel: string | undefined;
     onModelSelect: (modelName: string) => void;
@@ -27,6 +66,11 @@ interface SettingsModelSelectorProps {
      * models appear in the search dropdown (e.g. for the internal-tasks selector).
      */
     disableEnabledFilter?: boolean;
+    /**
+     * When true, shows a provider badge (OpenRouter, Ollama, etc.) next to each model
+     * and groups models by provider. Used in multi-provider selectors (strategist/executor).
+     */
+    showProviderBadge?: boolean;
 }
 
 export function SettingsModelSelector({
@@ -40,6 +84,7 @@ export function SettingsModelSelector({
     size = "sm",
     variant = "default",
     disableEnabledFilter = false,
+    showProviderBadge = false,
 }: SettingsModelSelectorProps) {
     const { settings } = useSettings();
     const { aliases } = useModelAliases();
@@ -52,7 +97,7 @@ export function SettingsModelSelector({
         return models.filter((model) => enabledModels.includes(model.apiName));
     }, [models, settings?.enabledOpenRouterModels, disableEnabledFilter]);
 
-    // Build a lookup for display names
+    // Build a lookup for display names (and provider info)
     const modelLookup = useMemo(() => {
         const map = new Map<string, LanguageModel>();
         for (const m of models) map.set(m.apiName, m);
@@ -60,14 +105,66 @@ export function SettingsModelSelector({
     }, [models]);
 
     // Build options for UnifiedSelector — special first, then models
-    const options: SelectorOption[] = useMemo(() => {
+    // When showProviderBadge is on, group models by provider
+    const { options, groups } = useMemo(() => {
         const specialOpts: SelectorOption[] = specialOptions.map((opt) => ({
             value: opt.value,
             label: opt.label,
             description: opt.description,
-            group: specialOptions.length > 0 && filteredModels.length > 0 ? "special" : undefined,
+            group: "special",
         }));
 
+        if (showProviderBadge) {
+            // Group by sourceProvider (from MultiProviderModel)
+            const buckets = new Map<string, { label: string; models: SelectorOption[] }>();
+
+            for (const model of filteredModels) {
+                const provider = getSourceProvider(model);
+                const groupId = getGroupId(provider);
+
+                if (!buckets.has(groupId)) {
+                    let groupLabel = "";
+                    if (groupId === "ollama") groupLabel = "Ollama (local)";
+                    else if (groupId === "openrouter") groupLabel = "OpenRouter";
+                    else if (groupId.startsWith("custom::")) {
+                        const name = getSourceProviderLabel(model) || groupId.replace("custom::", "");
+                        groupLabel = name;
+                    }
+                    else groupLabel = "Otros";
+                    buckets.set(groupId, { label: groupLabel, models: [] });
+                }
+
+                buckets.get(groupId)!.models.push({
+                    value: model.apiName,
+                    label: aliases[model.apiName] || model.displayName,
+                    description: model.contextWindow
+                        ? `${model.contextWindow >= 1000000 ? `${(model.contextWindow / 1000000).toFixed(0)}M` : model.contextWindow >= 1000 ? `${(model.contextWindow / 1000).toFixed(0)}K` : model.contextWindow} context`
+                        : undefined,
+                    keywords: [model.apiName, model.displayName],
+                    group: groupId,
+                });
+            }
+
+            // Order: Ollama first, then custom, then OpenRouter
+            const orderedBuckets = [
+                ...([...buckets.entries()].filter(([k]) => k === "ollama")),
+                ...([...buckets.entries()].filter(([k]) => k.startsWith("custom::"))),
+                ...([...buckets.entries()].filter(([k]) => k === "openrouter")),
+                ...([...buckets.entries()].filter(([k]) => k !== "ollama" && k !== "openrouter" && !k.startsWith("custom::"))),
+            ];
+
+            const allModelOpts = orderedBuckets.flatMap(([, b]) => b.models);
+            const grps: SelectorGroup[] = [{ id: "special" }];
+            for (const [id, bucket] of orderedBuckets) {
+                if (bucket.models.length > 0) {
+                    grps.push({ id, heading: bucket.label });
+                }
+            }
+
+            return { options: [...specialOpts, ...allModelOpts], groups: grps };
+        }
+
+        // Default (no provider badges): flat list
         const modelOpts: SelectorOption[] = filteredModels.map((model) => ({
             value: model.apiName,
             label: aliases[model.apiName] || model.displayName,
@@ -78,25 +175,19 @@ export function SettingsModelSelector({
             keywords: [model.apiName, model.displayName],
         }));
 
-        return [...specialOpts, ...modelOpts];
-    }, [specialOptions, filteredModels, aliases]);
+        const allOpts = [...specialOpts, ...modelOpts];
+        const grps: SelectorGroup[] | undefined =
+            specialOptions.length > 0 && filteredModels.length > 0
+                ? [{ id: "special" }, { id: "models" }]
+                : undefined;
 
-    // Groups (only if both special and models exist)
-    const groups: SelectorGroup[] | undefined = useMemo(() => {
-        if (specialOptions.length > 0 && filteredModels.length > 0) {
-            return [
-                { id: "special" },
-                { id: "models" },
-            ];
-        }
-        return undefined;
-    }, [specialOptions.length, filteredModels.length]);
+        return { options: allOpts, groups: grps };
+    }, [specialOptions, filteredModels, aliases, showProviderBadge]);
 
     // Resolve display name for the trigger
     const getDisplayName = () => {
         const special = specialOptions.find((opt) => opt.value === selectedModel);
         if (special) return special.label;
-        // Check alias first
         if (selectedModel && aliases[selectedModel]) return aliases[selectedModel];
         const model = models.find((m) => m.apiName === selectedModel);
         if (model) return model.displayName;
@@ -112,7 +203,7 @@ export function SettingsModelSelector({
                 groups={groups}
                 triggerVariant={variant}
                 triggerSize={size}
-                popoverWidth="w-[300px]"
+                popoverWidth="w-[340px]"
                 searchable={filteredModels.length > 5}
                 searchPlaceholder="Buscar modelos…"
                 emptyMessage={loading ? "Cargando modelos..." : "No hay modelos disponibles"}
@@ -124,11 +215,23 @@ export function SettingsModelSelector({
                 triggerClassName={className}
                 renderItem={(option, isSelected) => {
                     const model = modelLookup.get(option.value);
+
                     if (model) {
+                        const provider = getSourceProvider(model);
+                        const badge = showProviderBadge
+                            ? getBadgeForProvider(provider, getSourceProviderLabel(model))
+                            : null;
                         return (
-                            <ModelItemContent
-                                model={model}
-                            />
+                            <div className="flex items-center gap-2 w-full">
+                                <div className="flex-1 min-w-0">
+                                    <ModelItemContent model={model} />
+                                </div>
+                                {badge && (
+                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${badge.bg} ${badge.text}`}>
+                                        {badge.label}
+                                    </span>
+                                )}
+                            </div>
                         );
                     }
                     // Special option — standard render

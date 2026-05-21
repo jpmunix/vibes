@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
 import { v4 as uuidv4 } from "uuid";
 import { LoadingBlock, VanillaMarkdownParser } from "@/components/LoadingBlock";
+import { X } from "@/components/ui/icons";
 
 interface HelpBotDialogProps {
   isOpen: boolean;
@@ -177,7 +178,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
                   onClick={() => setError(null)}
                   className="typo-caption text-destructive hover:text-destructive/80"
                 >
-                  ✕
+                  <X size={12} />
                 </button>
               </div>
             </div>

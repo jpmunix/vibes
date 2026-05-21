@@ -95,10 +95,10 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
     },
   });
 
-  // Only show enabled models
+  // Only show enabled models + always show custom models
   const enabledModels = useMemo(() => {
     if (!models) return [];
-    return models.filter((m) => enabledModelIds.includes(m.apiName));
+    return models.filter((m) => m.type === "custom" || enabledModelIds.includes(m.apiName));
   }, [models, enabledModelIds]);
 
   const handleDeleteClick = (modelApiName: string) => {
@@ -160,33 +160,6 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
                 <h4 className="typo-label truncate flex-1">
                   {aliases[model.apiName] || model.displayName}
                 </h4>
-                {model.type === "custom" && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditClick(model);
-                      }}
-                      className="text-primary hover:bg-primary/10 h-6 w-6"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(model.apiName);
-                      }}
-                      disabled={isDeleting}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50 h-6 w-6"
-                    >
-                      <TrashIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
               </div>
 
               {/* Line 2: Context + output */}
@@ -253,6 +226,14 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             alias={aliases[infoModel.apiName]}
             onSetAlias={(newAlias) => setAlias({ modelId: infoModel.apiName, alias: newAlias })}
             onRemoveAlias={() => removeAlias(infoModel.apiName)}
+            onEditCustomModel={infoModel.type === "custom" ? (m) => {
+              setInfoModel(null);
+              handleEditClick(m);
+            } : undefined}
+            onDeleteCustomModel={infoModel.type === "custom" ? (apiName) => {
+              setInfoModel(null);
+              handleDeleteClick(apiName);
+            } : undefined}
           />
         )
       }

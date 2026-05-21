@@ -204,7 +204,7 @@ export async function getFirebaseProjectWebConfig(projectId: string, appId?: str
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    displayName: displayName || "Minube Vibes App",
+                    displayName: displayName || "Vibes App",
                 }),
             });
 

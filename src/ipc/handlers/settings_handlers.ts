@@ -1,33 +1,41 @@
-import { createTypedHandler, HandlerContext } from "./base";
+import { createTypedHandler } from "./base";
 import { settingsContracts } from "../types/settings";
-import { writeSettings, readSettings } from "../../main/settings";
+import { writeSettings, readSettings, resetSettingsCache } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import log from "electron-log";
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 import { safeSend } from "../utils/safe_sender";
+import { preferencesCache } from "../../main/preferences-cache";
+import type { UserSettings } from "../../lib/schemas";
+import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 const logger = log.scope("settings_handlers");
 
 /**
- * Fields that are LOCAL-ONLY and must NEVER be overwritten by remote settings.
- * - providerSettings: contains API keys encrypted with machine-specific electron safeStorage.
- *   They cannot be decrypted on other machines and would corrupt the local config.
- * - Session fields (userId, sessionToken) are stripped separately.
+ * Keys that live in `user-settings.json` only (not in the KV store).
+ * These are machine-specific state, not user preferences.
  */
-const LOCAL_ONLY_FIELDS = [
-  "providerSettings",
-  "githubAccessToken",
-  "vercelAccessToken",
-] as const;
+const LOCAL_DISK_ONLY_KEYS = new Set([
+  "userId",
+  "sessionToken",
+  "windowState",
+  "secondaryWindowStates",
+  "isRunning",
+  "lastKnownPerformance",
+  "hasRunBefore",
+  "isTestMode",
+]);
 
 /**
  * Keys removed by the v10 settings cleanup migration.
  * Must be stripped from remote settings during merge to prevent stale Bunny data
  * from re-introducing them after the local migration has cleaned them up.
  */
-const V10_DEAD_KEYS = [
+const _V10_DEAD_KEYS = [
   'turboEditModel', 'todoAnalysisModel', 'debateModel',
   'summaryModel', 'appTitleGenerationModel',
   'memoriesExtractionModel', 'hideLocalAgentNewChatToast',
@@ -39,53 +47,76 @@ const V10_DEAD_KEYS = [
   'releaseChannel', 'dossierModel', 'enableTurboEditsV2',
 ] as const;
 
-export async function forceSyncRemoteSettingsToLocal(userId: string) {
-  const db = getRemoteDb();
-  try {
-    const remoteRecord = await db.query.userSettings.findFirst({
-      where: eq(remoteSchema.userSettings.userId, userId),
-    });
-    if (remoteRecord) {
-      const remoteSettings = JSON.parse(remoteRecord.settingsJson);
-
-      // --- SESSION DATA EXCLUSION ---
-      // We must NEVER overwrite local session data with remote settings data.
-      // Remote settings are for user preferences, not for session management.
-      // If we overwrite these, the user will be logged out on the next launch.
-      delete remoteSettings.userId;
-      delete remoteSettings.sessionToken;
-
-      // --- LOCAL-ONLY FIELDS EXCLUSION ---
-      // API keys and secrets are encrypted with machine-specific safeStorage.
-      // They MUST NOT be overwritten by remote data (which may contain stale or
-      // differently-encrypted values from another machine/session).
-      for (const field of LOCAL_ONLY_FIELDS) {
-        delete remoteSettings[field];
-      }
-
-      // --- MEMORY MODEL EXCLUSION ---
-      // Memory model fields are managed by local migrations (v9g+).
-      // They MUST NOT be overwritten by remote data.
-      delete remoteSettings.memoriesSynthesisModelV2;
-      delete remoteSettings.memoriesRouterModelV2;
-      // --- MIGRATION FLAGS EXCLUSION ---
-      // Migration state is local-only — remote may have stale flags.
-      delete remoteSettings._migrations;
-
-      // --- DEAD KEY EXCLUSION (v10) ---
-      for (const key of V10_DEAD_KEYS) {
-        delete remoteSettings[key];
-      }
-
-      // We must explicitly save these to disk so they immediately become the local truth
-      // without needing an initial save from the React frontend.
-      writeSettings(remoteSettings);
-      return true;
+/**
+ * Build a UserSettings-shaped object from the preferences cache.
+ * Falls back to local disk for LOCAL_DISK_ONLY_KEYS (windowState, session, etc.).
+ */
+export function composeSettingsFromCache(userId: string): Record<string, any> {
+  // Start with local-only fields from disk
+  const localSettings = readSettings();
+  const localOnly: Record<string, any> = {};
+  for (const key of LOCAL_DISK_ONLY_KEYS) {
+    if (key in localSettings) {
+      localOnly[key] = (localSettings as any)[key];
     }
-  } catch (error) {
-    logger.error("Error force syncing remote user settings to local:", error);
   }
-  return false;
+
+  // Get all preferences from cache
+  const prefsMap = preferencesCache.getAll(userId, 0);
+
+  // Deserialize each value from JSON string to its native type
+  const deserialized: Record<string, any> = {};
+  for (const [key, rawValue] of Object.entries(prefsMap)) {
+    try {
+      deserialized[key] = JSON.parse(rawValue);
+    } catch {
+      // Plain string value (not JSON)
+      deserialized[key] = rawValue;
+    }
+  }
+
+  // Merge: local-only fields + deserialized preferences
+  return { ...deserialized, ...localOnly } as UserSettings;
+}
+
+/**
+ * Decompose a partial UserSettings into KV entries and persist them.
+ * Local-only fields are written to disk, everything else goes to the cache.
+ */
+function decomposeAndPersist(
+  userId: string,
+  settings: Record<string, any>,
+): void {
+  const localUpdates: Record<string, any> = {};
+  const kvUpdates: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(settings)) {
+    if (LOCAL_DISK_ONLY_KEYS.has(key)) {
+      localUpdates[key] = value;
+    } else {
+      // Serialize to JSON string for the KV store
+      kvUpdates[key] = typeof value === "string" ? value : JSON.stringify(value);
+    }
+  }
+
+  // Write local-only fields to disk
+  if (Object.keys(localUpdates).length > 0) {
+    writeSettings(localUpdates);
+  }
+
+  // Write preferences to cache (async DB persist happens inside)
+  if (Object.keys(kvUpdates).length > 0) {
+    preferencesCache.setMany(userId, kvUpdates, 0);
+  }
+}
+
+// Legacy export — kept for backward compat during migration period
+export async function forceSyncRemoteSettingsToLocal(userId: string) {
+  // Now just hydrates the preferences cache if needed
+  if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+    await preferencesCache.hydrate(userId);
+  }
+  return true;
 }
 
 export function registerSettingsHandlers() {
@@ -93,85 +124,70 @@ export function registerSettingsHandlers() {
   // to avoid logging sensitive data (API keys, tokens, etc.) from args/return values.
 
   // ── getUserSettings ──────────────────────────────────────────────────
-  // Merges LOCAL settings (disk) with REMOTE settings (Bunny DB).
-  // Merge order: { ...local, ...remote } — remote wins for all fields
-  // EXCEPT those listed in LOCAL_ONLY_FIELDS (API keys, tokens) and
-  // session data (userId, sessionToken), which always come from local.
+  // Composes a UserSettings object from:
+  //   1. Preferences cache (KV store, hydrated from BunnyDB)
+  //   2. Local disk (machine-specific fields: windowState, session, etc.)
   //
-  // ⚠️  This means any setting written to disk via writeSettings() but NOT
-  //     synced to Bunny will be overwritten by stale remote values on
-  //     the next getUserSettings call. Always sync to Bunny after writing.
+  // No more blob merge, no LOCAL_ONLY_FIELDS exclusion, no V10_DEAD_KEYS stripping.
+  // The KV store IS the source of truth for all preferences.
   createTypedHandler(settingsContracts.getUserSettings, async (_, __, context) => {
-    const localSettings = readSettings();
-    if (context.userId) {
-      const db = getRemoteDb();
-      try {
-        const remoteRecord = await db.query.userSettings.findFirst({
-          where: eq(remoteSchema.userSettings.userId, context.userId),
-        });
-        if (remoteRecord) {
-          try {
-            const remoteSettings = JSON.parse(remoteRecord.settingsJson);
-
-            // Strip LOCAL-ONLY fields from remote to prevent stale/encrypted
-            // API keys from overwriting the local machine's current keys.
-            for (const field of LOCAL_ONLY_FIELDS) {
-              delete remoteSettings[field];
-            }
-            // Also strip session data
-            delete remoteSettings.userId;
-            delete remoteSettings.sessionToken;
-            // Strip memory model fields — managed by local migration v9
-            delete remoteSettings.memoriesSynthesisModelV2;
-            delete remoteSettings.memoriesRouterModelV2;
-            // Strip _migrations — always trust local migration state,
-            // otherwise remote overwrites local flags and re-triggers migrations
-            delete remoteSettings._migrations;
-
-            // Strip dead/abandoned keys (v10 cleanup) — remote may still hold stale values
-            for (const key of V10_DEAD_KEYS) {
-              delete remoteSettings[key];
-            }
-
-            // Merge: local wins for secrets, remote wins for preferences
-            return { ...localSettings, ...remoteSettings };
-          } catch (e) {
-            logger.error("Failed to parse remote settings JSON", e);
-          }
-        }
-      } catch (error) {
-        logger.error("Error fetching remote user settings:", error);
-      }
+    if (context.userId && preferencesCache.isHydrated) {
+      return composeSettingsFromCache(context.userId) as any;
     }
-    return localSettings;
+
+    // If we have a userId but cache isn't hydrated yet (splash hydration still running),
+    // wait for it instead of returning empty defaults.  This prevents the renderer from
+    // getting providerSettings: {} on first render and flashing "configure OpenRouter" banners.
+    if (context.userId && !preferencesCache.isHydrated) {
+      const MAX_WAIT_MS = 5000;
+      const POLL_MS = 50;
+      const start = Date.now();
+      while (!preferencesCache.isHydrated && Date.now() - start < MAX_WAIT_MS) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
+      if (preferencesCache.isHydrated) {
+        return composeSettingsFromCache(context.userId) as any;
+      }
+      logger.warn("getUserSettings: preferences cache did not hydrate within timeout, returning disk settings");
+    }
+
+    // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
+    return readSettings();
   });
 
   // ── setUserSettings ──────────────────────────────────────────────────
-  // Canonical "full pipeline" for settings changes initiated by the renderer.
-  // Performs ALL sync steps in sequence:
-  //   1. writeSettings()      → local disk + in-memory cache
-  //   2. Hot-update OpenCode  → config/permissions applied to running daemon
-  //   3. Sync to Bunny DB     → remote persistence across devices
-  //   4. Returns `updated`    → renderer sets the Jotai atom
-  //
-  // ⚠️  Main-process code that needs the same pipeline must replicate these
-  //     steps manually — see persistPermissionToSettings() in opencode_adapter.ts.
-  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context) => {
-    writeSettings(settings);
-    const updated = readSettings();
+  // Canonical pipeline for settings changes from the renderer:
+  //   1. Decompose into local-only (disk) + preferences (cache → DB)
+  //   2. Hot-update OpenCode if model/variant/permissions changed
+  //   3. Broadcast to all windows
+  //   4. Also update the legacy blob backup in Bunny
+  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context): Promise<UserSettings> => {
+    if (context.userId && preferencesCache.isHydrated) {
+      // New path: decompose into KV cache + local disk
+      decomposeAndPersist(context.userId, settings as Record<string, any>);
+      // Invalidate in-memory cache so readSettings() recomposes from fresh KV data.
+      // Without this, the cached object retains stale values for non-LOCAL_DISK_ONLY keys.
+      resetSettingsCache();
+    } else {
+      // Fallback for pre-auth: write everything to disk
+      writeSettings(settings);
+    }
 
-    // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or agent models changed
-    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.standardModeModel || settings.reasoningEffort || settings.textVerbosity || settings.agentModels) {
+    // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or unified model keys changed
+    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.strategistModel || settings.executorModel || settings.reasoningEffort || settings.textVerbosity || settings.inferenceTemperature !== undefined || settings.inferenceTopP !== undefined || settings.inferenceRepetitionPenalty !== undefined) {
       try {
         const { updateOpenCodeConfig } = await import("./opencode_adapter");
         await updateOpenCodeConfig({
           // If only variant changed (no model change), pass current model so the config gets rebuilt
           selectedModel: settings.selectedModel ?? (settings.selectedModelVariant !== undefined ? readSettings().selectedModel : undefined),
           selectedModelVariant: settings.selectedModelVariant,
-          standardModeModel: settings.standardModeModel,
+          strategistModel: settings.strategistModel,
+          executorModel: settings.executorModel,
           reasoningEffort: settings.reasoningEffort,
           textVerbosity: settings.textVerbosity,
-          agentModels: settings.agentModels,
+          inferenceTemperature: settings.inferenceTemperature,
+          inferenceTopP: settings.inferenceTopP,
+          inferenceRepetitionPenalty: settings.inferenceRepetitionPenalty,
         });
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);
@@ -182,59 +198,67 @@ export function registerSettingsHandlers() {
     if (settings.openCodePermissions2) {
       try {
         const { updateOpenCodePermissions } = await import("./opencode_adapter");
-        await updateOpenCodePermissions(updated);
+        const currentSettings = context.userId && preferencesCache.isHydrated
+          ? composeSettingsFromCache(context.userId)
+          : readSettings();
+        await updateOpenCodePermissions(currentSettings as any);
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode permissions: ${e.message}`);
       }
     }
 
-    // If provider settings (API keys) changed, we must completely shutdown the OpenCode
-    // daemon so it picks up the new process.env variables upon the next spawn.
-    if (settings.providerSettings) {
+    // If provider settings (API keys) or active provider changed, shutdown OpenCode daemon
+    // so it restarts with the correct baseURL/apiKey configuration.
+    if (settings.providerSettings || settings.activeProviderId !== undefined) {
       try {
         const { shutdownOpenCode } = await import("./opencode_adapter");
         await shutdownOpenCode();
-        logger.info("Shutdown OpenCode daemon to apply new API keys");
+        logger.info("Shutdown OpenCode daemon to apply provider change");
       } catch (e: any) {
-        logger.warn(`Failed to shutdown OpenCode for API key reload: ${e.message}`);
+        logger.warn(`Failed to shutdown OpenCode for provider change: ${e.message}`);
       }
     }
 
+    // Build the full updated settings to return to the renderer
+    const updated = context.userId && preferencesCache.isHydrated
+      ? composeSettingsFromCache(context.userId)
+      : readSettings();
+
+    // ── Backup: also update the legacy blob in Bunny (fire-and-forget) ──
+    // The real settings are already persisted locally in the KV cache above.
+    // This backup is purely for disaster recovery — no need to block the UI.
     if (context.userId) {
-      const db = getRemoteDb();
-      try {
-        // --- SESSION DATA EXCLUSION ---
-        // We strip session data before saving to the remote DB to keep it clean.
-        const { userId: _u, sessionToken: _s, ...syncableSettings } = updated;
-        const settingsJson = JSON.stringify(syncableSettings);
+      const capturedUserId = context.userId;
+      const capturedUpdated = { ...updated };
+      setImmediate(async () => {
+        try {
+          const db = getRemoteDb();
+          const { userId: _u, sessionToken: _s, ...syncableSettings } = capturedUpdated;
+          const settingsJson = JSON.stringify(syncableSettings);
 
-        const existing = await db.query.userSettings.findFirst({
-          where: eq(remoteSchema.userSettings.userId, context.userId),
-        });
+          const existing = await db.query.userSettings.findFirst({
+            where: eq(remoteSchema.userSettings.userId, capturedUserId),
+          });
 
-        if (existing) {
-          await db
-            .update(remoteSchema.userSettings)
-            .set({
+          if (existing) {
+            await db
+              .update(remoteSchema.userSettings)
+              .set({ settingsJson, updatedAt: new Date() })
+              .where(eq(remoteSchema.userSettings.userId, capturedUserId));
+          } else {
+            await db.insert(remoteSchema.userSettings).values({
+              userId: capturedUserId,
               settingsJson,
               updatedAt: new Date(),
-            })
-            .where(eq(remoteSchema.userSettings.userId, context.userId));
-        } else {
-          await db.insert(remoteSchema.userSettings).values({
-            userId: context.userId,
-            settingsJson,
-            updatedAt: new Date(),
-          });
+            });
+          }
+        } catch (error) {
+          logger.error("Error syncing settings backup blob:", error);
         }
-      } catch (error) {
-        logger.error("Error syncing settings to remote DB:", error);
-      }
+      });
     }
 
     // ── Broadcast to ALL other windows for real-time sync ──
-    // The calling window already receives `updated` as the return value;
-    // other windows (admin panel, chat sub-windows) need the IPC push.
     const senderWebContentsId = event?.sender?.id;
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed() && win.webContents && win.webContents.id !== senderWebContentsId) {
@@ -242,6 +266,123 @@ export function registerSettingsHandlers() {
       }
     }
 
-    return updated;
+    return updated as UserSettings;
+  });
+
+  // ── Global Skills Handlers ───────────────────────────────────────────
+  const getGlobalSkillsDir = () => path.join(app.getPath("userData"), "opencode-config", "skills");
+
+  const isSafePath = (targetPath: string) => {
+    const relative = path.relative(getGlobalSkillsDir(), targetPath);
+    return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+  };
+
+  createTypedHandler(settingsContracts.listGlobalSkills, async () => {
+    const baseDir = getGlobalSkillsDir();
+    if (!existsSync(baseDir)) {
+      return [];
+    }
+    
+    try {
+      const skills: { name: string; path: string; enabled: boolean }[] = [];
+      const entries = await fs.readdir(baseDir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const enabledPath = path.join(baseDir, entry.name, "SKILL.md");
+          const disabledPath = path.join(baseDir, entry.name, "SKILL.disabled");
+          if (existsSync(enabledPath)) {
+            skills.push({
+              name: entry.name,
+              path: `${entry.name}/SKILL.md`,
+              enabled: true,
+            });
+          } else if (existsSync(disabledPath)) {
+            skills.push({
+              name: entry.name,
+              path: `${entry.name}/SKILL.disabled`,
+              enabled: false,
+            });
+          }
+        }
+      }
+      return skills;
+    } catch (err: any) {
+      logger.error("Failed to list global skills:", err);
+      return [];
+    }
+  });
+
+  createTypedHandler(settingsContracts.renameGlobalSkill, async (event, { oldPath, newPath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullOld = path.join(baseDir, oldPath);
+    const fullNew = path.join(baseDir, newPath);
+    
+    if (!isSafePath(fullOld) || !isSafePath(fullNew)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      await fs.rename(fullOld, fullNew);
+    } catch (err: any) {
+      logger.error("Failed to rename global skill:", err);
+      throw err;
+    }
+  });
+
+  createTypedHandler(settingsContracts.readGlobalSkill, async (event, { filePath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    if (!existsSync(fullPath)) {
+      throw new Error("El archivo de skill no existe.");
+    }
+    
+    try {
+      return await fs.readFile(fullPath, "utf-8");
+    } catch (err: any) {
+      logger.error("Failed to read global skill:", err);
+      throw err;
+    }
+  });
+
+  createTypedHandler(settingsContracts.editGlobalSkill, async (event, { filePath, content }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      const parentDir = path.dirname(fullPath);
+      await fs.mkdir(parentDir, { recursive: true });
+      await fs.writeFile(fullPath, content, "utf-8");
+    } catch (err: any) {
+      logger.error("Failed to write global skill:", err);
+      throw err;
+    }
+  });
+
+  createTypedHandler(settingsContracts.deleteGlobalSkill, async (event, { filePath }) => {
+    const baseDir = getGlobalSkillsDir();
+    const fullPath = path.join(baseDir, filePath);
+    
+    if (!isSafePath(fullPath)) {
+      throw new Error("Acceso no autorizado fuera del directorio de skills globales.");
+    }
+    
+    try {
+      if (existsSync(fullPath)) {
+        await fs.rm(fullPath, { recursive: true, force: true });
+      }
+    } catch (err: any) {
+      logger.error("Failed to delete global skill:", err);
+      throw err;
+    }
   });
 }

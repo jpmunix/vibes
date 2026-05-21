@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { DollarSign, RefreshCw } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
+import { useAtomValue } from "jotai";
+import { preferencesHydratedAtom } from "@/atoms/preferenceAtoms";
 
 import {
   Tooltip,
@@ -11,6 +13,8 @@ import {
 } from "@/components/ui/tooltip";
 
 export function OpenRouterCreditsButton() {
+  const hydrated = useAtomValue(preferencesHydratedAtom);
+
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: queryKeys.system.openRouterCredits,
     queryFn: async () => {
@@ -18,6 +22,10 @@ export function OpenRouterCreditsButton() {
     },
     refetchInterval: 600000, // Refetch every 10 minutes
     retry: false,
+    // Don't fetch until preferences (including OpenRouter API key) are hydrated.
+    // Without this, the query fires with empty providerSettings and fails silently,
+    // causing the balance to never appear until the user manually refreshes settings.
+    enabled: hydrated,
   });
 
   if (error || !data) {

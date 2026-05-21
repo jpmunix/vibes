@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Folder,
   FolderOpen,
   Loader2,
@@ -271,12 +273,12 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
     try {
       if (mode.type === "new-file") {
         const filePath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath, content: "" });
+        await ipc.app.editAppFile({ appId, filePath, content: "", skipCommit: true });
         onRefresh();
         setSelectedFile({ path: filePath, line: null });
       } else if (mode.type === "new-folder") {
         const folderPath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath: `${folderPath}/.gitkeep`, content: "" });
+        await ipc.app.editAppFile({ appId, filePath: `${folderPath}/.gitkeep`, content: "", skipCommit: true });
         onRefresh();
       } else if (mode.type === "rename" && menu.node) {
         const parts = menu.node.path.split("/");
@@ -523,6 +525,23 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
 
   const isSearchActive = isContentSearch || isNameSearch;
 
+  // ── Collapse / Expand signals ──
+  // collapseGen: bumped to force all TreeNodeItems to re-evaluate their
+  // default expanded state.  expandFirstLevel tracks whether the
+  // first directory level should be opened.
+  const [collapseGen, setCollapseGen] = useState(0);
+  const [expandFirstLevel, setExpandFirstLevel] = useState(false);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandFirstLevel(false);
+    setCollapseGen((g) => g + 1);
+  }, []);
+
+  const handleExpandFirstLevel = useCallback(() => {
+    setExpandFirstLevel(true);
+    setCollapseGen((g) => g + 1);
+  }, []);
+
   return (
     <div className="file-tree mt-2 flex h-full flex-col">
       {/* Search bar */}
@@ -557,7 +576,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           )}
         </div>
 
-        {/* Search mode toggle */}
+        {/* Search mode toggle + collapse/expand buttons */}
         <div className="mt-1.5 flex items-center gap-1">
           <button
             onClick={() => { setSearchMode("name"); setSearchValue(""); }}
@@ -579,8 +598,27 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           >
             Contenido
           </button>
+
+          {/* ── Collapse / Expand buttons ── */}
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              onClick={handleCollapseAll}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Colapsar todo"
+            >
+              <ChevronsDownUp size={14} />
+            </button>
+            <button
+              onClick={handleExpandFirstLevel}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Expandir primer nivel"
+            >
+              <ChevronsUpDown size={14} />
+            </button>
+          </div>
+
           {isSearchActive && (
-            <span className="ml-auto text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {isContentSearch
                 ? searchLoading
                   ? "Buscando..."
@@ -649,6 +687,8 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
                 searchQuery={debouncedSearch}
                 appId={appId}
                 onContextMenu={setContextMenu}
+                collapseGen={collapseGen}
+                expandFirstLevel={expandFirstLevel}
               />
             </li>
           </ul>
@@ -722,6 +762,8 @@ interface TreeNodesProps {
   searchQuery: string;
   appId: number | null;
   onContextMenu: (state: ContextMenuState | null) => void;
+  collapseGen: number;
+  expandFirstLevel: boolean;
 }
 
 // Tree nodes component
@@ -733,6 +775,8 @@ const TreeNodes = ({
   searchQuery,
   appId,
   onContextMenu,
+  collapseGen,
+  expandFirstLevel,
 }: TreeNodesProps) => (
   <ul className="ml-4">
     {sortNodes(nodes).map((node) => (
@@ -745,6 +789,8 @@ const TreeNodes = ({
         searchQuery={searchQuery}
         appId={appId}
         onContextMenu={onContextMenu}
+        collapseGen={collapseGen}
+        expandFirstLevel={expandFirstLevel}
       />
     ))}
   </ul>
@@ -758,6 +804,8 @@ interface TreeNodeProps {
   searchQuery: string;
   appId: number | null;
   onContextMenu: (state: ContextMenuState | null) => void;
+  collapseGen: number;
+  expandFirstLevel: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -862,10 +910,21 @@ const TreeNodeItem = ({
   searchQuery,
   appId,
   onContextMenu,
+  collapseGen,
+  expandFirstLevel,
 }: TreeNodeProps) => {
-  const [expanded, setExpanded] = useState(level < 2);
+  // Default: all directories collapsed (false)
+  const [expanded, setExpanded] = useState(false);
   const setSelectedFile = useSetAtom(selectedFileAtom);
   const match = isSearchMode ? matchesByPath.get(node.path) : undefined;
+
+  // React to collapse/expand signals from the parent toolbar
+  useEffect(() => {
+    if (!node.isDirectory) return;
+    // expandFirstLevel=true → only level 1 dirs (direct children of /)
+    // expandFirstLevel=false → collapse everything
+    setExpanded(expandFirstLevel && level === 1);
+  }, [collapseGen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isSearchMode && node.isDirectory) {
@@ -957,6 +1016,8 @@ const TreeNodeItem = ({
           searchQuery={searchQuery}
           appId={appId}
           onContextMenu={onContextMenu}
+          collapseGen={collapseGen}
+          expandFirstLevel={expandFirstLevel}
         />
       )}
     </li>

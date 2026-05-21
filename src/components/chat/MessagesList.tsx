@@ -58,10 +58,6 @@ interface FooterContext {
   todoId: number | null;
   isTodoCompleted: boolean;
   onMarkTodoCompleted: () => void;
-  /** Ephemeral flag: true only right after streaming ends in plan mode */
-  showAcceptPlan: boolean;
-  /** Callback: switch to agent mode and send acceptance prompt */
-  onAcceptPlan: () => void;
 }
 
 
@@ -80,8 +76,6 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
     todoId,
     isTodoCompleted,
     onMarkTodoCompleted,
-    showAcceptPlan,
-    onAcceptPlan,
   } = context;
 
   return (
@@ -96,16 +90,6 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
-          {/* "Aceptar plan" — ephemeral accelerator, only after AI finishes in plan mode */}
-          {showAcceptPlan && (
-            <Button
-              size="sm"
-              onClick={onAcceptPlan}
-              className="font-sans font-normal"
-            >
-              Aceptar plan
-            </Button>
-          )}
 
           {todoId && (
             <Button
@@ -161,39 +145,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
     const user = useAtomValue(userAtom);
-
-    // "Aceptar plan" — ephemeral: only visible right after streaming ends in plan mode.
-    // Resets when a new stream starts, chat changes, or mode changes.
-    const isPlanMode = settings?.selectedChatMode === "plan";
-    const [showAcceptPlan, setShowAcceptPlan] = useState(false);
-    const prevStreamingForPlanRef = useRef(false);
-
-    useEffect(() => {
-      const wasStreaming = prevStreamingForPlanRef.current;
-      prevStreamingForPlanRef.current = isStreaming;
-
-      if (wasStreaming && !isStreaming && isPlanMode) {
-        // Streaming just ended in plan mode — show the ephemeral button
-        setShowAcceptPlan(true);
-      } else if (isStreaming) {
-        // New stream started — hide the button
-        setShowAcceptPlan(false);
-      }
-    }, [isStreaming, isPlanMode]);
-
-    // Reset when switching chats or leaving plan mode
-    useEffect(() => {
-      setShowAcceptPlan(false);
-    }, [selectedChatId]);
-
-    useEffect(() => {
-      if (!isPlanMode) setShowAcceptPlan(false);
-    }, [isPlanMode]);
-
-    // Reset when messages are emptied (e.g. after undo)
-    useEffect(() => {
-      if (messages.length === 0) setShowAcceptPlan(false);
-    }, [messages.length]);
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -306,20 +257,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId]);
 
-    // "Aceptar plan" callback: switch to agent mode and send acceptance prompt
-    const handleAcceptPlan = useCallback(() => {
-      if (!selectedChatId) return;
-
-      // 1. Switch to agent mode
-      updateSettings({ selectedChatMode: "agent" });
-
-      // 2. Send the acceptance message
-      streamMessage({
-        prompt: "Acepto. Procede con lo propuesto.",
-        chatId: selectedChatId,
-      });
-    }, [selectedChatId, updateSettings, streamMessage]);
-
     // Create context object for Footer component with stable references
     const footerContext = useMemo<FooterContext>(
       () => ({
@@ -336,8 +273,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         onMarkTodoCompleted: handleMarkTodoCompleted,
-        showAcceptPlan,
-        onAcceptPlan: handleAcceptPlan,
       }),
       [
         messages,
@@ -353,8 +288,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         todoId,
         isTodoCompleted,
         handleMarkTodoCompleted,
-        showAcceptPlan,
-        handleAcceptPlan,
       ],
     );
 

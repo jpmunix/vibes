@@ -23,6 +23,7 @@ import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
+import { ArtifactSidebar } from "../chat/ArtifactSidebar";
 import { AuthGate } from "../AuthGate";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -201,11 +202,14 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
 
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
+    // Guard: wait for initialChatMode to be applied to settings before streaming,
+    // so that ChatPanel and other consumers see the correct mode from the start.
     useEffect(() => {
         if (
             hasPendingPrompt &&
             chatId &&
-            !hasAutoStreamedRef.current
+            !hasAutoStreamedRef.current &&
+            (!initialChatMode || hasAppliedInitialModeRef.current)
         ) {
             hasAutoStreamedRef.current = true;
             ipc.system.getPendingChatPrompt(chatId).then((pending) => {
@@ -221,11 +225,14 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                             ),
                             type: a.attachmentType,
                         })),
+                        // Force the correct chat mode synchronously — avoids race
+                        // condition where settings haven't propagated yet.
+                        chatModeOverride: initialChatMode || undefined,
                     });
                 }
             });
         }
-    }, [hasPendingPrompt, chatId, streamMessage]);
+    }, [hasPendingPrompt, chatId, streamMessage, initialChatMode]);
 
     useEffect(() => {
         if (!chatId && chats.length && !loading) {
@@ -553,6 +560,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                         </div>
                     </PanelResizeHandle>
                     {chatPosition === "left" ? previewPanelNode : chatPanelNode}
+                    <ArtifactSidebar />
                 </PanelGroup>
             </div>
             <Toaster richColors />

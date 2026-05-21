@@ -16,6 +16,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { openRouterCompletion } from "./openrouter";
 import { readSettings } from "../../main/settings";
+import { app } from "electron";
 
 const logger = log.scope("morph_patcher");
 
@@ -118,8 +119,7 @@ export async function morphPatch(params: MorphPatchParams): Promise<MorphPatchRe
  * relative to the project dir, not the server dir).
  */
 function getMorphToolsDir(): string {
-    const home = process.env.HOME || process.env.USERPROFILE || "";
-    return path.join(home, ".config", "opencode", "tools");
+    return path.join(app.getPath("userData"), "opencode-config", "tools");
 }
 
 

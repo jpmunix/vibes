@@ -12,8 +12,8 @@ La app compilada para macOS puede fallar con varios errores:
 
 ```
 Error: Library not loaded: @rpath/libvips-cpp.42.dylib
-Referenced from: /Applications/minube-vibes.app/Contents/Resources/app.asar.unpacked/node_modules/@xenova/transformers/node_modules/sharp/build/Release/sharp-darwin-x64.node
-Reason: tried: '/Applications/minube-vibes.app/Contents/Resources/app.asar.unpacked/node_modules/@xenova/transformers/node_modules/sharp/build/Release/../.././vendor/8.14.5/darwin-x64/lib/libvips-cpp.42.dylib' (no such file)
+Referenced from: /Applications/vibes.app/Contents/Resources/app.asar.unpacked/node_modules/@xenova/transformers/node_modules/sharp/build/Release/sharp-darwin-x64.node
+Reason: tried: '/Applications/vibes.app/Contents/Resources/app.asar.unpacked/node_modules/@xenova/transformers/node_modules/sharp/build/Release/../.././vendor/8.14.5/darwin-x64/lib/libvips-cpp.42.dylib' (no such file)
 ```
 
 **Causa raíz**: El paquete `sharp` depende de librerías nativas (`libvips`) que no se incluyen correctamente en el bundle de Electron para macOS. Después del empaquetado con `electron-forge`, el directorio `vendor/` que contiene las `.dylib` necesarias no se copia al bundle final.

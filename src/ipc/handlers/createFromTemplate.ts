@@ -94,8 +94,6 @@ export async function createFromTemplate({
     );
     // Sustituir wildcards en la plantilla
     await replaceTemplateWildcards(fullAppPath, appName);
-    // Copy pre-cached node_modules for instant startup
-    await copyScaffoldNodeModules(fullAppPath);
     // Safety net: guarantee .gitignore exists before git init
     await ensureGitignore(fullAppPath);
     return;
@@ -109,8 +107,6 @@ export async function createFromTemplate({
   await copyRepoToApp(repoCachePath, fullAppPath);
   // También sustituir wildcards en templates de GitHub
   await replaceTemplateWildcards(fullAppPath, appName);
-  // Copy pre-cached node_modules (only matches scaffold deps, but still speeds things up)
-  await copyScaffoldNodeModules(fullAppPath);
   // Safety net: guarantee .gitignore exists before git init
   await ensureGitignore(fullAppPath);
 }
@@ -119,7 +115,7 @@ async function replaceTemplateWildcards(
   appPath: string,
   appName?: string,
 ): Promise<void> {
-  const displayName = appName || "minube vibes";
+  const displayName = appName || "Vibes";
   // Replace {{APP_NAME}} in any files that use it
   const filesToCheck = ["index.html", "package.json"];
   for (const fileName of filesToCheck) {

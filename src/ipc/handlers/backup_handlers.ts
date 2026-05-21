@@ -1,6 +1,5 @@
 import { createTypedHandler, HandlerContext } from "./base";
 import { backupContracts } from "../types/backup";
-import { getSettingsFilePath } from "../../main/settings";
 import { getUserDataPath } from "@/paths/paths";
 import path from "node:path";
 import fs from "node:fs";
@@ -25,12 +24,17 @@ export function registerBackupHandlers() {
         try {
             const zip = new AdmZip();
 
-            // Add settings file
+            // Add settings files
             if (includeSettings) {
-                const settingsPath = getSettingsFilePath();
-                if (fs.existsSync(settingsPath)) {
-                    logger.log("Adding settings to backup");
-                    zip.addLocalFile(settingsPath, "", "user-settings.json");
+                const sessionPath = path.join(getUserDataPath(), "session.json");
+                if (fs.existsSync(sessionPath)) {
+                    logger.log("Adding session to backup");
+                    zip.addLocalFile(sessionPath, "", "session.json");
+                }
+                const runtimePath = path.join(getUserDataPath(), "runtime-state.json");
+                if (fs.existsSync(runtimePath)) {
+                    logger.log("Adding runtime state to backup");
+                    zip.addLocalFile(runtimePath, "", "runtime-state.json");
                 }
             }
 
@@ -113,12 +117,19 @@ export function registerBackupHandlers() {
             const zip = new AdmZip(tempZipPath);
             zip.extractAllTo(tempDir, true);
 
-            // Restore settings
-            const settingsPath = getSettingsFilePath();
-            const extractedSettings = path.join(tempDir, "user-settings.json");
-            if (fs.existsSync(extractedSettings)) {
-                logger.log("Restoring user settings");
-                fs.copyFileSync(extractedSettings, settingsPath);
+            // Restore settings files
+            const sessionPath = path.join(getUserDataPath(), "session.json");
+            const extractedSession = path.join(tempDir, "session.json");
+            if (fs.existsSync(extractedSession)) {
+                logger.log("Restoring session");
+                fs.copyFileSync(extractedSession, sessionPath);
+            }
+            
+            const runtimePath = path.join(getUserDataPath(), "runtime-state.json");
+            const extractedRuntime = path.join(tempDir, "runtime-state.json");
+            if (fs.existsSync(extractedRuntime)) {
+                logger.log("Restoring runtime state");
+                fs.copyFileSync(extractedRuntime, runtimePath);
             }
 
             // Restoring database is no longer supported locally

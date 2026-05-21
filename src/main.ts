@@ -2,16 +2,19 @@ import { app, BrowserWindow, dialog, Menu, screen } from "electron";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
 import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
+import { ensureNodeRuntime } from "./main/node_runtime";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
 // @ts-ignore
 import started from "electron-squirrel-startup";
 import log from "electron-log";
 import {
-  getSettingsFilePath,
   readSettings,
   writeSettings,
 } from "./main/settings";
+import { readSession } from "./main/session";
+import { preferencesCache } from "./main/preferences-cache";
+import { initializeRemoteSchema } from "./db/remote";
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
 import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
@@ -35,6 +38,49 @@ import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
 import { validateModelSettings } from "./ipc/utils/model_validator";
+import { stopAllRunningApps } from "./ipc/utils/process_manager";
+import { serializePendingBuffers } from "./ipc/utils/memory_extractor";
+
+// ─── Config migration: minube-vibes → Vibes ─────────────────────────────
+// productName changed to "Vibes" so Electron's userData moves to a new dir.
+// If the old dir exists, copy everything over (overwriting) and delete it.
+// On next startup the old dir is gone → migration is a no-op.
+{
+  const oldUserData = path.join(app.getPath("appData"), "minube-vibes");
+  if (fs.existsSync(oldUserData)) {
+    const newUserData = app.getPath("userData");
+    // Skip Chromium caches (~2GB, auto-regenerated) and auth/settings files
+    // (encrypted with old app identity — user will re-login and sync from BunnyDB)
+    const SKIP = new Set([
+      "Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "blob_storage",
+      "user-settings.json", "Cookies", "Cookies-journal",
+      "IndexedDB", "Local Storage", "Session Storage", "Preferences",
+    ]);
+    try {
+      fs.cpSync(oldUserData, newUserData, {
+        recursive: true,
+        force: true,
+        filter: (src) => !SKIP.has(path.basename(src)),
+      });
+      fs.rmSync(oldUserData, { recursive: true, force: true });
+      // Write flags for the next launch:
+      // - .migration-optimize: triggers DB VACUUM during splash
+      // - .migration-trust-remote: allows providerSettings from BunnyDB to overwrite empty local keys
+      fs.writeFileSync(path.join(newUserData, ".migration-optimize"), "", "utf-8");
+      fs.writeFileSync(path.join(newUserData, ".migration-trust-remote"), "", "utf-8");
+      console.log(`[Migration] Migrated ${oldUserData} → ${newUserData}`);
+      if (app.isPackaged) {
+        console.log("[Migration] Relaunching...");
+        app.relaunch();
+        app.exit(0);
+      } else {
+        console.log("[Migration] Dev mode — restart manually (rs + Enter)");
+      }
+    } catch (err: any) {
+      console.warn(`[Migration] Failed: ${(err as Error).message}`);
+    }
+  }
+}
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -46,7 +92,7 @@ log.transports.console.level = "info"; // Keep info logs in console/stdout
 
 // Silence noisy scopes — they flood the console during normal operation
 const SILENCED_SCOPES = new Set<string>([
-  "opencode_adapter",
+  //"opencode_adapter",
   "design_handlers",
   "start_proxy_server",
   "scaffold-cache",
@@ -86,16 +132,18 @@ app.commandLine.appendSwitch("enable-smooth-scrolling");
 
 const logger = log.scope("main");
 
+
+import { getActiveFlavor } from "./flavors";
+
 // ─── Build Profile ───────────────────────────────────────────────────────
-// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside minube-vibes).
-// Override userData BEFORE any settings/paths are accessed so the two instances
+// Get the active flavor which defines app name, user data folder, and icon.
+const activeFlavor = getActiveFlavor();
+
+// Always override userData BEFORE any settings/paths are accessed so the instances
 // get completely independent config directories and single-instance locks.
-const IS_VIBES_PROFILE = process.env.VIBES_PROFILE === "vibes";
-if (IS_VIBES_PROFILE) {
-  const vibesUserData = path.join(app.getPath("appData"), "vibes");
-  app.setPath("userData", vibesUserData);
-  app.name = "Vibes";
-}
+const flavorUserData = path.join(app.getPath("appData"), activeFlavor.userDataFolder);
+app.setPath("userData", flavorUserData);
+app.name = activeFlavor.productName;
 
 // Load environment variables from .env file
 dotenv.config();
@@ -175,32 +223,111 @@ export async function onReady() {
 
   await onFirstRunMaybe(settings);
 
+  // ─── Post-migration optimization ──────────────────────────────────────
+  const migrationFlagPath = path.join(app.getPath("userData"), ".migration-optimize");
+  const needsOptimization = fs.existsSync(migrationFlagPath);
+
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 3;
+  const TOTAL_STEPS = needsOptimization ? 7 : 6;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Create main window (the critical path)
-  updateSplash(splash, 1, TOTAL_STEPS, "Preparando interfaz...");
+  // Step 1 (migration only): Optimize databases
+  if (needsOptimization) {
+    updateSplash(splash, 1, TOTAL_STEPS, "Optimizando base de datos...");
+    try {
+      const { execSync } = require("child_process");
+      const HOME = process.env.HOME || `/home/${process.env.USER}`;
+
+      // VACUUM + WAL checkpoint on OpenCode DB
+      const openCodeDbPath = path.join(HOME, ".local/share/opencode/opencode.db");
+      if (fs.existsSync(openCodeDbPath)) {
+        execSync(`sqlite3 "${openCodeDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        logger.info("[Migration] OpenCode DB optimized");
+      }
+
+      // VACUUM the app's local SQLite DB too
+      const appDbPath = path.join(app.getPath("userData"), "sqlite.db");
+      if (fs.existsSync(appDbPath)) {
+        execSync(`sqlite3 "${appDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        logger.info("[Migration] App DB optimized");
+      }
+
+      // Clean up the flag
+      fs.unlinkSync(migrationFlagPath);
+      logger.info("[Migration] Post-migration optimization completed");
+    } catch (err: any) {
+      logger.warn(`[Migration] Optimization failed (non-fatal): ${err.message}`);
+      // Remove flag anyway to avoid retrying on every launch
+      try { fs.unlinkSync(migrationFlagPath); } catch { /* ignore */ }
+    }
+  }
+
+
+  const stepOffset = needsOptimization ? 1 : 0;
+
+  // Step N+1: Ensure Node.js runtime is available
+  updateSplash(splash, stepOffset + 1, TOTAL_STEPS, "Verificando entorno...");
+  const nodeResult = await ensureNodeRuntime((msg) => {
+    updateSplash(splash, stepOffset + 1, TOTAL_STEPS, msg);
+  });
+  if (nodeResult.source === "portable") {
+    logger.info(`Using portable Node.js from ${nodeResult.nodeBinDir}`);
+  } else {
+    logger.info(`Using system Node.js from ${nodeResult.nodeBinDir}`);
+  }
+
+  // Pre-cache node status so the renderer's SetupBanner gets an instant
+  // response (no flash of "install Node.js" banner).
+  try {
+    const { execSync } = require("child_process");
+    const ver = execSync("node --version", { timeout: 5000, encoding: "utf-8" }).trim();
+    const { preCacheNodeStatus } = await import("./ipc/handlers/node_handlers");
+    preCacheNodeStatus(ver);
+  } catch (e) {
+    logger.warn("Failed to pre-cache node status (non-fatal):", e);
+  }
+
+  // Step N+2: Hydrate KV preferences from BunnyDB (BEFORE creating the window)
+  // This must happen first so that when the renderer starts and calls getUserSettings,
+  // the preferences cache is already populated with the real data (API keys, model selections, etc.).
+  // Previously this ran after createWindow(), causing a race condition where the renderer
+  // got empty defaults and flashed "configure OpenRouter" banners.
+  const sessionData = readSession();
+  updateSplash(splash, stepOffset + 2, TOTAL_STEPS, "Cargando preferencias...");
+  if (sessionData?.userId) {
+    try {
+      await initializeRemoteSchema();
+      await preferencesCache.hydrate(sessionData.userId);
+      logger.info(`Splash: hydrated preferences for ${sessionData.userId}`);
+    } catch (err) {
+      logger.warn("Splash: preferences hydration failed (non-fatal):", err);
+    }
+  } else {
+    logger.info("Splash: no session found, skipping preferences hydration");
+  }
+
+
+  // Step N+3: Create main window (now preferences are ready for the renderer)
+  updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
-
-  // Step 2: Validate configured models still exist in OpenRouter
-  updateSplash(splash, 2, TOTAL_STEPS, "Validando modelos...");
+  // Step N+4: Validate configured models still exist in OpenRouter
+  updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Validando modelos...");
   await validateModelSettings().catch((err) =>
     logger.warn("Model validation failed (non-fatal):", err),
   );
 
-  // Step 3: Show main window and close splash
+  // Step N+5: Show main window and close splash
   // The main window renders behind the splash (splash is alwaysOnTop).
   // No need to wait for did-finish-load — the window has backgroundColor
   // "#1e1e24" (dark) so there's no white flash. The skeleton/app renders
   // naturally while the splash fades away.
-  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
+  updateSplash(splash, stepOffset + 5, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     mainWindow.show();
   }
@@ -208,6 +335,13 @@ export async function onReady() {
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
+    // Warm up scaffold caches now that Node.js is guaranteed in PATH.
+    // Previously in ipc_host.ts, moved here to avoid race condition.
+    const { warmUpScaffoldCache } = await import("./ipc/utils/scaffold_cache");
+    warmUpScaffoldCache().catch(err =>
+      logger.error("Scaffold cache warmup failed:", err),
+    );
+
     // Check/install OpenCode binary in background (was blocking splash for ~2.2s)
     const openCodeResult = await ensureOpenCodeInstalled();
     if (!openCodeResult.ok) {
@@ -327,10 +461,7 @@ const createWindow = () => {
     backgroundColor: "#1e1e24", // Match dark theme to prevent white flash
     titleBarStyle: "hidden",
     titleBarOverlay: false,
-    trafficLightPosition: {
-      x: 10,
-      y: 8,
-    },
+    ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -343,7 +474,7 @@ const createWindow = () => {
       // Prevent Chromium from throttling timers/animations when window loses focus
       backgroundThrottling: false,
     },
-    icon: path.join(app.getAppPath(), IS_VIBES_PROFILE ? "assets/icon-vibes/logo.png" : "assets/icon/logo.png"),
+    icon: path.join(app.getAppPath(), `assets/${activeFlavor.iconFolder}/logo.png`),
   });
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -352,6 +483,30 @@ const createWindow = () => {
       path.join(__dirname, "../renderer/main_window/index.html"),
     );
   }
+
+  mainWindow.webContents.on("render-process-gone", (event, details) => {
+    logger.error("Render process gone:", details);
+    if (details.reason === "crashed" || details.reason === "oom" || details.reason === "integrity-failure" || details.reason === "killed") {
+      try {
+        const choice = dialog.showMessageBoxSync({
+          type: "error",
+          title: "Vibes Renderer Crashed",
+          message: `El proceso de renderizado ha finalizado inesperadamente (${details.reason}, exit code: ${details.exitCode}).`,
+          detail: "Vibes intentará recargar la ventana para recuperar su estado.",
+          buttons: ["Recargar", "Salir"],
+          defaultId: 0,
+        });
+        if (choice === 0) {
+          mainWindow?.reload();
+        } else {
+          app.quit();
+        }
+      } catch (err) {
+        logger.error("Failed to show crash dialog:", err);
+        app.quit();
+      }
+    }
+  });
 
   // Show window is handled by the splash manager in onReady().
   // The splash closes first, then mainWindow.show() is called.
@@ -723,11 +878,12 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
+  // Kill all dev servers started from Vibes to prevent orphan processes
+  stopAllRunningApps();
   shutdownOpenCode();
   stopPerformanceMonitoring();
   // Persist any pending memory buffers so they're processed on next startup
   try {
-    const { serializePendingBuffers } = require("./ipc/utils/memory_extractor");
     serializePendingBuffers();
   } catch (err: any) {
     logger.warn("Failed to serialize pending memory buffers:", err.message);

@@ -116,7 +116,7 @@ export async function openRouterCompletion(
   const settings = readSettings();
 
   const {
-    model, // optional, will default to settings.standardModeModel or a fallback
+    model, // optional, will default to settings.executorModel or a fallback
     messages,
     temperature = 0.3,
     max_tokens,
@@ -126,7 +126,7 @@ export async function openRouterCompletion(
   } = options;
 
   const defaultModel =
-    settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+    settings.executorModel || DEFAULT_STANDARD_MODEL;
   const finalModel = model || defaultModel;
 
   const body: any = {
@@ -194,7 +194,7 @@ export async function* openRouterStreamCompletion(
   apiKey = apiKey?.trim();
   if (!apiKey) throw new Error("OpenRouter API key not found.");
 
-  const defaultModel = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+  const defaultModel = settings.executorModel || DEFAULT_STANDARD_MODEL;
   const finalModel = options.model || defaultModel;
 
   const body = JSON.stringify({

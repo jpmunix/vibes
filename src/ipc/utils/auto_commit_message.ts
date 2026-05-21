@@ -10,7 +10,7 @@ import {
   hasOpenRouterApiKey,
 } from "@/ipc/utils/openrouter";
 import { gitDiffFile } from "@/ipc/utils/git_utils";
-import { getEffectivePrompt } from "@/prompts";
+import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
 const logger = log.scope("auto_commit_message");
@@ -44,7 +44,7 @@ export async function generateAutoCommitMessage({
     }
 
     const settings = readSettings();
-    const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     // Build a summary of changes with limited diffs
     const allFiles = [
@@ -92,7 +92,7 @@ export async function generateAutoCommitMessage({
     const diffsContext = diffs.join("\n\n");
 
     // Use the editable prompt from settings
-    const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+    const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
 
     const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
 
@@ -111,7 +111,7 @@ export async function generateAutoCommitMessage({
     generated = generated.replace(/^["'`]+|["'`]+$/g, "");
 
     // Sanity check: if the generated message is too long or empty, use fallback
-    if (!generated || generated.length > 120) {
+    if (!generated || generated.length > 1500) {
       return fallbackMessage;
     }
 

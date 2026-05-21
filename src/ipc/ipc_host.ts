@@ -24,7 +24,6 @@ import { registerPortalHandlers } from "./handlers/portal_handlers";
 import { registerProblemsHandlers } from "./handlers/problems_handlers";
 import { registerPromptHandlers } from "./handlers/prompt_handlers";
 import { registerProposalHandlers } from "./handlers/proposal_handlers";
-import { registerReleaseNoteHandlers } from "./handlers/release_note_handlers";
 import { registerSessionHandlers } from "./handlers/session_handlers";
 import { registerSettingsHandlers } from "./handlers/settings_handlers";
 import { registerShellHandlers } from "./handlers/shell_handler";
@@ -49,7 +48,7 @@ import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
-import { warmUpScaffoldCache } from "./utils/scaffold_cache";
+import { registerDocsHandlers } from "./handlers/docs_handlers";
 import log from "electron-log";
 
 export function registerIpcHandlers() {
@@ -83,7 +82,6 @@ export function registerIpcHandlers() {
   registerUploadHandlers();
   registerVersionHandlers();
   registerLanguageModelHandlers();
-  registerReleaseNoteHandlers();
   registerImportHandlers();
   registerSessionHandlers();
   //registerProHandlers();
@@ -121,8 +119,9 @@ export function registerIpcHandlers() {
   // Markdown share — md.mnstatic.com document upload
   registerMarkdownShareHandlers();
 
-  // Pre-cache scaffold node_modules in background (non-blocking)
-  warmUpScaffoldCache().catch(err =>
-    log.error("Scaffold cache warmup failed:", err),
-  );
+  // Documentation system — recursive vibes-docs tree
+  registerDocsHandlers();
+
+  // Scaffold cache warmup has been moved to main.ts onReady() to ensure
+  // Node.js runtime is available before npm commands are executed.
 }

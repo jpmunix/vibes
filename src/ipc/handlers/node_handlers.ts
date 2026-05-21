@@ -9,6 +9,7 @@ import { join } from "path";
 import { readSettings } from "../../main/settings";
 import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
+import { NODE_VERSION } from "../../main/node_runtime";
 
 const logger = log.scope("node_handlers");
 
@@ -18,16 +19,16 @@ let mockNodeInstalled: boolean | null = null;
 
 function getNodeDownloadUrl(): string {
   // Default to mac download url.
-  let nodeDownloadUrl = "https://nodejs.org/dist/v22.14.0/node-v22.14.0.pkg";
+  let nodeDownloadUrl = `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.pkg`;
   if (platform() == "win32") {
     if (arch() === "arm64" || arch() === "arm") {
       nodeDownloadUrl =
-        "https://nodejs.org/dist/v22.14.0/node-v22.14.0-arm64.msi";
+        `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-arm64.msi`;
     } else {
       // x64 is the most common architecture for Windows so it's the
       // default download url.
       nodeDownloadUrl =
-        "https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi";
+        `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-x64.msi`;
     }
   }
   return nodeDownloadUrl;
@@ -46,10 +47,7 @@ export function registerNodeHandlers() {
     );
   }
 
-  // Cache node version check to avoid duplicate shell calls (React double-mount)
-  let cachedNodeStatus: { nodeVersion: string | null; nodeDownloadUrl: string } | null = null;
-  let cachedAt = 0;
-  const CACHE_TTL_MS = 60_000; // 60s
+  // Cache is at module level — see below registerNodeHandlers
 
   createTypedHandler(systemContracts.getNodejsStatus, async () => {
     // Return cached result if fresh
@@ -73,7 +71,7 @@ export function registerNodeHandlers() {
       logger.log("Using mock Node.js status:", mockNodeInstalled);
       if (mockNodeInstalled) {
         return {
-          nodeVersion: "v22.14.0",
+          nodeVersion: `v${NODE_VERSION}`,
           pnpmVersion: "9.0.0",
           nodeDownloadUrl,
         };
@@ -145,4 +143,23 @@ export function registerNodeHandlers() {
     }
     return { path: selectedPath, canceled: false, selectedPath };
   });
+}
+
+// ─── Module-level cache ─────────────────────────────────────────────────────
+// Moved outside registerNodeHandlers so it can be pre-populated from main.ts
+// after ensureNodeRuntime runs. This prevents the SetupBanner from briefly
+// flashing "install Node.js" when Node is actually available.
+let cachedNodeStatus: { nodeVersion: string | null; nodeDownloadUrl: string } | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 60_000; // 60s
+
+/**
+ * Pre-populate the Node.js status cache from main.ts startup.
+ * Called after ensureNodeRuntime() so the SetupBanner gets an instant
+ * response without needing to spawn `node --version` in a subprocess.
+ */
+export function preCacheNodeStatus(nodeVersion: string | null): void {
+  cachedNodeStatus = { nodeVersion, nodeDownloadUrl: getNodeDownloadUrl() };
+  cachedAt = Date.now();
+  logger.info(`Node status pre-cached: ${nodeVersion ?? "not found"}`);
 }

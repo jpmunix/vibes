@@ -474,7 +474,7 @@ export function registerAdminHandlers(): void {
             where: eq(remoteSchema.chats.id, input.chatId),
             with: {
                 messages: {
-                    orderBy: (messages: any, ops: any) => [ops.asc(messages.createdAt)],
+                    orderBy: (messages: any, ops: any) => [ops.asc(messages.createdAt), ops.asc(messages.id)],
                 },
             },
         });
@@ -538,6 +538,216 @@ export function registerAdminHandlers(): void {
             contentMd: r.contentMd,
             createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
         }));
+    });
+
+    // ─── ADMIN: GET USER PREFERENCES (KV table) ────────────────────────
+    createTypedHandler(adminContracts.getUserPreferences, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+
+        const rows = await db
+            .select({
+                key: remoteSchema.userPreferences.key,
+                value: remoteSchema.userPreferences.value,
+                updatedAt: remoteSchema.userPreferences.updatedAt,
+            })
+            .from(remoteSchema.userPreferences)
+            .where(
+                eq(remoteSchema.userPreferences.userId, input.userId),
+            );
+
+        const preferences = rows.map((r) => ({
+            key: r.key,
+            value: r.value,
+            updatedAt: r.updatedAt instanceof Date
+                ? r.updatedAt.toISOString()
+                : r.updatedAt ? String(r.updatedAt) : null,
+        }));
+
+        // Fetch prompts
+        const promptRows = await db
+            .select({
+                systemId: remoteSchema.prompts.systemId,
+                content: remoteSchema.prompts.content,
+                title: remoteSchema.prompts.title,
+                updatedAt: remoteSchema.prompts.updatedAt,
+                categoryName: remoteSchema.promptsCategories.name,
+            })
+            .from(remoteSchema.prompts)
+            .leftJoin(remoteSchema.promptsCategories, eq(remoteSchema.prompts.categoryId, remoteSchema.promptsCategories.id))
+            .where(eq(remoteSchema.prompts.userId, input.userId));
+            
+        for (const pr of promptRows) {
+            preferences.push({
+                key: "prompt:" + pr.systemId,
+                value: pr.content || "",
+                updatedAt: pr.updatedAt instanceof Date
+                    ? pr.updatedAt.toISOString()
+                    : pr.updatedAt ? String(pr.updatedAt) : null,
+                displayCategory: pr.categoryName || "Prompts y Contexto",
+                displayName: pr.title || pr.systemId,
+            });
+        }
+
+        return { preferences };
+    });
+
+    // ─── ADMIN: SET USER PREFERENCE ─────────────────────────────────────
+    createTypedHandler(adminContracts.setUserPreference, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const now = new Date();
+
+        if (input.key.startsWith("prompt:")) {
+            const systemId = input.key.substring(7);
+            await db.update(remoteSchema.prompts)
+                .set({ content: input.value, updatedAt: now })
+                .where(
+                    and(
+                        eq(remoteSchema.prompts.userId, input.userId),
+                        eq(remoteSchema.prompts.systemId, systemId)
+                    )
+                );
+            logger.info(`Admin updated prompt: ${systemId} for user ${input.userId}`);
+            return { success: true };
+        }
+
+        await db
+            .insert(remoteSchema.userPreferences)
+            .values({
+                userId: input.userId,
+                appId: 0,
+                key: input.key,
+                value: input.value,
+                updatedAt: now,
+            })
+            .onConflictDoUpdate({
+                target: [
+                    remoteSchema.userPreferences.userId,
+                    remoteSchema.userPreferences.key,
+                    remoteSchema.userPreferences.appId,
+                ],
+                set: { value: input.value, updatedAt: now },
+            });
+
+        logger.info(`Admin set preference: ${input.key} for user ${input.userId}`);
+        return { success: true };
+    });
+
+    // ─── ADMIN: DELETE USER PREFERENCE ──────────────────────────────────
+    createTypedHandler(adminContracts.deleteUserPreference, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { and } = await import("drizzle-orm");
+
+        await db
+            .delete(remoteSchema.userPreferences)
+            .where(
+                and(
+                    eq(remoteSchema.userPreferences.userId, input.userId),
+                    eq(remoteSchema.userPreferences.key, input.key),
+                ),
+            );
+
+        logger.info(`Admin deleted preference: ${input.key} for user ${input.userId}`);
+        return { success: true };
+    });
+
+    // ─── ADMIN: COPY PREFERENCES TO USERS ────────────────────────────────
+    createTypedHandler(adminContracts.copyPreferencesToUsers, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { and, inArray } = await import("drizzle-orm");
+
+        const { sourceUserId, targetUserIds, keys, mode } = input;
+
+        // Fetch source preferences for the requested keys
+        const sourceRows = await db
+            .select({
+                key: remoteSchema.userPreferences.key,
+                value: remoteSchema.userPreferences.value,
+            })
+            .from(remoteSchema.userPreferences)
+            .where(
+                and(
+                    eq(remoteSchema.userPreferences.userId, sourceUserId),
+                    inArray(remoteSchema.userPreferences.key, keys),
+                ),
+            );
+
+        if (sourceRows.length === 0) {
+            throw new Error("No se encontraron preferencias del usuario origen para las claves seleccionadas");
+        }
+
+        const now = new Date();
+        let written = 0;
+        let skipped = 0;
+
+        for (const targetUserId of targetUserIds) {
+            // Skip if target is the source
+            if (targetUserId === sourceUserId) continue;
+
+            if (mode === "overwrite") {
+                // Upsert all preferences
+                for (const row of sourceRows) {
+                    await db
+                        .insert(remoteSchema.userPreferences)
+                        .values({
+                            userId: targetUserId,
+                            appId: 0,
+                            key: row.key,
+                            value: row.value,
+                            updatedAt: now,
+                        })
+                        .onConflictDoUpdate({
+                            target: [
+                                remoteSchema.userPreferences.userId,
+                                remoteSchema.userPreferences.key,
+                                remoteSchema.userPreferences.appId,
+                            ],
+                            set: { value: row.value, updatedAt: now },
+                        });
+                    written++;
+                }
+            } else {
+                // Copy mode: only write if the key doesn't exist for the target
+                const existingRows = await db
+                    .select({ key: remoteSchema.userPreferences.key })
+                    .from(remoteSchema.userPreferences)
+                    .where(
+                        and(
+                            eq(remoteSchema.userPreferences.userId, targetUserId),
+                            inArray(remoteSchema.userPreferences.key, keys),
+                        ),
+                    );
+
+                const existingKeys = new Set(existingRows.map((r) => r.key));
+
+                for (const row of sourceRows) {
+                    if (existingKeys.has(row.key)) {
+                        skipped++;
+                        continue;
+                    }
+                    await db
+                        .insert(remoteSchema.userPreferences)
+                        .values({
+                            userId: targetUserId,
+                            appId: 0,
+                            key: row.key,
+                            value: row.value,
+                            updatedAt: now,
+                        });
+                    written++;
+                }
+            }
+        }
+
+        logger.info(`Admin copied ${written} preferences (skipped ${skipped}) from ${sourceUserId} to ${targetUserIds.length} user(s)`);
+        return { success: true, written, skipped };
     });
 
     logger.info("Admin handlers registered");

@@ -245,7 +245,7 @@ export const ConsoleTerminal = () => {
         if (!selectedAppId) return;
         try {
             await ipc.app.cancelShellCommand({ appId: selectedAppId });
-            addEntry("system", "⚠ Comando cancelado");
+            addEntry("system", "Comando cancelado");
         } catch (error) {
             // ignore — command may have already finished
         }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, X } from "@/components/ui/icons";
+import { Download, X, Rocket } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -39,7 +39,7 @@ export function UpdateAvailableDialog({
             <DialogContent className="sm:max-w-md" showCloseButton={false}>
                 <DialogHeader>
                     <DialogTitle>
-                        🚀 Actualización {updateVersion} disponible
+                        <span className="flex items-center gap-2"><Rocket size={18} /> Actualización {updateVersion} disponible</span>
                     </DialogTitle>
                     <DialogDescription>
                         Descarga la app haciendo click en el siguiente botón.

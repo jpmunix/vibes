@@ -17,10 +17,12 @@ import {
     Copy,
     RefreshCw,
     Download,
+    ArrowRightLeft,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SettingsTable } from "@/components/admin_window/RecursiveTableViewer";
+import { UserPreferencesEditor } from "@/components/admin_window/UserPreferencesEditor";
+import { PreferencesCopyDialog } from "@/components/admin_window/PreferencesCopyDialog";
 
 // ── Password generator ──────────────────────────────────────────────────────
 
@@ -70,6 +72,9 @@ export function AdminListUsers() {
 
     // Expand user details
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+    // Preferences copy dialog
+    const [copySourceUser, setCopySourceUser] = useState<AdminUser | null>(null);
 
     const toggleExpandUser = (userId: string) => {
         setExpandedUserId((prev) => (prev === userId ? null : userId));
@@ -186,15 +191,32 @@ export function AdminListUsers() {
 
     const handleDownloadUserSettings = async (userId: string, displayName: string) => {
         try {
-            const result = await ipc.admin.getUserSettings({ userId });
-            if (!result.settings) {
+            const result = await ipc.admin.getUserPreferences({ userId });
+            if (!result.preferences || result.preferences.length === 0) {
                 toast.error("Este usuario no tiene configuración guardada");
                 return;
             }
+            // Reconstruct a JSON object from KV pairs, parsing values intelligently
+            const settings: Record<string, any> = {};
+            for (const { key, value } of result.preferences) {
+                // Try JSON parse (objects, arrays)
+                const trimmed = value.trim();
+                if ((trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+                    (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+                    try { settings[key] = JSON.parse(trimmed); continue; } catch { /* fall through */ }
+                }
+                // Booleans
+                if (value === "true") { settings[key] = true; continue; }
+                if (value === "false") { settings[key] = false; continue; }
+                // Numbers
+                if (/^-?\d+(\.\d+)?$/.test(trimmed)) { settings[key] = parseFloat(trimmed); continue; }
+                // String
+                settings[key] = value;
+            }
             const safeName = displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-            const json = JSON.stringify(result.settings, null, 2);
-            downloadFile(`${safeName}-settings.json`, json, "application/json");
-            toast.success(`${safeName}-settings.json descargado`);
+            const json = JSON.stringify(settings, null, 2);
+            downloadFile(`${safeName}-preferences.json`, json, "application/json");
+            toast.success(`${safeName}-preferences.json descargado`);
         } catch (err: any) {
             toast.error(err.message || "Error al descargar configuración");
         }
@@ -404,6 +426,18 @@ export function AdminListUsers() {
                                         >
                                             <Lock size={14} />
                                         </button>
+                                        {/* Copy preferences to other users */}
+                                        <button
+                                            type="button"
+                                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCopySourceUser(user);
+                                            }}
+                                            title="Copiar preferencias a otros usuarios"
+                                        >
+                                            <ArrowRightLeft size={14} />
+                                        </button>
                                         {/* Download settings JSON */}
                                         <button
                                             type="button"
@@ -491,8 +525,8 @@ export function AdminListUsers() {
                                             </div>
                                         )}
 
-                                        {/* Settings JSON tree */}
-                                        <UserSettingsViewer userId={user.id} />
+                                        {/* Preferences KV editor */}
+                                        <UserPreferencesEditor userId={user.id} />
                                     </div>
                                 )}
                             </div>
@@ -500,6 +534,16 @@ export function AdminListUsers() {
                     })}
                 </div>
             </div>
+
+            {/* Preferences copy dialog */}
+            {copySourceUser && (
+                <PreferencesCopyDialog
+                    isOpen={!!copySourceUser}
+                    onClose={() => setCopySourceUser(null)}
+                    sourceUser={copySourceUser}
+                    allUsers={users}
+                />
+            )}
         </div>
     );
 }
@@ -515,54 +559,5 @@ function downloadFile(filename: string, content: string, mimeType: string) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
-
-function UserSettingsViewer({ userId }: { userId: string }) {
-    const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setLoading(true);
-        setError(null);
-        ipc.admin.getUserSettings({ userId })
-            .then((result) => setSettings(result.settings))
-            .catch((err: any) => setError(err.message || "Error al cargar"))
-            .finally(() => setLoading(false));
-    }, [userId]);
-
-    if (loading) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50 flex items-center gap-2">
-                <Loader2 size={14} className="animate-spin text-muted-foreground" />
-                <span className="typo-caption">Cargando configuración…</span>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50">
-                <p className="typo-caption text-destructive">{error}</p>
-            </div>
-        );
-    }
-
-    if (!settings || Object.keys(settings).length === 0) {
-        return (
-            <div className="p-4 rounded-xl border border-border/50">
-                <p className="typo-caption">Sin configuración guardada</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="rounded-xl border border-border/50 overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-border/50">
-                <p className="typo-label">Configuración del usuario</p>
-            </div>
-            <SettingsTable entries={Object.entries(settings)} />
-        </div>
-    );
 }
 

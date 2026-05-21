@@ -110,13 +110,14 @@ export function useStreamChat({
     async ({
       prompt,
       chatId,
-      redo,
-      attachments,
-      selectedComponents,
+      redo = false,
+      attachments = [],
+      selectedComponents = [],
       onSettled,
       isSystemPrompt = false,
-      undoRedo,
+      undoRedo = false,
       priorMessages,
+      chatModeOverride,
     }: {
       prompt: string;
       chatId: number;
@@ -128,6 +129,8 @@ export function useStreamChat({
       undoRedo?: boolean;
       /** Pre-converted prior messages to inject into OpenCode via noReply:true */
       priorMessages?: import("@/ipc/types").ChatStreamParams["priorMessages"];
+      /** Synchronously force a specific chat mode for this stream regardless of react state lag */
+      chatModeOverride?: string;
     }) => {
       // Setup listener for undo-redo content restoring
       // This needs to be outside the ipc.chatStream.start call as it's a separate event
@@ -257,7 +260,7 @@ export function useStreamChat({
             newMessages.push({
               id: tempUserId - i - 2, // unique negative IDs
               chatId,
-              role: "user",
+              role: priorMessages[i].role || "user",
               content: priorMessages[i].prompt,
               createdAt: new Date().toISOString(),
             } as any);
@@ -324,6 +327,7 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
+            chatMode: chatModeOverride || settings?.selectedChatMode || "agent",
           },
           {
             onChunk: ({ messages: updatedMessages }) => {
@@ -437,6 +441,7 @@ export function useStreamChat({
                   });
                 }
                 queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
+                queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
                 refetchUserBudget();
 
                 queryClient.invalidateQueries({
