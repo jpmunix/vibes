@@ -3,13 +3,15 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useGitPanel } from "@/hooks/useGitPanel";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useSettings } from "@/hooks/useSettings";
-import { GitRemoteSetup } from "@/components/git_window/GitRemoteSetup";
+import { GitRemoteSetupDialog } from "@/components/git_window/GitRemoteSetup";
+import { VercelPublishButton } from "@/components/git_window/VercelPublishButton";
 import CommitMessageDialog from "@/components/CommitMessageDialog";
 import { useHighlighter, getLanguageFromPath } from "@/components/chat/CodeHighlight";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     GitBranch,
     Plus,
@@ -46,6 +48,9 @@ import {
     GripHorizontal,
     MoreVertical,
     Undo2,
+    Cloud,
+    CloudOff,
+    Unlink,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -349,7 +354,7 @@ function TreeNodeRow({
 }) {
     const isDir = !node.file;
     const isExpanded = expandedDirs.has(node.fullPath);
-    const isSelected = !isDir && selectedFile === node.file!.path;
+    const isSelected = selectedFile === node.fullPath;
     const sortedChildren = Object.values(node.children).sort((a, b) => {
         const aIsDir = !a.file;
         const bIsDir = !b.file;
@@ -362,14 +367,18 @@ function TreeNodeRow({
             <div
                 className={cn(
                     "group flex items-center gap-1.5 py-1 pr-2.5 cursor-pointer select-none transition-colors typo-body",
-                    isDir ? "hover:bg-muted/40" : isSelected
+                    isSelected
                         ? "bg-primary/10 border-l-[2px] border-primary"
                         : "hover:bg-muted/40 border-l-[2px] border-transparent",
                 )}
                 style={{ paddingLeft: `${4 + depth * 16}px` }}
                 onClick={() => {
-                    if (isDir) toggleDir(node.fullPath);
-                    else onSelectFile(node.file!.path);
+                    if (isDir) {
+                        toggleDir(node.fullPath);
+                        onSelectFile(node.fullPath);
+                    } else {
+                        onSelectFile(node.file!.path);
+                    }
                 }}
             >
                 {isDir ? (
@@ -377,7 +386,7 @@ function TreeNodeRow({
                         <ChevronRight
                             size={14}
                             className={cn("text-muted-foreground/60 shrink-0 transition-transform", isExpanded && "rotate-90")}
-                            onClick={(e) => { e.stopPropagation(); toggleDir(node.fullPath); }}
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleDir(node.fullPath); }}
                         />
                         <TreeCheckbox 
                             state={getDirCheckState(node, checkedFiles)} 
@@ -433,11 +442,17 @@ function FileContentViewer({
     fullContent,
     filepath,
     isLoading,
+    fileStatus,
+    isDirectory,
+    changedFilesCount,
 }: {
     diff: string;
     fullContent: string;
     filepath: string | null;
     isLoading: boolean;
+    fileStatus?: "added" | "modified" | "deleted" | "renamed";
+    isDirectory?: boolean;
+    changedFilesCount?: number;
 }) {
     const { isDarkMode } = useTheme();
     const lang = filepath ? getLanguageFromPath(filepath) : undefined;
@@ -447,13 +462,38 @@ function FileContentViewer({
 
     useEffect(() => {
         scrollRef.current?.scrollTo(0, 0);
-    }, [filepath]);
+        if (fileStatus === "added") {
+            setViewMode("full");
+        } else {
+            setViewMode("diff");
+        }
+    }, [filepath, fileStatus]);
 
     if (!filepath) {
         return (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
                 <Diff size={36} className="opacity-15" />
                 <p className="text-sm">Selecciona un archivo para ver diferencias</p>
+            </div>
+        );
+    }
+
+    if (isDirectory) {
+        const parts = filepath.split("/");
+        const fileName = parts.pop() || filepath;
+        return (
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-background/30 p-6 text-center select-none animate-in fade-in duration-200">
+                <div className="p-4 bg-muted/30 rounded-full border border-border/40 text-primary/70">
+                    <FolderOpen size={40} className="opacity-80" />
+                </div>
+                <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-foreground truncate max-w-md">
+                        {fileName}
+                    </h3>
+                    <p className="text-xs text-muted-foreground/60">
+                        Directorio con {changedFilesCount} archivo{changedFilesCount !== 1 ? "s" : ""} modificado{changedFilesCount !== 1 ? "s" : ""}
+                    </p>
+                </div>
             </div>
         );
     }
@@ -516,6 +556,11 @@ function FileContentViewer({
             // Flush remaining deleted at end
             if (pendingDeleted.length > 0) {
                 deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+            }
+        } else if (fileStatus === "added") {
+            const linesCount = fullContent.split("\n").length;
+            for (let l = 1; l <= linesCount; l++) {
+                addedLines.add(l);
             }
         }
 
@@ -597,9 +642,35 @@ function FileContentViewer({
     };
 
     const renderDiffOnly = () => {
-        if (!diff) return (
-            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
-        );
+        if (!diff) {
+            if (fileStatus === "added" && fullContent) {
+                const lines = fullContent.split("\n");
+                const elements: React.ReactNode[] = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const lineNum = i + 1;
+                    elements.push(
+                        <div key={i} className="flex min-h-[20px] bg-green-950/40">
+                            <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                            </span>
+                            <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                                {lineNum}
+                            </span>
+                            <span className="px-3 flex-1 whitespace-pre text-green-400">
+                                {lines[i] || " "}
+                            </span>
+                        </div>
+                    );
+                }
+                return (
+                    <pre className="typo-mono-xs leading-5 min-w-max">
+                        {elements}
+                    </pre>
+                );
+            }
+            return (
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
+            );
+        }
 
         const lines = diff.split("\n");
         const elements: React.ReactNode[] = [];
@@ -728,14 +799,22 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const [discardTarget, setDiscardTarget] = useState<string[] | null>(null);
     const appId = useAtomValue(selectedAppIdAtom);
     const { app, refreshApp } = useLoadApp(appId);
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
+    const commitPanelDraggingRef = useRef(false);
+    const commitPanelSizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track whether settings have loaded at least once — used as key to remount
+    // the PanelGroup with the correct saved defaultSize
+    const settingsLoadedRef = useRef(false);
+    if (settings && !settingsLoadedRef.current) settingsLoadedRef.current = true;
     const hasGithubToken = !!settings?.githubAccessToken;
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
+    const queryClient = useQueryClient();
 
     const {
         uncommittedFiles,
         currentBranch,
         branches,
+        remoteBranches,
         gitState,
         commitMessage,
         setCommitMessage,
@@ -770,10 +849,12 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         switchBranch,
         isSwitchingBranch,
         discardFileChanges,
+        discardAllChanges,
         isDiscarding,
     } = useGitPanel(appId);
 
     const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
+    const [showRemoteDialog, setShowRemoteDialog] = useState(false);
 
 
     // ── file selection & diff ──
@@ -875,6 +956,14 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     // ── select file → load diff + full content ──
     const handleSelectFile = useCallback(async (filepath: string) => {
         setSelectedFile(filepath);
+        const isDir = uncommittedFiles.some(f => f.path.startsWith(filepath + "/"));
+        if (isDir) {
+            setFileDiff("");
+            setFullContent("");
+            setIsLoadingDiff(false);
+            return;
+        }
+
         setIsLoadingDiff(true);
         setFileDiff("");
         setFullContent("");
@@ -891,7 +980,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         } finally {
             setIsLoadingDiff(false);
         }
-    }, [getFileDiff, appId]);
+    }, [getFileDiff, appId, uncommittedFiles]);
 
     const handleViewConflictDiff = useCallback(async (filepath: string) => {
         if (expandedConflictFile === filepath) { setExpandedConflictFile(null); return; }
@@ -913,8 +1002,12 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
     const handleCommitAndPush = useCallback(async () => {
         await handleCommit();
+        if (!hasRemote) {
+            setShowRemoteDialog(true);
+            return;
+        }
         await push({});
-    }, [handleCommit, push]);
+    }, [handleCommit, push, hasRemote]);
 
     const handleDiscard = useCallback((filepath: string) => {
         setDiscardTarget([filepath]);
@@ -933,7 +1026,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                 <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
                     <div className="flex items-center gap-2 no-app-region-drag">
                         <GitBranch size={14} className="text-primary" />
-                        <span className="typo-button">Commit</span>
+                        <span className="typo-button">{app?.name ? `${app.name} – Git` : "Git"}</span>
                     </div>
                     <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />
                 </div>
@@ -989,7 +1082,10 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer text-primary"
-                                    onClick={() => push({})} disabled={isPushing || isPulling}>
+                                    onClick={() => {
+                                        if (!hasRemote) { setShowRemoteDialog(true); return; }
+                                        push({});
+                                    }} disabled={isPushing || isPulling}>
                                     {isPushing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                                 </Button>
                             </TooltipTrigger>
@@ -1001,11 +1097,32 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             appId={appId}
                             currentBranch={currentBranch}
                             branches={branches}
+                            remoteBranches={remoteBranches}
                             switchBranch={switchBranch}
                             isSwitchingBranch={isSwitchingBranch}
                             aheadCount={gitState?.ahead}
                             align="end"
                         />
+                    )}
+                    {/* No-remote badge */}
+                    {hasGithubToken && !hasRemote && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setShowRemoteDialog(true)}
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer border border-destructive/20"
+                                >
+                                    <CloudOff size={11} />
+                                    Sin remote
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Configurar repositorio remoto</TooltipContent>
+                        </Tooltip>
+                    )}
+
+                    {/* Vercel Publish button */}
+                    {appId && app && (
+                        <VercelPublishButton appId={appId} app={app} refreshApp={refreshApp} />
                     )}
                     
                     <DropdownMenu>
@@ -1058,6 +1175,34 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 <Ban size={13} />
                                 Abortar rebase
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="typo-micro">Repositorio remoto</DropdownMenuLabel>
+                            {hasRemote ? (
+                                <DropdownMenuItem
+                                    className="text-xs flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                    onClick={async (e) => {
+                                        e.preventDefault();
+                                        if (!appId) return;
+                                        try {
+                                            await ipc.github.disconnect({ appId });
+                                            toast.success("Remote desconectado");
+                                            refreshApp();
+                                            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+                                        } catch (err: any) { toast.error(err.message); }
+                                    }}
+                                >
+                                    <GitBranch size={13} />
+                                    Desconectar remote
+                                </DropdownMenuItem>
+                            ) : (
+                                <DropdownMenuItem
+                                    className="text-xs flex items-center gap-2 cursor-pointer"
+                                    onClick={(e) => { e.preventDefault(); setShowRemoteDialog(true); }}
+                                >
+                                    <GitBranch size={13} />
+                                    Configurar remote
+                                </DropdownMenuItem>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -1102,10 +1247,25 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
                         {/* ── Left: file tree + commit area ── */}
                         <Panel defaultSize={32} minSize={22} maxSize={55}>
-                            <PanelGroup direction="vertical" className="h-full">
+                            <PanelGroup
+                                direction="vertical"
+                                className="h-full"
+                                key={settingsLoadedRef.current ? "loaded" : "init"}
+                                onLayout={(sizes: number[]) => {
+                                    // Only persist when the user is actively dragging the resize handle
+                                    if (!commitPanelDraggingRef.current) return;
+                                    const commitSize = sizes[1];
+                                    if (commitSize != null) {
+                                        if (commitPanelSizeTimerRef.current) clearTimeout(commitPanelSizeTimerRef.current);
+                                        commitPanelSizeTimerRef.current = setTimeout(() => {
+                                            updateSettings({ gitCommitPanelSize: Math.round(commitSize) });
+                                        }, 500);
+                                    }
+                                }}
+                            >
 
                                 {/* ── Top: file list ── */}
-                                <Panel defaultSize={65} minSize={30}>
+                                <Panel defaultSize={settings?.gitCommitPanelSize ? (100 - settings.gitCommitPanelSize) : 65} minSize={30}>
                                     <div className="h-full flex flex-col overflow-hidden">
 
                                     {/* File list */}
@@ -1229,14 +1389,17 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 </Panel>
 
                                 {/* ── Horizontal resize handle ── */}
-                                <PanelResizeHandle className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-row-resize">
+                                <PanelResizeHandle
+                                    className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-row-resize"
+                                    onDragging={(isDragging) => { commitPanelDraggingRef.current = isDragging; }}
+                                >
                                     <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
                                         <GripHorizontal className="h-2.5 w-2.5 text-muted-foreground" />
                                     </div>
                                 </PanelResizeHandle>
 
                                 {/* ── Bottom: commit area ── */}
-                                <Panel defaultSize={35} minSize={20} maxSize={65}>
+                                <Panel defaultSize={settings?.gitCommitPanelSize ?? 35} minSize={20} maxSize={65}>
                                     <div className="flex flex-col h-full overflow-hidden">
 
                                     {/* Commit area */}
@@ -1293,10 +1456,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         </Tooltip>
                                     </div>
 
-                                    {/* Remote setup if needed */}
-                                    {hasGithubToken && !hasRemote && appId && (
-                                        <GitRemoteSetup appId={appId} appName={app?.name || "app"} onLinked={() => refreshApp()} />
-                                    )}
+
                                     </div>
                                     </div>
                                 </Panel>
@@ -1317,6 +1477,9 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 fullContent={fullContent}
                                 filepath={selectedFile}
                                 isLoading={isLoadingDiff}
+                                fileStatus={uncommittedFiles.find(f => f.path === selectedFile)?.status}
+                                isDirectory={selectedFile ? uncommittedFiles.some(f => f.path.startsWith(selectedFile + "/")) : false}
+                                changedFilesCount={selectedFile ? uncommittedFiles.filter(f => f.path.startsWith(selectedFile + "/")).length : 0}
                             />
                         </Panel>
                     </PanelGroup>
@@ -1325,6 +1488,19 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
 
             {/* Single Commit Dialog */}
             
+            {/* Remote Setup Dialog */}
+            {hasGithubToken && appId && (
+                <GitRemoteSetupDialog
+                    appId={appId}
+                    appName={app?.name || "app"}
+                    isOpen={showRemoteDialog}
+                    onClose={() => setShowRemoteDialog(false)}
+                    onLinked={() => refreshApp()}
+                    autoPushAfterLink={true}
+                    pushFn={push}
+                />
+            )}
+
             <ConfirmationDialog
                 isOpen={!!discardTarget}
                 title="Revertir cambios"
@@ -1337,8 +1513,27 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                 cancelText="Cancelar"
                 onConfirm={async () => {
                     if (discardTarget) {
-                        for (const filepath of discardTarget) {
-                            await discardFileChanges(filepath);
+                        const isAll = discardTarget.length === uncommittedFiles.length;
+                        if (isAll) {
+                            // Single git command for all files
+                            await discardAllChanges();
+                        } else {
+                            // Loop individual files, single toast at the end
+                            let errors = 0;
+                            for (const filepath of discardTarget) {
+                                try {
+                                    await discardFileChanges(filepath);
+                                } catch {
+                                    errors++;
+                                }
+                            }
+                            if (errors === 0) {
+                                toast.success(discardTarget.length === 1
+                                    ? "Cambios descartados"
+                                    : `${discardTarget.length} archivos revertidos`);
+                            } else {
+                                toast.warning(`${discardTarget.length - errors} revertidos, ${errors} con error`);
+                            }
                         }
                         setDiscardTarget(null);
                     }

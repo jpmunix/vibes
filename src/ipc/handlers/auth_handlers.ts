@@ -11,8 +11,8 @@ import { authContracts } from "../types/auth";
 import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import type { VibesUserDto } from "../types/auth";
-import { writeSettings } from "../../main/settings";
-import { forceSyncRemoteSettingsToLocal } from "./settings_handlers";
+import { writeSettings, resetSettingsToDefaults } from "../../main/settings";
+import { preferencesCache } from "../../main/preferences-cache";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
@@ -149,8 +149,10 @@ export function registerAuthHandlers(): void {
             sessionToken: { value: sessionToken, encryptionType: "plaintext" },
         });
 
-        // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
-        await forceSyncRemoteSettingsToLocal(user.id);
+        // Hydrate preferences cache from DB only if needed
+        if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== user.id) {
+            await preferencesCache.hydrate(user.id);
+        }
 
         return {
             user: toUserDto(user),
@@ -191,8 +193,10 @@ export function registerAuthHandlers(): void {
                 sessionToken: { value: input.sessionToken, encryptionType: "plaintext" },
             });
 
-            // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
-            await forceSyncRemoteSettingsToLocal(user.id);
+            // Hydrate preferences cache from DB only if needed
+            if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== user.id) {
+                await preferencesCache.hydrate(user.id);
+            }
 
             return {
                 valid: true,
@@ -276,11 +280,8 @@ export function registerAuthHandlers(): void {
             .set({ sessionToken: null })
             .where(eq(remoteSchema.users.id, input.userId));
 
-        // Clear locally
-        writeSettings({
-            userId: undefined,
-            sessionToken: undefined,
-        });
+        // Nuke local settings to factory defaults — zero credential leakage
+        resetSettingsToDefaults();
 
         logger.info(`User logged out: ${input.userId}`);
     });

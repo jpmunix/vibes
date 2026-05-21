@@ -151,7 +151,7 @@ export const FileEditor = ({
   }, []);
 
   // Handle editor mount
-  const handleEditorDidMount: OnMount = (editor) => {
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
 
     // Navigate to initialLine if provided (handles case when editor mounts after initialLine is set)
@@ -159,9 +159,15 @@ export const FileEditor = ({
       navigateToLine(initialLine);
     }
 
+    // Ctrl+S / Cmd+S to save
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      if (needsSaveRef.current) {
+        saveFile();
+      }
+    });
+
     // Listen for model content change events
     editor.onDidBlurEditorText(() => {
-      console.log("Editor text blurred, checking if save needed");
       if (needsSaveRef.current) {
         saveFile();
       }
@@ -182,7 +188,7 @@ export const FileEditor = ({
   const saveFile = async () => {
     if (
       !appId ||
-      !currentValueRef.current ||
+      currentValueRef.current === undefined ||
       !needsSaveRef.current ||
       isSavingRef.current
     )
@@ -196,6 +202,7 @@ export const FileEditor = ({
         appId,
         filePath,
         content: currentValueRef.current,
+        skipCommit: true,
       });
       await queryClient.invalidateQueries({
         queryKey: queryKeys.versions.list({ appId }),
@@ -238,7 +245,7 @@ export const FileEditor = ({
     return <div className="p-4 text-red-500">Error: {error.message}</div>;
   }
 
-  if (!content) {
+  if (content === null) {
     return <div className="p-4 text-muted-foreground">No hay contenido disponible</div>;
   }
 

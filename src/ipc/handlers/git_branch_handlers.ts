@@ -182,6 +182,26 @@ async function handleSwitchBranch(
   await withLock(appId, async () => {
     await ensureCleanWorkspace(appPath, `switching to branch '${branch}'`);
   });
+
+  // Check if the branch exists locally; if not, try fetching from remote first
+  const localBranches = await gitListBranches({ path: appPath });
+  if (!localBranches.includes(branch)) {
+    // Branch not local — attempt a fetch so that remote-only branches become available
+    const settings = readSettings();
+    const accessToken = settings.githubAccessToken?.value;
+    try {
+      await gitFetch({
+        path: appPath,
+        remote: "origin",
+        accessToken: accessToken || undefined,
+      });
+      logger.info(`Auto-fetched from origin before switching to remote branch '${branch}'`);
+    } catch (fetchErr: any) {
+      logger.warn(`Auto-fetch before branch switch failed (non-fatal): ${fetchErr.message}`);
+      // Continue — the checkout below will fail with a clear error if the branch truly doesn't exist
+    }
+  }
+
   try {
     await gitCheckout({
       path: appPath,
@@ -765,7 +785,8 @@ async function handleDiscardFileChanges(
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
-  return gitDiscardFile({ path: appPath, filepath });
+  await gitDiscardFile({ path: appPath, filepath });
+  return { message: "Cambios descartados" } as any;
 }
 
 async function handleDiscardAllChanges(

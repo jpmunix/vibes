@@ -30,6 +30,7 @@ import {
   getGitAheadCount,
   withGitAuthor,
   gitHasRemote,
+  gitRemoveRemote,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -47,7 +48,7 @@ import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
 import { openRouterCompletion, hasOpenRouterApiKey, openRouterStreamCompletion } from "../utils/openrouter";
-import { getEffectivePrompt } from "@/prompts";
+import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
 import { streamText } from "ai";
 import { getModelClient } from "../utils/get_model_client";
@@ -155,7 +156,7 @@ export async function prepareLocalBranch({
   }
   const appPath = getVibesAppPath(app.path);
   const targetBranch = branch || "main";
-  const autoCommitEnabled = true; // Always enabled
+  const autoCommitEnabled = readSettings().enableGithubAutoCommit !== false; // default true
 
   try {
     // Set up remote URL if provided (should be set up before calling this)
@@ -221,9 +222,10 @@ export async function prepareLocalBranch({
             "Failed to auto-commit uncommitted changes. Please commit or stash your changes manually and try again.",
           );
         }
+      } else if (!isClean) {
+        // Auto-commit is disabled and workspace is dirty — fail early
+        await ensureCleanWorkspace(appPath, `preparing branch '${targetBranch}'`);
       }
-
-      await ensureCleanWorkspace(appPath, `preparing branch '${targetBranch}'`);
 
       // List branches and check if target branch exists
       const localBranches = await gitListBranches({ path: appPath });
@@ -320,19 +322,18 @@ export async function prepareLocalBranch({
     });
   } catch (gitError: any) {
     logger.error("[GitHub Handler] Failed to prepare local branch:", gitError);
-    // Check if error is about uncommitted changes (fallback in case check above missed it)
     const errorMessage =
       gitError?.message ||
       "Failed to prepare local branch for the connected repository.";
     const lowerMessage = errorMessage.toLowerCase();
+
     if (
       lowerMessage.includes("local changes") ||
       lowerMessage.includes("would be overwritten") ||
       lowerMessage.includes("please commit or stash")
     ) {
       throw new Error(
-        `Failed to prepare local branch: uncommitted changes detected. ` +
-        "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
+        "Hay cambios sin commitear. Haz commit de tus cambios antes de vincular un repositorio remoto.",
       );
     }
     throw new Error(errorMessage);
@@ -897,7 +898,8 @@ async function handlePushToGithub(
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
-    const autoCommitEnabled = true; // Always enabled
+    const settings = readSettings();
+    const autoCommitEnabled = settings.enableGithubAutoCommit !== false; // default true
     if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
@@ -1440,6 +1442,15 @@ async function handleDisconnectGithubRepo(
       githubBranch: null,
     })
     .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+
+  // Also remove the git remote from the local repository
+  const appPath = getVibesAppPath(app.path);
+  try {
+    await gitRemoveRemote({ path: appPath });
+    logger.log(`[GitHub Handler] Removed git remote 'origin' for appId: ${appId}`);
+  } catch (err: any) {
+    logger.warn(`[GitHub Handler] Could not remove git remote: ${err.message}`);
+  }
 }
 // --- GitHub Clone Repo from URL Handler ---
 async function handleCloneRepoFromUrl(
@@ -1680,7 +1691,7 @@ async function handleGetPreview(
       totalAdditions,
       totalDeletions,
       suggestedSquashMessage,
-    };
+    } as any;
   } catch (err: any) {
     logger.error("[GitHub Handler] Failed to get preview:", err);
     throw new Error(err.message || "Failed to get git preview.");
@@ -1714,7 +1725,7 @@ async function generateSquashCommitMessage({
   }
 
   const settings = readSettings();
-  const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+  const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
   // Get the combined diff between remote and local
   const diffContext = await gitDiffRange({
@@ -1728,7 +1739,7 @@ async function generateSquashCommitMessage({
     return fallbackMessage;
   }
 
-  const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+  const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
   const prompt = `${systemPrompt}\n\nEsta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}`;
 
   const data = await openRouterCompletion({
@@ -1914,7 +1925,7 @@ export function registerCommitMessageStreamHandler() {
       }
 
       const db = getRemoteDb();
-      const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       const app = await db.query.apps.findFirst({
         where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
@@ -1951,7 +1962,7 @@ export function registerCommitMessageStreamHandler() {
       const diffs = await Promise.all(diffsPromises);
       const diffsContext = diffs.join("\n\n");
 
-      const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+      const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
 
       // NOTE: We intentionally bypass getModelClient here.
       // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.

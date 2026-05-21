@@ -8,11 +8,12 @@ import log from "electron-log";
 import { getVibesAppPath } from "../../paths/paths";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitCommit, gitAdd, gitInit } from "../utils/git_utils";
 import { readSettings } from "../../main/settings";
+import { detectProjectLanguage } from "../utils/detect_language";
 
 const logger = log.scope("import-handlers");
 
@@ -45,16 +46,20 @@ export function registerImportHandlers() {
   });
 
   // Handler for checking if an app name is already taken
-  createTypedHandler(importContracts.checkAppName, async (_, { appName, skipCopy }) => {
+  createTypedHandler(importContracts.checkAppName, async (_, { appName, skipCopy }, context) => {
     // Only check filesystem if we're copying to vibes-apps
     if (!skipCopy) {
       const appPath = getVibesAppPath(appName);
       try {
         await fs.access(appPath);
-        // Folder exists in vibes-apps — check if it's already registered in the DB
-        const existingApp = await getRemoteDb().query.apps.findFirst({
-          where: eq(remoteSchema.apps.name, appName),
-        });
+        // Folder exists in vibes-apps — check if it's already registered in the DB for this user
+        const existingApp = context.userId
+          ? await getRemoteDb().query.apps.findFirst({
+              where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+            })
+          : await getRemoteDb().query.apps.findFirst({
+              where: eq(remoteSchema.apps.name, appName),
+            });
         if (existingApp) {
           return { exists: true, existingAppId: existingApp.id };
         }
@@ -64,10 +69,14 @@ export function registerImportHandlers() {
       }
     }
 
-    // Check database
-    const existingApp = await getRemoteDb().query.apps.findFirst({
-      where: eq(remoteSchema.apps.name, appName),
-    });
+    // Check database — scope to the current user so we don't collide with other users' apps
+    const existingApp = context.userId
+      ? await getRemoteDb().query.apps.findFirst({
+          where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+        })
+      : await getRemoteDb().query.apps.findFirst({
+          where: eq(remoteSchema.apps.name, appName),
+        });
 
     return {
       exists: !!existingApp,
@@ -141,6 +150,19 @@ export function registerImportHandlers() {
       })
       .returning();
 
+    // Detect primary language and persist it
+    try {
+      const { primaryLanguage, projectType } = await detectProjectLanguage(appPath);
+      if (primaryLanguage !== "unknown") {
+        await getRemoteDb()
+          .update(remoteSchema.apps)
+          .set({ primaryLanguage, projectType })
+          .where(eq(remoteSchema.apps.id, app.id));
+      }
+    } catch (e) {
+      logger.warn(`Failed to detect language for imported app ${app.id}:`, e);
+    }
+
     // Create an initial chat for this app
     const [chat] = await getRemoteDb()
       .insert(remoteSchema.chats)
@@ -150,6 +172,29 @@ export function registerImportHandlers() {
         createdAt: new Date(),
       })
       .returning();
+
+    // Fire-and-forget: trigger memory bootstrap (DNA collection) immediately
+    // so the agent has project context before the first prompt.
+    try {
+      const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+      const { setDebugContext } = await import("../utils/memory_debug_log");
+      setDebugContext(appName, app.id);
+      const needs = await needsBootstrap(app.id, userId);
+      if (needs) {
+        logger.info(`🧬 Memory bootstrap triggered on import for appId=${app.id}`);
+        runMemoryBootstrap({
+          appId: app.id,
+          userId,
+          projectDir: appPath,
+          appName,
+        }).catch((err: any) => {
+          logger.warn(`🧬 Memory bootstrap failed on import (non-fatal): ${err.message}`);
+        });
+      }
+    } catch (bootstrapErr: any) {
+      logger.warn(`🧬 Memory bootstrap import hook failed (non-fatal): ${bootstrapErr.message}`);
+    }
+
     return { appId: app.id, chatId: chat.id };
   });
 

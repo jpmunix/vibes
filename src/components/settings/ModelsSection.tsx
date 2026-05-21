@@ -11,6 +11,7 @@ import { AddModelDialog } from "@/components/settings/AddModelDialog";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { useDeleteCustomModel } from "@/hooks/useDeleteCustomModel";
 import { useSettings } from "@/hooks/useSettings";
+import { useModelAliases } from "@/hooks/useModelAliases";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { type LanguageModel } from "@/ipc/types";
 import {
@@ -27,11 +28,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
 const formatTokens = (num: number | undefined) => {
-  if (num === undefined) return "---";
+  if (num === undefined) return "—";
   if (num >= 1000000) return `${Math.ceil(num / 1000000)}M`;
   if (num >= 1000) return `${Math.ceil(num / 1000)}K`;
   return num.toString();
 };
+
+function formatPricePerMillion(pricePerToken: string | undefined): string {
+  if (!pricePerToken) return "—";
+  const num = parseFloat(pricePerToken);
+  if (isNaN(num)) return "—";
+  if (num === 0) return "gratis";
+  const perMillion = num * 1_000_000;
+  if (perMillion < 0.01) return `$${perMillion.toFixed(4)}`;
+  if (perMillion < 1) return `$${perMillion.toFixed(2)}`;
+  return `$${perMillion.toFixed(2)}`;
+}
 
 interface ModelsSectionProps {
   providerId: string;
@@ -54,6 +66,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
   const queryClient = useQueryClient();
   const { settings, updateSettings } = useSettings();
+  const { aliases, setAlias, removeAlias } = useModelAliases();
 
   const enabledModelIds =
     settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
@@ -82,10 +95,10 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
     },
   });
 
-  // Only show enabled models
+  // Only show enabled models + always show custom models
   const enabledModels = useMemo(() => {
     if (!models) return [];
-    return models.filter((m) => enabledModelIds.includes(m.apiName));
+    return models.filter((m) => m.type === "custom" || enabledModelIds.includes(m.apiName));
   }, [models, enabledModelIds]);
 
   const handleDeleteClick = (modelApiName: string) => {
@@ -145,49 +158,34 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             >
               <div className="flex justify-between items-start gap-2">
                 <h4 className="typo-label truncate flex-1">
-                  {model.displayName}
+                  {aliases[model.apiName] || model.displayName}
                 </h4>
-                {model.type === "custom" && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditClick(model);
-                      }}
-                      className="text-primary hover:bg-primary/10 h-6 w-6"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(model.apiName);
-                      }}
-                      disabled={isDeleting}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50 h-6 w-6"
-                    >
-                      <TrashIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
               </div>
 
-              <div className="flex items-center justify-between mt-auto pt-2">
+              {/* Line 2: Context + output */}
+              <div className="flex items-center gap-2 typo-caption mt-1 opacity-70">
+                {model.contextWindow || model.maxOutputTokens ? (
+                  <>
+                    {model.contextWindow ? <span>Contexto: {formatTokens(model.contextWindow)}</span> : null}
+                    {model.contextWindow && model.maxOutputTokens ? <span className="opacity-40">·</span> : null}
+                    {model.maxOutputTokens ? <span>Salida: {formatTokens(model.maxOutputTokens)}</span> : null}
+                  </>
+                ) : model.type === "custom" ? (
+                  <span>Personalizado</span>
+                ) : null}
+              </div>
+
+              {/* Line 3: Pricing */}
+              <div className="flex items-center justify-between mt-auto pt-1.5">
                 <div className="flex items-center gap-2">
-                  {model.contextWindow || model.maxOutputTokens ? (
-                    <div className="flex items-center gap-2 typo-caption">
-                      {model.contextWindow ? <span>Contexto: {formatTokens(model.contextWindow)}</span> : null}
-                      {model.contextWindow && model.maxOutputTokens ? <span>•</span> : null}
-                      {model.maxOutputTokens ? <span>Salida: {formatTokens(model.maxOutputTokens)}</span> : null}
+                  {(model.pricingInput || model.pricingOutput) ? (
+                    <div className="flex items-center gap-2 typo-caption opacity-50">
+                      <span>In</span>
+                      <span className="tabular-nums">{formatPricePerMillion(model.pricingInput)}</span>
+                      <span className="opacity-40">·</span>
+                      <span>Out</span>
+                      <span className="tabular-nums">{formatPricePerMillion(model.pricingOutput)}</span>
                     </div>
-                  ) : model.type === "custom" ? (
-                    <span className="typo-caption">
-                      Personalizado
-                    </span>
                   ) : null}
                 </div>
                 {/* Disable switch */}
@@ -225,6 +223,17 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             open={!!infoModel}
             onOpenChange={(open) => !open && setInfoModel(null)}
             model={infoModel}
+            alias={aliases[infoModel.apiName]}
+            onSetAlias={(newAlias) => setAlias({ modelId: infoModel.apiName, alias: newAlias })}
+            onRemoveAlias={() => removeAlias(infoModel.apiName)}
+            onEditCustomModel={infoModel.type === "custom" ? (m) => {
+              setInfoModel(null);
+              handleEditClick(m);
+            } : undefined}
+            onDeleteCustomModel={infoModel.type === "custom" ? (apiName) => {
+              setInfoModel(null);
+              handleDeleteClick(apiName);
+            } : undefined}
           />
         )
       }

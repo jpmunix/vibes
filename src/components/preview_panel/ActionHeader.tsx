@@ -20,6 +20,7 @@ import {
   Database,
   Square,
   Logs,
+  FolderOpen,
 } from "@/components/ui/icons";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 
 import { useVersions } from "@/hooks/useVersions";
+import { useSettings } from "@/hooks/useSettings";
 
 export type PreviewMode =
   | "preview"
@@ -77,6 +79,8 @@ export const ActionHeader = () => {
   const currentApp = useAtomValue(currentAppAtom);
   const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
   const { theme, intensity } = useTheme();
+  const { settings } = useSettings();
+  const memoriesEnabled = settings?.memoriesEnabled !== false;
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const versionsGroupRef = useRef<HTMLButtonElement>(null);
@@ -373,7 +377,7 @@ export const ActionHeader = () => {
                 className={groupButtonClass(activeGroup === "code")}
                 onMouseEnter={() => handleMenuHoverEnter("code")}
                 onMouseLeave={handleMenuHoverLeave}
-                onClick={() => selectPanel("code")}
+                onClick={() => handleMenuHoverEnter("code")}
               >
                 {codeGroupInfo.icon}
                 {!isCompact && <span>{codeGroupInfo.label}</span>}
@@ -387,11 +391,19 @@ export const ActionHeader = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("code")} onMouseLeave={handleMenuHoverLeave}>
               <DropdownMenuItem
-                onClick={() => selectPanel("code")}
-                className={cn(previewMode === "code" && "bg-accent")}
+                onClick={() => {
+                  if (selectedAppId != null) {
+                    ipc.system.openCodeWindow({
+                      appId: selectedAppId,
+                      theme,
+                      themeIntensity: intensity,
+                    });
+                  }
+                }}
+                disabled={selectedAppId == null}
               >
-                <Code size={14} />
-                <span>Código</span>
+                <FolderOpen size={14} />
+                <span>Explorar código</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}
@@ -441,6 +453,23 @@ export const ActionHeader = () => {
                 <Logs size={14} />
                 <span>Consola</span>
               </DropdownMenuItem>
+              {memoriesEnabled && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (selectedAppId != null) {
+                      ipc.system.openMemoryWindow({
+                        appId: selectedAppId,
+                        theme,
+                        themeIntensity: intensity,
+                      });
+                    }
+                  }}
+                  disabled={selectedAppId == null}
+                >
+                  <Database size={14} />
+                  <span>Memorias</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

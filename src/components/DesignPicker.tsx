@@ -314,6 +314,7 @@ export const DesignPicker: React.FC = () => {
 
   // Vision check — disable screenshot option if model doesn't support images
   const supportsImages = useSelectedModelSupportsImages();
+
   const { settings } = useSettings();
 
   const { data: designs, isLoading } = useQuery({
@@ -389,9 +390,11 @@ export const DesignPicker: React.FC = () => {
     async (dataUrl: string) => {
       setScreenshotLoading(true);
       try {
+        const modelName = settings?.selectedModel?.name ?? "";
+        console.log(`[DesignPicker] Generando diseño desde captura con modelo: ${modelName}`);
         const result = await ipc.design.generateFromScreenshot({
           imageDataUrl: dataUrl,
-          model: settings?.selectedModel?.name ?? "",
+          model: modelName,
         });
         if (result.content) {
           setSelected({
@@ -411,7 +414,7 @@ export const DesignPicker: React.FC = () => {
         setScreenshotLoading(false);
       }
     },
-    [setSelected],
+    [setSelected, settings],
   );
 
   // Build options
@@ -704,7 +707,7 @@ export const DesignPicker: React.FC = () => {
               {/* Current custom indicator */}
               {selected?.id === "__custom__" && (
                 <div className="px-3 py-2 border-t border-border/40 typo-micro text-primary/80 text-center">
-                  ✓ Diseño personalizado cargado
+                  Diseño personalizado cargado
                 </div>
               )}
             </div>

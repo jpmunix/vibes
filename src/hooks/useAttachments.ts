@@ -157,7 +157,7 @@ export function useAttachments() {
         }
       }
     },
-    [addAttachments, supportsImages],
+    [addAttachments, supportsImages, isStrategistMode],
   );
 
   return {

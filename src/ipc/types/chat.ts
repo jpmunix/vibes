@@ -26,9 +26,13 @@ export const MessageSchema = z.object({
   totalTokens: z.number().nullable().optional(),
   durationMs: z.number().nullable().optional(),
   model: z.string().nullable().optional(),
+  // Message lifecycle status: streaming (in-progress), completed, incomplete, failed
+  status: z.string().nullable().optional(),
   // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
   // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
   aiMessagesJson: z.any().nullable().optional(),
+  // Persisted memories injected into agent context for this response
+  injectedMemories: z.any().nullable().optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;
@@ -94,11 +98,16 @@ export const ChatStreamParamsSchema = z.object({
   undoRedo: z.boolean().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
   selectedComponents: z.array(ComponentSelectionSchema).optional(),
+  /** Transient model override for plan/ask mode (non-persisted). */
+  modelOverride: z.string().optional(),
+  /** The current mode of the chat from the frontend UI (e.g. 'agent', 'plan', 'ask'). Avoids async DB race conditions. */
+  chatMode: z.string().optional(),
   /** Messages to inject into the AI session before the main prompt (via noReply:true). */
   priorMessages: z
     .array(
       z.object({
         prompt: z.string(),
+        role: z.string().optional(),
         attachments: z.array(ChatAttachmentSchema).optional(),
       }),
     )
@@ -144,6 +153,13 @@ export const ChatResponseEndSchema = z.object({
   chatSummary: z.string().optional(),
   /** When a cancel happens before content is generated, the user's prompt is sent back */
   restoredPrompt: z.string().optional(),
+  /** Memories selected by the Router and injected into agent context */
+  selectedMemories: z.array(z.object({
+    id: z.number(),
+    type: z.string(),
+    key: z.string().nullable(),
+    content: z.string(),
+  })).optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;
@@ -234,8 +250,13 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
-        isPlan: z.boolean().optional(),
+        isPlan: z.boolean().optional().default(false),
         lastReadAt: z.date().nullable().optional(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -272,7 +293,12 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         matchedMessageContent: z.string().nullable(),
-        isPlan: z.boolean().optional(),
+        isPlan: z.boolean().optional().default(false),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -362,6 +388,11 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
       }),
     ),
   }),
@@ -371,6 +402,266 @@ export const chatContracts = {
     channel: "chat:insert-user-messages",
     input: InsertUserMessagesParamsSchema,
     output: z.void(),
+  }),
+
+  addSyntheticMessage: defineContract({
+    channel: "add-synthetic-message",
+    input: z.object({
+      chatId: z.number(),
+      content: z.string(),
+      model: z.string().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  pinChat: defineContract({
+    channel: "pin-chat",
+    input: z.object({ chatId: z.number(), pinned: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getPinnedChats: defineContract({
+    channel: "get-pinned-chats",
+    input: z.void(),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        appId: z.number(),
+        appName: z.string(),
+        title: z.string().nullable(),
+        createdAt: z.date(),
+        labels: z.array(z.object({
+          id: z.number(),
+          label: z.string(),
+          color: z.string()
+        })).optional().default([]),
+      }),
+    ),
+  }),
+
+  summarizeToNewChat: defineContract({
+    channel: "summarize-to-new-chat",
+    input: z.object({
+      appId: z.number(),
+      chatId: z.number(),
+    }),
+    output: z.number(), // Returns newChatId
+  }),
+
+  getChatArtifacts: defineContract({
+    channel: "get-chat-artifacts",
+    input: z.number(), // chatId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        path: z.string(),
+        title: z.string().nullable(),
+        accepted: z.number().nullable(),
+        createdAt: z.date(),
+        updatedAt: z.date(),
+      })
+    ),
+  }),
+
+  getChatArtifactContent: defineContract({
+    channel: "get-chat-artifact-content",
+    input: z.object({
+      appId: z.number(),
+      path: z.string(), // relative path to .vibes/ file
+    }),
+    output: z.string(), // markdown content
+  }),
+
+  acceptArtifact: defineContract({
+    channel: "accept-artifact",
+    input: z.number(), // artifactId
+    output: z.boolean(),
+  }),
+
+  decoupleArtifact: defineContract({
+    channel: "decouple-artifact",
+    input: z.number(), // artifactId
+    output: z.boolean(),
+  }),
+
+  /** Get ALL .vibes/ plans for an app (across all chats). */
+  getAppPlans: defineContract({
+    channel: "get-app-plans",
+    input: z.number(), // appId
+    output: z.array(
+      z.object({
+        id: z.number().nullable(),        // null = orphaned (on disk only)
+        path: z.string(),
+        title: z.string().nullable(),
+        chatId: z.number().nullable(),     // which chat owns it (null = unattached)
+        chatTitle: z.string().nullable(),  // for display
+        accepted: z.number().nullable(),
+        createdAt: z.date().nullable(),
+      })
+    ),
+  }),
+
+  /** Attach (or re-attach) an artifact to a specific chat. */
+  attachArtifactToChat: defineContract({
+    channel: "attach-artifact-to-chat",
+    input: z.object({
+      appId: z.number(),
+      path: z.string(),      // .vibes/plan-xxx.md
+      chatId: z.number(),     // target chat
+    }),
+    output: z.boolean(),
+  }),
+
+  // ── Artifact Comments ─────────────────────────────────────────────────────
+
+  addArtifactComment: defineContract({
+    channel: "add-artifact-comment",
+    input: z.object({
+      artifactId: z.number(),
+      selectedText: z.string().nullable(),
+      blockRef: z.string().nullable(),
+      comment: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      artifactId: z.number(),
+      selectedText: z.string().nullable(),
+      blockRef: z.string().nullable(),
+      comment: z.string(),
+      createdAt: z.date(),
+    }),
+  }),
+
+  getArtifactComments: defineContract({
+    channel: "get-artifact-comments",
+    input: z.number(), // artifactId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        artifactId: z.number(),
+        selectedText: z.string().nullable(),
+        blockRef: z.string().nullable(),
+        comment: z.string(),
+        createdAt: z.date(),
+      })
+    ),
+  }),
+
+  updateArtifactComment: defineContract({
+    channel: "update-artifact-comment",
+    input: z.object({
+      commentId: z.number(),
+      comment: z.string(),
+    }),
+    output: z.boolean(),
+  }),
+
+  deleteArtifactComment: defineContract({
+    channel: "delete-artifact-comment",
+    input: z.number(), // commentId
+    output: z.boolean(),
+  }),
+
+  // ── Chat Labels ───────────────────────────────────────────────────────────
+
+  addChatLabel: defineContract({
+    channel: "add-chat-label",
+    input: z.object({
+      chatId: z.number(),
+      label: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      label: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  deleteChatLabel: defineContract({
+    channel: "delete-chat-label",
+    input: z.number(), // labelId
+    output: z.void(),
+  }),
+
+  getGlobalLabels: defineContract({
+    channel: "get-global-labels",
+    input: z.void(),
+    output: z.array(z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    })),
+  }),
+
+  createGlobalLabel: defineContract({
+    channel: "create-global-label",
+    input: z.object({
+      name: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  deleteGlobalLabel: defineContract({
+    channel: "delete-global-label",
+    input: z.number(), // labelId
+    output: z.void(),
+  }),
+
+  updateGlobalLabel: defineContract({
+    channel: "update-global-label",
+    input: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+    output: z.object({
+      id: z.number(),
+      name: z.string(),
+      color: z.string(),
+    }),
+  }),
+
+  setChatLabels: defineContract({
+    channel: "set-chat-labels",
+    input: z.object({
+      chatId: z.number(),
+      labels: z.array(z.object({
+        id: z.number().optional(),
+        name: z.string(),
+        color: z.string().optional(),
+      })),
+    }),
+    output: z.array(z.object({
+      id: z.number(),
+      labelId: z.number().nullable(),
+      label: z.string(),
+      color: z.string(),
+    })),
+  }),
+
+  // ── Stream Tasks ──────────────────────────────────────────────────────────
+
+  /** Get the active/latest stream task for a chat (used by frontend to detect in-progress or completed background streams). */
+  getStreamTask: defineContract({
+    channel: "get-stream-task",
+    input: z.number(), // chatId
+    output: z.object({
+      id: z.number(),
+      chatId: z.number(),
+      messageId: z.number(),
+      status: z.string(),
+      startedAt: z.union([z.date(), z.string()]),
+      completedAt: z.union([z.date(), z.string()]).nullable(),
+      model: z.string().nullable(),
+      agentId: z.string().nullable(),
+      error: z.string().nullable(),
+    }).nullable(),
   }),
 } as const;
 

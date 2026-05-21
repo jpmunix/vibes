@@ -176,6 +176,15 @@ async function _ensureScaffoldCachedImpl(scaffoldDirName: string): Promise<void>
     logger.info(`[${scaffoldDirName}] Running npm install --legacy-peer-deps in: ${cachePath}`);
     const startTime = Date.now();
 
+    // Pre-flight: verify npm is accessible before attempting install
+    try {
+        const { execFileSync } = require("node:child_process");
+        execFileSync("npm", ["--version"], { timeout: 5000, stdio: "pipe" });
+    } catch {
+        logger.warn(`[${scaffoldDirName}] npm not found in PATH, skipping cache warmup`);
+        return;
+    }
+
     try {
         const result = await runCommand("npm install --legacy-peer-deps", cachePath);
         if (result.stderr) {
@@ -236,6 +245,8 @@ async function resolveScaffoldDirForApp(targetAppPath: string): Promise<string> 
             if (name.includes("vue")) return "scaffold-vue";
             if (name.includes("astro")) return "scaffold-astro";
             if (name.includes("svelte") || name.includes("sveltekit")) return "scaffold-svelte";
+            // Check for Express-style projects (no react/vue deps, has express dep)
+            if (pkgJson.dependencies?.express) return "scaffold-express";
         }
     } catch {
         // Fall through to default
@@ -274,12 +285,10 @@ export async function copyScaffoldNodeModules(targetAppPath: string): Promise<bo
     const startTime = Date.now();
 
     try {
-        await fs.copy(cachedNodeModules, targetNodeModules, {
-            // IMPORTANT: Preserve symlinks (dereference: false).
-            // npm creates symlinks in node_modules/.bin/ (e.g. vite → ../vite/bin/vite.cjs).
-            // Dereferencing them breaks the relative paths and causes MODULE_NOT_FOUND errors.
-            // On Windows, symlinks might need admin privileges, but fs-extra handles this gracefully.
-            dereference: false,
+        await fsNode.cp(cachedNodeModules, targetNodeModules, {
+            recursive: true,
+            force: true,
+            verbatimSymlinks: true, // Preserve symlinks (like node_modules/.bin)
         });
 
         const elapsedMs = Date.now() - startTime;

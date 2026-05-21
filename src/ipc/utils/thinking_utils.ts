@@ -19,16 +19,9 @@ export function getExtraProviderOptions(
     }
     return { reasoning_effort: effort };
   }
-  if (providerId === "openrouter") {
-    if (effort === "none") {
-      return {};
-    }
-    return {
-      reasoning: {
-        effort,
-      },
-    };
-  }
+  // NOTE: Do NOT send reasoning.effort for OpenRouter — most models don't
+  // support it, and OpenRouter returns 400 instead of ignoring the field.
+  // OpenRouter applies per-model reasoning defaults automatically.
   return {};
 }
 

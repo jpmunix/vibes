@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { PostHog } from "posthog-js";
+
 import React from "react";
 import { CustomErrorToast } from "../components/CustomErrorToast";
 import { InputRequestToast } from "../components/InputRequestToast";
@@ -83,6 +83,15 @@ export const showWarning = (message: string) => {
 };
 
 /**
+ * Show a warning toast with long duration (8s) for actionable messages.
+ * @param message The warning message to display
+ */
+export const showWarningLong = (message: string) => {
+  toast.warning(message, { duration: 8000 });
+  console.warn(message);
+};
+
+/**
  * Show an info toast
  * @param message The info message to display
  */
@@ -139,28 +148,19 @@ export function showMcpConsentToast(args: {
 export const showExtraFilesToast = ({
   files,
   error,
-  posthog,
 }: {
   files: string[];
   error?: string;
-  posthog: PostHog;
 }) => {
   if (error) {
     showError(
       `Error committing files ${files.join(", ")} changed outside of Vibes: ${error}`,
     );
-    posthog.capture("extra-files:error", {
-      files: files,
-      error,
-    });
   } else {
     showWarning(
       `Files changed outside of Vibes have automatically been committed:
     \n\n${files.join("\n")}`,
     );
-    posthog.capture("extra-files:warning", {
-      files: files,
-    });
   }
 };
 

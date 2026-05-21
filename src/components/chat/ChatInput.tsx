@@ -29,10 +29,11 @@ import {
   chatInputValueAtom,
   chatMessagesByIdAtom,
   selectedChatIdAtom,
-  pendingAgentConsentsAtom,
   pendingAskUsersAtom,
+  pendingOpenCodePermissionsAtom,
   agentTodosByChatIdAtom,
   pendingMessageQueueByIdAtom,
+  selectedDesignAtom,
   type PendingQueuedMessage,
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
@@ -46,7 +47,7 @@ import { Proposal, SuggestedAction, FileChange, SqlQuery } from "@/lib/schemas";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
-import { usePostHog } from "posthog-js/react";
+// Telemetry removed
 import { CodeHighlight } from "./CodeHighlight";
 
 import {
@@ -63,9 +64,10 @@ import { DragDropOverlay } from "./DragDropOverlay";
 import { showExtraFilesToast } from "@/lib/toast";
 import { ChatInputControls } from "../ChatInputControls";
 
-import { AgentConsentBanner } from "./AgentConsentBanner";
+import { VibesPermissionBanner } from "./VibesPermissionBanner";
 import { TodoList } from "./TodoList";
 import { VibesAskUser } from "./VibesAskUser";
+import { GitQuickCommit } from "./GitQuickCommit";
 import {
   selectedComponentsPreviewAtom,
   previewIframeRefAtom,
@@ -84,6 +86,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
+import { saveDraft, loadDraft, clearDraft } from "@/lib/chat-draft";
 
 export function ChatInput({
   chatId,
@@ -96,17 +99,45 @@ export function ChatInput({
   isPlanMode?: boolean;
   workspaceMode?: boolean;
 }) {
-  const posthog = usePostHog();
+  // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
+
+  // ── Per-chat draft persistence ─────────────────────────────────────────
+  // Restore draft when switching chats
+  const prevChatIdRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    // Save draft for the chat we're leaving
+    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chatId) {
+      saveDraft(prevChatIdRef.current, inputValue);
+    }
+    prevChatIdRef.current = chatId;
+
+    // Load draft for the chat we're entering
+    if (chatId !== undefined) {
+      const draft = loadDraft(chatId);
+      setInputValue(draft);
+    }
+  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced save — persist draft every 2s while typing (not on every keystroke)
+  useEffect(() => {
+    if (chatId === undefined) return;
+    const timer = setTimeout(() => {
+      saveDraft(chatId, inputValue);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [inputValue, chatId]);
+
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
-  const { versions, revertVersion, refreshVersions } = useVersions(appId);
+  const { versions, loading: versionsLoading, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
   const [pendingMessageQueue, setPendingMessageQueue] = useAtom(pendingMessageQueueByIdAtom);
   const pendingMessages: PendingQueuedMessage[] = chatId ? (pendingMessageQueue.get(chatId) ?? []) : [];
-
+  
+  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const navigate = useNavigate();
   const setChatIdAtom = useSetAtom(selectedChatIdAtom);
@@ -115,8 +146,18 @@ export function ChatInput({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isUndoLoading, setIsUndoLoading] = useState(false);
+  const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  // Reset quick commit dismissal state when streaming completes
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      setIsQuickCommitDismissed(false);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -130,17 +171,17 @@ export function ChatInput({
     currentComponentCoordinatesAtom,
   );
   const setPendingVisualChanges = useSetAtom(pendingVisualChangesAtom);
-  const [pendingAgentConsents, setPendingAgentConsents] = useAtom(
-    pendingAgentConsentsAtom,
-  );
-  // Get the first consent in the queue for this chat (if any)
-  const consentsForThisChat = pendingAgentConsents.filter(
-    (c) => c.chatId === chatId,
-  );
-  const pendingAgentConsent = consentsForThisChat[0] ?? null;
 
   const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
   const askUsersForThisChat = pendingAskUsers.filter((a) => a.chatId === chatId);
+
+  // OpenCode permission requests
+  const [pendingOCPermissions, setPendingOCPermissions] = useAtom(
+    pendingOpenCodePermissionsAtom,
+  );
+  const ocPermissionsForChat = pendingOCPermissions.filter(
+    (p) => p.chatId === chatId,
+  );
 
 
 
@@ -269,6 +310,7 @@ export function ChatInput({
         return next;
       });
       setInputValue("");
+      if (chatId) clearDraft(chatId);
       clearAttachments(); // free the attachment slots visually
       return;
     }
@@ -278,7 +320,7 @@ export function ChatInput({
     if (quotedMessages.length > 0) {
       const quoteBlock = quotedMessages
         .map((q) => {
-          const roleLabel = q.role === "user" ? "Usuario" : "IA";
+          const roleLabel = q.role === "console" ? "Consola" : q.role === "user" ? "Usuario" : "IA";
           // Prefix EVERY line with > to form a proper markdown blockquote
           const quotedLines = q.content
             .split("\n")
@@ -295,8 +337,10 @@ export function ChatInput({
     window.dispatchEvent(new CustomEvent("vibes:scroll-to-bottom"));
 
     setInputValue("");
+    if (chatId) clearDraft(chatId);
 
     let currentChatId = chatId;
+
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -313,6 +357,94 @@ export function ChatInput({
       );
     }
 
+    // Handle first message scaffolding if needed.
+    // Only trigger for truly new apps — check BOTH conditions:
+    //   1. versions.length <= 1: only the initial 'Init vibes app' commit exists (no scaffold yet)
+    //   2. No prior messages exist in any loaded chat (covers PHP/Python/Go projects without package.json)
+    // New chats in existing apps must NOT re-scaffold. The backend also has its own guard.
+    const totalLoadedMessages = Array.from(messagesById.values()).reduce((sum, msgs) => sum + msgs.length, 0);
+    const isNewApp = !versionsLoading && versions.length <= 1 && totalLoadedMessages === 0;
+    if (currentChatId && appId && currentMessages.length === 0 && isNewApp) {
+      setIsStreaming(true);
+      
+      const CREATION_PHASES = [
+        "Preparando la estructura base del proyecto…",
+        "Instalando dependencias necesarias…",
+        "Aplicando configuración y estilos…",
+        "Inicializando el entorno de desarrollo…"
+      ];
+      
+      const fakeUserMsgId = -Date.now();
+      const fakeAstMsgId = fakeUserMsgId - 1;
+      
+      const fakeUserMsg: any = {
+        id: fakeUserMsgId,
+        chatId: currentChatId,
+        role: "user",
+        content: currentInput,
+        createdAt: new Date(),
+      };
+      
+      const createFakeAstMsg = (label: string): any => ({
+        id: fakeAstMsgId,
+        chatId: currentChatId,
+        role: "assistant",
+        content: `<vibes-status title="${label}" />`,
+        createdAt: new Date(),
+      });
+
+      setMessagesById((prev) => {
+        const next = new Map(prev);
+        next.set(currentChatId, [fakeUserMsg, createFakeAstMsg(CREATION_PHASES[0])]);
+        return next;
+      });
+      
+      let phaseIndex = 0;
+      const phaseInterval = setInterval(() => {
+        phaseIndex = Math.min(phaseIndex + 1, CREATION_PHASES.length - 1);
+        setMessagesById((prev) => {
+          const next = new Map(prev);
+          const msgs = next.get(currentChatId) || [];
+          const idx = msgs.findIndex((m: any) => m.id === fakeAstMsgId);
+          if (idx !== -1) {
+            const newMsgs = [...msgs];
+            newMsgs[idx] = createFakeAstMsg(CREATION_PHASES[phaseIndex]);
+            next.set(currentChatId, newMsgs);
+          }
+          return next;
+        });
+      }, 3000);
+
+      try {
+        await ipc.app.applyTemplate({ appId });
+        if (selectedDesign) {
+          const app = await ipc.app.getApp(appId);
+          if (app && app.path) {
+            try {
+              if (selectedDesign.customContent) {
+                await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
+              } else {
+                await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
+              }
+            } catch (err) {
+              console.error("[ChatInput] DESIGN ERROR:", err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to apply template:", err);
+      } finally {
+        clearInterval(phaseInterval);
+        // Remove fake messages before real stream starts
+        setMessagesById((prev) => {
+          const next = new Map(prev);
+          const msgs = next.get(currentChatId) || [];
+          next.set(currentChatId, msgs.filter((m: any) => m.id !== fakeUserMsgId && m.id !== fakeAstMsgId));
+          return next;
+        });
+      }
+    }
+
     // Send message with attachments and clear them after sending
     await streamMessage({
       prompt: currentInput,
@@ -322,7 +454,6 @@ export function ChatInput({
       selectedComponents: componentsToSend,
     });
     clearAttachments();
-    posthog?.capture("chat:submit", { chatMode: settings?.selectedChatMode });
   };
 
   const handleCancel = () => {
@@ -341,7 +472,6 @@ export function ChatInput({
       `Approving proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsApproving(true);
-    posthog?.capture("chat:approve");
     try {
       const result = await ipc.proposal.approveProposal({
         chatId,
@@ -351,7 +481,6 @@ export function ChatInput({
         showExtraFilesToast({
           files: result.extraFiles,
           error: result.extraFilesError,
-          posthog,
         });
       }
     } catch (err) {
@@ -378,7 +507,6 @@ export function ChatInput({
       `Rejecting proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsRejecting(true);
-    posthog?.capture("chat:reject");
     try {
       await ipc.proposal.rejectProposal({
         chatId,
@@ -486,10 +614,11 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="px-4 pb-4" data-testid="chat-input-container">
-        <div className="max-w-3xl mx-auto">
+      <div className="p-4" data-testid="chat-input-container">
+        <div className="max-w-3xl mx-auto relative">
+          
           <div
-            className="rounded-lg p-[1.5px]"
+            className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{
               background: `linear-gradient(to bottom, oklch(0.58 0.09 260 / 0.4), var(--border) 50%, oklch(0.58 0.09 260 / 0.15))`,
             }}
@@ -503,35 +632,25 @@ export function ChatInput({
             >
               {/* Show todo list if there are todos for this chat */}
               {chatTodos.length > 0 && <TodoList todos={chatTodos} isStreaming={isStreaming} />}
-              {/* Show agent consent banner if there's a pending consent request */}
-              {pendingAgentConsent && (
-                <AgentConsentBanner
-                  consent={pendingAgentConsent}
-                  queueTotal={consentsForThisChat.length}
-                  onDecision={(decision) => {
-                    ipc.agent.respondToConsent({
-                      requestId: pendingAgentConsent.requestId,
-                      decision,
+              {/* OpenCode permission banner (ask mode) */}
+              {ocPermissionsForChat.length > 0 && (
+                <VibesPermissionBanner
+                  permission={ocPermissionsForChat[0]}
+                  queueTotal={ocPermissionsForChat.length}
+                  onResponse={(response) => {
+                    ipc.agent.respondToPermission({
+                      requestId: ocPermissionsForChat[0].requestId,
+                      response,
                     });
-                    setPendingAgentConsents((prev) =>
+                    setPendingOCPermissions((prev) =>
                       prev.filter(
-                        (c) => c.requestId !== pendingAgentConsent.requestId,
-                      ),
-                    );
-                  }}
-                  onClose={() => {
-                    ipc.agent.respondToConsent({
-                      requestId: pendingAgentConsent.requestId,
-                      decision: "decline",
-                    });
-                    setPendingAgentConsents((prev) =>
-                      prev.filter(
-                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                        (p) => p.requestId !== ocPermissionsForChat[0].requestId,
                       ),
                     );
                   }}
                 />
               )}
+
               {/* Show FIRST pending ask-user question (queue pattern, like consent banner) */}
               {askUsersForThisChat.length > 0 && (
                 <div className="px-3 py-1">
@@ -554,8 +673,8 @@ export function ChatInput({
                   />
                 </div>
               )}
-              {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
-              {!pendingAgentConsent &&
+              {/* Only render ChatInputActions if proposal is loaded */}
+              {
                 proposal &&
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&
@@ -578,6 +697,14 @@ export function ChatInput({
                     isRejecting={isRejecting}
                   />
                 )}
+
+              {appId && chatId && !isStreaming && !isQuickCommitDismissed && (
+                <GitQuickCommit
+                  appId={appId}
+                  chatId={chatId}
+                  onDismiss={() => setIsQuickCommitDismissed(true)}
+                />
+              )}
 
               <VisualEditingChangesDialog
                 iframeRef={
@@ -630,7 +757,11 @@ export function ChatInput({
                   appId={appId ?? undefined}
                 />
                 <div className="flex items-center ml-2.5">
-                  <ChatInputControls showContextFilesPicker={false} />
+                  <ChatInputControls
+                    showContextFilesPicker={false}
+                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
+                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
+                  />
                 </div>
 
                 <div className="ml-auto flex items-center gap-1.5">
@@ -695,22 +826,32 @@ export function ChatInput({
                                       if (aiMessages && Array.isArray(aiMessages)) {
                                         const userMsg = aiMessages.find((m: any) => m.role === "user");
                                         if (userMsg && Array.isArray(userMsg.content)) {
-                                          userMsg.content.forEach((part: any, i: number) => {
+                                          for (let i = 0; i < userMsg.content.length; i++) {
+                                            const part = userMsg.content[i];
                                             if (part.type === "image" && part.image) {
                                               const mimeType = part.mediaType || part.mimeType || "image/png";
                                               const ext = mimeType.split("/")[1] || "png";
                                               try {
-                                                let base64 = part.image;
-                                                if (base64.startsWith("data:")) {
-                                                  base64 = base64.split(",")[1] || "";
+                                                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
+                                                if (isUrl) {
+                                                  // CDN URL: fetch the image and create a File
+                                                  const resp = await fetch(part.image);
+                                                  const blob = await resp.blob();
+                                                  attachmentsToRestore.push(new File([blob], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                                                } else {
+                                                  // Legacy base64 data
+                                                  let base64 = part.image;
+                                                  if (base64.startsWith("data:")) {
+                                                    base64 = base64.split(",")[1] || "";
+                                                  }
+                                                  const byteChars = atob(base64);
+                                                  const byteArr = new Uint8Array(byteChars.length);
+                                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                                  attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
                                                 }
-                                                const byteChars = atob(base64);
-                                                const byteArr = new Uint8Array(byteChars.length);
-                                                for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                                                attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
                                               } catch { /* skip */ }
                                             }
-                                          });
+                                          }
                                         }
                                       }
                                     }
@@ -899,8 +1040,7 @@ function KeepGoingButton() {
 
 export function mapActionToButton(action: SuggestedAction) {
   switch (action.id) {
-    case "summarize-in-new-chat":
-      return null;
+
     case "refactor-file":
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":

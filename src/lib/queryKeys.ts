@@ -36,15 +36,6 @@ export const queryKeys = {
       ["chats", "search", appId, query] as const,
   },
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Todos
-  // ─────────────────────────────────────────────────────────────────────────────
-  todos: {
-    all: ["todos"] as const,
-    byApp: ({ appId }: { appId: number }) => ["todos", "app", appId] as const,
-    sections: ({ appId }: { appId: number }) =>
-      ["todos", "sections", appId] as const,
-  },
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Proposals
@@ -127,29 +118,6 @@ export const queryKeys = {
 
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // App Theme
-  // ─────────────────────────────────────────────────────────────────────────────
-  appTheme: {
-    all: ["app-theme"] as const,
-    byApp: ({ appId }: { appId: number | undefined }) =>
-      ["app-theme", appId] as const,
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Themes (global list)
-  // ─────────────────────────────────────────────────────────────────────────────
-  themes: {
-    all: ["themes"] as const,
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Custom Themes
-  // ─────────────────────────────────────────────────────────────────────────────
-  customThemes: {
-    all: ["custom-themes"] as const,
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────────
   // Templates
   // ─────────────────────────────────────────────────────────────────────────────
   templates: {
@@ -198,11 +166,9 @@ export const queryKeys = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // App Upgrades
+  // App Upgrades (only isCapacitor remains for CapacitorControls)
   // ─────────────────────────────────────────────────────────────────────────────
   appUpgrades: {
-    byApp: ({ appId }: { appId: number | null }) =>
-      ["app-upgrades", appId] as const,
     isCapacitor: ({ appId }: { appId: number | null }) =>
       ["is-capacitor", appId] as const,
   },
@@ -361,7 +327,6 @@ export type QueryKeyOf<T> = T extends readonly unknown[]
 export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.apps)[keyof typeof queryKeys.apps]>
   | QueryKeyOf<(typeof queryKeys.chats)[keyof typeof queryKeys.chats]>
-  | QueryKeyOf<(typeof queryKeys.todos)[keyof typeof queryKeys.todos]>
   | QueryKeyOf<(typeof queryKeys.proposals)[keyof typeof queryKeys.proposals]>
   | QueryKeyOf<(typeof queryKeys.versions)[keyof typeof queryKeys.versions]>
   | QueryKeyOf<(typeof queryKeys.branches)[keyof typeof queryKeys.branches]>
@@ -375,12 +340,6 @@ export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.tokenCount)[keyof typeof queryKeys.tokenCount]>
   | QueryKeyOf<(typeof queryKeys.files)[keyof typeof queryKeys.files]>
   | QueryKeyOf<(typeof queryKeys.appName)[keyof typeof queryKeys.appName]>
-
-  | QueryKeyOf<(typeof queryKeys.appTheme)[keyof typeof queryKeys.appTheme]>
-  | QueryKeyOf<(typeof queryKeys.themes)[keyof typeof queryKeys.themes]>
-  | QueryKeyOf<
-    (typeof queryKeys.customThemes)[keyof typeof queryKeys.customThemes]
-  >
   | QueryKeyOf<(typeof queryKeys.templates)[keyof typeof queryKeys.templates]>
   | QueryKeyOf<(typeof queryKeys.prompts)[keyof typeof queryKeys.prompts]>
   | QueryKeyOf<(typeof queryKeys.agentTools)[keyof typeof queryKeys.agentTools]>

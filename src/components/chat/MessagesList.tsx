@@ -89,7 +89,8 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
       )}
 
       {!isStreaming && messages.length > 0 && (
-        <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
+        <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
+
           {todoId && (
             <Button
               variant="outline"
@@ -131,9 +132,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
-    const { isStreaming } = useStreamChat();
+    const { isStreaming, streamMessage } = useStreamChat();
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const [todoId, setTodoId] = useState<number | null>(null);
     const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);

@@ -776,7 +776,7 @@ function ConnectedGitHubConnector({
               <a
                 onClick={(e) => {
                   e.preventDefault();
-                  ipc.system.openExternalUrl("https://github.com/minube/vibes/");
+                  ipc.system.openExternalUrl("https://github.com/jpmunix/vibes/");
                 }}
                 className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
                 target="_blank"
@@ -1461,7 +1461,7 @@ export function UnconnectedGitHubConnector({
                       })),
                       {
                         value: "custom",
-                        label: "✏️ Escribir nombre de rama personalizado",
+                        label: "Escribir nombre de rama personalizado",
                       },
                     ]}
                     triggerVariant="outline"

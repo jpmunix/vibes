@@ -6,24 +6,39 @@ import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { ChevronRight, Loader2, MessagesSquare } from "@/components/ui/icons";
+import { ChevronRight, Loader2, MessagesSquare, FileText, Trash2 } from "@/components/ui/icons";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { showError, showSuccess } from "@/lib/toast";
 import { useChats } from "@/hooks/useChats";
+import type { ChatSummary } from "@/lib/schemas";
 import { useSessionCost } from "@/hooks/useSessionCost";
+import { useSettings } from "@/hooks/useSettings";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import { PanelGroup, Panel } from "react-resizable-panels";
+import { ArtifactSidebar } from "@/components/chat/ArtifactSidebar";
+import { useChatArtifacts } from "@/hooks/useChatArtifacts";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
- * /workspace route — renders ChatPanel inline (no preview, no dev server).
+ * / route — renders ChatPanel inline (no preview, no dev server).
  * Text-focused chat mode without starting any preview or server infrastructure.
  */
 export default function WorkspacePage() {
-  const search = useSearch({ from: "/workspace" });
+  const search = useSearch({ from: "/" });
   const navigate = useNavigate();
   const appId = search.appId ? Number(search.appId) : null;
   const chatId = search.chatId ? Number(search.chatId) : null;
@@ -37,8 +52,8 @@ export default function WorkspacePage() {
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
 
   // Fetch chats to get the current chat title for the breadcrumb
-  const { chats } = useChats(appId ?? undefined);
-  const selectedChat = chats.find((c) => c.id === chatId);
+  const { chats } = useChats(appId);
+  const selectedChat = (chats as ChatSummary[]).find((c) => c.id === chatId);
 
   // Streaming state for all chats
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -46,6 +61,7 @@ export default function WorkspacePage() {
 
   // Session cost
   const { totalCostUsd, hasPricing } = useSessionCost(chatId);
+  const { settings } = useSettings();
 
   // Restore last selection from DB when landing without params
   useEffect(() => {
@@ -70,7 +86,7 @@ export default function WorkspacePage() {
               return;
             }
             navigate({
-              to: "/workspace",
+              to: "/",
               search: { appId: sel.appId, chatId: sel.chatId },
               replace: true,
             });
@@ -122,7 +138,7 @@ export default function WorkspacePage() {
           {/* App dropdown selector */}
           <UnifiedSelector
             value={String(appId)}
-            onChange={(id) => navigate({ to: "/workspace", search: { appId: Number(id) } })}
+            onChange={(id) => navigate({ to: "/", search: { appId: Number(id) } })}
             options={appsList.filter((a: any) => a.localPathExists !== false).map((app) => ({
               value: String(app.id),
               label: app.name,
@@ -143,8 +159,8 @@ export default function WorkspacePage() {
               {/* Chat dropdown selector */}
               <UnifiedSelector
                 value={String(chatId)}
-                onChange={(cId) => navigate({ to: "/workspace", search: { appId: appId!, chatId: Number(cId) } })}
-                options={chats.map((chat) => {
+                onChange={(cId) => navigate({ to: "/", search: { appId: appId!, chatId: Number(cId) } })}
+                options={(chats as ChatSummary[]).map((chat) => {
                   const chatStreaming = isStreamingById.get(chat.id) ?? false;
                   return {
                     value: String(chat.id),
@@ -182,9 +198,10 @@ export default function WorkspacePage() {
               <ServerControlButton appId={appId} />
             )}
             <GitChangesButton appId={appId} />
+            <WorkspaceArtifactsDropdown chatId={selectedChatId} />
 
             {/* Session cost — separated with a delicate divider */}
-            {hasPricing && (
+            {settings?.showCostDisplay && hasPricing && (
               <>
                 <div className="w-px h-4 bg-border/60 shrink-0" />
                 <Tooltip>
@@ -213,13 +230,18 @@ export default function WorkspacePage() {
 
       {/* Chat panel — no preview, no server */}
       <div className="flex-1 min-h-0">
-        <ChatPanel
-          chatId={selectedChatId ?? undefined}
-          autoStart={false}
-          isPreviewOpen={false}
-          onTogglePreview={() => {}}
-          workspaceMode
-        />
+        <PanelGroup autoSaveId={`workspace-panel-${appId}`} direction="horizontal">
+          <Panel defaultSize={100} minSize={30}>
+            <ChatPanel
+              chatId={selectedChatId ?? undefined}
+              autoStart={false}
+              isPreviewOpen={false}
+              onTogglePreview={() => {}}
+              workspaceMode
+            />
+          </Panel>
+          <ArtifactSidebar />
+        </PanelGroup>
       </div>
     </div>
   );
@@ -236,5 +258,95 @@ function formatWorkspaceCost(usd: number): string {
     raw = usd.toFixed(2);
   }
   return "$" + raw.replace(".", ",");
+}
+
+function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
+  const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
+  const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
+  const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
+  const [artifactToDecouple, setArtifactToDecouple] = useState<{ id: number; title: string; path: string } | null>(null);
+
+  if (!artifacts || artifacts.length === 0) return null;
+
+  const hasUnreviewed = artifacts.some((a) => !a.accepted);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="relative p-1.5 rounded-md transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer"
+            title="Ver planificaciones y artefactos"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
+          {artifacts.map((artifact) => (
+            <DropdownMenuItem
+              key={artifact.id}
+              onClick={() => {
+                setSelectedPath(artifact.path);
+                setSidebarOpen(true);
+              }}
+              className="group cursor-pointer py-2 flex items-center justify-between gap-2"
+            >
+              <div className="flex flex-col gap-0.5 w-full min-w-0">
+                <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
+                {artifact.createdAt && (
+                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                    {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+              <button
+                title="Desacoplar plan del chat"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setArtifactToDecouple({
+                    id: artifact.id,
+                    title: artifact.title || artifact.path,
+                    path: artifact.path,
+                  });
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmationDialog
+        isOpen={!!artifactToDecouple}
+        title="¿Desacoplar plan?"
+        message={`Se quitará la relación del plan "${artifactToDecouple?.title}" con este chat. Esto no eliminará el archivo en el disco, pero sí borrará los comentarios asociados en este chat.`}
+        confirmText="Desacoplar"
+        cancelText="Cancelar"
+        confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
+        showOverlay={false}
+        onConfirm={async () => {
+          if (!artifactToDecouple) return;
+          try {
+            await ipc.chat.decoupleArtifact(artifactToDecouple.id);
+            if (selectedPath === artifactToDecouple.path) {
+              setSidebarOpen(false);
+              setSelectedPath(null);
+            }
+            await invalidateArtifacts();
+            showSuccess("Plan desacoplado del chat");
+          } catch (error) {
+            showError(`Error al desacoplar el plan: ${(error as any).toString()}`);
+          } finally {
+            setArtifactToDecouple(null);
+          }
+        }}
+        onCancel={() => setArtifactToDecouple(null)}
+      />
+    </>
+  );
 }
 

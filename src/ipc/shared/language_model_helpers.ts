@@ -1,51 +1,36 @@
-import { getRemoteDb } from "@/db/remote";
-import * as remoteSchema from "@/db/remote-schema";
 import type { LanguageModelProvider, LanguageModel } from "@/ipc/types";
-import { eq, and } from "drizzle-orm";
 import {
   LOCAL_PROVIDERS,
   CLOUD_PROVIDERS,
   MODEL_OPTIONS,
   PROVIDER_TO_ENV_VAR,
+  CUSTOM_PROVIDER_PREFIX,
 } from "./language_model_constants";
 import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
+import { fetchCompatibleModels } from "../utils/openai_compatible_models_service";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
+import { eq } from "drizzle-orm";
+import log from "electron-log";
+import { readSettings } from "@/main/settings";
+
+const logger = log.scope("language_model_helpers");
+
 /**
  * Fetches language model providers from both the database (custom) and hardcoded constants (cloud),
  * merging them with custom providers taking precedence.
  * @returns A promise that resolves to an array of LanguageModelProvider objects.
  */
-export async function getLanguageModelProviders(userId?: string): Promise<
+export async function getLanguageModelProviders(_userId?: string): Promise<
   LanguageModelProvider[]
 > {
-  const customProvidersMap = new Map<string, LanguageModelProvider>();
-
-  if (userId) {
-    const db = getRemoteDb();
-    // Fetch custom providers from the database
-    const customProvidersDb = await db
-      .select()
-      .from(remoteSchema.languageModelProviders)
-      .where(eq(remoteSchema.languageModelProviders.userId, userId));
-    for (const cp of customProvidersDb) {
-      customProvidersMap.set(cp.id, {
-        id: cp.id,
-        name: cp.name,
-        apiBaseUrl: cp.apiBaseUrl,
-        envVarName: cp.envVarName ?? undefined,
-        type: "custom",
-      });
-    }
-  }
-
   // Get hardcoded cloud providers
   const hardcodedProviders: LanguageModelProvider[] = [];
   for (const providerKey in CLOUD_PROVIDERS) {
     if (Object.prototype.hasOwnProperty.call(CLOUD_PROVIDERS, providerKey)) {
-      // Ensure providerKey is a key of PROVIDERS
       const key = providerKey as keyof typeof CLOUD_PROVIDERS;
       const providerDetails = CLOUD_PROVIDERS[key];
       if (providerDetails) {
-        // Ensure providerDetails is not undefined
         hardcodedProviders.push({
           id: key,
           name: providerDetails.displayName,
@@ -55,7 +40,6 @@ export async function getLanguageModelProviders(userId?: string): Promise<
           secondary: providerDetails.secondary,
           envVarName: PROVIDER_TO_ENV_VAR[key] ?? undefined,
           type: "cloud",
-          // apiBaseUrl is not directly in PROVIDERS
         });
       }
     }
@@ -74,7 +58,45 @@ export async function getLanguageModelProviders(userId?: string): Promise<
     }
   }
 
-  return [...hardcodedProviders, ...customProvidersMap.values()];
+  // ── Custom providers from user settings ──
+  const settings = readSettings();
+  const customProviders: LanguageModelProvider[] = (settings.customProviders ?? []).map(cp => ({
+    id: cp.id,
+    name: cp.name,
+    apiBaseUrl: cp.apiBaseUrl,
+    type: "custom" as const,
+    isCustom: true,
+  }));
+
+  return [...hardcodedProviders, ...customProviders];
+}
+
+/**
+ * Fetch user's custom models from BunnyDB for a given provider.
+ */
+async function getCustomModels(providerId: string, userId?: string): Promise<LanguageModel[]> {
+  if (!userId) return [];
+  try {
+    const db = getRemoteDb();
+    const rows = await db.select().from(remoteSchema.languageModels).where(
+      eq(remoteSchema.languageModels.userId, userId),
+    );
+    // Filter to the requested provider (or return all if provider matches)
+    return rows
+      .filter(r => (r.builtinProviderId || "openrouter") === providerId)
+      .map(r => ({
+        id: r.id,
+        apiName: r.apiName,
+        displayName: r.displayName,
+        description: r.description ?? undefined,
+        maxOutputTokens: r.maxOutputTokens ?? undefined,
+        contextWindow: r.contextWindow ?? undefined,
+        type: "custom" as const,
+      }));
+  } catch (err: any) {
+    logger.warn(`Failed to fetch custom models: ${err.message}`);
+    return [];
+  }
 }
 
 /**
@@ -97,50 +119,14 @@ export async function getLanguageModels({
     return [];
   }
 
-  // Get custom models from DB for all provider types
-  let customModels: LanguageModel[] = [];
-
-  try {
-    if (userId) {
-      const db = getRemoteDb();
-      const customModelsDb = await db
-        .select({
-          id: remoteSchema.languageModels.id,
-          displayName: remoteSchema.languageModels.displayName,
-          apiName: remoteSchema.languageModels.apiName,
-          description: remoteSchema.languageModels.description,
-          maxOutputTokens: remoteSchema.languageModels.maxOutputTokens,
-          contextWindow: remoteSchema.languageModels.contextWindow,
-        })
-        .from(remoteSchema.languageModels)
-        .where(
-          and(
-            isCustomProvider({ providerId })
-              ? eq(remoteSchema.languageModels.customProviderId, providerId)
-              : eq(remoteSchema.languageModels.builtinProviderId, providerId),
-            eq(remoteSchema.languageModels.userId, userId),
-          ),
-        );
-
-      customModels = customModelsDb.map((model) => ({
-        id: "cm_" + model.id.toString(), // Add prefix to differentiate from hardcoded
-        name: model.displayName || model.apiName,
-        apiName: model.apiName,
-        description: model.description || "",
-        contextWindow: Number(model.contextWindow) || undefined,
-        maxOutputTokens: Number(model.maxOutputTokens) || undefined,
-        isCustom: true,
-      }));
-    }
-  } catch (error) {
-    console.error(
-      `Error fetching custom models for provider "${providerId}" from DB:`,
-      error,
-    );
-    // Continue with empty custom models array
+  const settings = readSettings();
+  const disabledProviders = settings.disabledProviders ?? [];
+  if (disabledProviders.includes(providerId)) {
+    logger.info(`Skipping model loading for disabled provider: ${providerId}`);
+    return [];
   }
 
-  // If it's a cloud provider, also get the hardcoded models
+  // Get models for cloud providers
   let hardcodedModels: LanguageModel[] = [];
   if (provider.type === "cloud") {
     if (providerId === "openrouter") {
@@ -169,12 +155,42 @@ export async function getLanguageModels({
         type: "cloud",
       }));
     }
-    // Note: Some cloud providers (like openai, anthropic, google) don't have
-    // hardcoded models in MODEL_OPTIONS and rely only on custom models.
-    // This is expected behavior and not a warning condition.
+  } else if (provider.type === "custom") {
+    // Fetch from generic OpenAI-compatible endpoint
+    const settings = readSettings();
+    const customConfig = settings.customProviders?.find(p => p.id === providerId);
+    if (customConfig && customConfig.modelsSource !== "manual") {
+      try {
+        const dynamicModels = await fetchCompatibleModels(
+          providerId,
+          customConfig.apiBaseUrl,
+          customConfig.apiKey?.value,
+        );
+        hardcodedModels = dynamicModels.map((model) => ({
+          ...model,
+          apiName: model.name,
+          type: "cloud" as const,
+        }));
+      } catch (err: any) {
+        logger.warn(`Failed to fetch models for custom provider ${providerId}: ${err.message}`);
+      }
+    }
   }
 
-  return [...hardcodedModels, ...customModels];
+  // ── Merge custom models from BunnyDB ──
+  // Custom models appear first, then cloud models.
+  // If a custom model has the same apiName as a cloud model, the custom one wins
+  // (allows overriding display name, context window, etc.)
+  const customModels = await getCustomModels(providerId, userId);
+  if (customModels.length > 0) {
+    const customApiNames = new Set(customModels.map(m => m.apiName));
+    // Remove cloud models that are overridden by custom ones
+    hardcodedModels = hardcodedModels.filter(m => !customApiNames.has(m.apiName));
+    // Prepend custom models
+    hardcodedModels = [...customModels, ...hardcodedModels];
+  }
+
+  return hardcodedModels;
 }
 
 /**
@@ -185,10 +201,12 @@ export async function getLanguageModelsByProviders(userId?: string): Promise<
   Record<string, LanguageModel[]>
 > {
   const providers = await getLanguageModelProviders(userId);
+  const settings = readSettings();
+  const disabledProviders = settings.disabledProviders ?? [];
 
   // Fetch all models concurrently, including auto-router
   const modelPromises = providers
-    .filter((p) => p.type !== "local")
+    .filter((p) => p.type !== "local" && !disabledProviders.includes(p.id))
     .map(async (provider) => {
       const models = await getLanguageModels({ providerId: provider.id, userId });
       return { providerId: provider.id, models };
@@ -210,4 +228,5 @@ export function isCustomProvider({ providerId }: { providerId: string }) {
   return providerId.startsWith(CUSTOM_PROVIDER_PREFIX);
 }
 
-export const CUSTOM_PROVIDER_PREFIX = "custom::";
+// Re-export from constants for backward compatibility
+export { CUSTOM_PROVIDER_PREFIX };

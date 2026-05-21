@@ -18,12 +18,12 @@ import {
     createMemoryHistory,
     RouterProvider,
 } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
 
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
+import { ArtifactSidebar } from "../chat/ArtifactSidebar";
 import { AuthGate } from "../AuthGate";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -32,9 +32,11 @@ import {
     selectedChatIdAtom,
     pendingAgentConsentsAtom,
     pendingAskUsersAtom,
+    pendingOpenCodePermissionsAtom,
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
+    quotedMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
@@ -85,12 +87,7 @@ const queryClient = new QueryClient({
     }),
 });
 
-// ─── No-op PostHog client ───────────────────────────────────────────────
-// Instead of initializing the full PostHog SDK (which sets up localStorage,
-// timers, and internal data structures), we pass null. The PostHogProvider
-// from posthog-js/react gracefully handles this — `usePostHog()` will
-// return null/undefined, and posthog.capture() calls become no-ops.
-const noopPosthogClient = null;
+
 
 // ─── Lightweight sidebar context for chat window ────────────────────────
 // The full SidebarProvider (780 lines) adds keyboard shortcuts, cookie
@@ -193,12 +190,26 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         }
     }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
 
+    // Apply font scale CSS variables from settings
+    useEffect(() => {
+        if (settings) {
+            const root = document.documentElement;
+            if (settings.fontScaleUI !== undefined) root.style.setProperty("--scale-ui", settings.fontScaleUI.toString());
+            if (settings.fontScaleSidebar !== undefined) root.style.setProperty("--scale-sidebar", settings.fontScaleSidebar.toString());
+            if (settings.fontScaleChat !== undefined) root.style.setProperty("--scale-chat", settings.fontScaleChat.toString());
+            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--bubble-width", `${settings.fontScaleBubbleWidth}%`);
+        }
+    }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
+
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
+    // Guard: wait for initialChatMode to be applied to settings before streaming,
+    // so that ChatPanel and other consumers see the correct mode from the start.
     useEffect(() => {
         if (
             hasPendingPrompt &&
             chatId &&
-            !hasAutoStreamedRef.current
+            !hasAutoStreamedRef.current &&
+            (!initialChatMode || hasAppliedInitialModeRef.current)
         ) {
             hasAutoStreamedRef.current = true;
             ipc.system.getPendingChatPrompt(chatId).then((pending) => {
@@ -214,11 +225,14 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                             ),
                             type: a.attachmentType,
                         })),
+                        // Force the correct chat mode synchronously — avoids race
+                        // condition where settings haven't propagated yet.
+                        chatModeOverride: initialChatMode || undefined,
                     });
                 }
             });
         }
-    }, [hasPendingPrompt, chatId, streamMessage]);
+    }, [hasPendingPrompt, chatId, streamMessage, initialChatMode]);
 
     useEffect(() => {
         if (!chatId && chats.length && !loading) {
@@ -228,11 +242,30 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
 
     useAppOutputSubscription();
 
+    // Cross-window console log: when a console window sends a log to this chat,
+    // the main process routes it here as a quote card via the appId.
+    const setQuotedForConsole = useSetAtom(quotedMessagesAtom);
+    useEffect(() => {
+        // @ts-ignore — using raw preload API for custom event
+        const unsubscribe = window.electron?.ipcRenderer?.on?.(
+            "console-log-to-chat",
+            (payload: { appId: number; formattedLog: string }) => {
+                if (payload.appId === appId) {
+                    setQuotedForConsole((prev) => {
+                        const id = Date.now();
+                        return [...prev, { id, role: "console" as const, content: payload.formattedLog }];
+                    });
+                }
+            },
+        );
+        return () => unsubscribe?.();
+    }, [appId, setQuotedForConsole]);
+
 
     // Set document.title so the native title bar shows app name
     useEffect(() => {
         if (currentApp?.name) {
-            document.title = `${currentApp.name} — Vibes Chat`;
+            document.title = `${currentApp.name} \u2013 Chat`;
         }
     }, [currentApp?.name]);
 
@@ -255,6 +288,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     // === Streaming event listeners ===
     const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
     const setPendingAskUsers = useSetAtom(pendingAskUsersAtom);
+    const setPendingOCPermissions = useSetAtom(pendingOpenCodePermissionsAtom);
     const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
     const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
     const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
@@ -374,6 +408,26 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         return () => unsubscribe();
     }, [setPendingAskUsers]);
 
+    // OpenCode permission requests
+    useEffect(() => {
+        const unsubscribe = ipc.events.agent.onPermissionRequest((payload) => {
+            setPendingOCPermissions((prev) => {
+                if (prev.some((p) => p.requestId === payload.requestId)) return prev;
+                return [
+                    ...prev,
+                    {
+                        requestId: payload.requestId,
+                        sessionId: payload.sessionId,
+                        chatId: payload.chatId,
+                        toolName: payload.toolName,
+                        toolInput: payload.toolInput,
+                    },
+                ];
+            });
+        });
+        return () => unsubscribe();
+    }, [setPendingOCPermissions]);
+
     useEffect(() => {
         const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
             // Enable server startup after a CODE-PRODUCING stream completes.
@@ -406,6 +460,9 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             setPendingAskUsers((prev) =>
                 prev.filter((ask) => ask.chatId !== chatId),
             );
+            setPendingOCPermissions((prev) =>
+                prev.filter((p) => p.chatId !== chatId),
+            );
             setAgentTodosByChatId((prev) => {
                 const todos = prev.get(chatId);
                 if (!todos) return prev;
@@ -422,7 +479,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             });
         });
         return () => unsubscribe();
-    }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
+    }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
 
     const chatPanelNode = (
         <Panel
@@ -503,6 +560,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                         </div>
                     </PanelResizeHandle>
                     {chatPosition === "left" ? previewPanelNode : chatPanelNode}
+                    <ArtifactSidebar />
                 </PanelGroup>
             </div>
             <Toaster richColors />
@@ -562,14 +620,12 @@ export function ChatWindowApp({ appId, chatId, hasPendingPrompt, initialChatMode
 
     return (
         <QueryClientProvider client={queryClient}>
-            <PostHogProvider client={noopPosthogClient}>
-                <ThemeProvider>
-                    <AuthGate>
-                        {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
-                        <RouterProvider router={chatRouter} />
-                    </AuthGate>
-                </ThemeProvider>
-            </PostHogProvider>
+            <ThemeProvider>
+                <AuthGate>
+                    {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
+                    <RouterProvider router={chatRouter} />
+                </AuthGate>
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }

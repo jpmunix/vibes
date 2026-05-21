@@ -106,6 +106,10 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const wasStreamingRef = useRef(isStreaming);
 
+  const completed = todos.filter((t) => t.status === "completed").length;
+  const total = todos.length;
+  const allDone = total > 0 && completed === total;
+
   // Auto-collapse when the agent finishes (streaming transitions true → false)
   useEffect(() => {
     if (wasStreamingRef.current && !isStreaming) {
@@ -114,13 +118,17 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
     wasStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
+  // Auto-collapse when all tasks are completed
+  useEffect(() => {
+    if (allDone) {
+      setIsExpanded(false);
+    }
+  }, [allDone]);
+
   if (!todos.length) return null;
 
-  const completed = todos.filter((t) => t.status === "completed").length;
-  const total = todos.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
   const inProgressTask = todos.find((t) => t.status === "in_progress");
-  const allDone = completed === total;
 
   return (
     <div className="border-b border-border">

@@ -1,200 +1,56 @@
 import { UserSettings } from "@/lib/schemas";
-import {
-  THINKING_PROMPT,
-} from "./system_prompt";
 
 export type PromptId =
-  | "thinking_prompt"
-  | "turbo_edit_system"
+  | "chat_title"
   | "app_title_short"
   | "app_name_pro"
-  | "todo_analysis"
-  | "todo_refinement"
-  | "debate_chat_system"
-  | "debate_summary_system"
-  | "quick_edit_system"
-  | "auto_commit_message";
+  | "auto_commit_message"
+  | "memory_synthesis"
+  | "memory_selection"
+  | "memory_onboarding"
+  // Context instructions (injected into every chat message)
+  | "ctx_language"
+  | "ctx_no_run_locally"
+  | "ctx_context7_docs"
+  | "ctx_efficiency_triage"
+  | "ctx_task_management"
+  | "ctx_plan_mode";
 
-export const DEFAULT_PROMPTS: Record<PromptId, string> = {
-  thinking_prompt: THINKING_PROMPT,
-  turbo_edit_system: [
-    "You are a precise code-editing assistant.",
-    "Apply the requested edit to the original file content.",
-    "Return the full updated file content only.",
-    "Preserve unchanged content exactly.",
-    'The edit snippet may contain "// ... existing code ..." markers that represent unchanged sections.',
-    "Do not include explanations or code fences.",
-  ].join(" "),
-  app_title_short:
-    "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters.",
-  app_name_pro: [
-    "You are a naming assistant for software applications.",
-    "Generate a clear, descriptive app name in English that tells the user what the app does.",
-    "",
-    "THE NAME MUST describe the app's purpose. Someone reading the name should understand what the app is for.",
-    "",
-    "VARY your phrasing style (don't always use the same pattern):",
-    "- 'Activity Timeline Builder' — [Feature] + [Type]",
-    "- 'Recipe Collection Hub' — [Content] + [Container]",
-    "- 'Budget Planner & Tracker' — [Noun] + [Action]",
-    "- 'Daily Workout Log' — [Adjective] + [Feature] + [Type]",
-    "- 'Team Task Board' — [Scope] + [Feature] + [Type]",
-    "",
-    "RULES:",
-    "- Return ONLY the name. No quotes, no explanations.",
-    "- Maximum 40 characters.",
-    "- The name MUST describe what the app does. NO abstract or random names.",
-    "- AVOID overused suffixes: 'Pro', 'Plus', 'Ultimate', 'Smart', 'Super', 'Best', 'Easy'.",
-    "- AVOID repeating the same phrasing pattern every time. Mix word order and style.",
-    "- Use 2-4 words. Be specific, not generic.",
-  ].join("\n"),
-  todo_analysis: [
-    "Analiza el contenido proporcionado (Fotos, Word, PDF, TXT o Markdown) y extrae una lista de tareas de desarrollo con precisión extrema.",
-    "Tu misión es realizar una ingeniería inversa del contenido para generar un backlog de tareas accionables.",
-    "",
-    "ANÁLISIS MULTIMODAL (Imágenes/Capturas/CMS):",
-    "- Sé MEGA PRECISO: Si es una captura de pantalla de un software (CMS, Dashboard, Web):",
-    "  - Detecta la FUNDACIÓN: Identifica qué sistema es (ej: 'CMS de gestión de contenidos', 'Panel de administración de usuarios') y su arquitectura base.",
-    "  - Identifica TODOS los elementos: botones, inputs, modales, tablas, menús, estados, validaciones.",
-    "  - Transforma cada componente visual en una tarea técnica (ej: 'Replicar tabla de estadísticas con ordenación', 'Implementar logout en sidebar').",
-    "  - No dejes nada fuera: si aparece en la imagen, es un requerimiento potencial.",
-    "",
-    "INSTRUCCIONES DE EXTRACCIÓN:",
-    "1. Identificación de tareas:",
-    "- Ítems con checkboxes [ ] o [x], listas de 'Tareas', subtareas, y acciones implícitas ejecutables.",
-    "- Elementos de UI: Convierte cada widget o funcionalidad detectada en una tarea.",
-    "- Ignora: Texto descriptivo sin carga funcional o técnica.",
-    "",
-    "2. Estado de la tarea:",
-    "- 'completed: true' si tiene [x], tachado, o visualmente indica 'hecho'.",
-    "- 'completed: false' si tiene [ ] o no hay indicador de progreso.",
-    "",
-    "3. Normalización y Estructura:",
-    "- Frases claras, cortas y PROFESIONALES. Elimina redundancias.",
-    "- Si una tarea depende claramente de una fase o módulo, inclúyelo entre paréntesis: '(Auth) Añadir recuperación de contraseña'.",
-    "- Si detectas listas anidadas o pasos secuenciales dentro de una tarea mayor, agrégalos como `checklist`.",
-    "",
-    "4. Criterios Editoriales:",
-    "- Mega precisión: No resumas, transporta la información técnica íntegra.",
-    "- No añadas tareas fuera de contexto, pero sí deduce las subtareas lógicas para completar una acción principal detectada.",
-    "- Respuesta en español técnico puro.",
-    "",
-    "5. Formato de salida (OBLIGATORIO):",
-    "Responde ÚNICAMENTE en JSON con esta estructura (sin bloques de código):",
-    '{ "listTitle": "Título (ej: Arquitectura CMS / Plan de Proyecto)", "tasks": [ { "content": "Tarea principal", "description": "Detalles técnicos", "completed": true|false, "checklist": [ { "content": "Subtarea", "completed": true|false } ] } ] }',
-  ].join("\n"),
-  todo_refinement: [
-    "Eres un experto en ingeniería de prompts.",
-    "Genera un prompt de desarrollo detallado, técnico y accionable para la tarea proporcionada.",
-    "Responde ÚNICAMENTE con el prompt generado.",
-    "No incluyas introducciones ('Claro, aquí tienes...'), explicaciones, opiniones, ni bloques de código markdown.",
-    "Tu respuesta debe empezar directamente con el contenido del prompt.",
-  ].join(" "),
-  debate_chat_system: [
-    "Eres un Senior Staff Engineer y experto en Prompt Engineering con una mentalidad extremadamente pragmática y orientada a la acción.",
-    "",
-    "TUS REGLAS DE ORO:",
-    "1. **NO PIDAS ACLARACIONES**: Si el usuario te pide algo (código, prompt, arquitectura), ASUME las mejores prácticas y GENERA LA SOLUCIÓN INMEDIATAMENTE. No respondas con una lista de preguntas.",
-    "2. **SÉ DIRECTO Y CONCISO**: Evita introducciones, saludos o conclusiones innecesarias. Ve directo al código o a la solución técnica. No expliques lo obvio.",
-    "3. **BREVEDAD**: Tus respuestas deben ser lo más cortas posible sin perder calidad técnica. Evita la verbosidad excesiva.",
-    "4. **PROACTIVIDAD**: Si ves un error o una mejora obvia, impleméntala o sugiérela directamente.",
-    "5. **DETERMINISMO**: Ante la duda, toma una decisión técnica sólida y justifícala brevemente después, pero nunca bloquees la respuesta preguntando '¿qué prefieres?'.",
-    "",
-    "Tu objetivo es acelerar el flujo de trabajo del usuario, no ralentizarlo con burocracia conversacional ni explicaciones largas.",
-  ].join("\n"),
-  debate_summary_system:
-    "Resume el siguiente debate de forma concisa pero capturando los puntos clave. Devuelve el resumen en formato Markdown con secciones claras.",
-  quick_edit_system: [
-    "Eres un asistente de diseño web.",
-    "",
-    "DETECCIÓN DE TECNOLOGÍAS:",
-    "1. **Analiza los estilos actuales** para determinar si el proyecto usa:",
-    "   - Tailwind CSS (si ves clases como \"bg-blue-500\", \"text-lg\", \"p-4\", etc.)",
-    "   - CSS inline (si ves valores como \"#ff0000\", \"16px\", etc.)",
-    "   - Variables CSS (si ves valores como \"var(--primary)\", etc.)",
-    "",
-    "2. **Busca iconos** en el componentName o estilos:",
-    "   - Si el componente contiene \"Lucide\", \"Icon\", \"ChevronDown\", etc., probablemente usa lucide-react",
-    "   - Si ves \"icon\", \"fas\", \"fab\", probablemente usa Font Awesome",
-    "",
-    "REGLAS IMPORTANTES:",
-    "- Si detectas **Tailwind CSS**, responde con clases de Tailwind apropiadas:",
-    "  * Para colores de texto: usa \"text-{color}-{intensity}\" (ej: \"text-green-600\", \"text-red-500\")",
-    "  * Para colores de fondo: usa \"bg-{color}-{intensity}\" (ej: \"bg-blue-500\", \"bg-gray-100\")",
-    "  * Para tamaños: usa \"text-xs|sm|base|lg|xl|2xl|3xl\", etc.",
-    "  * Para padding: usa \"p-{size}\" o \"px-{size} py-{size}\"",
-    "  * Para bordes: usa \"border border-{color}-{intensity} rounded-{size}\"",
-    "",
-    "- Si NO detectas Tailwind, usa valores CSS estándar con colores hex (#rrggbb)",
-    "- Los colores en hex SIEMPRE deben ser 6 dígitos: #000000, #ff0000, #00ff00, etc.",
-    "",
-    "IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.",
-  ].join("\n"),
-  auto_commit_message: [
-    "Genera un mensaje de commit ESTÁNDAR (Conventional Commits) en español basándote en el diff real.",
-    "",
-    "REGLAS ESTRICTAS:",
-    "1. Usa el formato Conventional Commits: `<tipo>[ámbito opcional]: <descripción>`",
-    "2. Tipos permitidos: feat, fix, chore, docs, style, refactor, perf, test.",
-    "3. La descripción debe ser MUY ESPECÍFICA, máximo 72 caracteres y en español.",
-    "4. Describe EXACTAMENTE qué cambió leyendo el diff.",
-    "5. PROHIBIDO usar palabras vagas: 'mejoras', 'correcciones', 'actualizaciones', 'cambios varios'.",
-    "6. PROHIBIDO usar bloques de razonamiento (thinking, cadenas de pensamientos o explicaciones previas).",
-    "7. PROHIBIDO incluir comillas u otra cosa que no sea el texto del commit.",
-    "",
-    "EJEMPLOS BUENOS:",
-    "- feat(editor): cambiar título de 'Notas' a 'BuildNotes'",
-    "- fix(sidebar): corregir color del borde en modo oscuro",
-    "- chore(deps): actualizar dependencias de UI a la última versión",
-    "",
-    "EJEMPLOS MALOS (NUNCA hagas esto):",
-    "- Actualizar editor Markdown con correcciones y mejoras",
-    "- fix: Modificar componentes del panel",
-    "",
-    "Responde SOLO con UNA LÍNEA (el mensaje de commit), sin comillas, sin explicación, sin markdown ni backticks.",
-  ].join("\n"),
-};
 
-export function getEffectivePrompt(
-  id: PromptId,
-  settings?: UserSettings,
-): string {
-  if (settings?.customPrompts?.[id]) {
-    return settings.customPrompts[id];
-  }
-  return DEFAULT_PROMPTS[id];
-}
+
+
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
-  thinking_prompt: "Thinking Process (Razonamiento)",
-  turbo_edit_system: "Turbo Edit (Edición Precisa)",
-  app_title_short: "Generador de Títulos Cortos",
-  app_name_pro: "Generador de Nombres Profesionales",
-  todo_analysis: "Analizador de Tareas (Smart Import)",
-  todo_refinement: "Refinador de Prompts de Tareas",
-  debate_chat_system: "Chat de Debate (Sistema)",
-  debate_summary_system: "Resumen de Debate",
-  quick_edit_system: "Quick Edit (Edición Visual Rápida)",
+  chat_title: "Títulos de Chat",
+  app_title_short: "Títulos de App",
+  app_name_pro: "Nombres de App",
+  auto_commit_message: "Mensaje de Commit",
+  memory_synthesis: "Generación de Memorias",
+  memory_selection: "Selección de Memorias",
+  memory_onboarding: "Bootstrap de Memorias",
+  ctx_language: "Idioma de respuesta",
+  ctx_no_run_locally: "No mostrar ejecución",
+  ctx_context7_docs: "Documentación Context7",
+  ctx_efficiency_triage: "Eficiencia y triaje",
+  ctx_task_management: "Gestión de tareas",
 
-  auto_commit_message: "Mensaje de Commit Automático",
+  ctx_plan_mode: "Planificación interactiva",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
-  thinking_prompt:
-    "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
-  turbo_edit_system:
-    "Instrucciones para el modelo rápido de edición de archivos.",
+  chat_title:
+    "Genera títulos automáticos para los chats a partir del primer mensaje del usuario.",
   app_title_short:
-    "Prompt usado para generar títulos atractivos en el selector.",
-  app_name_pro: "Prompt usado para generar nombres funcionales al crear apps.",
-  todo_analysis:
-    "Instrucciones para extraer tareas a partir de archivos (PDF, Word, imágenes, etc.).",
-  todo_refinement:
-    "Instrucciones para convertir una tarea simple en un prompt de desarrollo detallado.",
-  debate_chat_system:
-    "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
-  debate_summary_system: "Instrucciones para generar el resumen de un debate.",
-  quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
-
-  auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
+    "Genera títulos cortos y atractivos para las apps.",
+  app_name_pro: "Genera nombres funcionales y descriptivos al crear apps.",
+  auto_commit_message: "Genera mensajes de commit automáticos en formato Conventional Commits.",
+  memory_synthesis: "Instrucciones del Synthesizer: decide qué extraer de cada conversación y genera operaciones (add/update/merge).",
+  memory_selection: "Instrucciones del Router: selecciona qué memorias inyectar según el prompt del usuario.",
+  memory_onboarding: "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
+  ctx_language: "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
+  ctx_no_run_locally: "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
+  ctx_context7_docs: "Obliga al agente a consultar documentación fresca antes de integrar librerías.",
+  ctx_efficiency_triage: "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
+  ctx_task_management: "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
+  ctx_plan_mode: "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
 };

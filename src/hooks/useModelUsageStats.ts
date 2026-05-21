@@ -3,6 +3,11 @@ import { ipc } from "@/ipc/types";
 
 const PREF_KEY = "model_usage_stats";
 
+/**
+ * Each value is a timestamp (Date.now()) of the last time the model was used.
+ * Higher values = more recently used.
+ * This also serves as a boolean "has been used" check since any timestamp > 0.
+ */
 type ModelStats = Record<string, number>;
 
 export function useModelUsageStats() {
@@ -26,7 +31,7 @@ export function useModelUsageStats() {
       const currentStats = queryClient.getQueryData<ModelStats>(["model_usage_stats"]) || {};
       const newStats = {
         ...currentStats,
-        [modelId]: (currentStats[modelId] || 0) + 1,
+        [modelId]: Date.now(),
       };
       
       // Update cache optimistically

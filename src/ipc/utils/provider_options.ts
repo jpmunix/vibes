@@ -41,9 +41,14 @@ export function getProviderOptions({
   const extraOptions = getExtraProviderOptions(builtinProviderId, settings);
 
   // Merge service_tier into openrouter/gateway options when provided
-  const routerOptions = serviceTier
-    ? { ...extraOptions, service_tier: serviceTier }
-    : extraOptions;
+  const repetitionPenalty = settings.inferenceRepetitionPenalty;
+  const routerOptions = {
+    ...extraOptions,
+    ...(serviceTier ? { service_tier: serviceTier } : {}),
+    // OpenRouter-specific: repetition_penalty (range 0-2, default 1.0)
+    // This is NOT the same as frequency_penalty — it penalizes based on original token probability
+    ...(repetitionPenalty !== undefined ? { repetition_penalty: repetitionPenalty } : {}),
+  };
 
   const providerOptions: Record<string, any> = {
     "vibes-engine": {

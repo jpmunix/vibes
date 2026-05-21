@@ -5,7 +5,7 @@ import {
   createClient,
   createEventClient,
 } from "../contracts/core";
-import { AgentToolConsentSchema } from "../../lib/schemas";
+import { AgentToolConsentSchema, OpenCodePermissionSchema } from "../../lib/schemas";
 
 // =============================================================================
 // Agent Schemas
@@ -74,6 +74,25 @@ export const AskUserResponseParamsSchema = z.object({
 });
 
 export type AskUserResponseParams = z.infer<typeof AskUserResponseParamsSchema>;
+
+// ── OpenCode Permission Request/Response ──
+
+export const OpenCodePermissionRequestSchema = z.object({
+  requestId: z.string(),
+  sessionId: z.string(),
+  chatId: z.number(),
+  toolName: z.string(),
+  toolInput: z.string().nullable().optional(),
+});
+
+export type OpenCodePermissionRequestPayload = z.infer<typeof OpenCodePermissionRequestSchema>;
+
+export const OpenCodePermissionResponseSchema = z.object({
+  requestId: z.string(),
+  response: z.enum(["once", "always", "reject"]),
+});
+
+export type OpenCodePermissionResponseParams = z.infer<typeof OpenCodePermissionResponseSchema>;
 
 /**
  * Schema for agent todo item.
@@ -185,6 +204,12 @@ export const agentContracts = {
     input: AskUserResponseParamsSchema,
     output: z.void(),
   }),
+
+  respondToPermission: defineContract({
+    channel: "opencode-permission:respond",
+    input: OpenCodePermissionResponseSchema,
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -222,6 +247,14 @@ export const agentEvents = {
   problemsUpdate: defineEvent({
     channel: "agent-tool:problems-update",
     payload: AgentProblemsUpdateSchema,
+  }),
+
+  /**
+   * Emitted when OpenCode requests permission approval (tool set to "ask").
+   */
+  permissionRequest: defineEvent({
+    channel: "opencode-permission:request",
+    payload: OpenCodePermissionRequestSchema,
   }),
 } as const;
 

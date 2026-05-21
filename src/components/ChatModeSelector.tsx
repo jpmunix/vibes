@@ -8,7 +8,6 @@ import { useRouterState } from "@tanstack/react-router";
 
 
 
-
 export function ChatModeSelector() {
   const { settings, updateSettings } = useSettings();
   const routerState = useRouterState();
@@ -58,7 +57,7 @@ export function ChatModeSelector() {
       triggerSize="sm"
       triggerClassName={cn(
         selectedMode === "agent"
-          ? "bg-muted/80 text-foreground hover:bg-muted"
+          ? "!border !border-input !bg-muted/80 text-foreground !shadow-none hover:!bg-muted"
           : "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30"
       )}
       customTriggerLabel={<span className="font-semibold">{getModeDisplayName(selectedMode)}</span>}

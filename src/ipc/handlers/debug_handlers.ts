@@ -139,7 +139,7 @@ export function registerDebugHandlers() {
         where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
           },
         },
       });
@@ -190,6 +190,10 @@ export function registerDebugHandlers() {
   });
 
   logger.info("Registered debug IPC handlers");
+
+  createTypedHandler(systemContracts.getLogFilePath, async () => {
+    return log.transports.file.getFile().path;
+  });
 
   createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];

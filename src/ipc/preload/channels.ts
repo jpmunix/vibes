@@ -21,9 +21,8 @@ import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
 import { firebaseContracts } from "../types/firebase";
-import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
-import { debateContracts, debateStreamContract } from "../types/debate";
+
 
 
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
@@ -41,17 +40,16 @@ import { settingsContracts } from "../types/settings";
 import { supabaseContracts } from "../types/supabase";
 import { systemContracts, systemEvents } from "../types/system";
 import { templateContracts } from "../types/templates";
-import { todoContracts } from "../types/todo";
-import { tokenStatsContracts } from "../types/token_stats";
-import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 
-import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
+import { memoryContracts } from "../types/memory";
+import { adminContracts } from "../types/admin";
+import { markdownShareContracts } from "../types/markdown-share";
 
 
 // =============================================================================
@@ -60,7 +58,7 @@ import { designContracts } from "../types/design";
 
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
-const DEBATE_STREAM_CHANNELS = getStreamChannels(debateStreamContract);
+
 
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
@@ -86,14 +84,13 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(chatContracts),
 
-  ...getInvokeChannels(todoContracts),
   ...getInvokeChannels(agentContracts),
-  ...getInvokeChannels(debateContracts),
+
 
   // Stream invoke channels
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
-  DEBATE_STREAM_CHANNELS.invoke,
+
 
 
   // Integrations
@@ -116,22 +113,21 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(helpContracts),
   ...getInvokeChannels(capacitorContracts),
   ...getInvokeChannels(contextContracts),
-  ...getInvokeChannels(upgradeContracts),
   ...getInvokeChannels(visualEditingContracts),
   ...getInvokeChannels(miscContracts),
-
-  ...getInvokeChannels(tokenStatsContracts),
-  ...getInvokeChannels(chatLogsContracts),
 
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(bunnyContracts),
   ...getInvokeChannels(pocketbaseContracts),
-  // knowledgeContracts — KB removed
-  ...getInvokeChannels(aiQueryLogContracts),
+  ...getInvokeChannels(memoryContracts),
 
   ...getInvokeChannels(authContracts),
 
   ...getInvokeChannels(designContracts),
+
+  ...getInvokeChannels(adminContracts),
+
+  ...getInvokeChannels(markdownShareContracts),
 
 
   // Test-only channels
@@ -142,6 +138,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   // Git commit message streaming (direct ipcMain.handle, not via contracts)
   "github:generate-commit-message-stream",
+
+  // OpenCode permission response (renderer -> main)
+  "opencode-permission:respond",
 ] as const;
 
 // =============================================================================
@@ -156,7 +155,7 @@ export const VALID_RECEIVE_CHANNELS = [
   // Stream receive channels
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
-  ...DEBATE_STREAM_CHANNELS.receive,
+
 
 
   // Event channels
@@ -179,6 +178,15 @@ export const VALID_RECEIVE_CHANNELS = [
   "git:commit-message-token",
   "git:commit-message-done",
   "git:commit-message-error",
+
+  // Backend-initiated settings updates (e.g. permission persistence)
+  "settings:updated-from-backend",
+
+  // Preference KV system — individual key change broadcast
+  "preference:changed",
+
+  // Model validator — notifies when stale models are auto-replaced on boot
+  "models:migrated",
 ] as const;
 
 // =============================================================================

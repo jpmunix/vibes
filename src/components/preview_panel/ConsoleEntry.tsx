@@ -5,8 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "@/components/ui/icons";
-import { useSetAtom } from "jotai";
-import { chatInputValueAtom } from "@/atoms/chatAtoms";
+import { ipc } from "@/ipc/types";
 
 interface ConsoleEntryProps {
   type: "server" | "client" | "edge-function" | "network-requests";
@@ -17,6 +16,7 @@ interface ConsoleEntryProps {
   typeFilter?: string;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  appId?: number | null;
 }
 
 const formatTimestamp = (timestamp: number) => {
@@ -36,8 +36,8 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
     typeFilter,
     isExpanded = false,
     onToggleExpand,
+    appId,
   } = props;
-  const setChatInput = useSetAtom(chatInputValueAtom);
 
   const isTruncated = message.length > MAX_MESSAGE_LENGTH;
   const displayMessage =
@@ -46,6 +46,8 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
       : message;
 
   const handleSendToChat = () => {
+    if (!appId) return;
+
     const time = new Date(timestamp).toLocaleTimeString("en-US", {
       hour12: false,
     });
@@ -53,9 +55,8 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
     const prefix = sourceName ? `[${sourceName}]` : "";
     const formattedLog = `[${time}] ${level.toUpperCase()} ${prefix}: ${message}`;
 
-    setChatInput((prev) => {
-      return `${prev}\n\`\`\`\n${formattedLog}\n\`\`\``;
-    });
+    // Always route through IPC so it works from any window (embedded or standalone)
+    ipc.system.sendConsoleLogToChat({ appId, formattedLog });
   };
 
   // Determine styling based on log level

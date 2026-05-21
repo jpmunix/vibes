@@ -143,7 +143,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               onClick={() => {
                 // TODO: Add actual help link
                 ipc.system.openExternalUrl(
-                  "https://github.com/minube/vibes/guides/mobile-app#troubleshooting",
+                  "https://github.com/jpmunix/vibes/guides/mobile-app#troubleshooting",
                 );
               }}
               className="typo-caption text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground flex items-center gap-1"
@@ -205,7 +205,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
       <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-red-600 dark:text-red-400">
+            <DialogTitle className="text-destructive">
               {errorDetails?.title}
             </DialogTitle>
             <DialogDescription>
@@ -216,7 +216,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
 
           {errorDetails && (
             <div className="relative">
-              <div className="max-h-[50vh] w-full max-w-md rounded border p-4 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+              <div className="max-h-[50vh] w-full max-w-md rounded border p-4 bg-muted overflow-y-auto">
                 <pre className="typo-mono whitespace-pre-wrap">
                   {errorDetails.message}
                 </pre>

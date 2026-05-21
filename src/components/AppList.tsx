@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, X, FolderX } from "@/components/ui/icons";
+import { Loader2, X, FolderX, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import {
   SidebarGroup,
@@ -18,7 +18,7 @@ import { AppSearchDialog } from "./AppSearchDialog";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { AppItem } from "./appItem";
 import { ipc } from "@/ipc/types";
-import { showError } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import {
   Dialog,
   DialogContent,
@@ -32,11 +32,15 @@ import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const setSelectedChatId = useSetAtom(selectedChatIdAtom);
+  const setApps = useSetAtom(appsListAtom);
   const { apps, loading, error, refreshApps } = useLoadApps();
   const { toggleFavorite, isLoading: isFavoriteLoading } =
     useAddAppToFavorite();
@@ -57,6 +61,15 @@ export function AppList({ show }: { show?: boolean }) {
   const [emptyAppName, setEmptyAppName] = useState("");
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+  const queryClient = useQueryClient();
+
+  // ── Archived apps state ──
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const { data: archivedApps = [] } = useQuery({
+    queryKey: ["archived-apps"],
+    queryFn: () => ipc.app.getArchivedApps(),
+  });
+  const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
 
   // ── Bulk selection mode state ──
   const [selectionMode, setSelectionMode] = useState(false);
@@ -75,9 +88,6 @@ export function AppList({ show }: { show?: boolean }) {
     switch (sidebarAction.action) {
       case "apps:new":
         handleNewApp();
-        break;
-      case "apps:empty":
-        setIsEmptyAppDialogOpen(true);
         break;
       case "apps:import":
         // Trigger the import button programmatically via a custom event
@@ -269,6 +279,40 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
+  const handleArchiveApp = async (appId: number, appName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Optimistic: remove from atom immediately (no flash)
+    setApps(prev => prev.filter(a => a.id !== appId));
+    if (selectedAppId === appId) {
+      setSelectedAppId(null);
+      navigate({ to: "/", search: {} });
+    }
+    try {
+      await ipc.app.archiveApp({ appId, archived: true });
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+      showSuccess(`"${appName}" archivado`);
+    } catch (error) {
+      // Rollback on failure
+      refreshApps();
+      showError(error);
+    }
+  };
+
+  const handleUnarchiveApp = async (appId: number) => {
+    setUnarchivingId(appId);
+    try {
+      await ipc.app.archiveApp({ appId, archived: false });
+      // Optimistic: move app from archived list back into main atom
+      const restored = archivedApps.find(a => a.id === appId);
+      if (restored) setApps(prev => [restored, ...prev]);
+      queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
+    } catch (error) {
+      showError(error);
+    } finally {
+      setUnarchivingId(null);
+    }
+  };
+
   // Selected app names for the bulk dialog
   const selectedAppNames = useMemo(
     () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
@@ -288,6 +332,7 @@ export function AppList({ show }: { show?: boolean }) {
       selectionMode={selectionMode}
       isSelected={selectedIds.has(app.id)}
       onToggleSelect={toggleSelect}
+      onArchive={handleArchiveApp}
     />
   );
 
@@ -331,12 +376,11 @@ export function AppList({ show }: { show?: boolean }) {
             }
 
             .sidebar-section-label {
-              font-size: 12.5px;
-              font-weight: 700;
-              letter-spacing: 0.06em;
-              text-transform: uppercase;
+              font-size: 12px;
+              font-weight: 500;
+              letter-spacing: 0.03em;
               color: var(--muted-foreground);
-              opacity: 0.5;
+              opacity: 0.6;
               padding: 10px 12px 4px;
             }
 
@@ -443,24 +487,78 @@ export function AppList({ show }: { show?: boolean }) {
               <SidebarMenu className="mt-1" data-testid="app-list">
                 {favoriteApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Aplicaciones favoritas</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones fijadas</div>
                     {favoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {nonFavoriteApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Otras aplicaciones</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones</div>
                     {nonFavoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {noLocalFilesApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Sin archivos locales</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Sin archivos locales</div>
                     {noLocalFilesApps.map(renderAppItem)}
                   </>
                 )}
               </SidebarMenu>
             )}
+
+            {/* ── Archived apps collapsible ── */}
+            <div className="mt-3">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-medium text-muted-foreground/60 tracking-wide hover:text-muted-foreground/80 transition-colors cursor-pointer"
+                onClick={() => setArchivedOpen(v => !v)}
+              >
+                {archivedOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <Archive size={12} className="opacity-60" />
+                Archivadas
+                {archivedApps.length > 0 && (
+                  <span className="ml-auto text-[10px] text-muted-foreground/40">
+                    {archivedApps.length}
+                  </span>
+                )}
+              </button>
+
+              {archivedOpen && (
+                <div className="mt-1 pl-2">
+                  {archivedApps.length === 0 ? (
+                    <div className="py-3 px-2 typo-caption opacity-40 text-center">
+                      Sin apps archivadas
+                    </div>
+                  ) : (
+                    archivedApps.map((app) => (
+                      <div
+                        key={app.id}
+                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                      >
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
+                          <span className="text-xs text-muted-foreground/45 mt-0.5">
+                            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                          onClick={() => handleUnarchiveApp(app.id)}
+                          disabled={unarchivingId === app.id}
+                          title="Restaurar"
+                        >
+                          {unarchivingId === app.id
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <ArchiveRestore size={15} strokeWidth={2} />
+                          }
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
@@ -507,9 +605,9 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>¿Cerrar "{deleteAppName}"?</DialogTitle>
+            <DialogTitle>¿Cerrar aplicación "{deleteAppName}"?</DialogTitle>
             <DialogDescription>
-              La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
+              La aplicación se desvinculará de Vibes. Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -522,7 +620,7 @@ export function AppList({ show }: { show?: boolean }) {
               className="rounded border-border"
             />
             <label htmlFor="delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
-              También eliminar archivos del disco
+              Eliminar también los archivos del disco
             </label>
           </div>
           <DialogFooter className="flex justify-end gap-2 pt-2">
@@ -547,9 +645,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando...
                 </>
               ) : deleteFiles ? (
-                "Cerrar y eliminar archivos"
+                "Eliminar aplicación y archivos"
               ) : (
-                "Cerrar carpeta"
+                "Cerrar aplicación"
               )}
             </Button>
           </DialogFooter>
@@ -572,7 +670,7 @@ export function AppList({ show }: { show?: boolean }) {
               {selectedIds.size === 1
                 ? "La aplicación se desvinculará de Vibes."
                 : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
-              {" "}Los archivos en disco NO serán eliminados.
+              {" "}Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
 
@@ -595,7 +693,7 @@ export function AppList({ show }: { show?: boolean }) {
               className="rounded border-border"
             />
             <label htmlFor="bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
-              También eliminar archivos del disco
+              Eliminar también los archivos del disco
             </label>
           </div>
 
@@ -631,9 +729,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando... {bulkProgress}%
                 </>
               ) : bulkDeleteFiles ? (
-                `Cerrar y eliminar (${selectedIds.size})`
+                `Eliminar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""} y archivos`
               ) : (
-                `Cerrar ${selectedIds.size} app${selectedIds.size !== 1 ? "s" : ""}`
+                `Cerrar ${selectedIds.size} aplicación${selectedIds.size !== 1 ? "es" : ""}`
               )}
             </Button>
           </DialogFooter>
@@ -647,28 +745,28 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Crear aplicación vacía</DialogTitle>
+            <DialogTitle>Crear workspace</DialogTitle>
             <DialogDescription>
-              Se creará una aplicación con el scaffold por defecto, lista para editar.
+              Se creará un workspace con el scaffold por defecto, listo para editar.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateEmptyApp}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="emptyAppName">Nombre de la aplicación</Label>
+                <Label htmlFor="emptyAppName">Nombre del workspace</Label>
                 <Input
                   id="emptyAppName"
                   value={emptyAppName}
                   onChange={(e) => setEmptyAppName(e.target.value)}
-                  placeholder="Introduce el nombre de la aplicación..."
+                  placeholder="Nombre del workspace..."
                   className={emptyAppNameCheck?.exists ? "border-red-500" : ""}
                   disabled={isCreatingEmptyApp}
                   autoFocus
                 />
                 {emptyAppNameCheck?.exists && (
                   <p className="typo-caption text-destructive">
-                    Ya existe una aplicación con este nombre
+                    Ya existe un workspace con este nombre
                   </p>
                 )}
               </div>
@@ -693,7 +791,7 @@ export function AppList({ show }: { show?: boolean }) {
                 {isCreatingEmptyApp && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isCreatingEmptyApp ? "Creando..." : "Crear aplicación"}
+                {isCreatingEmptyApp ? "Creando..." : "Crear workspace"}
               </Button>
             </DialogFooter>
           </form>

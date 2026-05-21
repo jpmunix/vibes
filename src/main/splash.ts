@@ -9,6 +9,7 @@
 import { BrowserWindow, app } from "electron";
 import * as path from "node:path";
 import log from "electron-log";
+import { getActiveFlavor } from "../flavors";
 
 const logger = log.scope("splash");
 
@@ -41,7 +42,8 @@ export function createSplashWindow(): BrowserWindow {
 
     // Set logo path once loaded
     splash.webContents.once("did-finish-load", () => {
-        const logoPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+        const activeFlavor = getActiveFlavor();
+        const logoPath = path.join(app.getAppPath(), `assets/${activeFlavor.iconFolder}/logo.png`);
 
         // Convert to file:// URL for the img src
         const logoUrl = `file://${logoPath.replace(/\\/g, "/")}`;

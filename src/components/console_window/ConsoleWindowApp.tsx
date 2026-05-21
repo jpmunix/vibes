@@ -53,9 +53,10 @@ interface LogItemProps {
   typeFilter: string;
   getEntryKey: (entry: ConsoleEntry | undefined, index: number) => string;
   toggleExpanded: (key: string, index: number) => void;
+  appId: number;
 }
 
-const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, toggleExpanded }: LogItemProps) => {
+const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, toggleExpanded, appId }: LogItemProps) => {
   if (!entry) return <div />;
   const entryKey = getEntryKey(entry, index);
   const isExpanded = expandedEntries.has(entryKey);
@@ -70,6 +71,7 @@ const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, 
         typeFilter={typeFilter}
         isExpanded={isExpanded}
         onToggleExpand={() => toggleExpanded(entryKey, index)}
+        appId={appId}
       />
     </div>
   );
@@ -243,6 +245,7 @@ function LogsPanel({ appId }: { appId: number }) {
                 typeFilter={typeFilter}
                 getEntryKey={getEntryKey}
                 toggleExpanded={toggleExpanded}
+                appId={appId}
               />
             )}
             style={{ height: "100%" }}
@@ -266,7 +269,7 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
   // Set window title
   useEffect(() => {
     ipc.app.getApp(appId).then((app) => {
-      if (app?.name) document.title = `${app.name} — Consola`;
+      if (app?.name) document.title = `${app.name} \u2013 Consola`;
     }).catch(() => {});
   }, [appId]);
 
@@ -276,7 +279,7 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
       <div className="flex items-center px-4 py-0 border-b border-border bg-sidebar shrink-0 app-region-drag h-9 font-sans">
         <Logs size={14} className="mr-2 text-muted-foreground shrink-0" />
         <span className="typo-tab truncate flex-1">
-          {currentApp?.name || "App"} — Consola
+          {currentApp?.name || "App"} – Consola
         </span>
 
         {/* Logs/Console toggle */}

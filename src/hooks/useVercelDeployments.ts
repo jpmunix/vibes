@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipc, type VercelDeployment } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function useVercelDeployments(appId: number) {
+export function useVercelDeployments(appId: number, { enabled = true }: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
 
   const {
@@ -15,7 +15,7 @@ export function useVercelDeployments(appId: number) {
     queryFn: async () => {
       return ipc.vercel.getDeployments({ appId });
     },
-    // enabled: false, // Don't auto-fetch, only fetch when explicitly requested
+    enabled,
   });
 
   const disconnectProjectMutation = useMutation<void, Error, void>({

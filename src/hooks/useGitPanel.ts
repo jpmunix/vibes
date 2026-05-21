@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export interface GitPanelFile {
     path: string;
     status: "added" | "modified" | "deleted" | "renamed";
-    staged: boolean;
+    staged?: boolean;
 }
 
 export function useGitPanel(appId: number | null) {
@@ -53,6 +53,16 @@ export function useGitPanel(appId: number | null) {
         queryFn: async () => {
             if (!appId) return { branches: [], current: null };
             return ipc.github.listLocalBranches({ appId });
+        },
+        enabled: appId !== null,
+    });
+
+    // Fetch remote branches (to show branches created on GitHub but not yet locally)
+    const { data: remoteBranchList } = useQuery({
+        queryKey: ["git-panel", "remote-branches", appId],
+        queryFn: async () => {
+            if (!appId) return [];
+            return ipc.github.listRemoteBranches({ appId }).catch(() => []);
         },
         enabled: appId !== null,
     });
@@ -108,15 +118,25 @@ export function useGitPanel(appId: number | null) {
         onError: (err: Error) => toast.error(`Error al unstage: ${err.message}`),
     });
 
-    // Discard file changes
+    // Discard file changes (single file, no toast — caller handles it)
     const discardFileChangesMutation = useMutation({
         mutationFn: async (filepath: string) => {
             if (!appId) throw new Error("No app selected");
             await ipc.git.discardFileChanges({ appId, filepath });
         },
+        onSuccess: () => refreshFiles(),
+        onError: (err: Error) => toast.error(`Error al descartar: ${err.message}`),
+    });
+
+    // Discard ALL changes (single git command, much faster for bulk)
+    const discardAllChangesMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.git.discardAllChanges({ appId });
+        },
         onSuccess: () => {
             refreshFiles();
-            toast.success("Cambios descartados");
+            toast.success("Todos los cambios descartados");
         },
         onError: (err: Error) => toast.error(`Error al descartar: ${err.message}`),
     });
@@ -184,6 +204,8 @@ export function useGitPanel(appId: number | null) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "local-branches", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "remote-branches", appId] });
             toast.success("Fetch realizado correctamente");
         },
         onError: (err: Error) => toast.error(`Error en fetch: ${err.message}`),
@@ -375,6 +397,7 @@ export function useGitPanel(appId: number | null) {
             refreshBranch();
             queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
             queryClient.invalidateQueries({ queryKey: ["git-panel", "local-branches", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "remote-branches", appId] });
             toast.success("Rama cambiada correctamente");
         },
         onError: (err: Error) => toast.error(`Error al cambiar de rama: ${err.message}`),
@@ -385,6 +408,7 @@ export function useGitPanel(appId: number | null) {
         uncommittedFiles,
         currentBranch: branchInfo?.branch ?? null,
         branches: branchList?.branches ?? [],
+        remoteBranches: remoteBranchList ?? [],
         gitState,
         commitMessage,
         isLoadingFiles,
@@ -414,6 +438,7 @@ export function useGitPanel(appId: number | null) {
         getConflictFileDiff,
         switchBranch: switchBranchMutation.mutateAsync,
         discardFileChanges: discardFileChangesMutation.mutateAsync,
+        discardAllChanges: discardAllChangesMutation.mutateAsync,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -427,7 +452,7 @@ export function useGitPanel(appId: number | null) {
         isAbortingMerge: abortMergeMutation.isPending,
         isResolvingFile: resolveFileOursMutation.isPending || resolveFileTheirsMutation.isPending,
         isSwitchingBranch: switchBranchMutation.isPending,
-        isDiscarding: discardFileChangesMutation.isPending,
+        isDiscarding: discardFileChangesMutation.isPending || discardAllChangesMutation.isPending,
     };
 }
 

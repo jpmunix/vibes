@@ -49,7 +49,7 @@ function DatabaseWindowContent({ appId }: { appId: number }) {
             .getApp(appId)
             .then((app) => {
                 setCurrentApp(app);
-                if (app?.name) document.title = `${app.name} — Base de datos`;
+                if (app?.name) document.title = `${app.name} \u2013 Base de datos`;
                 setLoading(false);
             })
             .catch(() => setLoading(false));

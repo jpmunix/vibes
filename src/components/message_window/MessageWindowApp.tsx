@@ -8,7 +8,7 @@ import {
     createMemoryHistory,
     RouterProvider,
 } from "@tanstack/react-router";
-import { PostHogProvider } from "posthog-js/react";
+
 import { Provider } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { Loader2 } from "lucide-react";
@@ -19,7 +19,7 @@ import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { ThemeProvider } from "../../contexts/ThemeContext";
 
 const queryClient = new QueryClient();
-const noopPosthogClient = null;
+
 
 // Route setup
 function createMessageWindowRouter(appId: number, chatId: number, messageId: number) {
@@ -109,18 +109,18 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
 
     return (
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6 pb-4 border-b">
-            <h1 className="text-lg font-medium">Debug de Mensaje</h1>
-            <div className="text-xs text-muted-foreground flex gap-4 mt-2">
-              <span>Chat: {chat.title} (ID: {chatId})</span>
-              <span>App ID: {appId}</span>
-              <span>Mensaje ID: {messageId}</span>
-            </div>
+        {/* Header - full width */}
+        <div className="mb-6 pb-4 border-b w-full">
+          <h1 className="text-lg font-medium">Debug de Mensaje</h1>
+          <div className="text-xs text-muted-foreground flex gap-4 mt-2">
+            <span>Chat: {chat.title} (ID: {chatId})</span>
+            <span>App ID: {appId}</span>
+            <span>Mensaje ID: {messageId}</span>
           </div>
-          <div className="chat-container">
-              <ChatMessage message={message} isLastMessage={false} forceFullMode={true} />
-          </div>
+        </div>
+        {/* Message - min 80% width */}
+        <div className="chat-container" style={{ minWidth: '80%', width: '80%', margin: '0 auto' }}>
+            <ChatMessage message={message} isLastMessage={false} forceFullMode={true} />
         </div>
       </div>
     );
@@ -154,14 +154,12 @@ export function MessageWindowApp(props: MessageWindowAppProps) {
     <Provider>
       <GlobalStateHydrator appId={props.appId} chatId={props.chatId}>
         <QueryClientProvider client={queryClient}>
-          <PostHogProvider client={noopPosthogClient}>
             <ThemeProvider>
               <div className="vibes-theme-root h-screen w-screen overflow-hidden bg-background font-sans text-foreground">
                 {/* @ts-ignore */}
                 <RouterProvider router={chatRouter} />
               </div>
             </ThemeProvider>
-          </PostHogProvider>
         </QueryClientProvider>
       </GlobalStateHydrator>
     </Provider>

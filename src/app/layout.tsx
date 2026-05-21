@@ -4,9 +4,11 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 import { DeepLinkProvider } from "../contexts/DeepLinkContext";
 import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
-import { useEffect, useRef, type ReactNode } from "react";
+import { isElectron } from "@/lib/transport";
+import { useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { showWarning } from "@/lib/toast";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -21,8 +23,12 @@ import { useSettings } from "@/hooks/useSettings";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
 
+const OpenRouterSetupWizard = lazy(() =>
+  import("@/components/onboarding/OpenRouterSetupWizard").then(m => ({ default: m.OpenRouterSetupWizard }))
+);
+
 // Routes that can be restored on startup
-const RESTORABLE_ROUTES = ["/", "/workspace"];
+const RESTORABLE_ROUTES = ["/"];
 const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
@@ -158,14 +164,36 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     setConsoleEntries([]);
   }, [selectedAppId]);
 
+  // ── Model migration toast ──────────────────────────────────────────────
+  // When the boot-time validator replaces stale OpenRouter models, notify
+  // the user so they're aware — especially for hidden settings they
+  // wouldn't otherwise check (standardModeModel, memory models, etc.)
+  useEffect(() => {
+    const unsubscribe = window.electron?.ipcRenderer?.on(
+      "models:migrated" as any,
+      (data: { changes: string[] }) => {
+        if (data?.changes?.length) {
+          showWarning(
+            `Algunos modelos de IA ya no están disponibles en OpenRouter y fueron reemplazados automáticamente:\n\n${data.changes.join("\n")}`,
+          );
+        }
+      },
+    );
+    return () => { unsubscribe?.(); };
+  }, []);
+
   return (
     <>
       <ThemeProvider>
         <DeepLinkProvider>
+          {/* Blocking wizard: shown after login if OpenRouter is not configured */}
+          <Suspense fallback={null}>
+            <OpenRouterSetupWizard />
+          </Suspense>
           <SidebarProvider>
             <TitleBar />
-            {/* Layout: TitleBar (fixed 44px) → TopNavbar (40px) → [SecondarySidebar + Content] */}
-            <div className="flex flex-col w-full h-[calc(100vh-44px)] mt-11">
+            {/* Layout: TitleBar (fixed 44px, Electron only) → TopNavbar (40px) → [SecondarySidebar + Content] */}
+            <div className={`flex flex-col w-full ${isElectron ? "h-[calc(100vh-44px)] mt-11" : "h-screen"}`}>
               <TopNavbar />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <SecondarySidebar />

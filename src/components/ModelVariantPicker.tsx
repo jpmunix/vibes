@@ -9,7 +9,6 @@ import {
     Command,
     CommandInput,
     CommandList,
-    CommandEmpty,
     CommandGroup,
     CommandItem,
 } from "@/components/ui/command";
@@ -54,6 +53,8 @@ export interface ModelVariantPickerProps {
     searchPlaceholder?: string;
     onSearchChange?: (search: string) => void;
     emptyMessage?: string;
+    /** Optional map of modelApiName → user-defined alias (for search keywords) */
+    modelAliases?: Record<string, string>;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ export function ModelVariantPicker({
     searchPlaceholder = "Buscar modelos...",
     onSearchChange,
     emptyMessage = "Sin resultados",
+    modelAliases = {},
 }: ModelVariantPickerProps) {
     const [open, setOpen] = useState(false);
     // Controlled search value — must be managed here so we can reset it on close/select
@@ -80,7 +82,7 @@ export function ModelVariantPicker({
     const focusedEntry = useMemo(() => {
         const target = focusedValue ?? selectedValue;
         return models.find(
-            (m) => `${m.provider}:${m.model.apiName}` === target,
+            (m) => `${m.provider}|||${m.model.apiName}` === target,
         );
     }, [focusedValue, selectedValue, models]);
 
@@ -142,10 +144,7 @@ export function ModelVariantPicker({
                     {/* ── Left panel: Model list ──────────────────────────── */}
                     <div className="flex-1 min-w-0 flex flex-col border-r border-border/40">
                         <Command
-                            filter={(value, search, keywords) => {
-                                const haystack = [value, ...(keywords || [])].join(" ").toLowerCase();
-                                return haystack.includes(search.toLowerCase()) ? 1 : 0;
-                            }}
+                            shouldFilter={false}
                         >
                             <CommandInput
                                 placeholder={searchPlaceholder}
@@ -156,18 +155,19 @@ export function ModelVariantPicker({
                                 }}
                             />
                             <CommandList className="max-h-none flex-1 overflow-y-auto">
-                                <CommandEmpty className="py-4 text-center typo-caption">
-                                    {emptyMessage}
-                                </CommandEmpty>
+                                {models.length === 0 && (
+                                    <div className="py-4 text-center typo-caption">
+                                        {emptyMessage}
+                                    </div>
+                                )}
                                 <CommandGroup>
                                     {models.map(({ provider, model }) => {
-                                        const value = `${provider}:${model.apiName}`;
+                                        const value = `${provider}|||${model.apiName}`;
                                         const isSelected = selectedValue === value;
                                         return (
                                             <CommandItem
                                                 key={value}
                                                 value={value}
-                                                keywords={[model.displayName, model.apiName]}
                                                 onSelect={() => handleModelSelect(value)}
                                                 className={cn(
                                                     "cursor-pointer typo-dropdown",

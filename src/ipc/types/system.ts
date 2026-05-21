@@ -52,16 +52,8 @@ export const SelectAppLocationResultSchema = z.object({
   canceled: z.boolean(),
 });
 
-export const DoesReleaseNoteExistParamsSchema = z.object({
-  version: z.string(),
-});
-
-export type DoesReleaseNoteExistParams = z.infer<
-  typeof DoesReleaseNoteExistParamsSchema
->;
-
-export const DoesReleaseNoteExistResultSchema = z.object({
-  exists: z.boolean(),
+export const SaveBackupResultSchema = z.object({
+  success: z.boolean(),
   url: z.string().optional(),
 });
 
@@ -237,24 +229,6 @@ export const systemContracts = {
     output: z.void(),
   }),
 
-  // Release notes
-  doesReleaseNoteExist: defineContract({
-    channel: "does-release-note-exist",
-    input: DoesReleaseNoteExistParamsSchema,
-    output: DoesReleaseNoteExistResultSchema,
-  }),
-
-  getReleaseNotesContent: defineContract({
-    channel: "get-release-notes-content",
-    input: z.void(),
-    output: z.string(),
-  }),
-
-  getDocumentationContent: defineContract({
-    channel: "get-documentation-content",
-    input: z.void(),
-    output: z.string(),
-  }),
 
   // Upload
   uploadToSignedUrl: defineContract({
@@ -391,6 +365,17 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Code viewer window — dedicated file explorer + editor
+  openCodeWindow: defineContract({
+    channel: "window:open-code",
+    input: z.object({
+      appId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Cross-window navigation: tells the main window to navigate to a route
   navigateMainWindow: defineContract({
     channel: "window:navigate-main",
@@ -414,6 +399,125 @@ export const systemContracts = {
       arch: z.string(),
     }),
   }),
+
+  // Memory viewer window — dedicated diagnostic panel for agent memories
+  openMemoryWindow: defineContract({
+    channel: "window:open-memory",
+    input: z.object({
+      appId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Admin panel window — restricted to authorized admin user
+  openAdminWindow: defineContract({
+    channel: "window:open-admin",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Playground window — model comparison tool
+  openPlaygroundWindow: defineContract({
+    channel: "window:open-playground",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Log file path — returns the absolute path to the electron-log file
+  getLogFilePath: defineContract({
+    channel: "system:get-log-file-path",
+    input: z.void(),
+    output: z.string(),
+  }),
+
+  // Send a console log entry to the chat window that owns this appId
+  sendConsoleLogToChat: defineContract({
+    channel: "system:send-console-log-to-chat",
+    input: z.object({ appId: z.number(), formattedLog: z.string() }),
+    output: z.void(),
+  }),
+
+  // Purge orphaned OpenCode sessions (admin diagnostic)
+  purgeOpenCodeSessions: defineContract({
+    channel: "system:purge-opencode-sessions",
+    input: z.object({ dryRun: z.boolean() }),
+    output: z.object({
+      totalInOpenCode: z.number(),
+      knownInVibes: z.number(),
+      orphaned: z.number(),
+      deleted: z.number(),
+      errors: z.number(),
+      report: z.string(),
+    }),
+  }),
+
+  // ── Documentation system ──────────────────────────────────────────────────
+
+  // Read the full documentation tree structure (recursive)
+  getDocTree: defineContract({
+    channel: "docs:get-tree",
+    input: z.object({ baseDir: z.string().optional() }).optional(),
+    output: z.object({
+      root: z.any(), // DocTreeNode — recursive, validated at runtime
+    }),
+  }),
+
+  // Read a single documentation page by relative path
+  getDocPage: defineContract({
+    channel: "docs:get-page",
+    input: z.object({ relativePath: z.string(), baseDir: z.string().optional() }),
+    output: z.object({
+      markdown: z.string(),
+      meta: z.object({
+        title: z.string(),
+        icon: z.string().optional(),
+        description: z.string().optional(),
+      }),
+    }),
+  }),
+
+  // Full-text search across all documentation pages
+  searchDocs: defineContract({
+    channel: "docs:search",
+    input: z.object({ query: z.string(), baseDir: z.string().optional() }),
+    output: z.array(z.object({
+      relativePath: z.string(),
+      title: z.string(),
+      snippet: z.string(),
+      matchStart: z.number(),
+      matchLength: z.number(),
+      anchor: z.string().optional(),
+      sectionTitle: z.string().optional(),
+    })),
+  }),
+
+  // Documentation window — dedicated docs viewer
+  openDocsWindow: defineContract({
+    channel: "window:open-docs",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Release notes window — dedicated release notes viewer
+  openReleaseNotesWindow: defineContract({
+    channel: "window:open-release-notes",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -429,6 +533,11 @@ export const systemEvents = {
   forceCloseDetected: defineEvent({
     channel: "force-close-detected",
     payload: ForceCloseDetectedPayloadSchema,
+  }),
+
+  consoleLogToChat: defineEvent({
+    channel: "console-log-to-chat",
+    payload: z.object({ appId: z.number(), formattedLog: z.string() }),
   }),
 } as const;
 

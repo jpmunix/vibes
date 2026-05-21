@@ -5,11 +5,70 @@ import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
-import { SCAFFOLD_TEMPLATE_IDS } from "../../shared/templates";
+import { SCAFFOLD_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "../../shared/templates";
 import log from "electron-log";
 import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold_cache";
 
 const logger = log.scope("createFromTemplate");
+
+/**
+ * Default .gitignore content for new projects.
+ * Used as a safety net when a scaffold or GitHub template is missing .gitignore.
+ * This prevents catastrophic `git add .` from staging node_modules.
+ */
+const DEFAULT_GITIGNORE = [
+  "# Dependencies",
+  "node_modules",
+  "",
+  "# Build output",
+  "dist",
+  "dist-ssr",
+  "build",
+  ".next",
+  ".nuxt",
+  ".output",
+  "",
+  "# Environment",
+  ".env",
+  ".env.local",
+  ".env.*.local",
+  "*.local",
+  "",
+  "# Logs",
+  "logs",
+  "*.log",
+  "npm-debug.log*",
+  "yarn-debug.log*",
+  "pnpm-debug.log*",
+  "",
+  "# Editor / OS",
+  ".vscode/*",
+  "!.vscode/extensions.json",
+  ".idea",
+  ".DS_Store",
+  "*.sw?",
+  "",
+].join("\n");
+
+/**
+ * Ensure a .gitignore file exists at the project root.
+ * If one already exists, leaves it untouched (user/template may have customized it).
+ * If missing, writes a sensible default that at minimum excludes node_modules.
+ *
+ * This is a SAFETY NET — even if a scaffold or GitHub template forgets .gitignore,
+ * the subsequent `git init && git add .` in app_handlers won't stage node_modules.
+ */
+async function ensureGitignore(appPath: string): Promise<void> {
+  const gitignorePath = path.join(appPath, ".gitignore");
+  try {
+    await fs.access(gitignorePath);
+    // File exists — don't overwrite
+  } catch {
+    // File doesn't exist — create it
+    await fs.writeFile(gitignorePath, DEFAULT_GITIGNORE, "utf-8");
+    logger.warn(`Created missing .gitignore at ${gitignorePath} (safety net)`);
+  }
+}
 
 export async function createFromTemplate({
   fullAppPath,
@@ -21,7 +80,7 @@ export async function createFromTemplate({
   forceDefaultScaffold?: boolean;
 }) {
   const settings = readSettings();
-  const templateId = forceDefaultScaffold ? "react" : settings.selectedTemplateId;
+  const templateId = forceDefaultScaffold ? DEFAULT_TEMPLATE_ID : settings.selectedTemplateId;
 
   // Check if this template has a local scaffold directory
   const scaffoldDirName = SCAFFOLD_TEMPLATE_IDS[templateId];
@@ -35,8 +94,8 @@ export async function createFromTemplate({
     );
     // Sustituir wildcards en la plantilla
     await replaceTemplateWildcards(fullAppPath, appName);
-    // Copy pre-cached node_modules for instant startup
-    await copyScaffoldNodeModules(fullAppPath);
+    // Safety net: guarantee .gitignore exists before git init
+    await ensureGitignore(fullAppPath);
     return;
   }
 
@@ -48,29 +107,33 @@ export async function createFromTemplate({
   await copyRepoToApp(repoCachePath, fullAppPath);
   // También sustituir wildcards en templates de GitHub
   await replaceTemplateWildcards(fullAppPath, appName);
-  // Copy pre-cached node_modules (only matches scaffold deps, but still speeds things up)
-  await copyScaffoldNodeModules(fullAppPath);
+  // Safety net: guarantee .gitignore exists before git init
+  await ensureGitignore(fullAppPath);
 }
 
 async function replaceTemplateWildcards(
   appPath: string,
   appName?: string,
 ): Promise<void> {
-  const displayName = appName || "minube vibes";
-  const indexHtmlPath = path.join(appPath, "index.html");
-  try {
-    const content = await fs.readFile(indexHtmlPath, "utf-8");
-    if (content.includes("{{APP_NAME}}")) {
-      await fs.writeFile(
-        indexHtmlPath,
-        content.replace(/\{\{APP_NAME\}\}/g, displayName),
-        "utf-8",
-      );
-      logger.info(`Replaced {{APP_NAME}} with "${displayName}" in index.html`);
+  const displayName = appName || "Vibes";
+  // Replace {{APP_NAME}} in any files that use it
+  const filesToCheck = ["index.html", "package.json"];
+  for (const fileName of filesToCheck) {
+    const filePath = path.join(appPath, fileName);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      if (content.includes("{{APP_NAME}}")) {
+        await fs.writeFile(
+          filePath,
+          content.replace(/\{\{APP_NAME\}\}/g, displayName),
+          "utf-8",
+        );
+        logger.info(`Replaced {{APP_NAME}} with "${displayName}" in ${fileName}`);
+      }
+    } catch (error) {
+      // File may not exist in some templates (e.g. Express has no index.html)
+      logger.debug(`Could not replace wildcards in ${fileName}: ${error}`);
     }
-  } catch (error) {
-    // index.html puede no existir en templates de GitHub personalizados
-    logger.debug(`Could not replace wildcards in index.html: ${error}`);
   }
 }
 

@@ -42,39 +42,39 @@ export function ForceCloseDialog({
   };
 
   const generateTraceReport = () => {
-    let report = "=== CRASH REPORT ===\n\n";
+    let report = "=== INFORME DE CIERRE INESPERADO ===\n\n";
 
     if (appVersion) {
-      report += `App Version: ${appVersion}\n`;
+      report += `Versión: ${appVersion}\n`;
     }
 
     if (platform) {
-      report += `Platform: ${platform}\n`;
+      report += `Plataforma: ${platform}\n`;
     }
 
     if (performanceData) {
-      report += `\nCrash Time: ${formatTimestamp(performanceData.timestamp)}\n`;
-      report += `\n--- Performance Metrics ---\n`;
-      report += `Process Memory: ${performanceData.memoryUsageMB} MB\n`;
+      report += `\nMomento del cierre: ${formatTimestamp(performanceData.timestamp)}\n`;
+      report += `\n--- Métricas de rendimiento ---\n`;
+      report += `Memoria del proceso: ${performanceData.memoryUsageMB} MB\n`;
 
       if (performanceData.cpuUsagePercent !== undefined) {
-        report += `Process CPU: ${performanceData.cpuUsagePercent}%\n`;
+        report += `CPU del proceso: ${performanceData.cpuUsagePercent}%\n`;
       }
 
       if (
         performanceData.systemMemoryUsageMB !== undefined &&
         performanceData.systemMemoryTotalMB !== undefined
       ) {
-        report += `System Memory: ${performanceData.systemMemoryUsageMB} / ${performanceData.systemMemoryTotalMB} MB\n`;
+        report += `Memoria del sistema: ${performanceData.systemMemoryUsageMB} / ${performanceData.systemMemoryTotalMB} MB\n`;
       }
 
       if (performanceData.systemCpuPercent !== undefined) {
-        report += `System CPU: ${performanceData.systemCpuPercent}%\n`;
+        report += `CPU del sistema: ${performanceData.systemCpuPercent}%\n`;
       }
     }
 
     if (recentLogs) {
-      report += `\n--- Recent Logs ---\n${recentLogs}\n`;
+      report += `\n--- Logs recientes ---\n${recentLogs}\n`;
     }
 
     return report;
@@ -86,7 +86,7 @@ export function ForceCloseDialog({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Failed to copy report:", error);
+      console.error("Error al copiar el informe:", error);
     }
   };
 
@@ -96,32 +96,32 @@ export function ForceCloseDialog({
         <AlertDialogHeader className="flex-shrink-0">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            <AlertDialogTitle>Force Close Detected</AlertDialogTitle>
+            <AlertDialogTitle>Cierre inesperado detectado</AlertDialogTitle>
           </div>
         </AlertDialogHeader>
         <AlertDialogDescription asChild>
           <div className="space-y-4 pt-2 overflow-y-auto flex-1 pr-2">
             <div className="typo-body">
-              The app was not closed properly the last time it was running. This
-              could indicate a crash or unexpected termination.
+              La aplicación no se cerró correctamente la última vez. Esto
+              podría indicar un error o una terminación inesperada.
             </div>
 
             {/* System Info */}
             {(appVersion || platform) && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <div className="typo-label text-foreground">
-                  System Information
+                  Información del sistema
                 </div>
                 <div className="space-y-1 typo-body">
                   {appVersion && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Version:</span>
+                      <span className="text-muted-foreground">Versión:</span>
                       <span className="font-mono">{appVersion}</span>
                     </div>
                   )}
                   {platform && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Platform:</span>
+                      <span className="text-muted-foreground">Plataforma:</span>
                       <span className="font-mono">{platform}</span>
                     </div>
                   )}
@@ -132,7 +132,7 @@ export function ForceCloseDialog({
             {performanceData && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
                 <div className="typo-label text-foreground">
-                  Last Known State:{" "}
+                  Último estado conocido:{" "}
                   <span className="font-normal text-muted-foreground">
                     {formatTimestamp(performanceData.timestamp)}
                   </span>
@@ -142,11 +142,11 @@ export function ForceCloseDialog({
                   {/* Process Metrics */}
                   <div className="space-y-2">
                     <div className="typo-label text-foreground">
-                      Process Metrics
+                      Métricas del proceso
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Memory:</span>
+                        <span className="text-muted-foreground">Memoria:</span>
                         <span className="font-mono">
                           {performanceData.memoryUsageMB} MB
                         </span>
@@ -167,14 +167,14 @@ export function ForceCloseDialog({
                     performanceData.systemCpuPercent !== undefined) && (
                       <div className="space-y-2">
                         <div className="typo-label text-foreground">
-                          System Metrics
+                          Métricas del sistema
                         </div>
                         <div className="space-y-1">
                           {performanceData.systemMemoryUsageMB !== undefined &&
                             performanceData.systemMemoryTotalMB !== undefined && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">
-                                  Memory:
+                                  Memoria:
                                 </span>
                                 <span className="font-mono">
                                   {performanceData.systemMemoryUsageMB} /{" "}
@@ -201,7 +201,7 @@ export function ForceCloseDialog({
             {recentLogs && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <div className="typo-label text-foreground">
-                  Recent Logs
+                  Logs recientes
                 </div>
                 <pre className="typo-mono bg-background p-3 rounded overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words">
                   {recentLogs}
@@ -218,9 +218,9 @@ export function ForceCloseDialog({
             className="gap-2"
           >
             <Copy className="h-4 w-4" />
-            {copied ? "Copied!" : "Copy Report"}
+            {copied ? "¡Copiado!" : "Copiar informe"}
           </Button>
-          <AlertDialogAction onClick={onClose}>OK</AlertDialogAction>
+          <AlertDialogAction onClick={onClose}>Aceptar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -2,7 +2,7 @@
  * OpenCode AI SDK Adapter
  *
  * Integrates the OpenCode AI agent (https://opencode.ai) as a backend for
- * the minube-vibes chat system. Uses the @opencode-ai/sdk to communicate
+ * the vibes chat system. Uses the @opencode-ai/sdk to communicate
  * with a local OpenCode server via HTTP + SSE events.
  *
  * Architecture:
@@ -20,19 +20,54 @@
 
 import log from "electron-log";
 import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk";
-import type { IpcMainInvokeEvent } from "electron";
+import { type IpcMainInvokeEvent, BrowserWindow } from "electron";
 import { readSettings, writeSettings, decrypt } from "../../main/settings";
 import { getVibesAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
+import { extractReadableError, classifyError } from "../utils/error_classifier";
 import type { ChatStreamParams } from "@/ipc/types";
 import * as path from "node:path";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
+import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL, parseModelString } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
+import { app } from "electron";
+import * as fs from "node:fs";
 
 const logger = log.scope("opencode_adapter");
+
+/**
+ * Read ALL model names from a custom provider's on-disk cache and build
+ * an OpenCode models registry. This ensures every model is pre-registered
+ * so the user can switch between them without restarting the server.
+ */
+function buildCustomProviderModels(providerId: string, selectedModelID: string): Record<string, object> {
+    const models: Record<string, object> = {};
+    // Always include the selected model
+    models[selectedModelID] = {};
+
+    try {
+        const sanitized = providerId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const cachePath = path.join(app.getPath("userData"), `${sanitized}-models-cache.json`);
+        const raw = fs.readFileSync(cachePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed?.models && Array.isArray(parsed.models)) {
+            for (const m of parsed.models) {
+                if (m.name && typeof m.name === "string") {
+                    models[m.name] = {};
+                }
+            }
+            logger.info(`[OpenCode] Pre-registered ${Object.keys(models).length} models from cache for ${providerId}`);
+        }
+    } catch (err: any) {
+        // Cache file doesn't exist or is corrupt — fall back to just the selected model
+        logger.warn(`[OpenCode] Could not read models cache for ${providerId}: ${err.message}`);
+    }
+
+    return models;
+}
 
 // ============================================================================
 // Singleton: OpenCode server + client instance
@@ -42,12 +77,461 @@ let opencodeInstance: Awaited<ReturnType<typeof createOpencode>> | null = null;
 let clientInstance: ReturnType<typeof createOpencodeClient> | null = null;
 let serverUrl: string | null = null;
 
+// Track which provider the OpenCode singleton was started with.
+// When the user switches providers, the singleton must be destroyed and
+// recreated with the new provider's config (baseURL, apiKey, etc.).
+let lastActiveProviderId: string | null = null;
+
 // Track the last project directory used — needed for question reply routing
 let lastProjectDir: string | null = null;
+
+/** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
+export function getOpenCodeClientInstance() {
+    return clientInstance;
+}
+
+/**
+ * Resolves the model configuration for a given agent.
+ *
+ * Model tiers (simplified):
+ *   - `build`, `plan`, `explore`, `general` → selectedModel (the user's chosen model)
+ *   - `compaction`, `title`, `summary`, `mockup` → strategistModel (lightweight background tasks)
+ */
+export function resolveModelForAgent(
+    agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
+    settings: any, // UserSettings
+    /** @deprecated No longer used — kept for API compat. */
+    modelOverride?: string,
+): { model: { name: string; provider: string }; providerID: string; modelID: string } {
+    // Primary agents (build, plan, explore, general) all use selectedModel
+    const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
+    const activeProvider = settings.selectedModel?.provider || "openrouter";
+
+    if (PRIMARY_AGENTS.has(agentId)) {
+        const model = settings.selectedModel;
+        const result = {
+            model,
+            providerID: mapProviderForOpenCode(model),
+            modelID: composeModelWithVariant(
+                sanitizeModelName(model.name),
+                settings.selectedModelVariant ?? "",
+            ),
+        };
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
+        return result;
+    }
+
+    // Background/auxiliary agents use strategistModel.
+    // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+    const rawStratModel = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+    const { provider: bgProvider, name: bgModelName } = parseModelString(rawStratModel, activeProvider);
+
+    const providerForBackground = mapProviderForOpenCode({ provider: bgProvider, name: bgModelName });
+
+    const agentModel = {
+        name: bgModelName,
+        provider: bgProvider,
+    };
+    const result = {
+        model: agentModel,
+        providerID: providerForBackground,
+        modelID: sanitizeModelName(bgModelName),
+    };
+    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist, provider=${bgProvider})`);
+    return result;
+}
 
 // Active stream text injector — allows the question reply handler to inject
 // the user's answer directly into the live chat stream content.
 let activeTextInjector: ((text: string) => void) | null = null;
+
+// ── Permission response infrastructure ──
+// Pending permission resolvers: Map<permissionRequestId, resolve function>
+const pendingPermissionResolvers = new Map<string, (response: string) => void>();
+
+/**
+ * Default permission values for each tool.
+ * MUST be kept in sync with TOOLS[].defaultValue in OpenCodePermissionsSettings.tsx.
+ * Single source of truth for the backend — the UI component has its own copy
+ * but they MUST agree to avoid phantom settings (user sees one value, backend uses another).
+ */
+const PERMISSION_DEFAULTS: Record<string, "allow" | "ask" | "deny"> = {
+    edit: "ask",
+    read: "allow",   // Read ops are non-destructive — always allowed
+    list: "allow",   // Directory listing — non-destructive, always allowed
+    bash: "allow",
+    webfetch: "ask",
+    websearch: "ask",
+    lsp: "allow",
+    task: "allow",              // Subagent launch — safe by default
+    skill: "allow",             // Skill execution — safe by default
+    externalDirectory: "ask",   // Access outside project — ask by default
+};
+
+// ============================================================================
+// Vibes Rules — written to docs/vibes-rules.md in user projects
+// ============================================================================
+
+const VIBES_RULES_MD = `# Vibes Platform Rules
+
+## Linting & Type-Checking
+
+- Run lint/type-check **once**, only after **all** edits are complete. Never between individual file changes.
+- **No doom loops**: if lint reports errors, fix the critical ones and stop. Maximum 1 cycle: lint → fix → lint. Do not keep looping.
+- **Prefer oxlint**: if the project has \`oxlint\` in devDependencies, use \`npx oxlint\` instead of \`eslint\`. It is 100x faster.
+- **Install oxlint**: if the project uses eslint but does NOT have oxlint, install it (\`npm i -D oxlint\`) and update the \`lint\` script in package.json to \`oxlint\` before running lint. This is a one-time migration.
+- **Targeted lint**: never lint the entire project. If you edited 2 files, lint only those: \`npx oxlint src/file1.tsx src/file2.tsx\`
+- **Skip when irrelevant**: if you only changed CSS, text content, or static assets, do not run lint. It only matters after JS/TS logic changes.
+
+## Execution
+
+- Never explain how to run the app locally (npm run dev, etc.). The Vibes environment handles compilation and preview automatically.
+`;
+
+/**
+ * Write docs/vibes-rules.md to the project directory.
+ * This file is registered in opencode.json instructions and combined
+ * with AGENTS.md by OpenCode natively.
+ */
+async function writeVibesRules(projectDir: string): Promise<void> {
+    const fs = await import("node:fs");
+    const docsDir = path.join(projectDir, "docs");
+    const rulesPath = path.join(docsDir, "vibes-rules.md");
+
+    if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+    }
+    fs.writeFileSync(rulesPath, VIBES_RULES_MD, "utf-8");
+    logger.info(`[OpenCode] Wrote vibes-rules.md to ${rulesPath}`);
+}
+
+/**
+ * Build the OpenCode `permission` config block from user settings.
+ * Falls back to PERMISSION_DEFAULTS if no settings are configured.
+ */
+function buildPermissionConfig(settings: any) {
+    const perms = settings?.openCodePermissions2;
+
+    // Build bash object with granular rules.
+    // OpenCode pattern matching: last matching rule wins → put "*" first, specifics after.
+    //
+    // Safe-command allowlist: these read-only/inspection commands are always allowed
+    // even when the user sets bash to "ask". This prevents frustration from being
+    // asked about harmless commands, which would lead the user to just allow everything.
+    const bashRules: Record<string, string> = {
+        "*": perms?.bash ?? "allow",
+        // ── Read-only / inspection — always safe ──
+        "ls *": "allow",
+        "cat *": "allow",
+        "head *": "allow",
+        "tail *": "allow",
+        "grep *": "allow",
+        "rg *": "allow",
+        "find *": "allow",
+        "wc *": "allow",
+        "pwd": "allow",
+        "echo *": "allow",
+        "which *": "allow",
+        "type *": "allow",
+        "file *": "allow",
+        "stat *": "allow",
+        "du *": "allow",
+        "df *": "allow",
+        "env": "allow",
+        "printenv *": "allow",
+        "node --version*": "allow",
+        "node -e *": "allow",
+        "npm list*": "allow",
+        "npm ls*": "allow",
+        "npm --version*": "allow",
+        "npx --version*": "allow",
+        "git status*": "allow",
+        "git log*": "allow",
+        "git diff*": "allow",
+        "git show*": "allow",
+        "git branch": "allow",       // list branches (no args = read-only)
+        "git branch -a*": "allow",   // list all branches
+        "git branch -v*": "allow",   // list with verbose
+        "git remote*": "allow",
+        "git stash list*": "allow",
+        // ── Filesystem — dangerous ──
+        "rm *": perms?.bashRm ?? "ask",
+        // ── Git — staging ──
+        "git add *": perms?.gitAdd ?? "ask",
+        // ── Git — repo-local destructive ──
+        "git commit *": perms?.gitCommit ?? perms?.bashGitCommit ?? "deny",
+        "git reset *": perms?.gitReset ?? "ask",
+        "git checkout *": perms?.gitCheckout ?? "ask",
+        "git restore *": perms?.gitRestore ?? "ask",
+        "git clean *": perms?.gitClean ?? "ask",
+        "git rebase *": perms?.gitRebase ?? "ask",
+        "git merge --abort*": perms?.gitMergeAbort ?? "ask",
+        "git stash drop*": perms?.gitStashDrop ?? "ask",
+        "git branch -D *": perms?.gitBranchDelete ?? "ask",
+        "git branch -d *": perms?.gitBranchDelete ?? "ask",
+        "git branch --delete *": perms?.gitBranchDelete ?? "ask",
+        "git cherry-pick --abort*": perms?.gitCherryPickAbort ?? "ask",
+        // ── Git — remote destructive (deny by default) ──
+        "git push *": perms?.gitPush ?? perms?.bashGitPush ?? "deny",
+        "git push --force*": perms?.gitPushForce ?? "deny",
+        "git push -f *": perms?.gitPushForce ?? "deny",
+        "git push --delete *": perms?.gitPushDelete ?? "deny",
+    };
+
+    // Append user custom rules (last → highest priority)
+    for (const rule of perms?.bashCustomRules ?? []) {
+        bashRules[rule.pattern] = rule.permission;
+    }
+
+    return {
+        edit: perms?.edit ?? PERMISSION_DEFAULTS.edit,
+        read: "allow",    // Read ops (read, glob, grep, list) are always allowed — non-destructive
+        glob: "allow",
+        grep: "allow",
+        list: "allow",    // Directory listing — CRITICAL: without this, OpenCode blocks on ls/list
+        bash: bashRules,
+        webfetch: perms?.webfetch ?? PERMISSION_DEFAULTS.webfetch,
+        websearch: perms?.websearch ?? PERMISSION_DEFAULTS.websearch,
+        lsp: perms?.lsp ?? PERMISSION_DEFAULTS.lsp,
+        task: perms?.task ?? "allow",              // Subagent launch
+        question: "allow",
+        todowrite: "allow",                        // Agent TODO management — non-destructive
+        doom_loop: "allow",                        // Auto-recovery from stuck loops — non-destructive
+        skill: perms?.skill ?? "allow",            // Skill/prompt execution
+        external_directory: perms?.externalDirectory ?? "ask",
+    };
+}
+
+/**
+ * Resolve the effective permission for a specific tool + input.
+ * For bash, checks granular sub-rules. For other tools, returns the global pill.
+ */
+function resolveToolPermission(
+    toolName: string,
+    toolInput: string,
+    permsConfig?: any,
+): "allow" | "ask" | "deny" {
+    if (!permsConfig) return "allow"; // No config → default allow (backwards compat)
+
+    // Map OpenCode tool names to our settings keys.
+    // glob/grep/list are separate tools in OpenCode but follow the user's "read" pill.
+    // external_directory uses underscore in OpenCode but camelCase in settings.
+    const TOOL_ALIAS: Record<string, string> = {
+        glob: "read",
+        grep: "read",
+        list: "read",
+        external_directory: "externalDirectory",
+    };
+    const settingsKey = TOOL_ALIAS[toolName] ?? toolName;
+
+    // ── Read-family tools are ALWAYS auto-allowed regardless of config ──
+    // These are non-destructive operations that should never block the agent.
+    // Without this safeguard, a missing config key causes the agent to stall
+    // waiting for a user permission response that may never come.
+    const READ_FAMILY_TOOLS = new Set(["read", "glob", "grep", "list"]);
+    if (READ_FAMILY_TOOLS.has(toolName)) {
+        return "allow";
+    }
+
+    const value = permsConfig[settingsKey as keyof typeof permsConfig];
+
+    // For tools with a simple pill (edit, read, webfetch, websearch, lsp)
+    if (value === "allow" || value === "ask" || value === "deny") {
+        return value;
+    }
+
+    // If value is something unexpected (e.g. stale "once"), default to "ask" (safe fallback)
+    return PERMISSION_DEFAULTS[settingsKey] ?? "ask";
+}
+
+/**
+ * Wait for the renderer to send a permission response via IPC.
+ * Returns the user's choice: "once" | "always" | "reject".
+ * Times out after `timeoutMs` and auto-rejects.
+ */
+function waitForPermissionResponse(requestId: string, timeoutMs: number): Promise<string> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            pendingPermissionResolvers.delete(requestId);
+            logger.warn(`[OC:Permission] Timeout for ${requestId} — auto-rejecting`);
+            resolve("reject");
+        }, timeoutMs);
+
+        pendingPermissionResolvers.set(requestId, (response: string) => {
+            clearTimeout(timer);
+            pendingPermissionResolvers.delete(requestId);
+            resolve(response);
+        });
+    });
+}
+
+/**
+ * Persist a permission choice from the chat banner into user settings.
+ *
+ * Performs the **full settings sync pipeline** (same as the UI settings path):
+ *   1. writeSettings() → local disk + in-memory cache.
+ *   2. Broadcast "settings:updated-from-backend" → renderer atom refreshes immediately.
+ *   3. Sync to Bunny DB → survives the remote-merge in getUserSettings.
+ *
+ * ⚠️  We cannot use the renderer's IPC `setUserSettings` handler because this
+ * function runs in the main process during an active agent session. Instead we
+ * replicate the same 3 steps that `setUserSettings` does (settings_handlers.ts).
+ *
+ * For NON-bash tools (edit, read, webfetch, etc.): sets the global pill directly.
+ * For BASH: adds a granular custom rule (e.g. `"ls *": "allow"`) instead of
+ * touching the global bash pill. This prevents a harmless `ls` approval from
+ * accidentally enabling `rm`.
+ *
+ * @param toolName       - OpenCode tool name ("bash", "edit", "read", etc.)
+ * @param value          - "allow" or "deny"
+ * @param alwaysPatterns - OpenCode's suggested patterns from `props.always`
+ * @param commandInput   - The raw command/input that triggered the permission
+ */
+async function persistPermissionToSettings(
+    toolName: string,
+    value: "allow" | "deny",
+    alwaysPatterns: string[],
+    commandInput: string,
+) {
+    try {
+        const current = readSettings();
+        const perms = { ...current.openCodePermissions2 };
+
+        if (toolName === "bash") {
+            // ── Bash: add a specific custom rule, never touch the global pill ──
+            // Priority: use OpenCode's suggested `always` patterns if available,
+            // otherwise extract the command prefix (first word) + wildcard.
+            const rules: Array<{ id: string; pattern: string; permission: "ask" | "allow" | "deny" }> =
+                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules as any] : [];
+
+            const patternsToAdd: string[] = [];
+
+            if (alwaysPatterns.length > 0) {
+                // Use OpenCode's own suggestions (e.g. ["ls *", "git status*"])
+                for (const p of alwaysPatterns) {
+                    if (!rules.some((r) => r.pattern === p)) {
+                        patternsToAdd.push(p);
+                    }
+                }
+            } else if (commandInput.trim()) {
+                // Fallback: extract first word → "command *"
+                const firstWord = commandInput.trim().split(/\s+/)[0];
+                const pattern = `${firstWord} *`;
+                if (!rules.some((r) => r.pattern === pattern)) {
+                    patternsToAdd.push(pattern);
+                }
+            }
+
+            for (const pattern of patternsToAdd) {
+                rules.push({
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    pattern,
+                    permission: value as "ask" | "allow" | "deny",
+                });
+                logger.info(`[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`);
+            }
+
+            perms.bashCustomRules = rules;
+        } else {
+            // ── Non-bash: set the global tool pill ──
+            const TOOL_TO_KEY: Record<string, string> = {
+                edit: "edit", read: "read", glob: "read", grep: "read", list: "read",
+                webfetch: "webfetch", websearch: "websearch", lsp: "lsp",
+                task: "task", skill: "skill", external_directory: "externalDirectory",
+            };
+            const key = TOOL_TO_KEY[toolName];
+            if (!key) {
+                logger.warn(`[OC:Permission] Unknown tool "${toolName}" — cannot persist`);
+                return;
+            }
+            (perms as any)[key] = value;
+            logger.info(`[OC:Permission] Persisted ${toolName} → ${value} (global pill)`);
+        }
+
+        writeSettings({ ...current, openCodePermissions2: perms });
+        const updated = readSettings();
+        logger.info(`[OC:Permission] Saved to settings.json`);
+
+        // ── Notify renderer so the UI atom refreshes immediately ──
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed() && win.webContents) {
+                safeSend(win.webContents, "settings:updated-from-backend", updated);
+            }
+        }
+        logger.info(`[OC:Permission] Broadcasted to renderer`);
+
+        // ── Sync to Bunny DB so getUserSettings merge doesn't overwrite ──
+        try {
+            const userId = updated.userId;
+            if (userId) {
+                const db = getRemoteDb();
+                const { userId: _u, sessionToken: _s, ...syncable } = updated;
+                const settingsJson = JSON.stringify(syncable);
+                const existing = await db.query.userSettings.findFirst({
+                    where: eq(remoteSchema.userSettings.userId, userId),
+                });
+                if (existing) {
+                    await db.update(remoteSchema.userSettings)
+                        .set({ settingsJson, updatedAt: new Date() })
+                        .where(eq(remoteSchema.userSettings.userId, userId));
+                } else {
+                    await db.insert(remoteSchema.userSettings).values({
+                        userId, settingsJson, updatedAt: new Date(),
+                    });
+                }
+                logger.info(`[OC:Permission] Synced to Bunny DB`);
+            }
+        } catch (syncErr: any) {
+            logger.warn(`[OC:Permission] Bunny DB sync failed (non-fatal): ${syncErr.message}`);
+        }
+    } catch (e: any) {
+        logger.error(`[OC:Permission] Failed to persist setting: ${e.message}`);
+    }
+}
+
+/**
+ * Reply to a permission request via direct HTTP to the documented server endpoint:
+ *   POST /session/:id/permissions/:permissionID?directory=...
+ *   body: { response: "once"|"always"|"reject" }
+ *
+ * Uses raw fetch (same pattern as questionReply) to ensure the `directory`
+ * query param is always included — the v1 SDK call was missing it, which
+ * caused the server to silently fail to route the reply to the correct instance.
+ */
+async function replyToPermission(
+    requestId: string,
+    response: "once" | "always" | "reject",
+    sessionId: string,
+): Promise<boolean> {
+    if (!serverUrl) {
+        logger.error(`[OC:Permission] ❌ No serverUrl — cannot reply`);
+        return false;
+    }
+
+    const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+    const url = `${serverUrl}/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}${dirParam}`;
+
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ response }),
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+            logger.error(`[OC:Permission] ❌ HTTP ${res.status} for ${response}/${requestId}: ${text}`);
+            return false;
+        }
+
+        logger.info(`[OC:Permission] ✅ ${response} for ${requestId} — server: ${text}`);
+        return true;
+    } catch (e: any) {
+        logger.error(`[OC:Permission] ❌ Fetch error for ${requestId}: ${e.message}`);
+        return false;
+    }
+}
 
 // Map chatId → opencode sessionId
 const chatSessionMap = new Map<number, string>();
@@ -107,6 +591,17 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
                 const newSessionId = forked.data?.id;
                 if (newSessionId) {
                     chatSessionMap.set(chatId, newSessionId);
+                    // Delete the original session (now replaced by the fork)
+                    deleteOpenCodeSessionById(sessionId);
+                    // Update DB reference to point to the new forked session
+                    try {
+                        const db = getRemoteDb();
+                        await db.update(remoteSchema.chats)
+                            .set({ opencodeSessionId: newSessionId })
+                            .where(eq(remoteSchema.chats.id, chatId));
+                    } catch (e: any) {
+                        logger.warn(`[OpenCode] Failed to persist forked sessionId: ${e.message}`);
+                    }
                     logger.info(`[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`);
                     return;
                 }
@@ -117,6 +612,7 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
 
         // Last resort: destroy session
         chatSessionMap.delete(chatId);
+        deleteOpenCodeSessionById(sessionId);
         logger.warn(`[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`);
     }
 }
@@ -131,7 +627,346 @@ export function destroyOpenCodeSession(chatId: number): void {
     if (sessionId) {
         chatSessionMap.delete(chatId);
         logger.info(`[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`);
+        deleteOpenCodeSessionById(sessionId);
     }
+}
+
+/**
+ * Delete a specific OpenCode session from the backend by its ID.
+ */
+export function deleteOpenCodeSessionById(sessionId: string): void {
+    if (clientInstance) {
+        clientInstance.session.delete({ path: { id: sessionId } }).catch((err: any) => {
+            logger.warn(`[OpenCode] Failed to delete session ${sessionId} from backend: ${err.message}`);
+        });
+    }
+}
+
+/**
+ * Clean up ALL OpenCode sessions associated with a Vibes app.
+ * Must be called BEFORE the app row is deleted (FK cascade would lose opencodeSessionId).
+ */
+export async function cleanupOpenCodeSessionsForApp(appId: number): Promise<void> {
+    if (!clientInstance) return;
+
+    const db = getRemoteDb();
+
+    // 1. Get all chats with opencode sessions for this app
+    const chatsWithSessions = await db.query.chats.findMany({
+        where: eq(remoteSchema.chats.appId, appId),
+        columns: { id: true, opencodeSessionId: true },
+    });
+
+    // 2. Delete each session from OpenCode backend
+    for (const chat of chatsWithSessions) {
+        if (chat.opencodeSessionId) {
+            deleteOpenCodeSessionById(chat.opencodeSessionId);
+        }
+        chatSessionMap.delete(chat.id);
+    }
+
+    // 3. Clean up visual-edit session for this app's path
+    const app = await db.query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
+        columns: { path: true },
+    });
+    if (app?.path) {
+        const appPath = getVibesAppPath(app.path);
+        const visualSessionId = visualEditSessionMap.get(appPath);
+        if (visualSessionId) {
+            deleteOpenCodeSessionById(visualSessionId);
+            visualEditSessionMap.delete(appPath);
+        }
+    }
+
+    logger.info(`[OpenCode] Cleaned up ${chatsWithSessions.length} session(s) for app ${appId}`);
+}
+
+/**
+ * Purge orphaned OpenCode sessions that no longer correspond to any Vibes chat.
+ * @param dryRun If true, returns a report without deleting anything.
+ * @returns Summary object including a full markdown report string.
+ */
+export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<{
+    totalInOpenCode: number;
+    knownInVibes: number;
+    orphaned: number;
+    deleted: number;
+    errors: number;
+    report: string;
+}> {
+    const emptyResult = { totalInOpenCode: 0, knownInVibes: 0, orphaned: 0, deleted: 0, errors: 0, report: '' };
+
+    // Auto-start the OpenCode server if it's not running
+    if (!clientInstance) {
+        try {
+            const dummyPath = getVibesAppPath(".");
+            await getOpenCodeClient(dummyPath);
+        } catch (e: any) {
+            return { ...emptyResult, report: `❌ No se pudo iniciar el servidor de OpenCode: ${e.message}` };
+        }
+    }
+    if (!clientInstance) {
+        return { ...emptyResult, report: '❌ No se pudo obtener el cliente de OpenCode.' };
+    }
+
+    const startMs = Date.now();
+
+    // 1. Get ALL sessions from OpenCode (experimental endpoint: cross-project)
+    //    The v1 SDK only has session.list() which is project-scoped.
+    //    We use the raw HTTP endpoint /experimental/session to list across ALL projects.
+    let allOcSessions: Array<{ id: string; title: string; createdAt: string }> = [];
+    try {
+        const url = `${serverUrl}/experimental/session?limit=10000`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        const sessions = Array.isArray(data) ? data : (data.data || data.sessions || []);
+        allOcSessions = sessions.map((s: any) => ({
+            id: s.id,
+            title: s.title || s.info?.title || '(sin título)',
+            createdAt: s.time?.created ? new Date(s.time.created * 1000).toISOString() : s.createdAt || '?',
+        }));
+    } catch (e: any) {
+        return { ...emptyResult, report: `❌ Error al listar sesiones OpenCode: ${e.message}` };
+    }
+
+    // 2. Get all known session IDs from Vibes DB
+    const db = getRemoteDb();
+    const allChats = await db.query.chats.findMany({
+        columns: { id: true, opencodeSessionId: true, title: true, appId: true },
+    });
+    const knownIds = new Set<string>();
+    const knownSessionDetails = new Map<string, { chatId: number; chatTitle: string | null; appId: number }>();
+    for (const c of allChats) {
+        if (c.opencodeSessionId) {
+            knownIds.add(c.opencodeSessionId);
+            knownSessionDetails.set(c.opencodeSessionId, {
+                chatId: c.id,
+                chatTitle: c.title,
+                appId: c.appId,
+            });
+        }
+    }
+    // Visual-edit sessions are also "known"
+    for (const [appPath, sid] of visualEditSessionMap.entries()) {
+        knownIds.add(sid);
+        knownSessionDetails.set(sid, { chatId: 0, chatTitle: `[visual-edit] ${appPath}`, appId: 0 });
+    }
+    // In-memory chat sessions (may not be persisted to DB yet)
+    for (const [chatId, sid] of chatSessionMap.entries()) {
+        if (!knownIds.has(sid)) {
+            knownIds.add(sid);
+            knownSessionDetails.set(sid, { chatId, chatTitle: `[en memoria]`, appId: 0 });
+        }
+    }
+
+    // 3. Classify
+    const orphanSessions = allOcSessions.filter(s => !knownIds.has(s.id));
+    const matchedSessions = allOcSessions.filter(s => knownIds.has(s.id));
+
+    // Diagnostic logging
+    logger.info(`[OpenCode] Purge diagnostic: ${allChats.length} chats in DB, ${knownIds.size} known IDs, ${chatSessionMap.size} in-memory, ${visualEditSessionMap.size} visual-edit`);
+    if (allChats.length > 0) {
+        const sample = allChats.slice(0, 3).map(c => `chat#${c.id}→${c.opencodeSessionId ?? 'NULL'}`).join(', ');
+        logger.info(`[OpenCode] DB sample: ${sample}`);
+    }
+    if (allOcSessions.length > 0) {
+        const sample = allOcSessions.slice(0, 3).map(s => s.id).join(', ');
+        logger.info(`[OpenCode] OC sample: ${sample}`);
+    }
+
+    // Helper: measure OpenCode data directory size
+    const measureDiskSize = (): number => {
+        try {
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const ocDataDir = `${HOME}/.local/share/opencode`;
+            const output = execSync(`du -sb "${ocDataDir}" 2>/dev/null || echo "0"`, { encoding: 'utf-8' }).trim();
+            return parseInt(output.split('\t')[0], 10) || 0;
+        } catch { return 0; }
+    };
+    const formatBytes = (bytes: number): string => {
+        if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+    };
+
+    const sizeBefore = measureDiskSize();
+
+    // 4. Delete orphans (unless dryRun)
+    let deleted = 0;
+    let errors = 0;
+    const deleteResults: Array<{ id: string; title: string; success: boolean; error?: string }> = [];
+    if (!dryRun) {
+        for (const orphan of orphanSessions) {
+            try {
+                await clientInstance!.session.delete({ path: { id: orphan.id } });
+                deleted++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: true });
+            } catch (e: any) {
+                errors++;
+                deleteResults.push({ id: orphan.id, title: orphan.title, success: false, error: e.message });
+            }
+        }
+
+        // 4b. Deep cleanup: remove orphan diff files from disk
+        let diffsCleaned = 0;
+        try {
+            const fs = require('fs');
+            const pathMod = require('path');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const diffDir = pathMod.join(HOME, '.local/share/opencode/storage/session_diff');
+            if (fs.existsSync(diffDir)) {
+                // Get remaining session IDs from DB
+                const { execSync } = require('child_process');
+                const dbPath = pathMod.join(HOME, '.local/share/opencode/opencode.db');
+                const existingIds = new Set<string>();
+                try {
+                    const output = execSync(`sqlite3 "${dbPath}" "SELECT id FROM session;"`, { encoding: 'utf-8' });
+                    output.trim().split('\n').filter(Boolean).forEach((id: string) => existingIds.add(id.trim()));
+                } catch { /* DB might be locked, skip */ }
+
+                if (existingIds.size > 0) {
+                    const files = fs.readdirSync(diffDir) as string[];
+                    for (const file of files) {
+                        const sessionId = file.replace('.json', '');
+                        if (!existingIds.has(sessionId)) {
+                            try {
+                                fs.unlinkSync(pathMod.join(diffDir, file));
+                                diffsCleaned++;
+                            } catch { /* skip locked files */ }
+                        }
+                    }
+                    logger.info(`[OpenCode] Cleaned ${diffsCleaned} orphan diff files`);
+                }
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Diff cleanup error (non-fatal): ${e.message}`);
+        }
+
+        // 4c. Shut down server, then VACUUM + WAL checkpoint to reclaim disk space
+        try {
+            await shutdownOpenCode();
+            logger.info('[OpenCode] Server shut down for VACUUM');
+
+            const { execSync } = require('child_process');
+            const HOME = process.env.HOME || `/home/${process.env.USER}`;
+            const dbPath = `${HOME}/.local/share/opencode/opencode.db`;
+            execSync(`sqlite3 "${dbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 30000 });
+            logger.info('[OpenCode] VACUUM + WAL checkpoint completed');
+        } catch (e: any) {
+            logger.warn(`[OpenCode] VACUUM error (non-fatal): ${e.message}`);
+        }
+    }
+
+    const sizeAfter = dryRun ? sizeBefore : measureDiskSize();
+    const elapsedMs = Date.now() - startMs;
+
+    // 5. Build markdown report
+    const lines: string[] = [];
+    lines.push(`# Informe de Purgado OpenCode`);
+    lines.push('');
+    lines.push(`**Modo:** ${dryRun ? '🔍 Simulación (dry-run)' : '🗑️ Ejecución real'}`);
+    lines.push(`**Fecha:** ${new Date().toISOString()}`);
+    lines.push(`**Duración:** ${elapsedMs}ms`);
+    const freed = sizeBefore - sizeAfter;
+    lines.push(`**Almacenamiento OpenCode:** ${formatBytes(sizeBefore)}${!dryRun ? ` → ${formatBytes(sizeAfter)}${freed > 0 ? ` (liberado: ${formatBytes(freed)})` : ''}` : ''}`);
+    lines.push('');
+    lines.push(`## Diagnóstico`);
+    lines.push('');
+    lines.push(`| Fuente | Registros |`);
+    lines.push(`|--------|-----------|`);
+    lines.push(`| Chats en DB (tabla chats) | ${allChats.length} |`);
+    lines.push(`| Chats con opencodeSessionId | ${allChats.filter(c => c.opencodeSessionId).length} |`);
+    lines.push(`| chatSessionMap (memoria) | ${chatSessionMap.size} |`);
+    lines.push(`| visualEditSessionMap (memoria) | ${visualEditSessionMap.size} |`);
+    lines.push(`| IDs conocidos (total) | ${knownIds.size} |`);
+    lines.push(`| Sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push('');
+    if (allChats.length > 0 && allChats.filter(c => c.opencodeSessionId).length > 0) {
+        lines.push(`**Muestra DB** (primeros 5 con sessionId):`);
+        const dbSample = allChats.filter(c => c.opencodeSessionId).slice(0, 5);
+        for (const c of dbSample) {
+            lines.push(`- chat #${c.id} → \`${c.opencodeSessionId}\``);
+        }
+        lines.push('');
+    }
+    if (allOcSessions.length > 0) {
+        lines.push(`**Muestra OpenCode** (primeros 5):`);
+        for (const s of allOcSessions.slice(0, 5)) {
+            lines.push(`- \`${s.id}\` — ${s.title}`);
+        }
+        lines.push('');
+    }
+    lines.push(`## Resumen`);
+    lines.push('');
+    lines.push(`| Métrica | Valor |`);
+    lines.push(`|---------|-------|`);
+    lines.push(`| Total sesiones en OpenCode | ${allOcSessions.length} |`);
+    lines.push(`| Sesiones vinculadas a Vibes | ${matchedSessions.length} |`);
+    lines.push(`| Sesiones huérfanas | ${orphanSessions.length} |`);
+    if (!dryRun) {
+        lines.push(`| Eliminadas | ${deleted} |`);
+        lines.push(`| Errores al eliminar | ${errors} |`);
+    }
+    lines.push('');
+
+    if (matchedSessions.length > 0) {
+        lines.push(`## ✅ Sesiones vinculadas (se conservan)`);
+        lines.push('');
+        lines.push(`| Session ID | Título OC | Chat Vibes | App ID |`);
+        lines.push(`|-----------|-----------|------------|--------|`);
+        for (const s of matchedSessions) {
+            const detail = knownSessionDetails.get(s.id);
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            lines.push(`| \`${sid}\` | ${s.title} | ${detail ? `#${detail.chatId} "${detail.chatTitle || ''}"` : '?'} | ${detail?.appId ?? '?'} |`);
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length > 0) {
+        lines.push(`## ${dryRun ? '⚠️ Sesiones huérfanas (se eliminarían)' : '🗑️ Sesiones huérfanas eliminadas'}`);
+        lines.push('');
+        if (dryRun) {
+            lines.push(`| Session ID | Título | Creado |`);
+            lines.push(`|-----------|--------|--------|`);
+        } else {
+            lines.push(`| Session ID | Título | Creado | Estado |`);
+            lines.push(`|-----------|--------|--------|--------|`);
+        }
+        for (const s of orphanSessions) {
+            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
+            if (dryRun) {
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} |`);
+            } else {
+                const result = deleteResults.find(r => r.id === s.id);
+                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} | ${result?.success ? '✅' : `❌ ${result?.error}`} |`);
+            }
+        }
+        lines.push('');
+    }
+
+    if (orphanSessions.length === 0) {
+        lines.push(`> ✨ No se encontraron sesiones huérfanas. Todo sincronizado.`);
+        lines.push('');
+    }
+
+    const report = lines.join('\n');
+    logger.info(
+        `[OpenCode] Purge ${dryRun ? '(dry-run)' : ''}: ${allOcSessions.length} total, ` +
+        `${orphanSessions.length} orphaned, ${deleted} deleted, ${errors} errors (${elapsedMs}ms)`
+    );
+
+    return {
+        totalInOpenCode: allOcSessions.length,
+        knownInVibes: matchedSessions.length,
+        orphaned: orphanSessions.length,
+        deleted,
+        errors,
+        report,
+    };
 }
 
 /**
@@ -141,33 +976,119 @@ export function destroyOpenCodeSession(chatId: number): void {
 export async function updateOpenCodeConfig(changes: {
     selectedModel?: { provider?: string; name: string };
     selectedModelVariant?: string;
-    standardModeModel?: string;
+    strategistModel?: string;
+    executorModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    inferenceTemperature?: number;
+    inferenceTopP?: number;
+    inferenceRepetitionPenalty?: number;
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
     try {
         const body: Record<string, any> = {};
+        const settings = readSettings();
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
+        const isCustom = activeProvider.startsWith("custom::");
+
+        // Determine the providerID that OpenCode uses for routing
+        let activeProviderID: string;
+        if (changes.selectedModel) {
+            activeProviderID = mapProviderForOpenCode(changes.selectedModel);
+        } else {
+            // No model change — infer from current settings
+            activeProviderID = mapProviderForOpenCode(settings.selectedModel || { name: "", provider: isCustom ? activeProvider : "openrouter" });
+        }
 
         if (changes.selectedModel) {
-            const providerID = mapProviderForOpenCode(changes.selectedModel);
             // Apply variant suffix if set (variant is ignored for free models)
-            const settings = readSettings();
             const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
-            const modelID = composeModelWithVariant(changes.selectedModel.name, variant);
-            body.model = `${providerID}/${modelID}`;
+            const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
+            const fullModel = `${activeProviderID}/${modelID}`;
+            body.model = fullModel;
+            // Also update plan/explore/general agents to use the same model
+            const agentConfig: Record<string, any> = body.agent || {};
+            for (const id of ["plan", "explore", "general"]) {
+                agentConfig[id] = { ...agentConfig[id], model: fullModel };
+            }
+            body.agent = agentConfig;
         }
-        if (changes.standardModeModel) {
-            body.small_model = `openrouter/${changes.standardModeModel}`;
+        // Executor model → small_model (used for lightweight tasks)
+        // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+        if (changes.executorModel) {
+            const { provider: eProv, name: eName } = parseModelString(changes.executorModel, activeProvider);
+            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
+            body.small_model = `${eProvID}/${sanitizeModelName(eName)}`;
+            // Register the provider if it's a different one (e.g. Ollama)
+            if (eProvID !== activeProviderID) {
+                registerExtraProvider(body, eProv, eName, settings);
+            }
         }
-        if (changes.reasoningEffort || changes.textVerbosity) {
+        if (changes.reasoningEffort || changes.textVerbosity || changes.inferenceTemperature !== undefined || changes.inferenceTopP !== undefined || changes.inferenceRepetitionPenalty !== undefined) {
             body.agent = {
+                ...body.agent,
                 build: {
                     ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
                     ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
+                    ...(changes.inferenceTemperature !== undefined ? { temperature: changes.inferenceTemperature } : {}),
+                    ...(changes.inferenceTopP !== undefined ? { topP: changes.inferenceTopP } : {}),
+                    ...(changes.inferenceRepetitionPenalty !== undefined ? { repetitionPenalty: changes.inferenceRepetitionPenalty } : {}),
                 },
             };
+        }
+        // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
+        // v2: supports provider::model format
+        if (changes.strategistModel) {
+            const { provider: sProv, name: sName } = parseModelString(changes.strategistModel, activeProvider);
+            const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
+            const agentConfig: Record<string, any> = body.agent || {};
+            const model = `${sProvID}/${sanitizeModelName(sName)}`;
+            for (const id of ["compaction", "title", "summary", "mockup"]) {
+                agentConfig[id] = { ...agentConfig[id], model };
+            }
+            body.agent = agentConfig;
+            // Register the provider if different
+            if (sProvID !== activeProviderID) {
+                registerExtraProvider(body, sProv, sName, settings);
+            }
+            logger.info(`[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`);
+        }
+
+        // ── Always register the model in provider.models for hot-update ──
+        // Register under the correct providerID so OpenCode can find the model.
+        const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
+        if (currentModelID) {
+            const allModels = isCustom
+                ? buildCustomProviderModels(activeProvider, currentModelID)
+                : { [currentModelID]: {} };
+            const providerSection: Record<string, any> = {
+                models: allModels,
+            };
+
+            // For custom providers, inject npm + baseURL + apiKey
+            if (isCustom) {
+                const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
+                if (customConfig) {
+                    providerSection.npm = "@ai-sdk/openai-compatible";
+                    providerSection.name = customConfig.name || activeProvider.replace(/^custom::/, "");
+                    providerSection.options = {
+                        baseURL: customConfig.apiBaseUrl,
+                        ...(customConfig.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
+                    };
+                }
+            }
+
+            // For Ollama as primary provider, inject npm + baseURL
+            if (activeProviderID === "ollama") {
+                const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                providerSection.npm = "@ai-sdk/openai-compatible";
+                providerSection.name = "Ollama (local)";
+                providerSection.options = { baseURL: `${ollamaUrl}/v1` };
+            }
+
+            body.provider = { [activeProviderID]: providerSection };
+            logger.info(`[OpenCode] Hot-registered model: ${activeProviderID}/${currentModelID}`);
         }
 
         await clientInstance.config.update({ body: body as any });
@@ -178,12 +1099,27 @@ export async function updateOpenCodeConfig(changes: {
 }
 
 /**
- * Hot update OpenCode MCP servers config without restarting
+ * Hot update OpenCode permission config without restarting.
+ * Called when the user changes permission pills in Ajustes → Agente.
  */
-export async function updateOpenCodeMcpConfig(servers: McpServer[]): Promise<void> {
+export async function updateOpenCodePermissions(settings: any): Promise<void> {
     if (!clientInstance) return;
     try {
-        const mcpConfig = buildMcpConfig(servers);
+        const permission = buildPermissionConfig(settings);
+        await clientInstance.config.update({ body: { permission } as any });
+        logger.info(`[OpenCode] Permission config updated in-place: ${JSON.stringify(permission)}`);
+    } catch (error: any) {
+        logger.warn(`[OpenCode] config.update(permission) failed: ${error.message}`);
+    }
+}
+
+/**
+ * Hot update OpenCode MCP servers config without restarting
+ */
+export async function updateOpenCodeMcpConfig(servers: McpServer[], appPath?: string): Promise<void> {
+    if (!clientInstance) return;
+    try {
+        const mcpConfig = buildMcpConfig(servers, appPath);
         if (mcpConfig) {
             await clientInstance.config.update({ body: { mcp: mcpConfig } as any });
             logger.info(`[OpenCode] MCP config updated in-place`);
@@ -193,26 +1129,140 @@ export async function updateOpenCodeMcpConfig(servers: McpServer[]): Promise<voi
     }
 }
 
-function buildMcpConfig(servers: McpServer[]) {
-    if (!servers || servers.length === 0) return undefined;
-    return Object.fromEntries(
-        servers.map(s => [
-            s.name.replace(/[^a-zA-Z0-9_-]/g, ""),
-            s.transport === "stdio"
-                ? {
-                      type: "local" as const,
-                      command: [s.command!, ...(s.args ?? [])],
-                      enabled: true,
-                      environment: s.envJson ?? {},
-                  }
-                : {
-                      type: "remote" as const,
-                      url: s.url!,
-                      enabled: true,
-                      headers: { ...s.headersJson, ...s.envJson },
-                  }
-        ])
+/**
+ * Ensure a `.codegraph/` entry exists in the project's `.gitignore`.
+ * Does nothing if the entry already exists or the file doesn't exist.
+ */
+function ensureGitignoreEntry(projectPath: string, entry: string): void {
+    const fs = require("fs");
+    const gitignorePath = path.join(projectPath, ".gitignore");
+    try {
+        if (fs.existsSync(gitignorePath)) {
+            const content = fs.readFileSync(gitignorePath, "utf-8");
+            if (!content.includes(entry.replace("/", ""))) {
+                fs.appendFileSync(gitignorePath, `\n# CodeGraph index\n${entry}\n`);
+                logger.info(`[CodeGraph] Added ${entry} to ${gitignorePath}`);
+            }
+        }
+    } catch (e: any) {
+        logger.warn(`[CodeGraph] Failed to update .gitignore: ${e.message}`);
+    }
+}
+
+/**
+ * Transparently auto-initialize CodeGraph for the active project.
+ *
+ * Checks whether a CodeGraph MCP server is enabled among the given servers.
+ * If so, verifies that `<appPath>/.codegraph/codegraph.db` exists.
+ * When the index is missing, runs `codegraph init -i <appPath>` in the background
+ * (timeout 90s) and adds `.codegraph/` to the project's `.gitignore`.
+ *
+ * This function is intentionally fail-safe: if `codegraph` is not installed or
+ * the init command fails for any reason, it logs a warning and returns without
+ * blocking the agent stream.
+ */
+async function ensureCodeGraphInit(appPath: string, enabledServers: any[]): Promise<void> {
+    const hasCodeGraph = enabledServers.some(
+        (s: any) => s.name?.toLowerCase() === "codegraph" && (s.enabled === true || s.enabled === 1)
     );
+    if (!hasCodeGraph) return;
+
+    const fs = require("fs");
+    const dbPath = path.join(appPath, ".codegraph", "codegraph.db");
+
+    if (fs.existsSync(dbPath)) {
+        logger.info(`[CodeGraph] Already initialized at ${appPath}`);
+        return;
+    }
+
+    logger.info(`[CodeGraph] Initializing index for ${appPath}...`);
+    try {
+        const { execFile } = require("child_process");
+        await new Promise<void>((resolve, reject) => {
+            execFile(
+                "codegraph",
+                ["init", "-i", appPath],
+                { timeout: 90_000, env: process.env },
+                (err: any, stdout: string, stderr: string) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        const out = (stdout || stderr || "").trim();
+                        logger.info(`[CodeGraph] Auto-initialized for ${appPath}: ${out}`);
+                        resolve();
+                    }
+                },
+            );
+        });
+        // Add .codegraph/ to the project's .gitignore so it doesn't get committed
+        ensureGitignoreEntry(appPath, ".codegraph/");
+    } catch (err: any) {
+        if (err.code === "ENOENT") {
+            logger.warn(`[CodeGraph] 'codegraph' binary not found in PATH — skipping auto-init`);
+        } else {
+            logger.warn(`[CodeGraph] Auto-init failed (non-fatal): ${err.message}`);
+        }
+    }
+}
+
+/**
+ * Build OpenCode MCP config from user-configured servers.
+ * Supports generic {{PROJECT_PATH}} placeholder in stdio server args,
+ * and injects PROJECT_PATH env var into all stdio servers.
+ */
+function buildMcpConfig(servers: McpServer[], appPath?: string) {
+    if (!servers || servers.length === 0) return undefined;
+    
+    const resolveArg = (arg: string): string => {
+        if (!appPath) return arg;
+        return arg.replace(/\{\{PROJECT_PATH\}\}/g, appPath);
+    };
+    
+    const result = Object.fromEntries(
+        servers.map(s => {
+            const serverKey = s.name.replace(/[^a-zA-Z0-9_-]/g, "");
+            
+            if (s.transport === "stdio") {
+                let resolvedArgs = (s.args ?? []).map(resolveArg);
+                const hadPlaceholder = (s.args ?? []).some((a: string) => a.includes("{{PROJECT_PATH}}"));
+                
+                if (appPath && hadPlaceholder) {
+                    logger.info(`[MCP] ${s.name}: resolved {{PROJECT_PATH}} → ${appPath}`);
+                }
+
+                // Autocomplete path for codegraph MCP if not explicitly specified
+                if (s.name.toLowerCase() === "codegraph" && appPath) {
+                    const hasPathArg = resolvedArgs.some(a => a === "-p" || a === "--path");
+                    if (!hasPathArg) {
+                        resolvedArgs = [...resolvedArgs, "-p", appPath];
+                        logger.info(`[MCP] Automatically appended project path -p "${appPath}" for server: ${s.name}`);
+                    }
+                }
+                
+                return [serverKey, {
+                    type: "local" as const,
+                    command: [s.command!, ...resolvedArgs],
+                    enabled: true,
+                    environment: {
+                        ...s.envJson,
+                        // Generic env var — any MCP server can read it
+                        ...(appPath ? { PROJECT_PATH: appPath } : {}),
+                    },
+                }];
+            }
+            
+            // Remote servers (http/sse) — unchanged
+            return [serverKey, {
+                type: "remote" as const,
+                url: s.url!,
+                enabled: true,
+                headers: { ...s.headersJson, ...s.envJson },
+            }];
+        })
+    );
+    
+    logger.info(`[MCP] Built config for ${servers.length} server(s)${appPath ? ` (appPath: ${appPath})` : ""}`);
+    return result;
 }
 
 /**
@@ -393,11 +1443,8 @@ export async function handleVisualQuickEdit(params: {
                             if (!reqId) break;
                             // Auto-approve all permissions
                             try {
-                                await client.postSessionIdPermissionsPermissionId({
-                                    path: { id: sessionId, permissionID: reqId },
-                                    body: { response: "always" }
-                                });
-                                logger.info(`[VisualEdit] Auto-approved permission: ${props.type}`);
+                                await replyToPermission(reqId, "always", sessionId);
+                                logger.info(`[VisualEdit] Auto-approved permission: ${props.permission || props.type}`);
                             } catch (e: any) {
                                 logger.error(`[VisualEdit] Permission error: ${e.message}`);
                             }
@@ -446,7 +1493,7 @@ export async function handleVisualQuickEdit(params: {
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID: sanitizeModelName(model.name),
                 },
                 parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
             },
@@ -493,11 +1540,29 @@ export async function handleVisualQuickEdit(params: {
  * The server runs on localhost and the client communicates via HTTP.
  */
 async function getOpenCodeClient(appPath: string) {
+    // ── Detect provider change → force restart ──
+    const currentSettings = readSettings();
+    const currentProvider = currentSettings.selectedModel?.provider || "openrouter";
+    if (clientInstance && opencodeInstance && lastActiveProviderId && lastActiveProviderId !== currentProvider) {
+        logger.info(`[OpenCode] Provider changed: ${lastActiveProviderId} → ${currentProvider}. Restarting server...`);
+        try {
+            opencodeInstance.server.close();
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Error closing old server: ${e.message}`);
+        }
+        opencodeInstance = null;
+        clientInstance = null;
+        serverUrl = null;
+        // Keep session maps — they're per-chat, not per-provider
+    }
+
     if (clientInstance && opencodeInstance) {
         return { client: clientInstance, opencode: opencodeInstance };
     }
 
-    logger.info("[OpenCode] Starting server + client...");
+    // Set OpenCode config directory to Vibes' custom directory to avoid conflicts
+    // with any system-wide opencode installation.
+    process.env.OPENCODE_CONFIG_DIR = path.join(app.getPath("userData"), "opencode-config");
 
     // ─── Fix PATH for Electron ─────────────────────────────
     // Electron doesn't inherit the terminal's NVM-managed PATH.
@@ -552,15 +1617,22 @@ async function getOpenCodeClient(appPath: string) {
     // Determine provider/model mapping for opencode
     const providerID = mapProviderForOpenCode(model);
     // Apply variant suffix (ignored for free models)
-    const modelID = composeModelWithVariant(model.name, settings.selectedModelVariant ?? "");
+    const modelID = composeModelWithVariant(sanitizeModelName(model.name), settings.selectedModelVariant ?? "");
 
     try {
         // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
         // Electron's CWD (our project root) and writes config.json there, which
         // triggers Vite page reloads that kill SSE streaming.
         // Fix: temporarily change cwd before spawning, then restore it.
-        const { app } = require("electron");
-        const opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+        let opencodeDataDir: string;
+        try {
+            const { app } = require("electron");
+            opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+        } catch {
+            // Server/web mode — no Electron, use a temp-like directory
+            const os = require("os");
+            opencodeDataDir = path.join(os.homedir(), ".config", "vibes-server", "opencode-server");
+        }
         const fs = require("fs");
         if (!fs.existsSync(opencodeDataDir)) {
             fs.mkdirSync(opencodeDataDir, { recursive: true });
@@ -568,6 +1640,24 @@ async function getOpenCodeClient(appPath: string) {
 
         const originalCwd = process.cwd();
         process.chdir(opencodeDataDir);
+
+        // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
+        // Admin-only feature. Non-admins always get built-in tools.
+        try {
+            const { deployMorphTools, removeMorphTools } = await import("../utils/morph_patcher");
+            const { isAdmin } = await import("../../lib/admin");
+            const morphEnabled = isAdmin((settings as any).userId) && (settings as any).enableMorphPatchTool === true;
+
+            if (morphEnabled) {
+                deployMorphTools();
+                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ${path.join(app.getPath("userData"), "opencode-config", "tools")}`);
+            } else {
+                removeMorphTools();
+                logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Morph tools deployment failed (non-fatal): ${e.message}`);
+        }
 
         // Load MCP servers
         const { getRemoteDb } = await import("../../db/remote");
@@ -581,55 +1671,149 @@ async function getOpenCodeClient(appPath: string) {
                     eq(remoteSchema.mcpServers.enabled, 1)
                 ),
             });
-            // Parse arguments just in case
+            // Parse arguments — handle double/triple encoding from Turso DB
+            const safeParseField = (raw: any): any => {
+                if (raw == null) return null;
+                if (typeof raw !== "string") return raw;
+                let parsed: any = raw;
+                let rounds = 0;
+                while (typeof parsed === "string" && rounds < 3) {
+                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
+                }
+                if (rounds > 1) logger.info(`[MCP] Fixed multi-encoded field in opencode_adapter (${rounds} rounds)`);
+                return parsed;
+            };
             enabledServers = enabledServers.map(s => ({
                 ...s,
-                args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-                envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-                headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+                args: safeParseField(s.args),
+                envJson: safeParseField(s.envJson),
+                headersJson: safeParseField(s.headersJson),
             }));
         }
 
-        const languageInstruction = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-
-        const globalInstructions = [
-            languageInstruction,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
+        // Dynamic instructions are written to docs/vibes-context.md per-request
+        // and registered in the project's opencode.json (same pattern as DESIGN.md).
+        // ── Register models in provider.models ──
+        // OpenCode can't resolve models that aren't in its built-in catalogue.
+        // For custom providers, register ALL cached models so the user can switch
+        // without restarting. For built-in providers, just register the selected one.
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
+        const registeredModels: Record<string, object> = activeProvider.startsWith("custom::")
+            ? buildCustomProviderModels(activeProvider, modelID)
+            : { [modelID]: {} };
+        logger.info(`[OpenCode] Registered ${Object.keys(registeredModels).length} model(s) for ${providerID}`);
 
         const config = {
-                instructions: globalInstructions,
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
+                            models: registeredModels,
                             options: {
                                 // Explicitly bind the API key from process.env so OpenCode uses
                                 // the key configured in Vibes instead of any stale auth.json file.
                                 apiKey: "{env:OPENROUTER_API_KEY}",
+                                headers: {
+                                    "X-Title": "Vibes",
+                                    "HTTP-Referer": "https://github.com/jpmunix/vibes",
+                                },
                             },
                         } : providerID === "anthropic" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
                         } : providerID === "google" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:GEMINI_API_KEY}" },
                         } : providerID === "openai" ? {
+                            models: registeredModels,
                             options: { apiKey: "{env:OPENAI_API_KEY}" },
-                        } : {}),
+                        } : providerID === "ollama" ? (() => {
+                            // Ollama as primary provider — local inference via openai-compatible API
+                            const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                            return {
+                                npm: "@ai-sdk/openai-compatible",
+                                name: "Ollama (local)",
+                                models: registeredModels,
+                                options: { baseURL: `${ollamaUrl}/v1` },
+                            };
+                        })() : providerID.startsWith("custom-") ? (() => {
+                            // Custom providers use @ai-sdk/openai-compatible
+                            const customProvId = settings.selectedModel?.provider || "openrouter";
+                            const customConfig = settings.customProviders?.find((p: any) => p.id === customProvId);
+                            const providerName = customConfig?.name || activeProvider.replace(/^custom::/, "");
+                            return {
+                                npm: "@ai-sdk/openai-compatible",
+                                name: providerName,
+                                models: registeredModels,
+                                options: {
+                                    baseURL: customConfig?.apiBaseUrl || "",
+                                    ...(customConfig?.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
+                                },
+                            };
+                        })() : { models: registeredModels }),
+                    // ── Multi-provider registration ──
+                    // If strategistModel or executorModel point to a different provider
+                    // (e.g. "ollama::qwen2.5-coder:7b"), register that provider too.
+                    ...(() => {
+                        const extraProviders: Record<string, any> = {};
+                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+                        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
+                        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+
+                        // Register Ollama provider if either tier uses it
+                        for (const [prov, mName] of [[stratProv, stratName], [execProv, execName]] as const) {
+                            if (prov === "ollama" && mapProviderForOpenCode({ provider: prov, name: mName }) !== providerID) {
+                                const ollamaProvID = "ollama";
+                                if (!extraProviders[ollamaProvID]) {
+                                    const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+                                    extraProviders[ollamaProvID] = {
+                                        npm: "@ai-sdk/openai-compatible",
+                                        name: "ollama",
+                                        models: {},
+                                        options: { baseURL: `${ollamaUrl}/v1` },
+                                    };
+                                }
+                                extraProviders["ollama"].models[sanitizeModelName(mName)] = {};
+                            }
+                        }
+                        return extraProviders;
+                    })(),
                 },
                 model: `${providerID}/${modelID}`,
-                // Use the cheap/fast standard model for lightweight tasks (titles, summaries)
-                ...(settings.standardModeModel ? {
-                    small_model: `${providerID}/${settings.standardModeModel}`,
-                } : {}),
-                // Agent-level config: reasoning effort + text verbosity
-                // These extra fields are passed directly to the provider as model options
+                // Executor model for lightweight tasks (titles, summaries, commit messages)
+                small_model: (() => {
+                    const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                    const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+                    const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
+                    return `${execProvID}/${sanitizeModelName(execName)}`;
+                })(),
+                // Agent-level config: reasoning effort + text verbosity + unified model tiers
                 agent: {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
                     },
+                    // All primary agents use selectedModel (same as global `model` above)
+                    plan: {
+                        // model inherited from global `model` — no override needed
+                        permission: {
+                            edit: "allow",
+                            bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
+                        }
+                    },
+                    // explore and general inherit the global model automatically
+                    // Background/auxiliary tasks use strategistModel
+                    ...(() => {
+                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+                        const { provider: sProv, name: sName } = parseModelString(rawStrat, activeProvider);
+                        const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
+                        const sModelFull = `${sProvID}/${sanitizeModelName(sName)}`;
+                        return {
+                            compaction: { model: sModelFull },
+                            title: { model: sModelFull },
+                            summary: { model: sModelFull },
+                        };
+                    })(),
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
                     "visual-edit": {
@@ -657,11 +1841,16 @@ async function getOpenCodeClient(appPath: string) {
                         ].join("\n"),
                     },
                     // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
-                    // Defined as a real OpenCode custom agent per https://opencode.ai/docs/agents
                     "mockup": {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
                         reasoningEffort: "none",
+                        model: (() => {
+                            const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+                            const { provider: eProv, name: eName } = parseModelString(rawExec, activeProvider);
+                            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
+                            return `${eProvID}/${sanitizeModelName(eName)}`;
+                        })(),
                         tools: {
                             write: true,
                             edit: true,
@@ -674,29 +1863,9 @@ async function getOpenCodeClient(appPath: string) {
                         },
                         prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
                     },
-                    // Use the cheap/fast model for context compaction summaries
-                    // so we don't burn expensive tokens on housekeeping
-                    ...(settings.standardModeModel ? {
-                        compaction: {
-                            model: `${providerID}/${settings.standardModeModel}`,
-                        },
-                    } : {}),
                 },
-                // Permissions: always allow everything EXCEPT repository mutation (commit/push)
-                permission: {
-                    edit: "allow",
-                    question: "allow",
-                    bash: {
-                        "git commit": "deny",
-                        "git push": "deny",
-                        "grep *": "ask",
-                        "rg *": "ask",
-                        "find *": "ask",
-                        "*": "allow"
-                    },
-                    webfetch: "allow",
-                    external_directory: "allow",
-                },
+                // Permissions: built from user settings
+                permission: buildPermissionConfig(settings),
                 // Always-on context compaction (documented at opencode.ai/docs/configuration)
                 // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
                 // the model stalling when context fills up mid-session (key fix for slow responses).
@@ -738,28 +1907,65 @@ async function getOpenCodeClient(appPath: string) {
                         enabled: true,
                         headers: { "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" },
                     },
-                    ...(buildMcpConfig(enabledServers) || {}),
+                    ...buildMcpConfig(enabledServers, appPath),
                 },
         };
 
+
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
-        try {
-            opencode = await createOpencode({
-                hostname: "127.0.0.1",
-                port: 0, // auto-assign port
-                config: config as any,
-            });
-        } finally {
-            // Always restore CWD, even if createOpencode fails
-            process.chdir(originalCwd);
+        // Timeout: 15s to accommodate macOS Gatekeeper/code-signing delays on first spawn.
+        // The SDK defaults to 5s which is too aggressive for some environments.
+        const STARTUP_TIMEOUT_MS = 15_000;
+        const MAX_RETRIES = 1;
+        let lastError: Error | null = null;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                opencode = await createOpencode({
+                    hostname: "127.0.0.1",
+                    port: 0, // auto-assign port
+                    timeout: STARTUP_TIMEOUT_MS,
+                    config: config as any,
+                });
+                lastError = null;
+                break;
+            } catch (err: any) {
+                lastError = err;
+                if (attempt < MAX_RETRIES && err.message?.includes("Timeout")) {
+                    logger.warn(`[OpenCode] Startup timed out (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying...`);
+                    // Small delay before retry to let the system settle
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+        }
+        // Always restore CWD, even if createOpencode fails
+        process.chdir(originalCwd);
+        if (lastError || !opencode!) {
+            throw lastError || new Error("OpenCode failed to start after retries");
         }
 
         opencodeInstance = opencode;
         clientInstance = opencode.client;
         serverUrl = opencode.server.url;
+        lastActiveProviderId = settings.selectedModel?.provider || "openrouter";
 
         logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
+
+        // Log full agent→model mapping for visibility
+        // v2: parse provider::model to show correct provider per tier
+        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
+        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+        const stratProvID = mapProviderForOpenCode({ provider: stratProv, name: stratName });
+        const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
+        logger.info(
+            `[OpenCode] Agent model map:\n` +
+            `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
+            `  STRATEGIST  → ${stratProvID}/${sanitizeModelName(stratName)} (plan, explore, general)\n` +
+            `  EXECUTOR    → ${execProvID}/${sanitizeModelName(execName)} (compaction, title, summary, mockup)\n` +
+            `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`
+        );
 
         return { client: opencode.client, opencode };
     } catch (error: any) {
@@ -903,6 +2109,15 @@ function clearStaleOpenCodeAuth(env: Record<string, string>): void {
 // Model/provider mapping
 // ============================================================================
 
+/**
+ * Strip trailing dots, whitespace, and other stray characters from model names.
+ * Defensive measure against data contamination from remote settings sync or
+ * catalogue parsing artifacts (e.g. "amazon/nova-lite-v1." → "amazon/nova-lite-v1").
+ */
+function sanitizeModelName(name: string): string {
+    return name.replace(/[\s.]+$/, '');
+}
+
 function mapProviderForOpenCode(model: { provider?: string; name: string }): string {
     const provider = (model.provider || "").toLowerCase();
 
@@ -910,9 +2125,36 @@ function mapProviderForOpenCode(model: { provider?: string; name: string }): str
     if (provider.includes("anthropic")) return "anthropic";
     if (provider.includes("openai")) return "openai";
     if (provider.includes("google")) return "google";
+    if (provider === "ollama") return "ollama";
+
+    // Custom providers (custom::*) get their own dedicated provider ID.
+    // OpenCode will be configured with npm: "@ai-sdk/openai-compatible" for these.
+    if (provider.startsWith("custom::")) {
+        // "custom::cortecs" → "custom-cortecs"
+        return provider.replace(/^custom::/, "custom-").replace(/[^a-z0-9-]/g, "-");
+    }
 
     // Default to openrouter
     return "openrouter";
+}
+
+/**
+ * Register an extra provider in the OpenCode config body (hot-update path).
+ * Used when strategistModel or executorModel points to a provider different
+ * from the active one (e.g. "ollama::qwen2.5-coder:7b").
+ */
+function registerExtraProvider(body: Record<string, any>, providerKey: string, modelName: string, settings: any) {
+    if (providerKey === "ollama") {
+        const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
+        if (!body.provider) body.provider = {};
+        body.provider.ollama = {
+            npm: "@ai-sdk/openai-compatible",
+            name: "ollama",
+            models: { [sanitizeModelName(modelName)]: {} },
+            options: { baseURL: `${ollamaUrl}/v1` },
+        };
+    }
+    // Future: add support for other cross-provider registrations here
 }
 
 // ============================================================================
@@ -943,6 +2185,12 @@ export async function handleOpenCodeStream(
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
         /**
+         * Memory context block to inject via noReply before the prompt.
+         * Invisible to the user (not saved to DB, not shown in UI).
+         * OpenCode sees it as a silent user message in the session history.
+         */
+        memoryBlock?: string;
+        /**
          * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
          * Each is sent with `noReply: true` so OpenCode records them in the conversation
          * history without generating an AI response. This is the native way to "batch"
@@ -950,6 +2198,8 @@ export async function handleOpenCodeStream(
          */
         priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
     },
+    /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
+    _retryCount = 0,
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
 
@@ -972,45 +2222,90 @@ export async function handleOpenCodeStream(
     logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
+    // ── One-time cleanup: strip old VIBES:CONTEXT from AGENTS.md ─────
+    // We no longer write to AGENTS.md (it's OpenCode's file). If a previous
+    // version left a VIBES:CONTEXT block, remove it once.
+    {
+        const fs = require("fs");
+        const agentsMdPath = path.join(projectDir, "AGENTS.md");
+        const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
+        const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
+        try {
+            if (fs.existsSync(agentsMdPath)) {
+                const content = fs.readFileSync(agentsMdPath, "utf-8");
+                const startIdx = content.indexOf(VIBES_START);
+                const endIdx = content.indexOf(VIBES_END);
+                if (startIdx !== -1 && endIdx !== -1) {
+                    const cleaned = content.substring(0, startIdx).trimEnd()
+                        + content.substring(endIdx + VIBES_END.length);
+                    fs.writeFileSync(agentsMdPath, cleaned.trimEnd() + "\n", "utf-8");
+                    logger.info(`${LP} 🧹 Stripped legacy VIBES:CONTEXT block from AGENTS.md`);
+                }
+            }
+        } catch { /* non-fatal */ }
+
+        // Also clean stale docs/SPECS.md if present
+        try {
+            const specsPath = path.join(projectDir, "docs", "SPECS.md");
+            if (fs.existsSync(specsPath)) {
+                fs.unlinkSync(specsPath);
+                logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
+            }
+        } catch { /* non-fatal */ }
+    }
+
     let client: ReturnType<typeof createOpencodeClient>;
     try {
         const result = await getOpenCodeClient(projectDir);
         client = result.client;
     } catch (error: any) {
-        const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
-        logger.error(`${LP} ${errorMsg}`);
-        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+        const classified = classifyError(error);
+        logger.error(`${LP} Error al iniciar OpenCode: ${classified.technicalDetail}`);
+        return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
     }
 
-    // ── Set instructions BEFORE session.create ────────────────────────────
-    // OpenCode snapshots instructions at session creation time, so they
-    // must be configured before the session exists.
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
-
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 PRE-SESSION config.update: ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
+    // Ensure MCP configuration is synchronized with the active project's path
+    try {
+        const db = getRemoteDb();
+        const settingsRecord = await db.query.userSettings.findFirst();
+        if (settingsRecord?.userId) {
+            const enabledServers = await db.query.mcpServers.findMany({
+                where: and(
+                    eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
+                    eq(remoteSchema.mcpServers.enabled, 1)
+                ),
             });
-            logger.info(`${LP} 🎨 Instructions set BEFORE session.create ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to set pre-session instructions: ${ctxError.message}`);
+            const safeParseField = (raw: any): any => {
+                if (raw == null) return null;
+                if (typeof raw !== "string") return raw;
+                let parsed: any = raw;
+                let rounds = 0;
+                while (typeof parsed === "string" && rounds < 3) {
+                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
+                }
+                return parsed;
+            };
+            const mappedServers = enabledServers.map(s => ({
+                id: s.id,
+                name: s.name,
+                transport: s.transport as "stdio" | "sse" | "http",
+                command: s.command,
+                args: safeParseField(s.args),
+                envJson: safeParseField(s.envJson),
+                headersJson: safeParseField(s.headersJson),
+                url: s.url,
+                enabled: s.enabled === 1,
+                createdAt: s.createdAt,
+                updatedAt: s.updatedAt,
+            }));
+
+            // Auto-initialize CodeGraph if enabled and not yet initialized for this project
+            await ensureCodeGraphInit(projectDir, mappedServers);
+
+            await updateOpenCodeMcpConfig(mappedServers, projectDir);
         }
+    } catch (e: any) {
+        logger.warn(`${LP} Failed to sync MCP configuration with current project path: ${e.message}`);
     }
 
     // Get or create session for this chat
@@ -1069,6 +2364,54 @@ export async function handleOpenCodeStream(
                 logger.warn(`${LP} Failed to persist sessionId: ${e.message}`);
             }
 
+            // ── INJECT CONVERSATION HISTORY INTO NEW SESSION ──────────────
+            // If this is a newly created session (e.g. from "Resumir a chat nuevo" or a lost session),
+            // we must ensure OpenCode knows about past messages before we send the active prompt.
+            if (options.chatMessages && options.chatMessages.length > 0) {
+                // Filter out system messages and the pending placeholder
+                let historyToInject = options.chatMessages.filter(
+                    (m: any) => m.role !== "system" && m.id !== options.placeholderMessageId && m.content && m.content.trim() !== ""
+                );
+
+                // The current user prompt is already the last user message in chatMessages.
+                // We MUST filter it out because it will be sent later as the active prompt!
+                const lastUserMsgIndex = [...historyToInject].reverse().findIndex((m: any) => m.role === "user");
+                if (lastUserMsgIndex !== -1) {
+                    const actualIndex = historyToInject.length - 1 - lastUserMsgIndex;
+                    historyToInject.splice(actualIndex, 1);
+                }
+
+                // Limit to last 20 messages to prevent massive token usage on recovery
+                if (historyToInject.length > 20) {
+                    historyToInject = historyToInject.slice(-20);
+                }
+
+                if (historyToInject.length > 0) {
+                    logger.info(`${LP} Injecting ${historyToInject.length} historical messages into new session...`);
+                    const formattedHistory = historyToInject.map((m: any) => {
+                        const roleName = m.role === "assistant" ? "Asistente" : "Usuario";
+                        // We strip complex vibes tags to save tokens, just like chat_stream_handlers does for standard mode
+                        let cleaned = m.content;
+                        cleaned = cleaned.replace(/<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "[Herramienta ejecutada]");
+                        return `[Mensaje antiguo del ${roleName}]:\n${cleaned.trim()}`;
+                    }).join("\n\n---\n\n");
+
+                    try {
+                        await client.session.prompt({
+                            path: { id: sessionId },
+                            query: { directory: projectDir },
+                            body: {
+                                noReply: true,
+                                parts: [{ type: "text", text: `Historial de la conversación recuperado:\n\n${formattedHistory}` }],
+                            } as any,
+                        });
+                        logger.info(`${LP} Injected conversation history successfully.`);
+                    } catch (e: any) {
+                        logger.warn(`${LP} Failed to inject conversation history: ${e.message}`);
+                    }
+                }
+            }
+
             // Initialize project context — generates AGENTS.md with tech stack,
             // build commands, and architecture. This is the key mechanism that gives
             // the agent native project knowledge (equivalent to /init in OpenCode CLI).
@@ -1097,36 +2440,52 @@ export async function handleOpenCodeStream(
                         sendProgressUpdate(event, req.chatId, chatMessages,
                             `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
 
-                        try {
-                            const settings = readSettings();
-                            const model = settings.selectedModel;
-                            const initProviderID = mapProviderForOpenCode(model);
+                        // Fire-and-forget — init runs in background while the user's prompt proceeds.
+                        // AGENTS.md will appear on disk once the server finishes; the agent works
+                        // fine without it (just less context for the very first message).
+                        const initSettings = readSettings();
+                        const initModel = initSettings.selectedModel;
+                        const initProviderID = mapProviderForOpenCode(initModel);
 
-                            // Build init body — messageID is required by the SDK type but
-                            // some server versions reject empty strings. Use a sentinel value.
-                            const initBody: { providerID: string; modelID: string; messageID: string } = {
-                                providerID: initProviderID,
-                                modelID: model.name,
-                                messageID: "init",
-                            };
+                        // Build init body — messageID must start with "msg" (server validates format)
+                        const initBody: { providerID: string; modelID: string; messageID: string } = {
+                            providerID: initProviderID,
+                            modelID: sanitizeModelName(initModel.name),
+                            messageID: `msg_init_${Date.now()}`,
+                        };
 
-                            logger.info(`${LP} 🔧 Running init with model ${initProviderID}/${model.name} | dir=${projectDir}`);
-                            const initResult = await client.session.init({
-                                path: { id: sessionId },
-                                query: { directory: projectDir },
-                                body: initBody,
-                            });
-                            logger.info(`${LP} ✅ Init completed (result: ${JSON.stringify(initResult.data)})`);
+                        logger.info(`${LP} 🔧 Running init (lazy) with model ${initProviderID}/${initModel.name} | dir=${projectDir}`);
+                        client.session.init({
+                            path: { id: sessionId },
+                            query: { directory: projectDir },
+                            body: initBody,
+                        }).then((initResult: any) => {
+                            const httpStatus = initResult?.response?.status ?? initResult?.status ?? "unknown";
+                            logger.info(`${LP} ✅ Init completed (data: ${JSON.stringify(initResult.data)}, httpStatus: ${httpStatus})`);
+
+                            if (initResult.error) {
+                                logger.error(`${LP} ❌ Init returned error from server: ${JSON.stringify(initResult.error)}`);
+                            }
+
+                            if (initResult.data === undefined || initResult.data === null) {
+                                const debugInfo = {
+                                    hasResponse: !!initResult?.response,
+                                    responseStatus: httpStatus,
+                                    responseStatusText: initResult?.response?.statusText,
+                                    error: initResult.error,
+                                    keys: Object.keys(initResult),
+                                };
+                                logger.warn(`${LP} ⚠️ Init .data is ${initResult.data} — full debug: ${JSON.stringify(debugInfo)}`);
+                            }
 
                             // Verify AGENTS.md was actually created
-                            const createdAgentsMd = agentsMdPaths.find(p => fs.existsSync(p));
-                            if (createdAgentsMd) {
-                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdAgentsMd}`);
+                            const createdPath = agentsMdPaths.find(p => fs.existsSync(p));
+                            if (createdPath) {
+                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdPath}`);
                             } else {
-                                logger.warn(`${LP} ⚠️ Init returned success but AGENTS.md not found on disk (server may write it lazily)`);
+                                logger.warn(`${LP} ⚠️ Init returned httpStatus=${httpStatus} but AGENTS.md not found on disk`);
                             }
-                        } catch (initError: any) {
-                            // Log the FULL error for debugging — not just the message
+                        }).catch((initError: any) => {
                             logger.warn(`${LP} ❌ Init failed (non-fatal): ${initError.message}`);
                             logger.warn(`${LP}    Full error:`, JSON.stringify({
                                 status: initError.status || initError.statusCode,
@@ -1134,10 +2493,9 @@ export async function handleOpenCodeStream(
                                 data: initError.data,
                                 stack: initError.stack?.split('\n').slice(0, 3).join(' → '),
                             }));
-                            // Non-fatal — agent will work without AGENTS.md, just less context
-                        }
+                        });
 
-                        // Clear the analyzing status from the UI
+                        // Clear the analyzing status from the UI immediately (init continues in background)
                         sendChunk(event, req.chatId, chatMessages, "");
                     } else {
                         logger.info(`${LP} AGENTS.md already exists, skipping init`);
@@ -1146,42 +2504,80 @@ export async function handleOpenCodeStream(
             }
 
         } catch (error: any) {
-            const errorMsg = `❌ Error al crear sesión: ${error.message}`;
-            logger.error(`${LP} ${errorMsg}`);
-            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+            const classified = classifyError(error);
+            logger.error(`${LP} Error al crear sesion: ${classified.technicalDetail}`);
+            return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
         }
     }
 
-    // Instructions were already set BEFORE session.create (see above).
-    // Re-apply them here as well to cover existing sessions that were
-    // restored from DB (they already exist, so they missed the pre-create call).
-    if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const settings = readSettings();
-        const baseLang = settings.chatLanguage === "en"
-            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
-            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
-        
-        const baseInstructions = [
-            baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
-            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
-        ];
+    // ── Inject Vibes rules for Node.js projects (idempotent) ──────────
+    // Writes docs/vibes-rules.md and registers it in opencode.json.
+    // Runs for ALL projects (new + existing) but only if package.json exists.
+    // The file is combined with AGENTS.md by OpenCode natively.
+    try {
+        const fsModule = await import("node:fs");
+        const pkgJsonPath = path.join(projectDir, "package.json");
+        if (fsModule.existsSync(pkgJsonPath)) {
+            const rulesPath = path.join(projectDir, "docs", "vibes-rules.md");
+            if (!fsModule.existsSync(rulesPath)) {
+                const { patchOpencodeJsonInstructions } = await import("./design_handlers");
+                await writeVibesRules(projectDir);
+                await patchOpencodeJsonInstructions(projectDir, "docs/vibes-rules.md");
+                logger.info(`${LP} 📋 Vibes rules injected (Node.js project detected)`);
+            }
+        }
+    } catch (rulesErr: any) {
+        logger.warn(`${LP} ⚠️ Failed to inject vibes-rules.md (non-fatal): ${rulesErr.message}`);
+    }
 
-        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
-        logger.info(`${LP} 🎨 POST-SESSION config.update (for restored sessions): ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
-        
-        try {
-            await client.config.update({
-                body: {
-                    instructions: combinedInstructions,
-                } as any,
+    // ── Memory Bootstrap (cold start, fire-and-forget) ──
+    // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
+    // This ensures that if the first prompt found an empty project (no configs),
+    // subsequent prompts will re-check once the agent generates files.
+    // SKIP in plan mode: plan responses are proposals, not confirmed decisions.
+    if (agentMode === "plan") {
+        logger.info(`${LP} 🧬 Memory bootstrap skipped — plan mode (proposals, not confirmed)`);
+    } else try {
+        const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+        const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
+        const bootstrapSettings = readSettings();
+        const bootstrapUserId = bootstrapSettings.userId;
+        const db = getRemoteDb();
+        const chatWithApp = await db.query.chats.findFirst({
+            where: eq(remoteSchema.chats.id, req.chatId),
+            with: { app: true }
+        });
+        if (bootstrapUserId && chatWithApp?.app?.id) {
+            const appName = chatWithApp.app?.name || `app_${chatWithApp.app.id}`;
+            setDebugContext(appName, chatWithApp.app.id);
+            debugLog("Trigger", `Bootstrap check`, {
+                appId: String(chatWithApp.app.id),
+                appName,
+                projectDir,
             });
-            logger.info(`${LP} 🎨 Instructions re-applied after session ✅`);
-        } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to re-apply instructions: ${ctxError.message}`);
+            const needs = await needsBootstrap(chatWithApp.app.id, bootstrapUserId);
+            if (needs) {
+                debugLog("Trigger", `🧬 Bootstrap TRIGGERED — launching fire-and-forget`);
+                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${chatWithApp.app.id}`);
+                runMemoryBootstrap({
+                    appId: chatWithApp.app.id,
+                    userId: bootstrapUserId,
+                    projectDir,
+                    appName,
+                }).catch((err: any) => {
+                    debugLog("Trigger", `❌ Bootstrap FAILED`, { error: err.message });
+                    logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
+                });
+            } else {
+                debugLog("Trigger", `⏭️ Bootstrap skipped — app already has memories`);
+            }
         }
+    } catch (bootstrapErr: any) {
+        logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`);
     }
+
+    // Instructions file was already written before getOpenCodeClient (above).
+    // No config.update needed — it's in the initial config.
 
 
 
@@ -1295,10 +2691,10 @@ export async function handleOpenCodeStream(
 
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
-        const model = settings.selectedModel;
-        const providerID = mapProviderForOpenCode(model);
+        const effectiveAgent = options.agentId || "build";
+        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings, req.modelOverride);
 
-        logger.info(`${LP} Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
+        logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);
         lastProjectDir = projectDir;
         logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
@@ -1308,7 +2704,6 @@ export async function handleOpenCodeStream(
         // inject a build-mode instruction so the agent directly implements instead of
         // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
         let promptText = req.prompt;
-        const effectiveAgent = options.agentId || "build";
         const isMockupMode = effectiveAgent === "mockup";
 
         // Detect first message (no prior assistant responses) — used by build-mode
@@ -1320,66 +2715,15 @@ export async function handleOpenCodeStream(
             // (steps: 8, bash: false, write/edit: true)
             logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
         } else if (effectiveAgent === "build") {
-            if (!hasAssistantMessages) {
-                promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
-                logger.info(`${LP} 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
-            }
+            // Build mode: no special first-message injection needed.
+            // Rules are in docs/SPECS.md via opencode.json instructions.
         } else if (effectiveAgent === "plan") {
-            if (!hasAssistantMessages) {
-                const isEnglish = settings.chatLanguage === "en";
-                const planQuestionPrompt = isEnglish
-                    ? `[INTERACTIVE PLANNING INSTRUCTION:\n` +
-                      `You are in planning mode. Your goal is to create a detailed and precise development plan.\n\n` +
-                      `GOLDEN RULE — ASK BEFORE PLANNING:\n` +
-                      `Unless the user has provided an extremely detailed plan with all decisions already made,\n` +
-                      `you MUST use the "question" tool to ask the user about fine details before generating\n` +
-                      `the final plan. Every doubt, ambiguity, or design/architecture decision must be resolved with the user.\n\n` +
-                      `QUESTION LIMIT:\n` +
-                      `- Ask a MAXIMUM of 5 questions to the user (you can ask fewer if the request is clear).\n` +
-                      `- If you need more than 5, you must explicitly justify it to the user.\n` +
-                      `- Group related questions into a single question when possible.\n` +
-                      `- Use predefined options when the alternatives are clear.\n\n` +
-                      `FLOW:\n` +
-                      `1. Analyze the user's request and identify ambiguities and pending decisions.\n` +
-                      `2. Use the "question" tool to ask the user (one question at a time).\n` +
-                      `3. Once you have all the answers, generate the complete plan with the Stages and Tasks structure.\n\n` +
-                      `Do NOT generate a provisional or incomplete plan while waiting for answers.\n` +
-                      `First clarify, then plan.]`
-                    : `[INSTRUCCIÓN DE PLANIFICACIÓN INTERACTIVA:\n` +
-                      `Estás en modo planificación. Tu objetivo es crear un plan de desarrollo detallado y preciso.\n\n` +
-                      `REGLA DE ORO — PREGUNTAR ANTES DE PLANIFICAR:\n` +
-                      `A menos que el usuario te haya dado un plan sumamente detallado con todas las decisiones ya tomadas,\n` +
-                      `DEBES usar la herramienta "question" para preguntarle al usuario por los detalles finos antes de generar\n` +
-                      `el plan definitivo. Cada duda, ambigüedad o decisión de diseño/arquitectura debe resolverse con el usuario.\n\n` +
-                      `LÍMITE DE PREGUNTAS:\n` +
-                      `- Haz como MÁXIMO 5 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
-                      `- Si necesitas más de 5, debes justificarlo explícitamente al usuario.\n` +
-                      `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible.\n` +
-                      `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
-                      `FLUJO:\n` +
-                      `1. Analiza la petición del usuario e identifica las ambigüedades y decisiones pendientes.\n` +
-                      `2. Usa la herramienta "question" para preguntar al usuario (una pregunta a la vez).\n` +
-                      `3. Una vez que tengas todas las respuestas, genera el plan completo con la estructura\n` +
-                      `   de Etapas y Tareas.\n\n` +
-                      `NO generes un plan provisional o incompleto mientras esperas respuestas.\n` +
-                      `Primero aclara, luego planifica.]`;
-                promptText = `${planQuestionPrompt}\n\n${req.prompt}`;
-                logger.info(`${LP} 🗣️ First message in plan mode — injected interactive question instruction (lang=${isEnglish ? "en" : "es"})`);
-            }
+            // Plan mode instructions are injected via ctx_plan_mode prompt
+            // (editable in Settings → Prompts) through contextInstructions in
+            // chat_stream_handlers.ts. No first-message injection needed here.
         }
 
-        // On the FIRST message, inject a DESIGN.md hint so the model reads and
-        // applies it immediately. On subsequent messages we trust OpenCode's native
-        // opencode.json instructions (which already reference docs/DESIGN.md).
-        if (!hasAssistantMessages) {
-            const fs = require("fs");
-            const designPath = path.join(projectDir, "docs", "DESIGN.md");
-            if (fs.existsSync(designPath)) {
-                const designHint = `[CONTEXTO OBLIGATORIO: Este proyecto tiene un sistema de diseño definido en docs/DESIGN.md. ANTES de escribir cualquier código de UI, lee este archivo con tu herramienta Read y aplica estrictamente sus colores, tipografía, espaciado, componentes y estilo visual. El usuario ya eligió este diseño — no le preguntes ni le pidas confirmación, simplemente aplícalo.]`;
-                promptText = `${designHint}\n\n${promptText}`;
-                logger.info(`${LP} 🎨 Injected DESIGN.md hint into prompt (first message)`);
-            }
-        }
+        // DESIGN.md is loaded natively via opencode.json instructions — no hint needed.
 
         const promptParts: any[] = [{ type: "text", text: promptText }];
 
@@ -1457,14 +2801,54 @@ export async function handleOpenCodeStream(
             }
         }
 
+        logger.info(`--- USER PROMPT ---\n${promptText}`);
+        logger.info(`------------------------------------------`);
+
+        // ── Inject Vibes context via noReply (invisible to user) ─────────
+        // All Vibes context (instructions + memories) is injected as a single
+        // silent user message. Only exists in OpenCode's session history.
+        // Not saved to our DB → not shown in chat UI → invisible.
+        {
+            const contextParts: string[] = [];
+
+            // Static instructions (language, integrations, efficiency, etc.)
+            if (options.contextInstructions && options.contextInstructions.length > 0) {
+                contextParts.push(options.contextInstructions.join("\n\n"));
+            }
+
+            // Dynamic memories (selected per-prompt by the memory router)
+            if (options.memoryBlock) {
+                contextParts.push(options.memoryBlock);
+            }
+
+            if (contextParts.length > 0) {
+                const contextText = contextParts.join("\n\n---\n\n");
+                try {
+                    await client.session.prompt({
+                        path: { id: sessionId },
+                        query: { directory: projectDir },
+                        body: {
+                            noReply: true,
+                            parts: [{ type: "text", text: contextText }],
+                        } as any,
+                    });
+                    logger.info(`${LP} 📋 Context injected via noReply (${contextText.length} chars: ${options.contextInstructions?.length || 0} instructions + ${options.memoryBlock ? 'memories' : 'no memories'})`);
+                } catch (ctxErr: any) {
+                    logger.warn(`${LP} 📋 Context noReply injection failed (non-fatal): ${ctxErr.message}`);
+                }
+            }
+        }
+
         // Fire the prompt (non-blocking)
+        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
+        // internal system prompt. All Vibes context flows via noReply above.
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
             body: {
                 model: {
                     providerID,
-                    modelID: model.name,
+                    modelID,
                 },
                 agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,
@@ -1473,9 +2857,34 @@ export async function handleOpenCodeStream(
 
         logger.info(`${LP} Prompt sent (async). Waiting for events...`);
 
+        // ── A2: Periodic content checkpoint to DB ──────────────────────────
+        // Every 10 seconds, flush accumulated partial content to the messages
+        // table. This ensures that even if the server or connection dies mid-
+        // stream, the user sees partial progress instead of an empty bubble.
+        let lastCheckpointLength = 0;
+        const checkpointIntervalId = setInterval(async () => {
+            try {
+                const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+                // Only write if content has grown since last checkpoint
+                if (currentPartial.length > lastCheckpointLength && currentPartial.length > 0) {
+                    lastCheckpointLength = currentPartial.length;
+                    const db = getRemoteDb();
+                    await db.update(remoteSchema.messages)
+                        .set({ content: currentPartial })
+                        .where(eq(remoteSchema.messages.id, placeholderMessageId));
+                    logger.debug(`${LP} 💾 Checkpoint: ${currentPartial.length}ch written to DB for message ${placeholderMessageId}`);
+                }
+            } catch (cpErr: any) {
+                logger.warn(`${LP} ⚠️ Checkpoint write failed (non-fatal): ${cpErr.message}`);
+            }
+        }, 10_000);
+
         // Wait for the event stream to signal completion.
         // processEvents returns when session goes idle or the stream ends.
         await eventProcessingDone;
+
+        // Stop checkpoint timer — final content will be written by chat_stream_handlers
+        clearInterval(checkpointIntervalId);
 
         const getAbortedResponse = () => {
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
@@ -1520,25 +2929,146 @@ export async function handleOpenCodeStream(
         const totalTools = timeline.filter(e => e.type === "tool").length;
         logger.info(`${LP} ✅ Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
 
+        // Check for .vibes/ artifacts
+        if (filesEdited.length > 0) {
+            try {
+                const db = getRemoteDb();
+                const chat = await db.query.chats.findFirst({
+                    where: eq(remoteSchema.chats.id, req.chatId),
+                    columns: { appId: true },
+                });
+
+                if (chat) {
+                    for (const file of filesEdited) {
+                        if (file.includes(".vibes/") && file.endsWith(".md")) {
+                            let relativePath = file;
+                            const idx = file.indexOf(".vibes/");
+                            if (idx !== -1) {
+                                relativePath = file.substring(idx);
+                            }
+
+                            const existing = await db.query.chatArtifacts.findFirst({
+                                where: and(
+                                    eq(remoteSchema.chatArtifacts.chatId, req.chatId),
+                                    eq(remoteSchema.chatArtifacts.path, relativePath)
+                                )
+                            });
+
+                            if (!existing) {
+                                // Try to extract H1 heading from the file content
+                                let artifactTitle = require("path").basename(relativePath);
+                                try {
+                                    const app = await db.query.apps.findFirst({
+                                        where: eq(remoteSchema.apps.id, chat.appId),
+                                        columns: { path: true },
+                                    });
+                                    if (app?.path) {
+                                        const fsMod = require("fs");
+                                        const pathMod = require("path");
+                                        const fullPath = pathMod.join(getVibesAppPath(app.path), relativePath);
+                                        if (fsMod.existsSync(fullPath)) {
+                                            const fileContent = fsMod.readFileSync(fullPath, "utf-8");
+                                            const h1Match = fileContent.match(/^#\s+(.+)$/m);
+                                            if (h1Match?.[1]) {
+                                                artifactTitle = h1Match[1].trim();
+                                            }
+                                        }
+                                    }
+                                } catch { /* non-fatal — fall back to filename */ }
+
+                                await db.insert(remoteSchema.chatArtifacts).values({
+                                    userId: settings.userId!,
+                                    appId: chat.appId,
+                                    chatId: req.chatId,
+                                    path: relativePath,
+                                    title: artifactTitle,
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                });
+                                logger.info(`${LP} Saved chat artifact ${relativePath} for chat ${req.chatId}`);
+                            }
+                        }
+                    }
+                }
+            } catch (err: any) {
+                logger.error(`${LP} Failed to save chat artifacts: ${err.message}`);
+            }
+        }
+
         // Send final response with all content
         const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
         logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${totalCostUsd.toFixed(6)}` : "unknown"}`);
+        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${(totalCostUsd as any).toFixed(6)}` : "unknown"}`);
         return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens, costUsd: totalCostUsd };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
-            // session.abort() already fired eagerly — no need to call again
-            return getAbortedResponse();
+
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+            const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
+            const standardChars = Math.max(0, partialText.length - thinkChars);
+            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
+            let estInput = totalInputTokens;
+            if (estInput === 0) {
+               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
+               estInput = Math.ceil(inputString.length / 4) + 1500;
+            }
+            return {
+                fullResponse: partialText || "Operación cancelada",
+                success: false,
+                inputTokens: estInput,
+                outputTokens: estOutput,
+                reasoningTokens: estReasoning,
+                cachedTokens: totalCachedTokens,
+                costUsd: totalCostUsd as number | null,
+            };
         }
 
-        logger.error(`${LP} Stream error:`, error.message);
+        const classified = classifyError(error);
+        logger.error(`${LP} Stream error: ${classified.technicalDetail}`);
+
+        // Auto-recovery silencioso: intentar reparar antes de fallar (max 1 retry)
+        if (classified.autoFix && _retryCount === 0) {
+            logger.info(`${LP} Auto-recovery: estrategia=${classified.autoFix} (intento ${_retryCount + 1})`);
+            try {
+                switch (classified.autoFix) {
+                    case "restart_opencode":
+                        await shutdownOpenCode();
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+
+                    case "recreate_session":
+                        chatSessionMap.delete(req.chatId);
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+
+                    case "abort_and_retry": {
+                        const sid = chatSessionMap.get(req.chatId);
+                        if (sid) {
+                            try {
+                                await client.session.abort({ path: { id: sid }, query: { directory: projectDir } });
+                            } catch { /* ignorar si ya no existe */ }
+                        }
+                        await new Promise(r => setTimeout(r, 2000));
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+                    }
+
+                    case "retry_with_backoff":
+                        await new Promise(r => setTimeout(r, 5000));
+                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
+                }
+            } catch (recoveryErr: any) {
+                logger.error(`${LP} Auto-recovery fallo: ${recoveryErr.message}`);
+                // Continuar con el error original
+            }
+        }
+
         const errText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         return {
-            fullResponse: errText || `❌ Error: ${error.message}`,
+            fullResponse: errText || classified.userMessage,
             success: false,
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
@@ -1547,6 +3077,10 @@ export async function handleOpenCodeStream(
             costUsd: totalCostUsd,
         };
     } finally {
+        // Clean up the checkpoint timer if still running
+        if (typeof checkpointIntervalId !== 'undefined') {
+            clearInterval(checkpointIntervalId);
+        }
         // Clean up the abort listener to avoid leaks
         abortController.signal.removeEventListener("abort", onUserAbort);
         // Ensure SSE is always closed when we exit
@@ -1868,25 +3402,8 @@ async function processEvents(
 
                 // Session errors — log full details for debugging custom agents
                 case "session.error": {
-                    let errorObj = props.error || props.message || props;
-                    let errorMsg = "Unknown error";
-                    if (typeof errorObj === "string") {
-                        errorMsg = errorObj;
-                    } else if (errorObj instanceof Error) {
-                        errorMsg = errorObj.message;
-                    } else {
-                        try {
-                            // Some OpenRouter errors come nested in .error mapped cleanly
-                            if (errorObj?.error?.message) {
-                                errorMsg = errorObj.error.message;
-                            } else {
-                                errorMsg = JSON.stringify(errorObj);
-                            }
-                        } catch (e) {
-                            errorMsg = String(errorObj);
-                        }
-                    }
-                    logger.error(`[OC:Event] ❌ SESSION ERROR: ${errorMsg}`);
+                    const errorMsg = extractReadableError(props.error || props.message || props);
+                    logger.error(`[OC:Event] SESSION ERROR: ${errorMsg}`);
                     throw new Error(`Session Error: ${errorMsg}`);
                 }
 
@@ -1900,19 +3417,68 @@ async function processEvents(
                     const reqId = props.id || props.requestID;
                     if (!reqId) break;
 
-                    const permName = props.type || "unknown";
+                    // OpenCode PermissionRequest schema:
+                    // { id, sessionID, permission: string, patterns: string[], metadata, always: string[], tool? }
+                    const permName = props.permission || props.type || "unknown";
+                    const patterns: string[] = Array.isArray(props.patterns) ? props.patterns : [];
+                    const alwaysPatterns: string[] = Array.isArray(props.always) ? props.always : [];
+                    const permInput = patterns.join(" ") || props.input || props.command || "";
 
-                    // Auto-approve all permissions since user trusts the agent
+                    logger.info(`[OC:Event] 🛡️ permission.asked: tool=${permName} patterns=${JSON.stringify(patterns)} always=${JSON.stringify(alwaysPatterns)} id=${reqId}`);
+
+                    // Read user's configured permission for this tool
+                    const currentSettings = readSettings();
+                    const toolPermission = resolveToolPermission(
+                        permName,
+                        typeof permInput === "string" ? permInput : JSON.stringify(permInput),
+                        currentSettings.openCodePermissions2,
+                    );
+
                     try {
-                        if (clientInstance) {
-                            await clientInstance.postSessionIdPermissionsPermissionId({
-                                path: { id: sessionId, permissionID: reqId },
-                                body: { response: "always" }
-                            });
+                        // Use the permission's own sessionID when available (guaranteed correct),
+                        // falling back to the closure's sessionId.
+                        const permSessionId = props.sessionID || sessionId;
+
+                        if (toolPermission === "allow") {
+                            // Auto-approve
+                            await replyToPermission(reqId, "always", permSessionId);
                             logger.info(`[OC:Event] Auto-approved permission: always for ${permName}`);
+                        } else if (toolPermission === "deny") {
+                            // Auto-reject
+                            await replyToPermission(reqId, "reject", permSessionId);
+                            logger.info(`[OC:Event] Auto-rejected permission: deny for ${permName}`);
+                        } else {
+                            // "ask" — emit IPC event and wait for renderer response
+                            const inputStr = typeof permInput === "string" ? permInput : JSON.stringify(permInput);
+                            safeSend(event.sender, "opencode-permission:request", {
+                                requestId: reqId,
+                                sessionId: permSessionId,
+                                chatId,
+                                toolName: permName,
+                                toolInput: inputStr || null,
+                            });
+                            logger.info(`[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`);
+
+                            const userResponse = await waitForPermissionResponse(reqId, 300_000);
+                            await replyToPermission(reqId, userResponse as "once" | "always" | "reject", permSessionId);
+                            logger.info(`[OC:Event] 🛡️ Permission resolved: ${userResponse} for ${permName}`);
+
+                            // Persist to user settings so the choice is remembered.
+                            // once   → no persist (config already says "ask", hot-update mid-operation would kill the tool)
+                            // always → persist "allow" (never ask again)
+                            // reject → persist "deny"  (block going forward)
+                            // For bash: adds a granular custom rule (not the global pill).
+                            // For other tools: sets the global pill.
+                            if (userResponse === "always" || userResponse === "reject") {
+                                const settingsValue = userResponse === "always" ? "allow" : "deny";
+                                logger.info(`[OC:Permission] 📝 About to persist: permName="${permName}" → settingsValue="${settingsValue}"`);
+                                persistPermissionToSettings(permName, settingsValue, alwaysPatterns, inputStr);
+                            } else {
+                                logger.info(`[OC:Permission] 📝 Skipping persist for "${userResponse}" (ephemeral)`);
+                            }
                         }
                     } catch (e: any) {
-                        logger.error(`[OC:Event] Error al auto-responder permiso: ${e.message}`);
+                        logger.error(`[OC:Event] Error handling permission: ${e.message}`);
                     }
                     break;
                 }
@@ -2188,6 +3754,7 @@ function mapToolName(tool: string): string {
 
 /**
  * Clean the AI response text by removing internal thinking/redacted markers
+ * and raw tool-call XML tags from models that don't support native function calling.
  */
 function cleanResponseText(text: string): string {
     // Remove [REDACTED] markers and surrounding whitespace
@@ -2205,6 +3772,15 @@ function cleanResponseText(text: string): string {
         if (!stripped) return "";
         return `<think>${stripped}</think>`;
     });
+
+    // ── Strip raw tool-call XML from models (MiniMax, etc.) ──
+    // These are protocol artifacts that should never reach the UI.
+    // Matches: <invoke ...>...</invoke>, <minimax:tool_call>...</minimax:tool_call>,
+    // <parameter ...>...</parameter>, and similar namespaced tags.
+    cleaned = cleaned.replace(/<\/?invoke(?:\s[^>]*)?>[\s\S]*?(?:<\/invoke>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?parameter(?:\s[^>]*)?>[\s\S]*?(?:<\/parameter>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?\w+:function_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:function_call>)?/gi, "");
 
     // Clean up excessive blank lines
     cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
@@ -2396,6 +3972,7 @@ export async function shutdownOpenCode() {
         clientInstance = null;
         serverUrl = null;
         chatSessionMap.clear();
+        visualEditSessionMap.clear();
     }
 }
 
@@ -2440,7 +4017,7 @@ export function registerQuestionHandler() {
             });
 
             const text = await res.text();
-            
+
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}: ${text}`);
             }
@@ -2456,6 +4033,28 @@ export function registerQuestionHandler() {
         } catch (e: any) {
             logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
             throw e;
+        }
+    });
+}
+
+/**
+ * Register the IPC handler for `respondToPermission`.
+ * Called from ipc_host.ts during app startup.
+ *
+ * When the user responds to a permission banner in the VibesPermissionBanner UI,
+ * the renderer calls ipc.agent.respondToPermission({ requestId, response }).
+ * This handler resolves the pending Promise so processEvents can continue.
+ */
+export function registerPermissionHandler() {
+    createTypedHandler(agentContracts.respondToPermission, async (_event, params) => {
+        const { requestId, response } = params;
+        logger.info(`[OC:Permission] Received UI response for ${requestId}: ${response}`);
+
+        const resolver = pendingPermissionResolvers.get(requestId);
+        if (resolver) {
+            resolver(response);
+        } else {
+            logger.warn(`[OC:Permission] No pending resolver for ${requestId} — already timed out?`);
         }
     });
 }

@@ -51,7 +51,7 @@ function GitWindowContent({ appId, commitHash }: GitWindowAppProps) {
     // Set window title from app name
     useEffect(() => {
         ipc.app.getApp(appId).then((app) => {
-            if (app?.name) document.title = `${app.name} — Control de Git`;
+            if (app?.name) document.title = `${app.name} \u2013 Git`;
         }).catch(() => {});
     }, [appId]);
 

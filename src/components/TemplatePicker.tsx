@@ -2,7 +2,7 @@ import React from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
 import { localTemplatesData, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
-import { ReactIcon, NextIcon, VueIcon, AstroIcon, SvelteIcon, XSquare, FlaskConical } from "@/components/ui/icons";
+import { ReactIcon, NextIcon, VueIcon, AstroIcon, SvelteIcon, XSquare, Server } from "@/components/ui/icons";
 
 interface TemplatePickerProps {
     variant?: "compact" | "default";
@@ -15,9 +15,8 @@ const FrameworkIcon: React.FC<{ id: string; className?: string }> = ({
 }) => {
     switch (id) {
         case "react":
+        case "react19":
             return <ReactIcon className={className} />;
-        case "react-beta":
-            return <FlaskConical className={className} style={{ color: "#06b6d4" }} />;
         case "next":
             return <NextIcon className={className} />;
         case "vue":
@@ -26,6 +25,8 @@ const FrameworkIcon: React.FC<{ id: string; className?: string }> = ({
             return <AstroIcon className={className} />;
         case "svelte":
             return <SvelteIcon className={className} />;
+        case "express":
+            return <Server className={className} />;
         default:
             return <XSquare className={className} />;
     }
@@ -43,7 +44,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
     const currentValue = settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID;
 
     // Only show enabled templates in the compact picker
-    const ENABLED_TEMPLATE_IDS = new Set(["react", "react-beta"]);
+    const ENABLED_TEMPLATE_IDS = new Set(["react", "react19", "express", "next"]);
     const templates = localTemplatesData.filter(
         (t) => t.isOfficial && !t.isExperimental && ENABLED_TEMPLATE_IDS.has(t.id),
     );

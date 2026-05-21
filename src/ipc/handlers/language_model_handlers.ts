@@ -1,16 +1,16 @@
 import { createTypedHandler } from "./base";
-import type { HandlerContext } from "./base";
 import { languageModelContracts } from "../types/language-model";
 import log from "electron-log";
 import {
-  CUSTOM_PROVIDER_PREFIX,
   getLanguageModelProviders,
   getLanguageModels,
   getLanguageModelsByProviders,
 } from "../shared/language_model_helpers";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
-import { and, eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { readSettings, writeSettings } from "@/main/settings";
+import type { CustomProviderConfig } from "@/lib/schemas";
 
 const logger = log.scope("language_model_handlers");
 
@@ -19,264 +19,155 @@ export function registerLanguageModelHandlers() {
     return getLanguageModelProviders(context.userId);
   });
 
-  createTypedHandler(languageModelContracts.createCustomProvider, async (_event, params, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const { id, name, apiBaseUrl, envVarName } = params;
+  // Custom provider CRUD — manages settings.customProviders[]
+  createTypedHandler(languageModelContracts.createCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
 
-      // Validation
-      if (!id) {
-        throw new Error("Provider ID is required");
-      }
+    // Check for duplicate ID
+    if (existing.some(p => p.id === params.id)) {
+      throw new Error(`Provider with ID "${params.id}" already exists`);
+    }
 
-      if (!name) {
-        throw new Error("Provider name is required");
-      }
+    const newProvider: CustomProviderConfig = {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      modelsSource: "openai-compatible",
+    };
 
-      if (!apiBaseUrl) {
-        throw new Error("API base URL is required");
-      }
+    writeSettings({
+      customProviders: [...existing, newProvider],
+    });
 
-      // Check if a provider with this ID already exists
-      const existingProvider = await db
-        .select()
-        .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
-        .get();
+    logger.info(`[CustomProvider] Created: ${params.id} (${params.name})`);
 
-      if (existingProvider) {
-        throw new Error(`A provider with ID "${id}" already exists`);
-      }
-
-      // Insert the new provider
-      await db.insert(remoteSchema.languageModelProviders).values({
-        userId: context.userId,
-        // Make sure we will never have accidental collisions with builtin providers
-        id: CUSTOM_PROVIDER_PREFIX + id,
-        name,
-        apiBaseUrl,
-        envVarName: envVarName || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      // Return the newly created provider
-      return {
-        id,
-        name,
-        apiBaseUrl,
-        envVarName,
-        type: "custom" as const,
-      };
+    return {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      type: "custom" as const,
+    };
   });
+
+  createTypedHandler(languageModelContracts.editCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
+    const idx = existing.findIndex(p => p.id === params.id);
+
+    if (idx === -1) {
+      throw new Error(`Provider "${params.id}" not found`);
+    }
+
+    const updated = [...existing];
+    updated[idx] = {
+      ...updated[idx],
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+    };
+
+    writeSettings({ customProviders: updated });
+    logger.info(`[CustomProvider] Updated: ${params.id}`);
+
+    return {
+      id: params.id,
+      name: params.name,
+      apiBaseUrl: params.apiBaseUrl,
+      type: "custom" as const,
+    };
+  });
+
+  createTypedHandler(languageModelContracts.deleteCustomProvider, async (_event, params) => {
+    const settings = readSettings();
+    const existing = settings.customProviders ?? [];
+    const filtered = existing.filter(p => p.id !== params.providerId);
+
+    const updates: Record<string, any> = { customProviders: filtered };
+
+    // If deleting the active provider, fall back to openrouter
+    if (settings.activeProviderId === params.providerId) {
+      updates.activeProviderId = undefined;
+    }
+
+    // Clean up provider model config snapshot
+    if (settings.providerModelConfigs?.[params.providerId]) {
+      const configs = { ...settings.providerModelConfigs };
+      delete configs[params.providerId];
+      updates.providerModelConfigs = configs;
+    }
+
+    writeSettings(updates);
+    logger.info(`[CustomProvider] Deleted: ${params.providerId}`);
+  });
+
+  // ── Custom Model CRUD (reactivated for presets / arbitrary model IDs) ──
 
   createTypedHandler(languageModelContracts.createCustomModel, async (_event, params, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const {
-        apiName,
-        displayName,
-        providerId,
-        description,
-        maxOutputTokens,
-        contextWindow,
-      } = params;
+    if (!params?.apiName || !params?.displayName) {
+      throw new Error("apiName and displayName are required");
+    }
+    const db = getRemoteDb();
+    const now = new Date();
 
-      // Validation
-      if (!apiName) {
-        throw new Error("Model API name is required");
-      }
-      if (!displayName) {
-        throw new Error("Model display name is required");
-      }
-      if (!providerId) {
-        throw new Error("Provider ID is required");
-      }
+    // Upsert: if a model with same apiName + userId exists, update it
+    const existing = await db.select().from(remoteSchema.languageModels).where(
+      and(
+        eq(remoteSchema.languageModels.userId, context.userId),
+        eq(remoteSchema.languageModels.apiName, params.apiName),
+      )
+    );
 
-      // Check if provider exists
-      const providers = await getLanguageModelProviders(context.userId);
-      const provider = providers.find((p) => p.id === providerId);
-      if (!provider) {
-        throw new Error(`Provider with ID "${providerId}" not found`);
-      }
-
-      // Insert the new model
+    if (existing.length > 0) {
+      await db.update(remoteSchema.languageModels)
+        .set({
+          displayName: params.displayName,
+          description: params.description ?? null,
+          maxOutputTokens: params.maxOutputTokens ?? null,
+          contextWindow: params.contextWindow ?? null,
+          builtinProviderId: params.providerId,
+          updatedAt: now,
+        })
+        .where(eq(remoteSchema.languageModels.id, existing[0].id));
+      logger.info(`[CustomModel] Updated: ${params.apiName} → ${params.displayName}`);
+    } else {
       await db.insert(remoteSchema.languageModels).values({
         userId: context.userId,
-        displayName,
-        apiName,
-        builtinProviderId: provider.type === "cloud" ? providerId : undefined,
-        customProviderId: provider.type === "custom" ? providerId : undefined,
-        description: description || null,
-        maxOutputTokens: maxOutputTokens || null,
-        contextWindow: contextWindow || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        displayName: params.displayName,
+        apiName: params.apiName,
+        builtinProviderId: params.providerId,
+        description: params.description ?? null,
+        maxOutputTokens: params.maxOutputTokens ?? null,
+        contextWindow: params.contextWindow ?? null,
+        createdAt: now,
+        updatedAt: now,
       });
+      logger.info(`[CustomModel] Created: ${params.apiName} → ${params.displayName}`);
+    }
   });
 
-  createTypedHandler(languageModelContracts.editCustomProvider, async (_event, params, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const { id, name, apiBaseUrl, envVarName } = params;
-
-      if (!id) {
-        throw new Error("Provider ID is required");
-      }
-      if (!name) {
-        throw new Error("Provider name is required");
-      }
-      if (!apiBaseUrl) {
-        throw new Error("API base URL is required");
-      }
-
-      // Check if the provider being edited exists
-      const existingProvider = await db
-        .select()
-        .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
-        .get();
-
-      if (!existingProvider) {
-        throw new Error(`Provider with ID "${id}" not found`);
-      }
-
-      // Use transaction to ensure atomicity
-      const result = await db.transaction(async (tx) => {
-        // Update the provider
-        const updateResult = await tx
-          .update(remoteSchema.languageModelProviders)
-          .set({
-            name,
-            apiBaseUrl,
-            envVarName: envVarName || null,
-            updatedAt: new Date(),
-          })
-          .where(and(
-            eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id),
-            eq(remoteSchema.languageModelProviders.userId, context.userId!),
-          ));
-
-        return {
-          id,
-          name,
-          apiBaseUrl,
-          envVarName,
-          type: "custom" as const,
-        };
-      });
-      logger.info(`Successfully updated provider`);
-      return result;
-  });
-
-  createTypedHandler(languageModelContracts.deleteCustomModel, async (_event, apiName, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-
-      // Validation
-      if (!apiName) {
-        throw new Error("Model API name (modelId) is required");
-      }
-
-      logger.info(
-        `Handling delete-custom-language-model for apiName: ${apiName}`,
-      );
-
-      const existingModel = await db
-        .select()
-        .from(remoteSchema.languageModels)
-        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId!)))
-        .get();
-
-      if (!existingModel) {
-        throw new Error(
-          `A model with API name (modelId) "${apiName}" was not found`,
-        );
-      }
-
-      await db
-        .delete(remoteSchema.languageModels)
-        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId!)));
+  createTypedHandler(languageModelContracts.deleteCustomModel, async (_event, modelId, context) => {
+    if (!modelId) throw new Error("modelId is required");
+    const db = getRemoteDb();
+    // modelId is a string — treat as apiName for backwards compat
+    await db.delete(remoteSchema.languageModels).where(
+      and(
+        eq(remoteSchema.languageModels.userId, context.userId),
+        eq(remoteSchema.languageModels.apiName, modelId),
+      )
+    );
+    logger.info(`[CustomModel] Deleted by apiName: ${modelId}`);
   });
 
   createTypedHandler(languageModelContracts.deleteModel, async (_event, params, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const { providerId, modelApiName } = params;
-      logger.info(
-        `Handling delete-custom-model for ${providerId} / ${modelApiName}`,
-      );
-      if (!providerId || !modelApiName) {
-        throw new Error("Provider ID and Model API Name are required.");
-      }
-      logger.info(
-        `Attempting to delete custom model ${modelApiName} for provider ${providerId}`,
-      );
-
-      const providers = await getLanguageModelProviders(context.userId);
-      const provider = providers.find((p) => p.id === providerId);
-      if (!provider) {
-        throw new Error(`Provider with ID "${providerId}" not found`);
-      }
-      if (provider.type === "local") {
-        throw new Error("Local models cannot be deleted");
-      }
-      const result = await db
-        .delete(remoteSchema.languageModels)
-        .where(
-          and(
-            provider.type === "cloud"
-              ? eq(remoteSchema.languageModels.builtinProviderId, providerId)
-              : eq(remoteSchema.languageModels.customProviderId, providerId),
-            eq(remoteSchema.languageModels.apiName, modelApiName),
-            eq(remoteSchema.languageModels.userId, context.userId!),
-          ),
-        );
-
-      logger.info(`Successfully deleted custom model(s) with apiName=${modelApiName} for provider=${providerId}`);
-  });
-
-  createTypedHandler(languageModelContracts.deleteCustomProvider, async (_event, params, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const { providerId } = params;
-
-      // Validation
-      if (!providerId) {
-        throw new Error("Provider ID is required");
-      }
-
-      logger.info(
-        `Handling delete-custom-language-model-provider for providerId: ${providerId}`,
-      );
-
-      // Check if the provider exists before attempting deletion
-      const existingProvider = await db
-        .select({ id: remoteSchema.languageModelProviders.id })
-        .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
-        .get();
-
-      if (!existingProvider) {
-        logger.warn(
-          `Provider with ID "${providerId}" not found. It might have been deleted already.`,
-        );
-        return;
-      }
-
-      // Use a transaction
-      await db.transaction(async (tx) => {
-        // 1. Delete associated models
-        await tx
-          .delete(remoteSchema.languageModels)
-          .where(and(eq(remoteSchema.languageModels.customProviderId, providerId), eq(remoteSchema.languageModels.userId, context.userId!)));
-
-        // 2. Delete the provider
-        await tx
-          .delete(remoteSchema.languageModelProviders)
-          .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId!)));
-      });
-      logger.info(`Successfully deleted provider with ID "${providerId}".`);
+    if (!params?.modelApiName) throw new Error("modelApiName is required");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.languageModels).where(
+      and(
+        eq(remoteSchema.languageModels.userId, context.userId),
+        eq(remoteSchema.languageModels.apiName, params.modelApiName),
+      )
+    );
+    logger.info(`[CustomModel] Deleted: ${params.modelApiName}`);
   });
 
   createTypedHandler(languageModelContracts.getModels, async (_event, params, context) => {
@@ -305,4 +196,16 @@ export function registerLanguageModelHandlers() {
       await fetchOpenRouterModels();
     },
   );
+
+  createTypedHandler(languageModelContracts.refreshCustomProviderModels, async (_event, params) => {
+    if (!params?.providerId) throw new Error("providerId is required");
+    logger.info(`Manual refresh of custom provider models: ${params.providerId}`);
+    const settings = readSettings();
+    const config = settings.customProviders?.find(p => p.id === params.providerId);
+    if (!config) throw new Error(`Custom provider "${params.providerId}" not found`);
+
+    const { clearCompatibleModelsCache, fetchCompatibleModels } = await import("../utils/openai_compatible_models_service");
+    clearCompatibleModelsCache(params.providerId);
+    await fetchCompatibleModels(params.providerId, config.apiBaseUrl, config.apiKey?.value);
+  });
 }

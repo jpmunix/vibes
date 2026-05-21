@@ -2,10 +2,54 @@ import { z } from "zod";
 import { isOpenAIOrAnthropicSetup } from "./providerUtils";
 
 /**
- * Default fallback model for standard-mode tasks (titles, summaries, stack detection, etc.)
- * Used when `settings.standardModeModel` is not configured.
+ * Default model for lightweight/mechanical tasks (titles, summaries, compaction,
+ * mockups, commit messages, stack detection, etc.).
+ * Used when `settings.executorModel` is not configured.
  */
-export const DEFAULT_STANDARD_MODEL = "google/gemini-2.5-flash-lite" as const;
+export const DEFAULT_EXECUTOR_MODEL = "google/gemini-2.5-flash-lite" as const;
+
+/**
+ * Default model for reasoning agents (plan, explore, general).
+ * Used when `settings.strategistModel` is not configured.
+ * Build always uses selectedModel (the chat picker model).
+ */
+export const DEFAULT_STRATEGIST_MODEL = "deepseek/deepseek-v4-flash" as const;
+
+// ── Legacy aliases (kept for migration compat — DO NOT USE in new code) ──
+/** @deprecated Use DEFAULT_EXECUTOR_MODEL */
+export const DEFAULT_STANDARD_MODEL = DEFAULT_EXECUTOR_MODEL;
+/** @deprecated Use DEFAULT_STRATEGIST_MODEL */
+export const DEFAULT_AGENT_MODEL = DEFAULT_STRATEGIST_MODEL;
+
+// ── Multi-provider model string utilities ──────────────────────────────────
+// Format: "provider::model-name" e.g. "ollama::qwen2.5-coder:7b"
+// Legacy format (plain string without ::) defaults to the active provider.
+
+/** Separator used in multi-provider model strings */
+export const MODEL_PROVIDER_SEPARATOR = "::" as const;
+
+/**
+ * Parse a model string that may include a provider prefix.
+ * Examples:
+ *   "ollama::qwen2.5-coder:7b"  → { provider: "ollama", name: "qwen2.5-coder:7b" }
+ *   "google/gemini-2.5-flash-lite" → { provider: fallbackProvider, name: "google/gemini-2.5-flash-lite" }
+ */
+export function parseModelString(raw: string, fallbackProvider: string): { provider: string; name: string } {
+  const sep = raw.indexOf(MODEL_PROVIDER_SEPARATOR);
+  if (sep > 0) {
+    return { provider: raw.slice(0, sep), name: raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length) };
+  }
+  return { provider: fallbackProvider, name: raw };
+}
+
+/**
+ * Compose a provider::model string.
+ * If provider matches fallbackProvider, returns just the model name (backward compat).
+ */
+export function composeModelString(provider: string, name: string, fallbackProvider?: string): string {
+  if (fallbackProvider && provider === fallbackProvider) return name;
+  return `${provider}${MODEL_PROVIDER_SEPARATOR}${name}`;
+}
 
 export const SecretSchema = z.object({
   value: z.string(),
@@ -23,6 +67,11 @@ export const ChatSummarySchema = z.object({
   createdAt: z.date(),
   isPlan: z.boolean().optional().default(false),
   lastReadAt: z.date().nullable().optional(),
+  labels: z.array(z.object({
+    id: z.number(),
+    label: z.string(),
+    color: z.string()
+  })).optional().default([]),
 });
 
 /**
@@ -45,6 +94,11 @@ export const ChatSearchResultSchema = z.object({
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
   isPlan: z.boolean().optional().default(false),
+  labels: z.array(z.object({
+    id: z.number(),
+    label: z.string(),
+    color: z.string()
+  })).optional().default([]),
 });
 
 /**
@@ -133,6 +187,29 @@ export const OpenRouterProviderSettingSchema = z.object({
   keys: z.array(OpenRouterKeySchema).optional(),
   selectedKeyId: z.string().optional(),
 });
+
+// ── Custom AI Provider (OpenAI-compatible endpoints) ──
+export const CustomProviderConfigSchema = z.object({
+  id: z.string(),          // e.g. "custom::litellm-proxy"
+  name: z.string(),        // Display name: "Mi Proxy LiteLLM"
+  apiBaseUrl: z.string(),  // "https://my-proxy.example.com/v1"
+  apiKey: SecretSchema.optional(),
+  // How to discover models:
+  modelsSource: z.enum([
+    "openai-compatible",  // GET /models (standard OpenAI endpoint)
+    "manual",             // User adds them manually
+  ]).optional(),          // default: "openai-compatible"
+});
+export type CustomProviderConfig = z.infer<typeof CustomProviderConfigSchema>;
+
+// ── Per-provider model snapshot (restored when switching providers) ──
+export const ProviderModelConfigSchema = z.object({
+  selectedModel: LargeLanguageModelSchema.optional(),
+  strategistModel: z.string().optional(),
+  executorModel: z.string().optional(),
+  enabledModels: z.array(z.string()).optional(),
+});
+export type ProviderModelConfig = z.infer<typeof ProviderModelConfigSchema>;
 
 export const ProviderSettingSchema = z.union([
   // Must use more specific type first!
@@ -281,6 +358,55 @@ export type AgentToolConsent = z.infer<typeof AgentToolConsentSchema>;
 export const ChatRenderModeSchema = z.enum(["full", "flow", "zen"]);
 export type ChatRenderMode = z.infer<typeof ChatRenderModeSchema>;
 
+// ── OpenCode native permission schemas ──
+export const OpenCodePermissionSchema = z.enum(["allow", "ask", "deny"]);
+export type OpenCodePermission = z.infer<typeof OpenCodePermissionSchema>;
+
+export const BashCustomRuleSchema = z.object({
+  id: z.string(),
+  pattern: z.string(),
+  permission: OpenCodePermissionSchema,
+});
+export type BashCustomRule = z.infer<typeof BashCustomRuleSchema>;
+
+export const OpenCodePermissionsConfigSchema = z.object({
+  // Per-tool global pill
+  edit: OpenCodePermissionSchema.optional(),
+  bash: OpenCodePermissionSchema.optional(),
+  read: OpenCodePermissionSchema.optional(),
+  webfetch: OpenCodePermissionSchema.optional(),
+  websearch: OpenCodePermissionSchema.optional(),
+  lsp: OpenCodePermissionSchema.optional(),
+  // Agent capabilities
+  task: OpenCodePermissionSchema.optional(),
+  skill: OpenCodePermissionSchema.optional(),
+  externalDirectory: OpenCodePermissionSchema.optional(),
+  // Bash granular sub-rules — filesystem
+  bashRm: OpenCodePermissionSchema.optional(),
+  // Git — repo-local destructive
+  gitAdd: OpenCodePermissionSchema.optional(),
+  gitCommit: OpenCodePermissionSchema.optional(),
+  gitReset: OpenCodePermissionSchema.optional(),
+  gitCheckout: OpenCodePermissionSchema.optional(),
+  gitRestore: OpenCodePermissionSchema.optional(),
+  gitClean: OpenCodePermissionSchema.optional(),
+  gitRebase: OpenCodePermissionSchema.optional(),
+  gitMergeAbort: OpenCodePermissionSchema.optional(),
+  gitStashDrop: OpenCodePermissionSchema.optional(),
+  gitBranchDelete: OpenCodePermissionSchema.optional(),
+  gitCherryPickAbort: OpenCodePermissionSchema.optional(),
+  // Git — remote destructive
+  gitPush: OpenCodePermissionSchema.optional(),
+  gitPushForce: OpenCodePermissionSchema.optional(),
+  gitPushDelete: OpenCodePermissionSchema.optional(),
+  // DEPRECATED — old keys from v1 (bashGitCommit, bashGitPush)
+  bashGitCommit: OpenCodePermissionSchema.optional(),
+  bashGitPush: OpenCodePermissionSchema.optional(),
+  // Bash custom rules
+  bashCustomRules: z.array(BashCustomRuleSchema).optional(),
+});
+export type OpenCodePermissionsConfig = z.infer<typeof OpenCodePermissionsConfigSchema>;
+
 /**
  * Zod schema for user settings
  */
@@ -303,8 +429,7 @@ export const UserSettingsSchema = z
     ////////////////////////////////
     selectedModel: LargeLanguageModelSchema,
     providerSettings: z.record(z.string(), ProviderSettingSchema),
-    // DEPRECATED — legacy individual model fields. Use standardModeModel / proModeModel instead.
-    // Kept in schema for backwards-compat (.passthrough() preserves them in settings files).
+    // DEPRECATED — legacy individual model fields. Kept for backwards-compat (.passthrough()).
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
@@ -312,10 +437,18 @@ export const UserSettingsSchema = z
     summaryModel: z.string().optional(),
     knowledgeExtractionModel: z.string().optional(),
     dossierModel: z.string().optional(),
-    // Unified model keys — two tiers that replace all 7 individual fields above
-    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates)
-    proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
+    // DEPRECATED — superseded by strategistModel + executorModel
+    standardModeModel: z.string().optional(),
+    proModeModel: z.string().optional(),
+    // ── Active unified model keys (v2: support provider::model format) ──
+    // Format: "provider::model-name" (e.g. "ollama::qwen2.5-coder:7b")
+    // Legacy plain strings (e.g. "google/gemini-2.5-flash-lite") default to activeProviderId.
+    strategistModel: z.string().optional(),   // reasoning agents (plan, explore, general)
+    executorModel: z.string().optional(),     // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
+    // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
+    openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
+    openCodePermissions2: OpenCodePermissionsConfigSchema.optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
     vercelAccessToken: SecretSchema.optional(),
@@ -333,11 +466,24 @@ export const UserSettingsSchema = z
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
     agentMaxSteps: z.number().optional(), // retained for migration compat — no longer used
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
+    // ── Inference hyperparameters (user-tunable from chat input) ──
+    inferenceTemperature: z.number().min(0).max(2).optional(),
+    inferenceTopP: z.number().min(0).max(1).optional(),
+    inferenceRepetitionPenalty: z.number().min(0.5).max(2).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
     // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")
     // Applied globally; ignored for free models at runtime.
     selectedModelVariant: z.string().optional(),
+
+    // ── Multi-provider support ──
+    // Active provider for all AI operations. "openrouter" when undefined (backward-compat).
+    activeProviderId: z.string().optional(),
+    // User-configured custom OpenAI-compatible providers
+    customProviders: z.array(CustomProviderConfigSchema).optional(),
+    // Per-provider model snapshots — restored when switching back to a provider
+    providerModelConfigs: z.record(z.string(), ProviderModelConfigSchema).optional(),
+
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),
@@ -350,12 +496,13 @@ export const UserSettingsSchema = z
     enableAllStatsAndLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
+    // Play a programmatic sound (Web Audio API) when a notification fires
+    enableNotificationSound: z.boolean().optional(),
     // Control GitHub auto-commit behavior
     enableGithubAutoCommit: z.boolean().optional(),
 
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
-    selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
 
@@ -403,6 +550,7 @@ export const UserSettingsSchema = z
 
     chatLanguage: ChatLanguageSchema.optional(),
 
+    theme: z.enum(["system", "light", "dark"]).optional(),
     themeIntensity: z.number().optional(),
     primaryColorLight: z.string().optional(),
     primaryColorDark: z.string().optional(),
@@ -413,19 +561,53 @@ export const UserSettingsSchema = z
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
+    // Memory system — agent persistent knowledge
+    memoriesEnabled: z.boolean().optional(),
+    memoriesAutoExtract: z.boolean().optional(),
+    memoriesSynthesisModelV2: z.string().optional(),
+    memoriesRouterModelV2: z.string().optional(),
+    memoriesMaxSelection: z.number().optional(),
     // OpenRouter web search (server tool) — model decides when to search
     enableWebSearch: z.boolean().optional(),
     // OpenCode LSP: when true, language servers send diagnostics after each file write
     // (auto-corrects TS errors inline). When false, the agent must run tsc manually.
     enableOpenCodeLsp: z.boolean().optional(),
+    // Ollama server configuration (default: http://localhost:11434)
+    ollamaBaseUrl: z.string().optional(),
+    // Whether the Ollama local provider is enabled in the UI + model pickers
+    ollamaEnabled: z.boolean().optional(),
+    // List of provider IDs that the user has explicitly disabled (e.g. ["custom-cortecs", "openrouter"])
+    // Models from disabled providers are hidden from all selectors.
+    disabledProviders: z.array(z.string()).optional(),
     // Chat render mode: "full" (all badges/modals/tools) or "zen" (minimal DOM, only prose + cost)
     chatRenderMode: ChatRenderModeSchema.optional(),
     // Selected UI font family (id from shared/fonts.ts)
     selectedFont: z.string().optional(),
     // Selected Chat font family
     selectedChatFont: z.string().optional(),
+    // Font size multiplier (1 = default, 1.3 = 30% larger) — per group
+    fontScaleUI: z.number().optional(),
+    fontScaleSidebar: z.number().optional(),
+    fontScaleChat: z.number().optional(),
+    fontScaleBubbleWidth: z.number().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
+
+    // Morph Patch Engine — overrides OpenCode's built-in edit/patch tools with
+    // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
+    enableMorphPatchTool: z.boolean().optional(),
+    morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
+
+    // DEPRECATED — per-agent model overrides. Superseded by strategistModel + executorModel.
+    agentModels: z.object({
+      plan: z.string().optional(),
+      explore: z.string().optional(),
+      general: z.string().optional(),
+      compaction: z.string().optional(),
+      title: z.string().optional(),
+      summary: z.string().optional(),
+      mockup: z.string().optional(),
+    }).optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),
@@ -440,7 +622,27 @@ export const UserSettingsSchema = z
         isMaximized: z.boolean().optional(),
       })
       .optional(),
+    // Per-window-type saved bounds (each secondary window remembers its own position/size)
+    secondaryWindowStates: z.record(z.string(), z.object({
+      x: z.number().optional(),
+      y: z.number().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      isMaximized: z.boolean().optional(),
+    })).optional(),
+    // Playground — saved model presets
+    playgroundModelSets: z.array(z.object({
+      name: z.string(),
+      models: z.array(z.string()),
+    })).optional(),
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
+    // Git commit panel: persisted vertical split size (percentage, 0-100)
+    gitCommitPanelSize: z.number().optional(),
+    // Show/hide cost display in chat headers and message footers (data is always saved)
+    showCostDisplay: z.boolean().optional(),
+    // Caveman mode — forces the agent into ultra-terse, minimal-token communication
+    // to save ~20-30% of output tokens. Off by default.
+    enableCavemanMode: z.boolean().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

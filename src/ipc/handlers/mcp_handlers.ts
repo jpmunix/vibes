@@ -12,6 +12,32 @@ import { updateOpenCodeMcpConfig } from "./opencode_adapter";
 
 const logger = log.scope("mcp_handlers");
 
+/**
+ * Recursively unwrap double/triple-encoded JSON fields from Turso DB.
+ * Handles: null → null, array → array, string-of-array → array, etc.
+ */
+function safeParseJsonField<T = any>(raw: any): T | null {
+  if (raw == null) return null;
+  if (typeof raw !== "string") return raw;
+  
+  let parsed: any = raw;
+  let rounds = 0;
+  while (typeof parsed === "string" && rounds < 3) {
+    try { 
+      parsed = JSON.parse(parsed); 
+      rounds++;
+    } catch { 
+      break; 
+    }
+  }
+  
+  if (rounds > 1) {
+    logger.info(`[MCP] Fixed multi-encoded JSON field (${rounds} parse rounds)`);
+  }
+  
+  return parsed;
+}
+
 // Temporary map to keep ad-hoc clients just long enough to get tools
 const tempClients = new Map<number, Client>();
 
@@ -33,10 +59,11 @@ export function registerMcpHandlers() {
       name: s.name,
       transport: s.transport as any,
       command: s.command,
-      args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-      envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-      headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+      args: safeParseJsonField(s.args),
+      envJson: safeParseJsonField(s.envJson),
+      headersJson: safeParseJsonField(s.headersJson),
       url: s.url,
+      instructions: s.instructions,
       enabled: s.enabled === 1,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -56,6 +83,7 @@ export function registerMcpHandlers() {
       envJson: params.envJson ? (typeof params.envJson === 'string' ? params.envJson : JSON.stringify(params.envJson)) : null,
       headersJson: params.headersJson ? (typeof params.headersJson === 'string' ? params.headersJson : JSON.stringify(params.headersJson)) : null,
       url: params.url || null,
+      instructions: params.instructions || null,
       enabled: params.enabled !== false ? 1 : 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -72,10 +100,11 @@ export function registerMcpHandlers() {
       name: s.name,
       transport: s.transport as any,
       command: s.command,
-      args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-      envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-      headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+      args: safeParseJsonField(s.args),
+      envJson: safeParseJsonField(s.envJson),
+      headersJson: safeParseJsonField(s.headersJson),
       url: s.url,
+      instructions: s.instructions,
       enabled: s.enabled === 1,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -94,6 +123,7 @@ export function registerMcpHandlers() {
     if (params.envJson !== undefined) updateData.envJson = params.envJson ? (typeof params.envJson === 'string' ? params.envJson : JSON.stringify(params.envJson)) : null;
     if (params.headersJson !== undefined) updateData.headersJson = params.headersJson ? (typeof params.headersJson === 'string' ? params.headersJson : JSON.stringify(params.headersJson)) : null;
     if (params.url !== undefined) updateData.url = params.url;
+    if (params.instructions !== undefined) updateData.instructions = params.instructions;
     if (params.enabled !== undefined) updateData.enabled = params.enabled ? 1 : 0;
 
     const result = await db.update(remoteSchema.mcpServers)
@@ -115,10 +145,12 @@ export function registerMcpHandlers() {
       name: s.name,
       transport: s.transport as any,
       command: s.command,
-      args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-      envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-      headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+      args: safeParseJsonField(s.args),
+      envJson: safeParseJsonField(s.envJson),
+      headersJson: safeParseJsonField(s.headersJson),
+      headersJson: safeParseJsonField(s.headersJson),
       url: s.url,
+      instructions: s.instructions,
       enabled: s.enabled === 1,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -160,16 +192,12 @@ export function registerMcpHandlers() {
       let transport;
       if (server.transport === "stdio") {
         if (!server.command) throw new Error("Command is required for stdio transport");
-        const argsStr = server.args ? (typeof server.args === "string" ? server.args : JSON.stringify(server.args)) : "[]";
-        let parsedArgs: string[] = [];
-        try { parsedArgs = JSON.parse(argsStr); } catch (e) {}
+        const parsedArgs: string[] = safeParseJsonField(server.args) ?? [];
         
         let envVars: Record<string, string> = process.env as Record<string, string>;
-        if (server.envJson) {
-           try {
-             const customEnv = typeof server.envJson === "string" ? JSON.parse(server.envJson) : server.envJson;
-             envVars = { ...process.env, ...customEnv };
-           } catch(e) {}
+        const customEnv = safeParseJsonField<Record<string, string>>(server.envJson);
+        if (customEnv) {
+          envVars = { ...process.env, ...customEnv };
         }
         
         transport = new StdioClientTransport({
@@ -182,18 +210,11 @@ export function registerMcpHandlers() {
         
         // Parse user-configured headers
         let customHeaders: Record<string, string> = {};
-        if (server.headersJson) {
-           try {
-             customHeaders = typeof server.headersJson === "string" ? JSON.parse(server.headersJson) : server.headersJson;
-           } catch(e) {}
-        }
+        const parsedHeaders = safeParseJsonField<Record<string, string>>(server.headersJson);
+        if (parsedHeaders) customHeaders = parsedHeaders;
         // Also merge env vars as potential headers (for API keys etc.)
-        if (server.envJson) {
-           try {
-             const envObj = typeof server.envJson === "string" ? JSON.parse(server.envJson) : server.envJson;
-             customHeaders = { ...customHeaders, ...envObj };
-           } catch(e) {}
-        }
+        const parsedEnvForHeaders = safeParseJsonField<Record<string, string>>(server.envJson);
+        if (parsedEnvForHeaders) customHeaders = { ...customHeaders, ...parsedEnvForHeaders };
         
         const serverUrl = new URL(server.url);
         const requestInit: RequestInit = Object.keys(customHeaders).length > 0 
@@ -219,17 +240,10 @@ export function registerMcpHandlers() {
           logger.info(`StreamableHTTP failed for ${server.name}, falling back to SSE: ${streamableErr.message}`);
           
           let customHeaders: Record<string, string> = {};
-          if (server.headersJson) {
-            try {
-              customHeaders = typeof server.headersJson === "string" ? JSON.parse(server.headersJson) : server.headersJson;
-            } catch(e) {}
-          }
-          if (server.envJson) {
-            try {
-              const envObj = typeof server.envJson === "string" ? JSON.parse(server.envJson) : server.envJson;
-              customHeaders = { ...customHeaders, ...envObj };
-            } catch(e) {}
-          }
+          const fbHeaders = safeParseJsonField<Record<string, string>>(server.headersJson);
+          if (fbHeaders) customHeaders = fbHeaders;
+          const fbEnv = safeParseJsonField<Record<string, string>>(server.envJson);
+          if (fbEnv) customHeaders = { ...customHeaders, ...fbEnv };
           
           const sseUrl = new URL(server.url!);
           const requestInit: RequestInit = Object.keys(customHeaders).length > 0 
@@ -332,9 +346,9 @@ async function triggerOpenCodeMcpSync(userId: string) {
       name: s.name,
       transport: s.transport as "stdio" | "sse" | "http",
       command: s.command,
-      args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
-      envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
-      headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+      args: safeParseJsonField(s.args),
+      envJson: safeParseJsonField(s.envJson),
+      headersJson: safeParseJsonField(s.headersJson),
       url: s.url,
       enabled: s.enabled === 1,
       createdAt: s.createdAt,
@@ -356,6 +370,25 @@ async function ensureDefaultServers(userId: string, db: any) {
       )
     });
     
+    const OLD_CONTEXT7_PROMPT = `CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated.`;
+
+    const DEFAULT_CONTEXT7_PROMPT = `## Context7 Integration (Server: \`{{SERVER_PREFIX}}\`)
+
+Context7 retrieves real-time, version-specific API references and code examples directly from official documentation sources to prevent hallucinations of deprecated or incorrect APIs.
+
+### Rules & Workflow:
+1. **Always Verify**: Before writing, configuring, or upgrading code involving any external libraries or frameworks (such as React, Next.js, Drizzle, TailwindCSS, Vite, Vue, Astro, Express, etc.), ALWAYS query their official up-to-date documentation using Context7. Do not rely on memorized training data.
+2. **Retrieve Library ID**:
+   - Call \`{{SERVER_PREFIX}}_resolve-library-id\` with \`libraryName\` (e.g., "tailwindcss") to find the exact \`libraryId\` (e.g., "tailwindlabs/tailwindcss").
+   - If you already know the library's exact ID, you may skip the resolution step and use it directly.
+3. **Query Documentation**:
+   - Call \`{{SERVER_PREFIX}}_query-docs\` with the resolved \`libraryId\` and your specific question or task \`query\` (e.g., "how to define a grid layout with responsive columns").
+4. **Authoritativeness**: Ground all library-specific implementations in the documentation retrieved. Live documentation from Context7 is authoritative and must take precedence over your internal training data.`;
+
+    const isOldPrompt = !existing?.instructions ||
+      existing.instructions === OLD_CONTEXT7_PROMPT ||
+      existing.instructions.includes("Context7 retrieves real-time, version-specific API references and examples to avoid hallucinating");
+
     if (!existing) {
       logger.info(`Seeding default Context7 server for user ${userId}`);
       await db.insert(remoteSchema.mcpServers).values({
@@ -365,9 +398,18 @@ async function ensureDefaultServers(userId: string, db: any) {
         url: "https://mcp.context7.com/mcp",
         headersJson: JSON.stringify({ "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" }),
         enabled: 1,
+        instructions: DEFAULT_CONTEXT7_PROMPT,
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();
+    } else if (isOldPrompt) {
+      logger.info(`Updating default instructions for existing Context7 server of user ${userId}`);
+      await db.update(remoteSchema.mcpServers)
+        .set({
+          instructions: DEFAULT_CONTEXT7_PROMPT,
+          updatedAt: new Date(),
+        })
+        .where(eq(remoteSchema.mcpServers.id, existing.id));
     }
   } catch (e: any) {
     logger.warn(`Failed to seed default servers: ${e.message}`);

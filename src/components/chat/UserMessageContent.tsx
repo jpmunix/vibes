@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
-import { X, Wrench } from "@/components/ui/icons";
+import { X, Wrench, Paperclip } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -11,14 +11,17 @@ import {
 interface UserMessageContentProps {
     content: string;
     aiMessagesJson?: any;
+    /** When true, image thumbnails are hidden (parent renders a compact badge instead) */
+    hideImages?: boolean;
 }
 
 /**
- * Extract image base64 data from aiMessagesJson if available.
- * Returns an array of { base64, mimeType } objects.
+ * Extract image data from aiMessagesJson if available.
+ * Supports both inline base64 data and CDN URLs (from Bunny storage).
+ * Returns an array of { src, mimeType } where src is either a data URL or a CDN URL.
  */
-function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
-    base64: string;
+export function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
+    src: string;
     mimeType: string;
 }> {
     if (!aiMessagesJson) {
@@ -44,7 +47,7 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
         return [];
     }
 
-    const images: Array<{ base64: string; mimeType: string }> = [];
+    const images: Array<{ src: string; mimeType: string }> = [];
 
     for (const msg of messages) {
         if (msg.role !== "user") continue;
@@ -52,10 +55,13 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
 
         for (const part of msg.content) {
             if (part.type === "image" && part.image) {
-                images.push({
-                    base64: part.image,
-                    mimeType: part.mediaType || part.mimeType || "image/png",
-                });
+                const mimeType = part.mediaType || part.mimeType || "image/png";
+                // Detect whether image value is a URL or base64 data
+                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
+                const src = isUrl
+                    ? part.image
+                    : `data:${mimeType};base64,${part.image}`;
+                images.push({ src, mimeType });
             }
         }
     }
@@ -71,6 +77,7 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
 export const UserMessageContent = React.memo(function UserMessageContent({
     content,
     aiMessagesJson,
+    hideImages,
 }: UserMessageContentProps) {
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
@@ -101,6 +108,11 @@ export const UserMessageContent = React.memo(function UserMessageContent({
         if (uploadMarker !== -1) {
             text = text.substring(0, uploadMarker);
         }
+
+        // Convert single \n into markdown hard breaks (two trailing spaces + \n)
+        // so plain-text messages preserve line breaks without whitespace-pre-wrap,
+        // while markdown block elements (lists, headings) still render correctly.
+        text = text.replace(/\n(?!\n)/g, '  \n');
 
         return text.trim();
     }, [content]);
@@ -149,26 +161,25 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 </>
             ) : (
                 cleanContent && (
-                    <div className="whitespace-pre-wrap">
+                    <div>
                         <VanillaMarkdownParser content={cleanContent} />
                     </div>
                 )
             )}
 
-            {/* Render image thumbnails — styled like quote cards */}
-            {images.length > 0 && (
+            {/* Render image thumbnails — styled like quote cards (hidden when parent collapses) */}
+            {!hideImages && images.length > 0 && (
                 <div className="not-prose flex flex-wrap gap-2 mt-2">
                     {images.map((img, index) => {
-                        const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
                         return (
                             <button
                                 key={index}
-                                onClick={() => handleImageClick(dataUrl)}
+                                onClick={() => handleImageClick(img.src)}
                                 className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
                                 style={{ width: 120, height: 120, flexShrink: 0 }}
                             >
                                 <img
-                                    src={dataUrl}
+                                    src={img.src}
                                     alt={`Captura ${index + 1}`}
                                     className="block w-full h-full object-cover rounded-lg"
                                 />
@@ -184,9 +195,9 @@ export const UserMessageContent = React.memo(function UserMessageContent({
 
             {/* Fallback: if we have attachment text but no aiMessagesJson images,
           show a subtle indicator that there were attachments */}
-            {hasAttachmentText && images.length === 0 && (
+            {!hideImages && hasAttachmentText && images.length === 0 && (
                 <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
-                    <span>📎 Adjuntos enviados</span>
+                    <span className="flex items-center gap-1"><Paperclip size={11} /> Adjuntos enviados</span>
                 </div>
             )}
 

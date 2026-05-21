@@ -74,6 +74,16 @@ export const CreateAppResultSchema = z.object({
   chatId: z.number(),
 });
 
+export const ApplyTemplateParamsSchema = z.object({
+  appId: z.number(),
+  templateId: z.string().optional(),
+});
+
+export const ApplyTemplateResultSchema = z.object({
+  success: z.boolean(),
+});
+
+
 /**
  * Schema for delete app params.
  */
@@ -149,6 +159,8 @@ export const EditAppFileParamsSchema = z.object({
   appId: z.number(),
   filePath: z.string(),
   content: z.string(),
+  /** When true, skip the automatic git add+commit after writing the file */
+  skipCommit: z.boolean().optional(),
 });
 
 /**
@@ -156,6 +168,23 @@ export const EditAppFileParamsSchema = z.object({
  */
 export const EditAppFileResultSchema = z.object({
   warning: z.string().optional(),
+});
+
+/**
+ * Schema for delete app file params.
+ */
+export const DeleteAppFileParamsSchema = z.object({
+  appId: z.number(),
+  filePath: z.string(),
+});
+
+/**
+ * Schema for rename app file params.
+ */
+export const RenameAppFileParamsSchema = z.object({
+  appId: z.number(),
+  oldPath: z.string(),
+  newPath: z.string(),
 });
 
 /**
@@ -343,6 +372,11 @@ export const appContracts = {
     input: CreateAppParamsSchema,
     output: CreateAppResultSchema,
   }),
+  applyTemplate: defineContract({
+    channel: "apply-template",
+    input: ApplyTemplateParamsSchema,
+    output: ApplyTemplateResultSchema,
+  }),
 
   getApp: defineContract({
     channel: "get-app",
@@ -434,6 +468,18 @@ export const appContracts = {
     output: z.array(AppFileSearchResultSchema),
   }),
 
+  deleteAppFile: defineContract({
+    channel: "delete-app-file",
+    input: DeleteAppFileParamsSchema,
+    output: z.void(),
+  }),
+
+  renameAppFile: defineContract({
+    channel: "rename-app-file",
+    input: RenameAppFileParamsSchema,
+    output: z.void(),
+  }),
+
   changeAppLocation: defineContract({
     channel: "change-app-location",
     input: ChangeAppLocationParamsSchema,
@@ -510,6 +556,18 @@ export const appContracts = {
       status: z.enum(["running", "stopped", "error"]),
       url: z.string().optional(),
     }),
+  }),
+
+  archiveApp: defineContract({
+    channel: "archive-app",
+    input: z.object({ appId: z.number(), archived: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getArchivedApps: defineContract({
+    channel: "get-archived-apps",
+    input: z.void(),
+    output: z.array(ListedAppSchema),
   }),
 } as const;
 

@@ -13,6 +13,7 @@ import {
   extractClassPrefixes,
 } from "../../../../utils/style-utils";
 import { gitAdd, gitCommit } from "../../../../ipc/utils/git_utils";
+import { readSettings } from "../../../../main/settings";
 import { generateAutoCommitMessage } from "../../../../ipc/utils/auto_commit_message";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import {
@@ -105,7 +106,7 @@ export function registerVisualEditingHandlers() {
           }
         }
 
-        // Commit all changes in a single commit
+        // Stage and optionally commit all changes
         if (modifiedFiles.length > 0 && fs.existsSync(path.join(appPath, ".git"))) {
           for (const filepath of modifiedFiles) {
             await gitAdd({
@@ -114,16 +115,19 @@ export function registerVisualEditingHandlers() {
             });
           }
 
-          const commitMsg = await generateAutoCommitMessage({
-            appPath,
-            writtenFiles: modifiedFiles,
-            fallbackMessage: `Visual editing: Updated ${modifiedFiles.length} file${modifiedFiles.length > 1 ? "s" : ""}`,
-          });
+          const settings = readSettings();
+          if (settings.autoApproveChanges) {
+            const commitMsg = await generateAutoCommitMessage({
+              appPath,
+              writtenFiles: modifiedFiles,
+              fallbackMessage: `Visual editing: Updated ${modifiedFiles.length} file${modifiedFiles.length > 1 ? "s" : ""}`,
+            });
 
-          await gitCommit({
-            path: appPath,
-            message: commitMsg,
-          });
+            await gitCommit({
+              path: appPath,
+              message: commitMsg,
+            });
+          }
         }
       } catch (error) {
         throw new Error(`Failed to apply visual editing changes: ${error}`);
@@ -212,16 +216,20 @@ export function registerVisualEditingHandlers() {
           await fsPromises.writeFile(fullPath, newContent, "utf-8");
 
           await gitAdd({ path: appPath, filepath: filePath });
-          const commitMsg = await generateAutoCommitMessage({
-            appPath,
-            writtenFiles: [filePath],
-            fallbackMessage: `Visual editing: Changed icon to ${newIconName} in ${filePath}`,
-          });
 
-          await gitCommit({
-            path: appPath,
-            message: commitMsg,
-          });
+          const settings = readSettings();
+          if (settings.autoApproveChanges) {
+            const commitMsg = await generateAutoCommitMessage({
+              appPath,
+              writtenFiles: [filePath],
+              fallbackMessage: `Visual editing: Changed icon to ${newIconName} in ${filePath}`,
+            });
+
+            await gitCommit({
+              path: appPath,
+              message: commitMsg,
+            });
+          }
         }
       } catch (error) {
         logger.error("Failed to replace icon:", error);

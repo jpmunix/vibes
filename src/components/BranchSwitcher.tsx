@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { GitBranch, Check, Plus, Loader2, ChevronDown } from "@/components/ui/icons";
+import { useState, useCallback, useMemo } from "react";
+import { GitBranch, Check, Plus, Loader2, ChevronDown, CloudDownload } from "@/components/ui/icons";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {
   Dialog,
@@ -18,6 +18,8 @@ interface BranchSwitcherProps {
   appId: number;
   currentBranch: string | null;
   branches: string[];
+  /** Remote branches (names only, e.g. "feature/foo") — used to show remote-only branches */
+  remoteBranches?: string[];
   switchBranch: (branch: string) => Promise<void>;
   isSwitchingBranch: boolean;
   /** Optional ahead count badge */
@@ -30,6 +32,7 @@ export function BranchSwitcher({
   appId,
   currentBranch,
   branches,
+  remoteBranches = [],
   switchBranch,
   isSwitchingBranch,
   aheadCount,
@@ -63,6 +66,12 @@ export function BranchSwitcher({
     [newBranchName, appId, currentBranch, switchBranch],
   );
 
+  // Compute remote-only branches (exist on remote but not locally)
+  const remoteOnlyBranches = useMemo(() => {
+    const localSet = new Set(branches);
+    return remoteBranches.filter((b) => !localSet.has(b));
+  }, [branches, remoteBranches]);
+
   if (!currentBranch || currentBranch === "<no-branch>") return null;
 
   return (
@@ -83,6 +92,12 @@ export function BranchSwitcher({
             leftIcon: <GitBranch size={14} className="opacity-70" />,
             group: "branches"
           })),
+          ...remoteOnlyBranches.map((b) => ({
+            value: b,
+            label: b,
+            leftIcon: <CloudDownload size={14} className="opacity-50" />,
+            group: "remote"
+          })),
           {
             value: "__create__",
             label: "Crear nueva rama...",
@@ -92,6 +107,9 @@ export function BranchSwitcher({
         ]}
         groups={[
           { id: "branches", heading: "Cambiar de rama" },
+          ...(remoteOnlyBranches.length > 0
+            ? [{ id: "remote", heading: "Ramas remotas" }]
+            : []),
           { id: "actions", heading: undefined }
         ]}
         searchable

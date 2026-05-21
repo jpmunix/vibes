@@ -17,6 +17,7 @@ export interface ModelOption {
   pricingOutput?: string;
   inputModalities?: string[];
   outputModalities?: string[];
+  supportedParameters?: string[];
 }
 
 export const GPT_5_2_MODEL_NAME = "gpt-5.2";
@@ -34,7 +35,7 @@ export const GPT_5_MINI = "openai/gpt-5-mini";
 export const FALLBACK_STANDARD_MODEL = "google/gemini-2.5-flash-lite";
 
 /** Strong model for thinking tasks: turbo edits, knowledge extraction */
-export const FALLBACK_PRO_MODEL = "openai/gpt-5.1-codex-mini";
+// FALLBACK_PRO_MODEL removed — proModeModel has zero runtime consumers
 
 /** Default model for the main chat selector */
 export const FALLBACK_SELECTED_MODEL = "google/gemini-3-flash-preview";
@@ -309,3 +310,5 @@ export const LOCAL_PROVIDERS: Record<
     hasFreeTier: true,
   },
 };
+
+export const CUSTOM_PROVIDER_PREFIX = "custom::";

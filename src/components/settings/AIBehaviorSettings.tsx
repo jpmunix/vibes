@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
+import { systemClient } from "@/ipc/types/system";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
 
 import { useNavigate } from "@tanstack/react-router";
-import { StandardModeModelSelector } from "./StandardModeModelSelector";
-import { ChevronRight } from "@/components/ui/icons";
+import { StrategistModelSelector } from "./StrategistModelSelector";
+import { ExecutorModelSelector } from "./ExecutorModelSelector";
 import { AgentToolsSettings } from "./AgentToolsSettings";
+import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
 
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -68,6 +71,7 @@ export function AIBehaviorSettings({
 }) {
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
+  const isAdminUser = useIsAdmin();
 
   // ─── Current values ───
 
@@ -95,7 +99,7 @@ export function AIBehaviorSettings({
           Agente
         </h2>
         <p className="typo-caption mt-1">
-          Personaliza cómo el agente procesa la información y se comunica contigo
+          Personaliza cómo los agentes procesan la información y los modelos que usan
         </p>
       </div>
 
@@ -152,6 +156,7 @@ export function AIBehaviorSettings({
           control={<TextVerbositySelector variant="settings" />}
         />
 
+
         {/* Vista del chat: Completo / Flow / Zen */}
         <SettingRow
           label="Vista del chat"
@@ -191,12 +196,57 @@ export function AIBehaviorSettings({
 
         {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
 
-        {/* Modelo para tareas internas */}
+        {/* ── Modelo Estratega ── */}
         <SettingRow
-          label="Modelo para tareas internas"
-          description="Títulos, resúmenes y mantenimiento"
-          control={<StandardModeModelSelector />}
+          label="Modelo estratega"
+          description="Títulos, resúmenes, compactación y tareas auxiliares de fondo"
+          control={<StrategistModelSelector />}
         />
+
+        {/* ── Modelo Ejecutor ── */}
+        <SettingRow
+          label="Modelo ejecutor"
+          description="Títulos, resúmenes, compactación y tareas ligeras"
+          control={<ExecutorModelSelector />}
+        />
+
+        {/* Morph Patch Engine — admin only */}
+        {isAdminUser && (
+          <SettingRow
+            label="Morph Patch Engine"
+            description="Ediciones de código ultrarrápidas vía Morph V3"
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {([
+                  { value: false, label: "Desactivado" },
+                  { value: true, label: "Activado" },
+                ] as const).map((option) => (
+                  <button
+                    key={String(option.value)}
+                    onClick={() => {
+                      updateSettings({ enableMorphPatchTool: option.value } as any);
+                      // Restart OpenCode server so new tool state takes effect immediately
+                      systemClient.restartOpenCodeServer().catch(() => {});
+                    }}
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      ((settings as any)?.enableMorphPatchTool === true) === option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+        )}
+
+        {/* Permisos del agente — collapsible inside Agente */}
+        <div id="agent-permissions">
+          <OpenCodePermissionsSettings />
+        </div>
 
 
       </div>

@@ -21,8 +21,6 @@ import type { SmartContextMode } from "../../lib/schemas";
 import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
-import { getEffectivePrompt } from "../../prompts";
-import { getThemePromptById } from "../utils/theme_utils";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -65,6 +63,10 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
+import { uploadChatAttachment } from "./bunny_handlers";
+import { bufferChatRound } from "../utils/memory_extractor";
+import { buildMemoryContext } from "../utils/memory_context_builder";
+import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
@@ -86,15 +88,14 @@ import { parseAppMentions } from "@/shared/parse_mention_apps";
 // Migrated to remoteSchema.prompts
 import { replacePromptReference } from "../utils/replacePromptReference";
 import z from "zod";
-import { logTokenUsage } from "../utils/token_stats_logger";
-import { logChatInfo, logChatError } from "../utils/chat_logger";
 
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
+  DEFAULT_EXECUTOR_MODEL
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
-import { logAiQuery } from "@/ipc/utils/ai_query_logger";
+import { classifyError } from "../utils/error_classifier";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
@@ -120,6 +121,17 @@ const lastSmartModeForChat = new Map<number, string>();
 
 // Directory for storing temporary files
 const TEMP_DIR = path.join(os.tmpdir(), "vibes-attachments");
+
+// Agent ID mapping: chat mode → OpenCode agent identity.
+// IMPORTANT: must be at module scope — duplicate local `const` declarations
+// caused esbuild to hoist/merge them, triggering a TDZ ReferenceError at runtime.
+const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+  agent: "build",
+  "crush-agent": "build",
+  plan: "plan",
+  ask: "explore",
+  mockup: "mockup",
+};
 
 // Common helper functions
 const TEXT_FILE_EXTENSIONS = [
@@ -264,7 +276,7 @@ function registerChatStreamHandlers() {
         where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
           },
           app: true, // Include app information
         },
@@ -476,10 +488,11 @@ ${componentSnippet}
       }
 
       // Generate aiMessagesJson early if we have attachments
+      // We build two versions: one with base64 for the LLM, one with CDN URLs for DB storage
       let userAiMessagesJson: any = null;
       if (attachmentPaths.length > 0) {
-        const prepared = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths);
-        const json = getAiMessagesJsonIfWithinLimit([prepared]);
+        const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths, currentUserId);
+        const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
         if (json) userAiMessagesJson = JSON.stringify(json);
       }
 
@@ -503,16 +516,16 @@ ${componentSnippet}
               priorAttachmentInfo += `- ${att.name} (${att.type})\n`;
             }
             priorContent += priorAttachmentInfo;
-            // Build aiMessagesJson for image visibility in the UI
-            const prepared = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths);
-            const json = getAiMessagesJsonIfWithinLimit([prepared]);
+            // Build aiMessagesJson for image visibility in the UI (CDN URLs for DB)
+            const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths, currentUserId);
+            const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
             if (json) priorAiMessagesJson = JSON.stringify(json);
           }
 
           await db.insert(remoteSchema.messages).values({
             userId: currentUserId,
             chatId: req.chatId,
-            role: "user",
+            role: prior.role || "user",
             content: priorContent,
             aiMessagesJson: priorAiMessagesJson,
             createdAt: new Date(),
@@ -549,6 +562,22 @@ ${componentSnippet}
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
+      const resolvedChatMode = req.chatMode || settings.selectedChatMode || "agent";
+      const agentId = agentIdMap[resolvedChatMode] || "build";
+      
+      let effectiveModelName = settings.selectedModel.name;
+      const activeProvider = settings.selectedModel?.provider || "openrouter";
+      // All modes (agent, plan, ask) use the selectedModel from the dropdown.
+      // Only mockup uses the executorModel (lightweight, fast).
+      // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+      if (agentId === "mockup") {
+        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+        const { parseModelString } = await import("../../lib/schemas");
+        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+        effectiveModelName = execName.replace(/^openrouter\//, "");
+        selectedModel = { name: effectiveModelName, provider: execProv };
+      }
+
       // Check if this is a test prompt
       const testResponse = getTestResponse(req.prompt);
 
@@ -568,7 +597,7 @@ ${componentSnippet}
             role: "assistant",
             content: "",
             requestId: vibesRequestId,
-            model: settings.selectedModel.name,
+            model: effectiveModelName,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
             }).catch(() => null),
@@ -582,7 +611,7 @@ ${componentSnippet}
           where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
             },
             app: true,
           },
@@ -618,8 +647,9 @@ ${componentSnippet}
             chatId: req.chatId,
             role: "assistant",
             content: "",
+            status: "streaming",
             requestId: vibesRequestId,
-            model: selectedModel.name,
+            model: effectiveModelName,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
             }).catch(() => null),
@@ -627,6 +657,17 @@ ${componentSnippet}
           })
           .returning();
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
+
+        // ── A1: Register durable stream task in DB ──────────────────────
+        await db.insert(remoteSchema.streamTasks).values({
+          userId: currentUserId as string,
+          chatId: req.chatId,
+          messageId: placeholderAssistantMessage.id,
+          status: "running",
+          startedAt: new Date(),
+          model: effectiveModelName,
+          agentId: agentIdMap[resolvedChatMode] || "build",
+        }).catch(err => logger.error("[StreamTask] Failed to insert stream task:", err));
 
         // Reset stream start time for the actual streaming phase
         streamStartedAt = Date.now();
@@ -636,7 +677,7 @@ ${componentSnippet}
           where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
             },
             app: true,
           },
@@ -653,16 +694,7 @@ ${componentSnippet}
         });
 
         // Log selected model before starting stream
-        await logChatInfo(
-          req.chatId,
-          "model-selection",
-          `Selected model: ${selectedModel.provider}/${selectedModel.name}`,
-          {
-            provider: selectedModel.provider,
-            model: selectedModel.name,
-            customModelId: selectedModel.customModelId,
-          },
-        );
+        
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -693,11 +725,12 @@ ${componentSnippet}
 
         // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
-        const isAgentMode = settings.selectedChatMode === "agent" ||
-          settings.selectedChatMode === "ask" ||
-          settings.selectedChatMode === "plan" ||
-          settings.selectedChatMode === "mockup" ||
-          (settings.selectedChatMode as unknown as string) === "crush-agent";
+        const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
+        const isAgentMode = currentChatMode === "agent" ||
+          currentChatMode === "ask" ||
+          currentChatMode === "plan" ||
+          currentChatMode === "mockup" ||
+          currentChatMode === "crush-agent";
 
         if (isAgentMode) {
           logger.log(
@@ -738,7 +771,7 @@ ${componentSnippet}
         }
 
         // ── Build-mode preprocessing (skipped for OpenCode agent mode) ──────
-        // OpenCode manages its own context via AGENTS.md and built-in tools.
+        // OpenCode manages its own project context. Vibes injects additional
         // These variables are only used by the build/ask mode branches below.
         let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
         let willUseAgentStream = isAgentMode;
@@ -756,17 +789,18 @@ ${componentSnippet}
             mentionedAppNames,
             updatedChat.app.id, // Exclude current app
           );
+          const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
           willUseAgentStream =
-            (settings.selectedChatMode === "agent" ||
-              settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "mockup") &&
+            (currentChatMode === "agent" ||
+              currentChatMode === "ask" ||
+              currentChatMode === "mockup") &&
             !mentionedAppsCodebases.length;
 
-          isDeepContextEnabled =
+          isDeepContextEnabled = Boolean(
             isEngineEnabled &&
-            settings.enableProSmartFilesContextMode &&
             settings.proSmartContextOption !== "balanced" &&
-            mentionedAppsCodebases.length === 0;
+            mentionedAppsCodebases.length === 0
+          );
           logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
 
           // Combine current app codebase with mentioned apps' codebases
@@ -793,19 +827,7 @@ ${componentSnippet}
             codebaseInfo.length / 4,
           );
 
-          await logChatInfo(
-            req.chatId,
-            "context-building",
-            "Extracted codebase information",
-            {
-              appPath,
-              codebaseLength: codebaseInfo.length,
-              estimatedTokens: Math.round(codebaseInfo.length / 4),
-              mentionedApps: mentionedAppsCodebases.length,
-              isDeepContextEnabled,
-            },
-            placeholderAssistantMessage.id,
-          );
+          
 
           // Prepare message history for the AI
           const messageHistory = updatedChat.messages.map((message: any) => ({
@@ -846,15 +868,8 @@ ${componentSnippet}
             );
           }
 
-          // Get theme prompt for the app (null themeId means "no theme")
-          const themePrompt = await getThemePromptById(updatedChat.app.themeId);
-          logger.log(
-            `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
-          );
-
           systemPrompt = constructSystemPrompt({
-            chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
-            themePrompt,
+            chatMode: (req.chatMode || settings.selectedChatMode || "agent") as "ask" | "agent" | "plan",
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -1020,8 +1035,8 @@ This conversation includes one or more image attachments. When the user uploads 
           // Thinking tags are generally not critical for the context
           // and eats up extra tokens.
           content:
-            settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "plan"
+            (req.chatMode || settings.selectedChatMode || "agent") === "ask" ||
+              (req.chatMode || settings.selectedChatMode || "agent") === "plan"
               ? removeVibesTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
@@ -1043,10 +1058,12 @@ This conversation includes one or more image attachments. When the user uploads 
           const lastUserIndex = chatMessages.length - 2;
           const lastUserMessage = chatMessages[lastUserIndex];
           if (lastUserMessage.role === "user" && attachmentPaths.length > 0) {
-            chatMessages[lastUserIndex] = await prepareMessageWithAttachments(
+            const { llmMessage } = await prepareMessageWithAttachments(
               lastUserMessage,
               attachmentPaths,
+              currentUserId as string,
             );
+            chatMessages[lastUserIndex] = llmMessage;
           }
         } else {
           logger.warn(
@@ -1080,29 +1097,10 @@ This conversation includes one or more image attachments. When the user uploads 
               "sending AI request to engine with request id:",
               vibesRequestId,
             );
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request to engine",
-              {
-                requestId: vibesRequestId,
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           } else {
             logger.log("sending AI request");
-            await logChatInfo(
-              req.chatId,
-              "streaming",
-              "Starting AI request",
-              {
-                model: selectedModel.name,
-                provider: selectedModel.provider,
-              },
-              placeholderAssistantMessage.id,
-            );
+            
           }
           let versionedFiles: VersionedFiles | undefined;
           if (isDeepContextEnabled) {
@@ -1132,18 +1130,7 @@ This conversation includes one or more image attachments. When the user uploads 
             "Starting direct AI request (no engine):",
             modelClient.model,
           );
-          await logChatInfo(
-            req.chatId,
-            "streaming",
-            "Starting AI request",
-            {
-              model: modelClient.model,
-              provider: selectedModel.provider,
-              hasTools: !!tools,
-              messageCount: chatMessages.length,
-            },
-            placeholderAssistantMessage?.id,
-          );
+          
 
           // Dynamic maxOutputTokens capping based on estimated input
           const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
@@ -1188,6 +1175,8 @@ This conversation includes one or more image attachments. When the user uploads 
             }),
             maxOutputTokens: finalMaxOutputTokens,
             temperature: await getTemperature(settings.selectedModel),
+            // User-tunable hyperparameters from the Inference Tuner
+            topP: settings.inferenceTopP ?? 0.95,
             maxRetries: 2,
             model: modelClient.model,
             stopWhen: [stepCountIs(20), hasToolCall("edit-code")],
@@ -1211,37 +1200,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
 
               // Log the query to the dedicated AI query log
-              try {
-                void logAiQuery({
-                  queryType: "chat-stream",
-                  model: selectedModel.name || modelClient.builtinProviderId || "unknown",
-                  promptSnippet: (() => {
-                    const content = chatMessages[chatMessages.length - 1]?.content;
-                    if (typeof content === "string") return content.slice(0, 100);
-                    if (Array.isArray(content)) {
-                      const firstPart = content[0];
-                      if (firstPart && firstPart.type === "text") {
-                        return firstPart.text.slice(0, 100);
-                      }
-                    }
-                    return "";
-                  })(),
-                  payload: {
-                    system: systemPromptOverride,
-                    messages: chatMessages,
-                    tools: tools ? Object.keys(tools) : [],
-                  },
-                  response: {
-                    text: response.text,
-                    toolCalls: response.toolCalls,
-                    finishReason: response.finishReason,
-                  },
-                  inputTokens: promptTokens,
-                  outputTokens: completionTokens,
-                }, currentUserId as string);
-              } catch (e) {
-                logger.error("Failed to log streaming AI query", e);
-              }
+              
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1265,51 +1224,15 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Log token usage for verbose chat logs
-                void logChatInfo(
-                  req.chatId,
-                  "token-usage",
-                  `Total tokens: ${totalTokens} (input: ${promptTokens ?? "?"}, output: ${completionTokens ?? "?"})`,
-                  {
-                    totalTokens,
-                    inputTokens: promptTokens,
-                    outputTokens: completionTokens,
-                    model:
-                      selectedModel?.name ??
-                      placeholderAssistantMessage.model ??
-                      null,
-                    filesCount: files?.length ?? 0,
-                    toolsCount: tools ? Object.keys(tools).length : 0,
-                  },
-                  placeholderAssistantMessage.id,
-                );
+                
 
-                // Persist simple token stats for charts/logs
-                logTokenUsage({
-                  chatId: req.chatId,
-                  messageId: placeholderAssistantMessage.id,
-                  totalTokens,
-                  promptTokens,
-                  completionTokens,
-                  model:
-                    selectedModel?.name ??
-                    placeholderAssistantMessage.model ??
-                    null,
-                  timestamp: Date.now(),
-                  appId: updatedChat?.app?.id ?? null,
-                  filesSent: files?.map((f) => f.path) ?? [],
-                  toolsUsed: tools ? Object.keys(tools) : [],
-                });
               } else {
                 logger.log("Total tokens used: unknown");
               }
             },
             onError: (error: any) => {
-              let errorMessage = (error as any)?.error?.message;
-              const responseBody = error?.error?.responseBody;
-              if (errorMessage && responseBody) {
-                errorMessage += "\n\nDetails: " + responseBody;
-              }
-              const message = errorMessage || JSON.stringify(error);
+              const classified = classifyError(error);
+              const message = classified.userMessage;
               const requestIdPrefix = isEngineEnabled
                 ? `[Request ID: ${vibesRequestId}] `
                 : "";
@@ -1318,18 +1241,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 error,
               );
 
-              void logChatError(
-                req.chatId,
-                "error-handling",
-                `Streaming error: ${message}`,
-                {
-                  errorMessage,
-                  requestId: vibesRequestId,
-                  model: selectedModel.name,
-                  provider: selectedModel.provider,
-                },
-                placeholderAssistantMessage.id,
-              );
+              
 
               const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
               safeSend(event.sender, "chat:response:error", {
@@ -1394,87 +1306,68 @@ This conversation includes one or more image attachments. When the user uploads 
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
-        const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
-          agent: "build",
-          "crush-agent": "build",
-          plan: "plan",
-          ask: "explore",
-          mockup: "mockup",
-        };
-        const resolvedChatMode: string = (settings.selectedChatMode || "agent");
-
         const agentId = agentIdMap[resolvedChatMode] || "build";
 
         if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${resolvedChatMode})`);
 
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode
-          // handles all project knowledge natively via AGENTS.md.
+          // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
-          // 1. Language & Behavior instructions
+          // 1. Fetch active prompts from database (Single Source of Truth)
+          const activePromptsRows = await db.query.prompts.findMany({
+            where: and(
+              eq(remoteSchema.prompts.userId, currentUserId as string),
+              eq(remoteSchema.prompts.enabled, 1)
+            ),
+            orderBy: (p: any, { asc }: any) => [asc(p.id)],
+          });
+          
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
-          contextInstructions.push(
-            `ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en ${langName}. Piensa en ${langName}, razona en ${langName} y redacta TODAS tus respuestas completamente en ${langName}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.\n` +
-            `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
-          );
 
-          // (LSP is always enabled — no fallback instruction needed)
-
-          // 3. Tool correction (mainly for Gemini hallucinating shell edits)
-          contextInstructions.push(
-            `NOTAS DE ENTORNO IMPORTANTES:\n` +
-            `1. Tienes HERRAMIENTAS JSON NATIVAS (tools) definidas en tu esquema para editar archivos. USAS ESTAS HERRAMIENTAS nativas.\n` +
-            `2. NUNCA uses la herramienta "bash" para intentar editar código ejecutando scripts en consola de "python" o comandos "sed" o redirecciones en la terminal. Usa siempre tus JSON tools disponibles en el esquema para cualquier edición.`
-          );
-
-          // 4. Efficiency & Task Triage (Prevent over-thinking simple tasks)
-          contextInstructions.push(
-            `CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:\n` +
-            `Antes de empezar cualquier tarea, evalúa su complejidad:\n\n` +
-            `TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):\n` +
-            `- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.\n` +
-            `- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).\n` +
-            `- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.\n` +
-            `- Mantén tu respuesta final extremadamente corta y directa.\n\n` +
-            `TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):\n` +
-            `- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.\n\n` +
-            `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
-          );
-
-          // 5. Smart todowrite usage — task management for complex requests
-          contextInstructions.push(
-            `GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados ` +
-            `(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades), ` +
-            `usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar. ` +
-            `Marca cada tarea como completada (status: "done") a medida que avanzas. ` +
-            `NO uses todowrite para cambios simples como corregir un error, ajustar un estilo, ` +
-            `o modificar un solo archivo. En esos casos, actúa directamente.`
-          );
-
-          // 6. Plan mode — interactive question-driven planning
-          if (resolvedChatMode === "plan") {
-            const isEnglish = (settings.chatLanguage || "es") === "en";
-            contextInstructions.push(
-              isEnglish
-                ? `INTERACTIVE PLANNING MODE:\n` +
-                  `When the user asks you to create a plan, do NOT assume details that are not explicit.\n` +
-                  `Use your "question" tool to ask the user about design decisions, architecture,\n` +
-                  `technologies, priorities, and any ambiguity.\n` +
-                  `Rule: maximum 5 questions. Group related ones. Use options when alternatives are clear.\n` +
-                  `Once everything is clarified, generate the definitive plan.`
-                : `MODO PLANIFICACIÓN INTERACTIVA:\n` +
-                  `Cuando el usuario te pide crear un plan, NO asumas los detalles que no están explícitos.\n` +
-                  `Usa tu herramienta "question" para preguntar al usuario sobre decisiones de diseño,\n` +
-                  `arquitectura, tecnologías, prioridades y cualquier ambigüedad.\n` +
-                  `Regla: máximo 5 preguntas. Agrupa las relacionadas. Usa opciones cuando las alternativas sean claras.\n` +
-                  `Una vez aclarado todo, genera el plan definitivo.`
-            );
+          for (const prompt of activePromptsRows) {
+            // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
+            if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
+              if (prompt.systemId === "ctx_plan_mode" && resolvedChatMode !== "plan") {
+                continue; // Skip plan mode instructions if not in plan mode
+              }
+              
+              let content = prompt.content;
+              if (prompt.systemId === "ctx_language") {
+                content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
+              }
+              contextInstructions.push(content);
+            }
+          }
+          
+          // MCP Server instructions
+          try {
+            const enabledMcpServers = await db.query.mcpServers.findMany({
+              where: and(
+                eq(remoteSchema.mcpServers.userId, currentUserId as string),
+                eq(remoteSchema.mcpServers.enabled, 1)
+              ),
+            });
+            for (const server of enabledMcpServers) {
+              if (server.instructions?.trim()) {
+                const serverKey = server.name.replace(/[^a-zA-Z0-9_-]/g, "");
+                let inst = server.instructions;
+                inst = inst.replace(/\{\{SERVER_PREFIX\}\}/g, serverKey);
+                if (updatedChat.app?.path) {
+                  inst = inst.replace(/\{\{PROJECT_PATH\}\}/g, getVibesAppPath(updatedChat.app.path));
+                }
+                contextInstructions.push(inst);
+                logger.log(`[OPENCODE] Injected instructions for MCP server ${server.name}`);
+              }
+            }
+          } catch (e: any) {
+            logger.warn(`[OPENCODE] Failed to inject MCP instructions: ${e.message}`);
           }
 
           // Supabase
@@ -1505,42 +1398,121 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
-          // DESIGN.md — inject full content as context instruction on the FIRST
-          // message only. After that, OpenCode's native opencode.json instructions
-          // (which reference docs/DESIGN.md) handle it automatically.
-          {
-            const isFirstMessage = !updatedChat.messages.some(
-              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
-            );
-            const appPathRaw = updatedChat.app.path;
-            const resolvedAppPath = getVibesAppPath(appPathRaw);
-            const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
-            const designExists = fs.existsSync(designMdPath);
-            logger.info(`🎨 [DESIGN] isFirstMessage=${isFirstMessage}, exists=${designExists}, path="${designMdPath}"`);
+          // ── ARTIFACTS CONTEXT ────────────────────────────────────────────────
+          // If we are in build mode, and we have active artifacts for this chat,
+          // inject them as context.
+          if (agentId === "build" && updatedChat.app?.id) {
+            try {
+              const chatArtifacts = await db.query.chatArtifacts.findMany({
+                where: and(
+                  eq(remoteSchema.chatArtifacts.chatId, req.chatId),
+                  eq(remoteSchema.chatArtifacts.appId, updatedChat.app.id)
+                )
+              });
 
-            if (isFirstMessage && designExists) {
-              try {
-                const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
-                if (designContent.length > 0) {
-                  contextInstructions.push(
-                    `DESIGN SYSTEM REFERENCE:\n` +
-                    `The following DESIGN.md file defines the visual language, color palette, typography, spacing, and component patterns for this project. ` +
-                    `You MUST follow these design guidelines closely when building UI components. ` +
-                    `Use the exact colors, fonts, spacing values, and design tokens specified.\n\n` +
-                    designContent,
-                  );
-                  logger.info(`🎨 [DESIGN] ✅ Injected into contextInstructions (${designContent.length} chars)`);
+              if (chatArtifacts.length > 0) {
+                const projectDir = getVibesAppPath(updatedChat.app.path);
+                
+                let artifactsContext = "PLANNING ARTIFACTS AVAILABLE:\nThe following artifacts were generated during the planning phase. Read and use them to guide your implementation. As you make progress, you MUST update these files (e.g. checking off checkboxes, updating statuses) to keep the plan in sync with the codebase:\n\n";
+                let artifactsAdded = 0;
+                
+                for (const artifact of chatArtifacts) {
+                  const fullPath = path.join(projectDir, artifact.path);
+                  if (fs.existsSync(fullPath)) {
+                    const content = fs.readFileSync(fullPath, "utf-8");
+                    artifactsContext += `--- BEGIN ARTIFACT: ${artifact.path} ---\n${content}\n--- END ARTIFACT ---\n\n`;
+                    artifactsAdded++;
+                  }
                 }
-              } catch (designErr: any) {
-                logger.warn(`🎨 [DESIGN] ❌ Failed to read: ${designErr.message}`);
+                
+                if (artifactsAdded > 0) {
+                  contextInstructions.push(artifactsContext);
+                  logger.log(`[OPENCODE] Injected ${artifactsAdded} artifacts as context`);
+                }
               }
-            } else if (!isFirstMessage && designExists) {
-              logger.info(`🎨 [DESIGN] Skipped (not first message) — trusting opencode.json`);
+            } catch (err) {
+              logger.error("Failed to load artifacts for context injection:", err);
+            }
+          }
+
+          // ── DESIGN.md context ──────────────────────────────────────────────
+          // Strategy: lightweight hint only (~30 tokens). The AI reads the file
+          // on demand via its Read tool when it needs design context.
+          //
+          // WHY NOT inject the full file?
+          // The full DESIGN.md (~5K tokens) becomes part of the system prompt
+          // and travels in EVERY tool-call round-trip (Read, Grep, Write…).
+          // With 7 tool calls that's ~35K wasted tokens per first message.
+          // The hint approach lets the AI read it once in its own context,
+          // keeping the system prompt lean across all round-trips.
+          //
+          // ── FULL INJECTION (disabled) ──────────────────────────────────────
+          // To restore: uncomment this block and add `isFirstMessage &&` to
+          // the condition to limit it to the first message only.
+          //
+          // const isFirstMessage = !updatedChat.messages.some(
+          //   (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
+          // );
+          // if (isFirstMessage && designExists) {
+          //   try {
+          //     const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
+          //     if (designContent.length > 0) {
+          //       contextInstructions.push(
+          //         `DESIGN SYSTEM REFERENCE:\n` +
+          //         `The following DESIGN.md defines the visual language for this project. ` +
+          //         `Follow these design guidelines when building UI.\n\n` +
+          //         designContent,
+          //       );
+          //     }
+          //   } catch { /* ignore read errors */ }
+          // }
+          // ── END FULL INJECTION ─────────────────────────────────────────────
+          {
+            const resolvedAppPath = getVibesAppPath(updatedChat.app.path);
+            const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
+            if (fs.existsSync(designMdPath)) {
+              contextInstructions.push(
+                `DESIGN SYSTEM: This project has a design system defined in docs/DESIGN.md. ` +
+                `Read this file with your Read tool before writing or modifying any UI code.`,
+              );
             }
           }
 
 
           // 4. Build integration env vars — accessible via bash in OpenCode
+          // ── Memory decay + context injection ─────────────────────────────
+          // Decay stale auto-extracted memories (fire-and-forget, non-blocking)
+          decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
+            .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
+
+          // Load memories (app-specific + global) — injected via noReply (invisible to user)
+          let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
+          let memoryBlock: string | undefined;
+          try {
+            // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
+            const priorMessages = (updatedChat.messages || [])
+              .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content)
+              .map((m: any) => ({
+                role: m.role as string,
+                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+              }))
+              .slice(-2); // last 2 prior messages (e.g. prev user + prev assistant)
+
+            const memoryResult = await buildMemoryContext(
+              updatedChat.app.id,
+              currentUserId as string,
+              userPrompt,
+              priorMessages.length > 0 ? priorMessages : undefined,
+            );
+            if (memoryResult.block) {
+              memoryBlock = memoryResult.block;
+              selectedMemories = memoryResult.memories;
+              logger.info(`🧠 [MEMORY] Prepared ${memoryBlock.length} chars (${selectedMemories.length} memories) for noReply injection`);
+            }
+          } catch (memErr: any) {
+            logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
+          }
+
           const integrationEnvVars: Record<string, string> = {};
 
           // Bunny DB
@@ -1564,6 +1536,16 @@ This conversation includes one or more image attachments. When the user uploads 
             if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
           }
 
+          // ── Snapshot package.json BEFORE the agent runs ──────────────────
+          // Used later to decide if node_modules needs a clean reinstall.
+          let pkgJsonHashBefore: string | null = null;
+          try {
+            const pkgJsonPath = path.join(getVibesAppPath(updatedChat.app.path), "package.json");
+            if (fs.existsSync(pkgJsonPath)) {
+              pkgJsonHashBefore = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+            }
+          } catch { /* ignore — if we can't read it, we skip the optimization */ }
+
           const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
             event,
             req,
@@ -1574,6 +1556,7 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMessages: updatedChat.messages,
               agentId,
               contextInstructions,
+              memoryBlock,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
@@ -1614,6 +1597,13 @@ This conversation includes one or more image attachments. When the user uploads 
               // Fire-and-forget DB cleanup — doesn't block the UI
               void (async () => {
                 try {
+                  // Mark stream task as cancelled
+                  await db.update(remoteSchema.streamTasks)
+                    .set({ status: "cancelled", completedAt: new Date() })
+                    .where(and(
+                      eq(remoteSchema.streamTasks.chatId, req.chatId),
+                      eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+                    ));
                   await db
                     .delete(remoteSchema.messages)
                     .where(
@@ -1639,7 +1629,7 @@ This conversation includes one or more image attachments. When the user uploads 
             }
 
             // Has partial content — save it with a "cancelled" visual indicator
-            fullResponse = openCodeResponse + "\n\n---\n*⏹ Respuesta cancelada por el usuario*\n";
+            fullResponse = openCodeResponse + "\n\n<vibes-cancelled></vibes-cancelled>\n";
             const openCodeDurationMs = Date.now() - streamStartedAt;
 
             const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
@@ -1668,40 +1658,17 @@ This conversation includes one or more image attachments. When the user uploads 
                 : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
 
-              void logChatInfo(
-                req.chatId,
-                "token-usage",
-                `[Cancelled] Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-                {
-                  totalTokens: ocTotalTokens,
-                  inputTokens: ocInputTokens,
-                  outputTokens: ocOutputTokens,
-                  reasoningTokens: ocReasoningTokens,
-                  billableOutput: ocBillableOutput,
-                  model: settings.selectedModel.name,
-                  type: "opencode-agent",
-                  cancelled: true,
-                },
-                placeholderAssistantMessage.id,
-              );
-
-              logTokenUsage({
-                chatId: req.chatId,
-                messageId: placeholderAssistantMessage.id,
-                totalTokens: ocTotalTokens,
-                promptTokens: ocInputTokens,
-                completionTokens: ocBillableOutput,
-                model: settings.selectedModel.name,
-                timestamp: Date.now(),
-                appId: updatedChat.app.id,
-              });
             }
 
             await db
               .update(remoteSchema.messages)
               .set({
                 content: fullResponse,
+                status: "completed",
                 durationMs: openCodeDurationMs,
+                injectedMemories: selectedMemories.length > 0
+                  ? JSON.stringify(selectedMemories) as any
+                  : null,
               })
               .where(
                 and(
@@ -1709,6 +1676,14 @@ This conversation includes one or more image attachments. When the user uploads 
                   eq(remoteSchema.messages.userId, currentUserId as string),
                 ),
               );
+
+            // Mark stream task as cancelled (with partial content)
+            await db.update(remoteSchema.streamTasks)
+              .set({ status: "cancelled", completedAt: new Date() })
+              .where(and(
+                eq(remoteSchema.streamTasks.chatId, req.chatId),
+                eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+              )).catch(err => logger.error("[StreamTask] Failed to update on cancel:", err));
 
             safeSend(event.sender, "chat:response:chunk", {
               chatId: req.chatId,
@@ -1726,12 +1701,26 @@ This conversation includes one or more image attachments. When the user uploads 
             // Log telemetry
             sendTelemetryEvent("chat:stream:end", {
               chatMode: `opencode-${agentId}`,
-              model: settings.selectedModel.name,
+              model: effectiveModelName,
               responseLength: fullResponse.length,
               success: false,
               totalTokens: ocTotalTokens,
               cancelled: true,
             });
+
+            // ── Memory extraction from partial response (fire-and-forget) ──
+            // Even if the user stopped the stream, there may be valuable knowledge
+            // in whatever was already generated.
+            // SKIP plan mode: proposals are not confirmed facts.
+            if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
+              bufferChatRound({
+                chatId: req.chatId,
+                appId: updatedChat.app.id,
+                userId: currentUserId as string,
+                userPrompt,
+                assistantResponse: openCodeResponse,
+              });
+            }
 
             return;
           }
@@ -1769,41 +1758,17 @@ This conversation includes one or more image attachments. When the user uploads 
               ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
               : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
-            // Log token usage for verbose chat logs and ChatLogsPanel
-            void logChatInfo(
-              req.chatId,
-              "token-usage",
-              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
-              {
-                totalTokens: ocTotalTokens,
-                inputTokens: ocInputTokens,
-                outputTokens: ocOutputTokens,
-                reasoningTokens: ocReasoningTokens,
-                billableOutput: ocBillableOutput,
-                model: settings.selectedModel.name,
-                type: "opencode-agent",
-              },
-              placeholderAssistantMessage.id,
-            );
-
-            // Log to token stats file
-            logTokenUsage({
-              chatId: req.chatId,
-              messageId: placeholderAssistantMessage.id,
-              totalTokens: ocTotalTokens,
-              promptTokens: ocInputTokens,
-              completionTokens: ocBillableOutput,
-              model: settings.selectedModel.name,
-              timestamp: Date.now(),
-              appId: updatedChat.app.id,
-            });
           }
 
           await db
             .update(remoteSchema.messages)
             .set({
               content: fullResponse,
+              status: "completed",
               durationMs: openCodeDurationMs,
+              injectedMemories: selectedMemories.length > 0
+                ? JSON.stringify(selectedMemories) as any
+                : null,
             })
             .where(
               and(
@@ -1811,6 +1776,14 @@ This conversation includes one or more image attachments. When the user uploads 
                 eq(remoteSchema.messages.userId, currentUserId as string),
               ),
             );
+
+          // ── A1: Mark stream task as completed in DB ──────────────────────
+          await db.update(remoteSchema.streamTasks)
+            .set({ status: "completed", completedAt: new Date() })
+            .where(and(
+              eq(remoteSchema.streamTasks.chatId, req.chatId),
+              eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
+            )).catch(err => logger.error("[StreamTask] Failed to mark completed:", err));
 
           // Send the final response to the frontend
           const finalMessages = [
@@ -1829,37 +1802,57 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             updatedFiles: !!success,
             totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
+            selectedMemories: selectedMemories.length > 0 ? selectedMemories : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 
           // Log telemetry
           sendTelemetryEvent("chat:stream:end", {
             chatMode: `opencode-${agentId}`,
-            model: settings.selectedModel.name,
+            model: effectiveModelName,
             responseLength: fullResponse.length,
             success,
             totalTokens: ocTotalTokens,
           });
 
-          // ── Post-agent clean install ────────────────────────────────────
-          // The agent may have modified package.json (adding new dependencies)
-          // or run a partial `npm install` via bash that left node_modules in
-          // a dirty state. Delete node_modules so the upcoming `runApp` call
-          // performs a pristine `npm install --legacy-peer-deps`.
-          // ONLY do this when the app is NOT already running — if the dev
-          // server is live, a restart is the user's responsibility (we don't
-          // want to crash a working server mid-session).
+          // ── Memory extraction (fire-and-forget, never blocks UI) ─────────
+          // SKIP plan mode: plan responses are proposals/suggestions, not confirmed
+          // decisions. Extracting from them would pollute memories with unverified info.
+          if (success && updatedChat.app?.id && agentId !== "plan") {
+            bufferChatRound({
+              chatId: req.chatId,
+              appId: updatedChat.app.id,
+              userId: currentUserId as string,
+              userPrompt,
+              assistantResponse: fullResponse,
+            });
+          }
+
+          // ── Post-agent clean install (ONLY if package.json changed) ─────
+          // Compare package.json hash before vs after. If unchanged, skip
+          // the expensive node_modules wipe — the agent didn't touch deps.
           if (success && updatedChat.app?.id && !runningApps.has(updatedChat.app.id)) {
             try {
               const cleanupAppPath = getVibesAppPath(updatedChat.app.path);
-              const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
-              if (fs.existsSync(nodeModulesPath)) {
-                logger.info(`🧹 [POST-AGENT] Removing node_modules for clean install (app ${updatedChat.app.id})`);
-                await fsRm(nodeModulesPath, { recursive: true, force: true });
-                logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+              const pkgJsonPath = path.join(cleanupAppPath, "package.json");
+              let pkgJsonHashAfter: string | null = null;
+              if (fs.existsSync(pkgJsonPath)) {
+                pkgJsonHashAfter = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+              }
+
+              const pkgChanged = pkgJsonHashBefore !== pkgJsonHashAfter;
+              if (pkgChanged) {
+                const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
+                if (fs.existsSync(nodeModulesPath)) {
+                  logger.info(`🧹 [POST-AGENT] package.json changed — removing node_modules for clean install (app ${updatedChat.app.id})`);
+                  await fsRm(nodeModulesPath, { recursive: true, force: true });
+                  logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+                }
+              } else {
+                logger.info(`🧹 [POST-AGENT] package.json unchanged — skipping node_modules cleanup (app ${updatedChat.app.id})`);
               }
             } catch (cleanupErr: any) {
-              logger.warn(`🧹 [POST-AGENT] Failed to remove node_modules: ${cleanupErr.message}`);
+              logger.warn(`🧹 [POST-AGENT] Failed during post-agent cleanup: ${cleanupErr.message}`);
             }
           }
 
@@ -1872,7 +1865,8 @@ This conversation includes one or more image attachments. When the user uploads 
       }
     } catch (error) {
       logger.error("Error calling LLM:", error);
-      const catchErrorText = `Sorry, there was an error processing your request: ${error}`;
+      const classified = classifyError(error);
+      const catchErrorText = classified.userMessage;
       safeSend(event.sender, "chat:response:error", {
         chatId: req.chatId,
         error: catchErrorText,
@@ -1884,6 +1878,13 @@ This conversation includes one or more image attachments. When the user uploads 
           .set({ content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`, status: "failed" as any })
           .where(eq(remoteSchema.messages.id, outerPlaceholderMessageId))
           .catch((err) => logger.error("Failed to persist error in message content", err));
+        // Mark stream task as failed
+        void db.update(remoteSchema.streamTasks)
+          .set({ status: "failed", completedAt: new Date(), error: String(error) })
+          .where(and(
+            eq(remoteSchema.streamTasks.chatId, req.chatId),
+            eq(remoteSchema.streamTasks.messageId, outerPlaceholderMessageId),
+          )).catch(err => logger.error("[StreamTask] Failed to mark as failed:", err));
       }
 
       return "error";
@@ -1985,18 +1986,22 @@ async function replaceTextAttachmentWithContent(
   }
 }
 
-// Helper function to convert traditional message to one with proper image attachments
+// Helper function to convert traditional message to one with proper image attachments.
+// Returns two versions:
+//   llmMessage  – base64-encoded images for sending to the LLM (multimodal input)
+//   dbMessage   – CDN URLs for persisting in the database (avoids libsql size limits)
 async function prepareMessageWithAttachments(
   message: ModelMessage,
   attachmentPaths: string[],
-): Promise<ModelMessage> {
+  userId: string,
+): Promise<{ llmMessage: ModelMessage; dbMessage: ModelMessage }> {
   let textContent = message.content;
   // Get the original text content
   if (typeof textContent !== "string") {
     logger.warn(
       "Message content is not a string - shouldn't happen but using message as-is",
     );
-    return message;
+    return { llmMessage: message, dbMessage: message };
   }
 
   // Process text file attachments - replace placeholder tags with full content
@@ -2009,34 +2014,49 @@ async function prepareMessageWithAttachments(
     );
   }
 
-  // For user messages with attachments, create a content array
-  const contentParts: (TextPart | ImagePart)[] = [];
+  // For user messages with attachments, create content arrays
+  const llmParts: (TextPart | ImagePart)[] = [];
+  const dbParts: (TextPart | ImagePart)[] = [];
 
   // Add the text part first with possibly modified content
-  contentParts.push({
-    type: "text",
-    text: textContent,
-  });
+  const textPart: TextPart = { type: "text", text: textContent };
+  llmParts.push(textPart);
+  dbParts.push(textPart);
 
   // Add image parts for any image attachments
   for (const filePath of attachmentPaths) {
     const ext = path.extname(filePath).toLowerCase();
     if ([".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext)) {
       try {
-        // Read the file as a buffer and convert to base64 string
-        // Using base64 strings instead of raw Buffers ensures proper JSON serialization
-        // for storage in aiMessagesJson (raw Buffers serialize inefficiently and exceed size limits)
         const imageBuffer = await readFile(filePath);
         const mimeType =
           ext === ".jpg" ? "image/jpeg" : `image/${ext.slice(1)}`;
         const base64Data = imageBuffer.toString("base64");
 
-        // Add the image to the content parts with base64 data and mediaType
-        contentParts.push({
+        // LLM version: base64 for multimodal vision input
+        llmParts.push({
           type: "image",
           image: base64Data,
           mediaType: mimeType,
         });
+
+        // DB version: upload to Bunny CDN and store the lightweight URL
+        try {
+          const cdnUrl = await uploadChatAttachment(imageBuffer, mimeType, ext, userId);
+          dbParts.push({
+            type: "image",
+            image: cdnUrl,   // CDN URL instead of base64
+            mediaType: mimeType,
+          } as any);
+        } catch (uploadErr) {
+          logger.warn(`Bunny upload failed, falling back to base64 for DB: ${uploadErr}`);
+          // Fallback: store base64 (may still fail on very large images)
+          dbParts.push({
+            type: "image",
+            image: base64Data,
+            mediaType: mimeType,
+          });
+        }
 
         logger.log(`Added image attachment: ${filePath}`);
       } catch (error) {
@@ -2045,10 +2065,9 @@ async function prepareMessageWithAttachments(
     }
   }
 
-  // Return the message with the content array
   return {
-    role: "user",
-    content: contentParts,
+    llmMessage: { role: "user", content: llmParts },
+    dbMessage: { role: "user", content: dbParts },
   };
 }
 

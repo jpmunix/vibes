@@ -41,7 +41,7 @@ const TOOL_LABELS: Record<string, { label: string; description: string }> = {
   explore_codebase: {
     label: "Explorar el código",
     description:
-      "Analizar la estructura de archivos y carpetas del proyecto",
+      "Analizar la estructura de archivos y directorios del proyecto",
   },
   run_command: {
     label: "Ejecutar comandos",
@@ -156,7 +156,7 @@ const TOOL_LABELS: Record<string, { label: string; description: string }> = {
   list_files: {
     label: "Listar archivos",
     description:
-      "Ver el listado de archivos y carpetas del proyecto",
+      "Ver el listado de archivos y directorios del proyecto",
   },
   code_search: {
     label: "Búsqueda en código fuente",

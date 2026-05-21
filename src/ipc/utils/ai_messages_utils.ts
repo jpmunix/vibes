@@ -4,8 +4,8 @@ import log from "electron-log";
 
 const logger = log.scope("ai_messages_utils");
 
-/** Maximum size in bytes for ai_messages_json (10MB) */
-export const MAX_AI_MESSAGES_SIZE = 10_000_000;
+/** Maximum size in bytes for ai_messages_json (~900KB, safely under libsql's ~1MB column limit) */
+export const MAX_AI_MESSAGES_SIZE = 900_000;
 
 /**
  * Check if ai_messages_json is within size limits and return the value to save.

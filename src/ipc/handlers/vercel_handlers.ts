@@ -9,7 +9,7 @@ import log from "electron-log";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import * as fs from "fs";
 import * as path from "path";
-import { CreateProjectFramework } from "@vercel/sdk/models/createprojectop.js";
+type CreateProjectFramework = string | undefined;
 import { getVibesAppPath } from "@/paths/paths";
 // Redundant imports removed
 import {
@@ -330,7 +330,7 @@ async function handleCreateProject(
           type: "github",
           repo: `${app.githubOrg}/${app.githubRepo}`,
         },
-        framework: detectedFramework,
+        framework: detectedFramework as any,
       },
     });
     if (!projectData.id) {

@@ -27,6 +27,17 @@ const logger = log.scope("ensure_opencode");
 /** How often we check for updates (36 hours in ms) */
 const UPDATE_CHECK_INTERVAL_MS = 36 * 60 * 60 * 1000;
 
+// ── In-memory version cache ─────────────────────────────────────────────
+// Populated at startup by ensureOpenCodeInstalled().
+// Consumed by the getVersionInfo IPC handler to avoid spawning a subprocess
+// every time the user opens the version popover.
+let cachedOpenCodeVersion: string | null = null;
+
+/** Get the cached OpenCode version (populated at startup). */
+export function getCachedOpenCodeVersion(): string | null {
+    return cachedOpenCodeVersion;
+}
+
 /**
  * Get the local install prefix for opencode.
  * Uses Electron's userData path so it persists across updates.
@@ -43,46 +54,22 @@ function getOpenCodeBinDir(): string {
 }
 
 /**
- * Prepend NVM bin directories to PATH so we can find npm/node
- * even when launched from a GUI context (not a terminal).
- * Also prepends our local opencode bin dir.
+ * Prepend OpenCode-specific bin directories to PATH.
+ * System Node.js detection (NVM, Homebrew, fnm, etc.) is handled by
+ * node_runtime.ts which runs earlier in the startup sequence.
  */
-function ensurePathDirs(): void {
-    const HOME = process.env.HOME || "/home/" + process.env.USER;
-    const nvmDir = path.join(HOME, ".nvm/versions/node");
+function ensureOpenCodePathDirs(): void {
     const dirsToAdd: string[] = [];
 
     // Add our local opencode bin dir
     dirsToAdd.push(getOpenCodeBinDir());
-
-    try {
-        if (fs.existsSync(nvmDir)) {
-            const versions = fs.readdirSync(nvmDir);
-            versions.sort((a: string, b: string) => {
-                const numA = a.replace("v", "").split(".").map(Number);
-                const numB = b.replace("v", "").split(".").map(Number);
-                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
-                    const partA = numA[i] || 0;
-                    const partB = numB[i] || 0;
-                    if (partA !== partB) return partB - partA;
-                }
-                return 0;
-            });
-
-            const nvmBins = versions.map((v: string) => path.join(nvmDir, v, "bin"));
-            dirsToAdd.push(...nvmBins);
-            logger.info(`Injected ${nvmBins.length} NVM bin dirs (latest: ${versions[0]})`);
-        }
-    } catch (e) {
-        logger.warn("Could not scan NVM dirs:", e);
-    }
 
     // Also add node_modules/.bin from our prefix (npm --prefix puts binaries here)
     const localBinDir = path.join(getOpenCodePrefix(), "node_modules", ".bin");
     dirsToAdd.push(localBinDir);
 
     const currentPath = process.env.PATH || "";
-    process.env.PATH = [...dirsToAdd, currentPath].join(":");
+    process.env.PATH = [...dirsToAdd, currentPath].join(path.delimiter);
 }
 
 /**
@@ -195,7 +182,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
     version: string | null;
     updated?: boolean;
 }> {
-    ensurePathDirs();
+    ensureOpenCodePathDirs();
 
     const installed = await isOpenCodeInstalled();
 
@@ -205,6 +192,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
         const success = await npmInstallOpenCode();
         if (success) {
             const version = await getInstalledVersion();
+            cachedOpenCodeVersion = version;
             logger.info(`opencode installed successfully (v${version}) ✓`);
             writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
             return { ok: true, version, updated: true };
@@ -214,6 +202,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
 
     // Already installed — check for updates if interval elapsed
     const currentVersion = await getInstalledVersion();
+    cachedOpenCodeVersion = currentVersion;
     logger.info(`opencode binary found in PATH (v${currentVersion}) ✓`);
 
     if (shouldCheckForUpdate()) {
@@ -225,6 +214,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
             const success = await npmInstallOpenCode();
             if (success) {
                 const newVersion = await getInstalledVersion();
+                cachedOpenCodeVersion = newVersion;
                 logger.info(`opencode updated to v${newVersion} ✓`);
                 writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
                 return { ok: true, version: newVersion, updated: true };

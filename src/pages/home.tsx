@@ -11,7 +11,6 @@ import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
-import { usePostHog } from "posthog-js/react";
 
 import { useAppVersion } from "@/hooks/useAppVersion";
 
@@ -22,9 +21,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 
 import type { FileAttachment } from "@/ipc/types";
-import { NEON_TEMPLATE_IDS } from "@/shared/templates";
+import { NEON_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
-import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
+import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
+import { neonTemplateHook } from "@/client_logic/template_hook";
 
 // Adding an export for attachments
 export interface HomeSubmitOptions {
@@ -49,9 +49,8 @@ export default function HomePage() {
     recentLogs?: string;
   }>({});
 
-  const posthog = usePostHog();
   const appVersion = useAppVersion();
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const setShowReleaseNotesBadge = useSetAtom(showReleaseNotesBadgeAtom);
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
   const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
@@ -83,23 +82,22 @@ export default function HomePage() {
         }
 
         try {
-          const result = await ipc.system.doesReleaseNoteExist({
-            version: appVersion,
+          // Simply show the new release notes window and enable the badge
+          setShowReleaseNotesBadge(true);
+          ipc.system.openReleaseNotesWindow({
+            theme: theme as "light" | "dark" | "system",
+            themeIntensity: intensity,
           });
-
-          if (result.exists) {
-            setReleaseNotesOpen(true);
-          }
         } catch (err) {
           console.warn(
-            "Unable to check if release note exists for: " + appVersion,
+            "Unable to open release notes window for: " + appVersion,
             err,
           );
         }
       }
     };
     updateLastVersionLaunched();
-  }, [appVersion, settings, updateSettings, theme]);
+  }, [appVersion, settings, updateSettings, theme, intensity, setShowReleaseNotesBadge]);
 
   // Get the appId from search params
   const appId = search.appId ? Number(search.appId) : null;
@@ -150,7 +148,7 @@ export default function HomePage() {
       // Create the chat and navigate
       const result = await ipc.app.createApp({
         name: appName,
-        templateId: settings?.selectedTemplateId || "react",
+        templateId: settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID,
       });
       if (
         settings?.selectedTemplateId &&
@@ -159,14 +157,6 @@ export default function HomePage() {
         await neonTemplateHook({
           appId: result.app.id,
           appName: result.app.name,
-        });
-      }
-
-      // Apply selected theme to the new app (if one is set)
-      if (settings?.selectedThemeId) {
-        await ipc.template.setAppTheme({
-          appId: result.app.id,
-          themeId: settings.selectedThemeId || null,
         });
       }
 
@@ -201,7 +191,6 @@ export default function HomePage() {
       setIsPreviewOpen(false);
       await refreshApps(); // Ensure refreshApps is awaited if it's async
       await invalidateAppQuery(queryClient, { appId: result.app.id });
-      posthog.capture("home:chat-submit");
       // Install selected design system (DESIGN.md) into the project before opening the chat
       console.log(`[Home] 🎨 DESIGN CHECK — selectedDesign:`, selectedDesign);
       console.log(`[Home] 🎨 DESIGN CHECK — app.path: "${result.app.path}", app.id: ${result.app.id}`);
@@ -489,11 +478,6 @@ export default function HomePage() {
         <div className="w-full">
           <HomeChatInput onSubmit={handleSubmit} />
         </div>
-
-        <ReleaseNotesDialog
-          isOpen={releaseNotesOpen}
-          onOpenChange={setReleaseNotesOpen}
-        />
       </div>
     </div>
   );

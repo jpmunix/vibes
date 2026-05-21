@@ -39,7 +39,9 @@ export const NEON_TEMPLATE_IDS = new Set<string>([PORTAL_MINI_STORE_ID]);
  */
 export const SCAFFOLD_TEMPLATE_IDS: Record<string, string> = {
   react: "scaffold",
-  "react-beta": "scaffold-react-beta",
+  react19: "scaffold-react-beta",
+  express: "scaffold-express",
+  next: "scaffold-next",
   // vue: "scaffold-vue",       // Available but not active
   // astro: "scaffold-astro",   // Available but not active
   // svelte: "scaffold-svelte", // Available but not active
@@ -67,7 +69,7 @@ export interface TemplateTechStack {
 export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
   react: {
     title: "React.js",
-    stack: "React 19, Vite, TypeScript, Tailwind CSS 4, Shadcn/ui, React Router DOM",
+    stack: "React 19, Vite, TypeScript, Tailwind CSS 3, Shadcn/ui, React Router DOM 6",
     context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
     scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
     requiredFiles: [
@@ -86,8 +88,8 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
     ],
     verifyCommand: "npx tsc --noEmit",
   },
-  "react-beta": {
-    title: "React.js (beta)",
+  react19: {
+    title: "React 19",
     stack: "React 19, Vite 6, TypeScript, Tailwind CSS 4 (plugin Vite), Shadcn/ui, React Router DOM 7",
     context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
     scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
@@ -102,7 +104,7 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
       "components.json — configuración de Shadcn/ui",
     ],
-    verifyCommand: "npx tsc --noEmit",
+    verifyCommand: "npx oxlint",
   },
   next: {
     title: "Next.js",
@@ -185,22 +187,44 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
     ],
     verifyCommand: "npx svelte-check --tsconfig ./tsconfig.json",
   },
+  express: {
+    title: "Express",
+    stack: "Express 5, TypeScript, Helmet, CORS, Morgan, Zod",
+    context7Libs: ["expressjs/express"],
+    scaffoldCommand: "npm init -y",
+    requiredFiles: [
+      "package.json — dependencias + scripts (dev, build, start)",
+      "tsconfig.json — configuración TypeScript con ESNext modules",
+      "src/index.ts — entry point con Express app, middleware y listen",
+      "src/routes/api.ts — rutas de la API con Router()",
+      ".gitignore — excluyendo node_modules y dist",
+      "vercel.json — configuración para deploy",
+    ],
+    verifyCommand: "npx tsc --noEmit",
+  },
 };
 
 export const localTemplatesData: Template[] = [
   DEFAULT_TEMPLATE,
   {
-    id: "react-beta",
-    title: "React.js (beta)",
+    id: "react19",
+    title: "React 19",
     description: "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui. Última tecnología.",
     isOfficial: true,
-    tags: ["SPA", "Frontend", "Beta"],
+    tags: ["SPA", "Frontend"],
+  },
+  {
+    id: "express",
+    title: "Express",
+    description: "Express 5, TypeScript, Helmet, CORS. API backend.",
+    isOfficial: true,
+    tags: ["Backend", "API"],
   },
   {
     id: "next",
     title: "Next.js",
     description: "Next.js, React, Shadcn, Tailwind y TypeScript.",
-    githubUrl: "https://github.com/<vibes-sh/nextjs-template",
+    githubUrl: "https://github.com/dyad-sh/nextjs-template",
     isOfficial: true,
     tags: ["Full-Stack", "SSR"],
   },

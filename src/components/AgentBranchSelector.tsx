@@ -9,6 +9,7 @@ export function AgentBranchSelector({ appId }: AgentBranchSelectorProps) {
   const {
     currentBranch,
     branches,
+    remoteBranches,
     switchBranch,
     isSwitchingBranch,
   } = useGitPanel(appId);
@@ -18,6 +19,7 @@ export function AgentBranchSelector({ appId }: AgentBranchSelectorProps) {
       appId={appId}
       currentBranch={currentBranch}
       branches={branches}
+      remoteBranches={remoteBranches}
       switchBranch={switchBranch}
       isSwitchingBranch={isSwitchingBranch}
       align="end"

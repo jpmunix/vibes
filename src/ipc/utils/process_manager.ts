@@ -1,5 +1,8 @@
 import { ChildProcess, spawn } from "node:child_process";
 import treeKill from "tree-kill";
+import log from "electron-log";
+
+const logger = log.scope("process_manager");
 
 // Define a type for the value stored in runningApps
 export interface RunningAppInfo {
@@ -146,4 +149,47 @@ export function removeAppIfCurrentProcess(
       `App ${appId} process was already removed or replaced in running map. Ignoring.`,
     );
   }
+}
+
+/**
+ * Stop ALL running app processes. Called during app quit / restart
+ * so that dev servers started from Vibes don't become orphans.
+ *
+ * This is best-effort: tree-kill is fire-and-forget because the Electron
+ * event loop may terminate before the async callbacks fire.
+ */
+export function stopAllRunningApps(): void {
+  if (runningApps.size === 0) return;
+
+  logger.info(
+    `[Shutdown] Stopping ${runningApps.size} running app(s)...`,
+  );
+
+  for (const [appId, appInfo] of runningApps.entries()) {
+    try {
+      if (appInfo.isDocker) {
+        // Fire-and-forget docker stop
+        const containerName = appInfo.containerName || `vibes-app-${appId}`;
+        spawn("docker", ["stop", containerName], { stdio: "ignore" });
+        logger.info(`[Shutdown] Sent docker stop to ${containerName}`);
+      } else if (appInfo.process?.pid) {
+        // Synchronous tree-kill — best-effort, can't await during will-quit
+        treeKill(appInfo.process.pid, "SIGTERM", (err) => {
+          if (err) {
+            logger.warn(
+              `[Shutdown] tree-kill error for app ${appId} (PID ${appInfo.process?.pid}): ${err.message}`,
+            );
+          }
+        });
+        logger.info(
+          `[Shutdown] Sent SIGTERM to app ${appId} (PID ${appInfo.process.pid})`,
+        );
+      }
+    } catch (err: any) {
+      logger.warn(`[Shutdown] Error stopping app ${appId}: ${err.message}`);
+    }
+  }
+
+  // Clear the map — processes are being killed, don't track them anymore
+  runningApps.clear();
 }

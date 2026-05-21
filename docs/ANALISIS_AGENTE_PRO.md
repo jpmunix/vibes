@@ -208,7 +208,7 @@ export async function processChatMessagesWithVersionedFiles({
 ```typescript
 // src/prompts/system_prompt.ts:61-320
 export const BUILD_SYSTEM_PREFIX = `
-<role> You are minube vibes, an AI editor... </role>
+<role> You are Vibes, an AI editor... </role>
 
 # App Preview / Commands
 [~200 líneas de instrucciones detalladas]
@@ -640,7 +640,7 @@ const cacheablePrompt = {
 // src/prompts/system_prompt_v2.ts
 
 export const COMPACT_SYSTEM_PROMPT = `
-You are minube vibes, an AI code editor. Users see live preview while you edit.
+You are Vibes, an AI code editor. Users see live preview while you edit.
 
 ## Core Actions
 - Read files: <vibes-read path="..." />
@@ -835,7 +835,7 @@ const indexer = new IncrementalIndexer(appPath);
 
 ```typescript
 // src/prompts/system_prompt_compact.ts
-export const COMPACT_BUILD_PROMPT = `You are minube vibes, an AI code editor for React apps.
+export const COMPACT_BUILD_PROMPT = `You are Vibes, an AI code editor for React apps.
 
 ## Actions
 - <vibes-write path="...">code</vibes-write> - Create/update files

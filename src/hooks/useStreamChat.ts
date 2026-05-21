@@ -13,6 +13,7 @@ import {
   recentStreamChatIdsAtom,
   selectedChatIdAtom,
   pendingMessageQueueByIdAtom,
+  selectedMemoriesByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -27,11 +28,11 @@ import { useMatch } from "@tanstack/react-router";
 import { useRunApp } from "./useRunApp";
 import { useCountTokens } from "./useCountTokens";
 import { useUserBudgetInfo } from "./useUserBudgetInfo";
-import { usePostHog } from "posthog-js/react";
 import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { sendAppNotification } from "@/lib/notification-sound";
 
 import type { ChatSummary } from "@/lib/schemas";
 
@@ -81,8 +82,8 @@ export function useStreamChat({
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
+  const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
 
-  const posthog = usePostHog();
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
   let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
@@ -109,13 +110,14 @@ export function useStreamChat({
     async ({
       prompt,
       chatId,
-      redo,
-      attachments,
-      selectedComponents,
+      redo = false,
+      attachments = [],
+      selectedComponents = [],
       onSettled,
       isSystemPrompt = false,
-      undoRedo,
+      undoRedo = false,
       priorMessages,
+      chatModeOverride,
     }: {
       prompt: string;
       chatId: number;
@@ -127,6 +129,8 @@ export function useStreamChat({
       undoRedo?: boolean;
       /** Pre-converted prior messages to inject into OpenCode via noReply:true */
       priorMessages?: import("@/ipc/types").ChatStreamParams["priorMessages"];
+      /** Synchronously force a specific chat mode for this stream regardless of react state lag */
+      chatModeOverride?: string;
     }) => {
       // Setup listener for undo-redo content restoring
       // This needs to be outside the ipc.chatStream.start call as it's a separate event
@@ -256,7 +260,7 @@ export function useStreamChat({
             newMessages.push({
               id: tempUserId - i - 2, // unique negative IDs
               chatId,
-              role: "user",
+              role: priorMessages[i].role || "user",
               content: priorMessages[i].prompt,
               createdAt: new Date().toISOString(),
             } as any);
@@ -323,6 +327,7 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
+            chatMode: chatModeOverride || settings?.selectedChatMode || "agent",
           },
           {
             onChunk: ({ messages: updatedMessages }) => {
@@ -367,8 +372,7 @@ export function useStreamChat({
               const isViewingDifferentChat =
                 currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
               if (
-                notificationsEnabled &&
-                Notification.permission === "granted" &&
+                (notificationsEnabled || settings?.enableNotificationSound !== false) &&
                 (!document.hasFocus() || isViewingDifferentChat)
               ) {
                 const app = queryClient.getQueryData<App | null>(
@@ -385,13 +389,20 @@ export function useStreamChat({
                     ? rawTitle.slice(0, 80) + "…"
                     : rawTitle
                   : "Respuesta completada";
-                new Notification(appName, {
-                  body,
-                });
+                sendAppNotification({ title: appName, body, settings });
               }
 
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
+
+              // Store selected memories for the chat UI indicator
+              if (response.selectedMemories && response.selectedMemories.length > 0) {
+                setSelectedMemories(prev => {
+                  const next = new Map(prev);
+                  next.set(chatId, response.selectedMemories!);
+                  return next;
+                });
+              }
 
               // Persist unread state to DB when response arrives on a chat the user isn't viewing
               if (isViewingDifferentChat) {
@@ -427,10 +438,10 @@ export function useStreamChat({
                   showExtraFilesToast({
                     files: response.extraFiles,
                     error: response.extraFilesError,
-                    posthog,
                   });
                 }
                 queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
+                queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
                 refetchUserBudget();
 
                 queryClient.invalidateQueries({
