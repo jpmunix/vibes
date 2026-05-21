@@ -66,7 +66,7 @@ export function UndoConfirmDialog({
 }: UndoConfirmDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="!w-fit !max-w-[90vw] min-w-[24rem]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
