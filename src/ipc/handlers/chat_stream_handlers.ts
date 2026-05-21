@@ -1453,7 +1453,6 @@ This conversation includes one or more image attachments. When the user uploads 
             }
           } catch (e: any) {
             logger.warn(`[OPENCODE] Failed to inject MCP instructions: ${e.message}`);
->>>>>>> dev
           }
 
           // Supabase
