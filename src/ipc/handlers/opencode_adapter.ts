@@ -982,6 +982,7 @@ export async function updateOpenCodeConfig(changes: {
     executorModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    agentModels?: Record<string, string>;
     inferenceTemperature?: number;
     inferenceTopP?: number;
     inferenceRepetitionPenalty?: number;
@@ -1055,6 +1056,21 @@ export async function updateOpenCodeConfig(changes: {
                 registerExtraProvider(body, sProv, sName, settings);
             }
             logger.info(`[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`);
+        }
+
+        // Hot-update per-agent model overrides (all agents)
+        if (changes.agentModels) {
+            const agentConfig: Record<string, any> = body.agent || {};
+            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
+            for (const id of agentIds) {
+                if (changes.agentModels[id]) {
+                    agentConfig[id] = { ...(agentConfig[id] || {}), model: `openrouter/${changes.agentModels[id]}` };
+                }
+            }
+            body.agent = agentConfig;
+            const models = changes.agentModels;
+            const summary = agentIds.map(id => `${id}=${models[id] || 'default'}`).join(', ');
+            logger.info(`[OpenCode] Agent models updated: ${summary}`);
         }
 
         // ── Always register the model in provider.models for hot-update ──
@@ -2233,11 +2249,24 @@ export async function handleOpenCodeStream(
          * multiple user messages typed while the previous stream was running.
          */
         priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
+        /** Custom agent prompt settings */
+        customSystemPrompt?: string;
+        customPromptMode?: "additive" | "replace";
     },
     /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
     _retryCount = 0,
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
+
+    if (options.customPromptMode === "additive" && options.customSystemPrompt) {
+        if (!options.contextInstructions) {
+            options.contextInstructions = [];
+        }
+        options.contextInstructions.push(
+            `CUSTOM AGENT SYSTEM INSTRUCTIONS:\n${options.customSystemPrompt}`
+        );
+        logger.info(`[OpenCode] Appending custom agent prompt to context instructions (additive mode)`);
+    }
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
     const projectDir = getVibesAppPath(appPath);
@@ -2651,6 +2680,7 @@ export async function handleOpenCodeStream(
         abortController.signal.addEventListener("abort", onUserAbort, { once: true });
     }
 
+    let checkpointIntervalId: NodeJS.Timeout | undefined;
     try {
         // Start global event subscription (captures ALL events across the server)
         // Pass the SSE abort signal so the connection closes when we abort.
@@ -2876,19 +2906,26 @@ export async function handleOpenCodeStream(
         }
 
         // Fire the prompt (non-blocking)
-        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
-        // internal system prompt. All Vibes context flows via noReply above.
+        // NOTE: If customPromptMode is "replace", we pass the customSystemPrompt
+        // directly in the `system` parameter to override OpenCode's internal system prompt.
+        const promptBody: any = {
+            model: {
+                providerID,
+                modelID,
+            },
+            agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
+            parts: promptParts,
+        };
+
+        if (options.customPromptMode === "replace" && options.customSystemPrompt) {
+            promptBody.system = options.customSystemPrompt;
+            logger.info(`${LP} Overriding internal system prompt with custom agent prompt (length: ${options.customSystemPrompt.length})`);
+        }
+
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
-            body: {
-                model: {
-                    providerID,
-                    modelID,
-                },
-                agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
-                parts: promptParts,
-            },
+            body: promptBody,
         });
 
         logger.info(`${LP} Prompt sent (async). Waiting for events...`);
@@ -2898,7 +2935,7 @@ export async function handleOpenCodeStream(
         // table. This ensures that even if the server or connection dies mid-
         // stream, the user sees partial progress instead of an empty bubble.
         let lastCheckpointLength = 0;
-        const checkpointIntervalId = setInterval(async () => {
+        checkpointIntervalId = setInterval(async () => {
             try {
                 const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
                 // Only write if content has grown since last checkpoint

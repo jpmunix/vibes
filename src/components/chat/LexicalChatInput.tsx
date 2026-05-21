@@ -36,6 +36,7 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { MENTION_REGEX } from "@/shared/parse_mention_apps";
 import { useLoadApp } from "@/hooks/useLoadApp";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { FileText, Database, Code, Search } from "@/components/ui/icons";
 
@@ -43,6 +44,8 @@ import { FileText, Database, Code, Search } from "@/components/ui/icons";
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
   "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md",
   "@Focused": "outline-none ring-2 ring-ring",
+  "/": "px-2 py-0.5 mx-0.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-md",
+  "/Focused": "outline-none ring-2 ring-emerald-500",
 };
 
 // Custom menu item component
@@ -51,8 +54,10 @@ const CustomMenuItem = forwardRef<
   BeautifulMentionsMenuItemProps
 >(({ selected, item, ...props }, ref) => {
   const isPrompt = item.data?.type === "prompt";
+  const isApp = item.data?.type === "app";
+  const isSlash = item.data?.type === "slash-command";
   const isArtifact = item.data?.type === "artifact";
-  const label = isPrompt ? "Prompt" : isArtifact ? "Plan/Artifact" : "Archivo";
+  const label = isPrompt ? "Prompt" : isApp ? "App" : isSlash ? "Comando" : isArtifact ? "Plan/Artifact" : "Archivo";
   const value = (item as any)?.value;
 
   return (
@@ -68,11 +73,22 @@ const CustomMenuItem = forwardRef<
           <FileText size={14} className="text-primary shrink-0" />
         ) : isPrompt ? (
           <Database size={14} className="text-purple-500 shrink-0" />
+        ) : isApp ? (
+          <Database size={14} className="text-blue-500 shrink-0" />
+        ) : isSlash ? (
+          <Code size={14} className="text-emerald-500 shrink-0" />
         ) : (
-          <Code size={14} className="text-blue-500 shrink-0" />
+          <FileText size={14} className="text-zinc-500 shrink-0" />
         )}
-        <span className="truncate flex-1">{value}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 shrink-0">
+        <span className="truncate flex-1 font-semibold">
+          {value}
+          {item.data?.description && (
+            <span className="text-muted-foreground font-normal text-xs ml-1.5 opacity-80">
+              — {item.data.description}
+            </span>
+          )}
+        </span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 shrink-0 ml-2">
           {label}
         </span>
       </div>
@@ -357,6 +373,7 @@ export function LexicalChatInput({
   const { app } = useLoadApp(selectedAppId);
   const { artifacts } = useChatArtifacts(selectedChatId);
   const appFiles = app?.files;
+  const { customAgents } = useCustomAgents();
 
   // Prepare mention items
   const mentionItems = React.useMemo(() => {
@@ -381,10 +398,25 @@ export function LexicalChatInput({
       id: p.id,
     }));
 
+    const nativeSlashCommands = [
+      { value: "agent", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "build", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "plan", type: "slash-command", description: "Planificador interactivo" },
+      { value: "ask", type: "slash-command", description: "Explorador de código (solo lectura)" },
+      { value: "explore", type: "slash-command", description: "Explorador de código (solo lectura)" },
+    ];
+
+    const customSlashCommands = (customAgents || []).map((agent) => ({
+      value: agent.slashCommand,
+      type: "slash-command",
+      description: agent.name,
+    }));
+
     return {
       "@": [...artifactItems, ...fileItems, ...promptItems],
+      "/": [...nativeSlashCommands, ...customSlashCommands],
     };
-  }, [artifacts, appFiles, prompts]);
+  }, [artifacts, appFiles, prompts, customAgents]);
 
   const initialConfig = {
     namespace: "ChatInput",

@@ -90,6 +90,7 @@ export function registerChatHandlers() {
       })),
       isPlan: chat.isPlan ?? false,
       planData: chat.planData ?? null,
+      chatMode: chat.chatMode ?? "agent",
     } as any;
   });
 
@@ -185,11 +186,12 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.updateChat, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { chatId, title, isPlan, planData } = params;
+    const { chatId, title, isPlan, planData, chatMode } = params;
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (isPlan !== undefined) updateData.isPlan = isPlan;
     if (planData !== undefined) updateData.planData = planData;
+    if (chatMode !== undefined) updateData.chatMode = chatMode;
 
     if (Object.keys(updateData).length > 0) {
       await db.update(remoteSchema.chats).set(updateData).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));

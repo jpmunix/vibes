@@ -49,7 +49,6 @@ describe("searchReplaceTool", () => {
     pocketbaseConfig: null,
     messageId: 1,
     isSharedModulesChanged: false,
-    isBasicAgentMode: false,
     todos: [],
     typecheckResults: [],
     vibesRequestId: "test-request",

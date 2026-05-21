@@ -249,6 +249,25 @@ export async function initializeRemoteSchema(): Promise<void> {
         error TEXT
       )
     `).catch(() => {});
+
+    // Auto-create custom_agents if missing (added v8.7)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS custom_agents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        system_prompt TEXT NOT NULL,
+        base_agent TEXT NOT NULL,
+        prompt_mode TEXT NOT NULL,
+        slash_command TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `).catch(() => {});
+
+    // Add chat_mode column to chats if missing (added v8.7)
+    await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});
   } catch (e) {
     logger.warn("schema migration (non-fatal):", e);
   }

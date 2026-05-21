@@ -244,7 +244,10 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["agent", "plan", "ask", "mockup"]);
+export const ChatModeSchema = z.union([
+  z.enum(["agent", "plan", "ask", "mockup"]),
+  z.string()
+]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({

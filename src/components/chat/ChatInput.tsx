@@ -759,6 +759,7 @@ export function ChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
+                    chatId={chatId}
                     showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
                     showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
                   />
