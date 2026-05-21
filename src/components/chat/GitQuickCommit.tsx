@@ -69,7 +69,8 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
       return next;
     });
     
-    queryClient.invalidateQueries({ queryKey: queryKeys.chats.messages(chatId) });
+    queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.chats.list({ appId }) });
   };
 
   const handleCommit = async () => {

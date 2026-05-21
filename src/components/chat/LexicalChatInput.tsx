@@ -528,6 +528,7 @@ export function LexicalChatInput({
           creatable={false}
           insertOnBlur={false}
           menuItemLimit={10}
+          autoSpace={true}
         />
         <OnChangePlugin onChange={handleEditorChange} />
         <HistoryPlugin />

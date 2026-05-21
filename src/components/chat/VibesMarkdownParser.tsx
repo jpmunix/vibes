@@ -396,7 +396,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     };
 
     // Tags that produce visible output in zen/flow mode
-    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled"]);
+    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled", "vibes-git-commit"]);
 
     // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
     // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
