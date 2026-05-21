@@ -27,11 +27,14 @@ import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { MENTION_REGEX, parseAppMentions } from "@/shared/parse_mention_apps";
 import { useLoadApp } from "@/hooks/useLoadApp";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
 
 // Define the theme for mentions
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
   "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md",
   "@Focused": "outline-none ring-2 ring-ring",
+  "/": "px-2 py-0.5 mx-0.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-md",
+  "/Focused": "outline-none ring-2 ring-emerald-500",
 };
 
 // Custom menu item component
@@ -41,7 +44,8 @@ const CustomMenuItem = forwardRef<
 >(({ selected, item, ...props }, ref) => {
   const isPrompt = item.data?.type === "prompt";
   const isApp = item.data?.type === "app";
-  const label = isPrompt ? "Prompt" : isApp ? "App" : "Archivo";
+  const isSlash = item.data?.type === "slash-command";
+  const label = isPrompt ? "Prompt" : isApp ? "App" : isSlash ? "Comando" : "Archivo";
   const value = (item as any)?.value;
   return (
     <li
@@ -58,12 +62,19 @@ const CustomMenuItem = forwardRef<
             ? "bg-purple-500 text-white"
             : isApp
               ? "bg-primary text-primary-foreground"
-              : "bg-blue-600 text-white"
+              : isSlash
+                ? "bg-emerald-600 text-white"
+                : "bg-blue-600 text-white"
             }`}
         >
           {label}
         </span>
-        <span className="truncate typo-body">{value}</span>
+        <span className="truncate typo-body font-semibold">{value}</span>
+        {item.data?.description && (
+          <span className="text-muted-foreground typo-body-sm truncate ml-1.5 opacity-80">
+            — {item.data.description}
+          </span>
+        )}
       </div>
     </li>
   );
@@ -261,10 +272,11 @@ export function LexicalChatInput({
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { app } = useLoadApp(selectedAppId);
   const appFiles = app?.files;
+  const { customAgents } = useCustomAgents();
 
   // Prepare mention items - convert apps to mention format
   const mentionItems = React.useMemo(() => {
-    if (!apps) return { "@": [] };
+    if (!apps) return { "@": [], "/": [] };
 
     // Get current app name
     const currentApp = apps.find((app) => app.id === selectedAppId);
@@ -305,10 +317,25 @@ export function LexicalChatInput({
       type: "file",
     }));
 
+    const nativeSlashCommands = [
+      { value: "agent", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "build", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "plan", type: "slash-command", description: "Planificador interactivo" },
+      { value: "ask", type: "slash-command", description: "Explorador de código (solo lectura)" },
+      { value: "explore", type: "slash-command", description: "Explorador de código (solo lectura)" },
+    ];
+
+    const customSlashCommands = (customAgents || []).map((agent) => ({
+      value: agent.slashCommand,
+      type: "slash-command",
+      description: agent.name,
+    }));
+
     return {
       "@": [...appMentions, ...promptItems, ...fileItems],
+      "/": [...nativeSlashCommands, ...customSlashCommands],
     };
-  }, [apps, selectedAppId, value, excludeCurrentApp, prompts, appFiles]);
+  }, [apps, selectedAppId, value, excludeCurrentApp, prompts, appFiles, customAgents]);
 
   const initialConfig = {
     namespace: "ChatInput",

@@ -23,6 +23,7 @@ import { registerNodeHandlers } from "./handlers/node_handlers";
 import { registerPortalHandlers } from "./handlers/portal_handlers";
 import { registerProblemsHandlers } from "./handlers/problems_handlers";
 import { registerPromptHandlers } from "./handlers/prompt_handlers";
+import { registerCustomAgentHandlers } from "./handlers/custom_agent_handlers";
 import { registerProposalHandlers } from "./handlers/proposal_handlers";
 import { registerReleaseNoteHandlers } from "./handlers/release_note_handlers";
 import { registerSessionHandlers } from "./handlers/session_handlers";
@@ -93,6 +94,7 @@ export function registerIpcHandlers() {
   registerTemplateHandlers();
   registerPortalHandlers();
   registerPromptHandlers();
+  registerCustomAgentHandlers();
   registerVisualEditingHandlers();
 
   registerBackupHandlers();

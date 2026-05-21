@@ -47,6 +47,7 @@ export const ChatSchema = z.object({
   dbTimestamp: z.string().nullable().optional(),
   isPlan: z.boolean().optional().default(false),
   planData: z.any().nullable().optional(),
+  chatMode: z.string().nullable().optional(),
 });
 
 export type Chat = z.infer<typeof ChatSchema>;
@@ -192,6 +193,7 @@ export const UpdateChatParamsSchema = z.object({
   title: z.string().optional(),
   isPlan: z.boolean().optional(),
   planData: z.any().nullable().optional(),
+  chatMode: z.string().optional(),
 });
 
 export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;

@@ -649,6 +649,7 @@ export function ChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
+                    chatId={chatId}
                   />
                 </div>
 

@@ -108,6 +108,7 @@ export const chats = sqliteTable("chats", {
     isArchived: integer("is_archived").notNull().default(0),
     isPinned: integer("is_pinned").notNull().default(0),
     opencodeSessionId: text("opencode_session_id"),
+    chatMode: text("chat_mode").default("agent"),
 });
 
 // =============================================================================
@@ -173,6 +174,25 @@ export const prompts = sqliteTable("prompts", {
     title: text("title").notNull(),
     description: text("description"),
     content: text("content").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
+// CUSTOM AGENTS
+// =============================================================================
+
+export const customAgents = sqliteTable("custom_agents", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    systemPrompt: text("system_prompt").notNull(),
+    baseAgent: text("base_agent").notNull(), // 'build' | 'plan' | 'explore'
+    promptMode: text("prompt_mode").notNull(), // 'additive' | 'replace'
+    slashCommand: text("slash_command").notNull(), // ej: 'rust' (sin la '/')
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

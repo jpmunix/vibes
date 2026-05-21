@@ -274,6 +274,47 @@ function registerChatStreamHandlers() {
         throw new Error(`Chat not found: ${req.chatId}`);
       }
 
+      // ── Custom Agents & Slash Commands Resolution ──────────────────
+      const customAgents = await db
+        .select()
+        .from(remoteSchema.customAgents)
+        .where(eq(remoteSchema.customAgents.userId, currentUserId as string));
+
+      let effectiveChatMode: string = chat.chatMode || settings.selectedChatMode || "agent";
+
+      // Detect slash command at the beginning of the prompt
+      const commandMatch = req.prompt.trim().match(/^\/(\w+)(?:\s+(.*))?$/s);
+      if (commandMatch) {
+        const cmdName = commandMatch[1].toLowerCase();
+        const cmdRest = commandMatch[2] || "";
+
+        let matchedMode: string | null = null;
+        if (cmdName === "agent" || cmdName === "build") {
+          matchedMode = "agent";
+        } else if (cmdName === "plan") {
+          matchedMode = "plan";
+        } else if (cmdName === "ask" || cmdName === "explore") {
+          matchedMode = "ask";
+        } else {
+          const matchedAgent = customAgents.find(
+            (ca) => ca.slashCommand.toLowerCase() === cmdName
+          );
+          if (matchedAgent) {
+            matchedMode = `custom-agent::${matchedAgent.id}`;
+          }
+        }
+
+        if (matchedMode) {
+          effectiveChatMode = matchedMode;
+          req.prompt = cmdRest;
+          logger.info(`[ChatStream] Intercepted slash command /${cmdName}. Setting effectiveChatMode to ${effectiveChatMode}.`);
+          await db
+            .update(remoteSchema.chats)
+            .set({ chatMode: effectiveChatMode })
+            .where(eq(remoteSchema.chats.id, req.chatId));
+        }
+      }
+
       // Handle redo option: remove the most recent messages if needed
       if (req.redo || req.undoRedo) {
         // Clear the OpenCode session — git was reverted, agent must forget old work
@@ -541,7 +582,6 @@ ${componentSnippet}
       // We wait to send the first response chunk until we've also created the assistant message
       // placeholder in the database, avoiding a UI flicker where the assistant bubble disappears.
 
-      const settings = readSettings();
       // Always generate requestId
       vibesRequestId = uuidv4();
 
@@ -683,13 +723,12 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        // All active modes (agent, ask, plan) use the OpenCode agent stream
-        // which explores files on-demand via tools — no upfront codebase extraction needed.
-        const isAgentMode = settings.selectedChatMode === "agent" ||
-          settings.selectedChatMode === "ask" ||
-          settings.selectedChatMode === "plan" ||
-          settings.selectedChatMode === "mockup" ||
-          (settings.selectedChatMode as unknown as string) === "crush-agent";
+        const isAgentMode = effectiveChatMode === "agent" ||
+          effectiveChatMode === "ask" ||
+          effectiveChatMode === "plan" ||
+          effectiveChatMode === "mockup" ||
+          effectiveChatMode === "crush-agent" ||
+          effectiveChatMode.startsWith("custom-agent::");
 
         if (isAgentMode) {
           logger.log(
@@ -749,9 +788,10 @@ ${componentSnippet}
             updatedChat.app.id, // Exclude current app
           );
           willUseAgentStream =
-            (settings.selectedChatMode === "agent" ||
-              settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "mockup") &&
+            (effectiveChatMode === "agent" ||
+              effectiveChatMode === "ask" ||
+              effectiveChatMode === "mockup" ||
+              effectiveChatMode.startsWith("custom-agent::")) &&
             !mentionedAppsCodebases.length;
 
           isDeepContextEnabled = Boolean(
@@ -826,8 +866,27 @@ ${componentSnippet}
             );
           }
 
+          // Resolver el modo base del sistema para constructSystemPrompt
+          let systemPromptMode: "ask" | "agent" | "plan" = "agent";
+          if (effectiveChatMode === "plan") {
+            systemPromptMode = "plan";
+          } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
+            systemPromptMode = "ask";
+          } else if (effectiveChatMode.startsWith("custom-agent::")) {
+            const agentIdNum = parseInt(effectiveChatMode.split("::")[1]);
+            const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+            if (matchedAgent) {
+              const baseMap: Record<string, "ask" | "agent" | "plan"> = {
+                build: "agent",
+                plan: "plan",
+                explore: "ask",
+              };
+              systemPromptMode = baseMap[matchedAgent.baseAgent] || "agent";
+            }
+          }
+
           systemPrompt = constructSystemPrompt({
-            chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
+            chatMode: systemPromptMode,
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -858,7 +917,7 @@ ${componentSnippet}
             getSupabaseAvailableSystemPrompt(supabaseClientCode) +
             "\n\n" +
             // For local agent, we will explicitly fetch the database context when needed.
-            (settings.selectedChatMode === "agent" || settings.selectedChatMode === "mockup"
+            (effectiveChatMode === "agent" || effectiveChatMode === "mockup" || effectiveChatMode.startsWith("custom-agent::")
               ? ""
               : await getSupabaseContext({
                 supabaseProjectId: updatedChat.app.supabaseProjectId,
@@ -869,8 +928,9 @@ ${componentSnippet}
           // Neon projects don't need Supabase.
           !updatedChat.app?.neonProjectId &&
           // In local agent mode, we will suggest supabase as part of the add-integration tool
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -880,8 +940,9 @@ ${componentSnippet}
         if (bunnyConfig && (bunnyConfig.databases?.length > 0 || bunnyConfig.storageZones?.length > 0)) {
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -891,8 +952,9 @@ ${componentSnippet}
         if (pocketbaseConfig && pocketbaseConfig.url && pocketbaseConfig.adminEmail) {
           systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -993,8 +1055,9 @@ This conversation includes one or more image attachments. When the user uploads 
           // Thinking tags are generally not critical for the context
           // and eats up extra tokens.
           content:
-            settings.selectedChatMode === "ask" ||
-              settings.selectedChatMode === "plan"
+            effectiveChatMode === "ask" ||
+              effectiveChatMode === "plan" ||
+              (effectiveChatMode.startsWith("custom-agent::") && (agentId === "plan" || agentId === "explore"))
               ? removeVibesTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
@@ -1266,20 +1329,32 @@ This conversation includes one or more image attachments. When the user uploads 
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
-        const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
-          agent: "build",
-          "crush-agent": "build",
-          plan: "plan",
-          ask: "explore",
-          mockup: "mockup",
-        };
-        const resolvedChatMode: string = (settings.selectedChatMode || "agent");
+        let customSystemPrompt: string | undefined;
+        let customPromptMode: "additive" | "replace" | undefined;
+        let agentId: "build" | "plan" | "explore" | "mockup" = "build";
 
-        const agentId = agentIdMap[resolvedChatMode] || "build";
+        if (effectiveChatMode.startsWith("custom-agent::")) {
+          const agentIdNum = parseInt(effectiveChatMode.split("::")[1]);
+          const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+          if (matchedAgent) {
+            customSystemPrompt = matchedAgent.systemPrompt;
+            customPromptMode = matchedAgent.promptMode as "additive" | "replace";
+            agentId = matchedAgent.baseAgent as "build" | "plan" | "explore";
+          }
+        } else {
+          const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+            agent: "build",
+            "crush-agent": "build",
+            plan: "plan",
+            ask: "explore",
+            mockup: "mockup",
+          };
+          agentId = agentIdMap[effectiveChatMode] || "build";
+        }
 
         if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${effectiveChatMode})`);
 
 
           // Context instructions for the OpenCode session.
@@ -1313,7 +1388,7 @@ This conversation includes one or more image attachments. When the user uploads 
           );
 
           // 6. Plan mode — interactive question-driven planning
-          if (resolvedChatMode === "plan") {
+          if (agentId === "plan") {
             contextInstructions.push(
               getEffectivePrompt("ctx_plan_mode", settings)
             );
@@ -1473,6 +1548,8 @@ This conversation includes one or more image attachments. When the user uploads 
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
               priorMessages: req.priorMessages as any,
+              customSystemPrompt,
+              customPromptMode,
             },
           );
 
@@ -1610,7 +1687,7 @@ This conversation includes one or more image attachments. When the user uploads 
             // SKIP plan mode: proposals are not confirmed facts.
             if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
               bufferChatRound({
-                chatId: req.chatId,
+                chatId: String(req.chatId),
                 appId: updatedChat.app.id,
                 userId: currentUserId as string,
                 userPrompt,
@@ -1707,7 +1784,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // decisions. Extracting from them would pollute memories with unverified info.
           if (success && updatedChat.app?.id && agentId !== "plan") {
             bufferChatRound({
-              chatId: req.chatId,
+              chatId: String(req.chatId),
               appId: updatedChat.app.id,
               userId: currentUserId as string,
               userPrompt,

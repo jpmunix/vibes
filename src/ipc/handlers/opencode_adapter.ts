@@ -888,7 +888,7 @@ export async function updateOpenCodeConfig(changes: {
     standardModeModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
-    agentModels?: { plan?: string; explore?: string };
+    agentModels?: Record<string, string>;
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
@@ -925,7 +925,8 @@ export async function updateOpenCodeConfig(changes: {
                 }
             }
             body.agent = agentConfig;
-            const summary = agentIds.map(id => `${id}=${changes.agentModels[id] || 'default'}`).join(', ');
+            const models = changes.agentModels;
+            const summary = agentIds.map(id => `${id}=${models[id] || 'default'}`).join(', ');
             logger.info(`[OpenCode] Agent models updated: ${summary}`);
         }
 
@@ -1545,7 +1546,7 @@ async function getOpenCodeClient(appPath: string) {
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
 
         // Log full agent→model mapping for visibility
-        const am = settings.agentModels || {};
+        const am = (settings.agentModels || {}) as Record<string, string>;
         const resolve = (id: string) => am[id] || DEFAULT_AGENT_MODEL;
         const tag = (id: string) => am[id] ? '(override)' : '(default)';
         logger.info(
@@ -1764,9 +1765,22 @@ export async function handleOpenCodeStream(
          * multiple user messages typed while the previous stream was running.
          */
         priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
+        /** Custom agent prompt settings */
+        customSystemPrompt?: string;
+        customPromptMode?: "additive" | "replace";
     },
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
+
+    if (options.customPromptMode === "additive" && options.customSystemPrompt) {
+        if (!options.contextInstructions) {
+            options.contextInstructions = [];
+        }
+        options.contextInstructions.push(
+            `CUSTOM AGENT SYSTEM INSTRUCTIONS:\n${options.customSystemPrompt}`
+        );
+        logger.info(`[OpenCode] Appending custom agent prompt to context instructions (additive mode)`);
+    }
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
     const projectDir = getVibesAppPath(appPath);
@@ -2331,19 +2345,26 @@ export async function handleOpenCodeStream(
         }
 
         // Fire the prompt (non-blocking)
-        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
-        // internal system prompt. All Vibes context flows via noReply above.
+        // NOTE: If customPromptMode is "replace", we pass the customSystemPrompt
+        // directly in the `system` parameter to override OpenCode's internal system prompt.
+        const promptBody: any = {
+            model: {
+                providerID,
+                modelID,
+            },
+            agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
+            parts: promptParts,
+        };
+
+        if (options.customPromptMode === "replace" && options.customSystemPrompt) {
+            promptBody.system = options.customSystemPrompt;
+            logger.info(`${LP} Overriding internal system prompt with custom agent prompt (length: ${options.customSystemPrompt.length})`);
+        }
+
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
-            body: {
-                model: {
-                    providerID,
-                    modelID,
-                },
-                agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
-                parts: promptParts,
-            },
+            body: promptBody,
         });
 
         logger.info(`${LP} Prompt sent (async). Waiting for events...`);

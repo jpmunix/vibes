@@ -9,15 +9,17 @@ export function ChatInputControls({
   showContextFilesPicker = false,
   showTemplatePicker = false,
   showDesignPicker = false,
+  chatId,
 }: {
   showContextFilesPicker?: boolean;
   showTemplatePicker?: boolean;
   showDesignPicker?: boolean;
+  chatId?: number;
 }) {
 
   return (
     <div className="flex items-center gap-2">
-      <ChatModeSelector />
+      <ChatModeSelector chatId={chatId} />
       <ModelPicker />
       <ReasoningEffortSelector variant="compact" />
       {showTemplatePicker && (

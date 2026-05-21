@@ -55,6 +55,7 @@ import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
+import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
@@ -372,6 +373,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     ],
     section: "Tema",
     sectionId: "general-settings",
+  },
+  // ─── Agentes Personalizados ───
+  {
+    id: "custom-agents",
+    label: "Agentes Personalizados",
+    description: "Crea y administra tus propios agentes con instrucciones específicas y comandos slash personalizados",
+    keywords: ["agentes", "personalizados", "custom", "agents", "system", "prompt", "slash", "comando", "additive", "replace"],
+    section: "Agentes Personalizados",
+    sectionId: "custom-agents-settings",
   },
 ];
 
@@ -852,6 +862,23 @@ export default function SettingsPage() {
           <AIBehaviorSettings
             isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
           />
+
+          {/* Custom Agents Section */}
+          <div
+            id="custom-agents-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "custom-agents-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Agentes Personalizados
+            </h2>
+            <p className="typo-caption mb-8">
+              Construye y administra tus propios agentes con instrucciones específicas. Puedes inyectar un system prompt aditivo o pisar completamente las instrucciones nativas.
+            </p>
+            <CustomAgentsSection />
+          </div>
 
           {/* Prompts Section */}
           <div
