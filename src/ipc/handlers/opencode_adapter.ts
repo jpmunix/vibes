@@ -2935,10 +2935,16 @@ export async function handleOpenCodeStream(
         const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
         const useAgentName = effectiveAgent;
 
-        const systemPromptOverride = attachToSystemPrompt(
-            options.contextInstructions,
-            hasReplacePrompt ? options.customSystemPrompt : undefined
-        );
+        // Si es modo "Reemplazar", el prompt del agente en el servidor se establece con tu prompt de sistema personalizado.
+        // Si es "Aditivo" (o no hay prompt personalizado), se limpia para usar el prompt nativo/default de OpenCode.
+        const agentPromptConfig = hasReplacePrompt ? options.customSystemPrompt : null;
+
+        // El systemPromptOverride para promptAsync.system contendrá:
+        // - En modo Reemplazar: Únicamente tu prompt de sistema personalizado (sin inyectar el contexto de Vibes).
+        // - En modo Aditivo/Default: Las instrucciones de contexto estáticas (y el prompt personalizado si es aditivo).
+        const systemPromptOverride = hasReplacePrompt
+            ? options.customSystemPrompt
+            : attachToSystemPrompt(options.contextInstructions, undefined);
 
         // Determine permission config based on the base agent
         let permissionConfig: any;
@@ -2964,7 +2970,7 @@ export async function handleOpenCodeStream(
                 body: {
                     agent: {
                         [effectiveAgent]: {
-                            prompt: systemPromptOverride || null,
+                            prompt: agentPromptConfig,
                             permission: permissionConfig,
                             reasoningEffort: settings.reasoningEffort || "medium",
                             textVerbosity: settings.textVerbosity || "low",
@@ -2972,10 +2978,10 @@ export async function handleOpenCodeStream(
                     }
                 } as any
             });
-            if (systemPromptOverride) {
-                logger.info(`${LP} [CustomAgent] Successfully registered system prompt override for agent '${effectiveAgent}'. Prompt: "${systemPromptOverride.substring(0, 100)}..."`);
+            if (hasReplacePrompt) {
+                logger.info(`${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`);
             } else {
-                logger.info(`${LP} [CustomAgent] Successfully cleared custom system prompt override for agent '${effectiveAgent}'`);
+                logger.info(`${LP} [CustomAgent] Successfully cleared/restored native system prompt for agent '${effectiveAgent}'`);
             }
         } catch (err: any) {
             logger.warn(`${LP} [CustomAgent] Failed to update agent config in OpenCode: ${err.message}`);

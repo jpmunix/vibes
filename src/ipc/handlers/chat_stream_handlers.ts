@@ -294,36 +294,43 @@ function registerChatStreamHandlers() {
 
       let effectiveChatMode: string = req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
 
-      // Detect slash command at the beginning of the prompt
-      const commandMatch = req.prompt.trim().match(/^\/(\w+)(?:\s+(.*))?$/s);
-      if (commandMatch) {
-        const cmdName = commandMatch[1].toLowerCase();
-        const cmdRest = commandMatch[2] || "";
+      // Detect slash command anywhere in the prompt (safely matching command tokens)
+      const knownCommands = ["agent", "build", "plan", "ask", "explore"];
+      const customAgentCommands = customAgents.map(ca => ca.slashCommand.toLowerCase());
+      const allCommands = [...knownCommands, ...customAgentCommands];
+      allCommands.sort((a, b) => b.length - a.length);
 
-        let matchedMode: string | null = null;
-        if (cmdName === "agent" || cmdName === "build") {
-          matchedMode = "agent";
-        } else if (cmdName === "plan") {
-          matchedMode = "plan";
-        } else if (cmdName === "ask" || cmdName === "explore") {
-          matchedMode = "ask";
-        } else {
-          const matchedAgent = customAgents.find(
-            (ca) => ca.slashCommand.toLowerCase() === cmdName
-          );
-          if (matchedAgent) {
-            matchedMode = `custom-agent::${matchedAgent.id}`;
+      let matchedMode: string | null = null;
+
+      for (const cmdName of allCommands) {
+        const cmdRegex = new RegExp(`(?:\\s|^)\\/(${cmdName})(?:\\s|$)`, "i");
+        const match = req.prompt.match(cmdRegex);
+        if (match) {
+          if (cmdName === "agent" || cmdName === "build") {
+            matchedMode = "agent";
+          } else if (cmdName === "plan") {
+            matchedMode = "plan";
+          } else if (cmdName === "ask" || cmdName === "explore") {
+            matchedMode = "ask";
+          } else {
+            const matchedAgent = customAgents.find(
+              (ca) => ca.slashCommand.toLowerCase() === cmdName
+            );
+            if (matchedAgent) {
+              matchedMode = `custom-agent::${matchedAgent.id}`;
+            }
           }
-        }
 
-        if (matchedMode) {
-          effectiveChatMode = matchedMode;
-          req.prompt = cmdRest;
-          logger.info(`[ChatStream] Intercepted slash command /${cmdName}. Setting effectiveChatMode to ${effectiveChatMode}.`);
-          await db
-            .update(remoteSchema.chats)
-            .set({ chatMode: effectiveChatMode })
-            .where(eq(remoteSchema.chats.id, req.chatId));
+          if (matchedMode) {
+            effectiveChatMode = matchedMode;
+            req.prompt = req.prompt.replace(cmdRegex, " ").trim();
+            logger.info(`[ChatStream] Intercepted slash command /${cmdName} anywhere. Setting effectiveChatMode to ${effectiveChatMode}. Remaining prompt: "${req.prompt}"`);
+            await db
+              .update(remoteSchema.chats)
+              .set({ chatMode: effectiveChatMode })
+              .where(eq(remoteSchema.chats.id, req.chatId));
+            break;
+          }
         }
       }
 
