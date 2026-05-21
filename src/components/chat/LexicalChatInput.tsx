@@ -438,6 +438,23 @@ export function LexicalChatInput({
         // These invisible chars break slash command detection on the backend.
         textContent = textContent.replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
 
+        // If the text starts with a slash command but is immediately followed by text (no space),
+        // we inject a space so the backend can parse it correctly (e.g. "/plancuando" -> "/plan cuando").
+        const knownSlashCommands = [
+          "agent", "build", "plan", "ask", "explore",
+          ...(customAgents || []).map((a) => a.slashCommand),
+        ];
+        for (const cmd of knownSlashCommands) {
+          if (
+            textContent.startsWith(`/${cmd}`) &&
+            textContent.length > `/${cmd}`.length &&
+            !textContent.startsWith(`/${cmd} `)
+          ) {
+            textContent = `/${cmd} ` + textContent.slice(`/${cmd}`.length);
+            break; // Only match the first (valid) command
+          }
+        }
+
         // Transform @AppName mentions to @app:AppName format
         // This regex matches @AppName where AppName is one of our actual app names
 

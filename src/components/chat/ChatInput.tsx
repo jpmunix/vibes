@@ -58,6 +58,7 @@ import {
 } from "../ui/tooltip";
 
 import { useVersions } from "@/hooks/useVersions";
+import { useLoadApp } from "@/hooks/useLoadApp";
 import { useAttachments } from "@/hooks/useAttachments";
 import { AttachmentsList } from "./AttachmentsList";
 import { DragDropOverlay } from "./DragDropOverlay";
@@ -133,6 +134,7 @@ export function ChatInput({
 
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
+  const { app } = useLoadApp(appId);
   const { versions, loading: versionsLoading, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
@@ -501,8 +503,8 @@ export function ChatInput({
     //   1. versions.length <= 1: only the initial 'Init vibes app' commit exists (no scaffold yet)
     //   2. No prior messages exist in any loaded chat (covers PHP/Python/Go projects without package.json)
     // New chats in existing apps must NOT re-scaffold. The backend also has its own guard.
-    const totalLoadedMessages = Array.from(messagesById.values()).reduce((sum, msgs) => sum + msgs.length, 0);
-    const isNewApp = !versionsLoading && versions.length <= 1 && totalLoadedMessages === 0;
+    const isAppEmpty = app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true;
+    const isNewApp = !versionsLoading && versions.length <= 1 && currentMessages.length === 0 && isAppEmpty;
     if (currentChatId && appId && currentMessages.length === 0 && isNewApp) {
       setIsStreaming(true);
       
@@ -899,8 +901,8 @@ export function ChatInput({
                   <ChatInputControls
                     showContextFilesPicker={false}
                     chatId={chatId}
-                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
-                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
+                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
+                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
                   />
                 </div>
 

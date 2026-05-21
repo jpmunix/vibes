@@ -246,7 +246,7 @@ export function CustomAgentsSection() {
 
       {/* dialog para Crear / Editar */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-2xl bg-card border border-border rounded-2xl shadow-2xl p-6">
+        <DialogContent className="sm:max-w-[850px] max-w-[95vw] bg-card border border-border rounded-2xl shadow-2xl p-6">
           <DialogHeader className="mb-4">
             <DialogTitle className="typo-section-title flex items-center gap-2">
               <Bot className="size-6 text-primary" />
@@ -381,7 +381,7 @@ export function CustomAgentsSection() {
                 onChange={(e) =>
                   setFormState({ ...formState, systemPrompt: e.target.value })
                 }
-                className="w-full h-48 p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input font-mono resize-none"
+                className="w-full min-h-[400px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input font-mono resize-y"
               />
             </div>
 

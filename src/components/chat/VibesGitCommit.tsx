@@ -1,9 +1,18 @@
-import type React from "react";
+import React from "react";
 import { useState, useCallback } from "react";
 import { GitCommit, FileCode } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+
+// Helper to extract text from React children array or object
+function extractTextFromChildren(children: any): string {
+  if (!children) return "";
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) return children.map(extractTextFromChildren).join("");
+  if (children?.props?.children) return extractTextFromChildren(children.props.children);
+  return "";
+}
 
 interface VibesGitCommitProps {
   action?: string; // "commit" | "commit-push"
@@ -14,11 +23,11 @@ interface VibesGitCommitProps {
 export const VibesGitCommit: React.FC<VibesGitCommitProps> = ({ action, files, children }) => {
   const appId = useAtomValue(selectedAppIdAtom);
 
-  // Extract commit message lines
-  const fullMessage = typeof children === "string" ? children.trim() : "";
+  // Extract commit message lines properly from React nodes
+  const fullMessage = extractTextFromChildren(children).trim();
   const lines = fullMessage.split("\n");
   const subject = lines[0] || "";
-  const bodyLines = lines.slice(1).filter(line => line.trim() !== "");
+  const bodyLines = lines.slice(1).filter((line) => line.trim() !== "");
 
   // Extract file list
   const fileArray = files ? files.split(",").map(f => f.trim()).filter(Boolean) : [];
