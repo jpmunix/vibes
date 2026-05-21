@@ -7,7 +7,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Loader2, Maximize2, Minimize2, Download, Share2 } from "@/components/ui/icons";
+import { ChevronRight, Loader2, Maximize2, Minimize2, Download, Share2, FileText, X, Dna, FlaskConical } from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -44,8 +44,8 @@ const STAGE_LABELS: Record<string, { label: string; color: string }> = {
   synthesis: { label: "Síntesis", color: "text-emerald-500" },
   router: { label: "Router", color: "text-blue-500" },
   guardian: { label: "Guardián", color: "text-yellow-500" },
-  "bootstrap-dna": { label: "🧬 DNA", color: "text-purple-500" },
-  "bootstrap-explore": { label: "🔬 Explore", color: "text-cyan-500" },
+  "bootstrap-dna": { label: "DNA", color: "text-purple-500" },
+  "bootstrap-explore": { label: "Explore", color: "text-cyan-500" },
 };
 
 function formatTime(iso: string) {
@@ -365,7 +365,7 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
             className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 transition-colors cursor-pointer"
             onClick={() => setViewingLog(log)}
           >
-            <span className="text-lg">📄</span>
+            <FileText size={18} className="text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="typo-caption font-medium truncate">{log.appName || log.filename}</p>
               <p className="typo-micro text-muted-foreground">{log.filename} · {(log.contentMd?.length ?? 0).toLocaleString()} chars</p>
@@ -405,7 +405,7 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
                   <Share2 className="size-3.5" />
                   Compartir
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}>✕</Button>
+                <Button variant="ghost" size="sm" onClick={() => setViewingLog(null)}><X size={14} /></Button>
               </div>
             </div>
             {/* Parsed markdown content */}

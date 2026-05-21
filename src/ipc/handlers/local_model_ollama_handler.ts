@@ -2,6 +2,7 @@ import log from "electron-log";
 import { createTypedHandler } from "./base";
 import { languageModelContracts } from "../types/language-model";
 import type { LocalModel } from "../types/language-model";
+import { readSettings } from "../../main/settings";
 
 const logger = log.scope("ollama_handler");
 
@@ -38,7 +39,18 @@ export function parseOllamaHost(host?: string): string {
   return `http://${host}:11434`;
 }
 
+/**
+ * Get the Ollama API URL. Priority:
+ * 1. User setting (ollamaBaseUrl) — configurable from Settings UI
+ * 2. OLLAMA_HOST env var — classic CLI override
+ * 3. Default: http://localhost:11434
+ */
 export function getOllamaApiUrl(): string {
+  const settings = readSettings();
+  const fromSettings = (settings as any).ollamaBaseUrl;
+  if (fromSettings && typeof fromSettings === "string" && fromSettings.trim()) {
+    return fromSettings.replace(/\/+$/, "");
+  }
   return parseOllamaHost(process.env.OLLAMA_HOST);
 }
 
@@ -57,6 +69,11 @@ interface OllamaModel {
 }
 
 export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
+  const settings = readSettings();
+  if (settings.ollamaEnabled === false) {
+    return { models: [] };
+  }
+
   try {
     const response = await fetch(`${getOllamaApiUrl()}/api/tags`);
     if (!response.ok) {
@@ -67,14 +84,16 @@ export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
     const ollamaModels: OllamaModel[] = data.models || [];
 
     const models: LocalModel[] = ollamaModels.map((model: OllamaModel) => {
-      const displayName = model.name
-        .split(":")[0]
+      const parts = model.name.split(":");
+      const baseName = parts[0]
         .replace(/-/g, " ")
         .replace(/(\d+)/, " $1 ")
         .split(" ")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ")
         .trim();
+      const tag = parts.slice(1).join(":");
+      const displayName = tag ? `${baseName} (${tag})` : baseName;
 
       return {
         modelName: model.name,
@@ -103,8 +122,36 @@ export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
   }
 }
 
+/**
+ * Check if the Ollama server is reachable and count available models.
+ * Used by the Settings UI to show connection status.
+ */
+export async function checkOllamaStatus(): Promise<{ online: boolean; modelCount: number; url: string }> {
+  const url = getOllamaApiUrl();
+  const settings = readSettings();
+  if (settings.ollamaEnabled === false) {
+    return { online: false, modelCount: 0, url };
+  }
+
+  try {
+    const response = await fetch(`${url}/api/tags`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return { online: false, modelCount: 0, url };
+    const data = await response.json();
+    const modelCount = Array.isArray(data.models) ? data.models.length : 0;
+    return { online: true, modelCount, url };
+  } catch {
+    return { online: false, modelCount: 0, url };
+  }
+}
+
 export function registerOllamaHandlers() {
   createTypedHandler(languageModelContracts.listOllamaModels, async () => {
     return fetchOllamaModels();
+  });
+
+  createTypedHandler(languageModelContracts.checkOllamaStatus, async () => {
+    return checkOllamaStatus();
   });
 }

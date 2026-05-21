@@ -12,7 +12,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
-import { decayMemories, migrateLegacyTypesToSession } from "../utils/memory_lifecycle";
+import { decayMemories, migrateLegacyTypesToSession, compactOldSessions } from "../utils/memory_lifecycle";
 import { restorePendingBuffers } from "../utils/memory_extractor";
 import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
@@ -126,6 +126,14 @@ export function registerMemoryHandlers(): void {
     // Placeholder — will be implemented in Fase 2 (write pipeline)
     createTypedHandler(memoryContracts.extractMemories, async (_event, _params, _ctx) => {
         return [];
+    });
+
+    // ── CONDENSE SESSION MEMORIES ──────────────────────────────────────────
+    createTypedHandler(memoryContracts.condenseSessionMemories, async (_event, { appId, chatId }, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        const { forceCondenseChatSession } = await import("../utils/memory_extractor");
+        await forceCondenseChatSession({ appId, userId, chatId });
     });
 
     // ── DECAY MEMORIES ─────────────────────────────────────────────────────
@@ -358,6 +366,13 @@ export function registerMemoryHandlers(): void {
         return result;
     });
 
+    // ── COMPACT MEMORIES (manual trigger) ───────────────────────────────
+    createTypedHandler(memoryContracts.compactMemories, async (_event, params, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        return compactOldSessions(params.appId, userId, { force: true });
+    });
+
     // ── GET DEBUG LOGS ──────────────────────────────────────────────────
     createTypedHandler(memoryContracts.getDebugLogs, async (_event, params, ctx) => {
         const db = getRemoteDb();
@@ -436,6 +451,46 @@ export function registerMemoryHandlers(): void {
     // If the app quit with unflushed rounds, process them now.
     restorePendingBuffers()
         .catch(e => logger.warn(`[Memory] Buffer restoration failed: ${e.message}`));
+
+    // ── Startup cleanup: purge stale auxiliary data ──────────────────
+    // Prevents unbounded growth of telemetry/log tables and cleans up
+    // inactive memories that are no longer useful.
+    (async () => {
+        try {
+            const db = getRemoteDb();
+            const cutoff7d = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
+            // Pipeline logs > 7 days → DELETE
+            await db.delete(remoteSchema.memoryPipelineLogs)
+                .where(sql`${remoteSchema.memoryPipelineLogs.createdAt} < ${cutoff7d}`);
+
+            // Telemetry > 7 days → DELETE
+            await db.delete(remoteSchema.memoryTelemetry)
+                .where(sql`${remoteSchema.memoryTelemetry.createdAt} < ${cutoff7d}`);
+
+            // Debug logs > 7 days → DELETE
+            await db.delete(remoteSchema.memoryDebugLogs)
+                .where(sql`${remoteSchema.memoryDebugLogs.createdAt} < ${cutoff7d}`);
+
+            // Inactive memories > 7 days → hard DELETE
+            await db.delete(remoteSchema.memories)
+                .where(and(
+                    eq(remoteSchema.memories.enabled, 0),
+                    sql`${remoteSchema.memories.updatedAt} < ${cutoff7d}`,
+                ));
+
+            // Finished stream tasks > 7 days → DELETE (running tasks are never purged)
+            await db.delete(remoteSchema.streamTasks)
+                .where(and(
+                    sql`${remoteSchema.streamTasks.status} != 'running'`,
+                    sql`${remoteSchema.streamTasks.startedAt} < ${cutoff7d}`,
+                ));
+
+            logger.info("[Memory] Startup cleanup: purged stale pipeline logs, telemetry, debug logs, inactive memories, and old stream tasks (>7d)");
+        } catch (e: any) {
+            logger.warn(`[Memory] Startup cleanup failed: ${e.message}`);
+        }
+    })();
 
     logger.info("[Memory] Handlers registered");
 }

@@ -1,7 +1,7 @@
 import { ContextFilesPicker } from "./ContextFilesPicker";
 import { ModelPicker } from "./ModelPicker";
 import { ChatModeSelector } from "./ChatModeSelector";
-import { ReasoningEffortSelector } from "./ReasoningEffortSelector";
+import { InferenceTunerPicker } from "./InferenceTunerPicker";
 import { TemplatePicker } from "./TemplatePicker";
 import { DesignPicker } from "./DesignPicker";
 
@@ -21,7 +21,7 @@ export function ChatInputControls({
     <div className="flex items-center gap-2">
       <ChatModeSelector chatId={chatId} />
       <ModelPicker />
-      <ReasoningEffortSelector variant="compact" />
+      <InferenceTunerPicker />
       {showTemplatePicker && (
         <TemplatePicker variant="compact" />
       )}

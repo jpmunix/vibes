@@ -15,7 +15,7 @@ const FrameworkIcon: React.FC<{ id: string; className?: string }> = ({
 }) => {
     switch (id) {
         case "react":
-        case "react-beta":
+        case "react19":
             return <ReactIcon className={className} />;
         case "next":
             return <NextIcon className={className} />;
@@ -44,7 +44,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
     const currentValue = settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID;
 
     // Only show enabled templates in the compact picker
-    const ENABLED_TEMPLATE_IDS = new Set(["react-beta", "express", "next"]);
+    const ENABLED_TEMPLATE_IDS = new Set(["react", "react19", "express", "next"]);
     const templates = localTemplatesData.filter(
         (t) => t.isOfficial && !t.isExperimental && ENABLED_TEMPLATE_IDS.has(t.id),
     );

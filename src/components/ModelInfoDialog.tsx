@@ -7,6 +7,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { type LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
 import { Separator } from "@/components/ui/separator";
@@ -20,7 +21,9 @@ import {
     ChevronDown,
     Edit2,
     Check,
-    X,
+    Sparkles,
+    Pencil,
+    Trash2,
 } from "@/components/ui/icons";
 import { useState, useRef, useEffect } from "react";
 
@@ -35,6 +38,10 @@ interface ModelInfoDialogProps {
     onSetAlias?: (alias: string) => void;
     /** Callback to remove the alias */
     onRemoveAlias?: () => void;
+    /** Callback to edit a custom model (opens EditCustomModelDialog) */
+    onEditCustomModel?: (model: LanguageModel) => void;
+    /** Callback to delete a custom model */
+    onDeleteCustomModel?: (modelApiName: string) => void;
 }
 
 const MODALITY_ICONS: Record<string, { icon: React.ElementType; label: string }> = {
@@ -115,10 +122,14 @@ export function ModelInfoDialog({
     alias,
     onSetAlias,
     onRemoveAlias,
+    onEditCustomModel,
+    onDeleteCustomModel,
 }: ModelInfoDialogProps) {
     const [isEditingAlias, setIsEditingAlias] = useState(false);
     const [aliasValue, setAliasValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const isCustom = model.type === "custom";
 
     const formatTokens = (num: number | undefined) => {
         if (num === undefined) return "—";
@@ -171,12 +182,12 @@ export function ModelInfoDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={(v) => { if (isEditingAlias) { cancelAlias(); return; } onOpenChange(v); }}>
             <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {isEditingAlias ? (
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-1 min-w-0 mr-6">
                                 <input
                                     ref={inputRef}
                                     type="text"
@@ -186,30 +197,26 @@ export function ModelInfoDialog({
                                         if (e.key === "Enter") confirmAlias();
                                         if (e.key === "Escape") cancelAlias();
                                     }}
+                                    onBlur={confirmAlias}
                                     placeholder={model.displayName}
                                     className="flex-1 min-w-0 bg-background border border-border rounded-md px-3 py-1 text-base font-semibold outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-all"
                                 />
                                 <button
                                     type="button"
-                                    onClick={confirmAlias}
+                                    onMouseDown={(e) => { e.preventDefault(); confirmAlias(); }}
                                     className="p-1.5 rounded-md hover:bg-primary/10 text-primary transition-colors cursor-pointer"
-                                    title="Guardar"
+                                    title="Guardar (Enter)"
                                 >
                                     <Check size={16} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={cancelAlias}
-                                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-pointer"
-                                    title="Cancelar"
-                                >
-                                    <X size={16} />
                                 </button>
                             </div>
                         ) : (
                             <>
                                 <span className="truncate">{alias || model.displayName}</span>
                                 {isAutoRouter && <AutoRouterBadge />}
+                                {isCustom && (
+                                    <Badge variant="outline" className="text-xs shrink-0">Personalizado</Badge>
+                                )}
                                 {onSetAlias && !isAutoRouter && (
                                     <button
                                         type="button"
@@ -218,16 +225,6 @@ export function ModelInfoDialog({
                                         title={alias ? "Editar alias" : "Poner alias"}
                                     >
                                         <Edit2 size={14} />
-                                    </button>
-                                )}
-                                {alias && onRemoveAlias && (
-                                    <button
-                                        type="button"
-                                        onClick={clearAlias}
-                                        className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/50 hover:text-red-500 transition-colors cursor-pointer shrink-0"
-                                        title="Quitar alias"
-                                    >
-                                        <X size={14} />
                                     </button>
                                 )}
                             </>
@@ -250,8 +247,8 @@ export function ModelInfoDialog({
                     <div className="space-y-2">
                         <h4 className="typo-label">Precios</h4>
                         {isFree ? (
-                            <div className="typo-body font-medium text-emerald-600 dark:text-emerald-400">
-                                ✦ Gratis
+                            <div className="typo-body font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <Sparkles size={14} /> Gratis
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
@@ -317,6 +314,37 @@ export function ModelInfoDialog({
                                 {model.tag}
                             </span>
                         </div>
+                    )}
+
+                    {/* Custom model actions — Edit & Delete */}
+                    {isCustom && (onEditCustomModel || onDeleteCustomModel) && (
+                        <>
+                            <Separator />
+                            <div className="flex items-center gap-2">
+                                {onEditCustomModel && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 gap-2"
+                                        onClick={() => { onOpenChange(false); onEditCustomModel(model); }}
+                                    >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                        Editar
+                                    </Button>
+                                )}
+                                {onDeleteCustomModel && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 gap-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50"
+                                        onClick={() => { onOpenChange(false); onDeleteCustomModel(model.apiName); }}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Eliminar
+                                    </Button>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
             </DialogContent>

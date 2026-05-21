@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
-import { Info, X, Type, Image, Music, Video, FileText, ArrowRight, Edit2, Check } from "@/components/ui/icons";
+import { Info, X, Type, Image, Music, Video, FileText, ArrowRight, Edit2, Check, Sparkles } from "@/components/ui/icons";
 import {
     Tooltip,
     TooltipTrigger,
@@ -95,6 +95,8 @@ export function ModelItemContent({
 
     const displayName = alias || model.displayName;
 
+    const [isHovered, setIsHovered] = useState(false);
+
     useEffect(() => {
         if (isEditing && inputRef.current) {
             inputRef.current.focus();
@@ -125,7 +127,11 @@ export function ModelItemContent({
     };
 
     return (
-        <div className="flex items-center justify-between w-full gap-2 py-0.5 group">
+        <div 
+            className="flex items-center justify-between w-full gap-2 py-0.5 group"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
             <div className="flex flex-col gap-0 overflow-hidden flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     {isEditing ? (
@@ -178,7 +184,7 @@ export function ModelItemContent({
                 </span>
             </div>
 
-            {(onRemoveClick || !isAutoRouter || onSetAlias) && !isEditing && (
+            {isHovered && (onRemoveClick || !isAutoRouter || onSetAlias) && !isEditing && (
                 <div
                     className="flex items-center shrink-0 z-10"
                     onPointerDown={(e) => {
@@ -195,46 +201,34 @@ export function ModelItemContent({
                     }}
                 >
                     {onRemoveClick && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        onRemoveClick(model);
-                                    }}
-                                    className="p-1 hover:bg-red-500/10 rounded text-muted-foreground/50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer mr-0.5"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={4}>
-                                Eliminar de recientes
-                            </TooltipContent>
-                        </Tooltip>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onRemoveClick(model);
+                            }}
+                            className="p-1 hover:bg-red-500/10 rounded text-muted-foreground/50 hover:text-red-500 transition-colors cursor-pointer mr-0.5"
+                            title="Eliminar de recientes"
+                        >
+                            <X size={14} />
+                        </button>
                     )}
                     {onSetAlias && !isAutoRouter && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    onClick={startEditing}
-                                    className="p-1 hover:bg-primary/10 rounded text-muted-foreground/50 hover:text-primary transition-colors opacity-0 group-hover:opacity-100 cursor-pointer mr-0.5"
-                                >
-                                    <Edit2 size={14} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" sideOffset={4}>
-                                {alias ? "Editar alias" : "Poner alias"}
-                            </TooltipContent>
-                        </Tooltip>
+                        <button
+                            type="button"
+                            onClick={startEditing}
+                            className="p-1 hover:bg-primary/10 rounded text-muted-foreground/50 hover:text-primary transition-colors cursor-pointer mr-0.5"
+                            title={alias ? "Editar alias" : "Poner alias"}
+                        >
+                            <Edit2 size={14} />
+                        </button>
                     )}
                     {!isAutoRouter && (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <div
-                                    className="p-1 hover:bg-muted rounded text-muted-foreground/50 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                                    className="p-1 hover:bg-muted rounded text-muted-foreground/50 hover:text-foreground transition-colors"
                                     onPointerDown={(e) => e.preventDefault()}
                                 >
                                     <Info size={14} />
@@ -262,7 +256,7 @@ export function ModelItemContent({
                                     {hasPricing && (
                                         <div className="flex items-center gap-3 text-[13px]">
                                             {isFree ? (
-                                                <span className="text-emerald-400 font-medium">✦ Gratis</span>
+                                                <span className="text-emerald-400 font-medium flex items-center gap-1"><Sparkles size={11} /> Gratis</span>
                                             ) : (
                                                 <>
                                                     <span className="text-muted-foreground">In</span>

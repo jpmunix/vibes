@@ -1,33 +1,12 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require("@libsql/client");
+const BUNNY_DB_URL = "libsql://01KJ783WM1SD8X465A3VPAGHG6-minube-vibes.lite.bunnydb.net/";
+const BUNNY_DB_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJwIjp7InJvIjpudWxsLCJydyI6eyJucyI6WyJtaW51YmUtdmliZXMiXSwidGFncyI6bnVsbH0sInJvYSI6bnVsbCwicndhIjpudWxsLCJkZGwiOm51bGx9LCJpYXQiOjE3NzE5MTc0MDl9.m-5EAVWjKG0kPM72fPFpeAg25seNnUY65gtSzTJlhnD697C1mmCRoXZWkmcreHoV9vTRw22supEVIp342D_2CA";
 
-const mappings = [
-  { regex: /dark:hover:text-gray-200/g, replacement: "dark:hover:text-foreground" },
-  { regex: /dark:text-gray-200/g, replacement: "dark:text-foreground" },
-  { regex: /dark:text-gray-100/g, replacement: "dark:text-foreground" },
-  { regex: /hover:bg-gray-200/g, replacement: "hover:bg-accent" },
-  { regex: /dark:hover:bg-gray-700/g, replacement: "dark:hover:bg-accent" },
-];
-
-function processDirectory(dir) {
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      processDirectory(fullPath);
-    } else if (fullPath.endsWith('.tsx') || fullPath.endsWith('.ts')) {
-      let content = fs.readFileSync(fullPath, 'utf8');
-      let originalContent = content;
-      for (const mapping of mappings) {
-        content = content.replace(mapping.regex, mapping.replacement);
-      }
-      if (content !== originalContent) {
-        fs.writeFileSync(fullPath, content);
-        console.log(`Updated: ${fullPath}`);
-      }
-    }
-  }
+async function run() {
+  const client = createClient({ url: BUNNY_DB_URL, authToken: BUNNY_DB_TOKEN });
+  
+  // Get latest prompts to see the new one
+  const res = await client.execute("SELECT * FROM prompts ORDER BY id DESC LIMIT 10");
+  console.log(res.rows);
 }
-
-processDirectory(path.join(__dirname, 'src'));
+run().catch(console.error);

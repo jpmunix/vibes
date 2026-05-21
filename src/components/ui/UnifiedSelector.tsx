@@ -119,6 +119,7 @@ export interface UnifiedSelectorProps {
   "data-testid"?: string;
   /** Controlled open state */
   open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   className?: string;
   /** Whether to disable the font-bold formatting on selected items */
   disableBoldSelection?: boolean;

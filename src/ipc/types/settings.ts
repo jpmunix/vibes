@@ -30,6 +30,57 @@ export const settingsContracts = {
     input: UserSettingsSchema.partial(),
     output: UserSettingsSchema,
   }),
+
+  /**
+   * List global skills from ~/.config/opencode/skills/
+   */
+  listGlobalSkills: defineContract({
+    channel: "list-global-skills",
+    input: z.void(),
+    output: z.array(
+      z.object({
+        name: z.string(),
+        path: z.string(),
+        enabled: z.boolean(),
+      })
+    ),
+  }),
+
+  /**
+   * Rename/move a global skill file.
+   */
+  renameGlobalSkill: defineContract({
+    channel: "rename-global-skill",
+    input: z.object({ oldPath: z.string(), newPath: z.string() }),
+    output: z.void(),
+  }),
+
+  /**
+   * Read a global skill file's content.
+   */
+  readGlobalSkill: defineContract({
+    channel: "read-global-skill",
+    input: z.object({ filePath: z.string() }),
+    output: z.string(),
+  }),
+
+  /**
+   * Edit/create a global skill file.
+   */
+  editGlobalSkill: defineContract({
+    channel: "edit-global-skill",
+    input: z.object({ filePath: z.string(), content: z.string() }),
+    output: z.void(),
+  }),
+
+  /**
+   * Delete a global skill directory.
+   */
+  deleteGlobalSkill: defineContract({
+    channel: "delete-global-skill",
+    input: z.object({ filePath: z.string() }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================

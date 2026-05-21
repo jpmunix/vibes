@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export interface GitPanelFile {
     path: string;
     status: "added" | "modified" | "deleted" | "renamed";
-    staged: boolean;
+    staged?: boolean;
 }
 
 export function useGitPanel(appId: number | null) {

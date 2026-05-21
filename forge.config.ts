@@ -30,6 +30,7 @@ const ignore = (file: string): boolean => {
     return false; // Incluir: es parte de la plantilla
   }
 
+  // styled-jsx y geist se desempaquetan para macOS ARM64 — SIEMPRE incluir
   if (
     file.includes("/node_modules/styled-jsx") ||
     file.includes("/node_modules/geist")
@@ -37,16 +38,71 @@ const ignore = (file: string): boolean => {
     return false;
   }
 
-  // Ignore date-fns/fp (1500+ unused files, functional programming API)
-  // Prevents ENOTEMPTY race condition in electron-packager
-  if (file.includes("/node_modules/date-fns/fp")) {
-    return true;
+  // ─── NODE_MODULES: FILTRO PESADO ──────────────────────────────────────
+  // Antes se incluía TODO node_modules (~5 GB, 224K archivos).
+  // Ahora se excluyen directorios ocultos, devDependencies y fuentes C++.
+  if (file.startsWith("/node_modules")) {
+    // 1. Directorios ocultos: caché de pnpm/vite/etc (~2.7 GB, 130K archivos)
+    //    .pnpm (1.4 GB), .ignored (1.0 GB), .vite (276 MB), .cache, etc.
+    if (file.startsWith("/node_modules/.")) {
+      return true;
+    }
+
+    // 2. date-fns/fp: 1500+ archivos de API funcional no usada
+    //    También previene race condition ENOTEMPTY en electron-packager
+    if (file.includes("/date-fns/fp")) {
+      return true;
+    }
+
+    // 3. devDependencies: nunca se necesitan en runtime (~400 MB)
+    //    Estos paquetes son herramientas de build, test o lint.
+    //    electron-packager incluye su propia copia de Electron.
+    const devOnlyPackages = [
+      "electron/",
+      "@electron-forge/",
+      "@electron/fuses/",
+      "@playwright/",
+      "@types/",
+      "@typescript-eslint/",
+      "@typescript/",
+      "@vitest/",
+      "babel-plugin-react-compiler/",
+      "drizzle-kit/",
+      "eslint/",
+      "eslint-plugin-import/",
+      "happy-dom/",
+      "husky/",
+      "lint-staged/",
+      "oxfmt/",
+      "@oxfmt/",
+      "oxlint/",
+      "@oxlint/",
+      "@oxlint-darwin/",
+      "@oxlint-linux/",
+      "@oxlint-win32/",
+      "@oxc-resolver/",
+      "rimraf/",
+      "typescript/",
+      "vitest/",
+      "vite/",
+    ];
+
+    for (const pkg of devOnlyPackages) {
+      if (file.startsWith(`/node_modules/${pkg}`)) {
+        return true;
+      }
+    }
+
+    // 4. Fuentes C++ / headers — solo sirven para compilar nativos
+    if (file.endsWith(".cpp") || file.endsWith(".h")) {
+      return true;
+    }
+
+    return false; // Dependencia de producción → incluir
   }
 
-  // 2. LISTA DE PERMITIDOS: Cosas que SIEMPRE deben estar en la app
-  // Si el archivo empieza por alguna de estas rutas, devolvemos FALSE (NO ignorar)
+  // ─── RUTAS RAÍZ PERMITIDAS ────────────────────────────────────────────
   const allowedPaths = [
-    "/node_modules",
     "/.vite",
     "/worker",
     "/assets",
@@ -54,12 +110,11 @@ const ignore = (file: string): boolean => {
   ];
 
   if (allowedPaths.some((path) => file.startsWith(path))) {
-    // No queremos archivos .cpp o .h que solo sirven para compilar
-    if (file.endsWith(".cpp") || file.endsWith(".h") || file.endsWith(".ts")) {
-      if (!file.includes("node_modules")) return true;
+    // Excluir fuentes .ts del worker (ya compilados en .vite/build)
+    if (file.endsWith(".ts") && !file.endsWith(".d.ts")) {
+      return true;
     }
-
-    return false; // Se queda en la app
+    return false;
   }
 
   // Cualquier archivo fuera de las rutas permitidas se ignora
@@ -72,20 +127,21 @@ const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
 const isCrossCompile = process.env.CROSS_COMPILE === "true";
 
 // ─── Build Profile ───────────────────────────────────────────────────────
-// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside minube-vibes)
-const isVibesProfile = process.env.VIBES_PROFILE === "vibes";
+import { getActiveFlavor } from "./src/flavors";
+
+const activeFlavor = getActiveFlavor();
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: isVibesProfile ? "vibes" : undefined,
-    executableName: isVibesProfile ? "vibes" : undefined,
+    name: activeFlavor.name,
+    executableName: activeFlavor.executableName,
     protocols: [
       {
-        name: "Vibes",
+        name: activeFlavor.productName,
         schemes: ["dyad"],
       },
     ],
-    icon: isVibesProfile ? "./assets/icon-vibes/logo" : "./assets/icon/logo",
+    icon: `./assets/${activeFlavor.iconFolder}/logo`,
     asar: {
       // styled-jsx y geist se desempaquetan para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
@@ -103,10 +159,10 @@ const config: ForgeConfig = {
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
       options: {
-        name: isVibesProfile ? "vibes" : undefined,
-        productName: isVibesProfile ? "Vibes" : undefined,
+        name: activeFlavor.name,
+        productName: activeFlavor.productName,
         mimeType: ["x-scheme-handler/dyad"],
-        icon: isVibesProfile ? "./assets/icon-vibes/logo.png" : "./assets/icon/logo.png",
+        icon: `./assets/${activeFlavor.iconFolder}/logo.png`,
       },
     }),
   ],

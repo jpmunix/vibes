@@ -112,6 +112,80 @@ export const chats = sqliteTable("chats", {
 });
 
 // =============================================================================
+// LABELS (global reusable labels)
+// =============================================================================
+
+export const labels = sqliteTable("labels", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => ({
+    userLabelUniqueIdx: uniqueIndex("idx_labels_user_name").on(table.userId, table.name),
+}));
+
+// =============================================================================
+// CHAT LABELS
+// =============================================================================
+
+export const chatLabels = sqliteTable("chat_labels", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    labelId: integer("label_id")
+        .references(() => labels.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    label: text("label").notNull(),
+    color: text("color").notNull(), // hex color or similar
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+
+// =============================================================================
+// CHAT ARTIFACTS
+// =============================================================================
+
+export const chatArtifacts = sqliteTable("chat_artifacts", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id")
+        .notNull()
+        .references(() => apps.id, { onDelete: "cascade" }),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    title: text("title"),
+    accepted: integer("accepted").default(0),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const artifactComments = sqliteTable("artifact_comments", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    artifactId: integer("artifact_id")
+        .notNull()
+        .references(() => chatArtifacts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    /** The exact text the user highlighted (null = block-level comment) */
+    selectedText: text("selected_text"),
+    /** Human-readable section/heading reference for contextual display */
+    blockRef: text("block_ref"),
+    comment: text("comment").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // MESSAGES
 // =============================================================================
 
@@ -166,14 +240,27 @@ export const versions = sqliteTable("versions", {
 // PROMPTS
 // =============================================================================
 
+export const promptsCategories = sqliteTable("prompts_categories", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    name: text("name").notNull(),
+    description: text("description"),
+});
+
 export const prompts = sqliteTable("prompts", {
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: text("user_id")
         .notNull()
         .references(() => users.id),
+    categoryId: integer("category_id")
+        .references(() => promptsCategories.id),
+    systemId: text("system_id"),
     title: text("title").notNull(),
     description: text("description"),
     content: text("content").notNull(),
+    enabled: integer("enabled").notNull().default(1),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -215,6 +302,7 @@ export const mcpServers = sqliteTable("mcp_servers", {
     envJson: text("env_json", { mode: "json" }),
     headersJson: text("headers_json", { mode: "json" }),
     url: text("url"),
+    instructions: text("instructions"),
     enabled: integer("enabled").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -350,6 +438,50 @@ export const memoryDebugLogs = sqliteTable("memory_debug_logs", {
 });
 
 // =============================================================================
+// CUSTOM LANGUAGE MODELS (user-defined models, presets, arbitrary IDs)
+// =============================================================================
+
+export const languageModels = sqliteTable("language_models", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    displayName: text("display_name").notNull(),
+    apiName: text("api_name").notNull(),
+    /** "openrouter" for standard models, or the custom provider id */
+    builtinProviderId: text("builtin_provider_id"),
+    customProviderId: text("custom_provider_id"),
+    description: text("description"),
+    maxOutputTokens: integer("max_output_tokens"),
+    contextWindow: integer("context_window"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
+// STREAM TASKS (durable stream state — survives server restarts)
+// =============================================================================
+
+export const streamTasks = sqliteTable("stream_tasks", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    chatId: integer("chat_id")
+        .notNull()
+        .references(() => chats.id, { onDelete: "cascade" }),
+    messageId: integer("message_id")
+        .notNull()
+        .references(() => messages.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("running"), // running | completed | failed | cancelled
+    startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
+    model: text("model"),
+    agentId: text("agent_id"), // build | plan | explore | mockup
+    error: text("error"),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 
@@ -371,6 +503,9 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     user: one(users, { fields: [chats.userId], references: [users.id] }),
     app: one(apps, { fields: [chats.appId], references: [apps.id] }),
     messages: many(messages),
+    artifacts: many(chatArtifacts),
+    labels: many(chatLabels),
+    streamTasks: many(streamTasks),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -378,3 +513,41 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
 }));
 
+export const chatArtifactsRelations = relations(chatArtifacts, ({ one, many }) => ({
+    user: one(users, { fields: [chatArtifacts.userId], references: [users.id] }),
+    app: one(apps, { fields: [chatArtifacts.appId], references: [apps.id] }),
+    chat: one(chats, { fields: [chatArtifacts.chatId], references: [chats.id] }),
+    comments: many(artifactComments),
+}));
+
+export const artifactCommentsRelations = relations(artifactComments, ({ one }) => ({
+    artifact: one(chatArtifacts, { fields: [artifactComments.artifactId], references: [chatArtifacts.id] }),
+    user: one(users, { fields: [artifactComments.userId], references: [users.id] }),
+}));
+
+export const chatLabelsRelations = relations(chatLabels, ({ one }) => ({
+    chat: one(chats, { fields: [chatLabels.chatId], references: [chats.id] }),
+    user: one(users, { fields: [chatLabels.userId], references: [users.id] }),
+    label: one(labels, { fields: [chatLabels.labelId], references: [labels.id] }),
+}));
+
+export const labelsRelations = relations(labels, ({ one, many }) => ({
+    user: one(users, { fields: [labels.userId], references: [users.id] }),
+    chatLabels: many(chatLabels),
+}));
+
+export const streamTasksRelations = relations(streamTasks, ({ one }) => ({
+    user: one(users, { fields: [streamTasks.userId], references: [users.id] }),
+    chat: one(chats, { fields: [streamTasks.chatId], references: [chats.id] }),
+    message: one(messages, { fields: [streamTasks.messageId], references: [messages.id] }),
+}));
+
+export const promptsCategoriesRelations = relations(promptsCategories, ({ one, many }) => ({
+    user: one(users, { fields: [promptsCategories.userId], references: [users.id] }),
+    prompts: many(prompts),
+}));
+
+export const promptsRelations = relations(prompts, ({ one }) => ({
+    user: one(users, { fields: [prompts.userId], references: [users.id] }),
+    category: one(promptsCategories, { fields: [prompts.categoryId], references: [promptsCategories.id] }),
+}));

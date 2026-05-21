@@ -28,7 +28,7 @@ export function registerTokenCountHandlers() {
       ),
       with: {
         messages: {
-          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+          orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
         },
       },
     });

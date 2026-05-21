@@ -2,7 +2,7 @@ import { ipcMain, app, dialog, BrowserWindow } from "electron";
 import { getRemoteDb } from "../../db/remote";
 
 import * as remoteSchema from "../../db/remote-schema";
-import { desc, eq, like, and } from "drizzle-orm";
+import { desc, eq, like, and, inArray, count } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { appContracts } from "../types/app";
 import { miscContracts } from "../types/misc";
@@ -29,6 +29,7 @@ import { searchAppFilesWithRipgrep } from "./app_search";
 
 // Utility modules
 import { withLock } from "../utils/lock_utils";
+import { copyScaffoldNodeModules } from "../utils/scaffold_cache";
 import { getFilesRecursively } from "../utils/file_utils";
 import {
   runningApps,
@@ -67,7 +68,7 @@ import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils"
 import { AppSearchResult, DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
-import { getEffectivePrompt } from "../../prompts";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
 import { shutdownOpenCode } from "./opencode_adapter";
 import { detectProjectLanguage } from "../utils/detect_language";
@@ -110,7 +111,7 @@ export function registerAppHandlers() {
     let fullAppPath = getVibesAppPath(appPath);
     let suffix = 1;
     while (fs.existsSync(fullAppPath) || await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.name, appPath), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(eq(remoteSchema.apps.path, appPath), eq(remoteSchema.apps.userId, context.userId!)),
     })) {
       suffix++;
       appPath = `${baseSlug}-${suffix}`;
@@ -122,7 +123,7 @@ export function registerAppHandlers() {
       .insert(remoteSchema.apps)
       .values({
         userId: context.userId!,
-        name: appPath,
+        name: displayName,
         path: appPath,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -196,6 +197,78 @@ export function registerAppHandlers() {
       app: { ...app, resolvedPath: fullAppPath },
       chatId: chat.id,
     };
+  });
+
+  createTypedHandler(appContracts.applyTemplate, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!app) throw new Error("App not found");
+
+    const fullAppPath = getVibesAppPath(app.path);
+
+    // Guard: skip if the project already has real content or has been used.
+    // This prevents a new chat in an existing app from overwriting project files,
+    // regardless of the project language (PHP, Python, Go, etc. — not just Node.js).
+
+    // Check 1: Are there meaningful files beyond the bare .gitignore skeleton?
+    try {
+      const entries = await fsPromises.readdir(fullAppPath);
+      const meaningful = entries.filter(e => e !== ".git" && e !== ".gitignore" && e !== "node_modules");
+      if (meaningful.length > 0) {
+        logger.info(`applyTemplate skipped for app ${params.appId} — directory has ${meaningful.length} file(s) beyond skeleton`);
+        return { success: true };
+      }
+    } catch { /* directory doesn't exist yet — proceed with scaffold */ }
+
+    // Check 2: Does this app have any prior messages? (belt-and-suspenders for edge cases)
+    const appChats = await db.query.chats.findMany({
+      where: and(eq(remoteSchema.chats.appId, params.appId), eq(remoteSchema.chats.userId, context.userId)),
+      columns: { id: true },
+    });
+    if (appChats.length > 0) {
+      const chatIds = appChats.map(c => c.id);
+      const [row] = await db
+        .select({ total: count(remoteSchema.messages.id) })
+        .from(remoteSchema.messages)
+        .where(and(
+          inArray(remoteSchema.messages.chatId, chatIds),
+          eq(remoteSchema.messages.userId, context.userId),
+        ));
+      if (row && row.total > 0) {
+        logger.info(`applyTemplate skipped for app ${params.appId} — app has ${row.total} existing message(s)`);
+        return { success: true };
+      }
+    }
+    
+    // We pass forceDefaultScaffold false, so it reads settings.selectedTemplateId
+    await createFromTemplate({
+      fullAppPath,
+      appName: app.name,
+      forceDefaultScaffold: false,
+    });
+
+    // Commit the scaffold
+    await withLock(app.id, async () => {
+      await gitAdd({ path: fullAppPath, filepath: "." });
+      await gitCommit({
+        path: fullAppPath,
+        message: "Apply selected template",
+      });
+    });
+
+    // Copy node_modules AFTER git operations to prevent massive isomorphic-git slowdowns
+    // (copying 40k files takes ~1s, but scanning them with git.add takes ~50s)
+    // Fire and forget so we don't block the UI and the agent can start thinking immediately!
+    copyScaffoldNodeModules(fullAppPath).catch(err => {
+      console.error("Background node_modules copy failed:", err);
+    });
+
+    return { success: true };
   });
 
   createTypedHandler(appContracts.copyApp, async (_, params, context) => {
@@ -760,7 +833,7 @@ export function registerAppHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    let { appId, filePath, content } = params;
+    let { appId, filePath, content, skipCommit } = params;
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
@@ -800,8 +873,8 @@ export function registerAppHandlers() {
     try {
       await fsPromises.writeFile(fullPath, content, "utf-8");
 
-      // Check if git repository exists and commit the change
-      if (fs.existsSync(path.join(appPath, ".git"))) {
+      // Check if git repository exists and commit the change (unless skipCommit is set)
+      if (!skipCommit && fs.existsSync(path.join(appPath, ".git"))) {
         await gitAdd({ path: appPath, filepath: filePath });
 
         await gitCommit({
@@ -1381,11 +1454,16 @@ export function registerAppHandlers() {
     logger.log("deleting settings...");
     // 2. Remove settings
     const userDataPath = getUserDataPath();
-    const settingsPath = path.join(userDataPath, "user-settings.json");
+    const sessionPath = path.join(userDataPath, "session.json");
+    const runtimePath = path.join(userDataPath, "runtime-state.json");
 
-    if (fs.existsSync(settingsPath)) {
-      await fsPromises.unlink(settingsPath);
-      logger.log(`Settings file deleted: ${settingsPath}`);
+    if (fs.existsSync(sessionPath)) {
+      await fsPromises.unlink(sessionPath);
+      logger.log(`Session file deleted: ${sessionPath}`);
+    }
+    if (fs.existsSync(runtimePath)) {
+      await fsPromises.unlink(runtimePath);
+      logger.log(`Runtime state file deleted: ${runtimePath}`);
     }
     logger.log("settings deleted.");
     // 3. Remove all app files recursively
@@ -2035,7 +2113,7 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+      settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
     logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
@@ -2049,7 +2127,7 @@ export function registerAppHandlers() {
         messages: [
           {
             role: "system",
-            content: getEffectivePrompt("app_title_short", settings),
+            content: await getSystemPrompt("app_title_short", settings.userId),
           },
           {
             role: "user",
@@ -2091,7 +2169,7 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+        settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 
@@ -2124,7 +2202,7 @@ export function registerAppHandlers() {
           messages: [
             {
               role: "system",
-              content: getEffectivePrompt("app_name_pro", settings),
+              content: await getSystemPrompt("app_name_pro", settings.userId),
             },
             {
               role: "user",

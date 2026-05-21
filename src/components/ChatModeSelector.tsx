@@ -101,7 +101,7 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
       triggerSize="sm"
       triggerClassName={cn(
         selectedMode === "agent"
-          ? "bg-muted/80 text-foreground hover:bg-muted"
+          ? "!border !border-input !bg-muted/80 text-foreground !shadow-none hover:!bg-muted"
           : isCustomMode
             ? "!bg-emerald-500/20 !text-emerald-600 dark:!text-emerald-400 !border-emerald-500/20 hover:!bg-emerald-500/30"
             : "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30"

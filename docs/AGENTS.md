@@ -1,4 +1,4 @@
-# Repository Agent Guide — minube-vibes
+# Repository Agent Guide — vibes
 
 This is an **Electron desktop application** that acts as a developer workspace with AI chat, project management, Git tools, and database inspection.
 

@@ -48,6 +48,7 @@ import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
+import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
 
@@ -89,7 +90,6 @@ import { ChevronDown } from "@/components/ui/icons";
 
 
 import Fuse from "fuse.js";
-import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 import { cn } from "@/lib/utils";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
@@ -257,6 +257,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Agente",
     sectionId: "ai-behavior",
   },
+
   {
     id: "chat-view",
     label: "Vista del chat",
@@ -302,6 +303,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Agente",
     sectionId: "ai-behavior",
   },
+  // ─── Proveedores de IA ───
+  {
+    id: "ai-providers",
+    label: "Proveedores de IA",
+    description: "Configurar y cambiar entre proveedores de modelos de IA",
+    keywords: ["proveedor", "provider", "proxy", "endpoint", "custom", "litellm", "openai", "compatible"],
+    section: "Proveedores de IA",
+    sectionId: "models-connectivity",
+  },
   // ─── OpenRouter ───
   {
     id: "enabled-models",
@@ -316,6 +326,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Configuración de OpenRouter",
     description: "Configurar clave API de OpenRouter y modelos",
     keywords: ["openrouter", "api", "key", "clave", "ia"],
+    section: "OpenRouter",
+    sectionId: "models-connectivity",
+  },
+  {
+    id: "show-cost-display",
+    label: "Mostrar gasto en chats",
+    description: "Muestra el coste acumulado en la cabecera y el coste por mensaje",
+    keywords: ["gasto", "coste", "cost", "precio", "dinero", "tokens", "openrouter", "mostrar", "ocultar"],
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
@@ -362,6 +380,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     keywords: ["mcp", "tools", "herramientas", "servidor", "protocolo", "context", "plugin"],
     section: "Herramientas MCP",
     sectionId: "tools-mcp",
+  },
+  {
+    id: "skills-settings",
+    label: "Skills del Proyecto",
+    description: "Gestionar agentes de conocimiento y directivas personalizadas (.claude/skills)",
+    keywords: ["skills", "opencode", "agentes", "conocimiento", "personalizar", "directivas", "markdown"],
+    section: "Skills",
+    sectionId: "tools-skills",
   },
   // ─── Otros ───
   {
@@ -448,10 +474,9 @@ export default function SettingsPage() {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null,
   );
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
-  const [hasReleaseNotes, setHasReleaseNotes] = useState(false);
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -493,14 +518,7 @@ export default function SettingsPage() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Check if release notes file has content
-  useEffect(() => {
-    if (appVersion) {
-      ipc.system.doesReleaseNoteExist({ version: appVersion }).then((result) => {
-        setHasReleaseNotes(result.exists);
-      }).catch(() => setHasReleaseNotes(false));
-    }
-  }, [appVersion]);
+  // Check if release notes file has content removed (now using static new documentation system)
 
   // Fuse.js search configuration
   const fuse = useMemo(
@@ -725,18 +743,21 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       
-                      {hasReleaseNotes && (
-                        <div className="pt-3 border-t border-border/50">
-                          <Button 
-                            onClick={() => { setReleaseNotesOpen(true); }}
-                            className="w-full cursor-pointer bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-lg"
-                            variant="ghost"
-                          >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Novedades de la versión
-                          </Button>
-                        </div>
-                      )}
+                      <div className="pt-3 border-t border-border/50">
+                        <Button 
+                          onClick={() => { 
+                            ipc.system.openReleaseNotesWindow({
+                              theme: theme as "light" | "dark" | "system",
+                              themeIntensity: intensity,
+                            });
+                          }}
+                          className="w-full cursor-pointer bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-lg"
+                          variant="ghost"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Novedades de la versión
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="py-6 flex justify-center text-sm text-muted-foreground">Cargando...</div>
@@ -847,13 +868,6 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "general-settings"}
           />
 
-          {hasReleaseNotes && (
-            <ReleaseNotesDialog
-              isOpen={releaseNotesOpen}
-              onOpenChange={setReleaseNotesOpen}
-            />
-          )}
-
           <ModelsAndConnectivity
             isHighlighted={highlightedSection === "models-connectivity"}
           />
@@ -960,7 +974,18 @@ export default function SettingsPage() {
             <McpServersSettings />
           </div>
 
-
+          <div
+            id="tools-skills"
+            className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
+          >
+            <h2 className="typo-section-title mb-2">
+              Skills
+            </h2>
+            <p className="typo-caption mb-8">
+              Instrucciones y guías de comportamiento personalizadas para el agente, aplicadas de forma global o específicas por proyecto.
+            </p>
+            <SkillsSettings />
+          </div>
         </div>
       </div>
 
@@ -989,6 +1014,16 @@ export function GeneralSettings({
   const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
+
+  useEffect(() => {
+    if (
+      settings?.theme !== undefined &&
+      settings.theme !== theme
+    ) {
+      setTheme(settings.theme);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.theme, setTheme]);
 
   useEffect(() => {
     if (
@@ -1056,7 +1091,7 @@ export function GeneralSettings({
               {(["system", "light", "dark"] as const).map((option) => (
                 <button
                   key={option}
-                  onClick={() => setTheme(option)}
+                  onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                     theme === option

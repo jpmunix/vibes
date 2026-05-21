@@ -1,5 +1,5 @@
 /**
- * LoginScreen — Fullscreen login for minube vibes.
+ * LoginScreen — Fullscreen login for vibes.
  * Uses the app's existing theme CSS variables (light/dark mode).
  * Real cloud logo from assets.
  */
@@ -9,7 +9,7 @@ import { useSetAtom } from "jotai";
 import { userAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
 import { toast } from "sonner";
-import logoSrc from "../../assets/icon/logo.png";
+import logoSrc from "../logo";
 
 interface LoginScreenProps {
   onAuthSuccess: () => void;
@@ -42,17 +42,17 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full bg-background app-region-drag">
+    <div className="flex items-center justify-center min-h-screen w-full bg-background app-region-drag web-safe">
       <div className="w-full max-w-[400px] p-10 bg-card rounded-3xl border border-border shadow-lg no-app-region-drag">
         {/* Logo & Brand */}
         <div className="text-center mb-8">
           <img
             src={logoSrc}
-            alt="minube vibes"
+            alt="Vibes"
             className="w-12 h-12 mx-auto mb-4 rounded-lg"
           />
           <h1 className="typo-section-title tracking-tight">
-            minube vibes
+            Vibes
           </h1>
         </div>
 

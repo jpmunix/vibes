@@ -6,7 +6,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   Bot,
-  Home,
   Settings,
   LogOut,
   User as UserIcon,
@@ -19,11 +18,13 @@ import {
   Search,
   FolderX,
   ShieldCheck,
+  BookOpen,
+  Rocket,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 import { useSettings } from "@/hooks/useSettings";
-import { DocumentationDialog } from "./DocumentationDialog";
+
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
   DropdownMenu,
@@ -40,9 +41,10 @@ import { isAdmin as checkIsAdmin } from "@/lib/admin";
 
 import { useRouter } from "@tanstack/react-router";
 
-import { AppList } from "./AppList";
+
 import { SettingsList } from "./SettingsList";
 import { WorkspaceList } from "./WorkspaceList";
+import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
 
 // Menu items.
 type NavMenuAction = { label: string; icon: React.ElementType; action: SidebarAction };
@@ -55,22 +57,9 @@ const items: {
   menuItems?: NavMenuAction[];
 }[] = [
   {
-    title: "Apps",
-    tabKey: "Aplicaciones",
-    to: "/",
-    icon: Home,
-    menuItems: [
-      { label: "Nueva aplicación", icon: Plus, action: "apps:new" },
-      { label: "Importar aplicación", icon: FolderOpen, action: "apps:import" },
-      { label: "Buscar aplicaciones", icon: Search, action: "apps:search" },
-      { label: "_separator", icon: Plus, action: null },
-      { label: "Cerrar aplicaciones", icon: FolderX, action: "apps:bulk-close" },
-    ],
-  },
-  {
     title: "Agente",
     tabKey: "Workspace",
-    to: "/workspace",
+    to: "/",
     icon: Bot,
     menuItems: [
       { label: "Nuevo proyecto", icon: FolderPlus, action: "workspace:new-project" },
@@ -99,7 +88,7 @@ export function TopNavbar() {
   const dispatchAction = useSetAtom(sidebarActionAtom);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isDocsOpen, setIsDocsOpen] = useState(false);
+
 
   // User avatar state
   const user = useAtomValue(userAtom);
@@ -109,6 +98,8 @@ export function TopNavbar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const isAdmin = checkIsAdmin(user?.id);
+
+  const showReleaseNotesBadge = useAtomValue(showReleaseNotesBadgeAtom);
 
   const handleOpenAdmin = () => {
     ipc.system.openAdminWindow({
@@ -342,8 +333,41 @@ export function TopNavbar() {
           </div>
         </div>
 
-        {/* Right side: Credits, Settings, Avatar */}
+        {/* Right side: Docs, Credits, Settings, Avatar */}
         <div className="flex items-center gap-1 ml-auto">
+          {showReleaseNotesBadge && (
+            <button
+              type="button"
+              className="topnav-util-btn no-app-region-drag relative"
+              title="Notas de Versión"
+              onClick={() => {
+                ipc.system.openReleaseNotesWindow({
+                  theme: theme as "light" | "dark" | "system",
+                  themeIntensity: intensity,
+                });
+              }}
+            >
+              <Rocket size={17} />
+              <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              className="topnav-util-btn no-app-region-drag"
+              title="Documentación"
+              onClick={() => {
+                ipc.system.openDocsWindow({
+                  theme: theme as "light" | "dark" | "system",
+                  themeIntensity: intensity,
+                });
+              }}
+            >
+              <BookOpen size={17} />
+            </button>
+          )}
+
           <OpenRouterCreditsButton />
 
           {/* User Avatar */}
@@ -418,7 +442,7 @@ export function TopNavbar() {
         </div>
       </div>
 
-      <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
+
 
       {/* User modals */}
       {user && (
@@ -631,7 +655,6 @@ export function SecondarySidebar() {
         }
       `}</style>
 
-      <AppList show={activeTab === "Aplicaciones"} />
       <WorkspaceList show={activeTab === "Workspace"} />
       <SettingsList show={activeTab === "Ajustes"} />
 
@@ -665,22 +688,16 @@ function useActiveTab(): [string | null, (tab: string) => void] {
   const [activeTab, setActiveTab] = useAtom(activeTabAtom);
   const routerState = useRouterState();
 
-  const isAppRoute =
-    routerState.location.pathname === "/" ||
-    routerState.location.pathname.startsWith("/app-details");
   const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
 
   // Sync activeTab with route changes
   useEffect(() => {
-    if (isAppRoute) {
-      setActiveTab("Aplicaciones");
-    } else if (isSettingsRoute) {
+    if (isSettingsRoute) {
       setActiveTab("Ajustes");
-    } else if (routerState.location.pathname.startsWith("/workspace")) {
+    } else {
       setActiveTab("Workspace");
     }
   }, [
-    isAppRoute,
     isSettingsRoute,
     routerState.location.pathname,
   ]);

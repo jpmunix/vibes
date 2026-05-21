@@ -196,7 +196,7 @@ function ChatModal({ chatId, title, user, onClose }: { chatId: number; title: st
 // ── Single message — exact clone of ChatMessage layout ──────────────────────
 
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import logoSrc from "../../../assets/icon/logo.png";
+import { VibesAvatar } from "@/components/ui/VibesAvatar";
 import { Bot, Clock } from "@/components/ui/icons";
 
 function AdminMessageRow({ message, viewMode, user }: { message: AdminMessage; viewMode: ViewMode; user?: UserInfo }) {
@@ -235,7 +235,7 @@ function AdminMessageRow({ message, viewMode, user }: { message: AdminMessage; v
                                 ).toUpperCase()}
                             />
                         ) : (
-                            <img src={logoSrc} alt="AI" className="h-7 w-7 rounded-full object-cover" />
+                            <VibesAvatar className="h-7 w-7" />
                         )}
                     </div>
 

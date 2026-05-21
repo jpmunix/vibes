@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 9; // Bumped: expose supportedParameters in LanguageModel
+const CACHE_VERSION = 10; // Bumped: blocklist cleanup + re-enable :free models
 
 const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -110,6 +110,120 @@ const CURATED_MODEL_IDS = new Set([
     "moonshotai/kimi-k2.5",
     "minimax/minimax-m2.5",
     "qwen/qwen-plus-2025-07-28:thinking",
+]);
+
+// =============================================================================
+// Blocked model IDs (legacy, irrelevant, duplicated, or too small for coding)
+// =============================================================================
+
+const BLOCKED_MODEL_IDS = new Set([
+    // OpenAI — GPT-4 Turbo legacy
+    "openai/gpt-4-turbo",
+    "openai/gpt-4-1106-preview",
+    "openai/gpt-4-turbo-preview",
+
+    // OpenAI — Date snapshots (redundant with generic ID)
+    "openai/gpt-4o-2024-05-13",
+    "openai/gpt-4o-2024-08-06",
+    "openai/gpt-4o-2024-11-20",
+    "openai/gpt-4o-mini-2024-07-18",
+
+    // OpenAI — Audio models (not for coding)
+    "openai/gpt-audio",
+    "openai/gpt-audio-mini",
+    "openai/gpt-4o-audio-preview",
+
+    // OpenAI — Deep Research (not for agentic coding)
+    "openai/o3-deep-research",
+    "openai/o4-mini-deep-research",
+
+    // OpenAI — Legacy oX series (superseded by GPT-5.x Codex)
+    "openai/o1",
+    "openai/o3",
+    "openai/o3-mini",
+    "openai/o3-mini-high",
+    "openai/o3-pro",
+    "openai/o4-mini-high",
+
+    // OpenAI — Chat (non-Codex, no reasoning, limited context)
+    "openai/gpt-5.1-chat",
+    "openai/gpt-5.2-chat",
+    "openai/gpt-5.3-chat",
+
+    // Mistral — Legacy/duplicated versions
+    "mistralai/mistral-large",
+    "mistralai/mistral-large-2407",
+    "mistralai/mistral-large-2411",
+    "mistralai/mixtral-8x22b-instruct",
+    "mistralai/pixtral-large-2411",
+    "mistralai/mistral-medium-3",
+    "mistralai/mistral-nemo",
+
+    // Mistral — Too small or voice models
+    "mistralai/ministral-3b-2512",
+    "mistralai/ministral-8b-2512",
+    "mistralai/ministral-14b-2512",
+    "mistralai/voxtral-small-24b-2507",
+    "mistralai/mistral-saba",
+
+    // Roleplay / Creative writing (not for coding)
+    "thedrummer/rocinante-12b",
+    "thedrummer/unslopnemo-12b",
+    "sao10k/l3.1-euryale-70b",
+
+    // Niche / Unknown providers
+    "essentialai/rnj-1-instruct",
+    "nex-agi/deepseek-v3.1-nex-n1",
+    "tngtech/deepseek-r1t2-chimera",
+    "relace/relace-search",
+    "kwaipilot/kat-coder-pro-v2",
+
+    // Too small for agentic coding (≤14B effective params)
+    "nvidia/nemotron-nano-9b-v2",
+    "ibm-granite/granite-4.1-8b",
+    "baidu/ernie-4.5-21b-a3b",
+
+    // Qwen — Legacy versions (superseded by 3.x)
+    "qwen/qwen-2.5-72b-instruct",
+    "qwen/qwen-max",
+    "qwen/qwen-turbo",
+    "qwen/qwen-plus",
+    "qwen/qwen-plus-2025-07-28",
+
+    // Qwen — Vision-Language models (redundant for pure coding)
+    "qwen/qwen-vl-max",
+    "qwen/qwen3-vl-8b-instruct",
+    "qwen/qwen3-vl-8b-thinking",
+    "qwen/qwen3-vl-30b-a3b-instruct",
+    "qwen/qwen3-vl-30b-a3b-thinking",
+    "qwen/qwen3-vl-32b-instruct",
+    "qwen/qwen3-vl-235b-a22b-instruct",
+    "qwen/qwen3-vl-235b-a22b-thinking",
+
+    // Google — Redundant previews & old Gemma
+    "google/gemini-2.5-pro-preview",
+    "google/gemini-2.5-pro-preview-05-06",
+    "google/gemini-2.5-flash-lite-preview-09-2025",
+    "google/gemini-3.1-pro-preview-customtools",
+    "google/gemma-3-12b-it",
+    "google/gemma-3-27b-it",
+
+    // Anthropic — Legacy
+    "anthropic/claude-3-haiku",
+    "anthropic/claude-3.7-sonnet",
+    "anthropic/claude-3.7-sonnet:thinking",
+
+    // Cohere — Legacy
+    "cohere/command-r-08-2024",
+    "cohere/command-r-plus-08-2024",
+
+    // Meta Llama — Superseded
+    "meta-llama/llama-3.1-70b-instruct",
+    "meta-llama/llama-3.3-70b-instruct",
+
+    // DeepSeek — Duplicates
+    "deepseek/deepseek-chat",
+    "deepseek/deepseek-r1",
 ]);
 
 // =============================================================================
@@ -180,14 +294,11 @@ function transformModel(model: OpenRouterModel): ModelOption {
 // =============================================================================
 
 function isRelevantForCoding(model: OpenRouterModel): boolean {
-    // Skip ":free" variants — duplicates with aggressive rate limits
-    if (model.id.endsWith(":free")) return false;
-
     // Skip "-latest" aliases — just pointers to versioned models already in the list
     if (model.id.endsWith("-latest")) return false;
 
-    // Skip meta/aggregate models that aren't real models
-    if (model.id === "openrouter/auto" || model.id === "openrouter/free") return false;
+    // Skip explicitly blocked models (legacy, niche, too small, duplicates)
+    if (BLOCKED_MODEL_IDS.has(model.id)) return false;
 
     // Must support text output
     if (!model.architecture?.output_modalities?.includes("text")) return false;

@@ -22,6 +22,7 @@ export const McpServerSchema = z.object({
   envJson: z.record(z.string(), z.string()).nullable(),
   headersJson: z.record(z.string(), z.string()).nullable(),
   url: z.string().nullable(),
+  instructions: z.string().nullable().optional(),
   enabled: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -46,6 +47,7 @@ export const CreateMcpServerSchema = z.object({
     .nullable()
     .optional(),
   url: z.string().nullable().optional(),
+  instructions: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -63,6 +65,7 @@ export const McpServerUpdateSchema = z.object({
     .union([z.record(z.string(), z.string()), z.string()])
     .optional(),
   url: z.string().optional(),
+  instructions: z.string().optional(),
   enabled: z.boolean().optional(),
 });
 

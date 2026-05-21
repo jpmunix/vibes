@@ -182,6 +182,9 @@ export const VALID_RECEIVE_CHANNELS = [
   // Backend-initiated settings updates (e.g. permission persistence)
   "settings:updated-from-backend",
 
+  // Preference KV system — individual key change broadcast
+  "preference:changed",
+
   // Model validator — notifies when stale models are auto-replaced on boot
   "models:migrated",
 ] as const;

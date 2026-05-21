@@ -19,6 +19,9 @@ const TOOLS: ToolDef[] = [
   { key: "webfetch", settingsKey: "webfetch", label: "Acceso web", description: "Acceder a URLs externas", defaultValue: "ask" },
   { key: "websearch", settingsKey: "websearch", label: "Búsqueda web", description: "Buscar información en internet", defaultValue: "ask" },
   { key: "lsp", settingsKey: "lsp", label: "Diagnósticos LSP", description: "Verificación de tipos por archivo", defaultValue: "allow" },
+  { key: "task", settingsKey: "task", label: "Subagentes", description: "Lanzar sub-agentes para tareas paralelas", defaultValue: "allow" },
+  { key: "skill", settingsKey: "skill", label: "Skills", description: "Ejecutar skills y prompts predefinidos", defaultValue: "allow" },
+  { key: "externalDirectory", settingsKey: "externalDirectory", label: "Directorios externos", description: "Acceder a archivos fuera del directorio del proyecto", defaultValue: "ask" },
 ];
 
 // ── Bash sub-rules (only filesystem-level commands) ──

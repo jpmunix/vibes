@@ -28,7 +28,7 @@ import {
     FALLBACK_SELECTED_MODEL,
     DEFAULT_ENABLED_MODELS,
 } from "../shared/language_model_constants";
-import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
+import { DEFAULT_STANDARD_MODEL, MODEL_PROVIDER_SEPARATOR } from "../../lib/schemas";
 
 const logger = log.scope("model_validator");
 
@@ -40,6 +40,18 @@ const logger = log.scope("model_validator");
  */
 export async function validateModelSettings(): Promise<void> {
     try {
+        const settings = readSettings();
+
+        // ── Skip validation when using a custom provider ──
+        // The validator checks against the OpenRouter model catalogue.
+        // If the active provider is NOT OpenRouter, all its models would be
+        // falsely flagged as "dead" and replaced with OpenRouter fallbacks.
+        const activeProvider = settings.selectedModel?.provider || "openrouter";
+        if (activeProvider !== "openrouter") {
+            logger.info(`[ModelValidator] Skipped — active provider is "${activeProvider}", not OpenRouter`);
+            return;
+        }
+
         const models = await fetchOpenRouterModels();
 
         // If we got zero models (network down, API error), skip validation
@@ -50,7 +62,6 @@ export async function validateModelSettings(): Promise<void> {
         }
 
         const availableNames = new Set(models.map(m => m.name));
-        const settings = readSettings();
         const migrated: string[] = [];
 
         // ── 1. selectedModel (the main chat model) ──
@@ -63,11 +74,21 @@ export async function validateModelSettings(): Promise<void> {
             migrated.push(`selectedModel → ${FALLBACK_SELECTED_MODEL}`);
         }
 
-        // ── 2. standardModeModel (cheap/fast tasks) ──
-        if (settings.standardModeModel && !availableNames.has(settings.standardModeModel)) {
-            logger.warn(`[ModelValidator] standardModeModel "${settings.standardModeModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`);
-            settings.standardModeModel = DEFAULT_STANDARD_MODEL;
-            migrated.push(`standardModeModel → ${DEFAULT_STANDARD_MODEL}`);
+        // ── 2. executorModel (lightweight tasks) ──
+        // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
+        if (settings.executorModel && !settings.executorModel.includes(MODEL_PROVIDER_SEPARATOR) && !availableNames.has(settings.executorModel)) {
+            logger.warn(`[ModelValidator] executorModel "${settings.executorModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`);
+            settings.executorModel = DEFAULT_STANDARD_MODEL;
+            migrated.push(`executorModel → ${DEFAULT_STANDARD_MODEL}`);
+        }
+
+        // ── 2b. strategistModel (reasoning agents) ──
+        // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
+        if (settings.strategistModel && !settings.strategistModel.includes(MODEL_PROVIDER_SEPARATOR) && !availableNames.has(settings.strategistModel)) {
+            const fallback = "deepseek/deepseek-v3.2";
+            logger.warn(`[ModelValidator] strategistModel "${settings.strategistModel}" no longer exists → "${fallback}"`);
+            settings.strategistModel = fallback;
+            migrated.push(`strategistModel → ${fallback}`);
         }
 
         // ── 3. memoriesSynthesisModelV2 (memory extraction) ──

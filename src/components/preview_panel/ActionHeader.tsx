@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 
 import { useVersions } from "@/hooks/useVersions";
+import { useSettings } from "@/hooks/useSettings";
 
 export type PreviewMode =
   | "preview"
@@ -78,6 +79,8 @@ export const ActionHeader = () => {
   const currentApp = useAtomValue(currentAppAtom);
   const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
   const { theme, intensity } = useTheme();
+  const { settings } = useSettings();
+  const memoriesEnabled = settings?.memoriesEnabled !== false;
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const versionsGroupRef = useRef<HTMLButtonElement>(null);
@@ -450,21 +453,23 @@ export const ActionHeader = () => {
                 <Logs size={14} />
                 <span>Consola</span>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (selectedAppId != null) {
-                    ipc.system.openMemoryWindow({
-                      appId: selectedAppId,
-                      theme,
-                      themeIntensity: intensity,
-                    });
-                  }
-                }}
-                disabled={selectedAppId == null}
-              >
-                <Database size={14} />
-                <span>Memorias</span>
-              </DropdownMenuItem>
+              {memoriesEnabled && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (selectedAppId != null) {
+                      ipc.system.openMemoryWindow({
+                        appId: selectedAppId,
+                        theme,
+                        themeIntensity: intensity,
+                      });
+                    }
+                  }}
+                  disabled={selectedAppId == null}
+                >
+                  <Database size={14} />
+                  <span>Memorias</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

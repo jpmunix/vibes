@@ -337,7 +337,12 @@ function getRegularModelClient(
     default: {
       // Handle custom providers
       if (providerConfig.type === "custom") {
-        if (!providerConfig.apiBaseUrl) {
+        // Resolve apiKey and baseURL from customProviders[] config if needed
+        const customConfig = settings.customProviders?.find(p => p.id === model.provider);
+        const effectiveApiKey = apiKey || customConfig?.apiKey?.value;
+        const effectiveBaseUrl = providerConfig.apiBaseUrl || customConfig?.apiBaseUrl;
+
+        if (!effectiveBaseUrl) {
           throw new Error(
             `Custom provider ${model.provider} is missing the API Base URL.`,
           );
@@ -345,8 +350,8 @@ function getRegularModelClient(
         // Assume custom providers are OpenAI compatible for now
         const provider = createOpenAICompatible({
           name: providerConfig.id,
-          baseURL: providerConfig.apiBaseUrl,
-          apiKey,
+          baseURL: effectiveBaseUrl,
+          apiKey: effectiveApiKey,
         });
         return {
           modelClient: {

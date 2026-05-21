@@ -1,9 +1,11 @@
-import React, { useState, useEffect, memo, useCallback, type ReactNode } from "react";
+import React, { useState, useEffect, memo, useCallback, lazy, Suspense, type ReactNode } from "react";
 import ShikiHighlighter, {
   isInlineCode,
   createHighlighterCore,
   createJavaScriptRegexEngine,
 } from "react-shiki/core";
+
+const MermaidBlock = lazy(() => import("./MermaidBlock").then(m => ({ default: m.MermaidBlock })));
 import type { Element as HastElement } from "hast";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Copy, Check, FileCode2, X, ExternalLink, Maximize2, Minimize2 } from "@/components/ui/icons";
@@ -384,6 +386,20 @@ export const CodeHighlight = memo(
 
     // For inline code, check if it looks like a file path
     const filePathDetected = isInline && isFilePath(code);
+
+    // Mermaid diagrams: render as interactive SVG instead of syntax-highlighted code
+    if (!isInline && language === "mermaid") {
+      return (
+        <Suspense fallback={
+          <div className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm bg-muted/50 dark:bg-zinc-950/50 px-6 py-8 flex items-center justify-center gap-2 text-muted-foreground">
+            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm">Cargando mermaid…</span>
+          </div>
+        }>
+          <MermaidBlock code={code} />
+        </Suspense>
+      );
+    }
 
     return !isInline ? (
       <div

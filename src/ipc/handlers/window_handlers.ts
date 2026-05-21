@@ -9,6 +9,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { readSettings, writeSettings } from "../../main/settings";
 import { isAdmin } from "../../lib/admin";
+import { getActiveFlavor } from "../../flavors";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -100,6 +101,8 @@ export function registerWindowHandlers() {
 
   let adminWindow: BrowserWindow | null = null;
   let playgroundWindow: BrowserWindow | null = null;
+  let docsWindow: BrowserWindow | null = null;
+  let releaseNotesWindow: BrowserWindow | null = null;
 
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -166,6 +169,7 @@ export function registerWindowHandlers() {
     const saved = getSavedWindowBounds("database", { width: 1000, height: 700 });
 
     const dbWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: saved.width,
       height: saved.height,
@@ -179,10 +183,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -268,12 +269,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for git window title: ${e}`);
     }
 
-    const gitIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const gitIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const gitIcon = nativeImage.createFromPath(gitIconPath);
 
     const savedGit = getSavedWindowBounds("git", { width: 1100, height: 750 });
 
     const gitWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedGit.width,
       height: savedGit.height,
@@ -284,14 +286,10 @@ export function registerWindowHandlers() {
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
       title: `${appName} – Git`,
-      icon: gitIcon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -400,6 +398,7 @@ export function registerWindowHandlers() {
     const savedChat = getSavedWindowBounds("chat", { width: 1200, height: 800 });
 
     const chatWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedChat.width,
       height: savedChat.height,
@@ -413,10 +412,7 @@ export function registerWindowHandlers() {
       title: `${appName} – Chat`,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -516,6 +512,7 @@ export function registerWindowHandlers() {
     const savedMsg = getSavedWindowBounds("message", { width: 800, height: 600 });
 
     const messageWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedMsg.width,
       height: savedMsg.height,
@@ -528,10 +525,7 @@ export function registerWindowHandlers() {
       title: windowTitle,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -633,6 +627,7 @@ export function registerWindowHandlers() {
     const savedConsole = getSavedWindowBounds("console", { width: 900, height: 550 });
 
     const consoleWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedConsole.width,
       height: savedConsole.height,
@@ -646,10 +641,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -707,12 +699,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for code window title: ${e}`);
     }
 
-    const codeIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const codeIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const codeIcon = nativeImage.createFromPath(codeIconPath);
 
     const savedCode = getSavedWindowBounds("code", { width: 1100, height: 750 });
 
     const codeWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedCode.width,
       height: savedCode.height,
@@ -727,10 +720,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: {
-        x: 10,
-        y: 8,
-      },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -821,6 +811,7 @@ export function registerWindowHandlers() {
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
     if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
+    if (docsWindow && !docsWindow.isDestroyed()) trackedWindows.add(docsWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -862,6 +853,7 @@ export function registerWindowHandlers() {
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
     if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
+    if (docsWindow && !docsWindow.isDestroyed()) trackedWindows.add(docsWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -903,6 +895,7 @@ export function registerWindowHandlers() {
     const savedMemory = getSavedWindowBounds("memory", { width: 900, height: 650 });
 
     const memoryWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedMemory.width,
       height: savedMemory.height,
@@ -915,7 +908,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -996,12 +989,13 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedAdmin = getSavedWindowBounds("admin", { width: 1000, height: 700 });
 
     adminWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedAdmin.width,
       height: savedAdmin.height,
@@ -1015,7 +1009,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1095,12 +1089,13 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
     const icon = nativeImage.createFromPath(iconPath);
 
     const savedPlayground = getSavedWindowBounds("playground", { width: 900, height: 700 });
 
     playgroundWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
       show: false,
       width: savedPlayground.width,
       height: savedPlayground.height,
@@ -1114,7 +1109,7 @@ export function registerWindowHandlers() {
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
-      trafficLightPosition: { x: 10, y: 8 },
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -1183,5 +1178,199 @@ export function registerWindowHandlers() {
     });
 
     logger.info("Opened playground window");
+  });
+
+  // ── Documentation window handler (singleton, like admin/playground) ──
+
+  createTypedHandler(systemContracts.openDocsWindow, async (event, { theme, themeIntensity }) => {
+    // If window already exists, focus it
+    if (docsWindow && !docsWindow.isDestroyed()) {
+      docsWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const icon = nativeImage.createFromPath(iconPath);
+
+    const savedDocs = getSavedWindowBounds("docs", { width: 1000, height: 700 });
+
+    docsWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      show: false,
+      width: savedDocs.width,
+      height: savedDocs.height,
+      x: savedDocs.x,
+      y: savedDocs.y,
+      minWidth: 700,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Documentación",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!icon.isEmpty()) {
+      docsWindow.setIcon(icon);
+    }
+
+    if (savedDocs.isMaximized) {
+      docsWindow.maximize();
+    }
+    docsWindow.show();
+
+    // Prevent the renderer from overriding our window title
+    docsWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    docsWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element
+    docsWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => docsWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts
+    docsWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        docsWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        docsWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        docsWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=docs${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      docsWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      docsWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    docsWindow.on("close", () => saveSecondaryWindowState("docs", docsWindow!));
+    docsWindow.on("closed", () => {
+      docsWindow = null;
+    });
+
+    logger.info("Opened documentation window");
+  });
+
+  createTypedHandler(systemContracts.openReleaseNotesWindow, async (event, { theme, themeIntensity }) => {
+    // If window already exists, focus it
+    if (releaseNotesWindow && !releaseNotesWindow.isDestroyed()) {
+      releaseNotesWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const icon = nativeImage.createFromPath(iconPath);
+
+    const savedDocs = getSavedWindowBounds("release-notes", { width: 1000, height: 700 });
+
+    releaseNotesWindow = new BrowserWindow({
+      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      show: false,
+      width: savedDocs.width,
+      height: savedDocs.height,
+      x: savedDocs.x,
+      y: savedDocs.y,
+      minWidth: 700,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Notas de Versión",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    if (!icon.isEmpty()) {
+      releaseNotesWindow.setIcon(icon);
+    }
+
+    if (savedDocs.isMaximized) {
+      releaseNotesWindow.maximize();
+    }
+    releaseNotesWindow.show();
+
+    releaseNotesWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    releaseNotesWindow.removeMenu();
+
+    releaseNotesWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => releaseNotesWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    releaseNotesWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        releaseNotesWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        releaseNotesWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        releaseNotesWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=release-notes${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      releaseNotesWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      releaseNotesWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    releaseNotesWindow.on("close", () => saveSecondaryWindowState("release-notes", releaseNotesWindow!));
+    releaseNotesWindow.on("closed", () => {
+      releaseNotesWindow = null;
+    });
+
+    logger.info("Opened release notes window");
   });
 }

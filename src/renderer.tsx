@@ -1,3 +1,16 @@
+// Web Transport — must initialize BEFORE any React components load.
+// In Electron mode: no-op (preload already set up window.electron).
+// In Web mode: installs window.electron shim with HTTP+Socket.io transport.
+import { isElectron } from "./lib/transport";
+import { installWebTransport } from "./lib/transport-web";
+if (!isElectron) {
+  installWebTransport();
+  document.documentElement.dataset.platform = "web";
+}
+
+import { getActiveFlavor } from "./flavors";
+document.title = getActiveFlavor().productName;
+
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -7,13 +20,13 @@ import {
   MutationCache,
 } from "@tanstack/react-query";
 import { showError } from "./lib/toast";
-import { ChatWindowSkeleton, MainWindowSkeleton } from "./components/skeletons";
+import { ChatWindowSkeleton, MainWindowSkeleton, SecondaryWindowSkeleton } from "./components/skeletons";
 import { AuthGate } from "./components/AuthGate";
 
 const AppRoot = lazy(() => import("./AppRoot"));
 
 // @ts-ignore
-console.log("Running in mode:", import.meta.env.MODE);
+console.log("Running in mode:", import.meta.env.MODE, isElectron ? "(Electron)" : "(Web)");
 
 interface MyMeta extends Record<string, unknown> {
   showErrorToast: boolean;
@@ -53,8 +66,8 @@ const queryClient = new QueryClient({
 });
 
 
-// Skeleton components (ChatWindowSkeleton, MainWindowSkeleton) are imported
-// from ./components/skeletons.tsx — shared with AuthGate for visual continuity.
+// Skeleton components (ChatWindowSkeleton, MainWindowSkeleton, SecondaryWindowSkeleton)
+// are imported from ./components/skeletons.tsx — shared with AuthGate for visual continuity.
 
 // Check if this is a pop-out database window
 const urlParams = new URLSearchParams(window.location.search);
@@ -68,10 +81,13 @@ const themeParam = urlParams.get("theme");
 const intensityParam = urlParams.get("intensity");
 
 if (windowType === "database" && appIdStr) {
-  // Lazy import to avoid loading full app dependencies
+  // Show skeleton immediately while JS bundle loads
+  const dbRoot = createRoot(document.getElementById("root")!);
+  dbRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/database/DatabaseWindowApp").then(
     ({ DatabaseWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      dbRoot.render(
         <StrictMode>
           <DatabaseWindowApp appId={Number(appIdStr)} />
         </StrictMode>,
@@ -88,11 +104,14 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Git module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const gitRoot = createRoot(document.getElementById("root")!);
+  gitRoot.render(<SecondaryWindowSkeleton />);
+
   const commitHashParam = urlParams.get("commitHash") || undefined;
   import("./components/git_window/GitWindowApp").then(
     ({ GitWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      gitRoot.render(
         <StrictMode>
           <GitWindowApp
             appId={Number(appIdStr)}
@@ -183,10 +202,13 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Code module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const codeRoot = createRoot(document.getElementById("root")!);
+  codeRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/code_window/CodeWindowApp").then(
     ({ CodeWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      codeRoot.render(
         <StrictMode>
           <CodeWindowApp appId={Number(appIdStr)} />
         </StrictMode>,
@@ -203,10 +225,13 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Console module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const consoleRoot = createRoot(document.getElementById("root")!);
+  consoleRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/console_window/ConsoleWindowApp").then(
     ({ ConsoleWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      consoleRoot.render(
         <StrictMode>
           <ConsoleWindowApp appId={Number(appIdStr)} />
         </StrictMode>,
@@ -223,9 +248,13 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
+  // Show skeleton immediately while JS bundle loads
+  const msgRoot = createRoot(document.getElementById("root")!);
+  msgRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/message_window/MessageWindowApp").then(
     ({ MessageWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      msgRoot.render(
         <StrictMode>
           <MessageWindowApp 
             appId={Number(appIdStr)} 
@@ -246,10 +275,13 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Memory module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const memRoot = createRoot(document.getElementById("root")!);
+  memRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/memory_window/MemoryWindowApp").then(
     ({ MemoryWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      memRoot.render(
         <StrictMode>
           <MemoryWindowApp appId={Number(appIdStr)} />
         </StrictMode>,
@@ -266,10 +298,13 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Playground module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const playRoot = createRoot(document.getElementById("root")!);
+  playRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/playground_window/PlaygroundWindowApp").then(
     ({ PlaygroundWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      playRoot.render(
         <StrictMode>
           <PlaygroundWindowApp />
         </StrictMode>,
@@ -286,12 +321,98 @@ if (windowType === "database" && appIdStr) {
     document.documentElement.style.setProperty("--theme-intensity", intensityParam);
   }
 
-  // Lazy import — Admin module only loads when this window type is opened
+  // Show skeleton immediately while JS bundle loads
+  const adminRoot = createRoot(document.getElementById("root")!);
+  adminRoot.render(<SecondaryWindowSkeleton />);
+
   import("./components/admin_window/AdminWindowApp").then(
     ({ AdminWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      adminRoot.render(
         <StrictMode>
           <AdminWindowApp />
+        </StrictMode>,
+      );
+    },
+  ).catch((err) => {
+    console.error("Failed to load AdminWindowApp:", err);
+    adminRoot.render(
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "var(--background, #1a1a1a)",
+        color: "var(--foreground, #e5e5e5)",
+        fontFamily: "system-ui, sans-serif",
+        gap: "12px",
+        padding: "24px",
+        textAlign: "center",
+      }}>
+        <div style={{ fontSize: "24px" }}>⚠️</div>
+        <p style={{ fontSize: "14px", opacity: 0.8 }}>Error al cargar Admin</p>
+        <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "500px", wordBreak: "break-all" }}>
+          {String(err?.message || err)}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "rgba(255,255,255,0.1)",
+            color: "inherit",
+            cursor: "pointer",
+            fontSize: "13px",
+          }}
+        >
+          Reintentar
+        </button>
+      </div>,
+    );
+  });
+} else if (windowType === "docs") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Show skeleton immediately while JS bundle loads
+  const docsRoot = createRoot(document.getElementById("root")!);
+  docsRoot.render(<SecondaryWindowSkeleton />);
+
+  import("./components/docs_window/DocsWindowApp").then(
+    ({ DocsWindowApp }) => {
+      docsRoot.render(
+        <StrictMode>
+          <DocsWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
+} else if (windowType === "release-notes") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Show skeleton immediately while JS bundle loads
+  const releaseNotesRoot = createRoot(document.getElementById("root")!);
+  releaseNotesRoot.render(<SecondaryWindowSkeleton />);
+
+  import("./components/release_notes_window/ReleaseNotesWindowApp").then(
+    ({ ReleaseNotesWindowApp }) => {
+      releaseNotesRoot.render(
+        <StrictMode>
+          <ReleaseNotesWindowApp />
         </StrictMode>,
       );
     },

@@ -550,7 +550,7 @@ export default function AppDetailsPage() {
                 </div>
               )}
 
-              {appId && (
+              {appId && settings?.memoriesEnabled !== false && (
                 <Button
                   variant="ghost"
                   size="sm"

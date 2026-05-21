@@ -204,6 +204,13 @@ export const miscContracts = {
     output: z.record(z.string(), z.string().nullable()),
   }),
 
+  // Hydrate all preferences into renderer (called once on boot after auth)
+  hydratePreferences: defineContract({
+    channel: "prefs:hydrate",
+    input: z.void(),
+    output: z.record(z.string(), z.string()),
+  }),
+
   // Playground — single model completion (returns full response text)
   playgroundCompletion: defineContract({
     channel: "playground:completion",
@@ -223,6 +230,28 @@ export const miscContracts = {
     channel: "playground:cancel",
     input: z.object({}),
     output: z.object({ cancelled: z.boolean() }),
+  }),
+
+  // Playground — AI analysis of model results
+  playgroundAnalyze: defineContract({
+    channel: "playground:analyze",
+    input: z.object({
+      model: z.string(),
+      originalPrompt: z.string(),
+      results: z.array(z.object({
+        modelApiName: z.string(),
+        modelDisplayName: z.string(),
+        text: z.string(),
+        durationMs: z.number(),
+        inputTokens: z.number().optional(),
+        outputTokens: z.number().optional(),
+        error: z.boolean().optional(),
+        timeout: z.boolean().optional(),
+      })),
+    }),
+    output: z.object({
+      text: z.string(),
+    }),
   }),
 } as const;
 
@@ -269,6 +298,15 @@ export const miscEvents = {
     payload: z.object({
       /** Human-readable list of what was migrated, e.g. ["selectedModel → google/gemini-3-flash-preview"] */
       changes: z.array(z.string()),
+    }),
+  }),
+
+  /** Fired when a single preference is changed (for cross-window sync) */
+  preferenceChanged: defineEvent({
+    channel: "preference:changed",
+    payload: z.object({
+      key: z.string(),
+      value: z.string().nullable(),
     }),
   }),
 } as const;

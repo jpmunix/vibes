@@ -886,6 +886,25 @@ export function MemorySettings() {
                   >
                     Ver memorias
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const compacted = await ipc.memory.compactMemories({ appId: s.appId });
+                        if (compacted > 0) {
+                          toast.success(`${compacted} memorias compactadas en 1 resumen`);
+                        } else {
+                          toast.info("No hay suficientes memorias antiguas para compactar");
+                        }
+                      } catch (err: any) {
+                        toast.error(`Error al compactar: ${err.message}`);
+                      }
+                    }}
+                  >
+                    <Lucide.Layers className="size-3.5 mr-1" />
+                    Compactar
+                  </Button>
                   <DeleteConfirmationDialog
                     itemName={`todas las memorias de "${s.appName}"`}
                     itemType="memorias"

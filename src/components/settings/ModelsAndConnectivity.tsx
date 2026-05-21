@@ -1,10 +1,10 @@
 import React from "react";
-import { OpenRouterSettings } from "./OpenRouterSettings";
+import { UnifiedAIProviders } from "./UnifiedAIProviders";
 
 export function ModelsAndConnectivity({
   isHighlighted,
 }: {
   isHighlighted?: boolean;
 }) {
-  return <OpenRouterSettings isHighlighted={isHighlighted} />;
+  return <UnifiedAIProviders isHighlighted={isHighlighted} />;
 }

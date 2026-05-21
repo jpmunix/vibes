@@ -12,14 +12,15 @@ type SettingsSection = {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "Tema" },
-  { id: "models-connectivity", label: "OpenRouter" },
-  { id: "ai-behavior", label: "Agentes" },
+  { id: "models-connectivity", label: "Proveedores de IA" },
+  { id: "ai-behavior", label: "Agente" },
   { id: "custom-agents-settings", label: "Agentes Personalizados" },
   { id: "prompts-settings", label: "Prompts" },
   { id: "memory-settings", label: "Memoria" },
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },
   { id: "tools-mcp", label: "Herramientas MCP" },
+  { id: "tools-skills", label: "Skills" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {

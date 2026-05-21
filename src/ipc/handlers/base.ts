@@ -44,9 +44,12 @@ export function createTypedHandler<
         throw new Error(`[${contract.channel}] Invalid input: ${errorMessage}`);
       }
 
+      // In web mode, the userId is injected by the server into event.sender.
+      // In Electron mode, it comes from the local settings file.
+      const webUserId = (event as any)?.sender?.userId;
       const settings = readSettings();
       const context: HandlerContext = {
-        userId: settings.userId,
+        userId: webUserId || settings.userId,
         sessionToken: settings.sessionToken?.value,
       };
 
@@ -115,9 +118,10 @@ export function createLoggedTypedHandler(logger: {
         try {
           logger.info(`[${contract.channel}] Handling request`);
 
+          const webUserId = (event as any)?.sender?.userId;
           const settings = readSettings();
           const context: HandlerContext = {
-            userId: settings.userId,
+            userId: webUserId || settings.userId,
             sessionToken: settings.sessionToken?.value,
           };
 

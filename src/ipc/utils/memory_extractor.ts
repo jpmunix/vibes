@@ -17,12 +17,12 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, inArray } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
-import { getEffectivePrompt } from "../../prompts";
-import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
+import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
+import { stripAllNoise, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
 import { extractJsonFromLLM } from "./memory_json_extractor";
-import { compactOldSessions } from "./memory_lifecycle";
+// compactOldSessions removed from auto-trigger — now manual-only (Memory Panel / chat archive)
 
 const logger = log.scope("memory_extractor");
 
@@ -194,7 +194,7 @@ export async function restorePendingBuffers(): Promise<void> {
  * Extract memories from a batch of rounds (the actual LLM call).
  * Builds a combined user message with all rounds + the previous session summary.
  */
-async function extractMemoriesFromBatch(params: {
+export async function extractMemoriesFromBatch(params: {
     appId: number;
     userId: string;
     chatId: string;
@@ -211,7 +211,7 @@ async function extractMemoriesFromBatch(params: {
         // Strip thinking blocks from all responses
         const cleanRounds = rounds.map(r => ({
             userPrompt: r.userPrompt,
-            assistantResponse: stripThinkingBlocks(r.assistantResponse),
+            assistantResponse: stripAllNoise(r.assistantResponse),
         }));
 
         // Guardian check on the combined content
@@ -274,10 +274,10 @@ async function extractMemoriesFromBatch(params: {
 
         // LLM call
         const baseModel = settings.memoriesSynthesisModelV2
-            || settings.standardModeModel
+            || settings.executorModel
             || DEFAULT_STANDARD_MODEL;
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
-        const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
+        const synthesisPrompt = await getSystemPrompt("memory_synthesis", settings.userId);
 
         debugPlayground("Synthesis-Batch", model, synthesisPrompt, userMessage);
 
@@ -339,26 +339,20 @@ async function extractMemoriesFromBatch(params: {
             return [];
         }
 
-        logPipelineCall({
-            userId, appId, chatId,
-            stage: "synthesis", model,
-            systemPrompt: synthesisPrompt,
-            userMessage,
-            rawResponse: rawContent,
-            parsedResult: JSON.stringify({
-                operations,
-                meta: {
-                    batchSize: rounds.length,
-                    existingMemoriesCount: existingRows.length,
-                    operationsGenerated: operations.length,
-                },
-            }),
-            resultCount: operations.length, durationMs, success: true,
-        });
+        if (operations.length === 0) {
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                parsedResult: JSON.stringify({ operations: [], meta: { batchSize: rounds.length, existingMemoriesCount: existingRows.length, operationsGenerated: 0 } }),
+                resultCount: 0, durationMs, success: true,
+            });
+            return [];
+        }
 
-        if (operations.length === 0) return [];
-
-        // Process operations
+        // Process operations FIRST (critical path — memory persistence before telemetry)
         const persisted: MemoryEntry[] = [];
         const now = new Date();
         const VALID_TYPES = new Set(["session", "preference", "issue"]);
@@ -376,9 +370,35 @@ async function extractMemoriesFromBatch(params: {
                     if (result) persisted.push(result);
                 }
             } catch (opErr: any) {
-                logger.warn(`[Memory] Batch op failed: ${opErr.message}`);
+                logger.error(`[Memory] ❌ Batch op failed: ${opErr.message}`);
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis",
+                    resultCount: 0,
+                    success: false,
+                    error: `Op ${op.action} failed: ${opErr.message}`,
+                });
             }
         }
+
+        // THEN log telemetry (non-critical, fire-and-forget)
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    batchSize: rounds.length,
+                    existingMemoriesCount: existingRows.length,
+                    operationsGenerated: operations.length,
+                    operationsPersisted: persisted.length,
+                },
+            }),
+            resultCount: persisted.length, durationMs, success: true,
+        });
 
         if (persisted.length > 0) {
             logTelemetry({
@@ -386,10 +406,6 @@ async function extractMemoriesFromBatch(params: {
                 action: "synthesized",
                 extractedKeys: persisted.map(p => p.key || "—"),
             });
-
-            // P2: Trigger compaction after successful extraction (fire-and-forget)
-            compactOldSessions(appId, userId)
-                .catch(err => logger.warn("[Memory] Compaction failed:", err));
         }
 
         logger.info(`[Memory] Batch synthesis: ${persisted.length} memories from ${rounds.length} rounds (chat ${chatId})`);
@@ -459,6 +475,65 @@ export function isNoisy(content: string): boolean {
 // =============================================================================
 
 /**
+ * Force condensation of all chat rounds into session memories,
+ * skipping the 3-round batching rule. Used on archive/delete or explicitly.
+ */
+export async function forceCondenseChatSession(params: {
+    appId: number;
+    userId: string;
+    chatId: number;
+}): Promise<void> {
+    const { appId, userId, chatId } = params;
+    const db = getRemoteDb();
+
+    // Fetch all messages for this chat
+    const rows = await db
+        .select()
+        .from(remoteSchema.messages)
+        .where(
+            and(
+                eq(remoteSchema.messages.chatId, chatId),
+                eq(remoteSchema.messages.userId, userId)
+            )
+        )
+        .orderBy(remoteSchema.messages.createdAt);
+
+    if (rows.length < 2) return; // Need at least user+assistant
+
+    const rounds: RoundEntry[] = [];
+    let currentPrompt: string | null = null;
+
+    for (const msg of rows) {
+        if (msg.role === "user") {
+            currentPrompt = msg.content;
+        } else if (msg.role === "assistant" && currentPrompt) {
+            // Strip all XML tool tags and thinking blocks before condensation
+            const cleanedResponse = stripAllNoise(msg.content || "");
+            if (cleanedResponse) {
+                rounds.push({
+                    userPrompt: currentPrompt,
+                    assistantResponse: cleanedResponse,
+                });
+            }
+            currentPrompt = null;
+        }
+    }
+
+    if (rounds.length > 0) {
+        try {
+            await extractMemoriesFromBatch({
+                appId,
+                userId,
+                chatId: String(chatId),
+                rounds
+            });
+        } catch (error) {
+            logger.error(`Error forcing condensation for chatId=${chatId}:`, error);
+        }
+    }
+}
+
+/**
  * Extract memories from a chat cycle (user prompt + AI response).
  * Fire-and-forget — should never block the chat flow.
  */
@@ -486,7 +561,7 @@ export async function extractMemoriesFromChatCycle(params: {
 
     try {
         // 0. Strip thinking blocks from the assistant response
-        const cleanResponse = stripThinkingBlocks(assistantResponse);
+        const cleanResponse = stripAllNoise(assistantResponse);
 
         // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
         const guardianResult = shouldProcessInteraction(userPrompt, cleanResponse);
@@ -575,13 +650,13 @@ export async function extractMemoriesFromChatCycle(params: {
 
         // 4. LLM call using the synthesis prompt
         const baseModel = settings.memoriesSynthesisModelV2
-            || settings.standardModeModel
+            || settings.executorModel
             || DEFAULT_STANDARD_MODEL;
         // Transparent nitro: use fastest provider for memory calls
         const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
 
         // Use memory_synthesis prompt (the Synthesizer V3)
-        const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
+        const synthesisPrompt = await getSystemPrompt("memory_synthesis", settings.userId);
 
         // Dump clean prompts to /tmp/opencode/{app}.md for playground testing
         debugPlayground("Synthesis", model, synthesisPrompt, userMessage);
@@ -648,33 +723,21 @@ export async function extractMemoriesFromChatCycle(params: {
         }
 
 
-        // Log the successful synthesis call (raw) with enriched metadata
-        logPipelineCall({
-            userId, appId, chatId,
-            stage: "synthesis", model,
-            systemPrompt: synthesisPrompt,
-            userMessage,
-            rawResponse: rawContent,
-            parsedResult: JSON.stringify({
-                operations,
-                meta: {
-                    existingMemoriesCount: existingRows.length,
-                    promptLength: userPrompt.length,
-                    responseLength: cleanResponse.length,
-                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
-                    operationsGenerated: operations.length,
-                    operationsRatio: `${operations.length}/${existingRows.length}`,
-                },
-            }),
-            resultCount: operations.length, durationMs, success: true,
-        });
-
         if (operations.length === 0) {
             logger.info("[Memory] LLM found nothing worth extracting");
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                parsedResult: JSON.stringify({ operations: [], meta: { existingMemoriesCount: existingRows.length, operationsGenerated: 0 } }),
+                resultCount: 0, durationMs, success: true,
+            });
             return [];
         }
 
-        // 6. Process operations
+        // 6. Process operations FIRST (critical path — memory persistence before telemetry)
         const persisted: MemoryEntry[] = [];
         const now = new Date();
         const VALID_TYPES = new Set(["session", "preference", "issue"]);
@@ -694,13 +757,41 @@ export async function extractMemoriesFromChatCycle(params: {
                     logger.info(`[Memory] Unknown operation action: "${(op as any).action}"`);
                 }
             } catch (opErr: any) {
-                logger.warn(`[Memory] Failed to process operation: ${opErr.message}`);
+                logger.error(`[Memory] ❌ Op failed: ${opErr.message}`);
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis",
+                    resultCount: 0,
+                    success: false,
+                    error: `Op ${op.action} failed: ${opErr.message}`,
+                });
             }
         }
 
         logger.info(`[Memory] Synthesis complete: ${persisted.length} memories persisted from chat ${chatId}`);
 
-        // Log telemetry for successful extraction
+        // THEN log telemetry (non-critical, fire-and-forget)
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    existingMemoriesCount: existingRows.length,
+                    promptLength: userPrompt.length,
+                    responseLength: cleanResponse.length,
+                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
+                    operationsGenerated: operations.length,
+                    operationsPersisted: persisted.length,
+                    operationsRatio: `${persisted.length}/${existingRows.length}`,
+                },
+            }),
+            resultCount: persisted.length, durationMs, success: true,
+        });
+
         if (persisted.length > 0) {
             logTelemetry({
                 userId,
@@ -792,24 +883,33 @@ export async function handleAdd(
     }
 
     // Insert new memory
-    const [inserted] = await db
-        .insert(remoteSchema.memories)
-        .values({
-            userId,
-            appId,
-            type: op.type,
-            key: op.key || null,
-            content: op.content,
-            importance: importanceInt,
-            status: op.type === "issue" ? "active" : null,
-            source: "auto",
-            sourceChatId: chatId,
-            enabled: 1,
-            createdAt: now,
-            updatedAt: now,
-            lastUsed: now,
-        })
-        .returning({ id: remoteSchema.memories.id });
+    let inserted: { id: number };
+    try {
+        const [row] = await db
+            .insert(remoteSchema.memories)
+            .values({
+                userId,
+                appId,
+                type: op.type,
+                key: op.key || null,
+                content: op.content,
+                importance: importanceInt,
+                status: op.type === "issue" ? "active" : null,
+                source: "auto",
+                sourceChatId: chatId,
+                enabled: 1,
+                createdAt: now,
+                updatedAt: now,
+                lastUsed: now,
+            })
+            .returning({ id: remoteSchema.memories.id });
+        inserted = row;
+    } catch (insertErr: any) {
+        logger.error(`[Memory] ❌ INSERT FAILED: ${insertErr.message}`, {
+            key: op.key, type: op.type, appId,
+        });
+        throw insertErr;
+    }
 
     logger.info(`[Memory] Created: type=${op.type} key="${op.key || "—"}" id=${inserted.id}`);
 

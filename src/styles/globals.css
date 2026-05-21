@@ -63,6 +63,12 @@
   app-region: no-drag;
 }
 
+/* Web mode: hide Electron-style window title bars (drag regions).
+   .web-safe exempts non-titlebar uses like LoginScreen background. */
+html[data-platform="web"] .app-region-drag:not(.web-safe) {
+  display: none;
+}
+
 /* 
  * Disable drag region when select is open.
  * See: https://github.com/dyad-sh/dyad/issues/1717
@@ -97,31 +103,35 @@ body[data-scroll-locked] .app-region-drag {
   --default-font-family: "Bricolage Grotesque", sans-serif;
   --default-chat-font-family: "JetBrains Mono", monospace;
   --default-mono-font-family: "Geist Mono", monospace;
-  /* --background: oklch(1 0 0); */
-  --background-lightest: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
-  --background-lighter: oklch(clamp(0, 0.995 + var(--l-offset), 1) 0 0);
-  --background: oklch(clamp(0, 0.985 + var(--l-offset), 1) 0 0);
-  --background-darker: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0 0);
-  --background-darkest: oklch(clamp(0, 0.925 + var(--l-offset), 1) 0 0);
 
-  --foreground: oklch(clamp(0, 0.25 + var(--fg-l-offset), 1) 0 0);
-  --card: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
-  --card-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
-  --popover: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
-  --popover-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
+  /* ── Surfaces: clear visual hierarchy ──
+     background (base canvas) < sidebar < muted/secondary < card (elevated) */
+  --background-lightest: oklch(clamp(0, 0.998 + var(--l-offset), 1) 0 0);
+  --background-lighter: oklch(clamp(0, 0.985 + var(--l-offset), 1) 0 0);
+  --background: oklch(clamp(0, 0.968 + var(--l-offset), 1) 0.002 250);
+  --background-darker: oklch(clamp(0, 0.940 + var(--l-offset), 1) 0.002 250);
+  --background-darkest: oklch(clamp(0, 0.910 + var(--l-offset), 1) 0.002 250);
+
+  /* Text — slightly darker than pure neutral for better readability */
+  --foreground: oklch(clamp(0, 0.22 + var(--fg-l-offset), 1) 0.005 250);
+  --card: oklch(clamp(0, 0.993 + var(--l-offset), 1) 0 0);
+  --card-foreground: oklch(clamp(0, 0.13 + var(--fg-l-offset), 1) 0.005 250);
+  --popover: oklch(clamp(0, 0.993 + var(--l-offset), 1) 0 0);
+  --popover-foreground: oklch(clamp(0, 0.13 + var(--fg-l-offset), 1) 0.005 250);
   --primary: var(--primary-color-light);
   /* --primary: oklch(0.205 0 0); */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
-  --secondary-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
-  --muted: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
-  --muted-foreground: oklch(clamp(0, 0.556 + var(--fg-l-offset), 1) 0 0);
-  --accent: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
-  --accent-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
+  --secondary: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
+  --secondary-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
+  --muted: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
+  --muted-foreground: oklch(clamp(0, 0.50 + var(--fg-l-offset), 1) 0 0);
+  --accent: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
+  --accent-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
-  --input: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
+  /* Borders — visible but not heavy */
+  --border: oklch(clamp(0, 0.895 + var(--l-offset), 1) 0.004 250);
+  --input: oklch(clamp(0, 0.900 + var(--l-offset), 1) 0.004 250);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -129,16 +139,16 @@ body[data-scroll-locked] .app-region-drag {
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(clamp(0, 0.96 + var(--l-offset), 1) 0 0);
+  /* Sidebar — slightly darker than content for separation */
+  --sidebar: oklch(clamp(0, 0.950 + var(--l-offset), 1) 0.003 250);
   /* --sidebar: oklch(0.975 0.0188 292.61); */
   /* --sidebar: oklch(0.985 0 0); */
-  --sidebar-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
+  --sidebar-foreground: oklch(clamp(0, 0.14 + var(--fg-l-offset), 1) 0.005 250);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  /* --sidebar-accent: oklch(0.97 0 0); */
-  --sidebar-accent: oklch(clamp(0, 0.88 + var(--l-offset), 1) 0 0);
-  --sidebar-accent-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
-  --sidebar-border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
+  --sidebar-accent: oklch(clamp(0, 0.875 + var(--l-offset), 1) 0.005 250);
+  --sidebar-accent-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
+  --sidebar-border: oklch(clamp(0, 0.895 + var(--l-offset), 1) 0.005 250);
   --sidebar-ring: oklch(0.708 0 0);
 
   /* ── Accent (VibesAskUser, VibesPermissionBanner, answer blockquotes) ── light theme
@@ -312,6 +322,10 @@ body[data-scroll-locked] .app-region-drag {
   --container-4xs: 14rem;
 
   --color-background: var(--background);
+  --color-background-lightest: var(--background-lightest);
+  --color-background-lighter: var(--background-lighter);
+  --color-background-darker: var(--background-darker);
+  --color-background-darkest: var(--background-darkest);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

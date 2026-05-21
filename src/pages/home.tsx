@@ -23,7 +23,7 @@ import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 import type { FileAttachment } from "@/ipc/types";
 import { NEON_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
-import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
+import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
 import { neonTemplateHook } from "@/client_logic/template_hook";
 
 // Adding an export for attachments
@@ -50,7 +50,7 @@ export default function HomePage() {
   }>({});
 
   const appVersion = useAppVersion();
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const setShowReleaseNotesBadge = useSetAtom(showReleaseNotesBadgeAtom);
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
   const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
@@ -82,23 +82,22 @@ export default function HomePage() {
         }
 
         try {
-          const result = await ipc.system.doesReleaseNoteExist({
-            version: appVersion,
+          // Simply show the new release notes window and enable the badge
+          setShowReleaseNotesBadge(true);
+          ipc.system.openReleaseNotesWindow({
+            theme: theme as "light" | "dark" | "system",
+            themeIntensity: intensity,
           });
-
-          if (result.exists) {
-            setReleaseNotesOpen(true);
-          }
         } catch (err) {
           console.warn(
-            "Unable to check if release note exists for: " + appVersion,
+            "Unable to open release notes window for: " + appVersion,
             err,
           );
         }
       }
     };
     updateLastVersionLaunched();
-  }, [appVersion, settings, updateSettings, theme]);
+  }, [appVersion, settings, updateSettings, theme, intensity, setShowReleaseNotesBadge]);
 
   // Get the appId from search params
   const appId = search.appId ? Number(search.appId) : null;
@@ -479,11 +478,6 @@ export default function HomePage() {
         <div className="w-full">
           <HomeChatInput onSubmit={handleSubmit} />
         </div>
-
-        <ReleaseNotesDialog
-          isOpen={releaseNotesOpen}
-          onOpenChange={setReleaseNotesOpen}
-        />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { StopCircle } from "@/components/ui/icons";
+import { StopCircle, CheckCircle2, Clock, XCircle } from "@/components/ui/icons";
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
@@ -45,6 +45,7 @@ import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
 import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
+import { FlowThinkBlock } from "./FlowThinkBlock";
 import {
   Dialog,
   DialogContent,
@@ -375,6 +376,48 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       return false;
     };
 
+    // Buffer for consecutive flow-mode think blocks (merged into one FlowThinkBlock)
+    let flowThinkBuffer: string[] = [];
+    const flushFlowThinkBuffer = (isActivelyStreaming = false) => {
+      if (flowThinkBuffer.length > 0) {
+        const merged = flowThinkBuffer.join("\n\n");
+        elements.push(
+          <FlowThinkBlock
+            key={`flow-think-merged-${elements.length}`}
+            content={merged}
+            markdownComponents={MARKDOWN_COMPONENTS}
+            isStreaming={isActivelyStreaming}
+          />
+        );
+        flowThinkBuffer = [];
+      }
+    };
+
+    // Tags that produce visible output in zen/flow mode
+    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled"]);
+
+    // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
+    // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
+    const isNextPieceFlowThink = (currentIndex: number): boolean => {
+      for (let i = currentIndex + 1; i < contentPieces.length; i++) {
+        const next = contentPieces[i];
+        if (next.type === "markdown") {
+          if (next.content && next.content.trim()) return false; // real prose breaks the run
+          continue; // whitespace-only, skip
+        }
+        if (next.type === "custom-tag") {
+          const nextTag = next.tagInfo.tag;
+          // Think tag with content → yes, merge
+          if (THINK_TAGS.has(nextTag) && next.tagInfo.content?.trim()) return true;
+          // Visible zen tag (output, ask-user) → breaks the run
+          if (ZEN_ALLOWED_TAGS.has(nextTag)) return false;
+          // Everything else (tool tags) is invisible in flow mode → skip over
+          continue;
+        }
+      }
+      return false;
+    };
+
     contentPieces.forEach((piece, index) => {
       if (piece.type === "markdown") {
         const isWhitespaceOnly = !piece.content || !piece.content.trim();
@@ -382,6 +425,14 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         if (!isZenMode && isWhitespaceOnly && badgeGroup.length > 0 && isNextPieceCompactable(index)) {
           // Skip whitespace between compactable tags — don't break the row
           return;
+        }
+        // In flow mode, skip whitespace between consecutive think tags (keep them merged)
+        if (isFlowMode && isZenMode && isWhitespaceOnly && flowThinkBuffer.length > 0 && isNextPieceFlowThink(index)) {
+          return;
+        }
+        // Real prose content: flush any pending flow think buffer first
+        if (piece.content && piece.content.trim()) {
+          flushFlowThinkBuffer();
         }
         flushBadgeGroup();
         if (piece.content && piece.content.trim()) {
@@ -406,8 +457,9 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         // Flow mode additionally keeps think tags visible as expanded panels.
         // Token-usage is handled by ChatMessage footer. Everything else is discarded.
         if (isZenMode) {
-          const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled"]);
           if (ZEN_ALLOWED_TAGS.has(tag)) {
+            // Non-think tag: flush pending think buffer first
+            flushFlowThinkBuffer();
             // Render output/ask-user normally
             elements.push(
               <React.Fragment key={index}>
@@ -415,23 +467,23 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               </React.Fragment>
             );
           } else if (isFlowMode && isThinkTag && piece.tagInfo.content?.trim()) {
-            // Flow mode: render think tags as lightweight blockquotes (no card, no icons, no header)
-            elements.push(
-              <div
-                key={`flow-think-${index}`}
-                style={{
-                  borderLeft: "3px solid var(--accent-think-border)",
-                  padding: "6px 12px",
-                  margin: "0",
-                  color: "var(--accent-think-text)",
-                }}
-                className="text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[inherit]"
-              >
-                <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
-                  {piece.tagInfo.content}
-                </ReactMarkdown>
-              </div>
-            );
+            // Flow mode: accumulate consecutive think tags into the buffer
+            flowThinkBuffer.push(piece.tagInfo.content);
+            // If the next piece is NOT another think tag, flush now —
+            // BUT only if there's actual visible content after us (prose, output, etc.).
+            // If we're just at the end of the parsed content during streaming,
+            // let the final flush handle it (it knows about streaming state).
+            if (!isNextPieceFlowThink(index)) {
+              const hasVisibleContentAfter = contentPieces.slice(index + 1).some((p) => {
+                if (p.type === "markdown") return !!(p.content && p.content.trim());
+                if (p.type === "custom-tag") return ZEN_ALLOWED_TAGS.has(p.tagInfo.tag);
+                return false;
+              });
+              if (hasVisibleContentAfter || !isStreaming) {
+                flushFlowThinkBuffer(); // non-think content follows → think block is done
+              }
+              // else: streaming and nothing visible after → let final flush handle it
+            }
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
 
@@ -442,6 +494,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             !isStreaming &&
             chatId
           ) {
+            flushFlowThinkBuffer();
             elements.push(
               <div key={`fix-errors-${index}`} className="mt-3 w-full flex">
                 <FixAllErrorsButton
@@ -512,6 +565,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       }
     });
 
+    flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
     return elements;
   };
@@ -1606,7 +1660,7 @@ function renderModalContent(
       const status = attributes.status || "";
       const exitCode = attributes["exit-code"] || "";
       const duration = attributes.duration || "";
-      const statusEmoji = status === "success" ? "✅" : status === "timeout" ? "⏱" : status === "error" ? "❌" : "";
+      const statusIcon = status === "success" ? <CheckCircle2 size={12} className="text-green-500" /> : status === "timeout" ? <Clock size={12} className="text-amber-500" /> : status === "error" ? <XCircle size={12} className="text-red-500" /> : null;
 
       return (
         <div className="space-y-2">
@@ -1614,7 +1668,7 @@ function renderModalContent(
             <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
               <span>$</span>
               <span className="font-medium">{cmd}</span>
-              {statusEmoji && <span className="ml-auto">{statusEmoji}</span>}
+              {statusIcon && <span className="ml-auto">{statusIcon}</span>}
               {exitCode && <span className="text-muted-foreground">exit: {exitCode}</span>}
               {duration && <span className="text-muted-foreground">{duration}</span>}
             </div>
@@ -1666,12 +1720,12 @@ function renderModalContent(
       const httpStatus = attributes["http-status"] || "";
       const attempts = attributes.attempts || "";
       const responseTime = attributes["response-time"] || "";
-      const statusEmoji = status === "ok" ? "✅" : "⏱";
+      const statusIcon = status === "ok" ? <CheckCircle2 size={12} className="text-green-500" /> : <Clock size={12} className="text-amber-500" />;
 
       return (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
-            <span>{statusEmoji}</span>
+            <span>{statusIcon}</span>
             <span className="font-medium">{url}</span>
             {httpStatus && <span className="text-green-500">HTTP {httpStatus}</span>}
             {attempts && <span>{attempts} intentos</span>}

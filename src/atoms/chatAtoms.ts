@@ -122,3 +122,7 @@ export interface SelectedMemoryMeta {
   content: string;
 }
 export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[]>>(new Map());
+
+// @deprecated — No longer used. All modes use selectedModel now.
+// Kept for backwards compat; safe to remove after confirming no consumers.
+export const planModelOverrideAtom = atom<string | null>(null);

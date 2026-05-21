@@ -33,6 +33,7 @@ import {
   pendingOpenCodePermissionsAtom,
   agentTodosByChatIdAtom,
   pendingMessageQueueByIdAtom,
+  selectedDesignAtom,
   type PendingQueuedMessage,
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
@@ -66,6 +67,7 @@ import { ChatInputControls } from "../ChatInputControls";
 import { VibesPermissionBanner } from "./VibesPermissionBanner";
 import { TodoList } from "./TodoList";
 import { VibesAskUser } from "./VibesAskUser";
+import { GitQuickCommit } from "./GitQuickCommit";
 import {
   selectedComponentsPreviewAtom,
   previewIframeRefAtom,
@@ -129,12 +131,13 @@ export function ChatInput({
 
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
-  const { versions, revertVersion, refreshVersions } = useVersions(appId);
+  const { versions, loading: versionsLoading, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
   const [pendingMessageQueue, setPendingMessageQueue] = useAtom(pendingMessageQueueByIdAtom);
   const pendingMessages: PendingQueuedMessage[] = chatId ? (pendingMessageQueue.get(chatId) ?? []) : [];
-
+  
+  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const navigate = useNavigate();
   const setChatIdAtom = useSetAtom(selectedChatIdAtom);
@@ -143,8 +146,18 @@ export function ChatInput({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isUndoLoading, setIsUndoLoading] = useState(false);
+  const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  // Reset quick commit dismissal state when streaming completes
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      setIsQuickCommitDismissed(false);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -344,6 +357,94 @@ export function ChatInput({
       );
     }
 
+    // Handle first message scaffolding if needed.
+    // Only trigger for truly new apps — check BOTH conditions:
+    //   1. versions.length <= 1: only the initial 'Init vibes app' commit exists (no scaffold yet)
+    //   2. No prior messages exist in any loaded chat (covers PHP/Python/Go projects without package.json)
+    // New chats in existing apps must NOT re-scaffold. The backend also has its own guard.
+    const totalLoadedMessages = Array.from(messagesById.values()).reduce((sum, msgs) => sum + msgs.length, 0);
+    const isNewApp = !versionsLoading && versions.length <= 1 && totalLoadedMessages === 0;
+    if (currentChatId && appId && currentMessages.length === 0 && isNewApp) {
+      setIsStreaming(true);
+      
+      const CREATION_PHASES = [
+        "Preparando la estructura base del proyecto…",
+        "Instalando dependencias necesarias…",
+        "Aplicando configuración y estilos…",
+        "Inicializando el entorno de desarrollo…"
+      ];
+      
+      const fakeUserMsgId = -Date.now();
+      const fakeAstMsgId = fakeUserMsgId - 1;
+      
+      const fakeUserMsg: any = {
+        id: fakeUserMsgId,
+        chatId: currentChatId,
+        role: "user",
+        content: currentInput,
+        createdAt: new Date(),
+      };
+      
+      const createFakeAstMsg = (label: string): any => ({
+        id: fakeAstMsgId,
+        chatId: currentChatId,
+        role: "assistant",
+        content: `<vibes-status title="${label}" />`,
+        createdAt: new Date(),
+      });
+
+      setMessagesById((prev) => {
+        const next = new Map(prev);
+        next.set(currentChatId, [fakeUserMsg, createFakeAstMsg(CREATION_PHASES[0])]);
+        return next;
+      });
+      
+      let phaseIndex = 0;
+      const phaseInterval = setInterval(() => {
+        phaseIndex = Math.min(phaseIndex + 1, CREATION_PHASES.length - 1);
+        setMessagesById((prev) => {
+          const next = new Map(prev);
+          const msgs = next.get(currentChatId) || [];
+          const idx = msgs.findIndex((m: any) => m.id === fakeAstMsgId);
+          if (idx !== -1) {
+            const newMsgs = [...msgs];
+            newMsgs[idx] = createFakeAstMsg(CREATION_PHASES[phaseIndex]);
+            next.set(currentChatId, newMsgs);
+          }
+          return next;
+        });
+      }, 3000);
+
+      try {
+        await ipc.app.applyTemplate({ appId });
+        if (selectedDesign) {
+          const app = await ipc.app.getApp(appId);
+          if (app && app.path) {
+            try {
+              if (selectedDesign.customContent) {
+                await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
+              } else {
+                await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
+              }
+            } catch (err) {
+              console.error("[ChatInput] DESIGN ERROR:", err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to apply template:", err);
+      } finally {
+        clearInterval(phaseInterval);
+        // Remove fake messages before real stream starts
+        setMessagesById((prev) => {
+          const next = new Map(prev);
+          const msgs = next.get(currentChatId) || [];
+          next.set(currentChatId, msgs.filter((m: any) => m.id !== fakeUserMsgId && m.id !== fakeAstMsgId));
+          return next;
+        });
+      }
+    }
+
     // Send message with attachments and clear them after sending
     await streamMessage({
       prompt: currentInput,
@@ -514,9 +615,10 @@ export function ChatInput({
       )}
 
       <div className="p-4" data-testid="chat-input-container">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto relative">
+          
           <div
-            className="rounded-lg p-[1.5px]"
+            className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{
               background: `linear-gradient(to bottom, oklch(0.58 0.09 260 / 0.4), var(--border) 50%, oklch(0.58 0.09 260 / 0.15))`,
             }}
@@ -596,6 +698,14 @@ export function ChatInput({
                   />
                 )}
 
+              {appId && chatId && !isStreaming && !isQuickCommitDismissed && (
+                <GitQuickCommit
+                  appId={appId}
+                  chatId={chatId}
+                  onDismiss={() => setIsQuickCommitDismissed(true)}
+                />
+              )}
+
               <VisualEditingChangesDialog
                 iframeRef={
                   previewIframeRef
@@ -650,6 +760,8 @@ export function ChatInput({
                   <ChatInputControls
                     showContextFilesPicker={false}
                     chatId={chatId}
+                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
+                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
                   />
                 </div>
 
