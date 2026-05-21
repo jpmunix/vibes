@@ -1301,7 +1301,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 ? `[Request ID: ${vibesRequestId}] `
                 : "";
               logger.error(
-                `AI stream text error for request: ${requestIdPrefix} errorMessage=${errorMessage} error=`,
+                `AI stream text error for request: ${requestIdPrefix} errorMessage=${error?.message || String(error)} error=`,
                 error,
               );
 

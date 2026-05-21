@@ -38,7 +38,11 @@ export const addDependencyTool: ToolDefinition<
 
     await executeAddDependency({
       packages: args.packages,
-      message,
+      message: {
+        ...message,
+        role: message.role as "assistant" | "user",
+        approvalState: message.approvalState as "approved" | "rejected" | null,
+      },
       appPath: ctx.appPath,
     });
 

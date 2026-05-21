@@ -2644,6 +2644,7 @@ export async function handleOpenCodeStream(
         abortController.signal.addEventListener("abort", onUserAbort, { once: true });
     }
 
+    let checkpointIntervalId: NodeJS.Timeout | undefined;
     try {
         // Start global event subscription (captures ALL events across the server)
         // Pass the SSE abort signal so the connection closes when we abort.
@@ -2898,7 +2899,7 @@ export async function handleOpenCodeStream(
         // table. This ensures that even if the server or connection dies mid-
         // stream, the user sees partial progress instead of an empty bubble.
         let lastCheckpointLength = 0;
-        const checkpointIntervalId = setInterval(async () => {
+        checkpointIntervalId = setInterval(async () => {
             try {
                 const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
                 // Only write if content has grown since last checkpoint

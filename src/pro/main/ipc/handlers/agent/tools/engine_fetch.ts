@@ -11,7 +11,8 @@ import {
   type OpenRouterMessage,
 } from "@/ipc/utils/openrouter";
 import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
-import { FALLBACK_PRO_MODEL } from "@/ipc/shared/language_model_constants";
+
+const FALLBACK_PRO_MODEL = "google/gemini-2.5-pro";
 
 export const VIBES_ENGINE_URL =
   process.env.VIBES_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -69,10 +70,10 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   return apiKey;
 }
 
-function buildTurboEditMessages(
+async function buildTurboEditMessages(
   body: TurboFileEditRequestBody,
   settings: ReturnType<typeof readSettings>,
-): OpenRouterMessage[] {
+): Promise<OpenRouterMessage[]> {
   const instructions = body.instructions?.trim();
   const instructionsBlock = instructions
     ? `Instructions:\n${instructions}\n\n`
@@ -144,7 +145,7 @@ async function callTurboFileEditViaOpenRouter(
         model,
         title: "turbo-edit",
         temperature: 0,
-        messages: buildTurboEditMessages(body, settings),
+        messages: await buildTurboEditMessages(body, settings),
         signal: controller.signal,
       });
     } finally {

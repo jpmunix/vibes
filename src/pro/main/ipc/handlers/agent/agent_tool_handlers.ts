@@ -41,6 +41,9 @@ export function registerAgentToolHandlers() {
 
   // Handle ask_user response from renderer
   createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
-    resolveAskUserResponse(params.requestId, params.response);
+    const responseStr = Array.isArray(params.response)
+      ? params.response.join(", ")
+      : String(params.response ?? "");
+    resolveAskUserResponse(params.requestId, responseStr);
   });
 }
