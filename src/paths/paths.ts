@@ -2,6 +2,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { IS_TEST_BUILD } from "../ipc/utils/test_utils";
+import { getContextUserId } from "../lib/async_context";
 
 let migrationAttempted = false;
 
@@ -29,10 +30,35 @@ function migrateDyadAppsDir(newDir: string): void {
   }
 }
 
-/**
- * Gets the base vibes-apps directory path (without a specific app subdirectory)
- */
+function getBaseWorkspacesDir(): string {
+  if (process.env.VIBES_WORKSPACES_DIR) {
+    return process.env.VIBES_WORKSPACES_DIR;
+  }
+  const prodDir = "/data/vibes/workspaces";
+  try {
+    if (fs.existsSync(prodDir)) {
+      return prodDir;
+    }
+    if (fs.existsSync("/data")) {
+      fs.accessSync("/data", fs.constants.W_OK);
+      return prodDir;
+    }
+  } catch {}
+  return path.join(os.homedir(), ".vibes", "workspaces");
+}
+
 export function getVibesAppsBaseDirectory(): string {
+  if (process.env.VIBES_CLOUD_MODE === "1") {
+    const userId = getContextUserId();
+    if (!userId) {
+      throw new Error("No userId found in execution context for Cloud mode paths");
+    }
+    const baseWorkspacesDir = getBaseWorkspacesDir();
+    const dir = path.join(baseWorkspacesDir, userId, "vibes-apps");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
   if (IS_TEST_BUILD) {
     const electron = getElectron();
     return path.join(electron!.app.getPath("userData"), "vibes-apps");
@@ -52,6 +78,16 @@ export function getVibesAppPath(appPath: string): string {
 }
 
 export function getTypeScriptCachePath(): string {
+  if (process.env.VIBES_CLOUD_MODE === "1") {
+    const userId = getContextUserId();
+    if (!userId) {
+      throw new Error("No userId found in execution context for Cloud mode paths");
+    }
+    const baseWorkspacesDir = getBaseWorkspacesDir();
+    const dir = path.join(baseWorkspacesDir, userId, "typescript-cache");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
   const electron = getElectron();
   return path.join(electron!.app.getPath("sessionData"), "typescript-cache");
 }
@@ -63,6 +99,16 @@ export function getTypeScriptCachePath(): string {
  */
 
 export function getUserDataPath(): string {
+  if (process.env.VIBES_CLOUD_MODE === "1") {
+    const userId = getContextUserId();
+    if (!userId) {
+      throw new Error("No userId found in execution context for Cloud mode paths");
+    }
+    const baseWorkspacesDir = getBaseWorkspacesDir();
+    const dir = path.join(baseWorkspacesDir, userId, "userData");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
   const electron = getElectron();
 
   // When running in Electron and app is ready

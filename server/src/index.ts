@@ -20,6 +20,70 @@ import { registerOAuthRoutes } from "./routes/oauth.ts";
 import { registerWebhookRoutes } from "./routes/webhook.ts";
 import { OpenCodeManager } from "./opencode-manager.ts";
 import { WorkspaceManager } from "./workspace.ts";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+function setupPersistentLogs() {
+  const HOME = process.env.HOME || "/home/munix";
+  const logDir = process.env.VIBES_LOGS_DIR || path.join(HOME, ".vibes");
+  const logFile = path.join(logDir, "server.log");
+
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+  } catch (err) {
+    console.error("Failed to create log directory:", err);
+    return;
+  }
+
+  const logLines: string[] = [];
+  const maxLines = 500;
+
+  if (fs.existsSync(logFile)) {
+    try {
+      const content = fs.readFileSync(logFile, "utf8");
+      logLines.push(...content.split("\n").filter(Boolean));
+      if (logLines.length > maxLines) {
+        logLines.splice(0, logLines.length - maxLines);
+      }
+    } catch { /* ignore */ }
+  }
+
+  const originalWrite = process.stdout.write;
+  const originalErrorWrite = process.stderr.write;
+
+  function handleLogWrite(chunk: string | Uint8Array) {
+    const text = chunk.toString();
+    const lines = text.split("\n").filter(Boolean);
+    for (const line of lines) {
+      const timePrefix = `[${new Date().toISOString()}] `;
+      logLines.push(timePrefix + line);
+    }
+    
+    if (logLines.length > maxLines) {
+      logLines.splice(0, logLines.length - maxLines);
+    }
+
+    try {
+      fs.writeFileSync(logFile, logLines.join("\n") + "\n", "utf8");
+    } catch (err) {
+      originalErrorWrite.call(process.stderr, `Failed to write to server.log: ${err}\n`);
+    }
+  }
+
+  process.stdout.write = function (chunk: any, encoding?: any, callback?: any) {
+    handleLogWrite(chunk);
+    return originalWrite.call(process.stdout, chunk, encoding, callback);
+  };
+
+  process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
+    handleLogWrite(chunk);
+    return originalErrorWrite.call(process.stderr, chunk, encoding, callback);
+  };
+}
+
+setupPersistentLogs();
 
 const PORT = Number(process.env.VIBES_API_PORT || process.env.PORT) || 4800;
 
@@ -69,24 +133,28 @@ app.addHook("onRequest", async (request, reply) => {
 
   const token = authHeader.slice(7);
   if (token) {
-    // For now, the token IS the session token from BunnyDB.
-    // We look up the user by session token.
-    // TODO: Replace with proper JWT verification
     try {
-      const { getRemoteDb } = await import("../../src/db/remote.ts");
-      const { users } = await import("../../src/db/remote-schema.ts");
-      const { eq } = await import("drizzle-orm");
+      const { verifyJwt } = await import("../../src/lib/jwt.ts");
+      const payload = verifyJwt(token);
+      if (payload && payload.userId) {
+        (request as any).userId = payload.userId;
+      } else {
+        // Fallback to old token lookup in DB for backwards compatibility
+        const { getRemoteDb } = await import("../../src/db/remote.ts");
+        const { users } = await import("../../src/db/remote-schema.ts");
+        const { eq } = await import("drizzle-orm");
 
-      const db = getRemoteDb();
-      const user = await db.query.users.findFirst({
-        where: eq(users.sessionToken, token),
-      });
+        const db = getRemoteDb();
+        const user = await db.query.users.findFirst({
+          where: eq(users.sessionToken, token),
+        });
 
-      if (user) {
-        (request as any).userId = user.id;
+        if (user) {
+          (request as any).userId = user.id;
+        }
       }
     } catch (err) {
-      app.log.warn("Auth lookup failed:", err);
+      app.log.warn({ err }, "Auth lookup failed");
     }
   }
 });
@@ -98,18 +166,26 @@ io.use(async (socket, next) => {
   if (!token) return next();
 
   try {
-    const { getRemoteDb } = await import("../../src/db/remote.ts");
-    const { users } = await import("../../src/db/remote-schema.ts");
-    const { eq } = await import("drizzle-orm");
+    const { verifyJwt } = await import("../../src/lib/jwt.ts");
+    const payload = verifyJwt(token);
+    if (payload && payload.userId) {
+      (socket as any).userId = payload.userId;
+      socket.join(payload.userId);
+    } else {
+      // Fallback to old token lookup in DB for backwards compatibility
+      const { getRemoteDb } = await import("../../src/db/remote.ts");
+      const { users } = await import("../../src/db/remote-schema.ts");
+      const { eq } = await import("drizzle-orm");
 
-    const db = getRemoteDb();
-    const user = await db.query.users.findFirst({
-      where: eq(users.sessionToken, token),
-    });
+      const db = getRemoteDb();
+      const user = await db.query.users.findFirst({
+        where: eq(users.sessionToken, token),
+      });
 
-    if (user) {
-      (socket as any).userId = user.id;
-      socket.join(user.id); // Join a room named after their userId
+      if (user) {
+        (socket as any).userId = user.id;
+        socket.join(user.id);
+      }
     }
   } catch (err) {
     console.warn("[Socket.io] Auth failed:", err);

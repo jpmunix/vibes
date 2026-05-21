@@ -12,6 +12,7 @@ import { userPreferences } from "../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import log from "electron-log";
 import { resetSettingsCache } from "./settings";
+import { getContextUserId } from "../lib/async_context";
 
 const logger = log.scope("prefs-cache");
 
@@ -27,8 +28,8 @@ class PreferencesCache {
   /** Cache: "userId:appId:key" → serialized value string */
   private cache = new Map<string, string>();
 
-  /** Current hydrated userId (null if not hydrated) */
-  private hydratedUserId: string | null = null;
+  /** Set of hydrated userIds */
+  private hydratedUserIds = new Set<string>();
 
   /** Listeners invoked after every successful set() */
   private listeners: PreferenceChangeListener[] = [];
@@ -67,9 +68,14 @@ class PreferencesCache {
         .from(userPreferences)
         .where(eq(userPreferences.userId, userId));
 
-      // Clear previous cache for this user
-      this.cache.clear();
-      this.hydratedUserId = userId;
+      // Clear previous cache for this user ONLY
+      const prefix = `${userId}:`;
+      for (const ck of this.cache.keys()) {
+        if (ck.startsWith(prefix)) {
+          this.cache.delete(ck);
+        }
+      }
+      this.hydratedUserIds.add(userId);
 
       for (const row of rows) {
         const ck = this.cacheKey(userId, row.key, row.appId);
@@ -231,16 +237,24 @@ class PreferencesCache {
    */
   clear(): void {
     this.cache.clear();
-    this.hydratedUserId = null;
+    this.hydratedUserIds.clear();
     logger.info("Preferences cache cleared");
   }
 
+  isUserHydrated(userId: string): boolean {
+    return this.hydratedUserIds.has(userId);
+  }
+
   get isHydrated(): boolean {
-    return this.hydratedUserId !== null;
+    const uid = getContextUserId();
+    if (uid) {
+      return this.hydratedUserIds.has(uid);
+    }
+    return this.hydratedUserIds.size > 0;
   }
 
   get currentUserId(): string | null {
-    return this.hydratedUserId;
+    return getContextUserId() || Array.from(this.hydratedUserIds)[0] || null;
   }
 
   // ── Private DB operations ──────────────────────────────────────────────

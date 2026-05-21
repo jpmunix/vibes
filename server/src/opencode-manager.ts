@@ -11,6 +11,7 @@ interface OpenCodeInstance {
   port: number;
   process: ChildProcess;
   userId: string;
+  configString: string;
 }
 
 export class OpenCodeManager {
@@ -21,14 +22,20 @@ export class OpenCodeManager {
   /**
    * Get or create an OpenCode instance for a user.
    */
-  async getOrCreate(userId: string): Promise<{ port: number }> {
+  async getOrCreate(userId: string, config: any, envVars: Record<string, string>): Promise<{ port: number }> {
+    const configString = JSON.stringify(config);
     const existing = this.instances.get(userId);
-    if (existing && existing.process.exitCode === null) {
-      return { port: existing.port };
-    }
 
-    // Clean up dead instance
-    if (existing) {
+    if (existing && existing.process.exitCode === null) {
+      if (existing.configString === configString) {
+        return { port: existing.port };
+      }
+      console.log(`[OpenCode] Configuration changed for ${userId}. Restarting...`);
+      existing.process.kill("SIGTERM");
+      this.instances.delete(userId);
+      // Wait for process to die
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    } else if (existing) {
       this.instances.delete(userId);
     }
 
@@ -37,12 +44,16 @@ export class OpenCodeManager {
 
     console.log(`[OpenCode] Starting instance for ${userId} on port ${port}`);
 
-    const proc = spawn("opencode", ["server", "--port", String(port)], {
+    // SECURE ENVIRONMENT INJECTION:
+    // Only pass minimal environment variables (PATH, HOME) and the user-specific API keys
+    const proc = spawn("opencode", ["serve", "--hostname=127.0.0.1", `--port=${port}`], {
       cwd: workspaceDir,
       env: {
-        ...process.env,
+        PATH: process.env.PATH,
         HOME: workspaceDir,
         OPENCODE_PORT: String(port),
+        OPENCODE_CONFIG_CONTENT: configString,
+        ...envVars,
       },
       stdio: "pipe",
     });
@@ -62,8 +73,11 @@ export class OpenCodeManager {
       this.instances.delete(userId);
     });
 
-    const instance: OpenCodeInstance = { port, process: proc, userId };
+    const instance: OpenCodeInstance = { port, process: proc, userId, configString };
     this.instances.set(userId, instance);
+
+    // Wait slightly to verify start (or check if exits immediately)
+    await new Promise<void>((resolve) => setTimeout(resolve, 300));
 
     return { port };
   }
@@ -71,7 +85,7 @@ export class OpenCodeManager {
   /**
    * Restart a user's OpenCode instance.
    */
-  async restart(userId: string): Promise<{ port: number }> {
+  async restart(userId: string, config: any, envVars: Record<string, string>): Promise<{ port: number }> {
     const existing = this.instances.get(userId);
     if (existing) {
       console.log(`[OpenCode] Restarting instance for ${userId}`);
@@ -80,7 +94,7 @@ export class OpenCodeManager {
       // Wait for process to die
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
-    return this.getOrCreate(userId);
+    return this.getOrCreate(userId, config, envVars);
   }
 
   /**
@@ -107,6 +121,11 @@ export class OpenCodeManager {
 
   private getWorkspaceDir(userId: string): string {
     const baseDir = process.env.VIBES_WORKSPACES_DIR || "/data/vibes/workspaces";
-    return path.join(baseDir, userId);
+    const dir = path.join(baseDir, userId);
+    const fs = require("node:fs");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
   }
 }

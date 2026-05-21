@@ -16,6 +16,7 @@ import {
 } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 import { preferencesCache } from "./preferences-cache";
+import { getContextUserId } from "../lib/async_context";
 import { readSession, writeSession, clearSession } from "./session";
 import { readRuntimeState, writeRuntimeState, clearRuntimeState, RuntimeState } from "./runtime";
 import path from "node:path";
@@ -73,20 +74,21 @@ export const DEFAULT_SETTINGS: UserSettings = {
   iconLibrary: "lucide",
 };
 
-// In-memory cache for composed settings to avoid recomputing every time
-let cachedSettings: UserSettings | null = null;
+// In-memory cache for composed settings to avoid recomputing every time (per-user)
+const cachedSettingsMap = new Map<string, UserSettings>();
 
 export function resetSettingsCache() {
-  cachedSettings = null;
+  cachedSettingsMap.clear();
 }
 
 export function updateSettingsCache(settings: UserSettings) {
-  cachedSettings = settings;
+  const uid = settings.userId || getContextUserId() || preferencesCache.currentUserId || readSession()?.userId || "default";
+  cachedSettingsMap.set(uid, settings);
 }
 
 export function resetSettingsToDefaults(): void {
   try {
-    cachedSettings = { ...DEFAULT_SETTINGS };
+    cachedSettingsMap.clear();
     clearSession();
     clearRuntimeState();
     logger.info("Settings reset to factory defaults and session cleared");
@@ -105,15 +107,16 @@ const RUNTIME_KEYS = new Set([
 ]);
 
 export function readSettings(): UserSettings {
-  if (cachedSettings) {
-    return cachedSettings;
+  const uid = getContextUserId() || preferencesCache.currentUserId || (process.env.VIBES_CLOUD_MODE !== "1" ? readSession()?.userId : undefined) || "default";
+
+  if (cachedSettingsMap.has(uid)) {
+    return cachedSettingsMap.get(uid)!;
   }
 
   try {
     // 1. Get KV Preferences
     let kvPreferences: Record<string, any> = {};
-    const uid = preferencesCache.currentUserId || readSession()?.userId;
-    if (uid && preferencesCache.isHydrated) {
+    if (uid !== "default" && preferencesCache.isHydrated) {
       const prefsMap = preferencesCache.getAll(uid, 0);
       for (const [key, rawValue] of Object.entries(prefsMap)) {
         try {
@@ -125,7 +128,7 @@ export function readSettings(): UserSettings {
     }
 
     // 2. Get session & runtime
-    const session = readSession();
+    const session = process.env.VIBES_CLOUD_MODE !== "1" ? readSession() : null;
     const runtime = readRuntimeState();
 
     // 3. Compose
@@ -135,7 +138,9 @@ export function readSettings(): UserSettings {
       ...runtime,
     };
 
-    if (session?.userId) combinedSettings.userId = session.userId;
+    if (uid !== "default") combinedSettings.userId = uid;
+    else if (session?.userId) combinedSettings.userId = session.userId;
+
     if (session?.sessionToken) {
       combinedSettings.sessionToken = { value: session.sessionToken, encryptionType: "plaintext" };
     }
@@ -145,8 +150,8 @@ export function readSettings(): UserSettings {
       combinedSettings.proSmartContextOption = undefined;
     }
 
-    cachedSettings = combinedSettings as UserSettings;
-    return cachedSettings;
+    cachedSettingsMap.set(uid, combinedSettings as UserSettings);
+    return combinedSettings as UserSettings;
   } catch (error) {
     logger.error("Error reading settings (Proxy):", error);
     return DEFAULT_SETTINGS;
@@ -158,15 +163,19 @@ export function writeSettings(settings: Partial<UserSettings>): void {
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
     
-    // Update local compose cache immediately
-    cachedSettings = newSettings;
+    const uid = settings.userId ?? getContextUserId() ?? preferencesCache.currentUserId ?? (process.env.VIBES_CLOUD_MODE !== "1" ? readSession()?.userId : undefined) ?? "default";
 
-    // 1. Session Updates
-    if (settings.userId !== undefined || settings.sessionToken !== undefined) {
-      const uid = settings.userId ?? readSession()?.userId;
-      const tok = settings.sessionToken?.value ?? readSession()?.sessionToken;
-      if (uid && tok) {
-        writeSession({ userId: uid, sessionToken: tok });
+    // Update local compose cache immediately
+    cachedSettingsMap.set(uid, newSettings);
+
+    // 1. Session Updates (Only in desktop/electron mode)
+    if (process.env.VIBES_CLOUD_MODE !== "1") {
+      if (settings.userId !== undefined || settings.sessionToken !== undefined) {
+        const sessionUid = settings.userId ?? readSession()?.userId;
+        const tok = settings.sessionToken?.value ?? readSession()?.sessionToken;
+        if (sessionUid && tok) {
+          writeSession({ userId: sessionUid, sessionToken: tok });
+        }
       }
     }
 
@@ -189,8 +198,7 @@ export function writeSettings(settings: Partial<UserSettings>): void {
       }
     }
 
-    const uid = settings.userId ?? preferencesCache.currentUserId ?? readSession()?.userId;
-    if (uid && Object.keys(kvUpdates).length > 0) {
+    if (uid !== "default" && Object.keys(kvUpdates).length > 0) {
       preferencesCache.setMany(uid, kvUpdates, 0);
     }
 

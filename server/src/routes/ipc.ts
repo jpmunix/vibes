@@ -58,27 +58,38 @@ export function registerIpcRoutes(app: FastifyInstance, io: SocketIOServer) {
         },
       };
 
+      const { requestContextStorage } = await import("../../../src/lib/async_context.ts");
+
       try {
         // JSON serialization turns undefined → null, but Zod void schemas
         // require undefined (not null). Convert null back to undefined.
         const input = args[0] === null ? undefined : args[0];
 
-        // Auto-hydrate preferences cache on first request for this user.
-        // In Electron this happens at login; in web mode the auth middleware
-        // gives us userId but the cache may not be warm yet.
-        if (userId) {
-          const { preferencesCache } = await import("../../../src/main/preferences-cache.ts");
-          if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+        const result = await requestContextStorage.run({ userId }, async () => {
+          // Auto-hydrate preferences cache on first request for this user.
+          // In Electron this happens at login; in web mode the auth middleware
+          // gives us userId but the cache may not be warm yet.
+          if (userId) {
+            const { preferencesCache } = await import("../../../src/main/preferences-cache.ts");
+            if (!preferencesCache.isUserHydrated(userId)) {
+              try {
+                await preferencesCache.hydrate(userId);
+                app.log.info(`[IPC] Auto-hydrated preferences for user ${userId}`);
+              } catch (hydrateErr: any) {
+                app.log.warn(`[IPC] Failed to auto-hydrate preferences: ${hydrateErr.message}`);
+              }
+            }
+            const { workspaceManager } = await import("../index.ts");
             try {
-              await preferencesCache.hydrate(userId);
-              app.log.info(`[IPC] Auto-hydrated preferences for user ${userId}`);
-            } catch (hydrateErr: any) {
-              app.log.warn(`[IPC] Failed to auto-hydrate preferences: ${hydrateErr.message}`);
+              await workspaceManager.ensureWorkspace(userId);
+            } catch (wsErr: any) {
+              app.log.warn(`[IPC] Failed to auto-provision workspace for user ${userId}: ${wsErr.message}`);
             }
           }
-        }
 
-        const result = await (handler as any)(fakeEvent, input);
+          return await (handler as any)(fakeEvent, input);
+        });
+
         reply.send({ result: result ?? null });
       } catch (err: any) {
         console.error(`[IPC] ${channel} error:`, err?.message || err);

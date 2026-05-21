@@ -50,8 +50,18 @@ async function getSystemDebugInfo({
     logger.error("Failed to get node path:", err);
   }
 
-  // Get Vibes version from package.json
-  const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+  // Get Vibes version from package.json by climbing directories
+  let dir = __dirname;
+  let packageJsonPath = path.join(dir, "package.json");
+  while (!fs.existsSync(packageJsonPath)) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+      break;
+    }
+    dir = parent;
+    packageJsonPath = path.join(dir, "package.json");
+  }
   let vibesVersion = "unknown";
   try {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));

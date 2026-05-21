@@ -1481,14 +1481,34 @@ export function registerAppHandlers() {
   });
 
   createTypedHandler(systemContracts.getAppVersion, async () => {
-    // Read version from package.json at project root
-    const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+    // Read version from package.json at project root by climbing directories
+    let dir = __dirname;
+    let packageJsonPath = path.join(dir, "package.json");
+    while (!fs.existsSync(packageJsonPath)) {
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+        break;
+      }
+      dir = parent;
+      packageJsonPath = path.join(dir, "package.json");
+    }
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
     return { version: packageJson.version };
   });
 
   createTypedHandler(systemContracts.getVersionInfo, async () => {
-    const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+    let dir = __dirname;
+    let packageJsonPath = path.join(dir, "package.json");
+    while (!fs.existsSync(packageJsonPath)) {
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+        break;
+      }
+      dir = parent;
+      packageJsonPath = path.join(dir, "package.json");
+    }
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
     // Use the in-memory cache populated at startup by ensureOpenCodeInstalled()

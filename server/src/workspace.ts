@@ -6,6 +6,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 const SHARED_SCAFFOLDS = [
   "scaffold",
@@ -18,13 +19,47 @@ const SHARED_SCAFFOLDS = [
   "scaffold-tools",
 ];
 
+function getBaseWorkspacesDir(): string {
+  if (process.env.VIBES_WORKSPACES_DIR) {
+    return process.env.VIBES_WORKSPACES_DIR;
+  }
+  const prodDir = "/data/vibes/workspaces";
+  try {
+    if (fs.existsSync(prodDir)) {
+      return prodDir;
+    }
+    if (fs.existsSync("/data")) {
+      fs.accessSync("/data", fs.constants.W_OK);
+      return prodDir;
+    }
+  } catch {}
+  return path.join(os.homedir(), ".vibes", "workspaces");
+}
+
+function getSharedDir(): string {
+  if (process.env.VIBES_SHARED_DIR) {
+    return process.env.VIBES_SHARED_DIR;
+  }
+  const prodDir = "/data/vibes/shared";
+  try {
+    if (fs.existsSync(prodDir)) {
+      return prodDir;
+    }
+    if (fs.existsSync("/data")) {
+      fs.accessSync("/data", fs.constants.W_OK);
+      return prodDir;
+    }
+  } catch {}
+  return path.join(os.homedir(), ".vibes", "shared");
+}
+
 export class WorkspaceManager {
   private baseDir: string;
   private sharedDir: string;
 
   constructor() {
-    this.baseDir = process.env.VIBES_WORKSPACES_DIR || "/data/vibes/workspaces";
-    this.sharedDir = process.env.VIBES_SHARED_DIR || "/data/vibes/shared";
+    this.baseDir = getBaseWorkspacesDir();
+    this.sharedDir = getSharedDir();
   }
 
   /**

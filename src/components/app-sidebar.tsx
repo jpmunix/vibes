@@ -45,6 +45,7 @@ import { useRouter } from "@tanstack/react-router";
 import { SettingsList } from "./SettingsList";
 import { WorkspaceList } from "./WorkspaceList";
 import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
+import { recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
 
 // Menu items.
 type NavMenuAction = { label: string; icon: React.ElementType; action: SidebarAction };
@@ -100,6 +101,7 @@ export function TopNavbar() {
   const isAdmin = checkIsAdmin(user?.id);
 
   const showReleaseNotesBadge = useAtomValue(showReleaseNotesBadgeAtom);
+  const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
 
   const handleOpenAdmin = () => {
     ipc.system.openAdminWindow({
@@ -298,6 +300,11 @@ export function TopNavbar() {
                   >
                     <item.icon size={17} />
                     <span>{item.title}</span>
+                    {item.tabKey === "Workspace" && recentStreamChatIds.size > 0 && (
+                      <span className="flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-extrabold bg-primary text-primary-foreground rounded-full animate-pulse">
+                        {recentStreamChatIds.size}
+                      </span>
+                    )}
                     {hasMenu && (
                       <ChevronDown size={12} className="opacity-50 -ml-1" />
                     )}

@@ -33,6 +33,7 @@ import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
 import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL, parseModelString } from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
+import { getContextUserId } from "../../lib/async_context";
 import { app } from "electron";
 import * as fs from "node:fs";
 
@@ -76,6 +77,7 @@ function buildCustomProviderModels(providerId: string, selectedModelID: string):
 let opencodeInstance: Awaited<ReturnType<typeof createOpencode>> | null = null;
 let clientInstance: ReturnType<typeof createOpencodeClient> | null = null;
 let serverUrl: string | null = null;
+const cloudClientsMap = new Map<string, { client: ReturnType<typeof createOpencodeClient>; port: number }>();
 
 // Track which provider the OpenCode singleton was started with.
 // When the user switches providers, the singleton must be destroyed and
@@ -1912,7 +1914,40 @@ async function getOpenCodeClient(appPath: string) {
         };
 
 
-        let opencode: Awaited<ReturnType<typeof createOpencode>>;
+        let opencode: Awaited<ReturnType<typeof createOpencode>> | null = null;
+
+        if (process.env.VIBES_CLOUD_MODE === "1") {
+            const userId = getContextUserId();
+            if (!userId) {
+                throw new Error("No userId found in execution context for OpenCode client");
+            }
+
+            const openCodeManager = (globalThis as any).__vibesOpenCodeManager;
+            if (!openCodeManager) {
+                throw new Error("OpenCodeManager is not available on globalThis");
+            }
+
+            const envVars = extractApiKeysForEnv();
+            const { port } = await openCodeManager.getOrCreate(userId, config, envVars);
+            const url = `http://127.0.0.1:${port}`;
+
+            let client = cloudClientsMap.get(userId)?.client;
+            if (!client || cloudClientsMap.get(userId)?.port !== port) {
+                client = createOpencodeClient({ baseUrl: url });
+                cloudClientsMap.set(userId, { client, port });
+            }
+
+            // Restore CWD as standard
+            process.chdir(originalCwd);
+
+            serverUrl = url;
+            lastActiveProviderId = settings.selectedModel?.provider || "openrouter";
+            clientInstance = client; // Sync singleton for local helpers/sanity
+
+            logger.info(`[OpenCode] Cloud user client ready at ${serverUrl}`);
+            return { client, opencode: null as any };
+        }
+
         // Timeout: 15s to accommodate macOS Gatekeeper/code-signing delays on first spawn.
         // The SDK defaults to 5s which is too aggressive for some environments.
         const STARTUP_TIMEOUT_MS = 15_000;
@@ -1920,12 +1955,13 @@ async function getOpenCodeClient(appPath: string) {
         let lastError: Error | null = null;
         for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             try {
-                opencode = await createOpencode({
+                const spawned = await createOpencode({
                     hostname: "127.0.0.1",
                     port: 0, // auto-assign port
                     timeout: STARTUP_TIMEOUT_MS,
                     config: config as any,
                 });
+                opencode = spawned;
                 lastError = null;
                 break;
             } catch (err: any) {
@@ -3901,8 +3937,28 @@ export async function openCodeHealthCheck(): Promise<{
         version,
         binaryPath,
         sdkAvailable,
-        serverRunning: !!opencodeInstance,
-        serverUrl: serverUrl || undefined,
+        serverRunning: (() => {
+            if (process.env.VIBES_CLOUD_MODE === "1") {
+                const userId = getContextUserId();
+                if (!userId) return false;
+                const openCodeManager = (globalThis as any).__vibesOpenCodeManager;
+                if (!openCodeManager) return false;
+                const status = openCodeManager.getStatus().find((s: any) => s.userId === userId);
+                return !!(status && status.alive);
+            }
+            return !!opencodeInstance;
+        })(),
+        serverUrl: (() => {
+            if (process.env.VIBES_CLOUD_MODE === "1") {
+                const userId = getContextUserId();
+                if (!userId) return undefined;
+                const openCodeManager = (globalThis as any).__vibesOpenCodeManager;
+                if (!openCodeManager) return undefined;
+                const status = openCodeManager.getStatus().find((s: any) => s.userId === userId);
+                return status ? `http://127.0.0.1:${status.port}` : undefined;
+            }
+            return serverUrl || undefined;
+        })(),
         apiKeysConfigured,
         errors,
     };

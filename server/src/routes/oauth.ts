@@ -55,7 +55,9 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
     }
 
     try {
-      const { handleNeonOAuthReturn } = await import("../../../src/main.ts");
+      const { handleNeonOAuthReturn } = await import(
+        "../../../src/neon_admin/neon_return_handler.ts"
+      );
       await handleNeonOAuthReturn({ token, refreshToken, expiresIn: Number(expiresIn) });
 
       const userId = (request as any).userId;
@@ -82,7 +84,9 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
     }
 
     try {
-      const { handleFirebaseOAuthReturn } = await import("../../../src/main.ts");
+      const { handleFirebaseOAuthReturn } = await import(
+        "../../../src/firebase_admin/firebase_return_handler.ts"
+      );
       await handleFirebaseOAuthReturn({ code });
 
       const userId = (request as any).userId;

@@ -13,6 +13,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import type { VibesUserDto } from "../types/auth";
 import { writeSettings, resetSettingsToDefaults } from "../../main/settings";
 import { preferencesCache } from "../../main/preferences-cache";
+import { signJwt, verifyJwt } from "../../lib/jwt";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
@@ -61,7 +62,7 @@ export function registerAuthHandlers(): void {
         // Hash password with bcrypt
         const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
         const userId = uuidv4();
-        const sessionToken = uuidv4();
+        const sessionToken = signJwt({ userId });
         const now = new Date();
 
 
@@ -130,7 +131,7 @@ export function registerAuthHandlers(): void {
         }
 
         // Generate new session token and update last login
-        const sessionToken = uuidv4();
+        const sessionToken = signJwt({ userId: user.id });
         const now = new Date();
         await db
             .update(remoteSchema.users)
@@ -178,14 +179,20 @@ export function registerAuthHandlers(): void {
             }
 
             const user = rows[0];
-            const tokenMatches = user.sessionToken === input.sessionToken;
 
-            // In a "trusted environment", we allow the session if the user exists,
-            // even if the token doesn't match (e.g. user logged in on another computer).
-            // This ensures they stay logged in across multiple devices as requested.
-            const valid = true; // Still return valid for now
+            // 1. Verify token as JWT
+            const payload = verifyJwt(input.sessionToken);
+            let valid = false;
+            if (payload && payload.userId === user.id) {
+                valid = true;
+            } else {
+                // 2. Fallback to database sessionToken match (for legacy sessions)
+                valid = user.sessionToken === input.sessionToken;
+            }
 
-
+            if (!valid) {
+                return { valid: false, user: null, needsMigration: false };
+            }
 
             // Ensure settings are synced
             writeSettings({
@@ -194,7 +201,7 @@ export function registerAuthHandlers(): void {
             });
 
             // Hydrate preferences cache from DB only if needed
-            if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== user.id) {
+            if (!preferencesCache.isUserHydrated(user.id)) {
                 await preferencesCache.hydrate(user.id);
             }
 

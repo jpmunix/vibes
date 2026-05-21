@@ -6,10 +6,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "src",
-    "strict": true,
+    "strict": false,
     "resolveJsonModule": true,
     "declaration": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["../src/*"]
     }
