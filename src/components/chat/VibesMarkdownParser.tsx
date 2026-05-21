@@ -14,6 +14,7 @@ import { VibesExecuteSql } from "./VibesExecuteSql";
 import { VibesLogs } from "./VibesLogs";
 import { VibesGrep } from "./VibesGrep";
 import { VibesGit } from "./VibesGit";
+import { VibesGitCommit } from "./VibesGitCommit";
 import { VibesAskUser } from "./VibesAskUser";
 import { VibesAddIntegration } from "./VibesAddIntegration";
 import { VibesEdit } from "./VibesEdit";
@@ -127,6 +128,7 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-status",
   "vibes-think",
   "vibes-git",
+  "vibes-git-commit",
   "vibes-ask-user",
   "vibes-patch",
   "vibes-run-command",
@@ -1104,6 +1106,16 @@ function renderCustomTag(
         >
           {content}
         </VibesGit>
+      );
+
+    case "vibes-git-commit":
+      return (
+        <VibesGitCommit
+          action={attributes.action}
+          files={attributes.files}
+        >
+          {content}
+        </VibesGitCommit>
       );
 
     case "vibes-ask-user":
