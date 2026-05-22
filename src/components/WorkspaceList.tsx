@@ -1035,10 +1035,13 @@ const AppChats = memo(function AppChats({
         return next;
       });
       // Mark as read in DB
-      ipc.chat.markChatRead(chatId).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
-        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-      }).catch(() => {});
+      ipc.chat
+        .markChatRead(chatId)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+        })
+        .catch(() => {});
       onChatClick(appId, chatId);
     },
     [setRecentStreamChatIds, onChatClick, queryClient],
@@ -1205,7 +1208,7 @@ const AppChats = memo(function AppChats({
                         ) : null}
                         <div className="flex flex-col min-w-0 flex-1">
                           <span
-                            className={`truncate ${unread ? "font-semibold" : ""}`}
+                            className={`break-words whitespace-normal ${unread ? "font-semibold" : ""}`}
                           >
                             {chat.title || "Nuevo chat"}
                           </span>
@@ -1564,6 +1567,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       id: number;
       title: string | null;
       createdAt: Date;
+      firstPrompt?: string | null;
       labels?: Array<{ id: number; label: string; color: string }>;
     }>
   >([]);
@@ -1606,6 +1610,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       id: number;
       title: string | null;
       createdAt: Date;
+      firstPrompt?: string | null;
       labels?: Array<{ id: number; label: string; color: string }>;
       matchedSnippet?: string;
     }>
@@ -1620,11 +1625,12 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       }
     }
 
-    const results: Array<{
-      id: number;
-      title: string | null;
-      createdAt: Date;
-      labels?: Array<{ id: number; label: string; color: string }>;
+    // Title match weight factor: title matches rank 3x above content-only matches
+    const TITLE_WEIGHT = 3;
+
+    const scored: Array<{
+      chat: typeof archivedChats[number];
+      score: number;
       matchedSnippet?: string;
     }> = [];
 
@@ -1637,14 +1643,28 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       const dbMatchContent = dbMatchMap.get(chat.id);
 
       if (titleMatch || labelsMatch || dbMatchContent) {
-        results.push({
-          ...chat,
+        let score = 0;
+        if (titleMatch) score += TITLE_WEIGHT;
+        if (labelsMatch) score += 1;
+        if (dbMatchContent) score += 1;
+        scored.push({
+          chat,
+          score,
           matchedSnippet: dbMatchContent || undefined,
         });
       }
     }
 
-    return results;
+    // Sort by score descending, then by date descending
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return new Date(b.chat.createdAt).getTime() - new Date(a.chat.createdAt).getTime();
+    });
+
+    return scored.map(({ chat, matchedSnippet }) => ({
+      ...chat,
+      matchedSnippet,
+    }));
   }, [archivedChats, archivedSearchQuery, dbSearchResults]);
 
   // Plans panel state
@@ -2298,7 +2318,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               onClick={() => setArchivePanelOpen(false)}
             />
             <div
-              className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Panel header */}
@@ -2402,6 +2422,11 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               highlight={archivedSearchQuery}
                             />
                           </span>
+                          {chat.firstPrompt && !chat.matchedSnippet && (
+                            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed line-clamp-2">
+                              {chat.firstPrompt}
+                            </p>
+                          )}
                           {chat.matchedSnippet && (
                             <p className="text-xs text-muted-foreground/80 mt-1.5 bg-sidebar-accent/25 rounded-xl px-3 py-2 border border-border/30 font-normal leading-relaxed line-clamp-2">
                               <HighlightedText
@@ -2439,19 +2464,37 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                             })}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                          onClick={() => handleUnarchive(chat.id)}
-                          disabled={unarchivingId === chat.id}
-                          title="Restaurar"
-                        >
-                          {unarchivingId === chat.id ? (
-                            <Loader2 size={15} className="animate-spin" />
-                          ) : (
-                            <ArchiveRestore size={15} strokeWidth={2} />
-                          )}
-                        </button>
+                        <div className="flex flex-col gap-1 shrink-0 items-center">
+                          <button
+                            type="button"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                            onClick={() => {
+                              setArchivePanelOpen(false);
+                              ipc.system.openChatWindow({
+                                appId: app.id,
+                                chatId: chat.id,
+                                theme,
+                                themeIntensity: intensity,
+                              });
+                            }}
+                            title="Abrir en ventana nueva"
+                          >
+                            <ExternalLink size={14} strokeWidth={2} />
+                          </button>
+                          <button
+                            type="button"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                            onClick={() => handleUnarchive(chat.id)}
+                            disabled={unarchivingId === chat.id}
+                            title="Restaurar"
+                          >
+                            {unarchivingId === chat.id ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <ArchiveRestore size={15} strokeWidth={2} />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2478,7 +2521,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground/35">
-                    Hover para restaurar
+                    Hover para opciones
                   </span>
                 </div>
               )}
@@ -3690,10 +3733,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                 next.delete(pinned.id);
                                 return next;
                               });
-                              ipc.chat.markChatRead(pinned.id).then(() => {
-                                queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
-                                queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-                              }).catch(() => {});
+                              ipc.chat
+                                .markChatRead(pinned.id)
+                                .then(() => {
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["pinned-chats"],
+                                  });
+                                  queryClient.invalidateQueries({
+                                    queryKey: queryKeys.chats.all,
+                                  });
+                                })
+                                .catch(() => {});
                               navigate({
                                 to: "/",
                                 search: {
@@ -3709,13 +3759,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                   size={12}
                                   className="animate-spin text-primary shrink-0"
                                 />
-                              ) : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false) &&
+                              ) : (recentStreamChatIds.has(pinned.id) ||
+                                  pinned.isRead === false) &&
                                 selectedChatId !== pinned.id ? (
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
                               ) : null}
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span
-                                  className={`truncate ${(recentStreamChatIds.has(pinned.id) || pinned.isRead === false) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
+                                  className={`break-words whitespace-normal ${(recentStreamChatIds.has(pinned.id) || pinned.isRead === false) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
                                 >
                                   {pinned.title || "Nuevo chat"}
                                 </span>
@@ -3802,7 +3853,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
                     const isUnread =
-                      (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false) &&
+                      (recentStreamChatIds.has(pinnedMenuId) ||
+                        pin.isRead === false) &&
                       selectedChatId !== pinnedMenuId;
                     return (
                       <ChatContextMenuPortal

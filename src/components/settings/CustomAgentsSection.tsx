@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/icons";
 import { showSuccess, showError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
+import { SettingsModelSelector } from "@/components/SettingsModelSelector";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * CustomAgentEditor — Collapsible inline card to edit an existing custom agent
@@ -36,6 +38,10 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
   const [baseAgent, setBaseAgent] = useState(agent.baseAgent);
   const [promptMode, setPromptMode] = useState(agent.promptMode);
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt);
+  const [modelSource, setModelSource] = useState<"chat" | "static">(agent.modelSource || "chat");
+  const [model, setModel] = useState<string>(agent.model || "");
+
+  const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
   
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -48,6 +54,8 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setBaseAgent(agent.baseAgent);
     setPromptMode(agent.promptMode);
     setSystemPrompt(agent.systemPrompt);
+    setModelSource(agent.modelSource || "chat");
+    setModel(agent.model || "");
   }, [agent]);
 
   const handleCancel = () => {
@@ -56,6 +64,8 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setBaseAgent(agent.baseAgent);
     setPromptMode(agent.promptMode);
     setSystemPrompt(agent.systemPrompt);
+    setModelSource(agent.modelSource || "chat");
+    setModel(agent.model || "");
     setValidationError(null);
     setExpanded(false);
   };
@@ -74,6 +84,10 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
       setValidationError(
         "El comando slash solo puede contener letras, números, guiones y guiones bajos (sin espacios ni la barra inicial /)."
       );
+      return false;
+    }
+    if (modelSource === "static" && !model) {
+      setValidationError("Por favor, selecciona un modelo estático.");
       return false;
     }
     if (!systemPrompt.trim()) {
@@ -97,6 +111,8 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
         baseAgent: baseAgent,
         promptMode: promptMode,
         systemPrompt: systemPrompt,
+        modelSource: modelSource,
+        model: modelSource === "static" ? model : null,
       });
       showSuccess("Agente personalizado actualizado correctamente");
       setExpanded(false);
@@ -149,6 +165,9 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
               Base: {agent.baseAgent === "build" ? "Agente (Build)" : agent.baseAgent === "plan" ? "Planificador" : "Explorador"}
+            </span>
+            <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
+              Modelo: {agent.modelSource === "static" ? (agent.model ? (agent.model.split("::").pop() || agent.model) : "Estático") : "Chat"}
             </span>
             <span className={cn(
               "text-[11px] font-semibold px-2 py-0.5 rounded-md",
@@ -256,6 +275,54 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div className="space-y-1.5">
+              <Label className="typo-label">Origen del Modelo</Label>
+              <UnifiedSelector
+                value={modelSource}
+                onChange={(val) => setModelSource(val as "chat" | "static")}
+                options={[
+                  {
+                    value: "chat",
+                    label: "Modelo del chat",
+                    description: "Usa el modelo activo seleccionado en el chat",
+                  },
+                  {
+                    value: "static",
+                    label: "Modelo estático",
+                    description: "Usa siempre un modelo fijo configurado",
+                  },
+                ]}
+                triggerVariant="default"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                triggerClassName="w-full text-left justify-between bg-muted/30 hover:bg-muted/50 rounded-xl"
+              />
+            </div>
+
+            {modelSource === "static" ? (
+              <div className="space-y-1.5">
+                <Label className="typo-label">Seleccionar Modelo Estático</Label>
+                <SettingsModelSelector
+                  variant="default"
+                  size="md"
+                  selectedModel={model}
+                  onModelSelect={(val) => setModel(val)}
+                  models={allModels || []}
+                  loading={modelsLoading}
+                  placeholder="Selecciona un modelo..."
+                  disableEnabledFilter
+                  showProviderBadge
+                  className="w-full justify-between bg-muted/30 hover:bg-muted/50 rounded-xl py-3 h-auto"
+                />
+              </div>
+            ) : (
+              <div className="p-4 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground flex items-center h-full min-h-[58px]">
+                El agente utilizará de forma dinámica el modelo que tengas seleccionado en la caja de chat al enviar el mensaje.
+              </div>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <Label htmlFor={`system-prompt-${agent.id}`} className="typo-label">
@@ -344,6 +411,10 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
   const [baseAgent, setBaseAgent] = useState<"build" | "plan" | "explore">("build");
   const [promptMode, setPromptMode] = useState<"additive" | "replace">("additive");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [modelSource, setModelSource] = useState<"chat" | "static">("chat");
+  const [model, setModel] = useState<string>("");
+
+  const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
   
   const [isSaving, setIsSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -362,6 +433,10 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
       setValidationError(
         "El comando slash solo puede contener letras, números, guiones y guiones bajos (sin espacios ni la barra inicial /)."
       );
+      return false;
+    }
+    if (modelSource === "static" && !model) {
+      setValidationError("Por favor, selecciona un modelo estático.");
       return false;
     }
     if (!systemPrompt.trim()) {
@@ -384,6 +459,8 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
         baseAgent: baseAgent,
         promptMode: promptMode,
         systemPrompt: systemPrompt,
+        modelSource: modelSource,
+        model: modelSource === "static" ? model : null,
       });
       showSuccess("Agente personalizado creado correctamente");
       onCreated();
@@ -497,6 +574,54 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
               onCheckedChange={(checked) => setPromptMode(checked ? "replace" : "additive")}
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          <div className="space-y-1.5">
+            <Label className="typo-label">Origen del Modelo</Label>
+            <UnifiedSelector
+              value={modelSource}
+              onChange={(val) => setModelSource(val as "chat" | "static")}
+              options={[
+                {
+                  value: "chat",
+                  label: "Modelo del chat",
+                  description: "Usa el modelo activo seleccionado en el chat",
+                },
+                {
+                  value: "static",
+                  label: "Modelo estático",
+                  description: "Usa siempre un modelo fijo configurado",
+                },
+              ]}
+              triggerVariant="default"
+              triggerSize="md"
+              popoverWidth="w-[280px]"
+              triggerClassName="w-full text-left justify-between bg-muted/30 hover:bg-muted/50 rounded-xl"
+            />
+          </div>
+
+          {modelSource === "static" ? (
+            <div className="space-y-1.5">
+              <Label className="typo-label">Seleccionar Modelo Estático</Label>
+              <SettingsModelSelector
+                variant="default"
+                size="md"
+                selectedModel={model}
+                onModelSelect={(val) => setModel(val)}
+                models={allModels || []}
+                loading={modelsLoading}
+                placeholder="Selecciona un modelo..."
+                disableEnabledFilter
+                showProviderBadge
+                className="w-full justify-between bg-muted/30 hover:bg-muted/50 rounded-xl py-3 h-auto"
+              />
+            </div>
+          ) : (
+            <div className="p-4 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground flex items-center h-full min-h-[58px]">
+              El agente utilizará de forma dinámica el modelo que tengas seleccionado en la caja de chat al enviar el mensaje.
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">

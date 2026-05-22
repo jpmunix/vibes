@@ -102,13 +102,21 @@ export function resolveModelForAgent(
     settings: any, // UserSettings
     /** @deprecated No longer used — kept for API compat. */
     modelOverride?: string,
+    customAgentModelSource?: "chat" | "static",
+    customAgentModel?: string | null,
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
     // Primary agents (build, plan, explore, general) all use selectedModel
     const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
     const activeProvider = settings.selectedModel?.provider || "openrouter";
 
     if (PRIMARY_AGENTS.has(agentId)) {
-        const model = settings.selectedModel;
+        let model = settings.selectedModel;
+
+        if (customAgentModelSource === "static" && customAgentModel) {
+            const { provider, name } = parseModelString(customAgentModel, activeProvider);
+            model = { provider, name };
+        }
+
         const result = {
             model,
             providerID: mapProviderForOpenCode(model),
@@ -117,7 +125,7 @@ export function resolveModelForAgent(
                 settings.selectedModelVariant ?? "",
             ),
         };
-        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (${customAgentModelSource === "static" ? "static agent model" : "selectedModel"})`);
         return result;
     }
 
@@ -2283,6 +2291,10 @@ export async function handleOpenCodeStream(
         /** Custom agent prompt settings */
         customSystemPrompt?: string;
         customPromptMode?: "additive" | "replace";
+        /** Custom agent model settings */
+        customAgentModelSource?: "chat" | "static";
+        /** Custom agent static model setting */
+        customAgentModel?: string | null;
     },
     /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
     _retryCount = 0,
@@ -2789,7 +2801,13 @@ export async function handleOpenCodeStream(
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
         const effectiveAgent = options.agentId || "build";
-        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings, req.modelOverride);
+        const { model, providerID, modelID } = resolveModelForAgent(
+            effectiveAgent,
+            settings,
+            req.modelOverride,
+            options.customAgentModelSource,
+            options.customAgentModel,
+        );
 
         logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);

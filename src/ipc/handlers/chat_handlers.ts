@@ -577,7 +577,40 @@ export function registerChatHandlers() {
       },
       orderBy: [desc(remoteSchema.chats.createdAt)],
     });
-    return archived as any;
+
+    // Batch-fetch the first user message for each archived chat (avoid N+1)
+    const chatIds = archived.map((c) => c.id);
+    let firstPromptsMap = new Map<number, string>();
+    if (chatIds.length > 0) {
+      try {
+        const firstMessages = await db
+          .select({
+            chatId: remoteSchema.messages.chatId,
+            content: remoteSchema.messages.content,
+            id: remoteSchema.messages.id,
+          })
+          .from(remoteSchema.messages)
+          .where(and(
+            sql`${remoteSchema.messages.chatId} IN (${sql.join(chatIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(remoteSchema.messages.role, "user"),
+          ))
+          .orderBy(asc(remoteSchema.messages.createdAt), asc(remoteSchema.messages.id));
+
+        // Keep only the first user message per chatId
+        for (const msg of firstMessages) {
+          if (!firstPromptsMap.has(msg.chatId)) {
+            firstPromptsMap.set(msg.chatId, (msg.content || "").slice(0, 200));
+          }
+        }
+      } catch (e) {
+        logger.error("Error fetching first prompts for archived chats:", e);
+      }
+    }
+
+    return archived.map((c) => ({
+      ...c,
+      firstPrompt: firstPromptsMap.get(c.id) || null,
+    })) as any;
   });
 
   // Insert N user messages into the DB without triggering an AI stream.

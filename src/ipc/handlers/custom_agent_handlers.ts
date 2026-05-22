@@ -24,6 +24,8 @@ export function registerCustomAgentHandlers() {
       baseAgent: r.baseAgent as "build" | "plan" | "explore",
       promptMode: r.promptMode as "additive" | "replace",
       slashCommand: r.slashCommand,
+      modelSource: r.modelSource as "chat" | "static",
+      model: r.model ?? null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));
@@ -32,7 +34,7 @@ export function registerCustomAgentHandlers() {
   createTypedHandler(customAgentsContracts.create, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { name, description, systemPrompt, baseAgent, promptMode, slashCommand } = params;
+    const { name, description, systemPrompt, baseAgent, promptMode, slashCommand, modelSource, model } = params;
 
     if (!name || !systemPrompt || !baseAgent || !promptMode || !slashCommand) {
       throw new Error("Missing required fields for custom agent");
@@ -48,6 +50,8 @@ export function registerCustomAgentHandlers() {
         baseAgent,
         promptMode,
         slashCommand: slashCommand.replace(/^\//, ""), // Asegurar que no lleva '/' al guardarse
+        modelSource: modelSource ?? "chat",
+        model: model ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -63,6 +67,8 @@ export function registerCustomAgentHandlers() {
       baseAgent: row.baseAgent as "build" | "plan" | "explore",
       promptMode: row.promptMode as "additive" | "replace",
       slashCommand: row.slashCommand,
+      modelSource: row.modelSource as "chat" | "static",
+      model: row.model ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -71,7 +77,7 @@ export function registerCustomAgentHandlers() {
   createTypedHandler(customAgentsContracts.update, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { id, name, description, systemPrompt, baseAgent, promptMode, slashCommand } = params;
+    const { id, name, description, systemPrompt, baseAgent, promptMode, slashCommand, modelSource, model } = params;
 
     if (!id) throw new Error("Custom agent id is required");
 
@@ -86,6 +92,8 @@ export function registerCustomAgentHandlers() {
     if (slashCommand !== undefined) {
       updateData.slashCommand = slashCommand.replace(/^\//, "");
     }
+    if (modelSource !== undefined) updateData.modelSource = modelSource;
+    if (model !== undefined) updateData.model = model;
 
     await db
       .update(remoteSchema.customAgents)

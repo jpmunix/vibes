@@ -1380,6 +1380,8 @@ This conversation includes one or more image attachments. When the user uploads 
         let customSystemPrompt: string | undefined;
         let customPromptMode: "additive" | "replace" | undefined;
         let agentId: "build" | "plan" | "explore" | "mockup" = "build";
+        let customAgentModelSource: "chat" | "static" | undefined;
+        let customAgentModel: string | null | undefined;
 
         if (currentChatMode.startsWith("custom-agent::")) {
           const agentIdNum = parseInt(currentChatMode.split("::")[1]);
@@ -1388,6 +1390,8 @@ This conversation includes one or more image attachments. When the user uploads 
             customSystemPrompt = matchedAgent.systemPrompt;
             customPromptMode = matchedAgent.promptMode as "additive" | "replace";
             agentId = matchedAgent.baseAgent as "build" | "plan" | "explore";
+            customAgentModelSource = matchedAgent.modelSource as "chat" | "static";
+            customAgentModel = matchedAgent.model;
           }
         } else {
           const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
@@ -1657,6 +1661,8 @@ This conversation includes one or more image attachments. When the user uploads 
               priorMessages: req.priorMessages as any,
               customSystemPrompt,
               customPromptMode,
+              customAgentModelSource,
+              customAgentModel,
             },
           );
 

@@ -392,6 +392,7 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        firstPrompt: z.string().nullable().optional(),
         labels: z.array(z.object({
           id: z.number(),
           label: z.string(),

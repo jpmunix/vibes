@@ -13,6 +13,8 @@ export const CustomAgentDtoSchema = z.object({
   baseAgent: z.enum(["build", "plan", "explore"]),
   promptMode: z.enum(["additive", "replace"]),
   slashCommand: z.string(),
+  modelSource: z.enum(["chat", "static"]),
+  model: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -26,6 +28,8 @@ export const CreateCustomAgentParamsSchema = z.object({
   baseAgent: z.enum(["build", "plan", "explore"]),
   promptMode: z.enum(["additive", "replace"]),
   slashCommand: z.string(),
+  modelSource: z.enum(["chat", "static"]).optional(),
+  model: z.string().optional().nullable(),
 });
 
 export type CreateCustomAgentParams = z.infer<typeof CreateCustomAgentParamsSchema>;
@@ -38,6 +42,8 @@ export const UpdateCustomAgentParamsSchema = z.object({
   baseAgent: z.enum(["build", "plan", "explore"]).optional(),
   promptMode: z.enum(["additive", "replace"]).optional(),
   slashCommand: z.string().optional(),
+  modelSource: z.enum(["chat", "static"]).optional(),
+  model: z.string().optional().nullable(),
 });
 
 export type UpdateCustomAgentParams = z.infer<typeof UpdateCustomAgentParamsSchema>;
