@@ -282,6 +282,7 @@ export const customAgents = sqliteTable("custom_agents", {
     slashCommand: text("slash_command").notNull(), // ej: 'rust' (sin la '/')
     modelSource: text("model_source").notNull().default("chat"),
     model: text("model"),
+    prompt: text("prompt"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

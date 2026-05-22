@@ -126,3 +126,11 @@ export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[
 // @deprecated — No longer used. All modes use selectedModel now.
 // Kept for backwards compat; safe to remove after confirming no consumers.
 export const planModelOverrideAtom = atom<string | null>(null);
+
+// Message preview modal — renders a single message in a large in-app modal
+// instead of opening a separate Electron window.
+export interface MessagePreviewState {
+  chatId: number;
+  messageId: number;
+}
+export const messagePreviewAtom = atom<MessagePreviewState | null>(null);

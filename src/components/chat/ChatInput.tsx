@@ -83,7 +83,8 @@ import { AuxiliaryActionsMenu } from "./AuxiliaryActionsMenu";
 import { useChatModeToggle } from "@/hooks/useChatModeToggle";
 import { VisualEditingChangesDialog } from "@/components/preview_panel/VisualEditingChangesDialog";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
@@ -155,6 +156,36 @@ export function ChatInput({
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  const { customAgents } = useCustomAgents();
+  const { data: chat } = useQuery({
+    queryKey: ["chat", chatId],
+    queryFn: () => ipc.chat.getChat(chatId!),
+    enabled: !!chatId,
+  });
+
+  const currentMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+  const lastSelectedModeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!settings || !customAgents) return;
+    if (currentMode !== lastSelectedModeRef.current) {
+      const prevMode = lastSelectedModeRef.current;
+      lastSelectedModeRef.current = currentMode;
+      
+      if (currentMode.startsWith("custom-agent::")) {
+        const id = parseInt(currentMode.split("::")[1]);
+        const agent = customAgents.find((a) => a.id === id);
+        if (agent && agent.prompt && !inputValue.trim()) {
+          const isTransition = prevMode !== null;
+          const isNewBlankChat = prevMode === null && currentMessages.length === 0;
+          if (isTransition || isNewBlankChat) {
+            setInputValue(agent.prompt);
+          }
+        }
+      }
+    }
+  }, [currentMode, customAgents, inputValue, setInputValue, settings, currentMessages.length]);
 
   // Reset quick commit dismissal state when streaming completes
   const prevStreamingRef = useRef(isStreaming);

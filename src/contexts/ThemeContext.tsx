@@ -27,6 +27,10 @@ interface ThemeContextType {
   currentChatFontId: string;
   fontScales: Record<FontScaleGroup, number>;
   bubbleWidthPct: number;
+  themeFlavorDark: string;
+  setThemeFlavorDark: (flavor: string) => void;
+  themeFlavorLight: string;
+  setThemeFlavorLight: (flavor: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -120,6 +124,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return savedIntensity ? parseFloat(savedIntensity) : 0.58;
   });
 
+  const [themeFlavorDark, setThemeFlavorDarkState] = useState<string>(() => {
+    return localStorage.getItem("theme-flavor-dark") || "default";
+  });
+
+  const [themeFlavorLight, setThemeFlavorLightState] = useState<string>(() => {
+    return localStorage.getItem("theme-flavor-light") || "default";
+  });
+
   const [currentFontId, setCurrentFontId] = useState<string>(() => {
     return window.localStorage?.getItem("selected-font") || DEFAULT_FONT_ID;
   });
@@ -176,6 +188,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyBubbleWidthToDOM(pct);
   }, []);
 
+  const setThemeFlavorDark = useCallback((flavor: string) => {
+    setThemeFlavorDarkState(flavor);
+    localStorage.setItem("theme-flavor-dark", flavor);
+    if (themeBootedRef.current) {
+      ipc.settings.setUserSettings({ themeFlavorDark: flavor }).catch(() => {});
+    }
+  }, []);
+
+  const setThemeFlavorLight = useCallback((flavor: string) => {
+    setThemeFlavorLightState(flavor);
+    localStorage.setItem("theme-flavor-light", flavor);
+    if (themeBootedRef.current) {
+      ipc.settings.setUserSettings({ themeFlavorLight: flavor }).catch(() => {});
+    }
+  }, []);
+
   // Track whether the initial settings-driven theme has been loaded.
   // Prevents persisting the localStorage default back to BunnyDB on first mount.
   const themeBootedRef = useRef(false);
@@ -204,6 +232,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       root.classList.remove("light", "dark");
       root.classList.add(isDark ? "dark" : "light");
+
+      // Remove existing flavor classes (starting with theme-)
+      const classesToRemove: string[] = [];
+      root.classList.forEach((cls) => {
+        if (cls.startsWith("theme-")) {
+          classesToRemove.push(cls);
+        }
+      });
+      classesToRemove.forEach((cls) => root.classList.remove(cls));
+
+      const activeFlavor = isDark ? themeFlavorDark : themeFlavorLight;
+      if (activeFlavor && activeFlavor !== "default") {
+        root.classList.add(`theme-${activeFlavor}`);
+      }
     };
 
     applyTheme();
@@ -213,7 +255,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     mediaQuery.addEventListener("change", listener);
 
     return () => mediaQuery.removeEventListener("change", listener);
-  }, [theme]);
+  }, [theme, themeFlavorDark, themeFlavorLight]);
 
   useEffect(() => {
     localStorage.setItem("theme-intensity", intensity.toString());
@@ -256,7 +298,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct }}
+      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight }}
     >
       {children}
     </ThemeContext.Provider>
@@ -269,7 +311,7 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } =
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight } =
     context;
 
   // Determine if dark mode is active when component mounts or theme changes
@@ -303,5 +345,9 @@ export function useTheme() {
     currentChatFontId,
     fontScales,
     bubbleWidthPct,
+    themeFlavorDark,
+    setThemeFlavorDark,
+    themeFlavorLight,
+    setThemeFlavorLight,
   };
 }

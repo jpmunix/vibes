@@ -12,6 +12,7 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 import { CrossChatNotification } from "./chat/CrossChatNotification";
+import { MessagePreviewModal } from "./chat/MessagePreviewModal";
 
 
 import { Button } from "@/components/ui/button";
@@ -407,6 +408,7 @@ export function ChatPanel({
   const isPlanMode = settings?.selectedChatMode === "plan" || preservePlanMode;
 
   return (
+    <>
     <div className="flex flex-col h-full">
       <div className="relative">
         <ChatHeader
@@ -481,6 +483,10 @@ export function ChatPanel({
         </div>
       </div>
     </div>
+
+    {/* In-app message preview modal (replaces openMessageWindow) */}
+    <MessagePreviewModal />
+    </>
   );
 }
 

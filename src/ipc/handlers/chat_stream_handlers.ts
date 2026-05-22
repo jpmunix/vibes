@@ -609,7 +609,7 @@ ${componentSnippet}
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
-      const resolvedChatMode = req.chatMode || settings.selectedChatMode || "agent";
+      const resolvedChatMode = effectiveChatMode;
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
@@ -617,7 +617,16 @@ ${componentSnippet}
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
       // Only mockup uses the executorModel (lightweight, fast).
       // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
-      if (agentId === "mockup") {
+      if (resolvedChatMode.startsWith("custom-agent::")) {
+        const agentIdNum = parseInt(resolvedChatMode.split("::")[1]);
+        const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+        if (matchedAgent && matchedAgent.modelSource === "static" && matchedAgent.model) {
+          const { parseModelString } = await import("../../lib/schemas");
+          const { provider: staticProv, name: staticName } = parseModelString(matchedAgent.model, activeProvider);
+          effectiveModelName = staticName.replace(/^openrouter\//, "");
+          selectedModel = { name: staticName, provider: staticProv };
+        }
+      } else if (agentId === "mockup") {
         const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
         const { parseModelString } = await import("../../lib/schemas");
         const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);

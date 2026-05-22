@@ -1011,7 +1011,7 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
@@ -1034,6 +1034,24 @@ export function GeneralSettings({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.themeIntensity, setIntensity]);
+
+  useEffect(() => {
+    if (
+      settings?.themeFlavorDark !== undefined &&
+      settings.themeFlavorDark !== themeFlavorDark
+    ) {
+      setThemeFlavorDark(settings.themeFlavorDark);
+    }
+  }, [settings?.themeFlavorDark, setThemeFlavorDark, themeFlavorDark]);
+
+  useEffect(() => {
+    if (
+      settings?.themeFlavorLight !== undefined &&
+      settings.themeFlavorLight !== themeFlavorLight
+    ) {
+      setThemeFlavorLight(settings.themeFlavorLight);
+    }
+  }, [settings?.themeFlavorLight, setThemeFlavorLight, themeFlavorLight]);
 
   // Apply primary colors from settings on load
   useEffect(() => {
@@ -1107,6 +1125,47 @@ export function GeneralSettings({
                 </button>
               ))}
             </div>
+          }
+        />
+
+        <SettingItem
+          label="Sub-tema (Claro)"
+          description="Paleta de colores para el modo claro"
+          control={
+            <UnifiedSelector
+              value={themeFlavorLight || "default"}
+              onChange={async (value) => {
+                setThemeFlavorLight(value);
+                await updateSettings({ themeFlavorLight: value }, { showToast: true });
+              }}
+              options={[
+                { value: "default", label: "Claro Clásico", description: "Esquema de colores claro estándar" },
+                { value: "github-light", label: "GitHub Light", description: "Estilo limpio al estilo de GitHub" },
+                { value: "solarized-light", label: "Solarized Light", description: "Tono crema cálido de alta legibilidad" },
+              ]}
+              triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+            />
+          }
+        />
+
+        <SettingItem
+          label="Sub-tema (Oscuro)"
+          description="Paleta de colores para el modo oscuro"
+          control={
+            <UnifiedSelector
+              value={themeFlavorDark || "default"}
+              onChange={async (value) => {
+                setThemeFlavorDark(value);
+                await updateSettings({ themeFlavorDark: value }, { showToast: true });
+              }}
+              options={[
+                { value: "default", label: "Oscuro Clásico", description: "Esquema de colores oscuro estándar" },
+                { value: "dracula", label: "Dracula", description: "Paleta violeta y gris oscuro de Dracula" },
+                { value: "one-dark", label: "One Dark", description: "Tema clásico de Atom One Dark" },
+                { value: "nord", label: "Nord", description: "Tonos árticos azulados fríos y limpios" },
+              ]}
+              triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+            />
           }
         />
 

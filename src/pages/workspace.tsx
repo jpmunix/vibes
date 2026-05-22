@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
-import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -49,6 +49,7 @@ export default function WorkspacePage() {
 
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
+  const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const [appsList] = useAtom(appsListAtom);
   const restoredRef = useRef(false);
   const queryClient = useQueryClient();
@@ -111,13 +112,20 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (chatId) {
       setSelectedChatId(chatId);
+      // Clear from recent stream set
+      setRecentStreamChatIds((prev) => {
+        if (!prev.has(chatId)) return prev;
+        const next = new Set(prev);
+        next.delete(chatId);
+        return next;
+      });
       // Mark this chat as read
       ipc.chat.markChatRead(chatId).then(() => {
         queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
         queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       }).catch(() => {});
     }
-  }, [chatId, setSelectedChatId, queryClient]);
+  }, [chatId, setSelectedChatId, setRecentStreamChatIds, queryClient]);
 
   // Setup streaming for this chat
   useStreamChat({ hasChatId: !!chatId });

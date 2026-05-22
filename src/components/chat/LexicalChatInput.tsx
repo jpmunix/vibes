@@ -268,9 +268,11 @@ function ClearEditorPlugin({
 function ExternalValueSyncPlugin({
   value,
   promptsById,
+  customAgents,
 }: {
   value: string;
   promptsById: Record<number, string>;
+  customAgents?: any[];
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -299,11 +301,29 @@ function ExternalValueSyncPlugin({
 
       // Build nodes from internal value, turning @app:Name and @prompt:<id> into mention nodes
       let lastIndex = 0;
+      
+      // Parse slash command at the very start if present
+      const knownSlashCommands = [
+        "agent", "build", "plan", "ask", "explore",
+        ...(customAgents || []).map((a) => a.slashCommand),
+      ];
+      for (const cmd of knownSlashCommands) {
+        if (value.startsWith(`/${cmd} `) || value === `/${cmd}`) {
+          paragraph.append($createBeautifulMentionNode("/", cmd));
+          lastIndex = cmd.length + 1; // length of "/" + cmd
+          if (value.startsWith(`/${cmd} `)) {
+            lastIndex += 1; // plus space
+          }
+          break;
+        }
+      }
+
       let match: RegExpExecArray | null;
       const combined = /@app:([a-zA-Z0-9_-]+)|@prompt:(\d+)|@file:([^\s]+)/g;
       while ((match = combined.exec(value)) !== null) {
         const start = match.index;
         const full = match[0];
+        // Ensure we don't grab text before the match that was already consumed by slash command
         if (start > lastIndex) {
           const textBefore = value.slice(lastIndex, start);
           if (textBefore) paragraph.append($createTextNode(textBefore));
@@ -319,7 +339,7 @@ function ExternalValueSyncPlugin({
           const filePath = match[3];
           paragraph.append($createBeautifulMentionNode("@", filePath));
         }
-        lastIndex = start + full.length;
+        lastIndex = Math.max(lastIndex, start + full.length);
       }
       if (lastIndex < value.length) {
         const trailing = value.slice(lastIndex);
@@ -333,7 +353,7 @@ function ExternalValueSyncPlugin({
       root.append(paragraph);
       paragraph.selectEnd();
     });
-  }, [editor, value, promptsById]);
+  }, [editor, value, promptsById, customAgents]);
 
   return null;
 }
@@ -455,6 +475,15 @@ export function LexicalChatInput({
           }
         }
 
+        // Check if user has selected or typed a custom agent command, and append its default prompt
+        for (const agent of customAgents || []) {
+          const cmd = `/${agent.slashCommand}`;
+          if ((textContent === cmd || textContent === `${cmd} `) && agent.prompt) {
+            textContent = `${cmd} ${agent.prompt}`;
+            break;
+          }
+        }
+
         // Transform @AppName mentions to @app:AppName format
         // This regex matches @AppName where AppName is one of our actual app names
 
@@ -480,7 +509,7 @@ export function LexicalChatInput({
         onChange(textContent);
       });
     },
-    [onChange, prompts, appFiles],
+    [onChange, prompts, appFiles, customAgents],
   );
 
   const handleSubmit = useCallback(() => {
@@ -541,6 +570,7 @@ export function LexicalChatInput({
           promptsById={Object.fromEntries(
             (prompts || []).map((p) => [p.id, p.title]),
           )}
+          customAgents={customAgents}
         />
         <ClearEditorPlugin
           shouldClear={shouldClear}

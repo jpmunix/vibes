@@ -259,6 +259,9 @@ export async function initializeRemoteSchema(): Promise<void> {
         base_agent TEXT NOT NULL,
         prompt_mode TEXT NOT NULL,
         slash_command TEXT NOT NULL,
+        model_source TEXT NOT NULL DEFAULT 'chat',
+        model TEXT,
+        prompt TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
@@ -267,6 +270,7 @@ export async function initializeRemoteSchema(): Promise<void> {
     // Add model_source and model columns to custom_agents if missing (added v8.7~dev.3)
     await client.execute(`ALTER TABLE custom_agents ADD COLUMN model_source TEXT NOT NULL DEFAULT 'chat'`).catch(() => {});
     await client.execute(`ALTER TABLE custom_agents ADD COLUMN model TEXT`).catch(() => {});
+    await client.execute(`ALTER TABLE custom_agents ADD COLUMN prompt TEXT`).catch(() => {});
 
     // Add chat_mode column to chats if missing (added v8.7)
     await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});

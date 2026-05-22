@@ -561,6 +561,8 @@ export const UserSettingsSchema = z
     primaryColorDark: z.string().optional(),
     primaryChromaLight: z.number().optional(),
     primaryChromaDark: z.number().optional(),
+    themeFlavorDark: z.string().optional(),
+    themeFlavorLight: z.string().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
     // Embeddings for semantic search

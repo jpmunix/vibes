@@ -34,7 +34,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -52,6 +52,7 @@ import {
   isZenModeAtom,
   pendingAskUsersAtom,
   selectedMemoriesByChatIdAtom,
+  messagePreviewAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -344,20 +345,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     }
   }, [isSharing, isUser, message]);
 
-  // Open single message debug window
+  // Open single message preview modal (in-app)
+  const setMessagePreview = useSetAtom(messagePreviewAtom);
   const openDebugMessage = useCallback(() => {
     if (isStreaming && isLastMessage) return; // Prevent opening dead/empty modal during generation
-    if (!appId || !selectedChatId || !message.id) return;
-    const theme = localStorage.getItem("theme");
-    const intensity = localStorage.getItem("theme-intensity");
-    ipc.system.openMessageWindow({
-      appId,
-      chatId: selectedChatId,
-      messageId: message.id,
-      theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined,
-      themeIntensity: intensity ? parseFloat(intensity) : undefined,
-    });
-  }, [appId, selectedChatId, message.id, isStreaming, isLastMessage]);
+    if (!selectedChatId || !message.id) return;
+    setMessagePreview({ chatId: selectedChatId, messageId: message.id });
+  }, [selectedChatId, message.id, isStreaming, isLastMessage, setMessagePreview]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks

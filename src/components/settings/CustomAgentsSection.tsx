@@ -40,6 +40,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt);
   const [modelSource, setModelSource] = useState<"chat" | "static">(agent.modelSource || "chat");
   const [model, setModel] = useState<string>(agent.model || "");
+  const [prompt, setPrompt] = useState<string>(agent.prompt || "");
 
   const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
   
@@ -56,6 +57,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
+    setPrompt(agent.prompt || "");
   }, [agent]);
 
   const handleCancel = () => {
@@ -66,6 +68,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
+    setPrompt(agent.prompt || "");
     setValidationError(null);
     setExpanded(false);
   };
@@ -113,6 +116,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
+        prompt: prompt.trim() || null,
       });
       showSuccess("Agente personalizado actualizado correctamente");
       setExpanded(false);
@@ -324,6 +328,19 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor={`default-prompt-${agent.id}`} className="typo-label">
+              Prompt por defecto (Autopegado)
+            </Label>
+            <textarea
+              id={`default-prompt-${agent.id}`}
+              placeholder="Escribe el prompt que se autopegará al seleccionar el agente (opcional)..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full min-h-[80px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input resize-y"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <Label htmlFor={`system-prompt-${agent.id}`} className="typo-label">
                 System Prompt
@@ -413,6 +430,7 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelSource, setModelSource] = useState<"chat" | "static">("chat");
   const [model, setModel] = useState<string>("");
+  const [prompt, setPrompt] = useState("");
 
   const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
   
@@ -461,8 +479,10 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
+        prompt: prompt.trim() || null,
       });
       showSuccess("Agente personalizado creado correctamente");
+      setPrompt("");
       onCreated();
     } catch (err: any) {
       console.error(err);
@@ -622,6 +642,19 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
               El agente utilizará de forma dinámica el modelo que tengas seleccionado en la caja de chat al enviar el mensaje.
             </div>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="new-agent-prompt" className="typo-label">
+            Prompt por defecto (Autopegado)
+          </Label>
+          <textarea
+            id="new-agent-prompt"
+            placeholder="Escribe el prompt que se autopegará al seleccionar el agente (opcional)..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full min-h-[80px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input resize-y"
+          />
         </div>
 
         <div className="space-y-1.5">

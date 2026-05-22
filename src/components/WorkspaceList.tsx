@@ -1016,7 +1016,10 @@ const AppChats = memo(function AppChats({
   // A chat is "unread" if it was recently streamed to and user hasn't viewed it
   const isChatUnread = useCallback(
     (chatId: number) => {
-      if (selectedChatId === chatId) return false;
+      if (selectedChatId === chatId) {
+        const chat = chats.find((c) => c.id === chatId);
+        return chat ? chat.isRead === false : false;
+      }
       if (recentStreamChatIds.has(chatId)) return true;
       const chat = chats.find((c) => c.id === chatId);
       if (chat && chat.isRead === false) return true;
@@ -1580,6 +1583,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       matchedMessageContent: string | null;
     }>
   >([]);
+
+  useEffect(() => {
+    if (!archivePanelOpen) {
+      setPreviewChatId(null);
+      setPreviewChatMessages([]);
+      setPreviewChatTitle(null);
+    }
+  }, [archivePanelOpen]);
 
   useEffect(() => {
     if (!archivedSearchQuery.trim()) {
@@ -2519,7 +2530,8 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           {filteredArchivedChats.map((chat) => (
                             <div
                               key={chat.id}
-                              className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
+                              className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+                              onClick={() => handlePreviewChat(chat.id, chat.title)}
                             >
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-sm truncate font-medium text-foreground">
@@ -2544,24 +2556,26 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                     />
                                   </p>
                                 )}
-                                <ChatRowLabels
-                                  labels={chat.labels}
-                                  onRemove={(id) => {
-                                    handleRemoveLabel(id);
-                                    setArchivedChats((prev) =>
-                                      prev.map((c) =>
-                                        c.id === chat.id
-                                          ? {
-                                              ...c,
-                                              labels: c.labels?.filter(
-                                                (ll) => ll.id !== id,
-                                              ),
-                                            }
-                                          : c,
-                                      ),
-                                    );
-                                  }}
-                                />
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <ChatRowLabels
+                                    labels={chat.labels}
+                                    onRemove={(id) => {
+                                      handleRemoveLabel(id);
+                                      setArchivedChats((prev) =>
+                                        prev.map((c) =>
+                                          c.id === chat.id
+                                            ? {
+                                                ...c,
+                                                labels: c.labels?.filter(
+                                                  (ll) => ll.id !== id,
+                                                ),
+                                              }
+                                            : c,
+                                        ),
+                                      );
+                                    }}
+                                  />
+                                </div>
                                 <span className="text-xs text-muted-foreground/55 mt-1.5">
                                   Archivado ·{" "}
                                   {formatDistanceToNow(safeDate(chat.createdAt), {
@@ -2570,15 +2584,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   })}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                                  onClick={() => handlePreviewChat(chat.id, chat.title)}
-                                  title="Vista previa"
-                                >
-                                  <Eye size={14} strokeWidth={2} />
-                                </button>
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
@@ -3783,6 +3789,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     const streaming = isStreamingById.get(pinned.id) ?? false;
                     const isRenaming = pinnedRenamingId === pinned.id;
                     const isMenuOpen = pinnedMenuId === pinned.id;
+                    const isPinnedUnread = isActive
+                      ? pinned.isRead === false
+                      : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false);
                     return (
                       <div
                         key={pinned.id}
@@ -3860,14 +3869,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                   size={12}
                                   className="animate-spin text-primary shrink-0"
                                 />
-                              ) : (recentStreamChatIds.has(pinned.id) ||
-                                  pinned.isRead === false) &&
-                                selectedChatId !== pinned.id ? (
+                              ) : isPinnedUnread ? (
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
                               ) : null}
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span
-                                  className={`break-words whitespace-normal ${(recentStreamChatIds.has(pinned.id) || pinned.isRead === false) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
+                                  className={`break-words whitespace-normal ${isPinnedUnread ? "font-semibold" : ""}`}
                                 >
                                   {pinned.title || "Nuevo chat"}
                                 </span>
@@ -3953,10 +3960,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   (() => {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
-                    const isUnread =
-                      (recentStreamChatIds.has(pinnedMenuId) ||
-                        pin.isRead === false) &&
-                      selectedChatId !== pinnedMenuId;
+                    const isUnread = selectedChatId === pinnedMenuId
+                      ? pin.isRead === false
+                      : (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false);
                     return (
                       <ChatContextMenuPortal
                         chatId={pinnedMenuId}
