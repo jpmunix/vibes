@@ -119,10 +119,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return savedTheme || "system";
   });
 
-  const [intensity, setIntensity] = useState<number>(() => {
-    const savedIntensity = localStorage.getItem("theme-intensity");
-    return savedIntensity ? parseFloat(savedIntensity) : 0.58;
-  });
+  const intensity = 0.58;
+  const setIntensity = useCallback((_intensity: number) => {}, []);
 
   const [themeFlavorDark, setThemeFlavorDarkState] = useState<string>(() => {
     return localStorage.getItem("theme-flavor-dark") || "default";
@@ -258,12 +256,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme, themeFlavorDark, themeFlavorLight]);
 
   useEffect(() => {
-    localStorage.setItem("theme-intensity", intensity.toString());
+    localStorage.setItem("theme-intensity", "0.58");
     window.document.documentElement.style.setProperty(
       "--theme-intensity",
-      intensity.toString(),
+      "0.58",
     );
-  }, [intensity]);
+  }, []);
 
   // Apply font on mount from localStorage (instant, before settings load)
   useEffect(() => {

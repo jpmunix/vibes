@@ -128,18 +128,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "general-settings",
   },
   {
-    id: "intensity",
-    label: "Intensidad",
-    description: "Ajusta la luminosidad de los colores base",
-    keywords: [
-      "intensidad", "luminosidad", "brillo",
-      // sub-values
-      "por defecto", "más claro",
-    ],
-    section: "Tema",
-    sectionId: "general-settings",
-  },
-  {
     id: "font",
     label: "Tipografía de la Interfaz",
     description: "Elige la fuente para toda la interfaz (menús, botones)",
@@ -1011,7 +999,7 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
+  const { theme, setTheme, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
@@ -1024,16 +1012,6 @@ export function GeneralSettings({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.theme, setTheme]);
-
-  useEffect(() => {
-    if (
-      settings?.themeIntensity !== undefined &&
-      settings.themeIntensity !== intensity
-    ) {
-      setIntensity(settings.themeIntensity);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.themeIntensity, setIntensity]);
 
   useEffect(() => {
     if (
@@ -1217,43 +1195,6 @@ export function GeneralSettings({
                   applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, value);
                 }}
               />
-            </div>
-          }
-        />
-
-        <SettingItem
-          label="Intensidad"
-          description="Ajusta la luminosidad de los colores base"
-          control={
-            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              <button
-                onClick={() => {
-                  setIntensity(0.58);
-                  updateSettings({ themeIntensity: 0.58 });
-                }}
-                className={cn(
-                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                  intensity === 0.58
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "hover:bg-primary/10",
-                )}
-              >
-                Por defecto
-              </button>
-              <button
-                onClick={() => {
-                  setIntensity(0);
-                  updateSettings({ themeIntensity: 0 });
-                }}
-                className={cn(
-                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                  intensity === 0
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "hover:bg-primary/10",
-                )}
-              >
-                Más claro
-              </button>
             </div>
           }
         />
