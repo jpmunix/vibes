@@ -1,4 +1,4 @@
-import { useCallback, startTransition, useRef } from "react";
+import { useCallback, startTransition, useRef, useEffect } from "react";
 import type {
   ComponentSelection,
   FileAttachment,
@@ -35,6 +35,16 @@ import { queryKeys } from "@/lib/queryKeys";
 import { sendAppNotification } from "@/lib/notification-sound";
 
 import type { ChatSummary } from "@/lib/schemas";
+
+// Module-level cache to track custom agents synchronously
+let cachedCustomAgents: Array<{ slashCommand: string }> = [];
+
+// Pre-populate the cache on load
+ipc.customAgents.list().then((list) => {
+  cachedCustomAgents = list;
+}).catch((e) => {
+  console.error("Failed to pre-populate custom agents cache:", e);
+});
 
 export function getRandomNumberId() {
   return Math.floor(Math.random() * 1_000_000_000_000_000);
@@ -87,6 +97,15 @@ export function useStreamChat({
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
   let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
+
+  // Keep cache updated when the hook mounts
+  useEffect(() => {
+    ipc.customAgents.list().then((list) => {
+      cachedCustomAgents = list;
+    }).catch((e) => {
+      console.error("Failed to refresh custom agents cache:", e);
+    });
+  }, []);
 
   // For atom lookups (isStreaming, error), prefer selectedChatIdAtom which is
   // always a proper number. useSearch can return a string from URL params even
@@ -243,6 +262,34 @@ export function useStreamChat({
         }
       })();
 
+      // Strip slash commands from prompt for optimistic message ONLY
+      let optimisticPrompt = prompt;
+      if (prompt.includes("/")) {
+        try {
+          const knownCommands = ["agent", "build", "plan", "ask", "explore"];
+          const customAgentCommands = cachedCustomAgents.map((ca) => ca.slashCommand.toLowerCase());
+          const allCommands = [...knownCommands, ...customAgentCommands];
+          allCommands.sort((a, b) => b.length - a.length);
+
+          for (const cmdName of allCommands) {
+            const cmdRegex = new RegExp(`(?:\\s|^)\\/(${cmdName})(?:\\s|$)`, "i");
+            if (cmdRegex.test(optimisticPrompt)) {
+              optimisticPrompt = optimisticPrompt.replace(cmdRegex, " ").trim();
+              break;
+            }
+          }
+
+          // Trigger a background (non-blocking) promise to refresh the cache
+          ipc.customAgents.list().then((list) => {
+            cachedCustomAgents = list;
+          }).catch((e) => {
+            console.error("Failed to update custom agents cache in background:", e);
+          });
+        } catch (e) {
+          console.error("Failed to strip slash command for optimistic prompt:", e);
+        }
+      }
+
       // Optimistic UI update: instantly show the user message and a loading assistant message
       setMessagesById((prev) => {
         const next = new Map(prev);
@@ -294,7 +341,7 @@ export function useStreamChat({
             id: tempUserId,
             chatId,
             role: "user",
-            content: prompt,
+            content: optimisticPrompt,
             createdAt: new Date().toISOString(),
             ...(optimisticAiMessagesJson && { aiMessagesJson: optimisticAiMessagesJson }),
           } as any);
@@ -312,6 +359,7 @@ export function useStreamChat({
         next.set(chatId, newMessages);
         return next;
       });
+
 
       let hasIncrementedStreamCount = false;
       // RAF throttling: batch onChunk updates to max 1 per animation frame
