@@ -88,8 +88,8 @@ const CustomMenuItem = forwardRef<
             </span>
           )}
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 shrink-0 ml-2">
-          {label}
+        <span className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}>
+          {isSlash ? `/${value}` : label}
         </span>
       </div>
     </li>
@@ -429,7 +429,7 @@ export function LexicalChatInput({
     const customSlashCommands = (customAgents || []).map((agent) => ({
       value: agent.slashCommand,
       type: "slash-command",
-      description: agent.name,
+      description: agent.description || "",
     }));
 
     return {

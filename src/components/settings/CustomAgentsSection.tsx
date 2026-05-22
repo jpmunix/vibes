@@ -34,9 +34,9 @@ interface CustomAgentEditorProps {
 export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEditorProps) {
   const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState(agent.name);
+  const [description, setDescription] = useState(agent.description || "");
   const [slashCommand, setSlashCommand] = useState(agent.slashCommand);
   const [baseAgent, setBaseAgent] = useState(agent.baseAgent);
-  const [promptMode, setPromptMode] = useState(agent.promptMode);
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt);
   const [modelSource, setModelSource] = useState<"chat" | "static">(agent.modelSource || "chat");
   const [model, setModel] = useState<string>(agent.model || "");
@@ -51,9 +51,9 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
   // Sync state if agent props change (e.g., on reload)
   useEffect(() => {
     setName(agent.name);
+    setDescription(agent.description || "");
     setSlashCommand(agent.slashCommand);
     setBaseAgent(agent.baseAgent);
-    setPromptMode(agent.promptMode);
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
@@ -62,9 +62,9 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
 
   const handleCancel = () => {
     setName(agent.name);
+    setDescription(agent.description || "");
     setSlashCommand(agent.slashCommand);
     setBaseAgent(agent.baseAgent);
-    setPromptMode(agent.promptMode);
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
@@ -110,9 +110,10 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
       await customAgentsClient.update({
         id: agent.id,
         name: name.trim(),
+        description: description.trim() || null,
         slashCommand: slashCommand.trim().toLowerCase(),
         baseAgent: baseAgent,
-        promptMode: promptMode,
+        promptMode: "replace",
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
@@ -172,14 +173,6 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
               Modelo: {agent.modelSource === "static" ? (agent.model ? (agent.model.split("::").pop() || agent.model) : "Estático") : "Chat"}
-            </span>
-            <span className={cn(
-              "text-[11px] font-semibold px-2 py-0.5 rounded-md",
-              agent.promptMode === "additive"
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                : "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-            )}>
-              {agent.promptMode === "additive" ? "Aditivo" : "Reemplazar"}
             </span>
           </div>
         </div>
@@ -260,21 +253,23 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-muted/20 border border-border/50 rounded-xl">
-              <div className="flex flex-col gap-0.5">
-                <Label htmlFor={`prompt-mode-${agent.id}`} className="typo-label cursor-pointer">
-                  Modo del Prompt
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label htmlFor={`agent-desc-${agent.id}`} className="typo-label">
+                  Descripción Corta
                 </Label>
-                <span className="text-[11px] text-muted-foreground max-w-[200px]">
-                  {promptMode === "additive"
-                    ? "Aditivo: Se añade al comportamiento estándar."
-                    : "Reemplazar: Pisa el prompt nativo por completo."}
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  {description.length}/50
                 </span>
               </div>
-              <Switch
-                id={`prompt-mode-${agent.id}`}
-                checked={promptMode === "replace"}
-                onCheckedChange={(checked) => setPromptMode(checked ? "replace" : "additive")}
+              <Input
+                id={`agent-desc-${agent.id}`}
+                type="text"
+                placeholder="ej. Refactorizador experto en Rust"
+                maxLength={50}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-primary rounded-xl typo-input"
               />
             </div>
           </div>
@@ -345,12 +340,6 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
               <Label htmlFor={`system-prompt-${agent.id}`} className="typo-label">
                 System Prompt
               </Label>
-              {promptMode === "replace" && (
-                <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10">
-                  <AlertTriangle className="size-3" />
-                  Requiere un prompt completo e instrucciones del sistema
-                </span>
-              )}
             </div>
             <textarea
               id={`system-prompt-${agent.id}`}
@@ -424,9 +413,9 @@ interface CustomAgentCreatorProps {
 
 export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorProps) {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [slashCommand, setSlashCommand] = useState("");
   const [baseAgent, setBaseAgent] = useState<"build" | "plan" | "explore">("build");
-  const [promptMode, setPromptMode] = useState<"additive" | "replace">("additive");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelSource, setModelSource] = useState<"chat" | "static">("chat");
   const [model, setModel] = useState<string>("");
@@ -473,9 +462,10 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
     try {
       await customAgentsClient.create({
         name: name.trim(),
+        description: description.trim() || null,
         slashCommand: slashCommand.trim().toLowerCase(),
         baseAgent: baseAgent,
-        promptMode: promptMode,
+        promptMode: "replace",
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
@@ -483,6 +473,7 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
       });
       showSuccess("Agente personalizado creado correctamente");
       setPrompt("");
+      setDescription("");
       onCreated();
     } catch (err: any) {
       console.error(err);
@@ -577,21 +568,23 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-muted/20 border border-border/50 rounded-xl">
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="new-prompt-mode" className="typo-label cursor-pointer">
-                Modo del Prompt
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="new-agent-desc" className="typo-label">
+                Descripción Corta
               </Label>
-              <span className="text-[11px] text-muted-foreground max-w-[200px]">
-                {promptMode === "additive"
-                  ? "Aditivo: Se añade al comportamiento estándar."
-                  : "Reemplazar: Pisa el prompt nativo por completo."}
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {description.length}/50
               </span>
             </div>
-            <Switch
-              id="new-prompt-mode"
-              checked={promptMode === "replace"}
-              onCheckedChange={(checked) => setPromptMode(checked ? "replace" : "additive")}
+            <Input
+              id="new-agent-desc"
+              type="text"
+              placeholder="ej. Refactorizador experto en Rust"
+              maxLength={50}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-primary rounded-xl typo-input"
             />
           </div>
         </div>
@@ -662,20 +655,10 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
             <Label htmlFor="new-system-prompt" className="typo-label">
               System Prompt
             </Label>
-            {promptMode === "replace" && (
-              <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10">
-                <AlertTriangle className="size-3" />
-                Requiere un prompt completo e instrucciones del sistema
-              </span>
-            )}
           </div>
           <textarea
             id="new-system-prompt"
-            placeholder={
-              promptMode === "additive"
-                ? "Escribe instrucciones adicionales... ej. 'Siempre responde usando sintaxis moderna de Rust, prefiere usar Tokio...'"
-                : "Escribe el system prompt completo para el agente. Nota: Al reemplazar el prompt nativo, asegúrate de indicarle cómo interactuar y comportarse."
-            }
+            placeholder="Escribe el system prompt completo para el agente. Nota: Al reemplazar el prompt nativo, asegúrate de indicarle cómo interactuar y comportarse."
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             className="w-full min-h-[250px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input font-mono resize-y"

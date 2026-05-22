@@ -69,28 +69,52 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
       value: "agent",
       label: "Agente",
       description: "Desarrolla, edita y depura con herramientas avanzadas",
+      command: "/agent",
     },
     {
       value: "plan",
       label: "Planificar",
       description: "Diseña un plan de acción antes de implementar",
+      command: "/plan",
     },
     {
       value: "ask",
       label: "Preguntar",
       description: "Consulta sobre tu código sin realizar cambios",
+      command: "/ask",
     },
   ];
 
   const customOptions = (customAgents || []).map((agent) => ({
     value: `custom-agent::${agent.id}`,
     label: agent.name,
-    description: `[Comando: /${agent.slashCommand}] Agente personalizado con base ${agent.baseAgent}`,
+    description: agent.description || "",
+    command: `/${agent.slashCommand}`,
   }));
 
   const options = [...baseOptions, ...customOptions];
 
   const isCustomMode = selectedMode.startsWith("custom-agent::");
+
+  const renderItem = (option: any) => {
+    return (
+      <div className="flex flex-col gap-0 flex-1 min-w-0 w-full">
+        <div className="flex items-center justify-between w-full whitespace-nowrap">
+          <span>{option.label}</span>
+          {option.command && (
+            <span className="ml-2 font-mono text-emerald-600 dark:text-emerald-400 text-[11px] shrink-0 font-normal">
+              {option.command}
+            </span>
+          )}
+        </div>
+        {option.description && (
+          <span className="typo-caption leading-tight opacity-80 whitespace-nowrap">
+            {option.description}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <UnifiedSelector
@@ -110,6 +134,7 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
       popoverWidth="w-[300px]"
       data-testid="chat-mode-selector"
       side="top"
+      renderItem={renderItem}
     />
   );
 }

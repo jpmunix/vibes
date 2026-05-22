@@ -24,7 +24,7 @@ export type CustomAgentDto = z.infer<typeof CustomAgentDtoSchema>;
 
 export const CreateCustomAgentParamsSchema = z.object({
   name: z.string(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   systemPrompt: z.string(),
   baseAgent: z.enum(["build", "plan", "explore"]),
   promptMode: z.enum(["additive", "replace"]),
@@ -39,7 +39,7 @@ export type CreateCustomAgentParams = z.infer<typeof CreateCustomAgentParamsSche
 export const UpdateCustomAgentParamsSchema = z.object({
   id: z.number(),
   name: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   systemPrompt: z.string().optional(),
   baseAgent: z.enum(["build", "plan", "explore"]).optional(),
   promptMode: z.enum(["additive", "replace"]).optional(),

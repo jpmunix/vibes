@@ -670,6 +670,21 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         const vibesMatch = message.content?.match(/\.vibes\/[\w\-.]+\.md/);
                         if (!vibesMatch) return null;
                         const artifactPath = vibesMatch[0];
+
+                        // Only show the button if this is the latest assistant message in the chat that mentions this artifact path
+                        if (selectedChatId) {
+                          const chatMsgs = messagesById.get(selectedChatId);
+                          if (chatMsgs) {
+                            const lastMentionMsg = chatMsgs
+                              .slice()
+                              .reverse()
+                              .find((m) => m.role === "assistant" && m.content?.includes(artifactPath));
+                            if (lastMentionMsg && lastMentionMsg.id !== message.id) {
+                              return null;
+                            }
+                          }
+                        }
+
                         return (
                           <div className="mt-3 pt-3 border-t border-border/20">
                             <button
