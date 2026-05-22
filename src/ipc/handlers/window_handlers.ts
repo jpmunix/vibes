@@ -168,8 +168,11 @@ export function registerWindowHandlers() {
 
     const saved = getSavedWindowBounds("database", { width: 1000, height: 700 });
 
+    const dbIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const dbIcon = nativeImage.createFromPath(dbIconPath);
+
     const dbWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: dbIconPath,
       show: false,
       width: saved.width,
       height: saved.height,
@@ -190,6 +193,11 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!dbIcon.isEmpty()) {
+      dbWindow.setIcon(dbIcon);
+    }
 
     if (saved.isMaximized) {
       dbWindow.maximize();
@@ -275,7 +283,7 @@ export function registerWindowHandlers() {
     const savedGit = getSavedWindowBounds("git", { width: 1100, height: 750 });
 
     const gitWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: gitIconPath,
       show: false,
       width: savedGit.width,
       height: savedGit.height,
@@ -397,8 +405,11 @@ export function registerWindowHandlers() {
 
     const savedChat = getSavedWindowBounds("chat", { width: 1200, height: 800 });
 
+    const chatIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const chatIcon = nativeImage.createFromPath(chatIconPath);
+
     const chatWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: chatIconPath,
       show: false,
       width: savedChat.width,
       height: savedChat.height,
@@ -422,6 +433,11 @@ export function registerWindowHandlers() {
         backgroundThrottling: false,
       },
     });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!chatIcon.isEmpty()) {
+      chatWindow.setIcon(chatIcon);
+    }
 
     if (savedChat.isMaximized) {
       chatWindow.maximize();
@@ -511,8 +527,11 @@ export function registerWindowHandlers() {
 
     const savedMsg = getSavedWindowBounds("message", { width: 800, height: 600 });
 
+    const msgIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const msgIcon = nativeImage.createFromPath(msgIconPath);
+
     const messageWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: msgIconPath,
       show: false,
       width: savedMsg.width,
       height: savedMsg.height,
@@ -532,6 +551,11 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!msgIcon.isEmpty()) {
+      messageWindow.setIcon(msgIcon);
+    }
 
     // Remove native menu bar entirely
     messageWindow.removeMenu();
@@ -626,8 +650,11 @@ export function registerWindowHandlers() {
 
     const savedConsole = getSavedWindowBounds("console", { width: 900, height: 550 });
 
+    const consoleIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const consoleIcon = nativeImage.createFromPath(consoleIconPath);
+
     const consoleWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: consoleIconPath,
       show: false,
       width: savedConsole.width,
       height: savedConsole.height,
@@ -648,6 +675,11 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!consoleIcon.isEmpty()) {
+      consoleWindow.setIcon(consoleIcon);
+    }
 
     if (savedConsole.isMaximized) {
       consoleWindow.maximize();
@@ -705,7 +737,7 @@ export function registerWindowHandlers() {
     const savedCode = getSavedWindowBounds("code", { width: 1100, height: 750 });
 
     const codeWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: codeIconPath,
       show: false,
       width: savedCode.width,
       height: savedCode.height,
@@ -716,7 +748,6 @@ export function registerWindowHandlers() {
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
       title: `${appName} – Código`,
-      icon: codeIcon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
@@ -894,8 +925,11 @@ export function registerWindowHandlers() {
 
     const savedMemory = getSavedWindowBounds("memory", { width: 900, height: 650 });
 
+    const memIconPath = path.join(app.getAppPath(), `assets/${getActiveFlavor().iconFolder}/logo.png`);
+    const memIcon = nativeImage.createFromPath(memIconPath);
+
     const memoryWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: memIconPath,
       show: false,
       width: savedMemory.width,
       height: savedMemory.height,
@@ -915,6 +949,11 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!memIcon.isEmpty()) {
+      memoryWindow.setIcon(memIcon);
+    }
 
     if (savedMemory.isMaximized) {
       memoryWindow.maximize();
@@ -995,7 +1034,7 @@ export function registerWindowHandlers() {
     const savedAdmin = getSavedWindowBounds("admin", { width: 1000, height: 700 });
 
     adminWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: iconPath,
       show: false,
       width: savedAdmin.width,
       height: savedAdmin.height,
@@ -1005,7 +1044,6 @@ export function registerWindowHandlers() {
       minHeight: 500,
       skipTaskbar: false,
       title: "Panel de Administración",
-      icon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
@@ -1095,7 +1133,7 @@ export function registerWindowHandlers() {
     const savedPlayground = getSavedWindowBounds("playground", { width: 900, height: 700 });
 
     playgroundWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: iconPath,
       show: false,
       width: savedPlayground.width,
       height: savedPlayground.height,
@@ -1105,7 +1143,6 @@ export function registerWindowHandlers() {
       minHeight: 500,
       skipTaskbar: false,
       title: "Playground de modelos",
-      icon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
@@ -1195,7 +1232,7 @@ export function registerWindowHandlers() {
     const savedDocs = getSavedWindowBounds("docs", { width: 1000, height: 700 });
 
     docsWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: iconPath,
       show: false,
       width: savedDocs.width,
       height: savedDocs.height,
@@ -1205,7 +1242,6 @@ export function registerWindowHandlers() {
       minHeight: 500,
       skipTaskbar: false,
       title: "Documentación",
-      icon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
@@ -1293,7 +1329,7 @@ export function registerWindowHandlers() {
     const savedDocs = getSavedWindowBounds("release-notes", { width: 1000, height: 700 });
 
     releaseNotesWindow = new BrowserWindow({
-      icon: path.join(app.getAppPath(), `assets/icons/flavors/${getActiveFlavor().iconFolder}/logo.png`),
+      icon: iconPath,
       show: false,
       width: savedDocs.width,
       height: savedDocs.height,
@@ -1303,7 +1339,6 @@ export function registerWindowHandlers() {
       minHeight: 500,
       skipTaskbar: false,
       title: "Notas de Versión",
-      icon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,

@@ -1667,6 +1667,38 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     }));
   }, [archivedChats, archivedSearchQuery, dbSearchResults]);
 
+  // Archived chat preview state
+  const [previewChatId, setPreviewChatId] = useState<number | null>(null);
+  const [previewChatMessages, setPreviewChatMessages] = useState<
+    Array<{ id: number; role: string; content: string }>
+  >([]);
+  const [previewChatTitle, setPreviewChatTitle] = useState<string | null>(null);
+  const [loadingChatPreview, setLoadingChatPreview] = useState(false);
+
+  const handlePreviewChat = useCallback(
+    async (chatId: number, title: string | null) => {
+      setPreviewChatId(chatId);
+      setPreviewChatTitle(title);
+      setLoadingChatPreview(true);
+      setPreviewChatMessages([]);
+      try {
+        const chat = await ipc.chat.getChat(chatId);
+        setPreviewChatMessages(
+          (chat.messages || []).map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+          })),
+        );
+      } catch (e) {
+        console.error("Error loading chat preview:", e);
+      } finally {
+        setLoadingChatPreview(false);
+      }
+    },
+    [],
+  );
+
   // Plans panel state
   const [plansPanelOpen, setPlansPanelOpen] = useState(false);
   const [appPlans, setAppPlans] = useState<
@@ -2318,7 +2350,11 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               onClick={() => setArchivePanelOpen(false)}
             />
             <div
-              className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className={`fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${
+                previewChatId
+                  ? "w-[90vw] max-w-[1200px] h-[85vh]"
+                  : "w-[720px] max-w-[90vw]"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Panel header */}
@@ -2345,164 +2381,229 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 </button>
               </div>
 
-              {/* Search bar */}
-              {!loadingArchived && archivedChats.length > 0 && (
-                <div className="px-5 py-2.5 border-b border-border bg-sidebar-accent/10 relative shrink-0">
-                  <Search
-                    size={14}
-                    className="absolute left-8 top-1/2 -translate-y-1/2 opacity-50 text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
-                    placeholder="Buscar chats archivados..."
-                    value={archivedSearchQuery}
-                    onChange={(e) => setArchivedSearchQuery(e.target.value)}
-                    autoFocus
-                  />
-                  {archivedSearchQuery && (
-                    <button
-                      type="button"
-                      className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/75 transition-colors cursor-pointer"
-                      onClick={() => setArchivedSearchQuery("")}
-                      title="Limpiar búsqueda"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Panel content */}
-              <div className="max-h-[420px] overflow-y-auto flex-1">
-                {loadingArchived ? (
-                  <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="text-sm">Cargando archivados...</span>
-                  </div>
-                ) : archivedChats.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
-                    <div className="p-4 rounded-2xl bg-sidebar-accent/40">
-                      <Archive size={28} className="opacity-50" />
+              {/* Panel content — list or preview mode */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {previewChatId ? (
+                  /* ── Chat preview mode ── */
+                  <div className="flex flex-col h-full">
+                    {/* Preview header */}
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50 bg-sidebar-accent/15 shrink-0">
+                      <button
+                        type="button"
+                        className="p-1 rounded-md hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                        onClick={() => {
+                          setPreviewChatId(null);
+                          setPreviewChatMessages([]);
+                          setPreviewChatTitle(null);
+                        }}
+                        title="Volver a la lista"
+                      >
+                        <ArrowLeft size={16} />
+                      </button>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm font-semibold truncate">
+                          {previewChatTitle || "Sin título"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground/50">
+                          Vista previa del chat archivado
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-muted-foreground/70">
-                        Sin chats archivados
-                      </p>
-                      <p className="text-xs mt-0.5 text-muted-foreground/40">
-                        Los chats archivados de {app.name} aparecerán aquí
-                      </p>
-                    </div>
-                  </div>
-                ) : filteredArchivedChats.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50 animate-in fade-in-50 duration-200">
-                    <div className="p-4 rounded-2xl bg-sidebar-accent/40">
-                      <Search size={28} className="opacity-50" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-muted-foreground/70">
-                        No se encontraron resultados
-                      </p>
-                      <p className="text-xs mt-0.5 text-muted-foreground/40">
-                        Intenta buscar con otros términos
-                      </p>
+                    {/* Preview content */}
+                    <div className="flex-1 overflow-y-auto px-5 py-4">
+                      {loadingChatPreview ? (
+                        <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="text-sm">Cargando chat...</span>
+                        </div>
+                      ) : previewChatMessages.length === 0 ? (
+                        <div className="text-muted-foreground text-sm text-center mt-10">
+                          Este chat no tiene mensajes.
+                        </div>
+                      ) : (
+                        <div className="space-y-6 max-w-4xl mx-auto">
+                          {previewChatMessages.map((msg) => (
+                            <div key={msg.id} className="flex flex-col gap-1">
+                              <span className={`text-[11px] font-semibold uppercase tracking-wider ${
+                                msg.role === "user"
+                                  ? "text-primary/70"
+                                  : "text-muted-foreground/50"
+                              }`}>
+                                {msg.role === "user" ? "Tú" : "Asistente"}
+                              </span>
+                              <div className={`rounded-xl px-4 py-3 text-sm ${
+                                msg.role === "user"
+                                  ? "bg-primary/5 border border-primary/10"
+                                  : "bg-sidebar-accent/30 border border-border/30"
+                              }`}>
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                  <VibesMarkdownParser
+                                    content={msg.content}
+                                    forceFullMode
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <div className="py-2">
-                    {filteredArchivedChats.map((chat) => (
-                      <div
-                        key={chat.id}
-                        className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
-                      >
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm truncate font-medium text-foreground">
-                            <HighlightedText
-                              text={chat.title || "Sin título"}
-                              highlight={archivedSearchQuery}
-                            />
-                          </span>
-                          {chat.firstPrompt && !chat.matchedSnippet && (
-                            <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed line-clamp-2">
-                              {chat.firstPrompt}
-                            </p>
-                          )}
-                          {chat.matchedSnippet && (
-                            <p className="text-xs text-muted-foreground/80 mt-1.5 bg-sidebar-accent/25 rounded-xl px-3 py-2 border border-border/30 font-normal leading-relaxed line-clamp-2">
-                              <HighlightedText
-                                text={getSnippet(
-                                  chat.matchedSnippet,
-                                  archivedSearchQuery,
-                                )}
-                                highlight={archivedSearchQuery}
-                              />
-                            </p>
-                          )}
-                          <ChatRowLabels
-                            labels={chat.labels}
-                            onRemove={(id) => {
-                              handleRemoveLabel(id);
-                              setArchivedChats((prev) =>
-                                prev.map((c) =>
-                                  c.id === chat.id
-                                    ? {
-                                        ...c,
-                                        labels: c.labels?.filter(
-                                          (ll) => ll.id !== id,
-                                        ),
-                                      }
-                                    : c,
-                                ),
-                              );
-                            }}
-                          />
-                          <span className="text-xs text-muted-foreground/55 mt-1.5">
-                            Archivado ·{" "}
-                            {formatDistanceToNow(safeDate(chat.createdAt), {
-                              addSuffix: true,
-                              locale: es,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-1 shrink-0 items-center">
+                  /* ── List mode ── */
+                  <>
+                    {/* Search bar */}
+                    {!loadingArchived && archivedChats.length > 0 && (
+                      <div className="px-5 py-2.5 border-b border-border bg-sidebar-accent/10 relative shrink-0">
+                        <Search
+                          size={14}
+                          className="absolute left-8 top-1/2 -translate-y-1/2 opacity-50 text-muted-foreground"
+                        />
+                        <input
+                          type="text"
+                          className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
+                          placeholder="Buscar chats archivados..."
+                          value={archivedSearchQuery}
+                          onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                        {archivedSearchQuery && (
                           <button
                             type="button"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                            onClick={() => {
-                              setArchivePanelOpen(false);
-                              ipc.system.openChatWindow({
-                                appId: app.id,
-                                chatId: chat.id,
-                                theme,
-                                themeIntensity: intensity,
-                              });
-                            }}
-                            title="Abrir en ventana nueva"
+                            className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/75 transition-colors cursor-pointer"
+                            onClick={() => setArchivedSearchQuery("")}
+                            title="Limpiar búsqueda"
                           >
-                            <ExternalLink size={14} strokeWidth={2} />
+                            <X size={13} />
                           </button>
-                          <button
-                            type="button"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                            onClick={() => handleUnarchive(chat.id)}
-                            disabled={unarchivingId === chat.id}
-                            title="Restaurar"
-                          >
-                            {unarchivingId === chat.id ? (
-                              <Loader2 size={15} className="animate-spin" />
-                            ) : (
-                              <ArchiveRestore size={15} strokeWidth={2} />
-                            )}
-                          </button>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    <div className="max-h-[420px] overflow-y-auto">
+                      {loadingArchived ? (
+                        <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="text-sm">Cargando archivados...</span>
+                        </div>
+                      ) : archivedChats.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                          <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                            <Archive size={28} className="opacity-50" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-muted-foreground/70">
+                              Sin chats archivados
+                            </p>
+                            <p className="text-xs mt-0.5 text-muted-foreground/40">
+                              Los chats archivados de {app.name} aparecerán aquí
+                            </p>
+                          </div>
+                        </div>
+                      ) : filteredArchivedChats.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50 animate-in fade-in-50 duration-200">
+                          <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                            <Search size={28} className="opacity-50" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-muted-foreground/70">
+                              No se encontraron resultados
+                            </p>
+                            <p className="text-xs mt-0.5 text-muted-foreground/40">
+                              Intenta buscar con otros términos
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          {filteredArchivedChats.map((chat) => (
+                            <div
+                              key={chat.id}
+                              className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
+                            >
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="text-sm truncate font-medium text-foreground">
+                                  <HighlightedText
+                                    text={chat.title || "Sin título"}
+                                    highlight={archivedSearchQuery}
+                                  />
+                                </span>
+                                {chat.firstPrompt && !chat.matchedSnippet && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed line-clamp-2">
+                                    {chat.firstPrompt}
+                                  </p>
+                                )}
+                                {chat.matchedSnippet && (
+                                  <p className="text-xs text-muted-foreground/80 mt-1.5 bg-sidebar-accent/25 rounded-xl px-3 py-2 border border-border/30 font-normal leading-relaxed line-clamp-2">
+                                    <HighlightedText
+                                      text={getSnippet(
+                                        chat.matchedSnippet,
+                                        archivedSearchQuery,
+                                      )}
+                                      highlight={archivedSearchQuery}
+                                    />
+                                  </p>
+                                )}
+                                <ChatRowLabels
+                                  labels={chat.labels}
+                                  onRemove={(id) => {
+                                    handleRemoveLabel(id);
+                                    setArchivedChats((prev) =>
+                                      prev.map((c) =>
+                                        c.id === chat.id
+                                          ? {
+                                              ...c,
+                                              labels: c.labels?.filter(
+                                                (ll) => ll.id !== id,
+                                              ),
+                                            }
+                                          : c,
+                                      ),
+                                    );
+                                  }}
+                                />
+                                <span className="text-xs text-muted-foreground/55 mt-1.5">
+                                  Archivado ·{" "}
+                                  {formatDistanceToNow(safeDate(chat.createdAt), {
+                                    addSuffix: true,
+                                    locale: es,
+                                  })}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                                  onClick={() => handlePreviewChat(chat.id, chat.title)}
+                                  title="Vista previa"
+                                >
+                                  <Eye size={14} strokeWidth={2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                                  onClick={() => handleUnarchive(chat.id)}
+                                  disabled={unarchivingId === chat.id}
+                                  title="Restaurar"
+                                >
+                                  {unarchivingId === chat.id ? (
+                                    <Loader2 size={15} className="animate-spin" />
+                                  ) : (
+                                    <ArchiveRestore size={15} strokeWidth={2} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Footer */}
-              {archivedChats.length > 0 && (
+              {/* Footer — only in list mode */}
+              {!previewChatId && archivedChats.length > 0 && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20 shrink-0">
                   <span className="text-xs text-muted-foreground/50">
                     {archivedSearchQuery.trim() ? (
