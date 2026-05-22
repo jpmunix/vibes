@@ -73,6 +73,7 @@ import {
   PocketBaseIcon,
 } from "@/components/ui/icons";
 import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
+import { ChatPreviewThread } from "@/components/chat/ChatPreviewThread";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -82,6 +83,7 @@ import {
   isStreamingByIdAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
+import type { Message } from "@/ipc/types";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
@@ -1680,9 +1682,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 
   // Archived chat preview state
   const [previewChatId, setPreviewChatId] = useState<number | null>(null);
-  const [previewChatMessages, setPreviewChatMessages] = useState<
-    Array<{ id: number; role: string; content: string }>
-  >([]);
+  const [previewChatMessages, setPreviewChatMessages] = useState<Message[]>([]);
   const [previewChatTitle, setPreviewChatTitle] = useState<string | null>(null);
   const [loadingChatPreview, setLoadingChatPreview] = useState(false);
 
@@ -1694,13 +1694,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       setPreviewChatMessages([]);
       try {
         const chat = await ipc.chat.getChat(chatId);
-        setPreviewChatMessages(
-          (chat.messages || []).map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-          })),
-        );
+        setPreviewChatMessages(chat.messages || []);
       } catch (e) {
         console.error("Error loading chat preview:", e);
       } finally {
@@ -2421,43 +2415,12 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       </div>
                     </div>
                     {/* Preview content */}
-                    <div className="flex-1 overflow-y-auto px-5 py-4">
-                      {loadingChatPreview ? (
-                        <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
-                          <Loader2 size={16} className="animate-spin" />
-                          <span className="text-sm">Cargando chat...</span>
-                        </div>
-                      ) : previewChatMessages.length === 0 ? (
-                        <div className="text-muted-foreground text-sm text-center mt-10">
-                          Este chat no tiene mensajes.
-                        </div>
-                      ) : (
-                        <div className="space-y-6 max-w-4xl mx-auto">
-                          {previewChatMessages.map((msg) => (
-                            <div key={msg.id} className="flex flex-col gap-1">
-                              <span className={`text-[11px] font-semibold uppercase tracking-wider ${
-                                msg.role === "user"
-                                  ? "text-primary/70"
-                                  : "text-muted-foreground/50"
-                              }`}>
-                                {msg.role === "user" ? "Tú" : "Asistente"}
-                              </span>
-                              <div className={`rounded-xl px-4 py-3 text-sm ${
-                                msg.role === "user"
-                                  ? "bg-primary/5 border border-primary/10"
-                                  : "bg-sidebar-accent/30 border border-border/30"
-                              }`}>
-                                <div className="prose prose-sm dark:prose-invert max-w-none">
-                                  <VibesMarkdownParser
-                                    content={msg.content}
-                                    forceFullMode
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="flex-1 min-h-0">
+                      <ChatPreviewThread
+                        messages={previewChatMessages}
+                        loading={loadingChatPreview}
+                        emptyText="Este chat no tiene mensajes."
+                      />
                     </div>
                   </div>
                 ) : (

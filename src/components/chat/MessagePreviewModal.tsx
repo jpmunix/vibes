@@ -4,13 +4,12 @@ import { useAtom } from "jotai";
 import { messagePreviewAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import type { Message } from "@/ipc/types";
-import ChatMessage from "./ChatMessage";
-import { X, Loader2 } from "@/components/ui/icons";
+import { ChatPreviewThread } from "./ChatPreviewThread";
+import { X } from "@/components/ui/icons";
 
 /**
  * MessagePreviewModal — renders the full chat stream with rich styling,
- * utilizing the actual ChatMessage component. Highlights and scrolls to the
- * clicked message.
+ * utilizing the shared ChatPreviewThread component.
  */
 export function MessagePreviewModal() {
   const [preview, setPreview] = useAtom(messagePreviewAtom);
@@ -50,20 +49,6 @@ export function MessagePreviewModal() {
       cancelled = true;
     };
   }, [preview]);
-
-  // Scroll to the target message once loaded
-  useEffect(() => {
-    if (!loading && targetMessageId && messages.length > 0) {
-      // Small timeout to let rendering finish and positions settle
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`msg-preview-${targetMessageId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, targetMessageId, messages]);
 
   const handleClose = useCallback(() => {
     setPreview(null);
@@ -113,37 +98,13 @@ export function MessagePreviewModal() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 font-chat bg-background">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Cargando conversación...</span>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="text-muted-foreground text-sm text-center mt-10">
-              Este chat no tiene mensajes.
-            </div>
-          ) : (
-            <div className="max-w-4xl mx-auto py-4 space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  id={`msg-preview-${msg.id}`}
-                  className={`transition-all duration-300 rounded-2xl p-1 ${
-                    msg.id === targetMessageId
-                      ? "ring-2 ring-primary/45 bg-primary/5 shadow-xs"
-                      : ""
-                  }`}
-                >
-                  <ChatMessage
-                    message={msg}
-                    isLastMessage={false}
-                    forceFullMode={true}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="flex-1 min-h-0">
+          <ChatPreviewThread
+            messages={messages}
+            loading={loading}
+            targetMessageId={targetMessageId}
+            emptyText="Este chat no tiene mensajes."
+          />
         </div>
       </div>
     </>,

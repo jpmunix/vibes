@@ -108,12 +108,12 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   // ─── General / Tema ───
   {
     id: "theme",
-    label: "Modo",
-    description: "Elige entre claro, oscuro o sincronizado con el sistema",
+    label: "Apariencia",
+    description: "Define el tema visual principal de la interfaz",
     keywords: [
       "tema", "mode", "dark", "light",
       // sub-values (pill labels)
-      "sistema", "claro", "oscuro",
+      "claro", "oscuro",
       "apariencia", "color",
     ],
     section: "Tema",
@@ -1011,7 +1011,7 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
@@ -1102,72 +1102,83 @@ export function GeneralSettings({
 
       <div className="space-y-4">
         <SettingItem
-          label="Modo"
-          description="Elige entre claro, oscuro o sincronizado con el sistema"
+          label="Apariencia"
+          description="Define el tema visual principal de la interfaz"
           control={
             <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              {(["system", "light", "dark"] as const).map((option) => (
+              {(["light", "dark"] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                    theme === option
+                    (option === "dark" ? isDarkMode : !isDarkMode)
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "hover:bg-primary/10",
                   )}
                 >
-                  {option === "system"
-                    ? "Sistema"
-                    : option === "light"
-                      ? "Claro"
-                      : "Oscuro"}
+                  {option === "light" ? "Claro" : "Oscuro"}
                 </button>
               ))}
             </div>
           }
         />
 
-        <SettingItem
-          label="Sub-tema (Claro)"
-          description="Paleta de colores para el modo claro"
-          control={
-            <UnifiedSelector
-              value={themeFlavorLight || "default"}
-              onChange={async (value) => {
-                setThemeFlavorLight(value);
-                await updateSettings({ themeFlavorLight: value }, { showToast: true });
-              }}
-              options={[
-                { value: "default", label: "Claro Clásico", description: "Esquema de colores claro estándar" },
-                { value: "github-light", label: "GitHub Light", description: "Estilo limpio al estilo de GitHub" },
-                { value: "solarized-light", label: "Solarized Light", description: "Tono crema cálido de alta legibilidad" },
-              ]}
-              triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
-            />
-          }
-        />
-
-        <SettingItem
-          label="Sub-tema (Oscuro)"
-          description="Paleta de colores para el modo oscuro"
-          control={
-            <UnifiedSelector
-              value={themeFlavorDark || "default"}
-              onChange={async (value) => {
-                setThemeFlavorDark(value);
-                await updateSettings({ themeFlavorDark: value }, { showToast: true });
-              }}
-              options={[
-                { value: "default", label: "Oscuro Clásico", description: "Esquema de colores oscuro estándar" },
-                { value: "dracula", label: "Dracula", description: "Paleta violeta y gris oscuro de Dracula" },
-                { value: "one-dark", label: "One Dark", description: "Tema clásico de Atom One Dark" },
-                { value: "nord", label: "Nord", description: "Tonos árticos azulados fríos y limpios" },
-              ]}
-              triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
-            />
-          }
-        />
+        {!isDarkMode ? (
+          <SettingItem
+            label="Variante del tema claro"
+            description="Personaliza el tema claro con un esquema de color de autor"
+            control={
+              <UnifiedSelector
+                value={themeFlavorLight || "default"}
+                onChange={async (value) => {
+                  setThemeFlavorLight(value);
+                  await updateSettings({ themeFlavorLight: value }, { showToast: true });
+                }}
+                options={[
+                  { value: "default", label: "Claro Clásico", description: "Esquema de colores claro estándar" },
+                  { value: "github-light", label: "GitHub Light", description: "Estilo limpio al estilo de GitHub" },
+                  { value: "solarized-light", label: "Solarized Light", description: "Tono crema cálido de alta legibilidad" },
+                  { value: "gruvbox-light", label: "Gruvbox Light", description: "Esquema retro y cálido color crema/arena" },
+                  { value: "nord-light", label: "Nord Light", description: "Diseño nórdico de tonos claros y fríos" },
+                  { value: "cupcake", label: "Cupcake", description: "Paleta pastel dulce con tonos rosa y morado" },
+                  { value: "one-light", label: "One Light", description: "El tema claro limpio de Atom One" },
+                  { value: "forest-light", label: "Forest Light", description: "Fondo verde salvia muy relajante y suave" },
+                  { value: "papercolor-light", label: "PaperColor Light", description: "Fondo blanco puro de alto contraste" },
+                  { value: "catppuccin-latte", label: "Catppuccin Latte", description: "Paleta pastel moderna con tonos lavanda" },
+                ]}
+                triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+              />
+            }
+          />
+        ) : (
+          <SettingItem
+            label="Variante del tema oscuro"
+            description="Personaliza el tema oscuro con un esquema de color de autor"
+            control={
+              <UnifiedSelector
+                value={themeFlavorDark || "default"}
+                onChange={async (value) => {
+                  setThemeFlavorDark(value);
+                  await updateSettings({ themeFlavorDark: value }, { showToast: true });
+                }}
+                options={[
+                  { value: "default", label: "Oscuro Clásico", description: "Esquema de colores oscuro estándar" },
+                  { value: "dracula", label: "Dracula", description: "Paleta violeta y gris oscuro de Dracula" },
+                  { value: "one-dark", label: "One Dark", description: "Tema clásico de Atom One Dark" },
+                  { value: "nord", label: "Nord Dark", description: "Tonos árticos azulados fríos y limpios" },
+                  { value: "monokai", label: "Monokai", description: "Fondo gris cálido con acentos neon clásicos" },
+                  { value: "solarized-dark", label: "Solarized Dark", description: "Fondo verde azulado profundo clásico" },
+                  { value: "gruvbox-dark", label: "Gruvbox Dark", description: "Paleta retro en marrón oscuro y arena" },
+                  { value: "synthwave84", label: "Synthwave '84", description: "Fondo morado y rosa neon de estética retro" },
+                  { value: "night-owl", label: "Night Owl", description: "Diseño azul marino profundo para uso nocturno" },
+                  { value: "tokyo-night", label: "Tokyo Night", description: "Paleta gris azulada elegante y limpia" },
+                ]}
+                triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+              />
+            }
+          />
+        )}
 
         {/* Primary Color Picker */}
         <SettingItem
