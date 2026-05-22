@@ -279,7 +279,7 @@ export function ChatHeader({
                 })
                 .map((chat) => {
                   const chatStreaming = isStreamingById.get(chat.id) ?? false;
-                  const chatUnread = selectedChatId !== chat.id && recentStreamChatIds.has(chat.id);
+                  const chatUnread = selectedChatId !== chat.id && (recentStreamChatIds.has(chat.id) || chat.isRead === false);
                   return (
                   <DropdownMenuItem
                     key={chat.id}

@@ -253,6 +253,7 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         isPlan: z.boolean().optional().default(false),
+        isRead: z.boolean().optional().default(true),
         lastReadAt: z.date().nullable().optional(),
         labels: z.array(z.object({
           id: z.number(),
@@ -296,6 +297,7 @@ export const chatContracts = {
         createdAt: z.date(),
         matchedMessageContent: z.string().nullable(),
         isPlan: z.boolean().optional().default(false),
+        isRead: z.boolean().optional().default(true),
         labels: z.array(z.object({
           id: z.number(),
           label: z.string(),
@@ -432,6 +434,7 @@ export const chatContracts = {
         appName: z.string(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        isRead: z.boolean().optional().default(true),
         labels: z.array(z.object({
           id: z.number(),
           label: z.string(),

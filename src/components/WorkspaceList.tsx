@@ -1008,6 +1008,7 @@ const AppChats = memo(function AppChats({
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
+  const queryClient = useQueryClient();
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -1017,9 +1018,11 @@ const AppChats = memo(function AppChats({
     (chatId: number) => {
       if (selectedChatId === chatId) return false;
       if (recentStreamChatIds.has(chatId)) return true;
+      const chat = chats.find((c) => c.id === chatId);
+      if (chat && chat.isRead === false) return true;
       return false;
     },
-    [selectedChatId, recentStreamChatIds],
+    [selectedChatId, recentStreamChatIds, chats],
   );
 
   const handleChatClickAndMarkRead = useCallback(
@@ -1032,13 +1035,14 @@ const AppChats = memo(function AppChats({
         return next;
       });
       // Mark as read in DB
-      ipc.chat.markChatRead(chatId).catch(() => {});
+      ipc.chat.markChatRead(chatId).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      }).catch(() => {});
       onChatClick(appId, chatId);
     },
-    [setRecentStreamChatIds, onChatClick],
+    [setRecentStreamChatIds, onChatClick, queryClient],
   );
-
-  const queryClient = useQueryClient();
 
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -1597,7 +1601,15 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     return () => clearTimeout(delayDebounce);
   }, [app.id, archivedSearchQuery]);
 
-  const filteredArchivedChats = useMemo(() => {
+  const filteredArchivedChats = useMemo<
+    Array<{
+      id: number;
+      title: string | null;
+      createdAt: Date;
+      labels?: Array<{ id: number; label: string; color: string }>;
+      matchedSnippet?: string;
+    }>
+  >(() => {
     if (!archivedSearchQuery.trim()) return archivedChats;
     const query = archivedSearchQuery.toLowerCase().trim();
 
@@ -2995,6 +3007,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     appName: string;
     title: string | null;
     createdAt: Date;
+    isRead?: boolean;
     labels?: LabelEntry[];
   };
   const { data: pinnedChatsRaw = [] } = useQuery<PinnedChatRow[]>({
@@ -3286,6 +3299,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       });
       try {
         await ipc.chat.markChatUnread(chatId);
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       } catch (e) {
         // Rollback atom on error
         setRecentStreamChatIds((prev) => {
@@ -3296,7 +3311,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         showError(e);
       }
     },
-    [setRecentStreamChatIds],
+    [setRecentStreamChatIds, queryClient],
   );
 
   const handleRemovePinnedLabel = useCallback(
@@ -3320,9 +3335,15 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         next.delete(chatId);
         return next;
       });
-      ipc.chat.markChatRead(chatId).catch(() => {});
+      try {
+        await ipc.chat.markChatRead(chatId);
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      } catch (e) {
+        showError(e);
+      }
     },
-    [setRecentStreamChatIds],
+    [setRecentStreamChatIds, queryClient],
   );
 
   const handleArchiveChatClick = useCallback(
@@ -3669,7 +3690,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                 next.delete(pinned.id);
                                 return next;
                               });
-                              ipc.chat.markChatRead(pinned.id).catch(() => {});
+                              ipc.chat.markChatRead(pinned.id).then(() => {
+                                queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+                                queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+                              }).catch(() => {});
                               navigate({
                                 to: "/",
                                 search: {
@@ -3685,13 +3709,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                   size={12}
                                   className="animate-spin text-primary shrink-0"
                                 />
-                              ) : recentStreamChatIds.has(pinned.id) &&
+                              ) : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false) &&
                                 selectedChatId !== pinned.id ? (
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
                               ) : null}
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span
-                                  className={`truncate ${recentStreamChatIds.has(pinned.id) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
+                                  className={`truncate ${(recentStreamChatIds.has(pinned.id) || pinned.isRead === false) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
                                 >
                                   {pinned.title || "Nuevo chat"}
                                 </span>
@@ -3778,7 +3802,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
                     const isUnread =
-                      recentStreamChatIds.has(pinnedMenuId) &&
+                      (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false) &&
                       selectedChatId !== pinnedMenuId;
                     return (
                       <ChatContextMenuPortal

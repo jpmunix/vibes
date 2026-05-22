@@ -34,6 +34,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+
 /**
  * / route — renders ChatPanel inline (no preview, no dev server).
  * Text-focused chat mode without starting any preview or server infrastructure.
@@ -48,6 +51,7 @@ export default function WorkspacePage() {
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const [appsList] = useAtom(appsListAtom);
   const restoredRef = useRef(false);
+  const queryClient = useQueryClient();
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
@@ -108,9 +112,12 @@ export default function WorkspacePage() {
     if (chatId) {
       setSelectedChatId(chatId);
       // Mark this chat as read
-      ipc.chat.markChatRead(chatId).catch(() => {});
+      ipc.chat.markChatRead(chatId).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      }).catch(() => {});
     }
-  }, [chatId, setSelectedChatId]);
+  }, [chatId, setSelectedChatId, queryClient]);
 
   // Setup streaming for this chat
   useStreamChat({ hasChatId: !!chatId });

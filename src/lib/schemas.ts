@@ -66,6 +66,7 @@ export const ChatSummarySchema = z.object({
   title: z.string().nullable(),
   createdAt: z.date(),
   isPlan: z.boolean().optional().default(false),
+  isRead: z.boolean().optional().default(true),
   lastReadAt: z.date().nullable().optional(),
   labels: z.array(z.object({
     id: z.number(),
@@ -94,6 +95,7 @@ export const ChatSearchResultSchema = z.object({
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
   isPlan: z.boolean().optional().default(false),
+  isRead: z.boolean().optional().default(true),
   labels: z.array(z.object({
     id: z.number(),
     label: z.string(),

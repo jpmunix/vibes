@@ -112,6 +112,7 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          isRead: true,
           lastReadAt: true,
         },
         with: {
@@ -136,6 +137,7 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          isRead: true,
           lastReadAt: true,
         },
         with: {
@@ -151,7 +153,11 @@ export function registerChatHandlers() {
       });
 
     const allChats = await query;
-    return allChats as unknown as ChatSummary[];
+    return allChats.map((chat) => ({
+      ...chat,
+      isPlan: chat.isPlan ? true : false,
+      isRead: chat.isRead !== 0,
+    })) as unknown as ChatSummary[];
   });
 
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
@@ -231,6 +237,7 @@ export function registerChatHandlers() {
         title: remoteSchema.chats.title,
         createdAt: remoteSchema.chats.createdAt,
         isPlan: remoteSchema.chats.isPlan,
+        isRead: remoteSchema.chats.isRead,
       })
       .from(remoteSchema.chats)
       .where(and(
@@ -248,6 +255,7 @@ export function registerChatHandlers() {
       createdAt: c.createdAt,
       matchedMessageContent: null,
       isPlan: c.isPlan ? true : false,
+      isRead: c.isRead !== 0,
       labels: [],
     }));
 
@@ -259,6 +267,7 @@ export function registerChatHandlers() {
         title: remoteSchema.chats.title,
         createdAt: remoteSchema.chats.createdAt,
         isPlan: remoteSchema.chats.isPlan,
+        isRead: remoteSchema.chats.isRead,
         matchedMessageContent: remoteSchema.messages.content,
       })
       .from(remoteSchema.messages)
@@ -279,6 +288,7 @@ export function registerChatHandlers() {
       createdAt: c.createdAt,
       matchedMessageContent: c.matchedMessageContent,
       isPlan: c.isPlan ? true : false,
+      isRead: c.isRead !== 0,
       labels: [],
     }));
 
@@ -675,7 +685,7 @@ export function registerChatHandlers() {
         eq(remoteSchema.chats.userId, context.userId!),
         eq(remoteSchema.chats.isPinned, 1),
       ),
-      columns: { id: true, appId: true, title: true, createdAt: true },
+      columns: { id: true, appId: true, title: true, createdAt: true, isRead: true },
       with: {
         app: { columns: { name: true } },
         labels: { columns: { id: true, label: true, color: true } },
@@ -689,6 +699,7 @@ export function registerChatHandlers() {
       appName: (c as any).app?.name || "",
       title: c.title,
       createdAt: c.createdAt,
+      isRead: c.isRead !== 0,
       labels: (c as any).labels || [],
     })) as any;
   });
