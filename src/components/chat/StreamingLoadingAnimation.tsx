@@ -336,7 +336,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
           {label && (
             <motion.span
               key={label}
-              className={`text-xs font-medium shrink-0 ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
+              className="text-xs font-medium shrink-0 text-muted-foreground whitespace-nowrap"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -378,7 +378,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
         {label && (
           <motion.span
             key={label}
-            className={`text-xs ${labelColorClass || "text-muted-foreground"}`}
+            className="text-xs text-muted-foreground"
             initial={{ opacity: 0, x: -4 }}
             animate={{ opacity: 0.85, x: 0 }}
             exit={{ opacity: 0, x: 4 }}

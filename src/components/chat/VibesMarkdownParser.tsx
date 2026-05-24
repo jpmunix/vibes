@@ -48,6 +48,7 @@ import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type T
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
 import { FlowThinkBlock } from "./FlowThinkBlock";
+import { FlowActivityTrace } from "./FlowActivityTrace";
 import {
   Dialog,
   DialogContent,
@@ -492,6 +493,18 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               }
               // else: streaming and nothing visible after → let final flush handle it
             }
+          } else if (isFlowMode && shouldCompact(tag)) {
+            // Enhanced Flow Mode: Render a quiet inline text-only status line
+            flushFlowThinkBuffer();
+            elements.push(
+              <FlowActivityTrace
+                key={`flow-trace-${index}`}
+                tag={tag}
+                attributes={attributes}
+                state={state}
+                originalContent={renderModalContent(piece.tagInfo, { isStreaming })}
+              />
+            );
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
 
@@ -576,16 +589,30 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
 
-    // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned
+    // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned (at most 1 of each)
     if (!isStreaming && content && !isGitMessage) {
       const vibesMatches = Array.from(content.matchAll(/\.vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => m[0]);
-      const uniquePaths = Array.from(new Set(vibesMatches));
+      
+      let lastPlanPath: string | null = null;
+      let lastWalkthroughPath: string | null = null;
 
-      if (uniquePaths.length > 0) {
+      for (const path of vibesMatches) {
+        if (path.includes("walkthrough-") || path.includes("walkt")) {
+          lastWalkthroughPath = path;
+        } else {
+          lastPlanPath = path;
+        }
+      }
+
+      const pathsToRender: string[] = [];
+      if (lastPlanPath) pathsToRender.push(lastPlanPath);
+      if (lastWalkthroughPath) pathsToRender.push(lastWalkthroughPath);
+
+      if (pathsToRender.length > 0) {
         elements.push(
           <div key="artifact-buttons" className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2">
-            {uniquePaths.map((artifactPath) => {
-              const isWalkthrough = artifactPath.includes("walkthrough-");
+            {pathsToRender.map((artifactPath) => {
+              const isWalkthrough = artifactPath.includes("walkthrough-") || artifactPath.includes("walkt");
               return (
                 <button
                   key={artifactPath}

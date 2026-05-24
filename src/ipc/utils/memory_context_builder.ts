@@ -129,7 +129,7 @@ export async function buildMemoryContext(
         debugLog("Router", `Loaded memory pool`, { candidates: rows.length.toString(), maxSelection: maxSelection.toString() });
 
         // 2. If we have a prompt AND an API key, use the LLM Router
-        let selectedRows = rows;
+        let selectedRows = rows.slice(0, maxSelection); // default: top-N capped
         if (userPrompt && hasOpenRouterApiKey() && rows.length > 3) {
             const routerSelected = await routerSelect(rows, userPrompt, settings, userId, appId, recentMessages);
             if (routerSelected && routerSelected.length > 0) {
@@ -150,11 +150,16 @@ export async function buildMemoryContext(
                 } catch (updateErr: any) {
                     logger.warn(`[Memory] lastUsed update failed: ${updateErr.message}`);
                 }
+            } else if (routerSelected && routerSelected.length === 0) {
+                // Router explicitly said "no relevant memories" → inject nothing
+                debugLog("Router", `Router returned 0 relevant — skipping injection`);
+                return EMPTY_RESULT;
             }
-        } else {
-            // Fallback: no prompt or no API key → take top 10 by score
-            selectedRows = rows.slice(0, maxSelection);
+            // else: routerSelected === null (error) → keep fallback top-N
         }
+
+        // Hard cap — safety belt, always respect maxSelection
+        selectedRows = selectedRows.slice(0, maxSelection);
 
         // 4. Format as compact block
         const lines = selectedRows.map(row => {
