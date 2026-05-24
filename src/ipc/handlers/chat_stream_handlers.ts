@@ -18,6 +18,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
+import { DEFAULT_PROMPTS } from "../../prompts/defaults";
 import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
@@ -1433,6 +1434,14 @@ This conversation includes one or more image attachments. When the user uploads 
             orderBy: (p: any, { asc }: any) => [asc(p.id)],
           });
           
+          const walkthroughDbPrompt = await db.query.prompts.findFirst({
+            where: and(
+              eq(remoteSchema.prompts.userId, currentUserId as string),
+              eq(remoteSchema.prompts.systemId, "ctx_build_walkthrough")
+            ),
+          });
+          const hasWalkthroughInDb = !!walkthroughDbPrompt;
+          
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
@@ -1443,12 +1452,23 @@ This conversation includes one or more image attachments. When the user uploads 
               if (prompt.systemId === "ctx_plan_mode" && agentId !== "plan") {
                 continue; // Skip plan mode instructions if not in plan mode
               }
+              if (prompt.systemId === "ctx_build_walkthrough" && agentId !== "build") {
+                continue; // Skip walkthrough instructions if not in build mode
+              }
               
               let content = prompt.content;
               if (prompt.systemId === "ctx_language") {
                 content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
               }
               contextInstructions.push(content);
+            }
+          }
+
+          // Fallback: if not in DB and build mode active, inject default
+          if (!hasWalkthroughInDb && agentId === "build") {
+            const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
+            if (defaultWalkthrough) {
+              contextInstructions.push(defaultWalkthrough);
             }
           }
           

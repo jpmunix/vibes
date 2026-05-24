@@ -61,7 +61,29 @@ export async function validateModelSettings(): Promise<void> {
             return;
         }
 
-        const availableNames = new Set(models.map(m => m.name));
+        // Retrieve custom models from Drizzle DB for the current user, to avoid falsely pruning them.
+        const customModelNames = new Set<string>();
+        const userId = settings.userId;
+        if (userId) {
+            try {
+                const db = getRemoteDb();
+                const customModels = await db.select().from(remoteSchema.languageModels).where(
+                    eq(remoteSchema.languageModels.userId, userId)
+                );
+                for (const cm of customModels) {
+                    if ((cm.builtinProviderId || "openrouter") === "openrouter") {
+                        customModelNames.add(cm.apiName);
+                    }
+                }
+            } catch (dbErr: any) {
+                logger.warn(`[ModelValidator] Failed to query custom models from database: ${dbErr.message}`);
+            }
+        }
+
+        const availableNames = new Set([
+            ...models.map(m => m.name),
+            ...customModelNames,
+        ]);
         const migrated: string[] = [];
 
         // ── 1. selectedModel (the main chat model) ──

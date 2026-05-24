@@ -14,6 +14,7 @@ const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] =
       "ctx_efficiency_triage",
       "ctx_task_management",
       "ctx_plan_mode",
+      "ctx_build_walkthrough",
     ],
   },
   {

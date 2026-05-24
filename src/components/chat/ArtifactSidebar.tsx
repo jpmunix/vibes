@@ -136,6 +136,7 @@ function clearHighlights(root: HTMLElement): void {
 export function ArtifactSidebar() {
   const [isOpen, setIsOpen] = useAtom(artifactsSidebarOpenAtom);
   const path = useAtomValue(selectedArtifactPathAtom);
+  const isWalkthrough = path?.includes("walkthrough-");
   const appId = useAtomValue(selectedAppIdAtom);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -436,7 +437,7 @@ export function ArtifactSidebar() {
     if (!contentRef.current.contains(range.commonAncestorContainer)) return;
 
     const text = selection.toString().trim();
-    if (text.length < 3 || isAccepted) return;
+    if (text.length < 3 || isAccepted || isWalkthrough) return;
 
     const rect = range.getBoundingClientRect();
     const containerRect = contentRef.current.getBoundingClientRect();
@@ -544,7 +545,11 @@ export function ArtifactSidebar() {
             {displayTitle}
           </h1>
           <div className="flex items-center gap-1 shrink-0">
-            {isAccepted ? (
+            {isWalkthrough ? (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium">
+                Walkthrough
+              </span>
+            ) : isAccepted ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -776,7 +781,7 @@ export function ArtifactSidebar() {
                       </div>
                     )}
 
-                    {!isAccepted && editingInlineId === activeComment.comment.id ? (
+                    {!isAccepted && !isWalkthrough && editingInlineId === activeComment.comment.id ? (
                       // Editing mode (only when not accepted)
                       <div>
                         <textarea
@@ -837,7 +842,7 @@ export function ArtifactSidebar() {
                         <p className="text-sm text-foreground/90 leading-relaxed">
                           {activeComment.comment.comment}
                         </p>
-                        {!isAccepted && (
+                        {!isAccepted && !isWalkthrough && (
                           <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-border/50">
                             <button
                               onClick={() => {

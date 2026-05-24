@@ -408,4 +408,18 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "- Si una tarea se descartó o cambió de alcance, táchala y añade una nota explicativa.",
     "- El plan debe reflejar siempre el estado real del progreso.",
   ].join("\n"),
+
+  ctx_build_walkthrough: [
+    "REGLA CRÍTICA DE OUTPUT AL COMPLETAR LA TAREA:",
+    "Cuando hayas completado la tarea (especialmente si es larga o compleja), DEBES generar un resumen detallado de las tareas realizadas (Walkthrough) tanto técnico como para el usuario.",
+    "",
+    "1. Escribe el Walkthrough completo como un archivo Markdown dentro del directorio .vibes/ del proyecto usando tu herramienta de escritura de archivos.",
+    "2. NUNCA escupas/imprimas el contenido del Walkthrough en el chat. Tu respuesta final en el chat debe ser SOLO una confirmación muy breve invitando al usuario a abrir el Walkthrough en el panel de artefactos (ej: \"✅ He completado la tarea y creado el Walkthrough. Puedes verlo usando el botón 📄 en la barra de estado.\").",
+    "3. Guarda el archivo con un nombre descriptivo y único en formato .vibes/walkthrough-*.md (ej: .vibes/walkthrough-login-auth-1715123456.md).",
+    "4. El Walkthrough debe estar bien estructurado, organizado e incluir:",
+    "   - Un resumen claro de los cambios realizados orientado al usuario final.",
+    "   - Un desglose técnico de los archivos creados, modificados o eliminados.",
+    "   - Los detalles de cómo se ha verificado/probado el funcionamiento de la solución.",
+    "   - Si procede, próximos pasos sugeridos o consideraciones técnicas importantes.",
+  ].join("\n"),
 };

@@ -685,6 +685,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           }
                         }
 
+                        const isWalkthrough = artifactPath.includes("walkthrough-");
+
                         return (
                           <div className="mt-3 pt-3 border-t border-border/20">
                             <button
@@ -696,7 +698,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                               }}
                             >
                               <FileText size={14} />
-                              Ver plan
+                              {isWalkthrough ? "Ver Walkthrough" : "Ver plan"}
                             </button>
                           </div>
                         );
