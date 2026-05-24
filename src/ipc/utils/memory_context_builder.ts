@@ -113,6 +113,7 @@ export async function buildMemoryContext(
                     eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                     eq(remoteSchema.memories.type, 'preference'),
+                    eq(remoteSchema.memories.source, 'manual'),
                 ),
             )
             .orderBy(

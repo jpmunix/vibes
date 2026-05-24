@@ -1,7 +1,7 @@
 import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { StopCircle, CheckCircle2, Clock, XCircle } from "@/components/ui/icons";
+import { StopCircle, CheckCircle2, Clock, XCircle, FileText } from "@/components/ui/icons";
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
@@ -24,8 +24,9 @@ import { VibesTypecheckSummary } from "./VibesTypecheckSummary";
 import { VibesCodebaseContext } from "./VibesCodebaseContext";
 import { VibesThink } from "./VibesThink";
 import { CodeHighlight } from "./CodeHighlight";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom, isFlowModeAtom } from "@/atoms/chatAtoms";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { VibesProblemSummary } from "./VibesProblemSummary";
@@ -247,6 +248,9 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const isFlowModeAtomValue = useAtomValue(isFlowModeAtom);
   const isFlowMode = forceFullMode ? false : isFlowModeAtomValue;
+
+  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once
@@ -569,6 +573,37 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
     flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
+
+    // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned
+    if (!isStreaming && content) {
+      const vibesMatches = Array.from(content.matchAll(/\.vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => m[0]);
+      const uniquePaths = Array.from(new Set(vibesMatches));
+
+      if (uniquePaths.length > 0) {
+        elements.push(
+          <div key="artifact-buttons" className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2">
+            {uniquePaths.map((artifactPath) => {
+              const isWalkthrough = artifactPath.includes("walkthrough-");
+              return (
+                <button
+                  key={artifactPath}
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedPath(artifactPath);
+                    setSidebarOpen(true);
+                  }}
+                >
+                  <FileText size={14} />
+                  {isWalkthrough ? "Ver Walkthrough" : "Ver plan"}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+    }
+
     return elements;
   };
 

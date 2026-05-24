@@ -2218,11 +2218,11 @@ function registerExtraProvider(body: Record<string, any>, providerKey: string, m
  * petición a OpenCode.
  *
  * REGLAS DE ORO:
- * 1. NO utilices inyección `noReply` de tipo usuario para directrices de comportamiento
- *    estáticas.
- * 2. La inyección de usuario silenciosa (`noReply`) queda reservada ÚNICAMENTE para
- *    contexto dinámico que cambia en cada mensaje (como los recuerdos/memories de la base
- *    de datos extraídos por el router de memoria `memoryBlock`).
+ * 1. NO utilices inyección `noReply` de tipo usuario para directrices de comportamiento.
+ * 2. Todo el contexto (instrucciones estáticas, directrices del proyecto, MCPs, etc.)
+ *    se inyecta como system prompt a través de este método.
+ * 3. La inyección `noReply` queda reservada ÚNICAMENTE para mensajes previos del usuario
+ *    (priorMessages) que necesitan aparecer en el historial de conversación.
  * 3. Al usar este método, asegúrate de eliminar `contextInstructions` del bloque
  *    `noReply` para no enviar las instrucciones duplicadas.
  *
@@ -2275,12 +2275,6 @@ export async function handleOpenCodeStream(
         attachments?: { name: string; type: string; data: string; attachmentType: string }[];
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
-        /**
-         * Memory context block to inject via noReply before the prompt.
-         * Invisible to the user (not saved to DB, not shown in UI).
-         * OpenCode sees it as a silent user message in the session history.
-         */
-        memoryBlock?: string;
         /**
          * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
          * Each is sent with `noReply: true` so OpenCode records them in the conversation
@@ -2919,35 +2913,8 @@ export async function handleOpenCodeStream(
         logger.info(`--- USER PROMPT ---\n${promptText}`);
         logger.info(`------------------------------------------`);
 
-        // ── Inject Vibes context via noReply (invisible to user) ─────────
-        // All Vibes context (memories) is injected as a single silent user message.
-        // Static instructions are now attached to the system prompt instead.
-        // Not saved to our DB → not shown in chat UI → invisible.
-        {
-            const contextParts: string[] = [];
-
-            // Dynamic memories (selected per-prompt by the memory router)
-            if (options.memoryBlock) {
-                contextParts.push(options.memoryBlock);
-            }
-
-            if (contextParts.length > 0) {
-                const contextText = contextParts.join("\n\n---\n\n");
-                try {
-                    await client.session.prompt({
-                        path: { id: sessionId },
-                        query: { directory: projectDir },
-                        body: {
-                            noReply: true,
-                            parts: [{ type: "text", text: contextText }],
-                        } as any,
-                    });
-                    logger.info(`${LP} 📋 Memories context injected via noReply (${contextText.length} chars)`);
-                } catch (ctxErr: any) {
-                    logger.warn(`${LP} 📋 Memories context noReply injection failed (non-fatal): ${ctxErr.message}`);
-                }
-            }
-        }
+        // Memory/directives are now injected via contextInstructions → system prompt.
+        // No noReply injection needed.
 
         // Fire the prompt (non-blocking)
         const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
@@ -2957,12 +2924,9 @@ export async function handleOpenCodeStream(
         // Si es "Aditivo" (o no hay prompt personalizado), se limpia para usar el prompt nativo/default de OpenCode.
         const agentPromptConfig = hasReplacePrompt ? options.customSystemPrompt : null;
 
-        // El systemPromptOverride para promptAsync.system contendrá:
-        // - En modo Reemplazar: Únicamente tu prompt de sistema personalizado (sin inyectar el contexto de Vibes).
-        // - En modo Aditivo/Default: Las instrucciones de contexto estáticas (y el prompt personalizado si es aditivo).
-        const systemPromptOverride = hasReplacePrompt
-            ? options.customSystemPrompt
-            : attachToSystemPrompt(options.contextInstructions, undefined);
+        // El systemPromptOverride para promptAsync.system contendrá las instrucciones de contexto estáticas
+        // de Vibes (como idioma, MCPs, credenciales y prompts activos habilitados en los ajustes).
+        const systemPromptOverride = attachToSystemPrompt(options.contextInstructions, undefined);
 
         // Determine permission config based on the base agent
         let permissionConfig: any;

@@ -472,6 +472,34 @@ export function registerMemoryHandlers(): void {
         }
     })();
 
+    // ── One-shot purge: delete all non-manual-preference memories ────
+    // In this version, only manual preferences (directrices) are used.
+    // All other memory types (session, issue, auto-extracted, etc.) are
+    // legacy data that should be cleaned up once.
+    (async () => {
+        try {
+            const { readSettings, writeSettings } = await import("../../main/settings");
+            const settings = readSettings();
+            if (settings.memoriesLegacyPurged) return; // Already done
+
+            const db = getRemoteDb();
+            const result = await db
+                .delete(remoteSchema.memories)
+                .where(
+                    or(
+                        sql`${remoteSchema.memories.type} != 'preference'`,
+                        sql`${remoteSchema.memories.source} != 'manual'`,
+                    ),
+                );
+
+            const deleted = (result as any).rowsAffected ?? (result as any).changes ?? 0;
+            writeSettings({ memoriesLegacyPurged: true } as any);
+            logger.info(`[Memory] One-shot legacy purge: deleted ${deleted} non-manual-preference memories`);
+        } catch (e: any) {
+            logger.warn(`[Memory] One-shot legacy purge failed: ${e.message}`);
+        }
+    })();
+
     logger.info("[Memory] Handlers registered");
 }
 

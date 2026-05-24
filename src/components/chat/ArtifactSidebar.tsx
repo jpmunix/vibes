@@ -573,7 +573,7 @@ export function ArtifactSidebar() {
                     className="h-7 text-xs gap-1.5 font-medium cursor-pointer"
                     title={commentCount > 0 ? "Revisar y enviar comentarios" : "Aceptar o revisar plan"}
                   >
-                    {commentCount > 0 ? `Revisar • ${commentCount}` : "Aceptar plan"}
+                    {commentCount > 0 ? `Revisar • ${commentCount}` : "Revisar plan"}
                     {commentCount > 0 ? <MessageSquare size={11} className="ml-0.5" /> : null}
                     <ChevronDown size={14} className="opacity-70" />
                   </Button>

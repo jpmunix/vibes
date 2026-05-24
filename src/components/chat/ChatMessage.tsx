@@ -27,7 +27,6 @@ import {
   User as UserIcon,
   Quote,
   Share2,
-  FileText,
   Image as ImageIcon,
   type LucideIcon,
 } from "@/components/ui/icons";
@@ -58,8 +57,6 @@ import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { VibesAvatar } from "@/components/ui/VibesAvatar";
 import { Button } from "@/components/ui/button";
-import { useChatArtifacts } from "@/hooks/useChatArtifacts";
-import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
 
 /** Height threshold (px) above which user messages collapse (~6 lines of text) */
@@ -187,9 +184,6 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
   const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
 
-  const { artifacts } = useChatArtifacts(selectedChatId);
-  const [, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
-  const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
   const { settings: chatMsgSettings } = useSettings();
 
   const isUser = message.role === "user";
@@ -663,46 +657,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                          />
                       )}
 
-                      {/* Per-message artifact button: if this message mentions a .vibes/ path,
-                          show a direct button to open that specific artifact in the sidebar */}
-                      {isAssistant && !isStreaming && (() => {
-                        // Extract .vibes/xxx.md references from the message content
-                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-.]+\.md/);
-                        if (!vibesMatch) return null;
-                        const artifactPath = vibesMatch[0];
 
-                        // Only show the button if this is the latest assistant message in the chat that mentions this artifact path
-                        if (selectedChatId) {
-                          const chatMsgs = messagesById.get(selectedChatId);
-                          if (chatMsgs) {
-                            const lastMentionMsg = chatMsgs
-                              .slice()
-                              .reverse()
-                              .find((m) => m.role === "assistant" && m.content?.includes(artifactPath));
-                            if (lastMentionMsg && lastMentionMsg.id !== message.id) {
-                              return null;
-                            }
-                          }
-                        }
-
-                        const isWalkthrough = artifactPath.includes("walkthrough-");
-
-                        return (
-                          <div className="mt-3 pt-3 border-t border-border/20">
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
-                              onClick={() => {
-                                setSelectedPath(artifactPath);
-                                setSidebarOpen(true);
-                              }}
-                            >
-                              <FileText size={14} />
-                              {isWalkthrough ? "Ver Walkthrough" : "Ver plan"}
-                            </button>
-                          </div>
-                        );
-                      })()}
                     </>
                   )}
                 </>

@@ -37,6 +37,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
   const [description, setDescription] = useState(agent.description || "");
   const [slashCommand, setSlashCommand] = useState(agent.slashCommand);
   const [baseAgent, setBaseAgent] = useState(agent.baseAgent);
+  const [promptMode, setPromptMode] = useState<"additive" | "replace">(agent.promptMode || "replace");
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt);
   const [modelSource, setModelSource] = useState<"chat" | "static">(agent.modelSource || "chat");
   const [model, setModel] = useState<string>(agent.model || "");
@@ -54,6 +55,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setDescription(agent.description || "");
     setSlashCommand(agent.slashCommand);
     setBaseAgent(agent.baseAgent);
+    setPromptMode(agent.promptMode || "replace");
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
@@ -65,6 +67,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
     setDescription(agent.description || "");
     setSlashCommand(agent.slashCommand);
     setBaseAgent(agent.baseAgent);
+    setPromptMode(agent.promptMode || "replace");
     setSystemPrompt(agent.systemPrompt);
     setModelSource(agent.modelSource || "chat");
     setModel(agent.model || "");
@@ -113,7 +116,7 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
         description: description.trim() || null,
         slashCommand: slashCommand.trim().toLowerCase(),
         baseAgent: baseAgent,
-        promptMode: "replace",
+        promptMode: promptMode,
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
@@ -170,6 +173,9 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
               Base: {agent.baseAgent === "build" ? "Agente (Build)" : agent.baseAgent === "plan" ? "Planificador" : "Explorador"}
+            </span>
+            <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
+              Modo: {agent.promptMode === "additive" ? "Aditivo" : "Reemplazar"}
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
               Modelo: {agent.modelSource === "static" ? (agent.model ? (agent.model.split("::").pop() || agent.model) : "Estático") : "Chat"}
@@ -322,6 +328,44 @@ export function CustomAgentEditor({ agent, onUpdate, onDelete }: CustomAgentEdit
             )}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div className="space-y-1.5">
+              <Label className="typo-label">Modo del Prompt</Label>
+              <UnifiedSelector
+                value={promptMode}
+                onChange={(val) => setPromptMode(val as "replace" | "additive")}
+                options={[
+                  {
+                    value: "replace",
+                    label: "Reemplazar base (Default)",
+                    description: "Sustituye las instrucciones por defecto de su padre",
+                  },
+                  {
+                    value: "additive",
+                    label: "Aditivo (Recomendado)",
+                    description: "Añade tus instrucciones al final de las instrucciones base",
+                  },
+                ]}
+                triggerVariant="default"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                triggerClassName="w-full text-left justify-between bg-muted/30 hover:bg-muted/50 rounded-xl"
+              />
+            </div>
+
+            <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-[11px] text-muted-foreground leading-relaxed flex flex-col justify-center h-full min-h-[58px]">
+              {promptMode === "replace" ? (
+                <span>
+                  <strong>Reemplazar:</strong> Sustituye el system prompt por defecto del agente base. Útil para redefinir por completo el comportamiento del agente. Se conservarán los MCPs, idioma y credenciales de Vibes.
+                </span>
+              ) : (
+                <span>
+                  <strong>Aditivo:</strong> Combina las instrucciones nativas del agente base con tu System Prompt al final. Útil para complementar la lógica base (p. ej. tu planificación interactiva) con reglas extra.
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor={`default-prompt-${agent.id}`} className="typo-label">
               Prompt por defecto (Autopegado)
@@ -416,6 +460,7 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
   const [description, setDescription] = useState("");
   const [slashCommand, setSlashCommand] = useState("");
   const [baseAgent, setBaseAgent] = useState<"build" | "plan" | "explore">("build");
+  const [promptMode, setPromptMode] = useState<"additive" | "replace">("replace");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelSource, setModelSource] = useState<"chat" | "static">("chat");
   const [model, setModel] = useState<string>("");
@@ -465,7 +510,7 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
         description: description.trim() || null,
         slashCommand: slashCommand.trim().toLowerCase(),
         baseAgent: baseAgent,
-        promptMode: "replace",
+        promptMode: promptMode,
         systemPrompt: systemPrompt,
         modelSource: modelSource,
         model: modelSource === "static" ? model : null,
@@ -635,6 +680,44 @@ export function CustomAgentCreator({ onCreated, onCancel }: CustomAgentCreatorPr
               El agente utilizará de forma dinámica el modelo que tengas seleccionado en la caja de chat al enviar el mensaje.
             </div>
           )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          <div className="space-y-1.5">
+            <Label className="typo-label">Modo del Prompt</Label>
+            <UnifiedSelector
+              value={promptMode}
+              onChange={(val) => setPromptMode(val as "replace" | "additive")}
+              options={[
+                {
+                  value: "replace",
+                  label: "Reemplazar base (Default)",
+                  description: "Sustituye las instrucciones por defecto de su padre",
+                },
+                {
+                  value: "additive",
+                  label: "Aditivo (Recomendado)",
+                  description: "Añade tus instrucciones al final de las instrucciones base",
+                },
+              ]}
+              triggerVariant="default"
+              triggerSize="md"
+              popoverWidth="w-[280px]"
+              triggerClassName="w-full text-left justify-between bg-muted/30 hover:bg-muted/50 rounded-xl"
+            />
+          </div>
+
+          <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-[11px] text-muted-foreground leading-relaxed flex flex-col justify-center h-full min-h-[58px]">
+            {promptMode === "replace" ? (
+              <span>
+                <strong>Reemplazar:</strong> Sustituye el system prompt por defecto del agente base. Útil para redefinir por completo el comportamiento del agente. Se conservarán los MCPs, idioma y credenciales de Vibes.
+              </span>
+            ) : (
+              <span>
+                <strong>Aditivo:</strong> Combina las instrucciones nativas del agente base con tu System Prompt al final. Útil para complementar la lógica base (p. ej. tu planificación interactiva) con reglas extra.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1.5">

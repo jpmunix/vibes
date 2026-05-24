@@ -1622,7 +1622,6 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Load memories (app-specific + global) — injected via noReply (invisible to user)
           let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
-          let memoryBlock: string | undefined;
           try {
             // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
             const priorMessages = (updatedChat.messages || [])
@@ -1640,9 +1639,10 @@ This conversation includes one or more image attachments. When the user uploads 
               priorMessages.length > 0 ? priorMessages : undefined,
             );
             if (memoryResult.block) {
-              memoryBlock = memoryResult.block;
+              // Inject as system prompt (not user message) — joins other contextInstructions
+              contextInstructions.push(memoryResult.block);
               selectedMemories = memoryResult.memories;
-              logger.info(`🧠 [MEMORY] Prepared ${memoryBlock.length} chars (${selectedMemories.length} memories) for noReply injection`);
+              logger.info(`🧠 [MEMORY] Injected ${selectedMemories.length} directives into system prompt`);
             }
           } catch (memErr: any) {
             logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
@@ -1693,7 +1693,6 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMessages: updatedChat.messages,
               agentId,
               contextInstructions,
-              memoryBlock,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
