@@ -464,7 +464,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         // ── Zen / Flow Mode: skip almost all custom tags ──
         // Only keep: vibes-output (errors/warnings), vibes-ask-user (interactive).
         // Flow mode additionally keeps think tags visible as expanded panels.
-        // Token-usage is handled by ChatMessage footer. Everything else is discarded.
+        // Token-usage is discarded. Everything else is discarded.
         if (isZenMode) {
           if (ZEN_ALLOWED_TAGS.has(tag)) {
             // Non-think tag: flush pending think buffer first
@@ -493,7 +493,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               }
               // else: streaming and nothing visible after → let final flush handle it
             }
-          } else if (isFlowMode && shouldCompact(tag)) {
+          } else if (isFlowMode && shouldCompact(tag) && tag !== "vibes-token-usage") {
             // Enhanced Flow Mode: Render a quiet inline text-only status line
             flushFlowThinkBuffer();
             elements.push(
