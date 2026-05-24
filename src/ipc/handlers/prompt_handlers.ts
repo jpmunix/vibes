@@ -20,6 +20,7 @@ export function registerPromptHandlers() {
       description: r.description ?? null,
       content: r.content,
       enabled: r.enabled === 1,
+      scope: r.scope ?? "all",
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));
@@ -28,7 +29,7 @@ export function registerPromptHandlers() {
   createTypedHandler(promptContracts.create, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { title, content, description, categoryId, systemId, enabled } = params;
+    const { title, content, description, categoryId, systemId, enabled, scope } = params;
     if (!title || !content) {
       throw new Error("Title and content are required");
     }
@@ -42,6 +43,7 @@ export function registerPromptHandlers() {
         description,
         content,
         enabled: enabled === false ? 0 : 1,
+        scope: scope ?? "all",
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -80,6 +82,7 @@ export function registerPromptHandlers() {
       description: row.description ?? null,
       content: row.content,
       enabled: row.enabled === 1,
+      scope: row.scope ?? "all",
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -88,7 +91,7 @@ export function registerPromptHandlers() {
   createTypedHandler(promptContracts.update, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { id, title, content, description, categoryId, enabled } = params;
+    const { id, title, content, description, categoryId, enabled, scope } = params;
     if (!id) throw new Error("Prompt id is required");
     const now = new Date();
     const updateData: Record<string, any> = { updatedAt: now };
@@ -97,6 +100,7 @@ export function registerPromptHandlers() {
     if (description !== undefined) updateData.description = description;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
     if (enabled !== undefined) updateData.enabled = enabled ? 1 : 0;
+    if (scope !== undefined) updateData.scope = scope;
     await db.update(remoteSchema.prompts).set(updateData).where(and(eq(remoteSchema.prompts.id, id), eq(remoteSchema.prompts.userId, context.userId)));
     
     // Sync to settings (fire & forget to avoid UI lag)

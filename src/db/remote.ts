@@ -275,6 +275,9 @@ export async function initializeRemoteSchema(): Promise<void> {
     // Add chat_mode column to chats if missing (added v8.7)
     await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});
 
+    // Add scope column to prompts if missing
+    await client.execute(`ALTER TABLE prompts ADD COLUMN scope TEXT NOT NULL DEFAULT 'all'`).catch(() => {});
+
     // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
     // Bug: some records had created_at stored as Date.now() (millis) instead of
     // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.

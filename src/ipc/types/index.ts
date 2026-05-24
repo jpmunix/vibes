@@ -272,6 +272,7 @@ export type {
 // Prompt types
 export type {
   PromptDto,
+  PromptCategoryDto,
   CreatePromptParamsDto,
   UpdatePromptParamsDto,
 } from "./prompts";

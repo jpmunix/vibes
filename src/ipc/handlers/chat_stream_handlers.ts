@@ -1449,11 +1449,20 @@ This conversation includes one or more image attachments. When the user uploads 
           for (const prompt of activePromptsRows) {
             // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
             if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
-              if (prompt.systemId === "ctx_plan_mode" && agentId !== "plan") {
-                continue; // Skip plan mode instructions if not in plan mode
-              }
-              if (prompt.systemId === "ctx_build_walkthrough" && agentId !== "build") {
-                continue; // Skip walkthrough instructions if not in build mode
+              const scope = (prompt as any).scope || "all";
+              if (scope !== "all") {
+                const allowedScopes = scope.split(",").map((s: string) => s.trim());
+                let shouldInclude = false;
+                if (agentId === "build" && allowedScopes.includes("agent")) {
+                  shouldInclude = true;
+                } else if (agentId === "plan" && allowedScopes.includes("plan")) {
+                  shouldInclude = true;
+                } else if (agentId === "explore" && allowedScopes.includes("ask")) {
+                  shouldInclude = true;
+                }
+                if (!shouldInclude) {
+                  continue;
+                }
               }
               
               let content = prompt.content;

@@ -261,6 +261,7 @@ export const prompts = sqliteTable("prompts", {
     description: text("description"),
     content: text("content").notNull(),
     enabled: integer("enabled").notNull().default(1),
+    scope: text("scope").notNull().default("all"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

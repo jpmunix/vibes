@@ -6,10 +6,24 @@ import { AiStrategistAssistant } from "./AiStrategistAssistant";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, Loader2, Check, Plus, Trash2, Edit2 } from "@/components/ui/icons";
+import { ChevronRight, Loader2, Check, Plus, Trash2, Edit2, ChevronDown } from "@/components/ui/icons";
 import { toast } from "sonner";
 import type { PromptDto, PromptCategoryDto } from "@/ipc/types";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 function PromptEditor({
   prompt,
@@ -22,12 +36,13 @@ function PromptEditor({
   onUpdate: () => void;
   onDelete: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [localTitle, setLocalTitle] = useState(prompt.title);
   const [localDesc, setLocalDesc] = useState(prompt.description || "");
   const [localContent, setLocalContent] = useState(prompt.content);
   const [localEnabled, setLocalEnabled] = useState(prompt.enabled);
-  const [localCategoryId, setLocalCategoryId] = useState<number | null>(prompt.categoryId);
+  const [localCategoryId, setLocalCategoryId] = useState<number | null>(prompt.categoryId ?? null);
+  const [localScope, setLocalScope] = useState<string>(prompt.scope || "all");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -36,17 +51,53 @@ function PromptEditor({
     localTitle !== prompt.title || 
     localDesc !== (prompt.description || "") || 
     localContent !== prompt.content ||
-    localEnabled !== prompt.enabled ||
-    localCategoryId !== prompt.categoryId;
+    localCategoryId !== prompt.categoryId ||
+    localScope !== (prompt.scope || "all");
+
+  const activeScopes = localScope === "all" ? new Set<string>() : new Set(localScope.split(",").filter(Boolean));
+
+  const handleToggleScope = (scopeKey: string) => {
+    if (scopeKey === "all") {
+      setLocalScope("all");
+      return;
+    }
+
+    const next = new Set(activeScopes);
+    if (next.has(scopeKey)) {
+      next.delete(scopeKey);
+    } else {
+      next.add(scopeKey);
+    }
+
+    if (next.size === 0 || next.size === 3) {
+      setLocalScope("all");
+    } else {
+      setLocalScope(Array.from(next).join(","));
+    }
+  };
+
+  const getScopeLabel = (scopeStr: string) => {
+    if (scopeStr === "all") return "Todos";
+    const parts = scopeStr.split(",").filter(Boolean);
+    const labels: string[] = [];
+    if (parts.includes("agent")) labels.push("Agente");
+    if (parts.includes("plan")) labels.push("Planificar");
+    if (parts.includes("ask")) labels.push("Preguntar");
+    return labels.join(", ");
+  };
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
     }
-  }, [localContent, expanded]);
+  }, [localContent, isOpen]);
 
   const handleSave = async () => {
+    if (!localCategoryId) {
+      toast.error("Debes seleccionar una categoría para el prompt.");
+      return;
+    }
     setIsSaving(true);
     try {
       await ipc.prompt.update({
@@ -56,6 +107,7 @@ function PromptEditor({
         content: localContent,
         enabled: localEnabled,
         categoryId: localCategoryId,
+        scope: localScope,
       });
       toast.success(`Prompt guardado`);
       onUpdate();
@@ -82,7 +134,7 @@ function PromptEditor({
     <>
       <div
         className={cn("flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4", !localEnabled && "opacity-50")}
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => setIsOpen(true)}
       >
         <div className="flex-1 flex items-center gap-3">
           <Switch
@@ -101,72 +153,138 @@ function PromptEditor({
              onClick={(e) => e.stopPropagation()}
           />
           <div>
-            <h3 className="typo-label flex items-center gap-2">
+            <h3 className="typo-label flex items-center gap-2 text-sm font-medium">
               {prompt.title}
-              {!localEnabled && <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DESACTIVADO</span>}
+              {!localEnabled && <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">DESACTIVADO</span>}
             </h3>
-            <p className="typo-caption mt-1">{prompt.description}</p>
+            <p className="typo-caption mt-1 text-xs text-muted-foreground">{prompt.description}</p>
           </div>
         </div>
         <ChevronRight
-          className={cn(
-            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
-            expanded && "rotate-90",
-          )}
+          className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-colors shrink-0"
         />
       </div>
 
-      {expanded && (
-        <div className="space-y-3 pl-4">
-          <div className="space-y-2">
-            <Input
-              value={localTitle}
-              onChange={(e) => setLocalTitle(e.target.value)}
-              placeholder="Título del prompt"
-              className="h-8"
-            />
-            <Input
-              value={localDesc}
-              onChange={(e) => setLocalDesc(e.target.value)}
-              placeholder="Descripción (opcional)"
-              className="h-8"
-            />
-            <Select 
-                value={localCategoryId ? String(localCategoryId) : "none"} 
-                onValueChange={(val) => setLocalCategoryId(val === "none" ? null : Number(val))}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin Categoría</SelectItem>
-                {categories.map(c => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-[975px] max-h-[85vh] flex flex-col p-6 rounded-2xl shadow-2xl bg-popover border border-border">
+          <DialogHeader className="pb-4 border-b border-border/50">
+            <DialogTitle className="text-base font-bold text-foreground">Editar Prompt</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1 custom-scrollbar">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Título</label>
+                <Input
+                  value={localTitle}
+                  onChange={(e) => setLocalTitle(e.target.value)}
+                  placeholder="Título del prompt"
+                  className="h-9 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Categoría</label>
+                <Select 
+                    value={localCategoryId ? String(localCategoryId) : undefined} 
+                    onValueChange={(val) => setLocalCategoryId(Number(val))}
+                >
+                  <SelectTrigger className="h-9 rounded-lg">
+                    <SelectValue placeholder="Selecciona una Categoría..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ámbito (Scope)</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full h-9 rounded-lg justify-between font-normal bg-background px-3 border-border hover:bg-background/80">
+                      <span className="truncate">{getScopeLabel(localScope)}</span>
+                      <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="start">
+                    <DropdownMenuCheckboxItem
+                      checked={localScope === "all"}
+                      onCheckedChange={() => handleToggleScope("all")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Todos
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={localScope !== "all" && activeScopes.has("agent")}
+                      onCheckedChange={() => handleToggleScope("agent")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Agente
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={localScope !== "all" && activeScopes.has("plan")}
+                      onCheckedChange={() => handleToggleScope("plan")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Planificar
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={localScope !== "all" && activeScopes.has("ask")}
+                      onCheckedChange={() => handleToggleScope("ask")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Preguntar
+                    </DropdownMenuCheckboxItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Descripción</label>
+              <Input
+                value={localDesc}
+                onChange={(e) => setLocalDesc(e.target.value)}
+                placeholder="Descripción (opcional)"
+                className="h-9 rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Contenido del Prompt</label>
+                <AiStrategistAssistant type="prompt" currentContent={localContent} onAccept={setLocalContent} />
+              </div>
+
+              <div className="rounded-xl border border-border overflow-hidden bg-muted/10 focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
+                <textarea
+                  className="w-full min-h-[380px] p-4 typo-mono-xs leading-relaxed resize-y border-0 bg-transparent focus:outline-none custom-scrollbar"
+                  spellCheck={false}
+                  value={localContent}
+                  onChange={(e) => setLocalContent(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
-          <AiStrategistAssistant type="prompt" currentContent={localContent} onAccept={setLocalContent} />
-          <div className="rounded-xl border border-border overflow-hidden">
-            <textarea
-              ref={textareaRef}
-              className="w-full p-4 typo-mono-xs leading-relaxed resize-none border-0 bg-transparent focus:outline-none overflow-hidden"
-              spellCheck={false}
-              value={localContent}
-              onChange={(e) => setLocalContent(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2">
+
+          <DialogFooter className="pt-4 border-t border-border/50 flex flex-row justify-between sm:justify-between items-center gap-2 w-full">
             <DeleteConfirmationDialog
               itemName={prompt.title || "prompt"}
               itemType="prompt"
-              onDelete={handleDelete}
+              onDelete={async () => {
+                await handleDelete();
+                setIsOpen(false);
+              }}
               isDeleting={isDeleting}
               trigger={
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 text-destructive hover:text-destructive"
+                  className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg h-9"
                   disabled={isDeleting}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -174,23 +292,43 @@ function PromptEditor({
                 </Button>
               }
             />
+            
             <div className="flex gap-2">
               <Button
+                variant="ghost"
                 size="sm"
-                className="gap-1.5"
-                onClick={handleSave}
+                className="rounded-lg h-9"
+                onClick={() => {
+                  setLocalTitle(prompt.title);
+                  setLocalDesc(prompt.description || "");
+                  setLocalContent(prompt.content);
+                  setLocalCategoryId(prompt.categoryId ?? null);
+                  setLocalScope(prompt.scope || "all");
+                  setIsOpen(false);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-lg h-9 font-medium"
+                onClick={async () => {
+                  await handleSave();
+                  setIsOpen(false);
+                }}
                 disabled={isSaving || !hasUnsavedChanges}
               >
-                {isSaving
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <Check className="h-3.5 w-3.5" />
-                }
+                {isSaving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
                 Guardar
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -339,33 +477,35 @@ function PromptGroup({
             />
           ))}
 
-          {isCreatingPrompt ? (
-            <div className="flex gap-2 p-2 bg-muted/20 rounded-xl border border-border mt-2">
-              <Input
-                autoFocus
-                placeholder="Nombre del nuevo prompt..."
-                value={newPromptTitle}
-                onChange={(e) => setNewPromptTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreatePrompt();
-                  if (e.key === "Escape") setIsCreatingPrompt(false);
-                }}
-                className="h-8"
-              />
-              <Button size="sm" onClick={handleCreatePrompt}>Crear</Button>
-              <Button size="sm" variant="ghost" onClick={() => setIsCreatingPrompt(false)}>Cancelar</Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2 border-dashed gap-2"
-              onClick={() => setIsCreatingPrompt(true)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Nuevo Prompt en {category ? category.name : "Sin Categoría"}
-            </Button>
-          )}
+          {category ? (
+            isCreatingPrompt ? (
+              <div className="flex gap-2 p-2 bg-muted/20 rounded-xl border border-border mt-2">
+                <Input
+                  autoFocus
+                  placeholder="Nombre del nuevo prompt..."
+                  value={newPromptTitle}
+                  onChange={(e) => setNewPromptTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreatePrompt();
+                    if (e.key === "Escape") setIsCreatingPrompt(false);
+                  }}
+                  className="h-8"
+                />
+                <Button size="sm" onClick={handleCreatePrompt}>Crear</Button>
+                <Button size="sm" variant="ghost" onClick={() => setIsCreatingPrompt(false)}>Cancelar</Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 border-dashed gap-2"
+                onClick={() => setIsCreatingPrompt(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Nuevo Prompt en {category.name}
+              </Button>
+            )
+          ) : null}
         </div>
       )}
     </>

@@ -1125,7 +1125,10 @@ export function GeneralSettings({
                   { value: "papercolor-light", label: "PaperColor Light", description: "Fondo blanco puro de alto contraste" },
                   { value: "catppuccin-latte", label: "Catppuccin Latte", description: "Paleta pastel moderna con tonos lavanda" },
                 ]}
-                triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                data-testid="theme-flavor-light-selector"
               />
             }
           />
@@ -1152,7 +1155,10 @@ export function GeneralSettings({
                   { value: "night-owl", label: "Night Owl", description: "Diseño azul marino profundo para uso nocturno" },
                   { value: "tokyo-night", label: "Tokyo Night", description: "Paleta gris azulada elegante y limpia" },
                 ]}
-                triggerClassName="w-56 justify-between bg-muted/30 hover:bg-muted/50 border border-border rounded-xl px-4 py-2"
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                data-testid="theme-flavor-dark-selector"
               />
             }
           />

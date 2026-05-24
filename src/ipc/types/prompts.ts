@@ -13,6 +13,7 @@ export const PromptDtoSchema = z.object({
   description: z.string().nullable(),
   content: z.string(),
   enabled: z.boolean(),
+  scope: z.string().default("all"),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -35,6 +36,7 @@ export const CreatePromptParamsDtoSchema = z.object({
   description: z.string().optional(),
   content: z.string(),
   enabled: z.boolean().optional(),
+  scope: z.string().optional(),
 });
 
 export type CreatePromptParamsDto = z.infer<typeof CreatePromptParamsDtoSchema>;
@@ -46,6 +48,7 @@ export const UpdatePromptParamsDtoSchema = z.object({
   description: z.string().optional(),
   content: z.string().optional(),
   enabled: z.boolean().optional(),
+  scope: z.string().optional(),
 });
 
 export type UpdatePromptParamsDto = z.infer<typeof UpdatePromptParamsDtoSchema>;
