@@ -312,6 +312,14 @@ export function registerChatHandlers() {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
+      const cleanPromptForTitle = (text: string): string => {
+        if (!text) return "";
+        let cleaned = text.trim();
+        // Remove leading slash commands (e.g. "/plan hello" -> "hello")
+        cleaned = cleaned.replace(/^\/[^\s]+/, "").trim();
+        return cleaned;
+      };
+
       logger.info(`generateChatTitle called for chatId=${chatId}`);
       if (!hasOpenRouterApiKey()) {
         logger.warn("OpenRouter API key not found, using default title");
@@ -324,36 +332,69 @@ export function registerChatHandlers() {
         settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       try {
-        let messageContent = prompt;
+        let messageContent = prompt ? cleanPromptForTitle(prompt) : "";
 
-        // If no prompt provided, fetch from DB (legacy/manual behavior)
+        // If no prompt or the prompt is empty after cleaning, fetch from DB
         if (!messageContent) {
           logger.info(
-            `No prompt provided, fetching first message for chatId=${chatId}`,
+            `No valid prompt provided, searching message history for chatId=${chatId}`,
           );
-          // Fetch the first message from this chat
-          const firstMessage = await db
+          // Fetch all messages in the chat ordered by creation time
+          const messages = await db
             .select({
               content: remoteSchema.messages.content,
+              role: remoteSchema.messages.role,
             })
             .from(remoteSchema.messages)
             .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
             .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId!)))
-            .orderBy(remoteSchema.messages.createdAt)
-            .limit(1);
+            .orderBy(remoteSchema.messages.createdAt);
 
-          if (!firstMessage.length) {
-            logger.warn(`No messages found for chatId=${chatId}`);
+          // Find the first USER message that has non-empty content after cleaning
+          let bestMessage = "";
+          for (const msg of messages) {
+            if (msg.role === "user" && msg.content) {
+              const cleaned = cleanPromptForTitle(msg.content);
+              if (cleaned) {
+                bestMessage = cleaned;
+                break;
+              }
+            }
+          }
+
+          // If no such user message was found, look for any non-empty user message
+          if (!bestMessage) {
+            for (const msg of messages) {
+              if (msg.role === "user" && msg.content && msg.content.trim()) {
+                bestMessage = msg.content.trim();
+                break;
+              }
+            }
+          }
+
+          // If still no user message, look for any non-empty message (regardless of role)
+          if (!bestMessage) {
+            for (const msg of messages) {
+              if (msg.content && msg.content.trim()) {
+                const cleaned = cleanPromptForTitle(msg.content);
+                if (cleaned) {
+                  bestMessage = cleaned;
+                  break;
+                }
+              }
+            }
+          }
+
+          // If absolutely nothing is found, return "Nuevo chat" without updating the DB title
+          if (!bestMessage) {
+            logger.warn(`No valid message found for title generation in chatId=${chatId}`);
             return { title: "Nuevo chat" };
           }
-          messageContent = firstMessage[0].content;
-          logger.info(
-            `Found first message (${messageContent.slice(0, 100)}...) for chatId=${chatId}`,
-          );
+
+          messageContent = bestMessage;
         }
 
         // If it's a summarize command, don't generate title
-        // This is a safety check in case the frontend still calls it
         if (
           messageContent.startsWith("Resumir el chat chat-id=") ||
           messageContent.startsWith("Summarize from chat-id")
@@ -384,9 +425,13 @@ export function registerChatHandlers() {
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
-
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);
+
+        if (sanitizedTitle === "Nuevo chat" || !sanitizedTitle.trim()) {
+          logger.info(`Generated title is "Nuevo chat" or empty, skipping DB update for chatId=${chatId}`);
+          return { title: "Nuevo chat" };
+        }
 
         logger.info(
           `Generated title for chatId=${chatId}: "${sanitizedTitle}"`,

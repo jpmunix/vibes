@@ -1070,7 +1070,7 @@ export async function updateOpenCodeConfig(changes: {
             const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
             for (const id of agentIds) {
                 if (changes.agentModels[id]) {
-                    agentConfig[id] = { ...(agentConfig[id] || {}), model: `openrouter/${changes.agentModels[id]}` };
+                    agentConfig[id] = { ...agentConfig[id], model: `openrouter/${changes.agentModels[id]}` };
                 }
             }
             body.agent = agentConfig;

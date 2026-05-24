@@ -42,10 +42,10 @@ import { FileText, Database, Code, Search } from "@/components/ui/icons";
 
 // Define the theme for mentions
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
-  "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md",
-  "@Focused": "outline-none ring-2 ring-ring",
-  "/": "px-2 py-0.5 mx-0.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-md",
-  "/Focused": "outline-none ring-2 ring-emerald-500",
+  "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md cursor-text",
+  "@Focused": "outline-none ring-2 ring-ring cursor-text",
+  "/": "px-2 py-0.5 mx-0.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-md cursor-text",
+  "/Focused": "outline-none ring-2 ring-emerald-500 cursor-text",
 };
 
 // Custom menu item component

@@ -1338,7 +1338,12 @@ const AppChats = memo(function AppChats({
               onRename={(chatId, _title) => {
                 setRenamingId(chatId);
                 setRenameValue(_title);
-                setTimeout(() => renameInputRef.current?.focus(), 50);
+                setTimeout(() => {
+                  if (renameInputRef.current) {
+                    renameInputRef.current.focus();
+                    renameInputRef.current.select();
+                  }
+                }, 50);
               }}
               onArchive={onArchiveChat}
               onDelete={onDeleteChat}
@@ -3943,7 +3948,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                           setPinnedRenamingId(chatId);
                           setPinnedRenameValue(title);
                           setTimeout(
-                            () => pinnedRenameInputRef.current?.focus(),
+                            () => {
+                              if (pinnedRenameInputRef.current) {
+                                pinnedRenameInputRef.current.focus();
+                                pinnedRenameInputRef.current.select();
+                              }
+                            },
                             50,
                           );
                         }}
