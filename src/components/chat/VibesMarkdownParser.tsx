@@ -624,7 +624,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                   }}
                 >
                   <FileText size={14} />
-                  {isWalkthrough ? "Ver Walkthrough" : "Ver plan"}
+                  {isWalkthrough ? "Ver cambios" : "Ver plan"}
                 </button>
               );
             })}

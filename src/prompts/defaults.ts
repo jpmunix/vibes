@@ -411,12 +411,13 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
 
   ctx_build_walkthrough: [
     "REGLA CRÍTICA DE OUTPUT AL COMPLETAR LA TAREA:",
-    "Cuando hayas completado la tarea (especialmente si es larga o compleja), DEBES generar un resumen detallado de las tareas realizadas (Walkthrough) tanto técnico como para el usuario.",
+    "Cuando hayas completado la tarea (especialmente si es larga o compleja), DEBES generar un resumen detallado de las tareas realizadas (Resumen de cambios) tanto técnico como para el usuario.",
     "",
-    "1. Escribe el Walkthrough completo como un archivo Markdown dentro del directorio .vibes/ del proyecto usando tu herramienta de escritura de archivos.",
-    "2. NUNCA escupas/imprimas el contenido del Walkthrough en el chat. Tu respuesta final en el chat debe ser SOLO una confirmación muy breve invitando al usuario a abrir el Walkthrough en el panel de artefactos (ej: \"✅ He completado la tarea y creado el Walkthrough. Puedes verlo usando el botón 📄 en la barra de estado.\").",
-    "3. Guarda el archivo con un nombre descriptivo y único en formato .vibes/walkthrough-*.md (ej: .vibes/walkthrough-login-auth-1715123456.md).",
-    "4. El Walkthrough debe estar bien estructurado, organizado e incluir:",
+    "1. Escribe el resumen de cambios completo como un archivo Markdown dentro del directorio .vibes/ del proyecto usando tu herramienta de escritura de archivos.",
+    "2. El H1 del documento debe comenzar siempre con 'Resumen de cambios: [Título descriptivo]' (ej: '# Resumen de cambios: Autenticación JWT').",
+    "3. NUNCA escupas/imprimas el contenido del resumen en el chat. Tu respuesta final en el chat debe ser SOLO una confirmación muy breve invitando al usuario a abrir el resumen de cambios en el panel de artefactos (ej: \"✅ He completado la tarea y creado el resumen de cambios. Puedes verlo usando el botón 📄 en la barra de estado.\").",
+    "4. Guarda el archivo en formato .vibes/walkthrough-*.md (ej: .vibes/walkthrough-login-auth-1715123456.md). Nota: Mantén el prefijo walkthrough- en el nombre del archivo para compatibilidad interna de la plataforma.",
+    "5. El resumen de cambios debe estar bien estructurado, organizado e incluir:",
     "   - Un resumen claro de los cambios realizados orientado al usuario final.",
     "   - Un desglose técnico de los archivos creados, modificados o eliminados.",
     "   - Los detalles de cómo se ha verificado/probado el funcionamiento de la solución.",

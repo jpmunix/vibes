@@ -547,7 +547,7 @@ export function ArtifactSidebar() {
           <div className="flex items-center gap-1 shrink-0">
             {isWalkthrough ? (
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium">
-                Walkthrough
+                Resumen de cambios
               </span>
             ) : isAccepted ? (
               <Button
