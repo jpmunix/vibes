@@ -16,7 +16,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "ai-behavior", label: "Agente" },
   { id: "custom-agents-settings", label: "Agentes Personalizados" },
   { id: "prompts-settings", label: "Prompts" },
-  { id: "memory-settings", label: "Memoria" },
+  { id: "memory-settings", label: "Directrices" },
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },
   { id: "tools-mcp", label: "Herramientas MCP" },

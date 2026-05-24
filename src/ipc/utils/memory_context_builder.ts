@@ -33,7 +33,7 @@ const logger = log.scope("memory_context");
 const ROUTER_INPUT_LIMIT = 300;
 
 /** Default max memories the Router can select */
-const DEFAULT_MAX_SELECTION = 10;
+const DEFAULT_MAX_SELECTION = 5;
 
 /** Default model for memory selection (ultralight) */
 const DEFAULT_SELECTION_MODEL = "mistralai/devstral-small";
@@ -112,6 +112,7 @@ export async function buildMemoryContext(
                     eq(remoteSchema.memories.userId, userId),
                     eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
+                    eq(remoteSchema.memories.type, 'preference'),
                 ),
             )
             .orderBy(

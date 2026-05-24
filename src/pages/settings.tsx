@@ -895,7 +895,7 @@ export default function SettingsPage() {
             </h2>
             <p className="typo-caption mb-8">
               Personaliza las instrucciones que reciben los modelos AI para tareas internas,
-              generación de nombres y el sistema de memoria.
+              generación de nombres y el sistema de directrices.
             </p>
             <PromptsSection />
           </div>
@@ -908,11 +908,10 @@ export default function SettingsPage() {
               }`}
           >
             <h2 className="typo-section-title mb-2">
-              Memoria
+              Directrices
             </h2>
             <p className="typo-caption mb-8">
-              Configura la memoria persistente del agente: el sistema recuerda hechos,
-              preferencias y decisiones entre sesiones.
+              Define directrices que el agente recuerda entre sesiones para personalizar sus respuestas.
             </p>
             <MemorySettings />
           </div>

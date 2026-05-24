@@ -298,28 +298,8 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           <Share2 size={14} className="opacity-60 shrink-0" />
           Compartir chat
         </button>
-        {/* Condense memory */}
-        {memoriesEnabled && (
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={async () => {
-              onClose();
-              try {
-                showSuccess("Condensando memoria del chat...");
-                await ipc.memory.condenseSessionMemories({ appId, chatId });
-                showSuccess("Memoria condensada correctamente");
-              } catch (e) {
-                showError(
-                  `Error al condensar memoria: ${(e as any).toString()}`,
-                );
-              }
-            }}
-          >
-            <Shrink size={14} className="opacity-60 shrink-0" />
-            Condensar memoria
-          </button>
-        )}
+
+
         {/* Summarize to new chat */}
         <button
           type="button"
@@ -2091,23 +2071,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <GitBranch size={14} className="opacity-60 shrink-0" />
                       {hasUnpushedChanges ? "Revisar cambios" : "Git"}
                     </button>
-                    {memoriesEnabled && (
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => {
-                          closeMenu();
-                          ipc.system.openMemoryWindow({
-                            appId: app.id,
-                            theme,
-                            themeIntensity: intensity,
-                          });
-                        }}
-                      >
-                        <Database size={14} className="opacity-60 shrink-0" />
-                        Memorias
-                      </button>
-                    )}
+
                     {(hasDesignMd || hasAgentsMd) && (
                       <>
                         <div className="my-1 mx-2 border-t border-border/50" />
@@ -2209,6 +2173,23 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <Archive size={14} className="opacity-60 shrink-0" />
                       Archivar
                     </button>
+                    {memoriesEnabled && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => {
+                          closeMenu();
+                          ipc.system.openMemoryWindow({
+                            appId: app.id,
+                            theme,
+                            themeIntensity: intensity,
+                          });
+                        }}
+                      >
+                        <Database size={14} className="opacity-60 shrink-0" />
+                        Directrices
+                      </button>
+                    )}
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
                       <button

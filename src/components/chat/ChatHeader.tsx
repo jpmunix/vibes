@@ -23,7 +23,6 @@ import {
   Minimize2,
   Loader2,
   Check,
-  Shrink,
   FileText,
 } from "@/components/ui/icons";
 
@@ -96,7 +95,6 @@ export function ChatHeader({
 
 
   const { settings } = useSettings();
-  const memoriesEnabled = settings?.memoriesEnabled !== false;
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
@@ -316,25 +314,8 @@ export function ChatHeader({
                         <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
                           {chat.title || `Chat ${chat.id}`}
                         </span>
-                        {memoriesEnabled && (
-                          <button
-                            title="Condensar memoria"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!appId) return;
-                              try {
-                                showSuccess("Condensando memoria del chat...");
-                                await ipc.memory.condenseSessionMemories({ appId, chatId: chat.id });
-                                showSuccess("Memoria condensada correctamente");
-                              } catch (err) {
-                                showError(`Error: ${(err as any).toString()}`);
-                              }
-                            }}
-                            className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
-                          >
-                            <Shrink size={12} className="text-muted-foreground" />
-                          </button>
-                        )}
+
+
                         <button
                           title="Resumir a chat nuevo"
                           onClick={async (e) => {
