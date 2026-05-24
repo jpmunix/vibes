@@ -4,6 +4,7 @@ import {
   PrimaryColorPicker,
   DEFAULT_LIGHT_COLOR,
   DEFAULT_DARK_COLOR,
+  getColorById,
 } from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { FONT_OPTIONS } from "@/shared/fonts";
@@ -57,6 +58,7 @@ import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
+import { ActiveLoader } from "@/components/chat/StreamingLoadingAnimation";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
@@ -1001,6 +1003,16 @@ export function GeneralSettings({
   const { theme, setTheme, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
+  const activeColorId = isDarkMode
+    ? (settings?.primaryColorDark || DEFAULT_DARK_COLOR)
+    : (settings?.primaryColorLight || DEFAULT_LIGHT_COLOR);
+  const activeColorHex = getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
+
+  const renderLoaderIcon = (style: string, size: number = 18) => (
+    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner">
+      <ActiveLoader style={style} color={activeColorHex} size={size} />
+    </div>
+  );
 
   useEffect(() => {
     if (
@@ -1201,6 +1213,164 @@ export function GeneralSettings({
                 }}
               />
             </div>
+          }
+        />
+
+        {/* Loader Style Selector */}
+        <SettingItem
+          label="Estilo de animación de carga"
+          description="Personaliza la animación que se muestra mientras la IA piensa o procesa"
+          control={
+            <UnifiedSelector
+              value={settings?.loaderStyle || "orbital"}
+              onChange={async (value) => {
+                await updateSettings({ loaderStyle: value }, { showToast: true });
+              }}
+              options={[
+                {
+                  value: "orbital",
+                  label: "Orbital (Original)",
+                  description: "Tres partículas luminosas en órbita con estela",
+                  rightIcon: renderLoaderIcon("orbital")
+                },
+                {
+                  value: "aurora",
+                  label: "Aurora Pulse",
+                  description: "Ondas circulares concéntricas y expansivas",
+                  rightIcon: renderLoaderIcon("aurora")
+                },
+                {
+                  value: "wave",
+                  label: "Bouncing Wave",
+                  description: "Cinco puntos rebotando en onda desfasada",
+                  rightIcon: renderLoaderIcon("wave")
+                },
+                {
+                  value: "cyber",
+                  label: "Cyber Rings",
+                  description: "Dos anillos concéntricos girando en sentidos opuestos",
+                  rightIcon: renderLoaderIcon("cyber")
+                },
+                {
+                  value: "jelly",
+                  label: "Morphing Jelly",
+                  description: "Gota fluida orgánica en deformación constante",
+                  rightIcon: renderLoaderIcon("jelly")
+                },
+                {
+                  value: "spark",
+                  label: "Pulse Spark",
+                  description: "Chispas brillantes que nacen y se expanden",
+                  rightIcon: renderLoaderIcon("spark")
+                },
+                {
+                  value: "equalizer",
+                  label: "Bar Equalizer",
+                  description: "Columnas de frecuencia que suben y bajan",
+                  rightIcon: renderLoaderIcon("equalizer")
+                },
+                {
+                  value: "infinity",
+                  label: "Infinity Loop",
+                  description: "Partícula que dibuja el símbolo de infinito",
+                  rightIcon: renderLoaderIcon("infinity")
+                },
+                {
+                  value: "radar",
+                  label: "Radar Scan",
+                  description: "Barrido circular cónico de estilo radar militar",
+                  rightIcon: renderLoaderIcon("radar")
+                },
+                {
+                  value: "grid",
+                  label: "Pixel Grid",
+                  description: "Cuadrícula retro de micro-píxeles secuenciales",
+                  rightIcon: renderLoaderIcon("grid")
+                },
+                {
+                  value: "brackets",
+                  label: "Code Brackets",
+                  description: "Corchetes de código en pulsación alternada",
+                  rightIcon: renderLoaderIcon("brackets")
+                },
+                {
+                  value: "terminal",
+                  label: "Terminal Cursor",
+                  description: "Cursor parpadeante de terminal de desarrollo",
+                  rightIcon: renderLoaderIcon("terminal")
+                },
+                {
+                  value: "server",
+                  label: "Server Lights",
+                  description: "Indicadores LED parpadeantes estilo rack de servidores",
+                  rightIcon: renderLoaderIcon("server")
+                },
+                {
+                  value: "morph",
+                  label: "Morphing AI Core",
+                  description: "Núcleo con rotación y cambio de forma geométrico",
+                  rightIcon: renderLoaderIcon("morph")
+                },
+                {
+                  value: "matrix",
+                  label: "Matrix Rain",
+                  description: "Flujo descendente de código binario estilo Matrix",
+                  rightIcon: renderLoaderIcon("matrix")
+                },
+                {
+                  value: "glow",
+                  label: "Glowing Sphere",
+                  description: "Esfera luminosa pulsante con brillo de neon",
+                  rightIcon: renderLoaderIcon("glow")
+                },
+                {
+                  value: "prompt",
+                  label: "Root Prompt",
+                  description: "Símbolo de prompt de root sys# con cursor",
+                  rightIcon: renderLoaderIcon("prompt")
+                },
+                {
+                  value: "voice",
+                  label: "AI Voice",
+                  description: "Barras de espectro de voz de asistente de IA",
+                  rightIcon: renderLoaderIcon("voice")
+                },
+                {
+                  value: "packet",
+                  label: "Network Packet",
+                  description: "Envío de paquetes de datos a través de una red",
+                  rightIcon: renderLoaderIcon("packet")
+                },
+                {
+                  value: "sonar",
+                  label: "Sonar Ripple",
+                  description: "Ondas de radar concéntricas estilo sonar",
+                  rightIcon: renderLoaderIcon("sonar")
+                },
+                {
+                  value: "blocks",
+                  label: "Data Blocks",
+                  description: "Bloques de datos que se expanden secuencialmente",
+                  rightIcon: renderLoaderIcon("blocks")
+                },
+                {
+                  value: "nodes",
+                  label: "Node Connection",
+                  description: "Conexión de datos secuencial entre dos nodos",
+                  rightIcon: renderLoaderIcon("nodes")
+                },
+                {
+                  value: "glowring",
+                  label: "Neon Glow Ring",
+                  description: "Anillo neon giratorio de dos colores con brillo",
+                  rightIcon: renderLoaderIcon("glowring")
+                }
+              ]}
+              triggerVariant="pill"
+              triggerSize="md"
+              popoverWidth="w-[300px]"
+              data-testid="loader-style-selector"
+            />
           }
         />
 

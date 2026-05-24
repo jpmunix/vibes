@@ -70,6 +70,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fontScaleChat: 1,
   fontScaleBubbleWidth: 65,
   iconLibrary: "lucide",
+  loaderStyle: "orbital",
 };
 
 // In-memory cache for composed settings to avoid recomputing every time
