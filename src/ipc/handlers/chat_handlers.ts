@@ -346,9 +346,8 @@ export function registerChatHandlers() {
               role: remoteSchema.messages.role,
             })
             .from(remoteSchema.messages)
-            .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
-            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId!)))
-            .orderBy(remoteSchema.messages.createdAt);
+            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.userId, context.userId!)))
+            .orderBy(asc(remoteSchema.messages.createdAt));
 
           // Find the first USER message that has non-empty content after cleaning
           let bestMessage = "";
@@ -409,7 +408,7 @@ export function registerChatHandlers() {
           model,
           title: "chat-title",
           temperature: 0.3,
-          max_tokens: 80,
+          max_tokens: 500, // Changed from 80 to 500 to support reasoning models
           messages: [
             {
               role: "system",

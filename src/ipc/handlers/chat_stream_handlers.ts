@@ -293,6 +293,7 @@ function registerChatStreamHandlers() {
         .where(eq(remoteSchema.customAgents.userId, currentUserId as string));
 
       let effectiveChatMode: string = req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
+      const originalPrompt = req.prompt;
 
       // Detect slash command anywhere in the prompt (safely matching command tokens)
       const knownCommands = ["agent", "build", "plan", "ask", "explore"];
@@ -469,7 +470,7 @@ function registerChatStreamHandlers() {
       }
 
       // Add user message to database with attachment info
-      let userPrompt = req.prompt + (attachmentInfo ? attachmentInfo : "");
+      let userPrompt = originalPrompt + (attachmentInfo ? attachmentInfo : "");
       // Inline referenced prompt contents for mentions like @prompt:<id>
       try {
         const matches = Array.from(userPrompt.matchAll(/@prompt:(\d+)/g));

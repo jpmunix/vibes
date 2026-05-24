@@ -262,33 +262,15 @@ export function useStreamChat({
         }
       })();
 
-      // Strip slash commands from prompt for optimistic message ONLY
+      // Strip slash commands from prompt for optimistic message ONLY (REMOVED: we keep slash commands to render badges in chat bubble)
       let optimisticPrompt = prompt;
-      if (prompt.includes("/")) {
-        try {
-          const knownCommands = ["agent", "build", "plan", "ask", "explore"];
-          const customAgentCommands = cachedCustomAgents.map((ca) => ca.slashCommand.toLowerCase());
-          const allCommands = [...knownCommands, ...customAgentCommands];
-          allCommands.sort((a, b) => b.length - a.length);
 
-          for (const cmdName of allCommands) {
-            const cmdRegex = new RegExp(`(?:\\s|^)\\/(${cmdName})(?:\\s|$)`, "i");
-            if (cmdRegex.test(optimisticPrompt)) {
-              optimisticPrompt = optimisticPrompt.replace(cmdRegex, " ").trim();
-              break;
-            }
-          }
-
-          // Trigger a background (non-blocking) promise to refresh the cache
-          ipc.customAgents.list().then((list) => {
-            cachedCustomAgents = list;
-          }).catch((e) => {
-            console.error("Failed to update custom agents cache in background:", e);
-          });
-        } catch (e) {
-          console.error("Failed to strip slash command for optimistic prompt:", e);
-        }
-      }
+      // Trigger a background (non-blocking) promise to refresh the cache
+      ipc.customAgents.list().then((list) => {
+        cachedCustomAgents = list;
+      }).catch((e) => {
+        console.error("Failed to update custom agents cache in background:", e);
+      });
 
       // Optimistic UI update: instantly show the user message and a loading assistant message
       setMessagesById((prev) => {
