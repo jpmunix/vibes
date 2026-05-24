@@ -229,6 +229,7 @@ interface VibesMarkdownParserProps {
   isStreaming?: boolean;
   chatId?: number;
   forceFullMode?: boolean;
+  isGitMessage?: boolean;
 }
 
 /**
@@ -239,6 +240,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   isStreaming: forceStreaming,
   chatId: forceChatId,
   forceFullMode,
+  isGitMessage,
 }: VibesMarkdownParserProps) {
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const chatId = forceChatId ?? selectedChatId;
@@ -575,7 +577,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     flushBadgeGroup();
 
     // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned
-    if (!isStreaming && content) {
+    if (!isStreaming && content && !isGitMessage) {
       const vibesMatches = Array.from(content.matchAll(/\.vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => m[0]);
       const uniquePaths = Array.from(new Set(vibesMatches));
 

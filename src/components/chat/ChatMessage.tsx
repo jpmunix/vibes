@@ -644,7 +644,11 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words`}
                         suppressHydrationWarning
                       >
-                         <VibesMarkdownParser content={message.content} forceFullMode={forceFullMode} />
+                          <VibesMarkdownParser
+                            content={message.content}
+                            forceFullMode={forceFullMode}
+                            isGitMessage={message.model === "vibes/git-assistant"}
+                          />
                       </div>
                       {/* Streaming loader: visible while streaming, hidden on error */}
                       {isLastMessage && isStreaming && (
