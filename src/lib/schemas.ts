@@ -645,6 +645,8 @@ export const UserSettingsSchema = z
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
     // Git commit panel: persisted vertical split size (percentage, 0-100)
     gitCommitPanelSize: z.number().optional(),
+    // Plan sidebar: persisted horizontal split size (percentage, 0-100)
+    planSidebarSize: z.number().optional(),
     // Show/hide cost display in chat headers and message footers (data is always saved)
     showCostDisplay: z.boolean().optional(),
     // Caveman mode — forces the agent into ultra-terse, minimal-token communication

@@ -1337,6 +1337,8 @@ export function GeneralSettings({
                       await updateSettings({ fontScaleChat: scale });
                     }}
                     options={[
+                      { value: "0.9", label: "90%" },
+                      { value: "0.95", label: "95%" },
                       { value: "1", label: "100%" },
                       { value: "1.05", label: "105%" },
                       { value: "1.1", label: "110%" },

@@ -141,6 +141,34 @@ export function ArtifactSidebar() {
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const isStreaming = !!(selectedChatId && isStreamingById.get(selectedChatId));
 
+  const { settings, updateSettings } = useSettings();
+  const isDraggingRef = useRef(false);
+  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleResize = useCallback(
+    (size: number) => {
+      if (!isDraggingRef.current) return;
+      const roundedSize = Math.round(size);
+      if (roundedSize === settings?.planSidebarSize) return;
+
+      if (resizeTimerRef.current) {
+        clearTimeout(resizeTimerRef.current);
+      }
+      resizeTimerRef.current = setTimeout(() => {
+        updateSettings({ planSidebarSize: roundedSize }).catch(() => {});
+      }, 500);
+    },
+    [updateSettings, settings?.planSidebarSize]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (resizeTimerRef.current) {
+        clearTimeout(resizeTimerRef.current);
+      }
+    };
+  }, []);
+
   // Close sidebar when switching chats
   const prevChatId = useRef(selectedChatId);
   useEffect(() => {
@@ -214,6 +242,17 @@ export function ArtifactSidebar() {
   // ── Inline highlights ──────────────────────────────────────────────────
   const contentRef = useRef<HTMLDivElement>(null);
   const proseRef = useRef<HTMLDivElement>(null);
+
+  const getClampedX = useCallback((x: number, width = 288, padding = 12) => {
+    if (!contentRef.current) return x;
+    const containerWidth = contentRef.current.clientWidth;
+    const minLeft = width / 2 + padding;
+    const maxLeft = containerWidth - width / 2 - padding;
+    if (containerWidth < width + padding * 2) {
+      return containerWidth / 2;
+    }
+    return Math.max(minLeft, Math.min(maxLeft, x));
+  }, []);
 
   // Apply highlights whenever comments or rendered content change
   useEffect(() => {
@@ -304,7 +343,6 @@ export function ArtifactSidebar() {
 
   // ── Accept plan ────────────────────────────────────────────────────────
   const { streamMessage } = useStreamChat();
-  const { updateSettings } = useSettings();
   const [reviewMessage, setReviewMessage] = useState("");
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
@@ -345,6 +383,39 @@ export function ArtifactSidebar() {
     setIsReviewOpen(false);
     setReviewMessage("");
   }, [selectedChatId, currentArtifact, isAccepted, comments, updateSettings, streamMessage, setIsOpen, invalidateArtifacts, reviewMessage]);
+
+  const handleRefinePlan = useCallback(async () => {
+    if (!selectedChatId || !currentArtifact || isAccepted) return;
+
+    let priorMessages: { prompt: string; role?: string }[] = [];
+    if (comments.length > 0) {
+      const reviewBlock = comments
+        .map((c) => {
+          const section = c.blockRef ? `**Sección:** ${c.blockRef}` : "";
+          const selected = c.selectedText ? `**Texto seleccionado:** "${c.selectedText}"` : "";
+          const comment = `**Comentario:** ${c.comment}`;
+          return [section, selected, comment].filter(Boolean).join("\n");
+        })
+        .join("\n\n---\n\n");
+
+      priorMessages = [
+        {
+          role: "system",
+          prompt: `El usuario ha dejado comentarios específicos en el plan. Por favor, ajusta el plan según corresponda:\n\n${reviewBlock}`,
+        },
+      ];
+    }
+
+    streamMessage({
+      prompt: reviewMessage.trim() || "Ajusta el plan con los comentarios indicados.",
+      chatId: selectedChatId,
+      priorMessages,
+      chatModeOverride: "plan",
+    });
+    setIsOpen(false);
+    setIsReviewOpen(false);
+    setReviewMessage("");
+  }, [selectedChatId, currentArtifact, isAccepted, comments, streamMessage, setIsOpen, reviewMessage]);
 
   const [expandedReview, setExpandedReview] = useState(false);
 
@@ -446,7 +517,12 @@ export function ArtifactSidebar() {
         }
       `}</style>
 
-      <PanelResizeHandle className="relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize">
+      <PanelResizeHandle
+        onDragging={(isDragging) => {
+          isDraggingRef.current = isDragging;
+        }}
+        className="relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize"
+      >
         <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border dark:bg-zinc-800">
           <GripVertical className="h-2.5 w-2.5 text-zinc-500" />
         </div>
@@ -455,7 +531,8 @@ export function ArtifactSidebar() {
         id="artifact-sidebar"
         order={4}
         minSize={20}
-        defaultSize={30}
+        defaultSize={settings?.planSidebarSize ?? 30}
+        onResize={handleResize}
         className="flex flex-col bg-sidebar border-l border-border/50 h-full"
       >
         {/* Header */}
@@ -482,53 +559,72 @@ export function ArtifactSidebar() {
                   </span>
                 )}
               </Button>
-            ) : commentCount > 0 ? (
-                <Popover open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-7 text-xs gap-1.5 font-medium"
-                      title="Revisar y enviar comentarios"
-                    >
-                      Revisar &bull; {commentCount}
-                      <MessageSquare size={11} className="ml-0.5" />
-                      <ChevronDown size={14} className="opacity-70" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[22rem] p-3 shadow-xl" align="end" sideOffset={8}>
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium">Enviar comentario</h4>
-                      <div className="flex gap-2">
-                        <input
-                          autoFocus
-                          type="text"
-                          placeholder="Añade un mensaje opcional, ↵ para enviar"
-                          value={reviewMessage}
-                          onChange={(e) => setReviewMessage(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAcceptPlan();
-                            }
-                          }}
-                          className="flex h-8 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                        <Button size="sm" className="h-8 px-3 text-xs" onClick={handleAcceptPlan}>
-                          Enviar
-                        </Button>
-                      </div>
-                      
-                      <div className="pt-2 border-t border-border/50">
-                        <button 
+            ) : (
+              <Popover open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5 font-medium cursor-pointer"
+                    title={commentCount > 0 ? "Revisar y enviar comentarios" : "Aceptar o revisar plan"}
+                  >
+                    {commentCount > 0 ? `Revisar • ${commentCount}` : "Aceptar plan"}
+                    {commentCount > 0 ? <MessageSquare size={11} className="ml-0.5" /> : null}
+                    <ChevronDown size={14} className="opacity-70" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[33rem] p-4 shadow-xl bg-popover border border-border rounded-xl" align="end" sideOffset={8}>
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-1">
+                      <h4 className="text-sm font-semibold text-foreground">Revisar plan</h4>
+                      <p className="text-[11px] text-muted-foreground/75">
+                        Escribe comentarios generales o notas adicionales antes de enviar.
+                      </p>
+                    </div>
+
+                    <textarea
+                      autoFocus
+                      placeholder="Añade detalles opcionales..."
+                      value={reviewMessage}
+                      onChange={(e) => setReviewMessage(e.target.value)}
+                      className="w-full min-h-[72px] rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none placeholder:text-muted-foreground/50 text-foreground"
+                      rows={3}
+                    />
+
+                    <div className="flex justify-between items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-3 cursor-pointer"
+                        disabled={comments.length === 0 && !reviewMessage.trim()}
+                        onClick={handleRefinePlan}
+                        title="Seguir planificando con estos comentarios"
+                      >
+                        Seguir planificando
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-8 text-xs px-4 cursor-pointer"
+                        onClick={handleAcceptPlan}
+                        title="Aceptar plan y comenzar implementación"
+                      >
+                        Aceptar plan
+                      </Button>
+                    </div>
+
+                    {commentCount > 0 && (
+                      <div className="pt-3 border-t border-border/50">
+                        <button
+                          type="button"
                           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2 cursor-pointer w-full text-left"
                           onClick={() => setExpandedReview(!expandedReview)}
                         >
                           {expandedReview ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                          Ver {commentCount} comentario{commentCount !== 1 ? 's' : ''}
+                          Ver {commentCount} comentario{commentCount !== 1 ? 's' : ''} en secciones
                         </button>
                         {expandedReview && (
-                          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                          <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
                             {comments.map((c) => (
                               <div key={c.id} className="text-xs bg-muted/40 p-2 rounded border border-border/50">
                                 {c.selectedText && (
@@ -542,21 +638,11 @@ export function ArtifactSidebar() {
                           </div>
                         )}
                       </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-7 text-xs gap-1.5 font-medium"
-                  onClick={handleAcceptPlan}
-                  title="Aceptar el plan y proceder"
-                >
-                  Aceptar plan
-                </Button>
-              )
-            }
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -605,7 +691,7 @@ export function ArtifactSidebar() {
                   data-comment-trigger
                   className="absolute z-50 animate-in fade-in slide-in-from-top-1 duration-150"
                   style={{
-                    left: `${selectionPopover.x}px`,
+                    left: `${getClampedX(selectionPopover.x, 110)}px`,
                     top: `${selectionPopover.y}px`,
                     transform: "translateX(-50%)",
                   }}
@@ -626,7 +712,7 @@ export function ArtifactSidebar() {
                   data-comment-popover
                   className="absolute z-50 w-72 animate-in fade-in slide-in-from-top-1 duration-150"
                   style={{
-                    left: `${selectionPopover.x}px`,
+                    left: `${getClampedX(selectionPopover.x, 288)}px`,
                     top: `${selectionPopover.y}px`,
                     transform: "translateX(-50%)",
                   }}
@@ -677,7 +763,7 @@ export function ArtifactSidebar() {
                   data-active-comment
                   className="absolute z-50 w-72 animate-in fade-in slide-in-from-top-1 duration-150"
                   style={{
-                    left: `${activeComment.x}px`,
+                    left: `${getClampedX(activeComment.x, 288)}px`,
                     top: `${activeComment.y}px`,
                     transform: "translateX(-50%)",
                   }}
