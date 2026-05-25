@@ -58,6 +58,44 @@ import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
 import { readFile, writeFile, unlink, rm as fsRm } from "fs/promises";
+
+function getUltimateBaseAgent(baseAgent: string, allAgents: any[]): "build" | "plan" | "explore" {
+  let currentBase = baseAgent;
+  const visited = new Set<number>();
+  while (currentBase.startsWith("custom-agent::")) {
+    const parentId = parseInt(currentBase.split("::")[1]);
+    if (visited.has(parentId)) break;
+    visited.add(parentId);
+    const parent = allAgents.find(a => a.id === parentId);
+    if (!parent) break;
+    currentBase = parent.baseAgent;
+  }
+  if (currentBase === "build" || currentBase === "plan" || currentBase === "explore") {
+    return currentBase;
+  }
+  return "build";
+}
+
+function resolveStackedSystemPrompt(agent: any, allAgents: any[]): string {
+  const visited = new Set<number>();
+  const prompts: string[] = [];
+  
+  let current = agent;
+  while (current) {
+    prompts.unshift(current.systemPrompt);
+    
+    if (current.baseAgent.startsWith("custom-agent::")) {
+      const parentId = parseInt(current.baseAgent.split("::")[1]);
+      if (visited.has(parentId)) break;
+      visited.add(parentId);
+      current = allAgents.find(a => a.id === parentId);
+    } else {
+      current = null;
+    }
+  }
+  
+  return prompts.join("\n\n---\n\n");
+}
 import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "../utils/token_utils";
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -309,11 +347,14 @@ function registerChatStreamHandlers() {
         const match = req.prompt.match(cmdRegex);
         if (match) {
           if (cmdName === "agent" || cmdName === "build") {
-            matchedMode = "agent";
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "agent";
           } else if (cmdName === "plan") {
-            matchedMode = "plan";
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "plan";
           } else if (cmdName === "ask" || cmdName === "explore") {
-            matchedMode = "ask";
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "ask";
           } else {
             const matchedAgent = customAgents.find(
               (ca) => ca.slashCommand.toLowerCase() === cmdName
@@ -334,6 +375,18 @@ function registerChatStreamHandlers() {
             break;
           }
         }
+      }
+
+      // ── Default Base Replacements Resolution ────────────────────────
+      if (effectiveChatMode === "agent" || effectiveChatMode === "build") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
+      } else if (effectiveChatMode === "plan") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
+      } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
       }
 
       // Handle redo option: remove the most recent messages if needed
@@ -1398,9 +1451,11 @@ This conversation includes one or more image attachments. When the user uploads 
           const agentIdNum = parseInt(currentChatMode.split("::")[1]);
           const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
           if (matchedAgent) {
-            customSystemPrompt = matchedAgent.systemPrompt;
-            customPromptMode = matchedAgent.promptMode as "additive" | "replace";
-            agentId = matchedAgent.baseAgent as "build" | "plan" | "explore";
+            customSystemPrompt = resolveStackedSystemPrompt(matchedAgent, customAgents);
+            // If it inherits from another custom agent, we treat it as additive stacking.
+            const inheritsFromCustom = matchedAgent.baseAgent.startsWith("custom-agent::");
+            customPromptMode = inheritsFromCustom ? "additive" : (matchedAgent.promptMode as "additive" | "replace");
+            agentId = getUltimateBaseAgent(matchedAgent.baseAgent, customAgents);
             customAgentModelSource = matchedAgent.modelSource as "chat" | "static";
             customAgentModel = matchedAgent.model;
           }

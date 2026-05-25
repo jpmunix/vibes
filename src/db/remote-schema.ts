@@ -280,6 +280,7 @@ export const customAgents = sqliteTable("custom_agents", {
     systemPrompt: text("system_prompt").notNull(),
     baseAgent: text("base_agent").notNull(), // 'build' | 'plan' | 'explore'
     promptMode: text("prompt_mode").notNull(), // 'additive' | 'replace'
+    isDefaultBase: integer("is_default_base").notNull().default(0),
     slashCommand: text("slash_command").notNull(), // ej: 'rust' (sin la '/')
     modelSource: text("model_source").notNull().default("chat"),
     model: text("model"),

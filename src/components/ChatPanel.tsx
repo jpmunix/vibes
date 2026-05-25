@@ -18,6 +18,8 @@ import { MessagePreviewModal } from "./chat/MessagePreviewModal";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
+import { useCustomAgents, getUltimateBaseAgent } from "@/hooks/useCustomAgents";
+
 
 
 interface ChatPanelProps {
@@ -54,6 +56,7 @@ export function ChatPanel({
   }, [isStreamingById, chatId]);
 
   const { settings, updateSettings } = useSettings();
+  const { customAgents } = useCustomAgents();
 
 
 
@@ -88,18 +91,22 @@ export function ChatPanel({
     if (isStreamingById.get(chatId) ?? false) return;
 
     const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-    if (settings.selectedChatMode === "plan" && currentMessages.length > 0) {
+    const isPlan = settings.selectedChatMode === "plan" || 
+      (settings.selectedChatMode?.startsWith("custom-agent::") && 
+       getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan");
+
+    if (isPlan && currentMessages.length > 0) {
       // Plan mode was carried over from a previous session into an existing chat — reset it
       hasResetModeRef.current = chatId;
       const defaultMode = settings.defaultChatMode || "agent";
-      const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
-      updateSettings({ selectedChatMode: resetTo });
-    } else if (settings.selectedChatMode !== "plan") {
+      const resetTo = defaultMode === "plan" || (defaultMode.startsWith("custom-agent::") && getUltimateBaseAgent(defaultMode, customAgents) === "plan") ? "agent" : defaultMode;
+      updateSettings({ selectedChatMode: resetTo as any });
+    } else if (!isPlan) {
       // User entered the chat in agent/build mode — mark as processed so that if they
       // manually switch to plan later, this effect won't fire and revert it.
       hasResetModeRef.current = chatId;
     }
-  }, [chatId, settings, isStreamingById, updateSettings, messagesById]);
+  }, [chatId, settings, isStreamingById, updateSettings, messagesById, customAgents]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -431,7 +438,15 @@ export function ChatPanel({
     return () => window.removeEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
   }, []);
 
-  const isPlanMode = settings?.selectedChatMode === "plan" || preservePlanMode;
+  const isPlanMode = useMemo(() => {
+    if (preservePlanMode) return true;
+    if (!settings?.selectedChatMode) return false;
+    if (settings.selectedChatMode === "plan") return true;
+    if (settings.selectedChatMode.startsWith("custom-agent::")) {
+      return getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan";
+    }
+    return false;
+  }, [settings?.selectedChatMode, preservePlanMode, customAgents]);
 
   return (
     <>

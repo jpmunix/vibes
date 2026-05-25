@@ -4,7 +4,7 @@ import type { ChatMode } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { detectIsMac } from "@/hooks/useChatModeToggle";
 import { chatClient } from "@/ipc/types/chat";
-import { useCustomAgents } from "@/hooks/useCustomAgents";
+import { useCustomAgents, getUltimateBaseAgent } from "@/hooks/useCustomAgents";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ChatModeSelectorProps {
@@ -36,7 +36,25 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
   });
 
   // The active mode is resolved from the chat if active, otherwise from global settings
-  const selectedMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+  let selectedMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+
+  // If the active mode is a base mode, check if we have a default custom replacement for it
+  const getUltimateBase = (mode: string): "build" | "plan" | "explore" | null => {
+    if (mode === "agent" || mode === "build") return "build";
+    if (mode === "plan") return "plan";
+    if (mode === "ask" || mode === "explore") return "explore";
+    return null;
+  };
+
+  const selectedModeUltBase = getUltimateBase(selectedMode);
+  if (selectedModeUltBase) {
+    const replacer = (customAgents || []).find(
+      (ca) => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === selectedModeUltBase
+    );
+    if (replacer) {
+      selectedMode = `custom-agent::${replacer.id}`;
+    }
+  }
 
   const handleModeChange = (value: string) => {
     if (chatId) {
@@ -66,33 +84,52 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
 
   const baseOptions = [
     {
+      key: "build",
       value: "agent",
       label: "Agente",
       description: "Desarrolla, edita y depura con herramientas avanzadas",
       command: "/agent",
     },
     {
+      key: "plan",
       value: "plan",
       label: "Planificar",
       description: "Diseña un plan de acción antes de implementar",
       command: "/plan",
     },
     {
+      key: "explore",
       value: "ask",
       label: "Preguntar",
       description: "Consulta sobre tu código sin realizar cambios",
       command: "/ask",
     },
-  ];
+  ].map((baseOpt) => {
+    const replacer = (customAgents || []).find(
+      (ca) => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === baseOpt.key
+    );
+    if (replacer) {
+      return {
+        value: `custom-agent::${replacer.id}`,
+        label: replacer.name,
+        description: replacer.description || "",
+        command: `/${replacer.slashCommand}`,
+      };
+    }
+    return baseOpt;
+  });
 
-  const customOptions = (customAgents || []).map((agent) => ({
-    value: `custom-agent::${agent.id}`,
-    label: agent.name,
-    description: agent.description || "",
-    command: `/${agent.slashCommand}`,
-  }));
+  const customOptions = (customAgents || [])
+    .filter((ca) => ca.isDefaultBase !== 1)
+    .map((agent) => ({
+      value: `custom-agent::${agent.id}`,
+      label: agent.name,
+      description: agent.description || "",
+      command: `/${agent.slashCommand}`,
+    }));
 
   const options = [...baseOptions, ...customOptions];
+
 
   const isCustomMode = selectedMode.startsWith("custom-agent::");
 
