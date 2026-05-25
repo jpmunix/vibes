@@ -45,10 +45,39 @@ const TEXT_CLASS_TO_HEX: Record<string, string> = {
   "text-amber-600 dark:text-yellow-500": "#f59e0b",
 };
 
+const BASE_COLOR_TO_HEX: Record<string, string> = {
+  purple: "#a855f7",
+  violet: "#8b5cf6",
+  blue: "#3b82f6",
+  amber: "#f59e0b",
+  yellow: "#eab308",
+  indigo: "#6366f1",
+  red: "#ef4444",
+  cyan: "#06b6d4",
+  green: "#22c55e",
+  emerald: "#10b981",
+  teal: "#14b8a6",
+  orange: "#f97316",
+  slate: "#64748b",
+  zinc: "#71717a",
+  gray: "#6b7280",
+  neutral: "#737373",
+  stone: "#78716c",
+  lime: "#84cc16",
+  pink: "#ec4899",
+  rose: "#f43f5e",
+  fuchsia: "#d946ef",
+  sky: "#0ea5e9",
+};
+
 function resolveColor(textClass?: string): string {
   if (!textClass) return "#a855f7"; // fallback purple
   
   const cleanText = textClass.trim();
+  if (cleanText.startsWith("#") || cleanText.startsWith("rgb") || cleanText.startsWith("hsl")) {
+    return cleanText;
+  }
+
   if (TEXT_CLASS_TO_HEX[cleanText]) {
     return TEXT_CLASS_TO_HEX[cleanText];
   }
@@ -59,6 +88,15 @@ function resolveColor(textClass?: string): string {
     const baseColorClass = token.replace(/^(dark|light|hover|focus|active):/, "");
     if (TEXT_CLASS_TO_HEX[baseColorClass]) {
       return TEXT_CLASS_TO_HEX[baseColorClass];
+    }
+
+    // Parse text-[color]-[weight] patterns dynamically (e.g. text-amber-500, text-emerald-600)
+    const match = baseColorClass.match(/^text-([a-z]+)(-\d+)?$/);
+    if (match) {
+      const colorName = match[1];
+      if (BASE_COLOR_TO_HEX[colorName]) {
+        return BASE_COLOR_TO_HEX[colorName];
+      }
     }
   }
   
@@ -442,7 +480,9 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
   if (variant === "initial") {
     return (
       <div className="flex items-center gap-2.5 pt-3 pb-1.5 overflow-hidden min-w-0">
-        <ActiveLoader style={loaderStyle} color={resolvedColor} size={14} />
+        <div className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}>
+          <ActiveLoader style={loaderStyle} color={resolvedColor} size={14} />
+        </div>
         <AnimatePresence mode="wait">
           {label && (
             <motion.span
@@ -484,7 +524,9 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
   // streaming variant — compact inline
   return (
     <div className="mt-3 ml-1 flex items-center gap-2.5">
-      <ActiveLoader style={loaderStyle} color={resolvedColor} size={12} />
+      <div className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}>
+        <ActiveLoader style={loaderStyle} color={resolvedColor} size={12} />
+      </div>
       <AnimatePresence mode="wait">
         {label && (
           <motion.span
@@ -1318,6 +1360,9 @@ export const MICRO_LOADER_CSS = `
     width: 18px; height: 18px;
     position: relative;
     display: inline-flex; justify-content: center; align-items: center;
+    color: inherit;
+    --m-color: currentColor;
+    --m-color-dim: color-mix(in srgb, var(--m-color, currentColor) 25%, transparent);
 }
 @keyframes m-spin { 100% { transform: rotate(360deg); } }
 .m-dots { gap: 2px; }
@@ -1348,7 +1393,7 @@ export const MICRO_LOADER_CSS = `
     content: ''; width: 6px; height: 6px; background: var(--m-color); border-radius: 50%;
     animation: m-beat 1s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes m-beat { 0% { transform: scale(0.5); box-shadow: 0 0 0 0 var(--m-color-dim); } 70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(255,255,255,0); } 100% { transform: scale(0.5); box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+@keyframes m-beat { 0% { transform: scale(0.5); box-shadow: 0 0 0 0 var(--m-color-dim); } 70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(255,255,255,0); } 100% { transform: scale(0.5); box-shadow: 0 0 0 0 var(--m-color-dim); } }
 .m-cross { position: relative; animation: m-spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
 .m-cross::before, .m-cross::after { content: ''; position: absolute; background: var(--m-color); border-radius: 1px; }
 .m-cross::before { width: 12px; height: 1.5px; }
@@ -1420,7 +1465,7 @@ export function MicroDotsLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-dots shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+      style={{ '--m-color': color } as React.CSSProperties}
     >
       <div /><div /><div />
     </div>
@@ -1431,8 +1476,9 @@ export function RadarSweepLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-radar shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1440,8 +1486,9 @@ export function SineLineLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-sine shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1449,8 +1496,9 @@ export function OrbitDotLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-orbit shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1458,7 +1506,7 @@ export function MicroEqualizerLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-eq shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+      style={{ '--m-color': color } as React.CSSProperties}
     >
       <div /><div /><div />
     </div>
@@ -1469,8 +1517,9 @@ export function PulsingCoreLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-pulse shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1478,8 +1527,9 @@ export function CrossRotatorLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-cross shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1487,8 +1537,9 @@ export function FlippingSquareLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-flip shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1496,8 +1547,9 @@ export function CursorBlinkLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-blink shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1505,8 +1557,9 @@ export function BreatheRingLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-breathe shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1514,7 +1567,7 @@ export function SwappingDotsLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-swap shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+      style={{ '--m-color': color } as React.CSSProperties}
     >
       <div /><div />
     </div>
@@ -1525,8 +1578,9 @@ export function SonarPingLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-sonar shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1534,8 +1588,9 @@ export function PieFillLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-pie shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1543,8 +1598,9 @@ export function ScanLineLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-scan shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1552,8 +1608,9 @@ export function MinimalHourglassLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-hour shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1561,8 +1618,9 @@ export function YinYangMicroLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-yin shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1570,8 +1628,9 @@ export function DiamondPulseLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-diamond shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
@@ -1579,8 +1638,9 @@ export function ClockHandLoader({ color }: { color: string }) {
   return (
     <div 
       className="micro-loader m-clock shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
-    />
+      style={{ '--m-color': color } as React.CSSProperties}
+    >
+    </div>
   );
 }
 
