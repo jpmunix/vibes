@@ -313,55 +313,96 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
  * on the right with the tool's inner content (commands, paths, etc.).
  */
 export function ActiveLoader({ style, color, size }: { style: string; color: string; size?: number }) {
-  switch (style) {
-    case "aurora":
-      return <AuroraLoader color={color} size={size} />;
-    case "wave":
-      return <WaveLoader color={color} />;
-    case "cyber":
-      return <CyberRingsLoader color={color} size={size} />;
-    case "jelly":
-      return <JellyBlobLoader color={color} size={size} />;
-    case "spark":
-      return <SparkLoader color={color} size={size} />;
-    case "equalizer":
-      return <EqualizerLoader color={color} />;
-    case "infinity":
-      return <InfinityLoader color={color} size={size} />;
-    case "radar":
-      return <RadarLoader color={color} size={size} />;
-    case "grid":
-      return <PixelGridLoader color={color} />;
-    case "brackets":
-      return <BracketsLoader color={color} />;
-    case "terminal":
-      return <TerminalCursorLoader color={color} />;
-    case "server":
-      return <ServerLightsLoader color={color} />;
-    case "morph":
-      return <MorphingCoreLoader color={color} size={size} />;
-    case "matrix":
-      return <MatrixRainLoader color={color} />;
-    case "glow":
-      return <GlowingSphereLoader color={color} size={size} />;
-    case "prompt":
-      return <RootPromptLoader color={color} />;
-    case "voice":
-      return <AiVoiceLoader color={color} />;
-    case "packet":
-      return <NetworkPacketLoader color={color} />;
-    case "sonar":
-      return <SonarRippleLoader color={color} size={size} />;
-    case "blocks":
-      return <DataBlocksLoader color={color} />;
-    case "nodes":
-      return <NodeConnectionLoader color={color} />;
-    case "glowring":
-      return <NeonGlowRingLoader color={color} size={size} />;
-    case "orbital":
-    default:
-      return <OrbitalLoader color={color} size={size} />;
-  }
+  const loaderElement = (() => {
+    switch (style) {
+      case "aurora":
+        return <AuroraLoader color={color} size={size} />;
+      case "wave":
+        return <WaveLoader color={color} />;
+      case "jelly":
+        return <JellyBlobLoader color={color} size={size} />;
+      case "spark":
+        return <SparkLoader color={color} size={size} />;
+      case "equalizer":
+        return <EqualizerLoader color={color} />;
+      case "infinity":
+        return <InfinityLoader color={color} size={size} />;
+      case "grid":
+        return <PixelGridLoader color={color} />;
+      case "brackets":
+        return <BracketsLoader color={color} />;
+      case "terminal":
+        return <TerminalCursorLoader color={color} />;
+      case "server":
+        return <ServerLightsLoader color={color} />;
+      case "morph":
+        return <MorphingCoreLoader color={color} size={size} />;
+      case "matrix":
+        return <MatrixRainLoader color={color} />;
+      case "glow":
+        return <GlowingSphereLoader color={color} size={size} />;
+      case "voice":
+        return <AiVoiceLoader color={color} />;
+      case "packet":
+        return <NetworkPacketLoader color={color} />;
+      case "sonar":
+        return <SonarRippleLoader color={color} size={size} />;
+      case "blocks":
+        return <DataBlocksLoader color={color} />;
+      case "nodes":
+        return <NodeConnectionLoader color={color} />;
+      case "glowring":
+        return <NeonGlowRingLoader color={color} size={size} />;
+      case "m-dots":
+        return <MicroDotsLoader color={color} />;
+      case "m-radar":
+        return <RadarSweepLoader color={color} />;
+      case "m-sine":
+        return <SineLineLoader color={color} />;
+      case "m-orbit":
+        return <OrbitDotLoader color={color} />;
+      case "m-eq":
+        return <MicroEqualizerLoader color={color} />;
+      case "m-pulse":
+        return <PulsingCoreLoader color={color} />;
+      case "m-cross":
+        return <CrossRotatorLoader color={color} />;
+      case "m-flip":
+        return <FlippingSquareLoader color={color} />;
+      case "m-blink":
+        return <CursorBlinkLoader color={color} />;
+      case "m-breathe":
+        return <BreatheRingLoader color={color} />;
+      case "m-swap":
+        return <SwappingDotsLoader color={color} />;
+      case "m-sonar":
+        return <SonarPingLoader color={color} />;
+      case "m-pie":
+        return <PieFillLoader color={color} />;
+      case "m-scan":
+        return <ScanLineLoader color={color} />;
+      case "m-hour":
+        return <MinimalHourglassLoader color={color} />;
+      case "m-yin":
+        return <YinYangMicroLoader color={color} />;
+      case "m-diamond":
+        return <DiamondPulseLoader color={color} />;
+      case "m-clock":
+        return <ClockHandLoader color={color} />;
+      case "m-expand":
+        return <ExpandingBarLoader color={color} />;
+      case "orbital":
+      default:
+        return <OrbitalLoader color={color} size={size} />;
+    }
+  })();
+
+  return (
+    <>
+      <LoaderStyles />
+      {loaderElement}
+    </>
+  );
 }
 
 export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAnimation({
@@ -519,7 +560,7 @@ export function AuroraLoader({ color, size = 24 }: { color: string; size?: numbe
 export function WaveLoader({ color }: { color: string }) {
   return (
     <div className="flex items-center gap-1 shrink-0 h-4 px-1">
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
           className="rounded-full"
@@ -544,59 +585,6 @@ export function WaveLoader({ color }: { color: string }) {
   );
 }
 
-export function CyberRingsLoader({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <motion.div
-        className="absolute rounded-full border border-dashed"
-        style={{
-          width: size,
-          height: size,
-          borderColor: color,
-          borderWidth: 1,
-        }}
-        animate={{ rotate: 360 }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-      <motion.div
-        className="absolute rounded-full border"
-        style={{
-          width: size - 6,
-          height: size - 6,
-          borderColor: color,
-          borderWidth: 1.5,
-          borderLeftColor: "transparent",
-          borderRightColor: "transparent",
-          boxShadow: `0 0 4px ${color}40`,
-        }}
-        animate={{ rotate: -360 }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-      <motion.div
-        className="rounded-full"
-        style={{
-          width: 3,
-          height: 3,
-          background: color,
-        }}
-        animate={{ opacity: [0.3, 1, 0.3] }}
-        transition={{
-          duration: 1.2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-    </div>
-  );
-}
 
 export function JellyBlobLoader({ color, size = 24 }: { color: string; size?: number }) {
   return (
@@ -629,41 +617,56 @@ export function JellyBlobLoader({ color, size = 24 }: { color: string; size?: nu
 }
 
 export function SparkLoader({ color, size = 24 }: { color: string; size?: number }) {
+  const centerSize = 4;
+  const sparkSize = 2.5;
+
   return (
-    <div className="relative flex items-center justify-center shrink-0 animate-pulse-slow" style={{ width: size, height: size }}>
-      <div
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      {/* Center glowing core */}
+      <motion.div
         className="rounded-full absolute"
         style={{
-          width: 3,
-          height: 3,
+          width: centerSize,
+          height: centerSize,
           background: color,
-          boxShadow: `0 0 6px ${color}`,
+          boxShadow: `0 0 8px ${color}, 0 0 14px ${color}80`,
+        }}
+        animate={{
+          scale: [0.9, 1.25, 0.9],
+        }}
+        transition={{
+          duration: 1.2,
+          repeat: Infinity,
+          ease: "easeInOut",
         }}
       />
-      {[0, 1, 2, 3].map((i) => {
-        const angle = (i * Math.PI) / 2;
-        const targetX = Math.cos(angle) * (size * 0.45);
-        const targetY = Math.sin(angle) * (size * 0.45);
+      {/* 8 spark particles shooting outwards in a burst pattern */}
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+        const angle = (i * Math.PI) / 4; // 8 directions (45 degrees apart)
+        const targetX = Math.cos(angle) * (size * 0.65);
+        const targetY = Math.sin(angle) * (size * 0.65);
+        const delay = (i % 4) * 0.15;
+
         return (
           <motion.div
             key={i}
             className="absolute rounded-full"
             style={{
-              width: 2,
-              height: 2,
+              width: sparkSize,
+              height: sparkSize,
               background: color,
-              boxShadow: `0 0 4px ${color}`,
+              boxShadow: `0 0 6px ${color}`,
             }}
             animate={{
               x: [0, targetX],
               y: [0, targetY],
-              opacity: [1, 0],
-              scale: [1, 0.3],
+              opacity: [1, 0.8, 0],
+              scale: [1.2, 0.8, 0.2],
             }}
             transition={{
-              duration: 0.9,
+              duration: 0.8,
               repeat: Infinity,
-              delay: i * 0.18,
+              delay: delay,
               ease: "easeOut",
             }}
           />
@@ -754,46 +757,6 @@ export function InfinityLoader({ color, size = 24 }: { color: string; size?: num
   );
 }
 
-export function RadarLoader({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <div
-        className="absolute rounded-full border opacity-15"
-        style={{
-          width: size,
-          height: size,
-          borderColor: color,
-          borderWidth: 1,
-        }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: size - 2,
-          height: size - 2,
-          background: `conic-gradient(from 0deg, ${color}33 0deg, ${color}ff 180deg, transparent 181deg)`,
-          maskImage: "radial-gradient(circle, black 35%, transparent 65%)",
-          WebkitMaskImage: "radial-gradient(circle, black 35%, transparent 65%)",
-        }}
-        animate={{ rotate: 360 }}
-        transition={{
-          duration: 1.6,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-      <div
-        className="rounded-full"
-        style={{
-          width: 2,
-          height: 2,
-          background: color,
-          boxShadow: `0 0 4px ${color}`,
-        }}
-      />
-    </div>
-  );
-}
 
 export function PixelGridLoader({ color }: { color: string }) {
   return (
@@ -922,19 +885,39 @@ export function MatrixRainLoader({ color }: { color: string }) {
 export function GlowingSphereLoader({ color, size = 16 }: { color: string; size?: number }) {
   return (
     <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      {/* Outer pulsing glow aura */}
       <motion.div
-        className="rounded-full bg-white"
-        style={{ width: size - 6, height: size - 6 }}
+        className="absolute rounded-full"
+        style={{
+          width: size - 4,
+          height: size - 4,
+          background: color,
+          filter: "blur(3.5px)",
+        }}
         animate={{
-          scale: [0.8, 1.2, 0.8],
-          boxShadow: [
-            `0 0 4px ${color}`,
-            `0 0 10px ${color}, 0 0 15px ${color}80`,
-            `0 0 4px ${color}`
-          ]
+          scale: [0.8, 1.8, 0.8],
+          opacity: [0.25, 0.75, 0.25],
         }}
         transition={{
-          duration: 1.5,
+          duration: 2.0,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      {/* 3D Sphere Core */}
+      <motion.div
+        className="rounded-full shadow-md"
+        style={{
+          width: size - 6,
+          height: size - 6,
+          background: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${color} 65%, ${color}dd 100%)`,
+          boxShadow: `0 0 6px ${color}b0, inset 0 -1.5px 3px rgba(0,0,0,0.25)`,
+        }}
+        animate={{
+          scale: [0.9, 1.15, 0.9],
+        }}
+        transition={{
+          duration: 2.0,
           repeat: Infinity,
           ease: "easeInOut",
         }}
@@ -943,20 +926,6 @@ export function GlowingSphereLoader({ color, size = 16 }: { color: string; size?
   );
 }
 
-export function RootPromptLoader({ color }: { color: string }) {
-  return (
-    <div className="flex items-center shrink-0 font-mono text-[9px] select-none" style={{ color }}>
-      <span className="opacity-75 font-semibold">sys#</span>
-      <motion.span
-        animate={{ opacity: [1, 0, 1] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "steps(1, start)" }}
-        className="ml-[1px] font-bold"
-      >
-        _
-      </motion.span>
-    </div>
-  );
-}
 
 export function AiVoiceLoader({ color }: { color: string }) {
   return (
@@ -1125,12 +1094,6 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorCla
         </div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
-            <CyberRingsLoader color={color} size={16} />
-          </div>
-          <span className="text-xs text-muted-foreground">Cyber Rings</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 flex items-center justify-center">
             <JellyBlobLoader color={color} size={16} />
           </div>
           <span className="text-xs text-muted-foreground">Morphing Jelly</span>
@@ -1152,12 +1115,6 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorCla
             <InfinityLoader color={color} size={16} />
           </div>
           <span className="text-xs text-muted-foreground">Infinity Loop</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 flex items-center justify-center">
-            <RadarLoader color={color} size={16} />
-          </div>
-          <span className="text-xs text-muted-foreground">Radar Scan</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
@@ -1203,12 +1160,6 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorCla
         </div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
-            <RootPromptLoader color={color} />
-          </div>
-          <span className="text-xs text-muted-foreground">Root Prompt</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 flex items-center justify-center">
             <AiVoiceLoader color={color} />
           </div>
           <span className="text-xs text-muted-foreground">AI Voice</span>
@@ -1243,7 +1194,401 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorCla
           </div>
           <span className="text-xs text-muted-foreground">Neon Glow Ring</span>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <MicroDotsLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Micro Dots</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <RadarSweepLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Micro Radar</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <SineLineLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Sine Line</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <OrbitDotLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Orbit Dot</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <MicroEqualizerLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Micro Equalizer</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <PulsingCoreLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Pulsing Core</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <CrossRotatorLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Cross Rotator</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <FlippingSquareLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Flipping Square</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <CursorBlinkLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Cursor Blink</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <BreatheRingLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Breathe Ring</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <SwappingDotsLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Swapping Dots</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <SonarPingLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Sonar Ping</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <PieFillLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Pie Fill</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <ScanLineLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Scan Line</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <MinimalHourglassLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Micro Hourglass</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <YinYangMicroLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Semicircle</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <DiamondPulseLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Diamond Pulse</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <ClockHandLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Clock Hand</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <ExpandingBarLoader color={color} />
+          </div>
+          <span className="text-xs text-muted-foreground">Bar Expand</span>
+        </div>
       </div>
     </div>
   );
 });
+
+export const MICRO_LOADER_CSS = `
+.micro-loader {
+    width: 18px; height: 18px;
+    position: relative;
+    display: inline-flex; justify-content: center; align-items: center;
+}
+@keyframes m-spin { 100% { transform: rotate(360deg); } }
+.m-dots { gap: 2px; }
+.m-dots div { width: 2.5px; height: 2.5px; background: var(--m-color); border-radius: 50%; animation: m-pulse-dot 1s infinite alternate; }
+.m-dots div:nth-child(2) { animation-delay: 0.2s; }
+.m-dots div:nth-child(3) { animation-delay: 0.4s; }
+@keyframes m-pulse-dot { 0%, 20% { opacity: 0.2; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+.m-radar { border-radius: 50%; background: conic-gradient(from 0deg, transparent 60%, var(--m-color) 100%); animation: m-spin 1s linear infinite; }
+.m-radar::before { content: ''; position: absolute; width: 14px; height: 14px; background: var(--background, #0d1117); border-radius: 50%; }
+.m-sine::after {
+    content: ''; width: 12px; height: 1.5px; background: var(--m-color);
+    animation: m-scale-x 1s infinite ease-in-out alternate;
+}
+@keyframes m-scale-x { 0% { transform: scaleX(0.1); opacity: 0.3; } 100% { transform: scaleX(1); opacity: 1; } }
+.m-orbit::before { content: ''; width: 3px; height: 3px; background: var(--m-color); border-radius: 50%; }
+.m-orbit::after {
+    content: ''; position: absolute; width: 14px; height: 14px;
+    border-radius: 50%; border: 1px solid transparent; border-top: 1.5px solid var(--m-color);
+    animation: m-spin 1s linear infinite;
+}
+.m-eq { gap: 2px; align-items: flex-end; padding-bottom: 2px; }
+.m-eq div { width: 2px; background: var(--m-color); animation: m-eq-bounce 0.8s infinite alternate ease-out; }
+.m-eq div:nth-child(1) { height: 6px; animation-delay: 0.1s; }
+.m-eq div:nth-child(2) { height: 12px; animation-delay: 0.3s; }
+.m-eq div:nth-child(3) { height: 8px; animation-delay: 0.2s; }
+@keyframes m-eq-bounce { 0% { height: 2px; } 100% { height: 12px; } }
+.m-pulse::after {
+    content: ''; width: 6px; height: 6px; background: var(--m-color); border-radius: 50%;
+    animation: m-beat 1s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes m-beat { 0% { transform: scale(0.5); box-shadow: 0 0 0 0 var(--m-color-dim); } 70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(255,255,255,0); } 100% { transform: scale(0.5); box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+.m-cross { position: relative; animation: m-spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+.m-cross::before, .m-cross::after { content: ''; position: absolute; background: var(--m-color); border-radius: 1px; }
+.m-cross::before { width: 12px; height: 1.5px; }
+.m-cross::after { width: 1.5px; height: 12px; }
+.m-flip::after {
+    content: ''; width: 8px; height: 8px; background: var(--m-color);
+    animation: m-flip-anim 1.2s infinite ease-in-out;
+}
+@keyframes m-flip-anim { 0% { transform: perspective(30px) rotateY(0); } 50% { transform: perspective(30px) rotateY(180deg); } 100% { transform: perspective(30px) rotateY(180deg) rotateX(180deg); } }
+.m-blink::after { content: ''; width: 8px; height: 12px; background: var(--m-color); animation: m-blink-anim 1s step-end infinite; }
+@keyframes m-blink-anim { 50% { opacity: 0; } }
+.m-breathe::after {
+    content: ''; width: 12px; height: 12px; border: 1.5px solid var(--m-color); border-radius: 50%;
+    animation: m-breathe-anim 1.5s infinite ease-in-out alternate;
+}
+@keyframes m-breathe-anim { 0% { transform: scale(0.6); opacity: 0.2; } 100% { transform: scale(1); opacity: 1; } }
+.m-swap { position: relative; }
+.m-swap div { position: absolute; width: 4px; height: 4px; background: var(--m-color); border-radius: 50%; animation: m-swap-anim 1s infinite ease-in-out; }
+.m-swap div:nth-child(1) { left: 2px; }
+.m-swap div:nth-child(2) { right: 2px; background: var(--m-color-dim); animation-direction: reverse; }
+@keyframes m-swap-anim { 0% { transform: translateX(0) scale(1); z-index: 2; } 50% { transform: translateX(6px) scale(1.3); z-index: 2; } 50.001% { z-index: 1; } 100% { transform: translateX(0) scale(1); z-index: 1; } }
+.m-sonar { position: relative; }
+.m-sonar::before { content: ''; width: 3px; height: 3px; background: var(--m-color); border-radius: 50%; }
+.m-sonar::after {
+    content: ''; position: absolute; width: 100%; height: 100%; border: 1px solid var(--m-color); border-radius: 50%;
+    animation: m-ping 1.5s infinite cubic-bezier(0, 0, 0.2, 1);
+}
+@keyframes m-ping { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
+.m-pie { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--m-color-dim); position: relative; overflow: hidden; }
+.m-pie::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--m-color);
+    transform-origin: 50% 100%; animation: m-fill 1.5s infinite steps(4);
+}
+@keyframes m-fill { 0% { transform: rotate(-90deg); } 100% { transform: rotate(270deg); } }
+.m-scan { width: 14px; height: 14px; border: 1px solid var(--m-color-dim); position: relative; border-radius: 2px; }
+.m-scan::after {
+    content: ''; position: absolute; left: 0; top: 0; width: 1px; height: 100%; background: var(--m-color);
+    animation: m-scan-move 1s infinite alternate ease-in-out; box-shadow: 0 0 2px var(--m-color);
+}
+@keyframes m-scan-move { 0% { transform: translateX(0); } 100% { transform: translateX(12px); } }
+.m-hour {
+    width: 0; height: 0;
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--m-color); border-top: 6px solid var(--m-color);
+    animation: m-spin 1.5s infinite cubic-bezier(0.5, 0, 0.5, 1);
+}
+.m-yin { width: 12px; height: 12px; border: 1.5px solid var(--m-color); border-radius: 50%; position: relative; animation: m-spin 1s infinite linear; }
+.m-yin::after { content: ''; position: absolute; top: -1.5px; left: -1.5px; width: 6px; height: 12px; background: var(--m-color); border-radius: 12px 0 0 12px; }
+.m-diamond { width: 8px; height: 8px; border: 1.5px solid var(--m-color); transform: rotate(45deg); animation: m-dia-pulse 1.2s infinite ease-in-out alternate; }
+@keyframes m-dia-pulse { 0% { transform: rotate(45deg) scale(0.6); opacity: 0.3; } 100% { transform: rotate(45deg) scale(1.2); opacity: 1; background: var(--m-color); } }
+.m-clock { width: 14px; height: 14px; border: 1.5px solid var(--m-color-dim); border-radius: 50%; position: relative; }
+.m-clock::after {
+    content: ''; position: absolute; top: 2px; left: 6.5px; width: 1.5px; height: 5px; background: var(--m-color);
+    transform-origin: 50% 100%; border-radius: 1px; animation: m-spin 1s infinite linear;
+}
+.m-expand::after {
+    content: ''; height: 3px; background: var(--m-color); border-radius: 2px;
+    animation: m-expand-anim 1s infinite ease-in-out;
+}
+@keyframes m-expand-anim { 0%, 100% { width: 3px; } 50% { width: 14px; } }
+`;
+
+export function LoaderStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: MICRO_LOADER_CSS }} />;
+}
+
+
+export function MicroDotsLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-dots shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    >
+      <div /><div /><div />
+    </div>
+  );
+}
+
+export function RadarSweepLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-radar shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function SineLineLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-sine shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function OrbitDotLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-orbit shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function MicroEqualizerLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-eq shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    >
+      <div /><div /><div />
+    </div>
+  );
+}
+
+export function PulsingCoreLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-pulse shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function CrossRotatorLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-cross shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function FlippingSquareLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-flip shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function CursorBlinkLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-blink shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function BreatheRingLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-breathe shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function SwappingDotsLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-swap shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    >
+      <div /><div />
+    </div>
+  );
+}
+
+export function SonarPingLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-sonar shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function PieFillLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-pie shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function ScanLineLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-scan shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function MinimalHourglassLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-hour shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function YinYangMicroLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-yin shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function DiamondPulseLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-diamond shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function ClockHandLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-clock shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}
+
+export function ExpandingBarLoader({ color }: { color: string }) {
+  return (
+    <div 
+      className="micro-loader m-expand shrink-0" 
+      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    />
+  );
+}

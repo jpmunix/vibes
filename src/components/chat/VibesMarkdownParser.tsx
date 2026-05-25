@@ -56,6 +56,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+function cleanVibesPath(p: string): string {
+  const dotIndex = p.indexOf(".vibes/");
+  if (dotIndex !== -1) {
+    return p.substring(dotIndex);
+  }
+  const noDotIndex = p.indexOf("vibes/");
+  if (noDotIndex !== -1) {
+    return "." + p.substring(noDotIndex);
+  }
+  return p;
+}
+
+
 /** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */
 const TokenUsageBadge: React.FC<{
   icon: React.ElementType;
@@ -590,9 +603,26 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     flushBadgeGroup();
 
     // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned (at most 1 of each)
-    if (!isStreaming && content && !isGitMessage) {
-      const vibesMatches = Array.from(content.matchAll(/\.vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => m[0]);
-      
+    if (!isStreaming && !isGitMessage) {
+      const vibesMatches: string[] = [];
+
+      for (const piece of contentPieces) {
+        if (piece.type === "markdown") {
+          if (piece.content) {
+            const matches = Array.from(piece.content.matchAll(/\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => cleanVibesPath(m[0]));
+            vibesMatches.push(...matches);
+          }
+        } else if (piece.type === "custom-tag") {
+          const tag = piece.tagInfo.tag;
+          if (["vibes-write", "vibes-patch", "vibes-edit", "vibes-search-replace"].includes(tag)) {
+            const pathAttr = piece.tagInfo.attributes.path;
+            if (pathAttr && /\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/.test(pathAttr)) {
+              vibesMatches.push(cleanVibesPath(pathAttr));
+            }
+          }
+        }
+      }
+
       let lastPlanPath: string | null = null;
       let lastWalkthroughPath: string | null = null;
 
@@ -619,7 +649,8 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                   type="button"
                   className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
                   onClick={() => {
-                    setSelectedPath(artifactPath);
+                    const normalizedPath = cleanVibesPath(artifactPath);
+                    setSelectedPath(normalizedPath);
                     setSidebarOpen(true);
                   }}
                 >

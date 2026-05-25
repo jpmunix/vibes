@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
 /**
@@ -214,7 +214,7 @@ export default function WorkspacePage() {
               <ServerControlButton appId={appId} />
             )}
             <GitChangesButton appId={appId} />
-            <WorkspaceArtifactsDropdown chatId={selectedChatId} />
+            <WorkspaceArtifactsDropdown appId={appId} chatId={selectedChatId} />
 
             {/* Session cost — separated with a delicate divider */}
             {settings?.showCostDisplay && hasPricing && (
@@ -276,15 +276,54 @@ function formatWorkspaceCost(usd: number): string {
   return "$" + raw.replace(".", ",");
 }
 
-function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
+function WorkspaceArtifactsDropdown({ appId, chatId }: { appId: number | null; chatId: number | null }) {
   const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
   const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
   const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
   const [artifactToDecouple, setArtifactToDecouple] = useState<{ id: number; title: string; path: string } | null>(null);
 
-  if (!artifacts || artifacts.length === 0) return null;
+  const { data: appPlans = [], refetch: refetchAppPlans } = useQuery({
+    queryKey: ["appPlans", appId],
+    queryFn: async () => {
+      if (!appId) return [];
+      const result = await ipc.chat.getAppPlans(appId);
+      return [...(result as any[])].sort((a, b) => {
+        if (!a.createdAt && !b.createdAt) return 0;
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    },
+    enabled: !!appId,
+  });
+
+  const unattachedPlans = appPlans.filter(
+    (p) => !artifacts.some((a) => a.path === p.path)
+  );
 
   const hasUnreviewed = artifacts.some((a) => !a.accepted);
+
+  const handleAttachPlan = async (planPath: string) => {
+    if (!appId || !chatId) return;
+    try {
+      let normalizedPath = planPath;
+      if (normalizedPath.startsWith("vibes/")) {
+        normalizedPath = "." + normalizedPath;
+      }
+      await ipc.chat.attachArtifactToChat({
+        appId,
+        path: normalizedPath,
+        chatId,
+      });
+      showSuccess("Plan adjuntado al chat actual");
+      setSelectedPath(normalizedPath);
+      setSidebarOpen(true);
+      await invalidateArtifacts();
+      refetchAppPlans();
+    } catch (err) {
+      showError(err);
+    }
+  };
 
   return (
     <>
@@ -299,40 +338,81 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
-          {artifacts.map((artifact) => (
-            <DropdownMenuItem
-              key={artifact.id}
-              onClick={() => {
-                setSelectedPath(artifact.path);
-                setSidebarOpen(true);
-              }}
-              className="group cursor-pointer py-2 flex items-center justify-between gap-2"
-            >
-              <div className="flex flex-col gap-0.5 w-full min-w-0">
-                <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
-                {artifact.createdAt && (
-                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                    {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                )}
+          {artifacts.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <div className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider px-2 py-1.5">
+                Planes en este chat
               </div>
-              <button
-                title="Desacoplar plan del chat"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setArtifactToDecouple({
-                    id: artifact.id,
-                    title: artifact.title || artifact.path,
-                    path: artifact.path,
-                  });
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuItem>
-          ))}
+              {artifacts.map((artifact) => (
+                <DropdownMenuItem
+                  key={artifact.id}
+                  onClick={() => {
+                    setSelectedPath(artifact.path);
+                    setSidebarOpen(true);
+                  }}
+                  className="group cursor-pointer py-2 flex items-center justify-between gap-2"
+                >
+                  <div className="flex flex-col gap-0.5 w-full min-w-0">
+                    <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
+                    {artifact.createdAt && (
+                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                        {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    title="Desacoplar plan del chat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setArtifactToDecouple({
+                        id: artifact.id,
+                        title: artifact.title || artifact.path,
+                        path: artifact.path,
+                      });
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          )}
+
+          {artifacts.length > 0 && unattachedPlans.length > 0 && (
+            <div className="h-px bg-border/60 my-1" />
+          )}
+
+          {unattachedPlans.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <div className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider px-2 py-1.5">
+                Otros planes del proyecto
+              </div>
+              {unattachedPlans.map((plan) => (
+                <DropdownMenuItem
+                  key={plan.path}
+                  onClick={() => handleAttachPlan(plan.path)}
+                  className="group cursor-pointer py-2 flex items-center justify-between gap-2"
+                >
+                  <div className="flex flex-col gap-0.5 w-full min-w-0">
+                    <span className="font-medium text-sm break-words whitespace-normal">{plan.title || plan.path}</span>
+                    {plan.chatTitle && (
+                      <span className="text-[10px] text-muted-foreground/60">
+                        Asociado a: {plan.chatTitle}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          )}
+
+          {artifacts.length === 0 && unattachedPlans.length === 0 && (
+            <div className="text-center py-4 px-3 text-xs text-muted-foreground italic">
+              No hay planificaciones en este proyecto
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -353,6 +433,7 @@ function WorkspaceArtifactsDropdown({ chatId }: { chatId: number | null }) {
               setSelectedPath(null);
             }
             await invalidateArtifacts();
+            refetchAppPlans();
             showSuccess("Plan desacoplado del chat");
           } catch (error) {
             showError(`Error al desacoplar el plan: ${(error as any).toString()}`);

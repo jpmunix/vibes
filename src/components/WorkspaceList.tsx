@@ -1172,7 +1172,7 @@ const AppChats = memo(function AppChats({
                   ) : (
                     <button
                       type="button"
-                      className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                      className={`relative flex items-start pl-7 pr-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
                         selectedChatId === chat.id
                           ? "text-primary font-medium"
                           : "text-foreground/80"
@@ -1182,32 +1182,34 @@ const AppChats = memo(function AppChats({
                         handleChatClickAndMarkRead(appId, chat.id);
                       }}
                     >
-                      <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                        {streaming ? (
-                          <Loader2
-                            size={12}
-                            className="animate-spin text-primary shrink-0"
-                          />
-                        ) : unread ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                        ) : null}
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span
-                            className={`break-words whitespace-normal ${unread ? "font-semibold" : ""}`}
-                          >
-                            {chat.title || "Nuevo chat"}
-                          </span>
-                          <ChatRowLabels
-                            labels={(chat as any).labels}
-                            onRemove={handleRemoveLabel}
-                          />
-                          <span className="typo-micro opacity-60 mt-0.5">
-                            {formatDistanceToNow(safeDate(chat.createdAt), {
-                              addSuffix: false,
-                              locale: es,
-                            })}
-                          </span>
+                      {(streaming || unread) && (
+                        <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
+                          {streaming ? (
+                            <Loader2
+                              size={12}
+                              className="animate-spin text-primary"
+                            />
+                          ) : unread ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          ) : null}
                         </div>
+                      )}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span
+                          className={`break-words whitespace-normal ${unread ? "font-semibold" : ""}`}
+                        >
+                          {chat.title || "Nuevo chat"}
+                        </span>
+                        <ChatRowLabels
+                          labels={(chat as any).labels}
+                          onRemove={handleRemoveLabel}
+                        />
+                        <span className="typo-micro opacity-60 mt-0.5">
+                          {formatDistanceToNow(safeDate(chat.createdAt), {
+                            addSuffix: false,
+                            locale: es,
+                          })}
+                        </span>
                       </div>
                     </button>
                   )}
@@ -3779,7 +3781,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         ) : (
                           <button
                             type="button"
-                            className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                            className={`relative flex items-start pl-7 pr-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
                               isActive
                                 ? "text-primary font-medium"
                                 : "text-foreground/80"
@@ -3812,29 +3814,31 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               });
                             }}
                           >
-                            <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                              {streaming ? (
-                                <Loader2
-                                  size={12}
-                                  className="animate-spin text-primary shrink-0"
-                                />
-                              ) : isPinnedUnread ? (
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                              ) : null}
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <span
-                                  className={`break-words whitespace-normal ${isPinnedUnread ? "font-semibold" : ""}`}
-                                >
-                                  {pinned.title || "Nuevo chat"}
-                                </span>
-                                <ChatRowLabels
-                                  labels={pinned.labels}
-                                  onRemove={handleRemovePinnedLabel}
-                                />
-                                <span className="typo-micro opacity-60 mt-0.5 truncate">
-                                  {pinned.appName}
-                                </span>
+                            {(streaming || isPinnedUnread) && (
+                              <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
+                                {streaming ? (
+                                  <Loader2
+                                    size={12}
+                                    className="animate-spin text-primary"
+                                  />
+                                ) : isPinnedUnread ? (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                ) : null}
                               </div>
+                            )}
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span
+                                className={`break-words whitespace-normal ${isPinnedUnread ? "font-semibold" : ""}`}
+                              >
+                                {pinned.title || "Nuevo chat"}
+                              </span>
+                              <ChatRowLabels
+                                labels={pinned.labels}
+                                onRemove={handleRemovePinnedLabel}
+                              />
+                              <span className="typo-micro opacity-60 mt-0.5 truncate">
+                                {pinned.appName}
+                              </span>
                             </div>
                           </button>
                         )}

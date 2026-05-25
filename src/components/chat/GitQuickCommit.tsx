@@ -110,11 +110,11 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
             {fileCount} {fileCount === 1 ? "archivo" : "archivos"}
           </span>
         </div>
-        <div className="p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted rounded-full transition-colors">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           {isExpanded ? (
-            <ChevronUp size={14} />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronDown size={14} />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </div>

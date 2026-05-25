@@ -1028,11 +1028,18 @@ export function registerChatHandlers() {
     const fs = await import("fs");
     const path = await import("path");
     
-    // getVibesAppPath is already imported at the top
-    const fullPath = path.join(getVibesAppPath(app.path), relPath);
+    const appDir = getVibesAppPath(app.path);
+    let normalizedPath = relPath;
+    if (path.isAbsolute(normalizedPath)) {
+      normalizedPath = path.relative(appDir, normalizedPath);
+    }
+    if (normalizedPath.startsWith("vibes/")) {
+      normalizedPath = "." + normalizedPath;
+    }
+    const fullPath = path.join(appDir, normalizedPath);
     
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Artifact file not found: ${relPath}`);
+      throw new Error(`Artifact file not found: ${normalizedPath}`);
     }
     
     return fs.readFileSync(fullPath, "utf-8");
@@ -1253,7 +1260,22 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     const fs = await import("fs");
     const pathMod = await import("path");
-    const { appId, path: artifactPath, chatId } = input;
+    const { appId, chatId } = input;
+
+    const app = await db.query.apps.findFirst({
+      where: eq(remoteSchema.apps.id, appId),
+      columns: { path: true },
+    });
+    if (!app) throw new Error("App not found");
+
+    const appDir = getVibesAppPath(app.path);
+    let artifactPath = input.path;
+    if (pathMod.isAbsolute(artifactPath)) {
+      artifactPath = pathMod.relative(appDir, artifactPath);
+    }
+    if (artifactPath.startsWith("vibes/")) {
+      artifactPath = "." + artifactPath;
+    }
 
     // Check if THIS specific chat already has a record for this path
     const existingForChat = await db.query.chatArtifacts.findFirst({
@@ -1271,14 +1293,10 @@ export function registerChatHandlers() {
     }
 
     // Create a NEW record for this chat (other chats keep theirs)
-    const app = await db.query.apps.findFirst({
-      where: eq(remoteSchema.apps.id, appId),
-      columns: { path: true },
-    });
     let artifactTitle = pathMod.basename(artifactPath);
     if (app?.path) {
       try {
-        const fullPath = pathMod.join(getVibesAppPath(app.path), artifactPath);
+        const fullPath = pathMod.join(appDir, artifactPath);
         const content = fs.readFileSync(fullPath, "utf-8");
         const h1 = content.match(/^#\s+(.+)$/m);
         if (h1?.[1]) artifactTitle = h1[1].trim();

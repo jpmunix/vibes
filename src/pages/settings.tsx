@@ -1246,12 +1246,6 @@ export function GeneralSettings({
                   rightIcon: renderLoaderIcon("wave")
                 },
                 {
-                  value: "cyber",
-                  label: "Cyber Rings",
-                  description: "Dos anillos concéntricos girando en sentidos opuestos",
-                  rightIcon: renderLoaderIcon("cyber")
-                },
-                {
                   value: "jelly",
                   label: "Morphing Jelly",
                   description: "Gota fluida orgánica en deformación constante",
@@ -1274,12 +1268,6 @@ export function GeneralSettings({
                   label: "Infinity Loop",
                   description: "Partícula que dibuja el símbolo de infinito",
                   rightIcon: renderLoaderIcon("infinity")
-                },
-                {
-                  value: "radar",
-                  label: "Radar Scan",
-                  description: "Barrido circular cónico de estilo radar militar",
-                  rightIcon: renderLoaderIcon("radar")
                 },
                 {
                   value: "grid",
@@ -1324,12 +1312,6 @@ export function GeneralSettings({
                   rightIcon: renderLoaderIcon("glow")
                 },
                 {
-                  value: "prompt",
-                  label: "Root Prompt",
-                  description: "Símbolo de prompt de root sys# con cursor",
-                  rightIcon: renderLoaderIcon("prompt")
-                },
-                {
                   value: "voice",
                   label: "AI Voice",
                   description: "Barras de espectro de voz de asistente de IA",
@@ -1364,6 +1346,120 @@ export function GeneralSettings({
                   label: "Neon Glow Ring",
                   description: "Anillo neon giratorio de dos colores con brillo",
                   rightIcon: renderLoaderIcon("glowring")
+                },
+                {
+                  value: "m-dots",
+                  label: "Micro Dots",
+                  description: "Tres puntitos de 2.5px parpadeantes",
+                  rightIcon: renderLoaderIcon("m-dots")
+                },
+                {
+                  value: "m-radar",
+                  label: "Micro Radar",
+                  description: "Círculo con barrido angular de barrido cónico",
+                  rightIcon: renderLoaderIcon("m-radar")
+                },
+                {
+                  value: "m-sine",
+                  label: "Sine Line",
+                  description: "Línea de frecuencia con escala horizontal",
+                  rightIcon: renderLoaderIcon("m-sine")
+                },
+                {
+                  value: "m-orbit",
+                  label: "Orbit Dot",
+                  description: "Punto central con satélite orbitando",
+                  rightIcon: renderLoaderIcon("m-orbit")
+                },
+                {
+                  value: "m-eq",
+                  label: "Micro Equalizer",
+                  description: "Tres barras finas verticales de frecuencia",
+                  rightIcon: renderLoaderIcon("m-eq")
+                },
+                {
+                  value: "m-pulse",
+                  label: "Pulsing Core",
+                  description: "Núcleo con latido nítido y expansión de halo",
+                  rightIcon: renderLoaderIcon("m-pulse")
+                },
+                {
+                  value: "m-cross",
+                  label: "Cross Rotator",
+                  description: "Mini aspa de cruz giratoria",
+                  rightIcon: renderLoaderIcon("m-cross")
+                },
+                {
+                  value: "m-flip",
+                  label: "Flipping Square",
+                  description: "Cubo 3D que gira y flipea en perspectiva",
+                  rightIcon: renderLoaderIcon("m-flip")
+                },
+                {
+                  value: "m-blink",
+                  label: "Cursor Blink",
+                  description: "Cursor parpadeante estilo terminal de desarrollo",
+                  rightIcon: renderLoaderIcon("m-blink")
+                },
+                {
+                  value: "m-breathe",
+                  label: "Breathe Ring",
+                  description: "Anillo en pulsación de escala y opacidad",
+                  rightIcon: renderLoaderIcon("m-breathe")
+                },
+                {
+                  value: "m-swap",
+                  label: "Swapping Dots",
+                  description: "Dos puntos cruzándose alternadamente",
+                  rightIcon: renderLoaderIcon("m-swap")
+                },
+                {
+                  value: "m-sonar",
+                  label: "Sonar Ping",
+                  description: "Punto con ondas concéntricas expansivas",
+                  rightIcon: renderLoaderIcon("m-sonar")
+                },
+                {
+                  value: "m-pie",
+                  label: "Pie Fill",
+                  description: "Relleno circular secuencial de 4 pasos",
+                  rightIcon: renderLoaderIcon("m-pie")
+                },
+                {
+                  value: "m-scan",
+                  label: "Scan Line",
+                  description: "Línea de escaneo láser horizontal en caja",
+                  rightIcon: renderLoaderIcon("m-scan")
+                },
+                {
+                  value: "m-hour",
+                  label: "Micro Hourglass",
+                  description: "Reloj de arena clásico giratorio",
+                  rightIcon: renderLoaderIcon("m-hour")
+                },
+                {
+                  value: "m-yin",
+                  label: "Semicircle",
+                  description: "Doble semicírculo giratorio",
+                  rightIcon: renderLoaderIcon("m-yin")
+                },
+                {
+                  value: "m-diamond",
+                  label: "Diamond Pulse",
+                  description: "Rombo giratorio con cambio de escala y relleno",
+                  rightIcon: renderLoaderIcon("m-diamond")
+                },
+                {
+                  value: "m-clock",
+                  label: "Clock Hand",
+                  description: "Aguja de reloj giratoria con anillo",
+                  rightIcon: renderLoaderIcon("m-clock")
+                },
+                {
+                  value: "m-expand",
+                  label: "Bar Expand",
+                  description: "Punto a línea con expansión horizontal simétrica",
+                  rightIcon: renderLoaderIcon("m-expand")
                 }
               ]}
               triggerVariant="pill"

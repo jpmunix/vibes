@@ -3072,11 +3072,20 @@ export async function handleOpenCodeStream(
 
                 if (chat) {
                     for (const file of filesEdited) {
-                        if (file.includes(".vibes/") && file.endsWith(".md")) {
+                        const hasDot = file.includes(".vibes/");
+                        const hasNoDot = file.includes("vibes/");
+                        if ((hasDot || hasNoDot) && file.endsWith(".md")) {
                             let relativePath = file;
-                            const idx = file.indexOf(".vibes/");
-                            if (idx !== -1) {
-                                relativePath = file.substring(idx);
+                            if (hasDot) {
+                                const idx = file.indexOf(".vibes/");
+                                if (idx !== -1) {
+                                    relativePath = file.substring(idx);
+                                }
+                            } else {
+                                const idx = file.indexOf("vibes/");
+                                if (idx !== -1) {
+                                    relativePath = "." + file.substring(idx);
+                                }
                             }
 
                             const existing = await db.query.chatArtifacts.findFirst({
