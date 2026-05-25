@@ -210,6 +210,9 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
+    if (message.model === "vibes/git-assistant") {
+      return undefined;
+    }
     if (isLastMessage && selectedMemories && selectedMemories.length > 0) {
       return selectedMemories;
     }

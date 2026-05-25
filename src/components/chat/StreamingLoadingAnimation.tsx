@@ -47,7 +47,22 @@ const TEXT_CLASS_TO_HEX: Record<string, string> = {
 
 function resolveColor(textClass?: string): string {
   if (!textClass) return "#a855f7"; // fallback purple
-  return TEXT_CLASS_TO_HEX[textClass] || "#a855f7";
+  
+  const cleanText = textClass.trim();
+  if (TEXT_CLASS_TO_HEX[cleanText]) {
+    return TEXT_CLASS_TO_HEX[cleanText];
+  }
+  
+  // Split by whitespace and search for matching sub-tokens (e.g. "text-cyan-500 dark:text-cyan-400")
+  const tokens = cleanText.split(/\s+/);
+  for (const token of tokens) {
+    const baseColorClass = token.replace(/^(dark|light|hover|focus|active):/, "");
+    if (TEXT_CLASS_TO_HEX[baseColorClass]) {
+      return TEXT_CLASS_TO_HEX[baseColorClass];
+    }
+  }
+  
+  return "#a855f7"; // fallback purple
 }
 
 // ─── Orbital Loader ───────────────────────────────────────────────────────────
