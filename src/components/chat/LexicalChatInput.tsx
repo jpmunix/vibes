@@ -530,7 +530,7 @@ export function LexicalChatInput({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="relative flex-1">
+      <div className="relative flex-1 cursor-text">
         <PlainTextPlugin
           contentEditable={
             <ContentEditable

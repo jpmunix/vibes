@@ -389,6 +389,14 @@ body[data-scroll-locked] .app-region-drag {
   [role="button"][aria-disabled="true"] {
     cursor: not-allowed;
   }
+
+  /* Force text cursor on contenteditable and ALL descendants to prevent
+     flickering between cursor:text and cursor:default when hovering over
+     internal element boundaries (p, span, etc.) created by Lexical. */
+  [contenteditable="true"],
+  [contenteditable="true"] * {
+    cursor: text !important;
+  }
 }
 
 @media (pointer: fine) {
