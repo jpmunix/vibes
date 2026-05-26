@@ -3024,7 +3024,15 @@ export async function handleOpenCodeStream(
         clearInterval(checkpointIntervalId);
 
         const getAbortedResponse = () => {
-            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            let partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+
+            // Append files-changed summary even on abort (agent may have edited files before cancel)
+            if (filesEdited.length > 0) {
+                const basenames = filesEdited.map(f => path.basename(f));
+                const uniqueNames = [...new Set(basenames)];
+                partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+</vibes-files-changed>\n`;
+            }
 
             // Estimate tokens since we might not have received the final usage chunk from upstream
             // <think> blocks
@@ -3153,7 +3161,16 @@ export async function handleOpenCodeStream(
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
 
-            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            let partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+
+            // Append files-changed summary even on abort
+            if (filesEdited.length > 0) {
+                const basenames = filesEdited.map(f => path.basename(f));
+                const uniqueNames = [...new Set(basenames)];
+                partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+</vibes-files-changed>\n`;
+            }
+
             const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
             const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
             const standardChars = Math.max(0, partialText.length - thinkChars);

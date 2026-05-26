@@ -270,10 +270,10 @@ function InlineCommitPanel({ appId, chatId, scopedBasenames }: InlineCommitPanel
     }
 
     return (
-        <div className="px-3 pb-2.5 pt-1 animate-in slide-in-from-top-1 duration-150">
+        <div className="px-4 pb-4 pt-2 animate-in slide-in-from-top-1 duration-150">
             {/* Files matched indicator */}
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-1.5">
-                <GitCommit size={10} />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/70 mb-3">
+                <GitCommit size={13} />
                 <span>
                     {filesToStage.length} de {scopedBasenames.length} archivo{scopedBasenames.length !== 1 ? "s" : ""} pendiente{filesToStage.length !== 1 ? "s" : ""}
                 </span>
@@ -287,9 +287,9 @@ function InlineCommitPanel({ appId, chatId, scopedBasenames }: InlineCommitPanel
                     placeholder={
                         isLocalGenerating
                             ? "Generando mensaje con IA..."
-                            : "Escribe un mensaje de commit..."
+                            : "Escribe un mensaje de commit detallado..."
                     }
-                    className="w-full min-h-[60px] border-0 focus-visible:ring-0 rounded-none bg-transparent resize-none p-3 text-xs placeholder:text-muted-foreground/50"
+                    className="w-full min-h-[144px] border-0 focus-visible:ring-0 rounded-none bg-transparent resize-none p-4 text-xs placeholder:text-muted-foreground/50"
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                             e.preventDefault();
@@ -298,35 +298,35 @@ function InlineCommitPanel({ appId, chatId, scopedBasenames }: InlineCommitPanel
                     }}
                 />
 
-                <div className="flex items-center justify-between p-2 bg-muted/20 border-t border-border/40">
+                <div className="flex items-center justify-between px-3 py-2.5 bg-muted/20 border-t border-border/40">
                     <div className="flex items-center">
                         <button
                             onClick={handleGenerateMessage}
                             disabled={busy}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent rounded-md text-[11px] font-medium transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent rounded-md text-xs font-medium transition-colors"
                             title="Generar mensaje con IA (solo estos archivos)"
                         >
                             {isLocalGenerating ? (
                                 <>
-                                    <Loader2 size={13} className="animate-spin text-primary" />
+                                    <Loader2 size={14} className="animate-spin text-primary" />
                                     <span className="text-primary">Analizando...</span>
                                 </>
                             ) : (
                                 <>
-                                    <Sparkles size={13} />
+                                    <Sparkles size={14} />
                                     <span>Autogenerar</span>
                                 </>
                             )}
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                         <Button
                             size="sm"
                             variant="ghost"
                             onClick={handleCommit}
                             disabled={!localMessage.trim() || busy}
-                            className="h-7 text-xs px-3 bg-muted/50 hover:bg-muted font-medium text-muted-foreground hover:text-foreground"
+                            className="h-8 text-xs px-4 bg-muted/50 hover:bg-muted font-medium text-muted-foreground hover:text-foreground"
                         >
                             {isCommitting && <Loader2 size={12} className="mr-1.5 animate-spin" />}
                             Commit
@@ -336,7 +336,7 @@ function InlineCommitPanel({ appId, chatId, scopedBasenames }: InlineCommitPanel
                             size="sm"
                             onClick={handleCommitAndPush}
                             disabled={!localMessage.trim() || busy}
-                            className="h-7 text-xs px-3.5 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
+                            className="h-8 text-xs px-4 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
                         >
                             {isPushing ? (
                                 <Loader2 size={12} className="animate-spin" />

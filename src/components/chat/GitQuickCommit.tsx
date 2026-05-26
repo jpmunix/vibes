@@ -132,7 +132,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
                   ? "Generando mensaje con IA..."
                   : "Escribe un mensaje de commit detallado..."
               }
-              className="w-full min-h-[80px] border-0 focus-visible:ring-0 rounded-none bg-transparent resize-none p-3 text-xs placeholder:text-muted-foreground/50"
+              className="w-full min-h-[144px] border-0 focus-visible:ring-0 rounded-none bg-transparent resize-none p-3 text-xs placeholder:text-muted-foreground/50"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
