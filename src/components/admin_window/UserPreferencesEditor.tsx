@@ -258,7 +258,7 @@ const APPEARANCE_KEYS = new Set([
     // Layout & window state
     "zoomLevel", "iconLibrary", "chatRenderMode", "previewDeviceMode", "previewPosition",
     "windowState", "secondaryWindowStates",
-    "docs.sidebarWidth", "releaseNotes.sidebarWidth", "gitCommitPanelSize",
+    "docs.sidebarWidth", "releaseNotes.sidebarWidth", "gitCommitPanelSize", "planSidebarSize",
 ]);
 
 /** Keys that belong to the "internal" (app state / housekeeping) category */

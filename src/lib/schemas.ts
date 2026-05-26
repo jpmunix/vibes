@@ -66,6 +66,7 @@ export const ChatSummarySchema = z.object({
   title: z.string().nullable(),
   createdAt: z.date(),
   isPlan: z.boolean().optional().default(false),
+  isRead: z.boolean().optional().default(true),
   lastReadAt: z.date().nullable().optional(),
   labels: z.array(z.object({
     id: z.number(),
@@ -94,6 +95,7 @@ export const ChatSearchResultSchema = z.object({
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
   isPlan: z.boolean().optional().default(false),
+  isRead: z.boolean().optional().default(true),
   labels: z.array(z.object({
     id: z.number(),
     label: z.string(),
@@ -244,7 +246,10 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["agent", "plan", "ask", "mockup"]);
+export const ChatModeSchema = z.union([
+  z.enum(["agent", "plan", "ask", "mockup"]),
+  z.string()
+]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -556,6 +561,9 @@ export const UserSettingsSchema = z
     primaryColorDark: z.string().optional(),
     primaryChromaLight: z.number().optional(),
     primaryChromaDark: z.number().optional(),
+    themeFlavorDark: z.string().optional(),
+    themeFlavorLight: z.string().optional(),
+    loaderStyle: z.string().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
     // Embeddings for semantic search
@@ -638,6 +646,8 @@ export const UserSettingsSchema = z
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
     // Git commit panel: persisted vertical split size (percentage, 0-100)
     gitCommitPanelSize: z.number().optional(),
+    // Plan sidebar: persisted horizontal split size (percentage, 0-100)
+    planSidebarSize: z.number().optional(),
     // Show/hide cost display in chat headers and message footers (data is always saved)
     showCostDisplay: z.boolean().optional(),
     // Caveman mode — forces the agent into ultra-terse, minimal-token communication

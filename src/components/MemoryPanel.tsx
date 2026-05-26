@@ -1,5 +1,5 @@
 /**
- * MemoryPanel — Agent memory management UI.
+ * MemoryPanel — Agent preferences management UI.
  *
  * Uses the app's design tokens (typo-*, --foreground, --muted, --border, --primary).
  * Title lives in the window bar, not duplicated here.
@@ -7,11 +7,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ipc } from "@/ipc/types";
-import type { MemoryEntry, MemoryType } from "@/ipc/types";
+import type { MemoryEntry } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
-import type { SelectorOption } from "@/components/ui/UnifiedSelector";
+
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
   Dialog,
@@ -32,10 +32,8 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
-  Dna,
   RefreshCw,
   MoreHorizontal,
-  Layers,
 } from "@/components/ui/icons";
 import {
   DropdownMenu,
@@ -54,17 +52,7 @@ interface MemoryWithScore extends MemoryEntry {
   _recency: number;
 }
 
-const TYPE_WEIGHTS: Record<string, number> = {
-  session: 1.0,
-  preference: 1.0,
-  issue: 0.6,
-};
 
-const TYPE_LABELS: Record<string, string> = {
-  session: "Sesión",
-  preference: "Preferencia",
-  issue: "Problema",
-};
 
 // =============================================================================
 // Scoring (mirrors memory_context_builder.ts)
@@ -87,7 +75,7 @@ function computeScore(mem: MemoryEntry): { score: number; recency: number } {
     ? (mem.importance > 1 ? mem.importance / 100 : mem.importance)
     : 0.5;
   const recency = computeRecency(mem.updatedAt);
-  const typeWeight = TYPE_WEIGHTS[mem.type] ?? 0.5;
+  const typeWeight = 1.0;
   const score = importance * 0.5 + recency * 0.3 + typeWeight * 0.2;
   return { score, recency };
 }
@@ -107,16 +95,13 @@ export function MemoryPanel({ appId }: { appId: number }) {
   // Create dialog
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    type: "session" as MemoryType,
     key: "",
     content: "",
     importance: 70,
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  // Bootstrap & Compaction
-  const [bootstrapRunning, setBootstrapRunning] = useState(false);
-  const [compacting, setCompacting] = useState(false);
+
 
   // Edit dialog
   const [editMemory, setEditMemory] = useState<MemoryEntry | null>(null);
@@ -131,7 +116,9 @@ export function MemoryPanel({ appId }: { appId: number }) {
     setIsLoading(true);
     try {
       const raw = await ipc.memory.getMemories(appId);
-      const scored = raw.map(m => {
+      // Only show manual preferences — old session/issue/auto memories stay in DB but are hidden
+      const filtered = raw.filter(m => m.type === "preference" && m.source === "manual");
+      const scored = filtered.map(m => {
         const { score, recency } = computeScore(m);
         return { ...m, _score: score, _recency: recency };
       });
@@ -141,7 +128,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       const ctx = await ipc.memory.getMemoryContext(appId);
       setContextPreview(ctx || "");
     } catch (err) {
-      console.error("Failed to load memories:", err);
+      console.error("Failed to load preferences:", err);
     } finally {
       setIsLoading(false);
     }
@@ -155,17 +142,17 @@ export function MemoryPanel({ appId }: { appId: number }) {
     try {
       await ipc.memory.createMemory({
         appId: appId,
-        type: createForm.type,
+        type: "preference",
         key: createForm.key || null,
         content: createForm.content,
         importance: createForm.importance / 100,
         source: "manual",
       });
       setIsCreateOpen(false);
-      setCreateForm({ type: "session", key: "", content: "", importance: 70 });
+      setCreateForm({ key: "", content: "", importance: 70 });
       await loadMemories();
     } catch (err) {
-      console.error("Failed to create memory:", err);
+      console.error("Failed to create preference:", err);
     } finally {
       setIsCreating(false);
     }
@@ -183,7 +170,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       setEditMemory(null);
       await loadMemories();
     } catch (err) {
-      console.error("Failed to update memory:", err);
+      console.error("Failed to update preference:", err);
     }
   };
 
@@ -195,7 +182,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       });
       await loadMemories();
     } catch (err) {
-      console.error("Failed to toggle memory:", err);
+      console.error("Failed to toggle preference:", err);
     }
   };
 
@@ -204,7 +191,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       await ipc.memory.deleteMemory(id);
       await loadMemories();
     } catch (err) {
-      console.error("Failed to delete memory:", err);
+      console.error("Failed to delete preference:", err);
     }
   };
 
@@ -218,10 +205,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
     let result = memories.filter(m => {
       if (filter === "disabled") return !m.enabled;
       if (!m.enabled) return false; // all other filters exclude disabled
-      if (filter === "all") return true;
-      if (filter === "auto") return m.source === "auto";
-      if (filter === "manual") return m.source === "manual";
-      return m.type === filter; // session, preference, issue
+      return true;
     });
 
     // Sort
@@ -262,13 +246,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
     const total = memories.length;
     const enabled = memories.filter(m => m.enabled).length;
     const disabled = total - enabled;
-    const auto = memories.filter(m => m.source === "auto").length;
-    const manual = total - auto;
-    const byType: Record<string, number> = {};
-    for (const m of memories) {
-      byType[m.type] = (byType[m.type] || 0) + 1;
-    }
-    return { total, enabled, disabled, auto, manual, byType };
+    return { total, enabled, disabled };
   }, [memories]);
 
   const formatDate = (d: Date | string | number) => {
@@ -292,11 +270,6 @@ export function MemoryPanel({ appId }: { appId: number }) {
             showCheckmark
             options={[
               { value: "all", label: `Todas (${stats.total})` },
-              { value: "session", label: `Sesión (${stats.byType.session || 0})` },
-              { value: "preference", label: `Preferencia (${stats.byType.preference || 0})` },
-              { value: "issue", label: `Problema (${stats.byType.issue || 0})` },
-              { value: "auto", label: `Auto (${stats.auto})` },
-              { value: "manual", label: `Manual (${stats.manual})` },
               { value: "disabled", label: `Desactivadas (${stats.disabled})` },
             ]}
           />
@@ -323,7 +296,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
             onClick={() => setIsCreateOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Nueva memoria
+            Nueva directriz
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -340,61 +313,15 @@ export function MemoryPanel({ appId }: { appId: number }) {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refrescar
               </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={bootstrapRunning}
-                onClick={async () => {
-                  setBootstrapRunning(true);
-                  try {
-                    const result = await ipc.memory.bootstrapProjectMemories({ appId });
-                    toast.success(
-                      `Bootstrap: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
-                    );
-                    await loadMemories();
-                  } catch (err: any) {
-                    toast.error(`Bootstrap falló: ${err.message}`);
-                  } finally {
-                    setBootstrapRunning(false);
-                  }
-                }}
-              >
-                {bootstrapRunning
-                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Escaneando...</>
-                  : <><Dna className="mr-2 h-4 w-4" /> Escanear proyecto</>
-                }
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={compacting}
-                onClick={async () => {
-                  setCompacting(true);
-                  const toastId = toast.loading("Compactando memorias…");
-                  try {
-                    const compacted = await ipc.memory.compactMemories({ appId });
-                    if (compacted > 0) {
-                      toast.success(`${compacted} memorias compactadas en 1 resumen`, { id: toastId });
-                      await loadMemories();
-                    } else {
-                      toast.info("No hay suficientes memorias para compactar (mín. 2 sesiones)", { id: toastId });
-                    }
-                  } catch (err: any) {
-                    toast.error(`Error al compactar: ${err.message}`, { id: toastId });
-                  } finally {
-                    setCompacting(false);
-                  }
-                }}
-              >
-                {compacting
-                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Compactando...</>
-                  : <><Layers className="mr-2 h-4 w-4" /> Compactar</>
-                }
-              </DropdownMenuItem>
+
               {stats.total > 0 && (
                 <DeleteConfirmationDialog
-                  itemName={`las ${stats.total} memorias de esta app`}
-                  itemType="memorias"
+                  itemName={`las ${stats.total} directrices de esta app`}
+                  itemType="directrices"
                   onDelete={async () => {
                     try {
                       const count = await ipc.memory.deleteAllMemories(appId);
-                      toast.success(`${count} memorias eliminadas`);
+                      toast.success(`${count} directrices eliminadas`);
                       await loadMemories();
                     } catch (err: any) {
                       toast.error(`Error: ${err.message}`);
@@ -418,7 +345,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
 
       {/* Stats bar — subtle, inline */}
       <div className="flex items-center gap-4 typo-micro text-muted-foreground px-1">
-        <span>{stats.total} {stats.total === 1 ? "memoria" : "memorias"}</span>
+        <span>{stats.total} {stats.total === 1 ? "directriz" : "directrices"}</span>
         <span className="h-3 w-px bg-border" />
         <span>{stats.enabled} activas</span>
         {stats.disabled > 0 && (
@@ -427,8 +354,6 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <span>{stats.disabled} desactivadas</span>
           </>
         )}
-        <span className="h-3 w-px bg-border" />
-        <span>{stats.auto} auto · {stats.manual} manual</span>
       </div>
 
       {/* Context preview */}
@@ -449,7 +374,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
               </pre>
             ) : (
               <p className="typo-caption text-muted-foreground italic">
-                Sin memorias activas para inyectar
+                Sin directrices activas para inyectar
               </p>
             )}
           </div>
@@ -461,31 +386,21 @@ export function MemoryPanel({ appId }: { appId: number }) {
         {isLoading && memories.length === 0 && (
           <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground typo-caption">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando memorias...
+            Cargando directrices...
           </div>
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-10 space-y-3">
             <p className="text-muted-foreground typo-caption">
-              {memories.length === 0 ? "Sin memorias aún" : "Ninguna memoria coincide con los filtros"}
+              {memories.length === 0 ? "Sin directrices aún" : "Ninguna directriz coincide con los filtros"}
             </p>
-            {bootstrapRunning && (
-              <div className="flex items-center justify-center gap-2 text-muted-foreground typo-caption">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Escaneando proyecto...
-              </div>
-            )}
           </div>
         )}
         {filtered.map(mem => {
           const imp = normalizeImportance(mem.importance);
           const impColor = imp >= 90 ? "bg-rose-500" : imp >= 70 ? "bg-amber-500" : imp >= 50 ? "bg-blue-500" : "bg-muted-foreground/30";
           const impLabel = imp >= 90 ? "Crítico" : imp >= 70 ? "Alto" : imp >= 50 ? "Medio" : "Bajo";
-          const typeColors: Record<string, string> = {
-            session: "bg-sky-500/10 text-sky-500 border-sky-500/20",
-            preference: "bg-violet-500/10 text-violet-500 border-violet-500/20",
-            issue: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-          };
+
 
           return (
           <div
@@ -501,25 +416,12 @@ export function MemoryPanel({ appId }: { appId: number }) {
               {/* Row 1: metadata chips + actions */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                  {/* Type badge */}
-                  <span className={`shrink-0 px-2 py-0.5 typo-micro rounded-md border ${typeColors[mem.type] || "bg-muted text-muted-foreground border-border"}`}>
-                    {TYPE_LABELS[mem.type] || mem.type}
-                    {mem.type === "issue" && mem.status ? ` · ${mem.status}` : ""}
-                  </span>
                   {/* Key pill */}
                   {mem.key && (
                     <span className="typo-mono-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded-md border border-border/50">
                       {mem.key}
                     </span>
                   )}
-                  {/* Source badge */}
-                  <span className={`typo-micro px-1.5 py-0.5 rounded-md ${
-                    mem.source === "manual"
-                      ? "bg-primary/10 text-primary/70"
-                      : "bg-muted/40 text-muted-foreground/60"
-                  }`}>
-                    {mem.source === "manual" ? "manual" : "auto"}
-                  </span>
                   {/* Importance chip */}
                   <span className="flex items-center gap-1 typo-micro text-muted-foreground/70">
                     <span className={`inline-block w-1.5 h-1.5 rounded-full ${impColor}`} />
@@ -554,7 +456,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
                   </button>
                   <DeleteConfirmationDialog
                     itemName={mem.content.slice(0, 60) + (mem.content.length > 60 ? "..." : "")}
-                    itemType="memoria"
+                    itemType="directriz"
                     onDelete={() => handleDelete(mem.id)}
                     trigger={
                       <button
@@ -590,26 +492,10 @@ export function MemoryPanel({ appId }: { appId: number }) {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>Nueva memoria</DialogTitle>
+            <DialogTitle>Nueva directriz</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="typo-label">Tipo</label>
-              <UnifiedSelector
-                value={createForm.type}
-                onChange={(v) => setCreateForm(f => ({ ...f, type: v as MemoryType }))}
-                triggerVariant="default"
-                triggerSize="md"
-                triggerClassName="w-full justify-between"
-                showCheckmark
-                popoverWidth="w-[580px]"
-                options={[
-                  { value: "session", label: "Sesión", description: "Resumen denso de lo construido/decidido. Tipo principal para conocimiento arquitectural." },
-                  { value: "preference", label: "Preferencia", description: "Convenciones y gustos del usuario que persisten entre sesiones." },
-                  { value: "issue", label: "Problema", description: "Bugs conocidos, gotchas, limitaciones técnicas a tener en cuenta." },
-                ]}
-              />
-            </div>
+
             <div className="space-y-2">
               <label className="typo-label">Key (opcional)</label>
               <Input
@@ -617,14 +503,14 @@ export function MemoryPanel({ appId }: { appId: number }) {
                 onChange={e => setCreateForm(f => ({ ...f, key: e.target.value }))}
                 placeholder="ej: backend_stack"
               />
-              <p className="typo-caption">Identificador único para sobrescribir memorias duplicadas</p>
+              <p className="typo-caption">Identificador único para sobrescribir directrices duplicadas</p>
             </div>
             <div className="space-y-2">
               <label className="typo-label">Contenido</label>
               <textarea
                 value={createForm.content}
                 onChange={e => setCreateForm(f => ({ ...f, content: e.target.value }))}
-                placeholder="Contenido de la memoria..."
+                placeholder="Contenido de la directriz..."
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-body ring-offset-background placeholder:opacity-50 resize-none"
               />
             </div>
@@ -679,7 +565,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       <Dialog open={!!editMemory} onOpenChange={open => !open && setEditMemory(null)}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>Editar memoria #{editMemory?.id}</DialogTitle>
+            <DialogTitle>Editar directriz #{editMemory?.id}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

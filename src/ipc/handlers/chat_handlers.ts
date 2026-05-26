@@ -90,6 +90,7 @@ export function registerChatHandlers() {
       })),
       isPlan: chat.isPlan ?? false,
       planData: chat.planData ?? null,
+      chatMode: chat.chatMode ?? "agent",
     } as any;
   });
 
@@ -111,6 +112,7 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          isRead: true,
           lastReadAt: true,
         },
         with: {
@@ -135,6 +137,7 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          isRead: true,
           lastReadAt: true,
         },
         with: {
@@ -150,7 +153,11 @@ export function registerChatHandlers() {
       });
 
     const allChats = await query;
-    return allChats as unknown as ChatSummary[];
+    return allChats.map((chat) => ({
+      ...chat,
+      isPlan: chat.isPlan ? true : false,
+      isRead: chat.isRead !== 0,
+    })) as unknown as ChatSummary[];
   });
 
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
@@ -185,11 +192,12 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.updateChat, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const { chatId, title, isPlan, planData } = params;
+    const { chatId, title, isPlan, planData, chatMode } = params;
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (isPlan !== undefined) updateData.isPlan = isPlan;
     if (planData !== undefined) updateData.planData = planData;
+    if (chatMode !== undefined) updateData.chatMode = chatMode;
 
     if (Object.keys(updateData).length > 0) {
       await db.update(remoteSchema.chats).set(updateData).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId!)));
@@ -229,6 +237,7 @@ export function registerChatHandlers() {
         title: remoteSchema.chats.title,
         createdAt: remoteSchema.chats.createdAt,
         isPlan: remoteSchema.chats.isPlan,
+        isRead: remoteSchema.chats.isRead,
       })
       .from(remoteSchema.chats)
       .where(and(
@@ -246,6 +255,7 @@ export function registerChatHandlers() {
       createdAt: c.createdAt,
       matchedMessageContent: null,
       isPlan: c.isPlan ? true : false,
+      isRead: c.isRead !== 0,
       labels: [],
     }));
 
@@ -257,6 +267,7 @@ export function registerChatHandlers() {
         title: remoteSchema.chats.title,
         createdAt: remoteSchema.chats.createdAt,
         isPlan: remoteSchema.chats.isPlan,
+        isRead: remoteSchema.chats.isRead,
         matchedMessageContent: remoteSchema.messages.content,
       })
       .from(remoteSchema.messages)
@@ -277,6 +288,7 @@ export function registerChatHandlers() {
       createdAt: c.createdAt,
       matchedMessageContent: c.matchedMessageContent,
       isPlan: c.isPlan ? true : false,
+      isRead: c.isRead !== 0,
       labels: [],
     }));
 
@@ -300,6 +312,14 @@ export function registerChatHandlers() {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
+      const cleanPromptForTitle = (text: string): string => {
+        if (!text) return "";
+        let cleaned = text.trim();
+        // Remove leading slash commands (e.g. "/plan hello" -> "hello")
+        cleaned = cleaned.replace(/^\/[^\s]+/, "").trim();
+        return cleaned;
+      };
+
       logger.info(`generateChatTitle called for chatId=${chatId}`);
       if (!hasOpenRouterApiKey()) {
         logger.warn("OpenRouter API key not found, using default title");
@@ -312,36 +332,68 @@ export function registerChatHandlers() {
         settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       try {
-        let messageContent = prompt;
+        let messageContent = prompt ? cleanPromptForTitle(prompt) : "";
 
-        // If no prompt provided, fetch from DB (legacy/manual behavior)
+        // If no prompt or the prompt is empty after cleaning, fetch from DB
         if (!messageContent) {
           logger.info(
-            `No prompt provided, fetching first message for chatId=${chatId}`,
+            `No valid prompt provided, searching message history for chatId=${chatId}`,
           );
-          // Fetch the first message from this chat
-          const firstMessage = await db
+          // Fetch all messages in the chat ordered by creation time
+          const messages = await db
             .select({
               content: remoteSchema.messages.content,
+              role: remoteSchema.messages.role,
             })
             .from(remoteSchema.messages)
-            .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
-            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId!)))
-            .orderBy(remoteSchema.messages.createdAt)
-            .limit(1);
+            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.userId, context.userId!)))
+            .orderBy(asc(remoteSchema.messages.createdAt));
 
-          if (!firstMessage.length) {
-            logger.warn(`No messages found for chatId=${chatId}`);
+          // Find the first USER message that has non-empty content after cleaning
+          let bestMessage = "";
+          for (const msg of messages) {
+            if (msg.role === "user" && msg.content) {
+              const cleaned = cleanPromptForTitle(msg.content);
+              if (cleaned) {
+                bestMessage = cleaned;
+                break;
+              }
+            }
+          }
+
+          // If no such user message was found, look for any non-empty user message
+          if (!bestMessage) {
+            for (const msg of messages) {
+              if (msg.role === "user" && msg.content && msg.content.trim()) {
+                bestMessage = msg.content.trim();
+                break;
+              }
+            }
+          }
+
+          // If still no user message, look for any non-empty message (regardless of role)
+          if (!bestMessage) {
+            for (const msg of messages) {
+              if (msg.content && msg.content.trim()) {
+                const cleaned = cleanPromptForTitle(msg.content);
+                if (cleaned) {
+                  bestMessage = cleaned;
+                  break;
+                }
+              }
+            }
+          }
+
+          // If absolutely nothing is found, return "Nuevo chat" without updating the DB title
+          if (!bestMessage) {
+            logger.warn(`No valid message found for title generation in chatId=${chatId}`);
             return { title: "Nuevo chat" };
           }
-          messageContent = firstMessage[0].content;
-          logger.info(
-            `Found first message (${messageContent.slice(0, 100)}...) for chatId=${chatId}`,
-          );
+
+          messageContent = bestMessage;
         }
 
         // If it's a summarize command, don't generate title
-        // This is a safety check in case the frontend still calls it
         if (
           messageContent.startsWith("Resumir el chat chat-id=") ||
           messageContent.startsWith("Summarize from chat-id")
@@ -356,7 +408,7 @@ export function registerChatHandlers() {
           model,
           title: "chat-title",
           temperature: 0.3,
-          max_tokens: 80,
+          max_tokens: 500, // Changed from 80 to 500 to support reasoning models
           messages: [
             {
               role: "system",
@@ -372,9 +424,13 @@ export function registerChatHandlers() {
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
-
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);
+
+        if (sanitizedTitle === "Nuevo chat" || !sanitizedTitle.trim()) {
+          logger.info(`Generated title is "Nuevo chat" or empty, skipping DB update for chatId=${chatId}`);
+          return { title: "Nuevo chat" };
+        }
 
         logger.info(
           `Generated title for chatId=${chatId}: "${sanitizedTitle}"`,
@@ -565,7 +621,40 @@ export function registerChatHandlers() {
       },
       orderBy: [desc(remoteSchema.chats.createdAt)],
     });
-    return archived as any;
+
+    // Batch-fetch the first user message for each archived chat (avoid N+1)
+    const chatIds = archived.map((c) => c.id);
+    let firstPromptsMap = new Map<number, string>();
+    if (chatIds.length > 0) {
+      try {
+        const firstMessages = await db
+          .select({
+            chatId: remoteSchema.messages.chatId,
+            content: remoteSchema.messages.content,
+            id: remoteSchema.messages.id,
+          })
+          .from(remoteSchema.messages)
+          .where(and(
+            sql`${remoteSchema.messages.chatId} IN (${sql.join(chatIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(remoteSchema.messages.role, "user"),
+          ))
+          .orderBy(asc(remoteSchema.messages.createdAt), asc(remoteSchema.messages.id));
+
+        // Keep only the first user message per chatId
+        for (const msg of firstMessages) {
+          if (!firstPromptsMap.has(msg.chatId)) {
+            firstPromptsMap.set(msg.chatId, (msg.content || "").slice(0, 200));
+          }
+        }
+      } catch (e) {
+        logger.error("Error fetching first prompts for archived chats:", e);
+      }
+    }
+
+    return archived.map((c) => ({
+      ...c,
+      firstPrompt: firstPromptsMap.get(c.id) || null,
+    })) as any;
   });
 
   // Insert N user messages into the DB without triggering an AI stream.
@@ -673,7 +762,7 @@ export function registerChatHandlers() {
         eq(remoteSchema.chats.userId, context.userId!),
         eq(remoteSchema.chats.isPinned, 1),
       ),
-      columns: { id: true, appId: true, title: true, createdAt: true },
+      columns: { id: true, appId: true, title: true, createdAt: true, isRead: true },
       with: {
         app: { columns: { name: true } },
         labels: { columns: { id: true, label: true, color: true } },
@@ -687,6 +776,7 @@ export function registerChatHandlers() {
       appName: (c as any).app?.name || "",
       title: c.title,
       createdAt: c.createdAt,
+      isRead: c.isRead !== 0,
       labels: (c as any).labels || [],
     })) as any;
   });
@@ -938,11 +1028,18 @@ export function registerChatHandlers() {
     const fs = await import("fs");
     const path = await import("path");
     
-    // getVibesAppPath is already imported at the top
-    const fullPath = path.join(getVibesAppPath(app.path), relPath);
+    const appDir = getVibesAppPath(app.path);
+    let normalizedPath = relPath;
+    if (path.isAbsolute(normalizedPath)) {
+      normalizedPath = path.relative(appDir, normalizedPath);
+    }
+    if (normalizedPath.startsWith("vibes/")) {
+      normalizedPath = "." + normalizedPath;
+    }
+    const fullPath = path.join(appDir, normalizedPath);
     
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Artifact file not found: ${relPath}`);
+      throw new Error(`Artifact file not found: ${normalizedPath}`);
     }
     
     return fs.readFileSync(fullPath, "utf-8");
@@ -1163,7 +1260,22 @@ export function registerChatHandlers() {
     const db = getRemoteDb();
     const fs = await import("fs");
     const pathMod = await import("path");
-    const { appId, path: artifactPath, chatId } = input;
+    const { appId, chatId } = input;
+
+    const app = await db.query.apps.findFirst({
+      where: eq(remoteSchema.apps.id, appId),
+      columns: { path: true },
+    });
+    if (!app) throw new Error("App not found");
+
+    const appDir = getVibesAppPath(app.path);
+    let artifactPath = input.path;
+    if (pathMod.isAbsolute(artifactPath)) {
+      artifactPath = pathMod.relative(appDir, artifactPath);
+    }
+    if (artifactPath.startsWith("vibes/")) {
+      artifactPath = "." + artifactPath;
+    }
 
     // Check if THIS specific chat already has a record for this path
     const existingForChat = await db.query.chatArtifacts.findFirst({
@@ -1181,14 +1293,10 @@ export function registerChatHandlers() {
     }
 
     // Create a NEW record for this chat (other chats keep theirs)
-    const app = await db.query.apps.findFirst({
-      where: eq(remoteSchema.apps.id, appId),
-      columns: { path: true },
-    });
     let artifactTitle = pathMod.basename(artifactPath);
     if (app?.path) {
       try {
-        const fullPath = pathMod.join(getVibesAppPath(app.path), artifactPath);
+        const fullPath = pathMod.join(appDir, artifactPath);
         const content = fs.readFileSync(fullPath, "utf-8");
         const h1 = content.match(/^#\s+(.+)$/m);
         if (h1?.[1]) artifactTitle = h1[1].trim();

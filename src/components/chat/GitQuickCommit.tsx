@@ -42,16 +42,14 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
     return null;
   }
 
-  const formatSyntheticMessage = (title: string) => {
-    const filesList = uncommittedFiles.map(f => `- \`${f.path}\``).join('\n');
-    return `**${title}**\n\n**Mensaje del commit**\n${commitMessage}\n\n**Archivos modificados**\n${filesList}`;
-  };
+  const injectSyntheticCommitMessage = (action: "commit" | "commit-push") => {
+    const filesList = uncommittedFiles.map(f => f.path).join(",");
+    const tag = `<vibes-git-commit action="${action}" files="${filesList}">${commitMessage}</vibes-git-commit>`;
 
-  const injectSyntheticMessage = (content: string) => {
     // Insert into DB
     ipc.chat.addSyntheticMessage({ 
       chatId, 
-      content,
+      content: tag,
       model: "vibes/git-assistant"
     } as any);
     
@@ -63,7 +61,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
         id: Date.now(),
         chatId,
         role: "assistant",
-        content,
+        content: tag,
         model: "vibes/git-assistant",
         createdAt: new Date().toISOString(),
         aiMessagesJson: null
@@ -71,13 +69,14 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
       return next;
     });
     
-    queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(chatId) });
+    queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.chats.list({ appId }) });
   };
 
   const handleCommit = async () => {
     if (!commitMessage.trim() || isCommitting || isPushing) return;
     await commit({ message: commitMessage });
-    injectSyntheticMessage(formatSyntheticMessage("📝 Commit completado"));
+    injectSyntheticCommitMessage("commit");
     setCommitMessage("");
   };
 
@@ -86,7 +85,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
     try {
       await commit({ message: commitMessage });
       await push({});
-      injectSyntheticMessage(formatSyntheticMessage("🚀 Commit & Push completado"));
+      injectSyntheticCommitMessage("commit-push");
       setCommitMessage("");
     } catch (e) {
       console.error("Failed to commit & push:", e);
@@ -111,11 +110,11 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
             {fileCount} {fileCount === 1 ? "archivo" : "archivos"}
           </span>
         </div>
-        <div className="p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted rounded-full transition-colors">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           {isExpanded ? (
-            <ChevronUp size={14} />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronDown size={14} />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </div>

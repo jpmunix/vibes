@@ -27,8 +27,28 @@ function applyEarlyTheme() {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const isDark = savedTheme === "dark" || (savedTheme !== "light" && prefersDark);
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(isDark ? "dark" : "light");
+    
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(isDark ? "dark" : "light");
+
+    // Remove existing sub-theme classes
+    const classesToRemove: string[] = [];
+    root.classList.forEach((cls) => {
+        if (cls.startsWith("theme-")) {
+            classesToRemove.push(cls);
+        }
+    });
+    classesToRemove.forEach((cls) => root.classList.remove(cls));
+
+    // Apply flavor
+    const flavor = isDark
+        ? (localStorage.getItem("theme-flavor-dark") || "default")
+        : (localStorage.getItem("theme-flavor-light") || "default");
+    
+    if (flavor && flavor !== "default") {
+        root.classList.add(`theme-${flavor}`);
+    }
 }
 
 /**

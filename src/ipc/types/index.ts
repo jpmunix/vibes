@@ -42,6 +42,7 @@ export { systemContracts, systemEvents } from "./system";
 export { versionContracts } from "./version";
 export { languageModelContracts } from "./language-model";
 export { promptContracts } from "./prompts";
+export { customAgentsContracts } from "./custom_agents";
 export { templateContracts } from "./templates";
 export { proposalContracts } from "./proposals";
 export { importContracts } from "./import";
@@ -81,6 +82,7 @@ export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
 export { promptClient } from "./prompts";
+export { customAgentsClient } from "./custom_agents";
 export { templateClient } from "./templates";
 export { proposalClient } from "./proposals";
 export { importClient } from "./import";
@@ -270,9 +272,17 @@ export type {
 // Prompt types
 export type {
   PromptDto,
+  PromptCategoryDto,
   CreatePromptParamsDto,
   UpdatePromptParamsDto,
 } from "./prompts";
+
+// Custom Agent types
+export type {
+  CustomAgentDto,
+  CreateCustomAgentParams,
+  UpdateCustomAgentParams,
+} from "./custom_agents";
 
 export type {
   Template,
@@ -372,6 +382,7 @@ import { mcpClient, mcpEventClient } from "./mcp";
 import { miscClient, miscEventClient } from "./misc";
 import { neonClient } from "./neon";
 import { promptClient } from "./prompts";
+import { customAgentsClient } from "./custom_agents";
 import { proposalClient } from "./proposals";
 import { settingsClient } from "./settings";
 import { supabaseClient } from "./supabase";
@@ -439,6 +450,7 @@ export const ipc = {
   version: versionClient,
   languageModel: languageModelClient,
   prompt: promptClient,
+  customAgents: customAgentsClient,
   template: templateClient,
   proposal: proposalClient,
   import: importClient,

@@ -59,9 +59,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
   memoriesEnabled: true,
-  memoriesAutoExtract: true,
-  memoriesSynthesisModelV2: "mistralai/devstral-small",
   memoriesRouterModelV2: "mistralai/devstral-small",
+  memoriesMaxSelection: 5,
   enableWebSearch: true,
   chatRenderMode: "zen",
   selectedFont: "bricolage-grotesque",
@@ -71,6 +70,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fontScaleChat: 1,
   fontScaleBubbleWidth: 65,
   iconLibrary: "lucide",
+  loaderStyle: "orbital",
 };
 
 // In-memory cache for composed settings to avoid recomputing every time

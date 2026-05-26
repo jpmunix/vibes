@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 import {
   ChevronRight,
   ChevronDown,
@@ -72,6 +73,7 @@ import {
   PocketBaseIcon,
 } from "@/components/ui/icons";
 import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
+import { ChatPreviewThread } from "@/components/chat/ChatPreviewThread";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -81,6 +83,7 @@ import {
   isStreamingByIdAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
+import type { Message } from "@/ipc/types";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { buildShareMarkdown } from "@/lib/markdown_share_cleaner";
 import { useLoadApps } from "@/hooks/useLoadApps";
@@ -295,28 +298,8 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           <Share2 size={14} className="opacity-60 shrink-0" />
           Compartir chat
         </button>
-        {/* Condense memory */}
-        {memoriesEnabled && (
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={async () => {
-              onClose();
-              try {
-                showSuccess("Condensando memoria del chat...");
-                await ipc.memory.condenseSessionMemories({ appId, chatId });
-                showSuccess("Memoria condensada correctamente");
-              } catch (e) {
-                showError(
-                  `Error al condensar memoria: ${(e as any).toString()}`,
-                );
-              }
-            }}
-          >
-            <Shrink size={14} className="opacity-60 shrink-0" />
-            Condensar memoria
-          </button>
-        )}
+
+
         {/* Summarize to new chat */}
         <button
           type="button"
@@ -1007,6 +990,7 @@ const AppChats = memo(function AppChats({
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
+  const queryClient = useQueryClient();
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -1014,11 +998,16 @@ const AppChats = memo(function AppChats({
   // A chat is "unread" if it was recently streamed to and user hasn't viewed it
   const isChatUnread = useCallback(
     (chatId: number) => {
-      if (selectedChatId === chatId) return false;
+      if (selectedChatId === chatId) {
+        const chat = chats.find((c) => c.id === chatId);
+        return chat ? chat.isRead === false : false;
+      }
       if (recentStreamChatIds.has(chatId)) return true;
+      const chat = chats.find((c) => c.id === chatId);
+      if (chat && chat.isRead === false) return true;
       return false;
     },
-    [selectedChatId, recentStreamChatIds],
+    [selectedChatId, recentStreamChatIds, chats],
   );
 
   const handleChatClickAndMarkRead = useCallback(
@@ -1031,13 +1020,17 @@ const AppChats = memo(function AppChats({
         return next;
       });
       // Mark as read in DB
-      ipc.chat.markChatRead(chatId).catch(() => {});
+      ipc.chat
+        .markChatRead(chatId)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+        })
+        .catch(() => {});
       onChatClick(appId, chatId);
     },
-    [setRecentStreamChatIds, onChatClick],
+    [setRecentStreamChatIds, onChatClick, queryClient],
   );
-
-  const queryClient = useQueryClient();
 
   const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -1179,7 +1172,7 @@ const AppChats = memo(function AppChats({
                   ) : (
                     <button
                       type="button"
-                      className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                      className={`relative flex items-start pl-7 pr-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
                         selectedChatId === chat.id
                           ? "text-primary font-medium"
                           : "text-foreground/80"
@@ -1189,32 +1182,34 @@ const AppChats = memo(function AppChats({
                         handleChatClickAndMarkRead(appId, chat.id);
                       }}
                     >
-                      <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                        {streaming ? (
-                          <Loader2
-                            size={12}
-                            className="animate-spin text-primary shrink-0"
-                          />
-                        ) : unread ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                        ) : null}
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span
-                            className={`truncate ${unread ? "font-semibold" : ""}`}
-                          >
-                            {chat.title || "Nuevo chat"}
-                          </span>
-                          <ChatRowLabels
-                            labels={(chat as any).labels}
-                            onRemove={handleRemoveLabel}
-                          />
-                          <span className="typo-micro opacity-60 mt-0.5">
-                            {formatDistanceToNow(new Date(chat.createdAt), {
-                              addSuffix: false,
-                              locale: es,
-                            })}
-                          </span>
+                      {(streaming || unread) && (
+                        <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
+                          {streaming ? (
+                            <Loader2
+                              size={12}
+                              className="animate-spin text-primary"
+                            />
+                          ) : unread ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          ) : null}
                         </div>
+                      )}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span
+                          className={`break-words whitespace-normal ${unread ? "font-semibold" : ""}`}
+                        >
+                          {chat.title || "Nuevo chat"}
+                        </span>
+                        <ChatRowLabels
+                          labels={(chat as any).labels}
+                          onRemove={handleRemoveLabel}
+                        />
+                        <span className="typo-micro opacity-60 mt-0.5">
+                          {formatDistanceToNow(safeDate(chat.createdAt), {
+                            addSuffix: false,
+                            locale: es,
+                          })}
+                        </span>
                       </div>
                     </button>
                   )}
@@ -1325,7 +1320,12 @@ const AppChats = memo(function AppChats({
               onRename={(chatId, _title) => {
                 setRenamingId(chatId);
                 setRenameValue(_title);
-                setTimeout(() => renameInputRef.current?.focus(), 50);
+                setTimeout(() => {
+                  if (renameInputRef.current) {
+                    renameInputRef.current.focus();
+                    renameInputRef.current.select();
+                  }
+                }, 50);
               }}
               onArchive={onArchiveChat}
               onDelete={onDeleteChat}
@@ -1559,6 +1559,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       id: number;
       title: string | null;
       createdAt: Date;
+      firstPrompt?: string | null;
       labels?: Array<{ id: number; label: string; color: string }>;
     }>
   >([]);
@@ -1571,6 +1572,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       matchedMessageContent: string | null;
     }>
   >([]);
+
+  useEffect(() => {
+    if (!archivePanelOpen) {
+      setPreviewChatId(null);
+      setPreviewChatMessages([]);
+      setPreviewChatTitle(null);
+    }
+  }, [archivePanelOpen]);
 
   useEffect(() => {
     if (!archivedSearchQuery.trim()) {
@@ -1596,7 +1605,16 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     return () => clearTimeout(delayDebounce);
   }, [app.id, archivedSearchQuery]);
 
-  const filteredArchivedChats = useMemo(() => {
+  const filteredArchivedChats = useMemo<
+    Array<{
+      id: number;
+      title: string | null;
+      createdAt: Date;
+      firstPrompt?: string | null;
+      labels?: Array<{ id: number; label: string; color: string }>;
+      matchedSnippet?: string;
+    }>
+  >(() => {
     if (!archivedSearchQuery.trim()) return archivedChats;
     const query = archivedSearchQuery.toLowerCase().trim();
 
@@ -1607,11 +1625,12 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       }
     }
 
-    const results: Array<{
-      id: number;
-      title: string | null;
-      createdAt: Date;
-      labels?: Array<{ id: number; label: string; color: string }>;
+    // Title match weight factor: title matches rank 3x above content-only matches
+    const TITLE_WEIGHT = 3;
+
+    const scored: Array<{
+      chat: typeof archivedChats[number];
+      score: number;
       matchedSnippet?: string;
     }> = [];
 
@@ -1624,15 +1643,53 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       const dbMatchContent = dbMatchMap.get(chat.id);
 
       if (titleMatch || labelsMatch || dbMatchContent) {
-        results.push({
-          ...chat,
+        let score = 0;
+        if (titleMatch) score += TITLE_WEIGHT;
+        if (labelsMatch) score += 1;
+        if (dbMatchContent) score += 1;
+        scored.push({
+          chat,
+          score,
           matchedSnippet: dbMatchContent || undefined,
         });
       }
     }
 
-    return results;
+    // Sort by score descending, then by date descending
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return new Date(b.chat.createdAt).getTime() - new Date(a.chat.createdAt).getTime();
+    });
+
+    return scored.map(({ chat, matchedSnippet }) => ({
+      ...chat,
+      matchedSnippet,
+    }));
   }, [archivedChats, archivedSearchQuery, dbSearchResults]);
+
+  // Archived chat preview state
+  const [previewChatId, setPreviewChatId] = useState<number | null>(null);
+  const [previewChatMessages, setPreviewChatMessages] = useState<Message[]>([]);
+  const [previewChatTitle, setPreviewChatTitle] = useState<string | null>(null);
+  const [loadingChatPreview, setLoadingChatPreview] = useState(false);
+
+  const handlePreviewChat = useCallback(
+    async (chatId: number, title: string | null) => {
+      setPreviewChatId(chatId);
+      setPreviewChatTitle(title);
+      setLoadingChatPreview(true);
+      setPreviewChatMessages([]);
+      try {
+        const chat = await ipc.chat.getChat(chatId);
+        setPreviewChatMessages(chat.messages || []);
+      } catch (e) {
+        console.error("Error loading chat preview:", e);
+      } finally {
+        setLoadingChatPreview(false);
+      }
+    },
+    [],
+  );
 
   // Plans panel state
   const [plansPanelOpen, setPlansPanelOpen] = useState(false);
@@ -1812,7 +1869,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               <span
                 className={`typo-micro mt-0.5 ${isActive ? "opacity-90 text-primary" : "opacity-50 text-foreground"}`}
               >
-                {formatDistanceToNow(new Date(app.createdAt), {
+                {formatDistanceToNow(safeDate(app.createdAt), {
                   addSuffix: true,
                   locale: es,
                 })}
@@ -2016,23 +2073,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <GitBranch size={14} className="opacity-60 shrink-0" />
                       {hasUnpushedChanges ? "Revisar cambios" : "Git"}
                     </button>
-                    {memoriesEnabled && (
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => {
-                          closeMenu();
-                          ipc.system.openMemoryWindow({
-                            appId: app.id,
-                            theme,
-                            themeIntensity: intensity,
-                          });
-                        }}
-                      >
-                        <Database size={14} className="opacity-60 shrink-0" />
-                        Memorias
-                      </button>
-                    )}
+
                     {(hasDesignMd || hasAgentsMd) && (
                       <>
                         <div className="my-1 mx-2 border-t border-border/50" />
@@ -2134,6 +2175,23 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <Archive size={14} className="opacity-60 shrink-0" />
                       Archivar
                     </button>
+                    {memoriesEnabled && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => {
+                          closeMenu();
+                          ipc.system.openMemoryWindow({
+                            appId: app.id,
+                            theme,
+                            themeIntensity: intensity,
+                          });
+                        }}
+                      >
+                        <Database size={14} className="opacity-60 shrink-0" />
+                        Directrices
+                      </button>
+                    )}
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
                       <button
@@ -2285,7 +2343,11 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               onClick={() => setArchivePanelOpen(false)}
             />
             <div
-              className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className={`fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${
+                previewChatId
+                  ? "w-[90vw] max-w-[1200px] h-[85vh]"
+                  : "w-[720px] max-w-[90vw]"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Panel header */}
@@ -2312,141 +2374,193 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 </button>
               </div>
 
-              {/* Search bar */}
-              {!loadingArchived && archivedChats.length > 0 && (
-                <div className="px-5 py-2.5 border-b border-border bg-sidebar-accent/10 relative shrink-0">
-                  <Search
-                    size={14}
-                    className="absolute left-8 top-1/2 -translate-y-1/2 opacity-50 text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
-                    placeholder="Buscar chats archivados..."
-                    value={archivedSearchQuery}
-                    onChange={(e) => setArchivedSearchQuery(e.target.value)}
-                    autoFocus
-                  />
-                  {archivedSearchQuery && (
-                    <button
-                      type="button"
-                      className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/75 transition-colors cursor-pointer"
-                      onClick={() => setArchivedSearchQuery("")}
-                      title="Limpiar búsqueda"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Panel content */}
-              <div className="max-h-[420px] overflow-y-auto flex-1">
-                {loadingArchived ? (
-                  <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="text-sm">Cargando archivados...</span>
-                  </div>
-                ) : archivedChats.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
-                    <div className="p-4 rounded-2xl bg-sidebar-accent/40">
-                      <Archive size={28} className="opacity-50" />
+              {/* Panel content — list or preview mode */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {previewChatId ? (
+                  /* ── Chat preview mode ── */
+                  <div className="flex flex-col h-full">
+                    {/* Preview header */}
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50 bg-sidebar-accent/15 shrink-0">
+                      <button
+                        type="button"
+                        className="p-1 rounded-md hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                        onClick={() => {
+                          setPreviewChatId(null);
+                          setPreviewChatMessages([]);
+                          setPreviewChatTitle(null);
+                        }}
+                        title="Volver a la lista"
+                      >
+                        <ArrowLeft size={16} />
+                      </button>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm font-semibold truncate">
+                          {previewChatTitle || "Sin título"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground/50">
+                          Vista previa del chat archivado
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-muted-foreground/70">
-                        Sin chats archivados
-                      </p>
-                      <p className="text-xs mt-0.5 text-muted-foreground/40">
-                        Los chats archivados de {app.name} aparecerán aquí
-                      </p>
-                    </div>
-                  </div>
-                ) : filteredArchivedChats.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50 animate-in fade-in-50 duration-200">
-                    <div className="p-4 rounded-2xl bg-sidebar-accent/40">
-                      <Search size={28} className="opacity-50" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-muted-foreground/70">
-                        No se encontraron resultados
-                      </p>
-                      <p className="text-xs mt-0.5 text-muted-foreground/40">
-                        Intenta buscar con otros términos
-                      </p>
+                    {/* Preview content */}
+                    <div className="flex-1 min-h-0">
+                      <ChatPreviewThread
+                        messages={previewChatMessages}
+                        loading={loadingChatPreview}
+                        emptyText="Este chat no tiene mensajes."
+                      />
                     </div>
                   </div>
                 ) : (
-                  <div className="py-2">
-                    {filteredArchivedChats.map((chat) => (
-                      <div
-                        key={chat.id}
-                        className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
-                      >
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm truncate font-medium text-foreground">
-                            <HighlightedText
-                              text={chat.title || "Sin título"}
-                              highlight={archivedSearchQuery}
-                            />
-                          </span>
-                          {chat.matchedSnippet && (
-                            <p className="text-xs text-muted-foreground/80 mt-1.5 bg-sidebar-accent/25 rounded-xl px-3 py-2 border border-border/30 font-normal leading-relaxed line-clamp-2">
-                              <HighlightedText
-                                text={getSnippet(
-                                  chat.matchedSnippet,
-                                  archivedSearchQuery,
-                                )}
-                                highlight={archivedSearchQuery}
-                              />
-                            </p>
-                          )}
-                          <ChatRowLabels
-                            labels={chat.labels}
-                            onRemove={(id) => {
-                              handleRemoveLabel(id);
-                              setArchivedChats((prev) =>
-                                prev.map((c) =>
-                                  c.id === chat.id
-                                    ? {
-                                        ...c,
-                                        labels: c.labels?.filter(
-                                          (ll) => ll.id !== id,
-                                        ),
-                                      }
-                                    : c,
-                                ),
-                              );
-                            }}
-                          />
-                          <span className="text-xs text-muted-foreground/55 mt-1.5">
-                            Archivado ·{" "}
-                            {formatDistanceToNow(new Date(chat.createdAt), {
-                              addSuffix: true,
-                              locale: es,
-                            })}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                          onClick={() => handleUnarchive(chat.id)}
-                          disabled={unarchivingId === chat.id}
-                          title="Restaurar"
-                        >
-                          {unarchivingId === chat.id ? (
-                            <Loader2 size={15} className="animate-spin" />
-                          ) : (
-                            <ArchiveRestore size={15} strokeWidth={2} />
-                          )}
-                        </button>
+                  /* ── List mode ── */
+                  <>
+                    {/* Search bar */}
+                    {!loadingArchived && archivedChats.length > 0 && (
+                      <div className="px-5 py-2.5 border-b border-border bg-sidebar-accent/10 relative shrink-0">
+                        <Search
+                          size={14}
+                          className="absolute left-8 top-1/2 -translate-y-1/2 opacity-50 text-muted-foreground"
+                        />
+                        <input
+                          type="text"
+                          className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
+                          placeholder="Buscar chats archivados..."
+                          value={archivedSearchQuery}
+                          onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                        {archivedSearchQuery && (
+                          <button
+                            type="button"
+                            className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/75 transition-colors cursor-pointer"
+                            onClick={() => setArchivedSearchQuery("")}
+                            title="Limpiar búsqueda"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    <div className="max-h-[420px] overflow-y-auto">
+                      {loadingArchived ? (
+                        <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="text-sm">Cargando archivados...</span>
+                        </div>
+                      ) : archivedChats.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                          <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                            <Archive size={28} className="opacity-50" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-muted-foreground/70">
+                              Sin chats archivados
+                            </p>
+                            <p className="text-xs mt-0.5 text-muted-foreground/40">
+                              Los chats archivados de {app.name} aparecerán aquí
+                            </p>
+                          </div>
+                        </div>
+                      ) : filteredArchivedChats.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50 animate-in fade-in-50 duration-200">
+                          <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                            <Search size={28} className="opacity-50" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-muted-foreground/70">
+                              No se encontraron resultados
+                            </p>
+                            <p className="text-xs mt-0.5 text-muted-foreground/40">
+                              Intenta buscar con otros términos
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          {filteredArchivedChats.map((chat) => (
+                            <div
+                              key={chat.id}
+                              className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+                              onClick={() => handlePreviewChat(chat.id, chat.title)}
+                            >
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="text-sm truncate font-medium text-foreground">
+                                  <HighlightedText
+                                    text={chat.title || "Sin título"}
+                                    highlight={archivedSearchQuery}
+                                  />
+                                </span>
+                                {chat.firstPrompt && !chat.matchedSnippet && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed line-clamp-2">
+                                    {chat.firstPrompt}
+                                  </p>
+                                )}
+                                {chat.matchedSnippet && (
+                                  <p className="text-xs text-muted-foreground/80 mt-1.5 bg-sidebar-accent/25 rounded-xl px-3 py-2 border border-border/30 font-normal leading-relaxed line-clamp-2">
+                                    <HighlightedText
+                                      text={getSnippet(
+                                        chat.matchedSnippet,
+                                        archivedSearchQuery,
+                                      )}
+                                      highlight={archivedSearchQuery}
+                                    />
+                                  </p>
+                                )}
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <ChatRowLabels
+                                    labels={chat.labels}
+                                    onRemove={(id) => {
+                                      handleRemoveLabel(id);
+                                      setArchivedChats((prev) =>
+                                        prev.map((c) =>
+                                          c.id === chat.id
+                                            ? {
+                                                ...c,
+                                                labels: c.labels?.filter(
+                                                  (ll) => ll.id !== id,
+                                                ),
+                                              }
+                                            : c,
+                                        ),
+                                      );
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs text-muted-foreground/55 mt-1.5">
+                                  Archivado ·{" "}
+                                  {formatDistanceToNow(safeDate(chat.createdAt), {
+                                    addSuffix: true,
+                                    locale: es,
+                                  })}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                                  onClick={() => handleUnarchive(chat.id)}
+                                  disabled={unarchivingId === chat.id}
+                                  title="Restaurar"
+                                >
+                                  {unarchivingId === chat.id ? (
+                                    <Loader2 size={15} className="animate-spin" />
+                                  ) : (
+                                    <ArchiveRestore size={15} strokeWidth={2} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Footer */}
-              {archivedChats.length > 0 && (
+              {/* Footer — only in list mode */}
+              {!previewChatId && archivedChats.length > 0 && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20 shrink-0">
                   <span className="text-xs text-muted-foreground/50">
                     {archivedSearchQuery.trim() ? (
@@ -2465,7 +2579,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground/35">
-                    Hover para restaurar
+                    Hover para opciones
                   </span>
                 </div>
               )}
@@ -2539,7 +2653,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               ? `Chat #${previewPlan.chatId}`
                               : "Sin chat asociado"}
                           {previewPlan?.createdAt
-                            ? ` · ${formatDistanceToNow(new Date(previewPlan.createdAt), { addSuffix: true, locale: es })}`
+                            ? ` · ${formatDistanceToNow(safeDate(previewPlan.createdAt), { addSuffix: true, locale: es })}`
                             : ""}
                         </span>
                       </div>
@@ -2676,7 +2790,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               {plan.createdAt ? (
                                 <span className="text-[11px] text-muted-foreground/40 mt-0.5">
                                   {formatDistanceToNow(
-                                    new Date(plan.createdAt),
+                                    safeDate(plan.createdAt),
                                     { addSuffix: true, locale: es },
                                   )}
                                 </span>
@@ -2994,6 +3108,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     appName: string;
     title: string | null;
     createdAt: Date;
+    isRead?: boolean;
     labels?: LabelEntry[];
   };
   const { data: pinnedChatsRaw = [] } = useQuery<PinnedChatRow[]>({
@@ -3285,6 +3400,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       });
       try {
         await ipc.chat.markChatUnread(chatId);
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       } catch (e) {
         // Rollback atom on error
         setRecentStreamChatIds((prev) => {
@@ -3295,7 +3412,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         showError(e);
       }
     },
-    [setRecentStreamChatIds],
+    [setRecentStreamChatIds, queryClient],
   );
 
   const handleRemovePinnedLabel = useCallback(
@@ -3319,9 +3436,15 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         next.delete(chatId);
         return next;
       });
-      ipc.chat.markChatRead(chatId).catch(() => {});
+      try {
+        await ipc.chat.markChatRead(chatId);
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      } catch (e) {
+        showError(e);
+      }
     },
-    [setRecentStreamChatIds],
+    [setRecentStreamChatIds, queryClient],
   );
 
   const handleArchiveChatClick = useCallback(
@@ -3617,6 +3740,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     const streaming = isStreamingById.get(pinned.id) ?? false;
                     const isRenaming = pinnedRenamingId === pinned.id;
                     const isMenuOpen = pinnedMenuId === pinned.id;
+                    const isPinnedUnread = isActive
+                      ? pinned.isRead === false
+                      : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false);
                     return (
                       <div
                         key={pinned.id}
@@ -3655,7 +3781,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         ) : (
                           <button
                             type="button"
-                            className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                            className={`relative flex items-start pl-7 pr-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
                               isActive
                                 ? "text-primary font-medium"
                                 : "text-foreground/80"
@@ -3668,7 +3794,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                 next.delete(pinned.id);
                                 return next;
                               });
-                              ipc.chat.markChatRead(pinned.id).catch(() => {});
+                              ipc.chat
+                                .markChatRead(pinned.id)
+                                .then(() => {
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["pinned-chats"],
+                                  });
+                                  queryClient.invalidateQueries({
+                                    queryKey: queryKeys.chats.all,
+                                  });
+                                })
+                                .catch(() => {});
                               navigate({
                                 to: "/",
                                 search: {
@@ -3678,30 +3814,31 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               });
                             }}
                           >
-                            <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                              {streaming ? (
-                                <Loader2
-                                  size={12}
-                                  className="animate-spin text-primary shrink-0"
-                                />
-                              ) : recentStreamChatIds.has(pinned.id) &&
-                                selectedChatId !== pinned.id ? (
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                              ) : null}
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <span
-                                  className={`truncate ${recentStreamChatIds.has(pinned.id) && selectedChatId !== pinned.id ? "font-semibold" : ""}`}
-                                >
-                                  {pinned.title || "Nuevo chat"}
-                                </span>
-                                <ChatRowLabels
-                                  labels={pinned.labels}
-                                  onRemove={handleRemovePinnedLabel}
-                                />
-                                <span className="typo-micro opacity-60 mt-0.5 truncate">
-                                  {pinned.appName}
-                                </span>
+                            {(streaming || isPinnedUnread) && (
+                              <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
+                                {streaming ? (
+                                  <Loader2
+                                    size={12}
+                                    className="animate-spin text-primary"
+                                  />
+                                ) : isPinnedUnread ? (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                ) : null}
                               </div>
+                            )}
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span
+                                className={`break-words whitespace-normal ${isPinnedUnread ? "font-semibold" : ""}`}
+                              >
+                                {pinned.title || "Nuevo chat"}
+                              </span>
+                              <ChatRowLabels
+                                labels={pinned.labels}
+                                onRemove={handleRemovePinnedLabel}
+                              />
+                              <span className="typo-micro opacity-60 mt-0.5 truncate">
+                                {pinned.appName}
+                              </span>
                             </div>
                           </button>
                         )}
@@ -3776,9 +3913,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   (() => {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
-                    const isUnread =
-                      recentStreamChatIds.has(pinnedMenuId) &&
-                      selectedChatId !== pinnedMenuId;
+                    const isUnread = selectedChatId === pinnedMenuId
+                      ? pin.isRead === false
+                      : (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false);
                     return (
                       <ChatContextMenuPortal
                         chatId={pinnedMenuId}
@@ -3796,7 +3933,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                           setPinnedRenamingId(chatId);
                           setPinnedRenameValue(title);
                           setTimeout(
-                            () => pinnedRenameInputRef.current?.focus(),
+                            () => {
+                              if (pinnedRenameInputRef.current) {
+                                pinnedRenameInputRef.current.focus();
+                                pinnedRenameInputRef.current.select();
+                              }
+                            },
                             50,
                           );
                         }}
@@ -3981,7 +4123,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                           {app.name}
                         </span>
                         <span className="text-xs text-muted-foreground/45 mt-0.5">
-                          {formatDistanceToNow(new Date(app.createdAt), {
+                          {formatDistanceToNow(safeDate(app.createdAt), {
                             addSuffix: true,
                             locale: es,
                           })}

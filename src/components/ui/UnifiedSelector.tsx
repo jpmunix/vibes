@@ -438,11 +438,13 @@ function SelectorRow({
       {option.rightIcon && (
         <span
           className="shrink-0 flex items-center ml-auto"
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => option.rightAction && e.stopPropagation()}
           onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            option.rightAction?.(e);
+            if (option.rightAction) {
+              e.stopPropagation();
+              e.preventDefault();
+              option.rightAction(e);
+            }
           }}
         >
           {option.rightIcon}

@@ -392,7 +392,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[720px] max-h-[85vh] flex flex-col rounded-2xl">
+            <DialogContent className="sm:max-w-[975px] max-h-[85vh] flex flex-col rounded-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold text-foreground">
                         {existingSkill ? "Editar Skill" : "Crear Skill"}
@@ -438,12 +438,11 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                         </div>
                     </div>
                     
-                    <div className="space-y-4">
-                        <AiStrategistAssistant type="skill" currentContent={content} onAccept={setContent} />
-                    </div>
-
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-[350px]">
-                        <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Contenido (SKILL.md)</label>
+                        <div className="flex justify-between items-center mb-3">
+                            <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">Contenido (SKILL.md)</label>
+                            <AiStrategistAssistant type="skill" currentContent={content} onAccept={setContent} />
+                        </div>
                         <textarea 
                             className="flex-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 typo-mono-xs ring-offset-background placeholder:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono text-sm leading-relaxed"
                             value={content}

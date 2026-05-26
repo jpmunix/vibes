@@ -467,7 +467,7 @@ export const ActionHeader = () => {
                   disabled={selectedAppId == null}
                 >
                   <Database size={14} />
-                  <span>Memorias</span>
+                  <span>Directrices</span>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

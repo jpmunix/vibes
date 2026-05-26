@@ -58,6 +58,7 @@ import {
 } from "../ui/tooltip";
 
 import { useVersions } from "@/hooks/useVersions";
+import { useLoadApp } from "@/hooks/useLoadApp";
 import { useAttachments } from "@/hooks/useAttachments";
 import { AttachmentsList } from "./AttachmentsList";
 import { DragDropOverlay } from "./DragDropOverlay";
@@ -82,11 +83,14 @@ import { AuxiliaryActionsMenu } from "./AuxiliaryActionsMenu";
 import { useChatModeToggle } from "@/hooks/useChatModeToggle";
 import { VisualEditingChangesDialog } from "@/components/preview_panel/VisualEditingChangesDialog";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { queryKeys } from "@/lib/queryKeys";
 import { QuotePreview } from "./QuotePreview";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
 import { saveDraft, loadDraft, clearDraft } from "@/lib/chat-draft";
+import { UndoConfirmDialog } from "./UndoConfirmDialog";
+import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
 
 export function ChatInput({
   chatId,
@@ -131,6 +135,7 @@ export function ChatInput({
 
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
+  const { app } = useLoadApp(appId);
   const { versions, loading: versionsLoading, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
@@ -147,8 +152,40 @@ export function ChatInput({
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isUndoLoading, setIsUndoLoading] = useState(false);
   const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
+  const [isUndoDialogOpen, setIsUndoDialogOpen] = useState(false);
+  const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  const { customAgents } = useCustomAgents();
+  const { data: chat } = useQuery({
+    queryKey: ["chat", chatId],
+    queryFn: () => ipc.chat.getChat(chatId!),
+    enabled: !!chatId,
+  });
+
+  const currentMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+  const lastSelectedModeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!settings || !customAgents) return;
+    if (currentMode !== lastSelectedModeRef.current) {
+      const prevMode = lastSelectedModeRef.current;
+      lastSelectedModeRef.current = currentMode;
+      
+      if (currentMode.startsWith("custom-agent::")) {
+        const id = parseInt(currentMode.split("::")[1]);
+        const agent = customAgents.find((a) => a.id === id);
+        if (agent && agent.prompt && !inputValue.trim()) {
+          const isTransition = prevMode !== null;
+          const isNewBlankChat = prevMode === null && currentMessages.length === 0;
+          if (isTransition || isNewBlankChat) {
+            setInputValue(agent.prompt);
+          }
+        }
+      }
+    }
+  }, [currentMode, customAgents, inputValue, setInputValue, settings, currentMessages.length]);
 
   // Reset quick commit dismissal state when streaming completes
   const prevStreamingRef = useRef(isStreaming);
@@ -288,6 +325,141 @@ export function ChatInput({
     });
   }, [chatId, setMessagesById]);
 
+  // ── Undo helper ──────────────────────────────────────────────────────────
+  // messageOnly = true  → delete messages + restore prompt, but DON'T touch git
+  // messageOnly = false → full undo (delete messages + revert git, current behaviour)
+  const performUndo = useCallback(async ({ messageOnly }: { messageOnly: boolean }) => {
+    if (!chatId || !appId) return;
+    setIsUndoLoading(true);
+    try {
+      // Find the LAST assistant message and the user message immediately before it
+      let lastAssistantIdx = -1;
+      for (let i = currentMessages.length - 1; i >= 0; i--) {
+        if (currentMessages[i].role === "assistant") {
+          lastAssistantIdx = i;
+          break;
+        }
+      }
+      if (lastAssistantIdx < 0) {
+        showError("No hay mensaje de asistente para deshacer");
+        setIsUndoLoading(false);
+        return;
+      }
+      const currentMessage = currentMessages[lastAssistantIdx];
+
+      // Walk backwards from the assistant to find the user message that triggered it
+      let userMessage: typeof currentMessage | undefined;
+      for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+        if (currentMessages[i].role === "user") {
+          userMessage = currentMessages[i];
+          break;
+        }
+      }
+      if (!userMessage) {
+        showError("No se encontró el mensaje de usuario para deshacer");
+        setIsUndoLoading(false);
+        return;
+      }
+
+      if (userMessage) {
+        let prompt = userMessage.content;
+        const idx = prompt.indexOf("\n\nAttachments:\n");
+        if (idx !== -1) prompt = prompt.substring(0, idx);
+        const attachmentsToRestore: File[] = [];
+        let aiMessagesJson = userMessage.aiMessagesJson;
+        if (aiMessagesJson) {
+          let parsed = aiMessagesJson;
+          if (typeof parsed === "string") {
+            try {
+              parsed = JSON.parse(parsed);
+            } catch {
+              parsed = null;
+            }
+          }
+          const aiMessages = Array.isArray(parsed) ? parsed : parsed?.messages;
+          if (aiMessages && Array.isArray(aiMessages)) {
+            const userMsg = aiMessages.find((m: any) => m.role === "user");
+            if (userMsg && Array.isArray(userMsg.content)) {
+              for (let i = 0; i < userMsg.content.length; i++) {
+                const part = userMsg.content[i];
+                if (part.type === "image" && part.image) {
+                  const mimeType = part.mediaType || part.mimeType || "image/png";
+                  const ext = mimeType.split("/")[1] || "png";
+                  try {
+                    const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
+                    if (isUrl) {
+                      // CDN URL: fetch the image and create a File
+                      const resp = await fetch(part.image);
+                      const blob = await resp.blob();
+                      attachmentsToRestore.push(new File([blob], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                    } else {
+                      // Legacy base64 data
+                      let base64 = part.image;
+                      if (base64.startsWith("data:")) {
+                        base64 = base64.split(",")[1] || "";
+                      }
+                      const byteChars = atob(base64);
+                      const byteArr = new Uint8Array(byteChars.length);
+                      for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                      attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                    }
+                  } catch { /* skip */ }
+                }
+              }
+            }
+          }
+        }
+        window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
+      }
+
+      if (messageOnly) {
+        // Message-only undo: delete messages but leave git untouched
+        await revertVersion({
+          versionId: "NONE",
+          currentChatMessageId: { chatId, messageId: userMessage.id },
+          silent: true,
+        });
+      } else {
+        // Full undo: revert git + delete messages
+        const targetHash = currentMessage?.sourceCommitHash || "NONE";
+        if (targetHash !== "NONE") {
+          // Normal undo: revert to the commit before this chat turn
+          await revertVersion({
+            versionId: targetHash,
+            currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+            silent: true,
+          });
+        } else {
+          // Stream was stopped before any commit — discard uncommitted changes
+          try {
+            await ipc.git.discardAllChanges({ appId });
+          } catch { /* no uncommitted changes to discard */ }
+          // Still delete the messages from this turn
+          if (userMessage) {
+            await revertVersion({
+              versionId: "NONE",
+              currentChatMessageId: { chatId, messageId: userMessage.id },
+              silent: true,
+            });
+          }
+        }
+      }
+      // Clear agent todos for this chat
+      setAgentTodosByChatId((prev) => {
+        const next = new Map(prev);
+        next.delete(chatId);
+        return next;
+      });
+      const chat = await ipc.chat.getChat(chatId);
+      setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
+    } catch (error) {
+      console.error("Error during undo:", error);
+      showError("Failed to undo changes");
+    } finally {
+      setIsUndoLoading(false);
+    }
+  }, [chatId, appId, currentMessages, revertVersion, setAgentTodosByChatId, setMessagesById]);
+
   const handleSubmit = async () => {
     if (
       (!inputValue.trim() && attachments.length === 0) ||
@@ -362,8 +534,8 @@ export function ChatInput({
     //   1. versions.length <= 1: only the initial 'Init vibes app' commit exists (no scaffold yet)
     //   2. No prior messages exist in any loaded chat (covers PHP/Python/Go projects without package.json)
     // New chats in existing apps must NOT re-scaffold. The backend also has its own guard.
-    const totalLoadedMessages = Array.from(messagesById.values()).reduce((sum, msgs) => sum + msgs.length, 0);
-    const isNewApp = !versionsLoading && versions.length <= 1 && totalLoadedMessages === 0;
+    const isAppEmpty = app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true;
+    const isNewApp = !versionsLoading && versions.length <= 1 && currentMessages.length === 0 && isAppEmpty;
     if (currentChatId && appId && currentMessages.length === 0 && isNewApp) {
       setIsStreaming(true);
       
@@ -759,8 +931,9 @@ export function ChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
-                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
-                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && Array.from(messagesById.values()).every(msgs => msgs.length === 0)}
+                    chatId={chatId}
+                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
+                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
                   />
                 </div>
 
@@ -776,123 +949,13 @@ export function ChatInput({
                               disabled={isUndoLoading}
                               onClick={async () => {
                                 if (!chatId || !appId) return;
-                                setIsUndoLoading(true);
-                                try {
-                                  // Find the LAST assistant message and the user message immediately before it
-                                  let lastAssistantIdx = -1;
-                                  for (let i = currentMessages.length - 1; i >= 0; i--) {
-                                    if (currentMessages[i].role === "assistant") {
-                                      lastAssistantIdx = i;
-                                      break;
-                                    }
-                                  }
-                                  if (lastAssistantIdx < 0) {
-                                    showError("No hay mensaje de asistente para deshacer");
-                                    setIsUndoLoading(false);
-                                    return;
-                                  }
-                                  const currentMessage = currentMessages[lastAssistantIdx];
-
-                                  // Walk backwards from the assistant to find the user message that triggered it
-                                  let userMessage: typeof currentMessage | undefined;
-                                  for (let i = lastAssistantIdx - 1; i >= 0; i--) {
-                                    if (currentMessages[i].role === "user") {
-                                      userMessage = currentMessages[i];
-                                      break;
-                                    }
-                                  }
-                                  if (!userMessage) {
-                                    showError("No se encontró el mensaje de usuario para deshacer");
-                                    setIsUndoLoading(false);
-                                    return;
-                                  }
-
-                                  if (userMessage) {
-                                    let prompt = userMessage.content;
-                                    const idx = prompt.indexOf("\n\nAttachments:\n");
-                                    if (idx !== -1) prompt = prompt.substring(0, idx);
-                                    const attachmentsToRestore: File[] = [];
-                                    let aiMessagesJson = userMessage.aiMessagesJson;
-                                    if (aiMessagesJson) {
-                                      let parsed = aiMessagesJson;
-                                      if (typeof parsed === "string") {
-                                        try {
-                                          parsed = JSON.parse(parsed);
-                                        } catch {
-                                          parsed = null;
-                                        }
-                                      }
-                                      const aiMessages = Array.isArray(parsed) ? parsed : parsed?.messages;
-                                      if (aiMessages && Array.isArray(aiMessages)) {
-                                        const userMsg = aiMessages.find((m: any) => m.role === "user");
-                                        if (userMsg && Array.isArray(userMsg.content)) {
-                                          for (let i = 0; i < userMsg.content.length; i++) {
-                                            const part = userMsg.content[i];
-                                            if (part.type === "image" && part.image) {
-                                              const mimeType = part.mediaType || part.mimeType || "image/png";
-                                              const ext = mimeType.split("/")[1] || "png";
-                                              try {
-                                                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
-                                                if (isUrl) {
-                                                  // CDN URL: fetch the image and create a File
-                                                  const resp = await fetch(part.image);
-                                                  const blob = await resp.blob();
-                                                  attachmentsToRestore.push(new File([blob], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
-                                                } else {
-                                                  // Legacy base64 data
-                                                  let base64 = part.image;
-                                                  if (base64.startsWith("data:")) {
-                                                    base64 = base64.split(",")[1] || "";
-                                                  }
-                                                  const byteChars = atob(base64);
-                                                  const byteArr = new Uint8Array(byteChars.length);
-                                                  for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                                                  attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
-                                                }
-                                              } catch { /* skip */ }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                    window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
-                                  }
-                                  const targetHash = currentMessage?.sourceCommitHash || "NONE";
-                                  if (targetHash !== "NONE") {
-                                    // Normal undo: revert to the commit before this chat turn
-                                    await revertVersion({
-                                      versionId: targetHash,
-                                      currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
-                                      silent: true,
-                                    });
-                                  } else {
-                                    // Stream was stopped before any commit — discard uncommitted changes
-                                    try {
-                                      await ipc.git.discardAllChanges({ appId });
-                                    } catch { /* no uncommitted changes to discard */ }
-                                    // Still delete the messages from this turn
-                                    if (userMessage) {
-                                      await revertVersion({
-                                        versionId: "NONE",
-                                        currentChatMessageId: { chatId, messageId: userMessage.id },
-                                        silent: true,
-                                      });
-                                    }
-                                  }
-                                  // Clear agent todos for this chat
-                                  setAgentTodosByChatId((prev) => {
-                                    const next = new Map(prev);
-                                    next.delete(chatId);
-                                    return next;
-                                  });
-                                  const chat = await ipc.chat.getChat(chatId);
-                                  setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
-                                } catch (error) {
-                                  console.error("Error during undo:", error);
-                                  showError("Failed to undo changes");
-                                } finally {
-                                  setIsUndoLoading(false);
+                                // If there are uncommitted files, show the confirmation dialog
+                                if (hasUncommittedFiles) {
+                                  setIsUndoDialogOpen(true);
+                                  return;
                                 }
+                                // No uncommitted files — proceed with full undo directly
+                                await performUndo({ messageOnly: false });
                               }}
                               className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
                               title="Deshacer"
@@ -904,6 +967,20 @@ export function ChatInput({
                         </Tooltip>
                       </TooltipProvider>
                     )}
+                  <UndoConfirmDialog
+                    isOpen={isUndoDialogOpen}
+                    onOpenChange={setIsUndoDialogOpen}
+                    onUndoMessageOnly={async () => {
+                      setIsUndoDialogOpen(false);
+                      await performUndo({ messageOnly: true });
+                    }}
+                    onUndoAll={async () => {
+                      setIsUndoDialogOpen(false);
+                      await performUndo({ messageOnly: false });
+                    }}
+                    uncommittedFiles={uncommittedFiles}
+                    isLoading={isUndoLoading}
+                  />
 
 
                   {isStreaming ? (

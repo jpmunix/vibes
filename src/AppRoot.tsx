@@ -198,9 +198,18 @@ export default function AppRoot() {
         );
         return next;
       });
+      // Invalidate chats queries to update sidebar unread dot
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
     });
     return () => unsubscribe();
-  }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId]);
+  }, [
+    setPendingAgentConsents,
+    setPendingAskUsers,
+    setPendingOCPermissions,
+    setAgentTodosByChatId,
+    queryClient,
+  ]);
 
   // Cross-window navigation: when a secondary window (chat, etc.) requests
   // navigation, the main process sends us this event so we navigate the router.

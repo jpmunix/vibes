@@ -54,13 +54,13 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
               text-xs text-muted-foreground hover:text-foreground
               hover:bg-accent/50 transition-colors cursor-pointer"
-            aria-label={`${memories.length} memorias inyectadas`}
+            aria-label={`${memories.length} directrices inyectadas`}
           >
             <Database size={12} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top">
-          {memories.length} {memories.length === 1 ? "memoria" : "memorias"}
+          {memories.length} {memories.length === 1 ? "directriz" : "directrices"}
         </TooltipContent>
       </Tooltip>
 
@@ -69,7 +69,7 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database size={15} className="text-muted-foreground" />
-              Memorias inyectadas ({memories.length})
+              Directrices inyectadas ({memories.length})
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 pr-1">

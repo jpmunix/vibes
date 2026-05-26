@@ -27,14 +27,13 @@ import {
   User as UserIcon,
   Quote,
   Share2,
-  FileText,
   Image as ImageIcon,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -52,13 +51,12 @@ import {
   isZenModeAtom,
   pendingAskUsersAtom,
   selectedMemoriesByChatIdAtom,
+  messagePreviewAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { VibesAvatar } from "@/components/ui/VibesAvatar";
 import { Button } from "@/components/ui/button";
-import { useChatArtifacts } from "@/hooks/useChatArtifacts";
-import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
 
 /** Height threshold (px) above which user messages collapse (~6 lines of text) */
@@ -186,9 +184,6 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
   const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
 
-  const { artifacts } = useChatArtifacts(selectedChatId);
-  const [, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
-  const [, setSelectedPath] = useAtom(selectedArtifactPathAtom);
   const { settings: chatMsgSettings } = useSettings();
 
   const isUser = message.role === "user";
@@ -215,6 +210,9 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
+    if (message.model === "vibes/git-assistant") {
+      return undefined;
+    }
     if (isLastMessage && selectedMemories && selectedMemories.length > 0) {
       return selectedMemories;
     }
@@ -344,20 +342,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     }
   }, [isSharing, isUser, message]);
 
-  // Open single message debug window
+  // Open single message preview modal (in-app)
+  const setMessagePreview = useSetAtom(messagePreviewAtom);
   const openDebugMessage = useCallback(() => {
     if (isStreaming && isLastMessage) return; // Prevent opening dead/empty modal during generation
-    if (!appId || !selectedChatId || !message.id) return;
-    const theme = localStorage.getItem("theme");
-    const intensity = localStorage.getItem("theme-intensity");
-    ipc.system.openMessageWindow({
-      appId,
-      chatId: selectedChatId,
-      messageId: message.id,
-      theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined,
-      themeIntensity: intensity ? parseFloat(intensity) : undefined,
-    });
-  }, [appId, selectedChatId, message.id, isStreaming, isLastMessage]);
+    if (!selectedChatId || !message.id) return;
+    setMessagePreview({ chatId: selectedChatId, messageId: message.id });
+  }, [selectedChatId, message.id, isStreaming, isLastMessage, setMessagePreview]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
@@ -604,13 +595,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
               </div>
             )}
             <div
-              onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
+              onClick={undefined}
               className={`rounded-lg ${isSystem
                 ? "px-4 py-2 bg-muted/30 border border-muted/50 text-xs text-muted-foreground w-fit max-w-[80%]"
                 : isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-background-lighter dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
+                  : `px-4 py-3 bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
                 : isFixError
                   ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
                   : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
@@ -653,10 +644,14 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                   ) : (
                     <>
                       <div
-                        className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
+                        className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words`}
                         suppressHydrationWarning
                       >
-                         <VibesMarkdownParser content={message.content} forceFullMode={forceFullMode} />
+                          <VibesMarkdownParser
+                            content={message.content}
+                            forceFullMode={forceFullMode}
+                            isGitMessage={message.model === "vibes/git-assistant"}
+                          />
                       </div>
                       {/* Streaming loader: visible while streaming, hidden on error */}
                       {isLastMessage && isStreaming && (
@@ -669,29 +664,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                          />
                       )}
 
-                      {/* Per-message artifact button: if this message mentions a .vibes/ path,
-                          show a direct button to open that specific artifact in the sidebar */}
-                      {isAssistant && !isStreaming && !isCollapsed && (() => {
-                        // Extract .vibes/xxx.md references from the message content
-                        const vibesMatch = message.content?.match(/\.vibes\/[\w\-.]+\.md/);
-                        if (!vibesMatch) return null;
-                        const artifactPath = vibesMatch[0];
-                        return (
-                          <div className="mt-3 pt-3 border-t border-border/20">
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
-                              onClick={() => {
-                                setSelectedPath(artifactPath);
-                                setSidebarOpen(true);
-                              }}
-                            >
-                              <FileText size={14} />
-                              Ver plan
-                            </button>
-                          </div>
-                        );
-                      })()}
+
+
                     </>
                   )}
                 </>
@@ -748,20 +722,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
               {(isAssistant && message.content && !isZenMode) ? (
                 <div
-                  onClick={() => setIsCollapsed(!isCollapsed)}
-                  className="mt-2 flex items-center justify-between text-xs cursor-pointer hover:bg-accent/50 rounded-lg px-1 py-1 -mx-1 transition-colors"
+                  className="mt-2 flex items-center justify-between text-xs px-1 py-1 -mx-1"
                 >
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    {isCollapsed ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronUp className="h-4 w-4" />
-                    )}
-                    {/* Quote + Copy buttons for assistant — stop propagation to avoid collapsing */}
-                    {!isCollapsed && message.content && (
-                      <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {message.content && (
+                      <>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleQuote(); }}
+                          onClick={handleQuote}
                           title="Citar"
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                           aria-label="Citar respuesta"
@@ -769,7 +736,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           <Quote size={12} />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleCopyFormatted(); }}
+                          onClick={handleCopyFormatted}
                           title={copied ? "¡Copiado!" : "Copiar"}
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                           aria-label="Copiar respuesta"
@@ -777,7 +744,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleShareMessage(); }}
+                          onClick={handleShareMessage}
                           title="Compartir mensaje"
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                           aria-label="Compartir mensaje"
@@ -787,9 +754,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         </button>
 
                         {resolvedMemories && resolvedMemories.length > 0 && (
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <MemoryBadge memories={resolvedMemories} />
-                          </div>
+                          <MemoryBadge memories={resolvedMemories} />
                         )}
                         {message.createdAt && (
                           <span className="typo-micro ml-1 flex items-center gap-1">
@@ -800,7 +765,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             }
                           </span>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -919,33 +884,6 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 </div>
               ) : null}
 
-              {/* === Compact collapsed summary (full mode only) === */}
-              {!isZenMode && isAssistant && isCollapsed && message.content && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="typo-caption truncate flex-1 min-w-0">
-                    {plainTextExcerpt}
-                  </span>
-                  {toolSummary.length > 0 && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {toolSummary.map((g, i) => {
-                        const Icon = g.icon;
-                        return (
-                          <div key={i} className="inline-flex items-center gap-0.5 text-xs">
-                            <Icon size={12} className={g.color} />
-                            {g.count > 1 && (
-                              <span className="typo-micro">
-                                ×{g.count}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                </div>
-
-              )}
             </div>
             </div>{/* end relative wrapper */}
           </div>

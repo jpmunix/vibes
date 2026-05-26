@@ -12,11 +12,14 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 import { CrossChatNotification } from "./chat/CrossChatNotification";
+import { MessagePreviewModal } from "./chat/MessagePreviewModal";
 
 
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
+import { useCustomAgents, getUltimateBaseAgent } from "@/hooks/useCustomAgents";
+
 
 
 interface ChatPanelProps {
@@ -53,6 +56,7 @@ export function ChatPanel({
   }, [isStreamingById, chatId]);
 
   const { settings, updateSettings } = useSettings();
+  const { customAgents } = useCustomAgents();
 
 
 
@@ -87,18 +91,22 @@ export function ChatPanel({
     if (isStreamingById.get(chatId) ?? false) return;
 
     const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-    if (settings.selectedChatMode === "plan" && currentMessages.length > 0) {
+    const isPlan = settings.selectedChatMode === "plan" || 
+      (settings.selectedChatMode?.startsWith("custom-agent::") && 
+       getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan");
+
+    if (isPlan && currentMessages.length > 0) {
       // Plan mode was carried over from a previous session into an existing chat — reset it
       hasResetModeRef.current = chatId;
       const defaultMode = settings.defaultChatMode || "agent";
-      const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
-      updateSettings({ selectedChatMode: resetTo });
-    } else if (settings.selectedChatMode !== "plan") {
+      const resetTo = defaultMode === "plan" || (defaultMode.startsWith("custom-agent::") && getUltimateBaseAgent(defaultMode, customAgents) === "plan") ? "agent" : defaultMode;
+      updateSettings({ selectedChatMode: resetTo as any });
+    } else if (!isPlan) {
       // User entered the chat in agent/build mode — mark as processed so that if they
       // manually switch to plan later, this effect won't fire and revert it.
       hasResetModeRef.current = chatId;
     }
-  }, [chatId, settings, isStreamingById, updateSettings, messagesById]);
+  }, [chatId, settings, isStreamingById, updateSettings, messagesById, customAgents]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -260,15 +268,21 @@ export function ChatPanel({
   const messages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
 
+  // Use a ref for messagesById to avoid triggering the recovery effect on every single message update (which clears timers)
+  const messagesByIdRef = useRef(messagesById);
+  useEffect(() => {
+    messagesByIdRef.current = messagesById;
+  }, [messagesById]);
+
   // ── A2: Recovery polling for disconnected streams ───────────────────────
   // Detects assistant messages with status="streaming" but no active local
   // stream. This happens when the user disconnected (reload, close browser)
   // while the backend was still processing. We query the stream_task from DB
   // to decide whether to poll (still running) or one-shot refresh (completed).
   useEffect(() => {
-    if (!chatId || isStreaming) return;
+    if (!chatId || isStreaming || isLoadingMessages) return;
 
-    const currentMessages = messagesById.get(chatId) ?? [];
+    const currentMessages = messagesByIdRef.current.get(chatId) ?? [];
     const lastMsg = currentMessages[currentMessages.length - 1];
 
     // Only trigger if the last message is an assistant message that looks incomplete
@@ -280,6 +294,28 @@ export function ChatPanel({
     let pollTimer: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
 
+    const runPoll = async () => {
+      try {
+        const task = await ipc.chat.getStreamTask(chatId);
+        if (cancelled) return;
+
+        if (task?.status === "running") {
+          // Stream is still active in the backend — fetch latest content
+          await fetchChatMessages();
+        } else {
+          // Stream finished (completed/failed/cancelled) — one final DB refresh
+          console.log(`[Recovery] Chat ${chatId}: backend stream finished (${task?.status ?? "not found"}) — stopping poll`);
+          await fetchChatMessages();
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        }
+      } catch (err) {
+        console.warn("[Recovery] Polling error:", err);
+      }
+    };
+
     const checkStreamTask = async () => {
       try {
         const task = await ipc.chat.getStreamTask(chatId);
@@ -287,33 +323,31 @@ export function ChatPanel({
         if (cancelled) return;
 
         if (task?.status === "running") {
-          // Stream is still active in the backend — poll every 5s to pick up
-          // checkpointed content from DB
           console.log(`[Recovery] Chat ${chatId}: backend stream still running — starting poll`);
-          if (!pollTimer) {
-            pollTimer = setInterval(() => {
-              if (!cancelled) fetchChatMessages();
-            }, 5_000);
+          // Fetch immediately once we know it is running, so the user doesn't wait
+          await fetchChatMessages();
+          if (!cancelled && !pollTimer) {
+            pollTimer = setInterval(runPoll, 1_500);
           }
         } else {
-          // Stream finished (completed/failed/cancelled) — one-time DB refresh
+          // Stream finished — one-time DB refresh
           console.log(`[Recovery] Chat ${chatId}: backend stream ${task?.status ?? "not found"} — refreshing from DB`);
-          fetchChatMessages();
+          await fetchChatMessages();
         }
       } catch (err) {
         console.warn("[Recovery] Failed to check stream task:", err);
       }
     };
 
-    // Small delay so the initial fetchChatMessages has time to complete first
-    const initTimer = setTimeout(checkStreamTask, 1_000);
+    // Small delay to let React state settle, but much shorter than 1s (100ms)
+    const initTimer = setTimeout(checkStreamTask, 100);
 
     return () => {
       cancelled = true;
       clearTimeout(initTimer);
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [chatId, isStreaming, messagesById, fetchChatMessages]);
+  }, [chatId, isStreaming, isLoadingMessages, fetchChatMessages]);
 
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,
@@ -404,9 +438,18 @@ export function ChatPanel({
     return () => window.removeEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
   }, []);
 
-  const isPlanMode = settings?.selectedChatMode === "plan" || preservePlanMode;
+  const isPlanMode = useMemo(() => {
+    if (preservePlanMode) return true;
+    if (!settings?.selectedChatMode) return false;
+    if (settings.selectedChatMode === "plan") return true;
+    if (settings.selectedChatMode.startsWith("custom-agent::")) {
+      return getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan";
+    }
+    return false;
+  }, [settings?.selectedChatMode, preservePlanMode, customAgents]);
 
   return (
+    <>
     <div className="flex flex-col h-full">
       <div className="relative">
         <ChatHeader
@@ -481,6 +524,10 @@ export function ChatPanel({
         </div>
       </div>
     </div>
+
+    {/* In-app message preview modal (replaces openMessageWindow) */}
+    <MessagePreviewModal />
+    </>
   );
 }
 

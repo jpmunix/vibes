@@ -247,6 +247,46 @@ export async function initializeRemoteSchema(): Promise<void> {
         error TEXT
       )
     `).catch(() => {});
+
+    // Auto-create custom_agents if missing (added v8.7)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS custom_agents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        system_prompt TEXT NOT NULL,
+        base_agent TEXT NOT NULL,
+        prompt_mode TEXT NOT NULL,
+        is_default_base INTEGER NOT NULL DEFAULT 0,
+        slash_command TEXT NOT NULL,
+        model_source TEXT NOT NULL DEFAULT 'chat',
+        model TEXT,
+        prompt TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `).catch(() => {});
+
+    // Add model_source and model columns to custom_agents if missing (added v8.7~dev.3)
+    await client.execute(`ALTER TABLE custom_agents ADD COLUMN model_source TEXT NOT NULL DEFAULT 'chat'`).catch(() => {});
+    await client.execute(`ALTER TABLE custom_agents ADD COLUMN model TEXT`).catch(() => {});
+    await client.execute(`ALTER TABLE custom_agents ADD COLUMN prompt TEXT`).catch(() => {});
+    await client.execute(`ALTER TABLE custom_agents ADD COLUMN is_default_base INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+
+    // Add chat_mode column to chats if missing (added v8.7)
+    await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});
+
+    // Add scope column to prompts if missing
+    await client.execute(`ALTER TABLE prompts ADD COLUMN scope TEXT NOT NULL DEFAULT 'all'`).catch(() => {});
+
+    // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
+    // Bug: some records had created_at stored as Date.now() (millis) instead of
+    // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.
+    for (const table of ['chats', 'messages', 'chat_artifacts']) {
+      await client.execute(`UPDATE ${table} SET created_at = created_at / 1000 WHERE created_at > 1000000000000`).catch(() => {});
+    }
+    logger.info('Auto-heal: normalized any millisecond timestamps to seconds');
   } catch (e) {
     logger.warn("schema migration (non-fatal):", e);
   }

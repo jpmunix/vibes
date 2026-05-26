@@ -1,32 +1,73 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 import { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { selectedChatIdAtom, chatInputValueAtom } from "@/atoms/chatAtoms";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
+import { useQuery } from "@tanstack/react-query";
+import { ipc } from "@/ipc/types";
+import { parseModelString } from "@/lib/schemas";
 
 /**
  * Returns whether the currently selected model supports image inputs.
  *
- * Always checks `selectedModel` — the same model is used for all chat modes
- * (agent, plan, ask).
+ * Checks `selectedModel` or custom agent static model configuration if active.
  */
 export function useSelectedModelSupportsImages(): boolean {
   const { settings } = useSettings();
   const { data: modelsByProviders } = useLanguageModelsByProviders();
+  const chatId = useAtomValue(selectedChatIdAtom);
+  const inputValue = useAtomValue(chatInputValueAtom);
+  const { customAgents } = useCustomAgents();
+
+  const { data: chat } = useQuery({
+    queryKey: ["chat", chatId],
+    queryFn: () => ipc.chat.getChat(chatId!),
+    enabled: !!chatId,
+  });
 
   return useMemo(() => {
     if (!settings || !modelsByProviders) return true;
-    if (!settings.selectedModel) return true;
 
-    const selectedProvider = settings.selectedModel.provider;
-    const selectedModelName = settings.selectedModel.name;
+    // 1. Resolve which model is active (dynamic selectedModel vs static custom agent model)
+    let activeProvider = settings.selectedModel?.provider || "openrouter";
+    let activeModelName = settings.selectedModel?.name;
 
-    const providerModels = modelsByProviders[selectedProvider];
+    // Check if the current user input triggers a custom agent via slash command
+    const trimmedInput = (inputValue || "").trim();
+    let matchedAgent: any = null;
+    if (trimmedInput.startsWith("/")) {
+      const firstWord = trimmedInput.split(" ")[0].slice(1).toLowerCase();
+      matchedAgent = customAgents?.find((a) => a.slashCommand.toLowerCase() === firstWord);
+    }
+
+    // Otherwise, check if the current chat mode itself is a custom agent
+    if (!matchedAgent) {
+      const currentMode = chatId && chat ? (chat.chatMode || "agent") : (settings.selectedChatMode || "agent");
+      if (currentMode.startsWith("custom-agent::")) {
+        const id = parseInt(currentMode.split("::")[1]);
+        matchedAgent = customAgents?.find((a) => a.id === id);
+      }
+    }
+
+    if (matchedAgent && matchedAgent.modelSource === "static" && matchedAgent.model) {
+      const parsed = parseModelString(matchedAgent.model, activeProvider);
+      activeProvider = parsed.provider;
+      activeModelName = parsed.name;
+    }
+
+    if (!activeModelName) return true;
+
+    const providerModels = modelsByProviders[activeProvider];
     if (!providerModels) return true;
 
-    // Check if it's a custom model first
-    const customFoundModel = providerModels.find(
-      (m) => m.type === "custom" && m.id === settings.selectedModel.customModelId
-    );
-    const model = customFoundModel || providerModels.find((m) => m.apiName === selectedModelName);
+    // If it was the settings model, check customModelId first
+    const isSettingsModel = activeProvider === settings.selectedModel?.provider && activeModelName === settings.selectedModel?.name;
+    const customFoundModel = isSettingsModel && settings.selectedModel.customModelId
+      ? providerModels.find((m) => m.type === "custom" && m.id === settings.selectedModel.customModelId)
+      : null;
+
+    const model = customFoundModel || providerModels.find((m) => m.apiName === activeModelName);
 
     if (model?.inputModalities) {
       return model.inputModalities.includes("image");
@@ -34,7 +75,7 @@ export function useSelectedModelSupportsImages(): boolean {
 
     // Default to true for models that don't explicitly specify their modalities.
     return true;
-  }, [settings?.selectedModel, modelsByProviders]);
+  }, [settings?.selectedModel, modelsByProviders, chatId, chat?.chatMode, settings?.selectedChatMode, inputValue, customAgents]);
 }
 
 /**

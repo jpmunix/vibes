@@ -36,13 +36,16 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { MENTION_REGEX } from "@/shared/parse_mention_apps";
 import { useLoadApp } from "@/hooks/useLoadApp";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { FileText, Database, Code, Search } from "@/components/ui/icons";
 
 // Define the theme for mentions
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
-  "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md",
-  "@Focused": "outline-none ring-2 ring-ring",
+  "@": "px-2 py-0.5 mx-0.5 bg-accent text-accent-foreground rounded-md cursor-text",
+  "@Focused": "outline-none ring-2 ring-ring cursor-text",
+  "/": "px-2 py-0.5 mx-0.5 bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-md cursor-text",
+  "/Focused": "outline-none ring-2 ring-emerald-500 cursor-text",
 };
 
 // Custom menu item component
@@ -51,8 +54,10 @@ const CustomMenuItem = forwardRef<
   BeautifulMentionsMenuItemProps
 >(({ selected, item, ...props }, ref) => {
   const isPrompt = item.data?.type === "prompt";
+  const isApp = item.data?.type === "app";
+  const isSlash = item.data?.type === "slash-command";
   const isArtifact = item.data?.type === "artifact";
-  const label = isPrompt ? "Prompt" : isArtifact ? "Plan/Artifact" : "Archivo";
+  const label = isPrompt ? "Prompt" : isApp ? "App" : isSlash ? "Comando" : isArtifact ? "Plan/Artifact" : "Archivo";
   const value = (item as any)?.value;
 
   return (
@@ -68,12 +73,23 @@ const CustomMenuItem = forwardRef<
           <FileText size={14} className="text-primary shrink-0" />
         ) : isPrompt ? (
           <Database size={14} className="text-purple-500 shrink-0" />
+        ) : isApp ? (
+          <Database size={14} className="text-blue-500 shrink-0" />
+        ) : isSlash ? (
+          <Code size={14} className="text-emerald-500 shrink-0" />
         ) : (
-          <Code size={14} className="text-blue-500 shrink-0" />
+          <FileText size={14} className="text-zinc-500 shrink-0" />
         )}
-        <span className="truncate flex-1">{value}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 shrink-0">
-          {label}
+        <span className="truncate flex-1 font-semibold">
+          {value}
+          {item.data?.description && (
+            <span className="text-muted-foreground font-normal text-xs ml-1.5 opacity-80">
+              — {item.data.description}
+            </span>
+          )}
+        </span>
+        <span className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}>
+          {isSlash ? `/${value}` : label}
         </span>
       </div>
     </li>
@@ -252,9 +268,11 @@ function ClearEditorPlugin({
 function ExternalValueSyncPlugin({
   value,
   promptsById,
+  customAgents,
 }: {
   value: string;
   promptsById: Record<number, string>;
+  customAgents?: any[];
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -283,11 +301,29 @@ function ExternalValueSyncPlugin({
 
       // Build nodes from internal value, turning @app:Name and @prompt:<id> into mention nodes
       let lastIndex = 0;
+      
+      // Parse slash command at the very start if present
+      const knownSlashCommands = [
+        "agent", "build", "plan", "ask", "explore",
+        ...(customAgents || []).map((a) => a.slashCommand),
+      ];
+      for (const cmd of knownSlashCommands) {
+        if (value.startsWith(`/${cmd} `) || value === `/${cmd}`) {
+          paragraph.append($createBeautifulMentionNode("/", cmd));
+          lastIndex = cmd.length + 1; // length of "/" + cmd
+          if (value.startsWith(`/${cmd} `)) {
+            lastIndex += 1; // plus space
+          }
+          break;
+        }
+      }
+
       let match: RegExpExecArray | null;
       const combined = /@app:([a-zA-Z0-9_-]+)|@prompt:(\d+)|@file:([^\s]+)/g;
       while ((match = combined.exec(value)) !== null) {
         const start = match.index;
         const full = match[0];
+        // Ensure we don't grab text before the match that was already consumed by slash command
         if (start > lastIndex) {
           const textBefore = value.slice(lastIndex, start);
           if (textBefore) paragraph.append($createTextNode(textBefore));
@@ -303,7 +339,7 @@ function ExternalValueSyncPlugin({
           const filePath = match[3];
           paragraph.append($createBeautifulMentionNode("@", filePath));
         }
-        lastIndex = start + full.length;
+        lastIndex = Math.max(lastIndex, start + full.length);
       }
       if (lastIndex < value.length) {
         const trailing = value.slice(lastIndex);
@@ -317,7 +353,7 @@ function ExternalValueSyncPlugin({
       root.append(paragraph);
       paragraph.selectEnd();
     });
-  }, [editor, value, promptsById]);
+  }, [editor, value, promptsById, customAgents]);
 
   return null;
 }
@@ -357,6 +393,7 @@ export function LexicalChatInput({
   const { app } = useLoadApp(selectedAppId);
   const { artifacts } = useChatArtifacts(selectedChatId);
   const appFiles = app?.files;
+  const { customAgents } = useCustomAgents();
 
   // Prepare mention items
   const mentionItems = React.useMemo(() => {
@@ -381,10 +418,25 @@ export function LexicalChatInput({
       id: p.id,
     }));
 
+    const nativeSlashCommands = [
+      { value: "agent", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "build", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
+      { value: "plan", type: "slash-command", description: "Planificador interactivo" },
+      { value: "ask", type: "slash-command", description: "Explorador de código (solo lectura)" },
+      { value: "explore", type: "slash-command", description: "Explorador de código (solo lectura)" },
+    ];
+
+    const customSlashCommands = (customAgents || []).map((agent) => ({
+      value: agent.slashCommand,
+      type: "slash-command",
+      description: agent.description || "",
+    }));
+
     return {
       "@": [...artifactItems, ...fileItems, ...promptItems],
+      "/": [...nativeSlashCommands, ...customSlashCommands],
     };
-  }, [artifacts, appFiles, prompts]);
+  }, [artifacts, appFiles, prompts, customAgents]);
 
   const initialConfig = {
     namespace: "ChatInput",
@@ -401,6 +453,36 @@ export function LexicalChatInput({
       editorState.read(() => {
         const root = $getRoot();
         let textContent = root.getTextContent();
+
+        // Strip zero-width characters injected by Beautiful Mentions around mention nodes.
+        // These invisible chars break slash command detection on the backend.
+        textContent = textContent.replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
+
+        // If the text starts with a slash command but is immediately followed by text (no space),
+        // we inject a space so the backend can parse it correctly (e.g. "/plancuando" -> "/plan cuando").
+        const knownSlashCommands = [
+          "agent", "build", "plan", "ask", "explore",
+          ...(customAgents || []).map((a) => a.slashCommand),
+        ];
+        for (const cmd of knownSlashCommands) {
+          if (
+            textContent.startsWith(`/${cmd}`) &&
+            textContent.length > `/${cmd}`.length &&
+            !textContent.startsWith(`/${cmd} `)
+          ) {
+            textContent = `/${cmd} ` + textContent.slice(`/${cmd}`.length);
+            break; // Only match the first (valid) command
+          }
+        }
+
+        // Check if user has selected or typed a custom agent command, and append its default prompt
+        for (const agent of customAgents || []) {
+          const cmd = `/${agent.slashCommand}`;
+          if ((textContent === cmd || textContent === `${cmd} `) && agent.prompt) {
+            textContent = `${cmd} ${agent.prompt}`;
+            break;
+          }
+        }
 
         // Transform @AppName mentions to @app:AppName format
         // This regex matches @AppName where AppName is one of our actual app names
@@ -427,7 +509,7 @@ export function LexicalChatInput({
         onChange(textContent);
       });
     },
-    [onChange, prompts, appFiles],
+    [onChange, prompts, appFiles, customAgents],
   );
 
   const handleSubmit = useCallback(() => {
@@ -475,6 +557,7 @@ export function LexicalChatInput({
           creatable={false}
           insertOnBlur={false}
           menuItemLimit={10}
+          autoSpace={true}
         />
         <OnChangePlugin onChange={handleEditorChange} />
         <HistoryPlugin />
@@ -487,6 +570,7 @@ export function LexicalChatInput({
           promptsById={Object.fromEntries(
             (prompts || []).map((p) => [p.id, p.title]),
           )}
+          customAgents={customAgents}
         />
         <ClearEditorPlugin
           shouldClear={shouldClear}

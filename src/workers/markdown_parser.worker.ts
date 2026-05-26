@@ -38,6 +38,7 @@ const VIBES_CUSTOM_TAGS = [
     "vibes-status",
     "vibes-think",
     "vibes-git",
+    "vibes-git-commit",
     "vibes-ask-user",
     "vibes-patch",
     "vibes-run-command",
