@@ -14,7 +14,6 @@ import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories, migrateLegacyTypesToSession, compactOldSessions } from "../utils/memory_lifecycle";
 import { restorePendingBuffers } from "../utils/memory_extractor";
-import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
 
 const logger = log.scope("memory_handlers");
@@ -340,30 +339,11 @@ export function registerMemoryHandlers(): void {
     });
 
     // ── BOOTSTRAP PROJECT MEMORIES ──────────────────────────────────────
-    // Manually trigger memory bootstrap (cold start) for an app
-    createTypedHandler(memoryContracts.bootstrapProjectMemories, async (_event, params, ctx) => {
+    // Disabled — returns empty result
+    createTypedHandler(memoryContracts.bootstrapProjectMemories, async (_event, _params, ctx) => {
         const userId = ctx.userId;
         if (!userId) throw new Error("Unauthorized");
-
-        const db = getRemoteDb();
-        const [app] = await db
-            .select({ path: remoteSchema.apps.path })
-            .from(remoteSchema.apps)
-            .where(eq(remoteSchema.apps.id, params.appId))
-            .limit(1);
-
-        if (!app?.path) {
-            throw new Error(`App ${params.appId} not found or has no path`);
-        }
-
-        const { runMemoryBootstrap } = await import("../utils/memory_bootstrap");
-        const result = await runMemoryBootstrap({
-            appId: params.appId,
-            userId,
-            projectDir: getVibesAppPath(app.path),
-        });
-
-        return result;
+        return { phase1Count: 0, phase2Count: 0 };
     });
 
     // ── COMPACT MEMORIES (manual trigger) ───────────────────────────────
@@ -489,6 +469,34 @@ export function registerMemoryHandlers(): void {
             logger.info("[Memory] Startup cleanup: purged stale pipeline logs, telemetry, debug logs, inactive memories, and old stream tasks (>7d)");
         } catch (e: any) {
             logger.warn(`[Memory] Startup cleanup failed: ${e.message}`);
+        }
+    })();
+
+    // ── One-shot purge: delete all non-manual-preference memories ────
+    // In this version, only manual preferences (directrices) are used.
+    // All other memory types (session, issue, auto-extracted, etc.) are
+    // legacy data that should be cleaned up once.
+    (async () => {
+        try {
+            const { readSettings, writeSettings } = await import("../../main/settings");
+            const settings = readSettings();
+            if (settings.memoriesLegacyPurged) return; // Already done
+
+            const db = getRemoteDb();
+            const result = await db
+                .delete(remoteSchema.memories)
+                .where(
+                    or(
+                        sql`${remoteSchema.memories.type} != 'preference'`,
+                        sql`${remoteSchema.memories.source} != 'manual'`,
+                    ),
+                );
+
+            const deleted = (result as any).rowsAffected ?? (result as any).changes ?? 0;
+            writeSettings({ memoriesLegacyPurged: true } as any);
+            logger.info(`[Memory] One-shot legacy purge: deleted ${deleted} non-manual-preference memories`);
+        } catch (e: any) {
+            logger.warn(`[Memory] One-shot legacy purge failed: ${e.message}`);
         }
     })();
 

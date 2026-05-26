@@ -14,7 +14,8 @@ export type PromptId =
   | "ctx_context7_docs"
   | "ctx_efficiency_triage"
   | "ctx_task_management"
-  | "ctx_plan_mode";
+  | "ctx_plan_mode"
+  | "ctx_build_walkthrough";
 
 
 
@@ -35,6 +36,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   ctx_task_management: "Gestión de tareas",
 
   ctx_plan_mode: "Planificación interactiva",
+  ctx_build_walkthrough: "Resumen de cambios",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -53,4 +55,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   ctx_efficiency_triage: "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
   ctx_task_management: "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
   ctx_plan_mode: "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
+  ctx_build_walkthrough: "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
 };

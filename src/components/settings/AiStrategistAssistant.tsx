@@ -39,6 +39,15 @@ Reglas críticas:
 - Estructura el texto con Markdown limpio (encabezados, listas de viñetas, bloques de código).
 - Evita explicaciones meta-lingüísticas; responde ÚNICAMENTE con el prompt optimizado final, sin preámbulos ni comentarios.`;
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 interface AiStrategistAssistantProps {
     type: "skill" | "prompt";
     currentContent: string;
@@ -107,67 +116,93 @@ Instrucciones del usuario para modificar o refinar este contenido:
         setProposal(null);
     };
 
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (!open) {
+            setInstruction("");
+            setProposal(null);
+        }
+    };
+
+    const model = settings?.strategistModel || DEFAULT_STRATEGIST_MODEL;
+
     return (
-        <div className="border border-border bg-muted/10 rounded-xl p-4 space-y-3 transition-all duration-200">
-            {!isOpen ? (
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    className="gap-2 w-full justify-center text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/40 rounded-lg h-9 font-medium"
-                    onClick={() => setIsOpen(true)}
+                    className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/40 rounded-lg h-7 font-medium"
                 >
-                    <Sparkles className="h-4 w-4" />
-                    Generar o editar con Modelo Estratega
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Generar con IA
                 </Button>
-            ) : (
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-primary flex items-center gap-1.5 uppercase tracking-wider">
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                            Modelo Estratega
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[875px] max-h-[80vh] p-6 rounded-2xl shadow-2xl bg-popover border border-border flex flex-col">
+                <DialogHeader className="pb-3 border-b border-border/50">
+                    <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                        Generar con IA
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4 flex-1 flex flex-col min-h-0">
+                    {!proposal ? (
+                        <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                            <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                    ¿Qué deseas que haga el modelo?
+                                </label>
+                                <textarea 
+                                    className="w-full flex-1 min-h-[220px] rounded-xl border border-border bg-muted/10 px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans leading-relaxed custom-scrollbar"
+                                    placeholder={type === "skill" 
+                                        ? "ej: 'añade reglas para formatear con Prettier, estructurado y claro'" 
+                                        : "ej: 'haz que responda de manera formal y estructurada en formato markdown'"
+                                    }
+                                    value={instruction}
+                                    onChange={e => setInstruction(e.target.value)}
+                                    disabled={isGenerating}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                            <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Propuesta del Estratega:
+                                </label>
+                                <textarea 
+                                    readOnly
+                                    className="w-full flex-1 min-h-[380px] rounded-xl border border-border bg-muted/5 px-3 py-2.5 font-mono text-xs leading-relaxed focus:outline-none custom-scrollbar"
+                                    value={proposal}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="pt-3 border-t border-border/50 justify-between items-center gap-2">
+                    <div className="flex items-center">
+                        <span className="text-[10px] text-muted-foreground/60 font-mono">
+                            {model}
                         </span>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-lg"
-                            onClick={() => {
-                                setIsOpen(false);
-                                setInstruction("");
-                                setProposal(null);
-                            }}
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
                     </div>
 
-                    {!proposal ? (
-                        <div className="space-y-2">
-                            <textarea 
-                                className="w-full h-20 rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 font-sans"
-                                placeholder={type === "skill" 
-                                    ? "Describe lo que quieres que haga el skill (ej: 'añade reglas para formatear con Prettier')" 
-                                    : "Describe los cambios para el prompt (ej: 'haz que responda de manera formal y estructurada')"
-                                }
-                                value={instruction}
-                                onChange={e => setInstruction(e.target.value)}
-                                disabled={isGenerating}
-                            />
-                            <div className="flex justify-end gap-2">
+                    <div className="flex gap-2">
+                        {!proposal ? (
+                            <>
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="rounded-lg"
-                                    onClick={() => {
-                                        setIsOpen(false);
-                                        setInstruction("");
-                                    }}
+                                    className="rounded-lg h-9"
+                                    onClick={() => handleOpenChange(false)}
                                     disabled={isGenerating}
                                 >
                                     Cancelar
                                 </Button>
                                 <Button 
                                     size="sm" 
-                                    className="rounded-lg gap-2"
+                                    className="gap-1.5 rounded-lg h-9 font-medium"
                                     onClick={handleGenerate}
                                     disabled={!instruction.trim() || isGenerating}
                                 >
@@ -183,52 +218,46 @@ Instrucciones del usuario para modificar o refinar este contenido:
                                         </>
                                     )}
                                 </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-3 animate-in fade-in-50 duration-200">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Propuesta del Estratega:</label>
-                                <textarea 
-                                    readOnly
-                                    className="w-full h-48 rounded-lg border border-border bg-muted/40 px-3 py-2.5 font-mono text-xs leading-relaxed focus:outline-none"
-                                    value={proposal}
-                                />
-                            </div>
-                            <div className="flex justify-between items-center gap-2">
+                            </>
+                        ) : (
+                            <>
                                 <Button 
-                                    variant="outline" 
+                                    variant="ghost" 
                                     size="sm" 
-                                    className="rounded-lg text-muted-foreground hover:text-foreground"
+                                    className="rounded-lg h-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={handleDiscard}
+                                    disabled={isGenerating}
                                 >
                                     Descartar
                                 </Button>
-                                <div className="flex gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="rounded-lg gap-2 text-primary border-primary/20 hover:bg-primary/5"
-                                        onClick={handleGenerate}
-                                        disabled={isGenerating}
-                                    >
-                                        {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                                        Regenerar
-                                    </Button>
-                                    <Button 
-                                        size="sm" 
-                                        className="rounded-lg gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-none"
-                                        onClick={handleAccept}
-                                    >
-                                        <Check className="h-3.5 w-3.5" />
-                                        Aceptar y Aplicar
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+                                <Button 
+                                    variant="outline"
+                                    size="sm" 
+                                    className="gap-1.5 rounded-lg h-9 font-medium"
+                                    onClick={handleGenerate}
+                                    disabled={isGenerating}
+                                >
+                                    {isGenerating ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                    )}
+                                    Regenerar
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    className="gap-1.5 rounded-lg h-9 font-medium bg-emerald-600 hover:bg-emerald-500 text-white border-none"
+                                    onClick={handleAccept}
+                                    disabled={isGenerating}
+                                >
+                                    <Check className="h-3.5 w-3.5" />
+                                    Aceptar y Aplicar
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

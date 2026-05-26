@@ -173,12 +173,19 @@ export function ModelItemContent({
                     )}
                     {showAutoRouterBadge && <AutoRouterBadge />}
                 </div>
-                <span className="typo-caption truncate leading-tight">
+                <span className="typo-caption truncate leading-tight inline-flex items-center gap-1">
                     {isAutoRouter ? (
                         "Gestión automática"
                     ) : (
                         <>
-                            {formatTokens(model.contextWindow)} context
+                            {model.inputModalities?.includes("image") && (
+                                <Image
+                                    className="shrink-0 text-primary/70"
+                                    style={{ width: 10, height: 10 }}
+                                    title="Soporta imágenes"
+                                />
+                            )}
+                            <span>{formatTokens(model.contextWindow)} context</span>
                         </>
                     )}
                 </span>

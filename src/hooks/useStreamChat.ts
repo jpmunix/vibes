@@ -1,4 +1,4 @@
-import { useCallback, startTransition, useRef } from "react";
+import { useCallback, startTransition, useRef, useEffect } from "react";
 import type {
   ComponentSelection,
   FileAttachment,
@@ -35,6 +35,16 @@ import { queryKeys } from "@/lib/queryKeys";
 import { sendAppNotification } from "@/lib/notification-sound";
 
 import type { ChatSummary } from "@/lib/schemas";
+
+// Module-level cache to track custom agents synchronously
+let cachedCustomAgents: Array<{ slashCommand: string }> = [];
+
+// Pre-populate the cache on load
+ipc.customAgents.list().then((list) => {
+  cachedCustomAgents = list;
+}).catch((e) => {
+  console.error("Failed to pre-populate custom agents cache:", e);
+});
 
 export function getRandomNumberId() {
   return Math.floor(Math.random() * 1_000_000_000_000_000);
@@ -87,6 +97,15 @@ export function useStreamChat({
   const queryClient = useQueryClient();
   const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
   let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
+
+  // Keep cache updated when the hook mounts
+  useEffect(() => {
+    ipc.customAgents.list().then((list) => {
+      cachedCustomAgents = list;
+    }).catch((e) => {
+      console.error("Failed to refresh custom agents cache:", e);
+    });
+  }, []);
 
   // For atom lookups (isStreaming, error), prefer selectedChatIdAtom which is
   // always a proper number. useSearch can return a string from URL params even
@@ -243,6 +262,16 @@ export function useStreamChat({
         }
       })();
 
+      // Strip slash commands from prompt for optimistic message ONLY (REMOVED: we keep slash commands to render badges in chat bubble)
+      let optimisticPrompt = prompt;
+
+      // Trigger a background (non-blocking) promise to refresh the cache
+      ipc.customAgents.list().then((list) => {
+        cachedCustomAgents = list;
+      }).catch((e) => {
+        console.error("Failed to update custom agents cache in background:", e);
+      });
+
       // Optimistic UI update: instantly show the user message and a loading assistant message
       setMessagesById((prev) => {
         const next = new Map(prev);
@@ -294,7 +323,7 @@ export function useStreamChat({
             id: tempUserId,
             chatId,
             role: "user",
-            content: prompt,
+            content: optimisticPrompt,
             createdAt: new Date().toISOString(),
             ...(optimisticAiMessagesJson && { aiMessagesJson: optimisticAiMessagesJson }),
           } as any);
@@ -313,6 +342,7 @@ export function useStreamChat({
         return next;
       });
 
+
       let hasIncrementedStreamCount = false;
       // RAF throttling: batch onChunk updates to max 1 per animation frame
       let pendingChunkMessages: typeof undefined | Parameters<Parameters<typeof ipc.chatStream.start>[1]["onChunk"]>[0]["messages"] = undefined;
@@ -327,7 +357,10 @@ export function useStreamChat({
             selectedComponents: selectedComponents ?? [],
             undoRedo,
             priorMessages,
-            chatMode: chatModeOverride || settings?.selectedChatMode || "agent",
+            chatMode: (() => {
+              const cachedChat = queryClient.getQueryData<any>(["chat", chatId]);
+              return chatModeOverride || cachedChat?.chatMode || settings?.selectedChatMode || "agent";
+            })(),
           },
           {
             onChunk: ({ messages: updatedMessages }) => {
@@ -404,18 +437,6 @@ export function useStreamChat({
                 });
               }
 
-              // Persist unread state to DB when response arrives on a chat the user isn't viewing
-              if (isViewingDifferentChat) {
-                ipc.chat.markChatUnread(chatId).catch(() => {});
-              } else {
-                setRecentStreamChatIds((prev) => {
-                  if (!prev.has(chatId)) return prev;
-                  const next = new Set(prev);
-                  next.delete(chatId);
-                  return next;
-                });
-              }
-
               // If the backend sent back the user's prompt (cancel with no content),
               // restore it to the input box so the user doesn't lose their message
               if (response.restoredPrompt) {
@@ -424,34 +445,54 @@ export function useStreamChat({
                 }));
               }
 
-              // Wrap all post-stream work in startTransition so it doesn't block input
-              // These are ~10 invalidations/refreshes that would otherwise cause cascading re-renders
-              startTransition(() => {
-                if (response.updatedFiles) {
-                  if (settings?.autoExpandPreviewPanel) {
-                    setIsPreviewOpen(true);
+              const finalizeEnd = async () => {
+                // Persist unread state to DB when response arrives on a chat the user isn't viewing
+                if (isViewingDifferentChat) {
+                  try {
+                    await ipc.chat.markChatUnread(chatId);
+                  } catch (e) {
+                    console.error("Failed to mark chat unread:", e);
                   }
-                  refreshAppIframe();
-                  checkProblems();
-                }
-                if (response.extraFiles) {
-                  showExtraFilesToast({
-                    files: response.extraFiles,
-                    error: response.extraFilesError,
+                } else {
+                  setRecentStreamChatIds((prev) => {
+                    if (!prev.has(chatId)) return prev;
+                    const next = new Set(prev);
+                    next.delete(chatId);
+                    return next;
                   });
                 }
-                queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
-                queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
-                refetchUserBudget();
 
-                queryClient.invalidateQueries({
-                  queryKey: queryKeys.proposals.detail({ chatId }),
+                // Wrap all post-stream work in startTransition so it doesn't block input
+                // These are ~10 invalidations/refreshes that would otherwise cause cascading re-renders
+                startTransition(() => {
+                  if (response.updatedFiles) {
+                    if (settings?.autoExpandPreviewPanel) {
+                      setIsPreviewOpen(true);
+                    }
+                    refreshAppIframe();
+                    checkProblems();
+                  }
+                  if (response.extraFiles) {
+                    showExtraFilesToast({
+                      files: response.extraFiles,
+                      error: response.extraFilesError,
+                    });
+                  }
+                  queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
+                  queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
+                  refetchUserBudget();
+
+                  queryClient.invalidateQueries({
+                    queryKey: queryKeys.proposals.detail({ chatId }),
+                  });
+                  invalidateChats();
+                  refreshApp();
+                  refreshVersions();
+                  invalidateTokenCount();
                 });
-                invalidateChats();
-                refreshApp();
-                refreshVersions();
-                invalidateTokenCount();
-              });
+              };
+
+              finalizeEnd();
 
               // Drain the pending queue using OpenCode's native `noReply: true` mechanism.
               // Always enter the atom updater to check the authoritative current state —
@@ -519,48 +560,55 @@ export function useStreamChat({
               const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
                 currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
-              if (!isViewingDifferentChat) {
-                setRecentStreamChatIds((prev) => {
-                  if (!prev.has(chatId)) return prev;
-                  const next = new Set(prev);
-                  next.delete(chatId);
+
+              const finalizeError = async () => {
+                if (isViewingDifferentChat) {
+                  try {
+                    await ipc.chat.markChatUnread(chatId);
+                  } catch (e) {
+                    console.error("Failed to mark chat unread on error:", e);
+                  }
+                } else {
+                  setRecentStreamChatIds((prev) => {
+                    if (!prev.has(chatId)) return prev;
+                    const next = new Set(prev);
+                    next.delete(chatId);
+                    return next;
+                  });
+                }
+
+                // Persist error text into the optimistic assistant message
+                // so it survives reloads via the DB save on the backend
+                setMessagesById((prev) => {
+                  const msgs = prev.get(chatId);
+                  if (!msgs) return prev;
+                  const updated = [...msgs];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant" && (!last.content || !last.content.trim())) {
+                    updated[updated.length - 1] = { ...last, content: `${PERSISTED_ERROR_PREFIX}${errorMessage}` };
+                  }
+                  const next = new Map(prev);
+                  next.set(chatId, updated);
                   return next;
                 });
-              }
 
-              // Persist error text into the optimistic assistant message
-              // so it survives reloads via the DB save on the backend
-              setMessagesById((prev) => {
-                const msgs = prev.get(chatId);
-                if (!msgs) return prev;
-                const updated = [...msgs];
-                const last = updated[updated.length - 1];
-                if (last?.role === "assistant" && (!last.content || !last.content.trim())) {
-                  updated[updated.length - 1] = { ...last, content: `${PERSISTED_ERROR_PREFIX}${errorMessage}` };
-                }
-                const next = new Map(prev);
-                next.set(chatId, updated);
-                return next;
-              });
+                updateMapAtom(setIsStreamingById, chatId, false);
+                // On error, drop the pending queue for this chat (don't keep trying)
+                setPendingMessageQueue((prev) => {
+                  const queue = prev.get(chatId);
+                  if (!queue || queue.length === 0) return prev;
+                  const next = new Map(prev);
+                  next.set(chatId, []);
+                  return next;
+                });
+                invalidateChats();
+                refreshApp();
+                refreshVersions();
+                invalidateTokenCount();
+                onSettled?.();
+              };
 
-
-
-
-              // Keep the same as above
-              updateMapAtom(setIsStreamingById, chatId, false);
-              // On error, drop the pending queue for this chat (don't keep trying)
-              setPendingMessageQueue((prev) => {
-                const queue = prev.get(chatId);
-                if (!queue || queue.length === 0) return prev;
-                const next = new Map(prev);
-                next.set(chatId, []);
-                return next;
-              });
-              invalidateChats();
-              refreshApp();
-              refreshVersions();
-              invalidateTokenCount();
-              onSettled?.();
+              finalizeError();
             },
           },
         );

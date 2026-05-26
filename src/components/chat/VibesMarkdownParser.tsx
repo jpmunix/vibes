@@ -1,7 +1,7 @@
 import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { StopCircle, CheckCircle2, Clock, XCircle } from "@/components/ui/icons";
+import { StopCircle, CheckCircle2, Clock, XCircle, FileText } from "@/components/ui/icons";
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
@@ -14,6 +14,7 @@ import { VibesExecuteSql } from "./VibesExecuteSql";
 import { VibesLogs } from "./VibesLogs";
 import { VibesGrep } from "./VibesGrep";
 import { VibesGit } from "./VibesGit";
+import { VibesGitCommit } from "./VibesGitCommit";
 import { VibesAskUser } from "./VibesAskUser";
 import { VibesAddIntegration } from "./VibesAddIntegration";
 import { VibesEdit } from "./VibesEdit";
@@ -23,8 +24,9 @@ import { VibesTypecheckSummary } from "./VibesTypecheckSummary";
 import { VibesCodebaseContext } from "./VibesCodebaseContext";
 import { VibesThink } from "./VibesThink";
 import { CodeHighlight } from "./CodeHighlight";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom, isFlowModeAtom } from "@/atoms/chatAtoms";
+import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { VibesProblemSummary } from "./VibesProblemSummary";
@@ -46,12 +48,26 @@ import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type T
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
 import { FlowThinkBlock } from "./FlowThinkBlock";
+import { FlowActivityTrace } from "./FlowActivityTrace";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+function cleanVibesPath(p: string): string {
+  const dotIndex = p.indexOf(".vibes/");
+  if (dotIndex !== -1) {
+    return p.substring(dotIndex);
+  }
+  const noDotIndex = p.indexOf("vibes/");
+  if (noDotIndex !== -1) {
+    return "." + p.substring(noDotIndex);
+  }
+  return p;
+}
+
 
 /** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */
 const TokenUsageBadge: React.FC<{
@@ -127,6 +143,7 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-status",
   "vibes-think",
   "vibes-git",
+  "vibes-git-commit",
   "vibes-ask-user",
   "vibes-patch",
   "vibes-run-command",
@@ -226,6 +243,7 @@ interface VibesMarkdownParserProps {
   isStreaming?: boolean;
   chatId?: number;
   forceFullMode?: boolean;
+  isGitMessage?: boolean;
 }
 
 /**
@@ -236,6 +254,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   isStreaming: forceStreaming,
   chatId: forceChatId,
   forceFullMode,
+  isGitMessage,
 }: VibesMarkdownParserProps) {
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const chatId = forceChatId ?? selectedChatId;
@@ -245,6 +264,9 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const isFlowModeAtomValue = useAtomValue(isFlowModeAtom);
   const isFlowMode = forceFullMode ? false : isFlowModeAtomValue;
+
+  const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
+  const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once
@@ -394,7 +416,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     };
 
     // Tags that produce visible output in zen/flow mode
-    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled"]);
+    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled", "vibes-git-commit"]);
 
     // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
     // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
@@ -455,7 +477,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         // ── Zen / Flow Mode: skip almost all custom tags ──
         // Only keep: vibes-output (errors/warnings), vibes-ask-user (interactive).
         // Flow mode additionally keeps think tags visible as expanded panels.
-        // Token-usage is handled by ChatMessage footer. Everything else is discarded.
+        // Token-usage is discarded. Everything else is discarded.
         if (isZenMode) {
           if (ZEN_ALLOWED_TAGS.has(tag)) {
             // Non-think tag: flush pending think buffer first
@@ -484,6 +506,18 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               }
               // else: streaming and nothing visible after → let final flush handle it
             }
+          } else if (isFlowMode && shouldCompact(tag) && tag !== "vibes-token-usage") {
+            // Enhanced Flow Mode: Render a quiet inline text-only status line
+            flushFlowThinkBuffer();
+            elements.push(
+              <FlowActivityTrace
+                key={`flow-trace-${index}`}
+                tag={tag}
+                attributes={attributes}
+                state={state}
+                originalContent={renderModalContent(piece.tagInfo, { isStreaming })}
+              />
+            );
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
 
@@ -567,6 +601,69 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
     flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
+
+    // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned (at most 1 of each)
+    if (!isStreaming && !isGitMessage) {
+      const vibesMatches: string[] = [];
+
+      for (const piece of contentPieces) {
+        if (piece.type === "markdown") {
+          if (piece.content) {
+            const matches = Array.from(piece.content.matchAll(/\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => cleanVibesPath(m[0]));
+            vibesMatches.push(...matches);
+          }
+        } else if (piece.type === "custom-tag") {
+          const tag = piece.tagInfo.tag;
+          if (["vibes-write", "vibes-patch", "vibes-edit", "vibes-search-replace"].includes(tag)) {
+            const pathAttr = piece.tagInfo.attributes.path;
+            if (pathAttr && /\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/.test(pathAttr)) {
+              vibesMatches.push(cleanVibesPath(pathAttr));
+            }
+          }
+        }
+      }
+
+      let lastPlanPath: string | null = null;
+      let lastWalkthroughPath: string | null = null;
+
+      for (const path of vibesMatches) {
+        if (path.includes("walkthrough-") || path.includes("walkt")) {
+          lastWalkthroughPath = path;
+        } else {
+          lastPlanPath = path;
+        }
+      }
+
+      const pathsToRender: string[] = [];
+      if (lastPlanPath) pathsToRender.push(lastPlanPath);
+      if (lastWalkthroughPath) pathsToRender.push(lastWalkthroughPath);
+
+      if (pathsToRender.length > 0) {
+        elements.push(
+          <div key="artifact-buttons" className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2">
+            {pathsToRender.map((artifactPath) => {
+              const isWalkthrough = artifactPath.includes("walkthrough-") || artifactPath.includes("walkt");
+              return (
+                <button
+                  key={artifactPath}
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md px-3 h-8 text-sm font-normal bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const normalizedPath = cleanVibesPath(artifactPath);
+                    setSelectedPath(normalizedPath);
+                    setSidebarOpen(true);
+                  }}
+                >
+                  <FileText size={14} />
+                  {isWalkthrough ? "Ver cambios" : "Ver plan"}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+    }
+
     return elements;
   };
 
@@ -1104,6 +1201,16 @@ function renderCustomTag(
         >
           {content}
         </VibesGit>
+      );
+
+    case "vibes-git-commit":
+      return (
+        <VibesGitCommit
+          action={attributes.action}
+          files={attributes.files}
+        >
+          {content}
+        </VibesGitCommit>
       );
 
     case "vibes-ask-user":

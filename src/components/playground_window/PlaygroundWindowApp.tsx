@@ -80,7 +80,7 @@ import {
     CommandGroup,
     CommandItem,
 } from "@/components/ui/command";
-import { Check } from "@/components/ui/icons";
+import { Check, Image } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
 import { isFreeModel } from "@/ipc/shared/model_variants";
@@ -1580,6 +1580,13 @@ function PlaygroundPanel() {
                                                                 {aliases[m.apiName] || m.displayName}
                                                             </div>
                                                             <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-70">
+                                                                {m.inputModalities?.includes("image") && (
+                                                                    <Image 
+                                                                        size={10}
+                                                                        className="shrink-0" 
+                                                                        title="Soporta imágenes" 
+                                                                    />
+                                                                )}
                                                                 <span>Contexto: {fmtTokens(m.contextWindow)}</span>
                                                                 <span className="opacity-30">·</span>
                                                                 <span>Salida: {fmtTokens(m.maxOutputTokens)}</span>

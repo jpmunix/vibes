@@ -4,6 +4,7 @@ import {
   PrimaryColorPicker,
   DEFAULT_LIGHT_COLOR,
   DEFAULT_DARK_COLOR,
+  getColorById,
 } from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { FONT_OPTIONS } from "@/shared/fonts";
@@ -56,6 +57,8 @@ import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
+import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
+import { ActiveLoader } from "@/components/chat/StreamingLoadingAnimation";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
@@ -107,12 +110,12 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   // ─── General / Tema ───
   {
     id: "theme",
-    label: "Modo",
-    description: "Elige entre claro, oscuro o sincronizado con el sistema",
+    label: "Apariencia",
+    description: "Define el tema visual principal de la interfaz",
     keywords: [
       "tema", "mode", "dark", "light",
       // sub-values (pill labels)
-      "sistema", "claro", "oscuro",
+      "claro", "oscuro",
       "apariencia", "color",
     ],
     section: "Tema",
@@ -123,18 +126,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Color primario",
     description: "Elige el color de acento principal para modo claro y oscuro",
     keywords: ["color", "primario", "acento", "tema", "personalizar", "primary", "chroma"],
-    section: "Tema",
-    sectionId: "general-settings",
-  },
-  {
-    id: "intensity",
-    label: "Intensidad",
-    description: "Ajusta la luminosidad de los colores base",
-    keywords: [
-      "intensidad", "luminosidad", "brillo",
-      // sub-values
-      "por defecto", "más claro",
-    ],
     section: "Tema",
     sectionId: "general-settings",
   },
@@ -398,6 +389,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     ],
     section: "Tema",
     sectionId: "general-settings",
+  },
+  // ─── Agentes Personalizados ───
+  {
+    id: "custom-agents",
+    label: "Agentes Personalizados",
+    description: "Crea y administra tus propios agentes con instrucciones específicas y comandos slash personalizados",
+    keywords: ["agentes", "personalizados", "custom", "agents", "system", "prompt", "slash", "comando", "additive", "replace"],
+    section: "Agentes Personalizados",
+    sectionId: "custom-agents-settings",
   },
 ];
 
@@ -867,6 +867,23 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
           />
 
+          {/* Custom Agents Section */}
+          <div
+            id="custom-agents-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "custom-agents-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Agentes Personalizados
+            </h2>
+            <p className="typo-caption mb-8">
+              Construye y administra tus propios agentes con instrucciones específicas. Puedes inyectar un system prompt aditivo o pisar completamente las instrucciones nativas.
+            </p>
+            <CustomAgentsSection />
+          </div>
+
           {/* Prompts Section */}
           <div
             id="prompts-settings"
@@ -880,7 +897,7 @@ export default function SettingsPage() {
             </h2>
             <p className="typo-caption mb-8">
               Personaliza las instrucciones que reciben los modelos AI para tareas internas,
-              generación de nombres y el sistema de memoria.
+              generación de nombres y el sistema de directrices.
             </p>
             <PromptsSection />
           </div>
@@ -893,11 +910,10 @@ export default function SettingsPage() {
               }`}
           >
             <h2 className="typo-section-title mb-2">
-              Memoria
+              Directrices
             </h2>
             <p className="typo-caption mb-8">
-              Configura la memoria persistente del agente: el sistema recuerda hechos,
-              preferencias y decisiones entre sesiones.
+              Define directrices que el agente recuerda entre sesiones para personalizar sus respuestas.
             </p>
             <MemorySettings />
           </div>
@@ -984,9 +1000,19 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct } = useTheme();
+  const { theme, setTheme, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
+  const activeColorId = isDarkMode
+    ? (settings?.primaryColorDark || DEFAULT_DARK_COLOR)
+    : (settings?.primaryColorLight || DEFAULT_LIGHT_COLOR);
+  const activeColorHex = getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
+
+  const renderLoaderIcon = (style: string, size: number = 18) => (
+    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner">
+      <ActiveLoader style={style} color={activeColorHex} size={size} />
+    </div>
+  );
 
   useEffect(() => {
     if (
@@ -1000,13 +1026,21 @@ export function GeneralSettings({
 
   useEffect(() => {
     if (
-      settings?.themeIntensity !== undefined &&
-      settings.themeIntensity !== intensity
+      settings?.themeFlavorDark !== undefined &&
+      settings.themeFlavorDark !== themeFlavorDark
     ) {
-      setIntensity(settings.themeIntensity);
+      setThemeFlavorDark(settings.themeFlavorDark);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.themeIntensity, setIntensity]);
+  }, [settings?.themeFlavorDark, setThemeFlavorDark, themeFlavorDark]);
+
+  useEffect(() => {
+    if (
+      settings?.themeFlavorLight !== undefined &&
+      settings.themeFlavorLight !== themeFlavorLight
+    ) {
+      setThemeFlavorLight(settings.themeFlavorLight);
+    }
+  }, [settings?.themeFlavorLight, setThemeFlavorLight, themeFlavorLight]);
 
   // Apply primary colors from settings on load
   useEffect(() => {
@@ -1057,31 +1091,89 @@ export function GeneralSettings({
 
       <div className="space-y-4">
         <SettingItem
-          label="Modo"
-          description="Elige entre claro, oscuro o sincronizado con el sistema"
+          label="Apariencia"
+          description="Define el tema visual principal de la interfaz"
           control={
             <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              {(["system", "light", "dark"] as const).map((option) => (
+              {(["light", "dark"] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                    theme === option
+                    (option === "dark" ? isDarkMode : !isDarkMode)
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "hover:bg-primary/10",
                   )}
                 >
-                  {option === "system"
-                    ? "Sistema"
-                    : option === "light"
-                      ? "Claro"
-                      : "Oscuro"}
+                  {option === "light" ? "Claro" : "Oscuro"}
                 </button>
               ))}
             </div>
           }
         />
+
+        {!isDarkMode ? (
+          <SettingItem
+            label="Variante del tema claro"
+            description="Personaliza el tema claro con un esquema de color de autor"
+            control={
+              <UnifiedSelector
+                value={themeFlavorLight || "default"}
+                onChange={async (value) => {
+                  setThemeFlavorLight(value);
+                  await updateSettings({ themeFlavorLight: value }, { showToast: true });
+                }}
+                options={[
+                  { value: "default", label: "Claro Clásico", description: "Esquema de colores claro estándar" },
+                  { value: "github-light", label: "GitHub Light", description: "Estilo limpio al estilo de GitHub" },
+                  { value: "solarized-light", label: "Solarized Light", description: "Tono crema cálido de alta legibilidad" },
+                  { value: "gruvbox-light", label: "Gruvbox Light", description: "Esquema retro y cálido color crema/arena" },
+                  { value: "nord-light", label: "Nord Light", description: "Diseño nórdico de tonos claros y fríos" },
+                  { value: "cupcake", label: "Cupcake", description: "Paleta pastel dulce con tonos rosa y morado" },
+                  { value: "one-light", label: "One Light", description: "El tema claro limpio de Atom One" },
+                  { value: "forest-light", label: "Forest Light", description: "Fondo verde salvia muy relajante y suave" },
+                  { value: "papercolor-light", label: "PaperColor Light", description: "Fondo blanco puro de alto contraste" },
+                  { value: "catppuccin-latte", label: "Catppuccin Latte", description: "Paleta pastel moderna con tonos lavanda" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                data-testid="theme-flavor-light-selector"
+              />
+            }
+          />
+        ) : (
+          <SettingItem
+            label="Variante del tema oscuro"
+            description="Personaliza el tema oscuro con un esquema de color de autor"
+            control={
+              <UnifiedSelector
+                value={themeFlavorDark || "default"}
+                onChange={async (value) => {
+                  setThemeFlavorDark(value);
+                  await updateSettings({ themeFlavorDark: value }, { showToast: true });
+                }}
+                options={[
+                  { value: "default", label: "Oscuro Clásico", description: "Esquema de colores oscuro estándar" },
+                  { value: "dracula", label: "Dracula", description: "Paleta violeta y gris oscuro de Dracula" },
+                  { value: "one-dark", label: "One Dark", description: "Tema clásico de Atom One Dark" },
+                  { value: "nord", label: "Nord Dark", description: "Tonos árticos azulados fríos y limpios" },
+                  { value: "monokai", label: "Monokai", description: "Fondo gris cálido con acentos neon clásicos" },
+                  { value: "solarized-dark", label: "Solarized Dark", description: "Fondo verde azulado profundo clásico" },
+                  { value: "gruvbox-dark", label: "Gruvbox Dark", description: "Paleta retro en marrón oscuro y arena" },
+                  { value: "synthwave84", label: "Synthwave '84", description: "Fondo morado y rosa neon de estética retro" },
+                  { value: "night-owl", label: "Night Owl", description: "Diseño azul marino profundo para uso nocturno" },
+                  { value: "tokyo-night", label: "Tokyo Night", description: "Paleta gris azulada elegante y limpia" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[280px]"
+                data-testid="theme-flavor-dark-selector"
+              />
+            }
+          />
+        )}
 
         {/* Primary Color Picker */}
         <SettingItem
@@ -1124,40 +1216,257 @@ export function GeneralSettings({
           }
         />
 
+        {/* Loader Style Selector */}
         <SettingItem
-          label="Intensidad"
-          description="Ajusta la luminosidad de los colores base"
+          label="Estilo de animación de carga"
+          description="Personaliza la animación que se muestra mientras la IA piensa o procesa"
           control={
-            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              <button
-                onClick={() => {
-                  setIntensity(0.58);
-                  updateSettings({ themeIntensity: 0.58 });
-                }}
-                className={cn(
-                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                  intensity === 0.58
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "hover:bg-primary/10",
-                )}
-              >
-                Por defecto
-              </button>
-              <button
-                onClick={() => {
-                  setIntensity(0);
-                  updateSettings({ themeIntensity: 0 });
-                }}
-                className={cn(
-                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                  intensity === 0
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "hover:bg-primary/10",
-                )}
-              >
-                Más claro
-              </button>
-            </div>
+            <UnifiedSelector
+              value={settings?.loaderStyle || "orbital"}
+              onChange={async (value) => {
+                await updateSettings({ loaderStyle: value }, { showToast: true });
+              }}
+              options={[
+                {
+                  value: "orbital",
+                  label: "Orbital (Original)",
+                  description: "Tres partículas luminosas en órbita con estela",
+                  rightIcon: renderLoaderIcon("orbital")
+                },
+                {
+                  value: "aurora",
+                  label: "Aurora Pulse",
+                  description: "Ondas circulares concéntricas y expansivas",
+                  rightIcon: renderLoaderIcon("aurora")
+                },
+                {
+                  value: "wave",
+                  label: "Bouncing Wave",
+                  description: "Cinco puntos rebotando en onda desfasada",
+                  rightIcon: renderLoaderIcon("wave")
+                },
+                {
+                  value: "jelly",
+                  label: "Morphing Jelly",
+                  description: "Gota fluida orgánica en deformación constante",
+                  rightIcon: renderLoaderIcon("jelly")
+                },
+                {
+                  value: "spark",
+                  label: "Pulse Spark",
+                  description: "Chispas brillantes que nacen y se expanden",
+                  rightIcon: renderLoaderIcon("spark")
+                },
+                {
+                  value: "equalizer",
+                  label: "Bar Equalizer",
+                  description: "Columnas de frecuencia que suben y bajan",
+                  rightIcon: renderLoaderIcon("equalizer")
+                },
+                {
+                  value: "infinity",
+                  label: "Infinity Loop",
+                  description: "Partícula que dibuja el símbolo de infinito",
+                  rightIcon: renderLoaderIcon("infinity")
+                },
+                {
+                  value: "grid",
+                  label: "Pixel Grid",
+                  description: "Cuadrícula retro de micro-píxeles secuenciales",
+                  rightIcon: renderLoaderIcon("grid")
+                },
+                {
+                  value: "brackets",
+                  label: "Code Brackets",
+                  description: "Corchetes de código en pulsación alternada",
+                  rightIcon: renderLoaderIcon("brackets")
+                },
+                {
+                  value: "terminal",
+                  label: "Terminal Cursor",
+                  description: "Cursor parpadeante de terminal de desarrollo",
+                  rightIcon: renderLoaderIcon("terminal")
+                },
+                {
+                  value: "server",
+                  label: "Server Lights",
+                  description: "Indicadores LED parpadeantes estilo rack de servidores",
+                  rightIcon: renderLoaderIcon("server")
+                },
+                {
+                  value: "morph",
+                  label: "Morphing AI Core",
+                  description: "Núcleo con rotación y cambio de forma geométrico",
+                  rightIcon: renderLoaderIcon("morph")
+                },
+                {
+                  value: "matrix",
+                  label: "Matrix Rain",
+                  description: "Flujo descendente de código binario estilo Matrix",
+                  rightIcon: renderLoaderIcon("matrix")
+                },
+                {
+                  value: "glow",
+                  label: "Glowing Sphere",
+                  description: "Esfera luminosa pulsante con brillo de neon",
+                  rightIcon: renderLoaderIcon("glow")
+                },
+                {
+                  value: "voice",
+                  label: "AI Voice",
+                  description: "Barras de espectro de voz de asistente de IA",
+                  rightIcon: renderLoaderIcon("voice")
+                },
+                {
+                  value: "packet",
+                  label: "Network Packet",
+                  description: "Envío de paquetes de datos a través de una red",
+                  rightIcon: renderLoaderIcon("packet")
+                },
+                {
+                  value: "sonar",
+                  label: "Sonar Ripple",
+                  description: "Ondas de radar concéntricas estilo sonar",
+                  rightIcon: renderLoaderIcon("sonar")
+                },
+                {
+                  value: "blocks",
+                  label: "Data Blocks",
+                  description: "Bloques de datos que se expanden secuencialmente",
+                  rightIcon: renderLoaderIcon("blocks")
+                },
+                {
+                  value: "nodes",
+                  label: "Node Connection",
+                  description: "Conexión de datos secuencial entre dos nodos",
+                  rightIcon: renderLoaderIcon("nodes")
+                },
+                {
+                  value: "glowring",
+                  label: "Neon Glow Ring",
+                  description: "Anillo neon giratorio de dos colores con brillo",
+                  rightIcon: renderLoaderIcon("glowring")
+                },
+                {
+                  value: "m-dots",
+                  label: "Micro Dots",
+                  description: "Tres puntitos de 2.5px parpadeantes",
+                  rightIcon: renderLoaderIcon("m-dots")
+                },
+                {
+                  value: "m-radar",
+                  label: "Micro Radar",
+                  description: "Círculo con barrido angular de barrido cónico",
+                  rightIcon: renderLoaderIcon("m-radar")
+                },
+                {
+                  value: "m-sine",
+                  label: "Sine Line",
+                  description: "Línea de frecuencia con escala horizontal",
+                  rightIcon: renderLoaderIcon("m-sine")
+                },
+                {
+                  value: "m-orbit",
+                  label: "Orbit Dot",
+                  description: "Punto central con satélite orbitando",
+                  rightIcon: renderLoaderIcon("m-orbit")
+                },
+                {
+                  value: "m-eq",
+                  label: "Micro Equalizer",
+                  description: "Tres barras finas verticales de frecuencia",
+                  rightIcon: renderLoaderIcon("m-eq")
+                },
+                {
+                  value: "m-pulse",
+                  label: "Pulsing Core",
+                  description: "Núcleo con latido nítido y expansión de halo",
+                  rightIcon: renderLoaderIcon("m-pulse")
+                },
+                {
+                  value: "m-cross",
+                  label: "Cross Rotator",
+                  description: "Mini aspa de cruz giratoria",
+                  rightIcon: renderLoaderIcon("m-cross")
+                },
+                {
+                  value: "m-flip",
+                  label: "Flipping Square",
+                  description: "Cubo 3D que gira y flipea en perspectiva",
+                  rightIcon: renderLoaderIcon("m-flip")
+                },
+                {
+                  value: "m-blink",
+                  label: "Cursor Blink",
+                  description: "Cursor parpadeante estilo terminal de desarrollo",
+                  rightIcon: renderLoaderIcon("m-blink")
+                },
+                {
+                  value: "m-breathe",
+                  label: "Breathe Ring",
+                  description: "Anillo en pulsación de escala y opacidad",
+                  rightIcon: renderLoaderIcon("m-breathe")
+                },
+                {
+                  value: "m-swap",
+                  label: "Swapping Dots",
+                  description: "Dos puntos cruzándose alternadamente",
+                  rightIcon: renderLoaderIcon("m-swap")
+                },
+                {
+                  value: "m-sonar",
+                  label: "Sonar Ping",
+                  description: "Punto con ondas concéntricas expansivas",
+                  rightIcon: renderLoaderIcon("m-sonar")
+                },
+                {
+                  value: "m-pie",
+                  label: "Pie Fill",
+                  description: "Relleno circular secuencial de 4 pasos",
+                  rightIcon: renderLoaderIcon("m-pie")
+                },
+                {
+                  value: "m-scan",
+                  label: "Scan Line",
+                  description: "Línea de escaneo láser horizontal en caja",
+                  rightIcon: renderLoaderIcon("m-scan")
+                },
+                {
+                  value: "m-hour",
+                  label: "Micro Hourglass",
+                  description: "Reloj de arena clásico giratorio",
+                  rightIcon: renderLoaderIcon("m-hour")
+                },
+                {
+                  value: "m-yin",
+                  label: "Semicircle",
+                  description: "Doble semicírculo giratorio",
+                  rightIcon: renderLoaderIcon("m-yin")
+                },
+                {
+                  value: "m-diamond",
+                  label: "Diamond Pulse",
+                  description: "Rombo giratorio con cambio de escala y relleno",
+                  rightIcon: renderLoaderIcon("m-diamond")
+                },
+                {
+                  value: "m-clock",
+                  label: "Clock Hand",
+                  description: "Aguja de reloj giratoria con anillo",
+                  rightIcon: renderLoaderIcon("m-clock")
+                },
+                {
+                  value: "m-expand",
+                  label: "Bar Expand",
+                  description: "Punto a línea con expansión horizontal simétrica",
+                  rightIcon: renderLoaderIcon("m-expand")
+                }
+              ]}
+              triggerVariant="pill"
+              triggerSize="md"
+              popoverWidth="w-[300px]"
+              data-testid="loader-style-selector"
+            />
           }
         />
 
@@ -1299,6 +1608,8 @@ export function GeneralSettings({
                       await updateSettings({ fontScaleChat: scale });
                     }}
                     options={[
+                      { value: "0.9", label: "90%" },
+                      { value: "0.95", label: "95%" },
                       { value: "1", label: "100%" },
                       { value: "1.05", label: "105%" },
                       { value: "1.1", label: "110%" },

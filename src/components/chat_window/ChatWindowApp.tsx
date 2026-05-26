@@ -42,6 +42,7 @@ import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
+import { queryKeys } from "@/lib/queryKeys";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -477,6 +478,8 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                 );
                 return next;
             });
+            // Invalidate chats to update dropdown list in standalone window
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
         });
         return () => unsubscribe();
     }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
@@ -492,7 +495,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         >
             <div className="h-full w-full">
                 <ChatPanel
-                    chatId={chatId}
+                    chatId={chatId ?? undefined}
                     autoStart={false}
                     isPreviewOpen={isPreviewOpen}
                     preservePlanMode={hasPendingPrompt && initialChatMode === "plan"}

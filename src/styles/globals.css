@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./typography.css";
+@import "./themes.css";
 @plugin "@tailwindcss/typography";
 
 /* Load Geist Font */
@@ -234,7 +235,7 @@ body[data-scroll-locked] .app-region-drag {
   --secondary: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
   --secondary-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
   --muted: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
-  --muted-foreground: oklch(clamp(0, 0.65 + var(--fg-l-offset), 1) 0 0);
+  --muted-foreground: oklch(clamp(0, 0.8 + var(--fg-l-offset), 1) 0 0);
   --accent: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
   --accent-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
   --destructive: oklch(0.55 0.15 25);

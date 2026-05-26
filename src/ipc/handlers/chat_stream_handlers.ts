@@ -18,6 +18,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
+import { DEFAULT_PROMPTS } from "../../prompts/defaults";
 import {
   constructSystemPrompt,
 } from "../../prompts/system_prompt";
@@ -57,6 +58,44 @@ import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
 import { readFile, writeFile, unlink, rm as fsRm } from "fs/promises";
+
+function getUltimateBaseAgent(baseAgent: string, allAgents: any[]): "build" | "plan" | "explore" {
+  let currentBase = baseAgent;
+  const visited = new Set<number>();
+  while (currentBase.startsWith("custom-agent::")) {
+    const parentId = parseInt(currentBase.split("::")[1]);
+    if (visited.has(parentId)) break;
+    visited.add(parentId);
+    const parent = allAgents.find(a => a.id === parentId);
+    if (!parent) break;
+    currentBase = parent.baseAgent;
+  }
+  if (currentBase === "build" || currentBase === "plan" || currentBase === "explore") {
+    return currentBase;
+  }
+  return "build";
+}
+
+function resolveStackedSystemPrompt(agent: any, allAgents: any[]): string {
+  const visited = new Set<number>();
+  const prompts: string[] = [];
+  
+  let current = agent;
+  while (current) {
+    prompts.unshift(current.systemPrompt);
+    
+    if (current.baseAgent.startsWith("custom-agent::")) {
+      const parentId = parseInt(current.baseAgent.split("::")[1]);
+      if (visited.has(parentId)) break;
+      visited.add(parentId);
+      current = allAgents.find(a => a.id === parentId);
+    } else {
+      current = null;
+    }
+  }
+  
+  return prompts.join("\n\n---\n\n");
+}
 import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "../utils/token_utils";
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -286,6 +325,70 @@ function registerChatStreamHandlers() {
         throw new Error(`Chat not found: ${req.chatId}`);
       }
 
+      // ── Custom Agents & Slash Commands Resolution ──────────────────
+      const customAgents = await db
+        .select()
+        .from(remoteSchema.customAgents)
+        .where(eq(remoteSchema.customAgents.userId, currentUserId as string));
+
+      let effectiveChatMode: string = req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
+      const originalPrompt = req.prompt;
+
+      // Detect slash command anywhere in the prompt (safely matching command tokens)
+      const knownCommands = ["agent", "build", "plan", "ask", "explore"];
+      const customAgentCommands = customAgents.map(ca => ca.slashCommand.toLowerCase());
+      const allCommands = [...knownCommands, ...customAgentCommands];
+      allCommands.sort((a, b) => b.length - a.length);
+
+      let matchedMode: string | null = null;
+
+      for (const cmdName of allCommands) {
+        const cmdRegex = new RegExp(`(?:\\s|^)\\/(${cmdName})(?:\\s|$)`, "i");
+        const match = req.prompt.match(cmdRegex);
+        if (match) {
+          if (cmdName === "agent" || cmdName === "build") {
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "agent";
+          } else if (cmdName === "plan") {
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "plan";
+          } else if (cmdName === "ask" || cmdName === "explore") {
+            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+            matchedMode = replacer ? `custom-agent::${replacer.id}` : "ask";
+          } else {
+            const matchedAgent = customAgents.find(
+              (ca) => ca.slashCommand.toLowerCase() === cmdName
+            );
+            if (matchedAgent) {
+              matchedMode = `custom-agent::${matchedAgent.id}`;
+            }
+          }
+
+          if (matchedMode) {
+            effectiveChatMode = matchedMode;
+            req.prompt = req.prompt.replace(cmdRegex, " ").trim();
+            logger.info(`[ChatStream] Intercepted slash command /${cmdName} anywhere. Setting effectiveChatMode to ${effectiveChatMode}. Remaining prompt: "${req.prompt}"`);
+            await db
+              .update(remoteSchema.chats)
+              .set({ chatMode: effectiveChatMode })
+              .where(eq(remoteSchema.chats.id, req.chatId));
+            break;
+          }
+        }
+      }
+
+      // ── Default Base Replacements Resolution ────────────────────────
+      if (effectiveChatMode === "agent" || effectiveChatMode === "build") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
+      } else if (effectiveChatMode === "plan") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
+      } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
+        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+        if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
+      }
+
       // Handle redo option: remove the most recent messages if needed
       if (req.redo || req.undoRedo) {
         // Clear the OpenCode session — git was reverted, agent must forget old work
@@ -421,7 +524,7 @@ function registerChatStreamHandlers() {
       }
 
       // Add user message to database with attachment info
-      let userPrompt = req.prompt + (attachmentInfo ? attachmentInfo : "");
+      let userPrompt = originalPrompt + (attachmentInfo ? attachmentInfo : "");
       // Inline referenced prompt contents for mentions like @prompt:<id>
       try {
         const matches = Array.from(userPrompt.matchAll(/@prompt:(\d+)/g));
@@ -553,7 +656,6 @@ ${componentSnippet}
       // We wait to send the first response chunk until we've also created the assistant message
       // placeholder in the database, avoiding a UI flicker where the assistant bubble disappears.
 
-      const settings = readSettings();
       // Always generate requestId
       vibesRequestId = uuidv4();
 
@@ -562,7 +664,7 @@ ${componentSnippet}
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
-      const resolvedChatMode = req.chatMode || settings.selectedChatMode || "agent";
+      const resolvedChatMode = effectiveChatMode;
       const agentId = agentIdMap[resolvedChatMode] || "build";
       
       let effectiveModelName = settings.selectedModel.name;
@@ -570,7 +672,16 @@ ${componentSnippet}
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
       // Only mockup uses the executorModel (lightweight, fast).
       // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
-      if (agentId === "mockup") {
+      if (resolvedChatMode.startsWith("custom-agent::")) {
+        const agentIdNum = parseInt(resolvedChatMode.split("::")[1]);
+        const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+        if (matchedAgent && matchedAgent.modelSource === "static" && matchedAgent.model) {
+          const { parseModelString } = await import("../../lib/schemas");
+          const { provider: staticProv, name: staticName } = parseModelString(matchedAgent.model, activeProvider);
+          effectiveModelName = staticName.replace(/^openrouter\//, "");
+          selectedModel = { name: staticName, provider: staticProv };
+        }
+      } else if (agentId === "mockup") {
         const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
         const { parseModelString } = await import("../../lib/schemas");
         const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
@@ -725,12 +836,13 @@ ${componentSnippet}
 
         // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
-        const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
+        const currentChatMode = effectiveChatMode;
         const isAgentMode = currentChatMode === "agent" ||
           currentChatMode === "ask" ||
           currentChatMode === "plan" ||
           currentChatMode === "mockup" ||
-          currentChatMode === "crush-agent";
+          currentChatMode === "crush-agent" ||
+          currentChatMode.startsWith("custom-agent::");
 
         if (isAgentMode) {
           logger.log(
@@ -789,11 +901,11 @@ ${componentSnippet}
             mentionedAppNames,
             updatedChat.app.id, // Exclude current app
           );
-          const currentChatMode = req.chatMode || settings.selectedChatMode || "agent";
           willUseAgentStream =
             (currentChatMode === "agent" ||
               currentChatMode === "ask" ||
-              currentChatMode === "mockup") &&
+              currentChatMode === "mockup" ||
+              currentChatMode.startsWith("custom-agent::")) &&
             !mentionedAppsCodebases.length;
 
           isDeepContextEnabled = Boolean(
@@ -868,8 +980,27 @@ ${componentSnippet}
             );
           }
 
+          // Resolver el modo base del sistema para constructSystemPrompt
+          let systemPromptMode: "ask" | "agent" | "plan" = "agent";
+          if (effectiveChatMode === "plan") {
+            systemPromptMode = "plan";
+          } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
+            systemPromptMode = "ask";
+          } else if (effectiveChatMode.startsWith("custom-agent::")) {
+            const agentIdNum = parseInt(effectiveChatMode.split("::")[1]);
+            const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+            if (matchedAgent) {
+              const baseMap: Record<string, "ask" | "agent" | "plan"> = {
+                build: "agent",
+                plan: "plan",
+                explore: "ask",
+              };
+              systemPromptMode = baseMap[matchedAgent.baseAgent] || "agent";
+            }
+          }
+
           systemPrompt = constructSystemPrompt({
-            chatMode: (req.chatMode || settings.selectedChatMode || "agent") as "ask" | "agent" | "plan",
+            chatMode: systemPromptMode,
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -900,7 +1031,7 @@ ${componentSnippet}
             getSupabaseAvailableSystemPrompt(supabaseClientCode) +
             "\n\n" +
             // For local agent, we will explicitly fetch the database context when needed.
-            (settings.selectedChatMode === "agent" || settings.selectedChatMode === "mockup"
+            (effectiveChatMode === "agent" || effectiveChatMode === "mockup" || effectiveChatMode.startsWith("custom-agent::")
               ? ""
               : await getSupabaseContext({
                 supabaseProjectId: updatedChat.app.supabaseProjectId,
@@ -911,8 +1042,9 @@ ${componentSnippet}
           // Neon projects don't need Supabase.
           !updatedChat.app?.neonProjectId &&
           // In local agent mode, we will suggest supabase as part of the add-integration tool
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -922,8 +1054,9 @@ ${componentSnippet}
         if (bunnyConfig && (bunnyConfig.databases?.length > 0 || bunnyConfig.storageZones?.length > 0)) {
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -933,8 +1066,9 @@ ${componentSnippet}
         if (pocketbaseConfig && pocketbaseConfig.url && pocketbaseConfig.adminEmail) {
           systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
-          settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup"
+          effectiveChatMode !== "agent" &&
+          effectiveChatMode !== "mockup" &&
+          !effectiveChatMode.startsWith("custom-agent::")
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -1035,8 +1169,9 @@ This conversation includes one or more image attachments. When the user uploads 
           // Thinking tags are generally not critical for the context
           // and eats up extra tokens.
           content:
-            (req.chatMode || settings.selectedChatMode || "agent") === "ask" ||
-              (req.chatMode || settings.selectedChatMode || "agent") === "plan"
+            currentChatMode === "ask" ||
+              currentChatMode === "plan" ||
+              (currentChatMode.startsWith("custom-agent::") && (agentId === "plan" || agentId === "explore"))
               ? removeVibesTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
@@ -1237,7 +1372,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 ? `[Request ID: ${vibesRequestId}] `
                 : "";
               logger.error(
-                `AI stream text error for request: ${requestIdPrefix} errorMessage=${errorMessage} error=`,
+                `AI stream text error for request: ${requestIdPrefix} errorMessage=${error?.message || String(error)} error=`,
                 error,
               );
 
@@ -1306,11 +1441,38 @@ This conversation includes one or more image attachments. When the user uploads 
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
-        const agentId = agentIdMap[resolvedChatMode] || "build";
+        let customSystemPrompt: string | undefined;
+        let customPromptMode: "additive" | "replace" | undefined;
+        let agentId: "build" | "plan" | "explore" | "mockup" = "build";
+        let customAgentModelSource: "chat" | "static" | undefined;
+        let customAgentModel: string | null | undefined;
+
+        if (currentChatMode.startsWith("custom-agent::")) {
+          const agentIdNum = parseInt(currentChatMode.split("::")[1]);
+          const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+          if (matchedAgent) {
+            customSystemPrompt = resolveStackedSystemPrompt(matchedAgent, customAgents);
+            // If it inherits from another custom agent, we treat it as additive stacking.
+            const inheritsFromCustom = matchedAgent.baseAgent.startsWith("custom-agent::");
+            customPromptMode = inheritsFromCustom ? "additive" : (matchedAgent.promptMode as "additive" | "replace");
+            agentId = getUltimateBaseAgent(matchedAgent.baseAgent, customAgents);
+            customAgentModelSource = matchedAgent.modelSource as "chat" | "static";
+            customAgentModel = matchedAgent.model;
+          }
+        } else {
+          const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+            agent: "build",
+            "crush-agent": "build",
+            plan: "plan",
+            ask: "explore",
+            mockup: "mockup",
+          };
+          agentId = agentIdMap[currentChatMode] || "build";
+        }
 
         if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${resolvedChatMode})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${currentChatMode})`);
 
 
           // Context instructions for the OpenCode session.
@@ -1327,6 +1489,14 @@ This conversation includes one or more image attachments. When the user uploads 
             orderBy: (p: any, { asc }: any) => [asc(p.id)],
           });
           
+          const walkthroughDbPrompt = await db.query.prompts.findFirst({
+            where: and(
+              eq(remoteSchema.prompts.userId, currentUserId as string),
+              eq(remoteSchema.prompts.systemId, "ctx_build_walkthrough")
+            ),
+          });
+          const hasWalkthroughInDb = !!walkthroughDbPrompt;
+          
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
           const langName = langMap[chatLang] || chatLang;
@@ -1334,8 +1504,20 @@ This conversation includes one or more image attachments. When the user uploads 
           for (const prompt of activePromptsRows) {
             // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
             if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
-              if (prompt.systemId === "ctx_plan_mode" && resolvedChatMode !== "plan") {
-                continue; // Skip plan mode instructions if not in plan mode
+              const scope = (prompt as any).scope || "all";
+              if (scope !== "all") {
+                const allowedScopes = scope.split(",").map((s: string) => s.trim());
+                let shouldInclude = false;
+                if (agentId === "build" && allowedScopes.includes("agent")) {
+                  shouldInclude = true;
+                } else if (agentId === "plan" && allowedScopes.includes("plan")) {
+                  shouldInclude = true;
+                } else if (agentId === "explore" && allowedScopes.includes("ask")) {
+                  shouldInclude = true;
+                }
+                if (!shouldInclude) {
+                  continue;
+                }
               }
               
               let content = prompt.content;
@@ -1343,6 +1525,14 @@ This conversation includes one or more image attachments. When the user uploads 
                 content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
               }
               contextInstructions.push(content);
+            }
+          }
+
+          // Fallback: if not in DB and build mode active, inject default
+          if (!hasWalkthroughInDb && agentId === "build") {
+            const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
+            if (defaultWalkthrough) {
+              contextInstructions.push(defaultWalkthrough);
             }
           }
           
@@ -1487,7 +1677,6 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Load memories (app-specific + global) — injected via noReply (invisible to user)
           let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
-          let memoryBlock: string | undefined;
           try {
             // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
             const priorMessages = (updatedChat.messages || [])
@@ -1505,9 +1694,10 @@ This conversation includes one or more image attachments. When the user uploads 
               priorMessages.length > 0 ? priorMessages : undefined,
             );
             if (memoryResult.block) {
-              memoryBlock = memoryResult.block;
+              // Inject as system prompt (not user message) — joins other contextInstructions
+              contextInstructions.push(memoryResult.block);
               selectedMemories = memoryResult.memories;
-              logger.info(`🧠 [MEMORY] Prepared ${memoryBlock.length} chars (${selectedMemories.length} memories) for noReply injection`);
+              logger.info(`🧠 [MEMORY] Injected ${selectedMemories.length} directives into system prompt`);
             }
           } catch (memErr: any) {
             logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
@@ -1546,6 +1736,8 @@ This conversation includes one or more image attachments. When the user uploads 
             }
           } catch { /* ignore — if we can't read it, we skip the optimization */ }
 
+          logger.info(`[ChatStream] Invoking handleOpenCodeStream. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`);
+
           const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
             event,
             req,
@@ -1556,11 +1748,14 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMessages: updatedChat.messages,
               agentId,
               contextInstructions,
-              memoryBlock,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
               priorMessages: req.priorMessages as any,
+              customSystemPrompt,
+              customPromptMode,
+              customAgentModelSource,
+              customAgentModel,
             },
           );
 
@@ -1714,7 +1909,7 @@ This conversation includes one or more image attachments. When the user uploads 
             // SKIP plan mode: proposals are not confirmed facts.
             if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
               bufferChatRound({
-                chatId: req.chatId,
+                chatId: String(req.chatId),
                 appId: updatedChat.app.id,
                 userId: currentUserId as string,
                 userPrompt,
@@ -1820,7 +2015,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // decisions. Extracting from them would pollute memories with unverified info.
           if (success && updatedChat.app?.id && agentId !== "plan") {
             bufferChatRound({
-              chatId: req.chatId,
+              chatId: String(req.chatId),
               appId: updatedChat.app.id,
               userId: currentUserId as string,
               userPrompt,

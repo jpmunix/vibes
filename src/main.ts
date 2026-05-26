@@ -145,6 +145,43 @@ const flavorUserData = path.join(app.getPath("appData"), activeFlavor.userDataFo
 app.setPath("userData", flavorUserData);
 app.name = activeFlavor.productName;
 
+// ─── Global Skills Migration: ~/.config/opencode/skills → userData/opencode-config/skills ───
+// Legacy global skills were stored in ~/.config/opencode/skills.
+// We migrate (move) them to the new isolated userData/opencode-config/skills directory,
+// deleting the old ones to prevent OpenCode from loading them as ghost skills in the background.
+try {
+  const os = require("node:os");
+  const oldSkillsDir = path.join(os.homedir(), ".config", "opencode", "skills");
+  const newSkillsDir = path.join(flavorUserData, "opencode-config", "skills");
+
+  if (fs.existsSync(oldSkillsDir)) {
+    const entries = fs.readdirSync(oldSkillsDir, { withFileTypes: true });
+    let migratedCount = 0;
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const oldSkillPath = path.join(oldSkillsDir, entry.name);
+        const newSkillPath = path.join(newSkillsDir, entry.name);
+        const oldSkillFile = path.join(oldSkillPath, "SKILL.md");
+        const oldDisabledFile = path.join(oldSkillPath, "SKILL.disabled");
+
+        if (fs.existsSync(oldSkillFile) || fs.existsSync(oldDisabledFile)) {
+          if (!fs.existsSync(newSkillPath)) {
+            fs.mkdirSync(newSkillPath, { recursive: true });
+          }
+          fs.cpSync(oldSkillPath, newSkillPath, { recursive: true, force: true });
+          fs.rmSync(oldSkillPath, { recursive: true, force: true });
+          migratedCount++;
+        }
+      }
+    }
+    if (migratedCount > 0) {
+      log.info(`[Migration] Migrated ${migratedCount} legacy global skills to ${newSkillsDir}`);
+    }
+  }
+} catch (err: any) {
+  log.warn(`[Migration] Global skills migration failed: ${err.message}`);
+}
+
 // Load environment variables from .env file
 dotenv.config();
 

@@ -7,6 +7,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useCustomAgents } from "@/hooks/useCustomAgents";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UserMessageContentProps {
     content: string;
@@ -123,6 +130,83 @@ export const UserMessageContent = React.memo(function UserMessageContent({
     // Check if there are image attachment references in the raw content
     const hasAttachmentText = content.includes("\n\nAttachments:\n");
 
+    const { customAgents } = useCustomAgents();
+
+    const commandMatch = useMemo(() => {
+        if (!cleanContent) return null;
+        const match = cleanContent.match(/^\/([a-zA-Z0-9_-]+)(?:\s+|$)/);
+        if (!match) return null;
+
+        const cmdName = match[1];
+        const lowerCmd = cmdName.toLowerCase();
+
+        // Check custom agents first
+        const customAgent = customAgents.find(
+            (ca) => ca.slashCommand.toLowerCase() === lowerCmd
+        );
+        if (customAgent) {
+            return {
+                rawMatch: match[0],
+                label: customAgent.name,
+                description: customAgent.description || "",
+                slashCommand: `/${customAgent.slashCommand}`,
+            };
+        }
+
+        // Check native agents
+        if (lowerCmd === "agent" || lowerCmd === "build") {
+            return {
+                rawMatch: match[0],
+                label: "Agente",
+                description: "Desarrolla, edita y depura con herramientas avanzadas",
+                slashCommand: `/${lowerCmd}`,
+            };
+        }
+        if (lowerCmd === "plan") {
+            return {
+                rawMatch: match[0],
+                label: "Planificar",
+                description: "Diseña un plan de acción antes de implementar",
+                slashCommand: "/plan",
+            };
+        }
+        if (lowerCmd === "ask" || lowerCmd === "explore") {
+            return {
+                rawMatch: match[0],
+                label: "Preguntar",
+                description: "Consulta sobre tu código sin realizar cambios",
+                slashCommand: `/${lowerCmd}`,
+            };
+        }
+
+        return null;
+    }, [cleanContent, customAgents]);
+
+    const { badgeContent, restOfContent } = useMemo(() => {
+        if (!commandMatch) {
+            return { badgeContent: null, restOfContent: cleanContent };
+        }
+        return {
+            badgeContent: commandMatch,
+            restOfContent: cleanContent.slice(commandMatch.rawMatch.length).trim(),
+        };
+    }, [cleanContent, commandMatch]);
+
+    const badgeClassName = useMemo(() => {
+        if (!badgeContent) return "";
+        const lowerCmd = badgeContent.slashCommand.toLowerCase();
+        let colorClasses = "";
+        if (lowerCmd === "/agent" || lowerCmd === "/build") {
+            colorClasses = "border border-input bg-muted/80 text-foreground hover:bg-muted";
+        } else if (lowerCmd === "/plan" || lowerCmd === "/ask" || lowerCmd === "/explore") {
+            colorClasses = "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/30";
+        } else {
+            // Custom agents
+            colorClasses = "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/30";
+        }
+        return `cursor-help px-2 py-0.5 font-mono font-semibold rounded-md text-xs select-none inline-flex items-center mt-0.5 transition-colors ${colorClasses}`;
+    }, [badgeContent]);
+
     const [errorModalOpen, setErrorModalOpen] = useState(false);
 
     const handleImageClick = useCallback((dataUrl: string) => {
@@ -161,9 +245,41 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 </>
             ) : (
                 cleanContent && (
-                    <div>
-                        <VanillaMarkdownParser content={cleanContent} />
-                    </div>
+                    badgeContent ? (
+                        <div className="flex items-start gap-2 flex-wrap">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className={badgeClassName}>
+                                            {badgeContent.slashCommand}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="p-3 min-w-[200px] max-w-[280px]">
+                                        <div className="flex flex-col gap-1 text-xs">
+                                            <div className="flex items-center justify-between w-full font-semibold border-b border-border/40 pb-1">
+                                                <span className="text-foreground">{badgeContent.label}</span>
+                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10px]">
+                                                    {badgeContent.slashCommand}
+                                                </span>
+                                            </div>
+                                            <span className="text-muted-foreground leading-normal mt-1 font-normal">
+                                                {badgeContent.description}
+                                            </span>
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            {restOfContent && (
+                                <div className="flex-1 min-w-0">
+                                    <VanillaMarkdownParser content={restOfContent} />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div>
+                            <VanillaMarkdownParser content={cleanContent} />
+                        </div>
+                    )
                 )
             )}
 

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Search, RefreshCw } from "@/components/ui/icons";
+import { Search, RefreshCw, Image } from "@/components/ui/icons";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelAliases } from "@/hooks/useModelAliases";
@@ -342,6 +342,13 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
 
                                             {/* Line 2: Context window + max output tokens */}
                                             <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-70">
+                                                {model.inputModalities?.includes("image") && (
+                                                    <Image 
+                                                        size={10}
+                                                        className="shrink-0" 
+                                                        title="Soporta imágenes" 
+                                                    />
+                                                )}
                                                 <span>Contexto: {formatTokens(model.contextWindow)}</span>
                                                 <span className="opacity-30">·</span>
                                                 <span>Salida: {formatTokens(model.maxOutputTokens)}</span>

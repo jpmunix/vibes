@@ -102,13 +102,21 @@ export function resolveModelForAgent(
     settings: any, // UserSettings
     /** @deprecated No longer used — kept for API compat. */
     modelOverride?: string,
+    customAgentModelSource?: "chat" | "static",
+    customAgentModel?: string | null,
 ): { model: { name: string; provider: string }; providerID: string; modelID: string } {
     // Primary agents (build, plan, explore, general) all use selectedModel
     const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
     const activeProvider = settings.selectedModel?.provider || "openrouter";
 
     if (PRIMARY_AGENTS.has(agentId)) {
-        const model = settings.selectedModel;
+        let model = settings.selectedModel;
+
+        if (customAgentModelSource === "static" && customAgentModel) {
+            const { provider, name } = parseModelString(customAgentModel, activeProvider);
+            model = { provider, name };
+        }
+
         const result = {
             model,
             providerID: mapProviderForOpenCode(model),
@@ -117,7 +125,7 @@ export function resolveModelForAgent(
                 settings.selectedModelVariant ?? "",
             ),
         };
-        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`);
+        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (${customAgentModelSource === "static" ? "static agent model" : "selectedModel"})`);
         return result;
     }
 
@@ -980,6 +988,7 @@ export async function updateOpenCodeConfig(changes: {
     executorModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
+    agentModels?: Record<string, string>;
     inferenceTemperature?: number;
     inferenceTopP?: number;
     inferenceRepetitionPenalty?: number;
@@ -1053,6 +1062,21 @@ export async function updateOpenCodeConfig(changes: {
                 registerExtraProvider(body, sProv, sName, settings);
             }
             logger.info(`[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`);
+        }
+
+        // Hot-update per-agent model overrides (all agents)
+        if (changes.agentModels) {
+            const agentConfig: Record<string, any> = body.agent || {};
+            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
+            for (const id of agentIds) {
+                if (changes.agentModels[id]) {
+                    agentConfig[id] = { ...agentConfig[id], model: `openrouter/${changes.agentModels[id]}` };
+                }
+            }
+            body.agent = agentConfig;
+            const models = changes.agentModels;
+            const summary = agentIds.map(id => `${id}=${models[id] || 'default'}`).join(', ');
+            logger.info(`[OpenCode] Agent models updated: ${summary}`);
         }
 
         // ── Always register the model in provider.models for hot-update ──
@@ -2162,6 +2186,73 @@ function registerExtraProvider(body: Record<string, any>, providerKey: string, m
 // ============================================================================
 
 /**
+ * ============================================================================
+ * 🚨 ATENCIÓN / IMPORTANT NOTICE FOR ALL FUTURE VIBES DEVELOPERS 🚨
+ * ============================================================================
+ *
+ * ¡¡¡ ESTE ES EL MÉTODO ÚNICO Y OFICIAL PARA ADJUNTAR PROMPTS DE SISTEMA EN OPENCODE !!!
+ *
+ * HISTORIAL DEL PROBLEMA:
+ * Anteriormente, todas las instrucciones estáticas del sistema (las reglas de idioma,
+ * esquemas e instrucciones de MCP Servers, Supabase, Bunny, PocketBase, Artifacts,
+ * docs/DESIGN.md, etc.) se inyectaban en la sesión de OpenCode de manera silenciosa
+ * enviando un mensaje de rol 'user' con la propiedad { noReply: true } antes del
+ * prompt principal.
+ *
+ * ¿Por qué era una mala solución?
+ * 1. Hacía que las directrices de sistema compitieran en peso con los mensajes del usuario.
+ * 2. Ensuciaba el historial interno de la sesión de OpenCode.
+ * 3. Hacía que el modelo las acatara peor (debido a no estar en el System prompt).
+ *
+ * LA SOLUCIÓN DEFINITIVA:
+ * OpenCode acepta una propiedad `system` en el cuerpo del método de envío del prompt
+ * (`prompt` / `promptAsync`). Cuando el servidor de OpenCode recibe esta propiedad,
+ * la concatena de forma NATAL al final de su System Prompt maestro (el que contiene
+ * las instrucciones de build, la lista de tools habilitadas y las skills).
+ *
+ * CÓMO FUNCIONA ESTE MÉTODO:
+ * `attachToSystemPrompt` unifica toda la lista de instrucciones de contexto estáticas
+ * (`contextInstructions` que vienen del pipeline de chat y bases de datos) junto con
+ * el `customSystemPrompt` (definido por el usuario en agentes personalizados como "moco").
+ * Devuelve un único string formateado que se inyecta en el campo `system` de la
+ * petición a OpenCode.
+ *
+ * REGLAS DE ORO:
+ * 1. NO utilices inyección `noReply` de tipo usuario para directrices de comportamiento.
+ * 2. Todo el contexto (instrucciones estáticas, directrices del proyecto, MCPs, etc.)
+ *    se inyecta como system prompt a través de este método.
+ * 3. La inyección `noReply` queda reservada ÚNICAMENTE para mensajes previos del usuario
+ *    (priorMessages) que necesitan aparecer en el historial de conversación.
+ * 3. Al usar este método, asegúrate de eliminar `contextInstructions` del bloque
+ *    `noReply` para no enviar las instrucciones duplicadas.
+ *
+ * ============================================================================
+ */
+export function attachToSystemPrompt(
+    contextInstructions?: string[],
+    customSystemPrompt?: string
+): string | undefined {
+    const parts: string[] = [];
+
+    // 1. Inyectar primero la ristra de instrucciones estáticas del pipeline
+    // (Idioma, esquemas DB, MCPs, artefactos, etc.)
+    if (contextInstructions && contextInstructions.length > 0) {
+        parts.push(contextInstructions.join("\n\n"));
+    }
+
+    // 2. Inyectar el system prompt de agente personalizado (si existe)
+    if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+        parts.push(customSystemPrompt);
+    }
+
+    if (parts.length === 0) {
+        return undefined;
+    }
+
+    return parts.join("\n\n---\n\n");
+}
+
+/**
  * Handle a chat stream using OpenCode AI SDK.
  * Creates a session, subscribes to events for real-time streaming,
  * sends the user prompt, and forwards all events to the frontend.
@@ -2185,23 +2276,34 @@ export async function handleOpenCodeStream(
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
         /**
-         * Memory context block to inject via noReply before the prompt.
-         * Invisible to the user (not saved to DB, not shown in UI).
-         * OpenCode sees it as a silent user message in the session history.
-         */
-        memoryBlock?: string;
-        /**
          * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
          * Each is sent with `noReply: true` so OpenCode records them in the conversation
          * history without generating an AI response. This is the native way to "batch"
          * multiple user messages typed while the previous stream was running.
          */
         priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
+        /** Custom agent prompt settings */
+        customSystemPrompt?: string;
+        customPromptMode?: "additive" | "replace";
+        /** Custom agent model settings */
+        customAgentModelSource?: "chat" | "static";
+        /** Custom agent static model setting */
+        customAgentModel?: string | null;
     },
     /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
     _retryCount = 0,
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
+
+    if (options.customPromptMode === "additive" && options.customSystemPrompt) {
+        if (!options.contextInstructions) {
+            options.contextInstructions = [];
+        }
+        options.contextInstructions.push(
+            `CUSTOM AGENT SYSTEM INSTRUCTIONS:\n${options.customSystemPrompt}`
+        );
+        logger.info(`[OpenCode] Appending custom agent prompt to context instructions (additive mode)`);
+    }
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
     const projectDir = getVibesAppPath(appPath);
@@ -2615,6 +2717,7 @@ export async function handleOpenCodeStream(
         abortController.signal.addEventListener("abort", onUserAbort, { once: true });
     }
 
+    let checkpointIntervalId: NodeJS.Timeout | undefined;
     try {
         // Start global event subscription (captures ALL events across the server)
         // Pass the SSE abort signal so the connection closes when we abort.
@@ -2692,7 +2795,13 @@ export async function handleOpenCodeStream(
         // Send the prompt ASYNC — returns immediately, we rely on events for completion
         const settings = readSettings();
         const effectiveAgent = options.agentId || "build";
-        const { model, providerID, modelID } = resolveModelForAgent(effectiveAgent, settings, req.modelOverride);
+        const { model, providerID, modelID } = resolveModelForAgent(
+            effectiveAgent,
+            settings,
+            req.modelOverride,
+            options.customAgentModelSource,
+            options.customAgentModel,
+        );
 
         logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
         logger.info(`${LP} Project directory: ${projectDir}`);
@@ -2804,55 +2913,78 @@ export async function handleOpenCodeStream(
         logger.info(`--- USER PROMPT ---\n${promptText}`);
         logger.info(`------------------------------------------`);
 
-        // ── Inject Vibes context via noReply (invisible to user) ─────────
-        // All Vibes context (instructions + memories) is injected as a single
-        // silent user message. Only exists in OpenCode's session history.
-        // Not saved to our DB → not shown in chat UI → invisible.
-        {
-            const contextParts: string[] = [];
-
-            // Static instructions (language, integrations, efficiency, etc.)
-            if (options.contextInstructions && options.contextInstructions.length > 0) {
-                contextParts.push(options.contextInstructions.join("\n\n"));
-            }
-
-            // Dynamic memories (selected per-prompt by the memory router)
-            if (options.memoryBlock) {
-                contextParts.push(options.memoryBlock);
-            }
-
-            if (contextParts.length > 0) {
-                const contextText = contextParts.join("\n\n---\n\n");
-                try {
-                    await client.session.prompt({
-                        path: { id: sessionId },
-                        query: { directory: projectDir },
-                        body: {
-                            noReply: true,
-                            parts: [{ type: "text", text: contextText }],
-                        } as any,
-                    });
-                    logger.info(`${LP} 📋 Context injected via noReply (${contextText.length} chars: ${options.contextInstructions?.length || 0} instructions + ${options.memoryBlock ? 'memories' : 'no memories'})`);
-                } catch (ctxErr: any) {
-                    logger.warn(`${LP} 📋 Context noReply injection failed (non-fatal): ${ctxErr.message}`);
-                }
-            }
-        }
+        // Memory/directives are now injected via contextInstructions → system prompt.
+        // No noReply injection needed.
 
         // Fire the prompt (non-blocking)
-        // NOTE: We do NOT pass `system` here — that would REPLACE OpenCode's
-        // internal system prompt. All Vibes context flows via noReply above.
+        const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
+        const useAgentName = effectiveAgent;
+
+        // Si es modo "Reemplazar", el prompt del agente en el servidor se establece con tu prompt de sistema personalizado.
+        // Si es "Aditivo" (o no hay prompt personalizado), se limpia para usar el prompt nativo/default de OpenCode.
+        const agentPromptConfig = hasReplacePrompt ? options.customSystemPrompt : null;
+
+        // El systemPromptOverride para promptAsync.system contendrá las instrucciones de contexto estáticas
+        // de Vibes (como idioma, MCPs, credenciales y prompts activos habilitados en los ajustes).
+        const systemPromptOverride = attachToSystemPrompt(options.contextInstructions, undefined);
+
+        // Determine permission config based on the base agent
+        let permissionConfig: any;
+        if (effectiveAgent === "plan") {
+            permissionConfig = {
+                edit: "allow",
+                bash: { "*": "deny" }
+            };
+        } else if (effectiveAgent === "explore") {
+            permissionConfig = {
+                edit: "deny",
+                bash: "deny",
+                webfetch: "deny",
+                websearch: "deny"
+            };
+        } else {
+            permissionConfig = buildPermissionConfig(settings);
+        }
+
+        logger.info(`${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}, hasSystemPromptOverride=${!!systemPromptOverride}`);
+        try {
+            await client.config.update({
+                body: {
+                    agent: {
+                        [effectiveAgent]: {
+                            prompt: agentPromptConfig,
+                            permission: permissionConfig,
+                            reasoningEffort: settings.reasoningEffort || "medium",
+                            textVerbosity: settings.textVerbosity || "low",
+                        }
+                    }
+                } as any
+            });
+            if (hasReplacePrompt) {
+                logger.info(`${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`);
+            } else {
+                logger.info(`${LP} [CustomAgent] Successfully cleared/restored native system prompt for agent '${effectiveAgent}'`);
+            }
+        } catch (err: any) {
+            logger.warn(`${LP} [CustomAgent] Failed to update agent config in OpenCode: ${err.message}`);
+        }
+
+        const promptBody: any = {
+            model: {
+                providerID,
+                modelID,
+            },
+            agent: useAgentName !== "build" ? useAgentName : undefined,
+            parts: promptParts,
+            ...(systemPromptOverride ? {
+                system: systemPromptOverride
+            } : {})
+        };
+
         await client.session.promptAsync({
             path: { id: sessionId },
             query: { directory: projectDir },
-            body: {
-                model: {
-                    providerID,
-                    modelID,
-                },
-                agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
-                parts: promptParts,
-            },
+            body: promptBody,
         });
 
         logger.info(`${LP} Prompt sent (async). Waiting for events...`);
@@ -2862,7 +2994,7 @@ export async function handleOpenCodeStream(
         // table. This ensures that even if the server or connection dies mid-
         // stream, the user sees partial progress instead of an empty bubble.
         let lastCheckpointLength = 0;
-        const checkpointIntervalId = setInterval(async () => {
+        checkpointIntervalId = setInterval(async () => {
             try {
                 const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
                 // Only write if content has grown since last checkpoint
@@ -2940,11 +3072,20 @@ export async function handleOpenCodeStream(
 
                 if (chat) {
                     for (const file of filesEdited) {
-                        if (file.includes(".vibes/") && file.endsWith(".md")) {
+                        const hasDot = file.includes(".vibes/");
+                        const hasNoDot = file.includes("vibes/");
+                        if ((hasDot || hasNoDot) && file.endsWith(".md")) {
                             let relativePath = file;
-                            const idx = file.indexOf(".vibes/");
-                            if (idx !== -1) {
-                                relativePath = file.substring(idx);
+                            if (hasDot) {
+                                const idx = file.indexOf(".vibes/");
+                                if (idx !== -1) {
+                                    relativePath = file.substring(idx);
+                                }
+                            } else {
+                                const idx = file.indexOf("vibes/");
+                                if (idx !== -1) {
+                                    relativePath = "." + file.substring(idx);
+                                }
                             }
 
                             const existing = await db.query.chatArtifacts.findFirst({

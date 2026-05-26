@@ -558,7 +558,7 @@ export default function AppDetailsPage() {
                   onClick={() => ipc.system.openMemoryWindow({ appId, theme, themeIntensity: intensity })}
                 >
                   <Database className="h-3.5 w-3.5" />
-                  <span className="text-xs">Memorias</span>
+                  <span className="text-xs">Directrices</span>
                 </Button>
               )}
 

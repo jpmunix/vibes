@@ -118,12 +118,14 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
     wasStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
-  // Auto-collapse when all tasks are completed
+  // Auto-collapse when all tasks are completed (with delay so user sees the result)
   useEffect(() => {
     if (allDone) {
-      setIsExpanded(false);
+      const timer = setTimeout(() => setIsExpanded(false), 1500);
+      return () => clearTimeout(timer);
     }
   }, [allDone]);
+
 
   if (!todos.length) return null;
 

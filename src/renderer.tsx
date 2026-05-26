@@ -78,7 +78,7 @@ const messageIdStr = urlParams.get("messageId");
 const hasPendingPrompt = urlParams.get("hasPendingPrompt") === "true";
 const chatModeParam = urlParams.get("chatMode");
 const themeParam = urlParams.get("theme");
-const intensityParam = urlParams.get("intensity");
+const intensityParam = "0.58";
 
 if (windowType === "database" && appIdStr) {
   // Show skeleton immediately while JS bundle loads

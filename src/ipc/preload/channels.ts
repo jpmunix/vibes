@@ -35,7 +35,6 @@ import { neonContracts } from "../types/neon";
 
 import { promptContracts } from "../types/prompts";
 import { proposalContracts } from "../types/proposals";
-// Import all contracts
 import { settingsContracts } from "../types/settings";
 import { supabaseContracts } from "../types/supabase";
 import { systemContracts, systemEvents } from "../types/system";
@@ -43,6 +42,7 @@ import { templateContracts } from "../types/templates";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
+import { customAgentsContracts } from "../types/custom_agents";
 
 
 import { authContracts } from "../types/auth";
@@ -120,6 +120,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(bunnyContracts),
   ...getInvokeChannels(pocketbaseContracts),
   ...getInvokeChannels(memoryContracts),
+  ...getInvokeChannels(customAgentsContracts),
 
   ...getInvokeChannels(authContracts),
 

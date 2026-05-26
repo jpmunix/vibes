@@ -35,6 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeDate } from "@/lib/safeDate";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -538,7 +539,7 @@ export function AppList({ show }: { show?: boolean }) {
                         <div className="flex flex-col min-w-0 flex-1">
                           <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
                           <span className="text-xs text-muted-foreground/45 mt-0.5">
-                            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                            {formatDistanceToNow(safeDate(app.createdAt), { addSuffix: true, locale: es })}
                           </span>
                         </div>
                         <button

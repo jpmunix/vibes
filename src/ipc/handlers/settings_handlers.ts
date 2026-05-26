@@ -380,6 +380,16 @@ export function registerSettingsHandlers() {
       if (existsSync(fullPath)) {
         await fs.rm(fullPath, { recursive: true, force: true });
       }
+
+      // Also clean up from the old global opencode directory to prevent ghost skills
+      const os = require("node:os");
+      const oldBaseDir = path.join(os.homedir(), ".config", "opencode", "skills");
+      const oldFullPath = path.join(oldBaseDir, filePath);
+      const relativeToOld = path.relative(oldBaseDir, oldFullPath);
+      const isOldSafe = relativeToOld && !relativeToOld.startsWith("..") && !path.isAbsolute(relativeToOld);
+      if (isOldSafe && existsSync(oldFullPath)) {
+        await fs.rm(oldFullPath, { recursive: true, force: true });
+      }
     } catch (err: any) {
       logger.error("Failed to delete global skill:", err);
       throw err;
