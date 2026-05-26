@@ -537,10 +537,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   return (
     <div className="flex justify-center">
       <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "var(--bubble-width, 65%)" }}>
-        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`} style={isUser ? { marginLeft: '100px' } : undefined}>
+        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse relative" : "flex-row"}`} style={isUser ? { marginLeft: '100px' } : undefined}>
+          {isUser && (
+            <div className="absolute -top-4 left-0 right-0 h-4 bg-background pointer-events-none" />
+          )}
           {/* Avatar (hidden for system messages) */}
           {!isSystem && (
-          <div className="flex-shrink-0 mt-1">
+          <div className={`flex-shrink-0 mt-1 ${isUser ? "bg-background rounded-full relative z-10 shadow-sm" : ""}`}>
             {isUser ? (
               <SimpleAvatar
                 src={activeUser?.photoUrl || (activeUser as any)?.photoURL || undefined}
@@ -562,7 +565,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
-              <div className="absolute -left-24 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="absolute -left-28 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
                 <button
                   onClick={handleQuote}
                   title="Citar"
@@ -594,19 +597,20 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 </button>
               </div>
             )}
-            <div
-              onClick={undefined}
-              className={`rounded-lg ${isSystem
-                ? "px-4 py-2 bg-muted/30 border border-muted/50 text-xs text-muted-foreground w-fit max-w-[80%]"
-                : isAssistant
-                ? isErrorMessage
-                  ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                  : `px-4 py-3 bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
-                : isFixError
-                  ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
-                  : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
-                }`}
-            >
+            <div className={isUser ? "bg-background rounded-lg shadow-sm" : ""}>
+              <div
+                onClick={undefined}
+                className={`rounded-lg ${isSystem
+                  ? "px-4 py-2 bg-muted/30 border border-muted/50 text-xs text-muted-foreground w-fit max-w-[80%]"
+                  : isAssistant
+                  ? isErrorMessage
+                    ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
+                    : `px-4 py-3 bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
+                  : isFixError
+                    ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
+                    : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
+                  }`}
+              >
               {/* === System messages === */}
               {isSystem && !isSelectingModel && (
                 <div
@@ -884,6 +888,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                 </div>
               ) : null}
 
+            </div>
             </div>
             </div>{/* end relative wrapper */}
           </div>

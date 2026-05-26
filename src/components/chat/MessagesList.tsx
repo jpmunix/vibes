@@ -2,7 +2,6 @@ import React from "react";
 import type { Message } from "@/ipc/types";
 import { forwardRef, useState, useCallback, useMemo, Suspense, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
-import { StickyUserMessage } from "./StickyUserMessage";
 const SetupBanner = React.lazy(() =>
   import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
 );
@@ -245,88 +244,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       return () => observer.disconnect();
     }, [hasMoreMessages, onLoadMore]);
 
-    // ── Sticky user message tracking ────────────────────────────────────
-    // Track which user message should be shown as sticky (the last one that
-    // scrolled above the viewport while its assistant response is still visible).
-    const [stickyUserMessage, setStickyUserMessage] = useState<Message | null>(null);
-    const userMessageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map());
-
-    // Register a user message DOM element
-    const registerUserMessageRef = useCallback((messageId: number, el: HTMLDivElement | null) => {
-      if (el) {
-        userMessageRefsMap.current.set(messageId, el);
-      } else {
-        userMessageRefsMap.current.delete(messageId);
-      }
-    }, []);
-
-    // Get only user messages for tracking
-    const userMessages = useMemo(
-      () => messages.filter((m) => m.role === "user"),
-      [messages],
-    );
-
-    // IntersectionObserver to detect user messages leaving/entering the viewport
-    useEffect(() => {
-      // We need the scroll container (passed via ref) — it's the parent with overflow-y-auto
-      // Since ref is a forwarded ref, we access it via a callback or the parent's ref.
-      // We'll use the root: null approach (viewport) and check positions manually.
-
-      if (userMessages.length === 0) {
-        setStickyUserMessage(null);
-        return;
-      }
-
-      const scrollContainer = (ref as React.RefObject<HTMLDivElement | null>)?.current;
-      if (!scrollContainer) return;
-
-      const handleScroll = () => {
-        const containerRect = scrollContainer.getBoundingClientRect();
-        let lastAboveUser: Message | null = null;
-
-        // Find the last user message whose element is above the scroll container's top
-        for (const msg of userMessages) {
-          const el = userMessageRefsMap.current.get(msg.id);
-          if (!el) continue;
-          const elRect = el.getBoundingClientRect();
-          // The message is "above" if its bottom is above the container's top edge
-          // (with a small threshold so it triggers slightly before fully leaving)
-          if (elRect.bottom < containerRect.top + 8) {
-            lastAboveUser = msg;
-          }
-        }
-
-        setStickyUserMessage(lastAboveUser);
-      };
-
-      // RAF-throttled scroll handler
-      let rafId: number | null = null;
-      const throttledScroll = () => {
-        if (rafId) return;
-        rafId = requestAnimationFrame(() => {
-          rafId = null;
-          handleScroll();
-        });
-      };
-
-      scrollContainer.addEventListener("scroll", throttledScroll, { passive: true });
-      // Run once on mount to set initial state
-      handleScroll();
-
-      return () => {
-        scrollContainer.removeEventListener("scroll", throttledScroll);
-        if (rafId) cancelAnimationFrame(rafId);
-      };
-    }, [userMessages, ref]);
-
-    // Scroll to the original user message when clicking the sticky bar
-    const handleScrollToStickyMessage = useCallback(() => {
-      if (!stickyUserMessage) return;
-      const el = userMessageRefsMap.current.get(stickyUserMessage.id);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, [stickyUserMessage]);
 
     // Stable callback for marking todo as completed
     const handleMarkTodoCompleted = useCallback(async () => {
@@ -391,73 +308,85 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     }, [renderSetupBanner]);
 
     return (
-      <div className="relative w-full h-full">
-        <div
-          className="absolute inset-0 overflow-y-auto flex flex-col-reverse"
-          ref={ref}
-          data-testid="messages-list"
-        >
-          {/* Single wrapper child — column-reverse on parent makes scroll start at bottom naturally */}
-          <div className="px-4 pt-4 pb-8">
-            {/* Sentinel for progressive loading of older messages */}
-            {hasMoreMessages && (
-              <div ref={sentinelRef} className="flex justify-center py-3">
-                <div className="text-xs text-muted-foreground animate-pulse">
-                  Cargando mensajes anteriores…
-                </div>
+      <div
+        className="absolute inset-0 overflow-y-auto flex flex-col-reverse"
+        ref={ref}
+        data-testid="messages-list"
+      >
+        {/* Single wrapper child — column-reverse on parent makes scroll start at bottom naturally */}
+        <div className="px-4 pt-4 pb-8">
+          {/* Sentinel for progressive loading of older messages */}
+          {hasMoreMessages && (
+            <div ref={sentinelRef} className="flex justify-center py-3">
+              <div className="text-xs text-muted-foreground animate-pulse">
+                Cargando mensajes anteriores…
               </div>
-            )}
+            </div>
+          )}
 
-            {messages.length === 0 && renderEmptyState()}
+          {messages.length === 0 && renderEmptyState()}
 
-            {messages.map((message, index) => {
-              const isLastMessage = index === messages.length - 1;
-              const isLastUserMessage = message.role === "user" && isLastMessage;
-              const hasAssistantResponseAfter =
-                isLastMessage &&
-                messages.length > index + 1 &&
-                messages[index + 1]?.role === "assistant";
-              const shouldShowAutoRouter =
-                isLastUserMessage &&
-                !hasAssistantResponseAfter &&
-                (isSelectingModel ||
-                  autoRouterModelInfo.get(selectedChatId ?? 0));
-              const currentAutoRouterInfo = selectedChatId
-                ? autoRouterModelInfo.get(selectedChatId)
-                : undefined;
+          {(() => {
+            // Group messages: each group starts with a user message (if any)
+            // and contains all following assistant/system messages.
+            const groups: Message[][] = [];
+            let currentGroup: Message[] = [];
+            for (const msg of messages) {
+              if (msg.role === "user") {
+                if (currentGroup.length > 0) groups.push(currentGroup);
+                currentGroup = [msg];
+              } else {
+                currentGroup.push(msg);
+              }
+            }
+            if (currentGroup.length > 0) groups.push(currentGroup);
 
-              return (
-                <div
-                  key={message.id}
-                  ref={message.role === "user" ? (el) => registerUserMessageRef(message.id, el) : undefined}
-                >
-                  <div className="px-4">
-                    <MemoizedChatMessage
-                      message={message}
-                      isLastMessage={isLastMessage}
-                      user={user}
-                    />
-                  </div>
-                  {shouldShowAutoRouter && (
-                    <AutoRouterSelectedMessage
-                      modelInfo={currentAutoRouterInfo}
-                      isSelecting={isSelectingModel}
-                    />
-                  )}
-                </div>
-              );
-            })}
+            return groups.map((group, groupIndex) => (
+              <div key={group[0].id} className="relative">
+                {group.map((message) => {
+                  const globalIndex = messages.indexOf(message);
+                  const isLastMessage = globalIndex === messages.length - 1;
+                  const isLastUserMessage = message.role === "user" && isLastMessage;
+                  const hasAssistantResponseAfter =
+                    isLastMessage &&
+                    messages.length > globalIndex + 1 &&
+                    messages[globalIndex + 1]?.role === "assistant";
+                  const shouldShowAutoRouter =
+                    isLastUserMessage &&
+                    !hasAssistantResponseAfter &&
+                    (isSelectingModel ||
+                      autoRouterModelInfo.get(selectedChatId ?? 0));
+                  const currentAutoRouterInfo = selectedChatId
+                    ? autoRouterModelInfo.get(selectedChatId)
+                    : undefined;
 
-            <FooterComponent context={footerContext} />
-          </div>
+                  return (
+                    <div
+                      key={message.id}
+                      className={message.role === "user" ? "sticky top-0 z-10" : ""}
+                    >
+                      <div className={message.role === "user" ? "" : "px-4"}>
+                        <MemoizedChatMessage
+                          message={message}
+                          isLastMessage={isLastMessage}
+                          user={user}
+                        />
+                      </div>
+                      {shouldShowAutoRouter && (
+                        <AutoRouterSelectedMessage
+                          modelInfo={currentAutoRouterInfo}
+                          isSelecting={isSelectingModel}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ));
+          })()}
+
+          <FooterComponent context={footerContext} />
         </div>
-
-        {/* Sticky user message bar — positioned outside scroll container so it stays fixed at top */}
-        <StickyUserMessage
-          content={stickyUserMessage?.content ?? ""}
-          onScrollToMessage={handleScrollToStickyMessage}
-          visible={!!stickyUserMessage}
-        />
       </div>
     );
   },
