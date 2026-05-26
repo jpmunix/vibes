@@ -2688,6 +2688,7 @@ export async function handleOpenCodeStream(
     const timeline: TimelineEntry[] = [];
     const toolsActive = new Map<string, { tool: string; status: string; detail?: string }>();
     const filesEdited: string[] = [];
+    const diffStats = { insertions: 0, deletions: 0 };
     let stepCount = 0;
     // Accumulated token usage across all steps
     let totalInputTokens = 0;
@@ -2783,6 +2784,10 @@ export async function handleOpenCodeStream(
                         filesEdited.push(file);
                         logger.info(`${LP} 📂 File edited: ${file}`);
                     }
+                },
+                onDiffStats: (ins: number, del: number) => {
+                    diffStats.insertions += ins;
+                    diffStats.deletions += del;
                 },
                 getTimeline: () => timeline,
                 getToolsActive: () => toolsActive,
@@ -3137,7 +3142,7 @@ export async function handleOpenCodeStream(
         }
 
         // Send final response with all content
-        const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
+        const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive, diffStats);
         logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
@@ -3251,6 +3256,7 @@ async function processEvents(
         /** Called when OpenCode reports the real cost of the completed assistant message. */
         onMessageCost: (costUsd: number) => void;
         onFileEdited: (file: string) => void;
+        onDiffStats: (insertions: number, deletions: number) => void;
         getTimeline: () => TimelineEntry[];
         getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
         getFilesEdited: () => string[];
@@ -3494,6 +3500,8 @@ async function processEvents(
                             if (d.file) {
                                 callbacks.onFileEdited(d.file);
                             }
+                            if (typeof d.insertions === "number") callbacks.onDiffStats(d.insertions, 0);
+                            if (typeof d.deletions === "number") callbacks.onDiffStats(0, d.deletions);
                         }
                         sendUpdate();
                     }
@@ -3841,6 +3849,7 @@ function buildFinalResponse(
     timeline: TimelineEntry[],
     filesEdited: string[],
     toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
+    diffStats: { insertions: number; deletions: number },
 ): string {
     let content = "";
 
@@ -3871,6 +3880,14 @@ function buildFinalResponse(
                 content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
             }
         }
+    }
+
+    // Append files-changed summary tag (persisted in message content for the UI widget)
+    if (filesEdited.length > 0) {
+        const basenames = filesEdited.map(f => path.basename(f));
+        const uniqueNames = [...new Set(basenames)];
+        content += `<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+</vibes-files-changed>\n`;
     }
 
     return content;

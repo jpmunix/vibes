@@ -29,6 +29,7 @@ import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom, isFlowModeAtom 
 import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
+import { FilesChangedBar } from "./FilesChangedBar";
 import { VibesProblemSummary } from "./VibesProblemSummary";
 
 
@@ -154,6 +155,7 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-typecheck-summary",
   "vibes-token-usage",
   "vibes-cancelled",
+  "vibes-files-changed",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -416,7 +418,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     };
 
     // Tags that produce visible output in zen/flow mode
-    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled", "vibes-git-commit"]);
+    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled", "vibes-git-commit", "vibes-files-changed"]);
 
     // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
     // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
@@ -1315,6 +1317,16 @@ function renderCustomTag(
             Respuesta cancelada
           </span>
         </div>
+      );
+
+    case "vibes-files-changed":
+      return (
+        <FilesChangedBar
+          files={parseInt(attributes.files || "0", 10)}
+          insertions={parseInt(attributes.insertions || "0", 10)}
+          deletions={parseInt(attributes.deletions || "0", 10)}
+          paths={attributes.paths || ""}
+        />
       );
 
     default:

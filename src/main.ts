@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, Menu, screen } from "electron";
+import { createTray, destroyTray } from "./main/tray";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
 import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
@@ -353,6 +354,11 @@ export async function onReady() {
   createWindow();
   createApplicationMenu();
 
+  // Create system tray icon so the app can minimize-to-tray on close
+  if (mainWindow) {
+    createTray(mainWindow, activeFlavor);
+  }
+
   // Step N+4: Validate configured models still exist in OpenRouter
   updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Validando modelos...");
   await validateModelSettings().catch((err) =>
@@ -650,9 +656,16 @@ const createWindow = () => {
 
   // Save state synchronously on close so hot-reload / forced restarts
   // don't lose the window position (the debounce may not have fired yet).
-  mainWindow.on("close", () => {
+  // On Linux: hide to system tray instead of quitting, unless _forceQuit
+  // is set (triggered by the tray's "Salir" menu item).
+  mainWindow.on("close", (e) => {
     clearTimeout(saveTimeout);
     saveWindowState();
+
+    if (process.platform !== "darwin" && !(app as any)._forceQuit) {
+      e.preventDefault();
+      mainWindow?.hide();
+    }
   });
 };
 
@@ -736,6 +749,7 @@ if (!gotTheLock) {
 } else {
   app.on("second-instance", (_event, commandLine, _workingDirectory) => {
     if (mainWindow) {
+      mainWindow.show(); // Restore from tray if hidden
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
@@ -908,13 +922,17 @@ async function handleDeepLinkReturn(url: string) {
 }
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  // On macOS the app stays in the dock; on Linux we keep it alive
+  // in the system tray, so we only quit if _forceQuit was requested.
+  if (process.platform !== "darwin" && (app as any)._forceQuit) {
     app.quit();
   }
 });
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
+  // Clean up the system tray icon
+  destroyTray();
   // Kill all dev servers started from Vibes to prevent orphan processes
   stopAllRunningApps();
   shutdownOpenCode();
