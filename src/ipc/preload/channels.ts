@@ -142,6 +142,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   // OpenCode permission response (renderer -> main)
   "opencode-permission:respond",
+
+  // Tray badge control (renderer -> main, fire-and-forget)
+  "tray:set-badge",
 ] as const;
 
 // =============================================================================

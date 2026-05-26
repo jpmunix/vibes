@@ -6,6 +6,9 @@ import type { FlavorConfig } from "../flavors";
 const logger = log.scope("tray");
 
 let tray: Tray | null = null;
+let normalIcon: Electron.NativeImage | null = null;
+let badgeIcon: Electron.NativeImage | null = null;
+let hasBadge = false;
 
 /**
  * Creates a system-tray icon with a context menu.
@@ -23,14 +26,16 @@ export function createTray(
   mainWindow: BrowserWindow,
   activeFlavor: FlavorConfig,
 ): Tray {
-  // Use the pre-scaled 32px tray icon (generated via ImageMagick)
-  const trayIconPath = path.join(
+  const iconBase = path.join(
     app.getAppPath(),
-    `assets/${activeFlavor.iconFolder}/tray-icon.png`,
+    `assets/${activeFlavor.iconFolder}`,
   );
 
-  const icon = nativeImage.createFromPath(trayIconPath);
-  tray = new Tray(icon);
+  // Pre-load both icon variants (normal and with notification badge)
+  normalIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon.png"));
+  badgeIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon-badge.png"));
+
+  tray = new Tray(normalIcon);
   tray.setToolTip(activeFlavor.productName);
 
   const contextMenu = Menu.buildFromTemplate([
@@ -59,6 +64,11 @@ export function createTray(
     showWindow(mainWindow);
   });
 
+  // When the window gains focus, clear the badge automatically
+  mainWindow.on("focus", () => {
+    clearTrayBadge();
+  });
+
   logger.info("System tray created");
   return tray;
 }
@@ -76,6 +86,27 @@ function showWindow(mainWindow: BrowserWindow) {
 }
 
 /**
+ * Switch the tray icon to the badge variant (red dot) to indicate
+ * unread notifications or pending interactions.
+ */
+export function setTrayBadge() {
+  if (!tray || tray.isDestroyed() || !badgeIcon || hasBadge) return;
+  tray.setImage(badgeIcon);
+  hasBadge = true;
+  logger.info("Tray badge set (notification pending)");
+}
+
+/**
+ * Restore the tray icon to its normal (no-badge) variant.
+ */
+export function clearTrayBadge() {
+  if (!tray || tray.isDestroyed() || !normalIcon || !hasBadge) return;
+  tray.setImage(normalIcon);
+  hasBadge = false;
+  logger.info("Tray badge cleared");
+}
+
+/**
  * Destroy the tray icon (called during app shutdown).
  */
 export function destroyTray() {
@@ -83,4 +114,7 @@ export function destroyTray() {
     tray.destroy();
     tray = null;
   }
+  normalIcon = null;
+  badgeIcon = null;
+  hasBadge = false;
 }

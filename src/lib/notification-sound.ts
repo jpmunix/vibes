@@ -127,4 +127,14 @@ export function sendAppNotification({ title, body, settings }: NotificationParam
   if (soundEnabled) {
     playNotificationSound();
   }
+
+  // Activate tray badge (red dot) so the user knows there's pending activity
+  // even if the window is minimized to the system tray
+  if (notificationsEnabled || soundEnabled) {
+    try {
+      (window as any).electron?.ipcRenderer?.invoke("tray:set-badge");
+    } catch {
+      // Not critical — tray badge is a nice-to-have
+    }
+  }
 }

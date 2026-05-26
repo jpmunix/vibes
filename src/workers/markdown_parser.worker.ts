@@ -49,6 +49,7 @@ const VIBES_CUSTOM_TAGS = [
     "vibes-typecheck-summary",
     "vibes-token-usage",
     "vibes-cancelled",
+    "vibes-files-changed",
 ];
 
 /**

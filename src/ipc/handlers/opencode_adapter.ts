@@ -3625,6 +3625,16 @@ async function processEvents(
                             });
                             logger.info(`[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`);
 
+                            // Activate tray badge if the window is not focused
+                            try {
+                                const { BrowserWindow } = require("electron");
+                                const win = BrowserWindow.fromWebContents(event.sender);
+                                if (win && !win.isFocused()) {
+                                    const { setTrayBadge } = require("../../../main/tray");
+                                    setTrayBadge();
+                                }
+                            } catch (_) { /* tray badge not critical */ }
+
                             const userResponse = await waitForPermissionResponse(reqId, 300_000);
                             await replyToPermission(reqId, userResponse as "once" | "always" | "reject", permSessionId);
                             logger.info(`[OC:Event] 🛡️ Permission resolved: ${userResponse} for ${permName}`);
@@ -3696,7 +3706,7 @@ async function processEvents(
                         multiple: !!q.multiple,
                     });
 
-                    // 3. Native OS notification if the window is not focused
+                    // 3. Native OS notification + tray badge if the window is not focused
                     try {
                         const { Notification, BrowserWindow } = require("electron");
                         const win = BrowserWindow.fromWebContents(event.sender);
@@ -3711,6 +3721,10 @@ async function processEvents(
                                 win.focus();
                             });
                             notif.show();
+
+                            // Activate tray badge (red dot)
+                            const { setTrayBadge } = require("../../../main/tray");
+                            setTrayBadge();
                         }
                     } catch (_) { /* notification not critical */ }
                     break;

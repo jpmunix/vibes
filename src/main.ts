@@ -1,5 +1,5 @@
-import { app, BrowserWindow, dialog, Menu, screen } from "electron";
-import { createTray, destroyTray } from "./main/tray";
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from "electron";
+import { createTray, destroyTray, setTrayBadge } from "./main/tray";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
 import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
@@ -188,6 +188,12 @@ dotenv.config();
 
 // Register IPC handlers before app is ready
 registerIpcHandlers();
+
+// Lightweight IPC handler for the renderer to activate the tray badge
+// (e.g. when a chat-completion notification fires while the window is hidden)
+ipcMain.handle("tray:set-badge", () => {
+  setTrayBadge();
+});
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
