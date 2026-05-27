@@ -66,13 +66,9 @@ export function createTray(
 
   rebuildContextMenu();
 
-  // Left-click: explicitly pop up the same context menu.
-  // On Linux Mint/Cinnamon, right-click uses setContextMenu() natively,
-  // but left-click needs an explicit popUpContextMenu() call.
+  // Left-click → restore and focus the window
   tray.on("click", () => {
-    if (tray && !tray.isDestroyed() && currentMenu) {
-      tray.popUpContextMenu(currentMenu);
-    }
+    showWindow(mainWindow);
   });
 
   // When the window gains focus, clear the red badge and notifications
