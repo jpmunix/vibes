@@ -5,7 +5,7 @@ import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { Panel, PanelResizeHandle } from "react-resizable-panels";
-import { X, GripVertical, Loader2, Share2, Pencil, Trash2, MessageSquare, ChevronDown, ChevronRight } from "@/components/ui/icons";
+import { X, GripVertical, Loader2, Share2, Pencil, Trash2, MessageSquare, ChevronDown, ChevronRight, ClipboardCopy, Check } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VibesMarkdownParser } from "./VibesMarkdownParser";
@@ -322,6 +322,20 @@ export function ArtifactSidebar() {
   }, [activeComment]);
 
   // ── Share ──────────────────────────────────────────────────────────────
+  // ── Copy MD to clipboard ──────────────────────────────────────────────
+  const [isCopied, setIsCopied] = useState(false);
+  const handleCopyMd = useCallback(async () => {
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      setIsCopied(true);
+      showSuccess("Markdown copiado al portapapeles");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (e) {
+      showError(e);
+    }
+  }, [content]);
+
   const [isSharing, setIsSharing] = useState(false);
   const handleShare = useCallback(async () => {
     if (isSharing || !content) return;
@@ -648,6 +662,20 @@ export function ArtifactSidebar() {
                 </PopoverContent>
               </Popover>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleCopyMd}
+              disabled={!content}
+              title="Copiar Markdown al portapapeles"
+            >
+              {isCopied ? (
+                <Check size={14} className="text-emerald-500" />
+              ) : (
+                <ClipboardCopy size={14} />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
