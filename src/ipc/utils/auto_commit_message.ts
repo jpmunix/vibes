@@ -82,7 +82,7 @@ export async function generateAutoCommitMessage({
           return `File: ${file.path} (${file.status})`;
         }
         // Enough context for the AI to understand what changed
-        return `File: ${file.path} (${file.status})\n${diff.slice(0, 500)}`;
+        return `File: ${file.path} (${file.status})\n${diff.slice(0, 3000)}`;
       } catch {
         return `File: ${file.path} (${file.status})`;
       }

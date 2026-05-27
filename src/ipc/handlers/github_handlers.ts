@@ -1732,7 +1732,7 @@ async function generateSquashCommitMessage({
     path: appPath,
     from: `origin/${branch}`,
     to: "HEAD",
-    maxBytes: 3000,
+    maxBytes: 30000,
   });
 
   if (!diffContext || diffContext.trim().length === 0) {
@@ -1740,13 +1740,15 @@ async function generateSquashCommitMessage({
   }
 
   const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
-  const prompt = `${systemPrompt}\n\nEsta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}`;
 
   const data = await openRouterCompletion({
     model,
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.3,
-    max_tokens: 100,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Esta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}` },
+    ],
+    temperature: 0.7,
+    max_tokens: 10000,
     title: "Vibes - Squash Commit Message",
   });
 
@@ -1953,7 +1955,7 @@ export function registerCommitMessageStreamHandler() {
       const diffsPromises = filesToAnalyze.map(async (file: { path: string; status: string }) => {
         try {
           const { diff } = await gitDiffFile({ path: appPath, filepath: file.path });
-          return `File: ${file.path} (${file.status})\n${diff.slice(0, 500)}`;
+          return `File: ${file.path} (${file.status})\n${diff.slice(0, 3000)}`;
         } catch {
           return `File: ${file.path} (${file.status})`;
         }
