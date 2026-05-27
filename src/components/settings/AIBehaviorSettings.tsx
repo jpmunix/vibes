@@ -199,14 +199,14 @@ export function AIBehaviorSettings({
         {/* ── Modelo Estratega ── */}
         <SettingRow
           label="Modelo estratega"
-          description="Títulos, resúmenes, compactación y tareas auxiliares de fondo"
+          description="Asistente de prompts, resúmenes de traspaso y compactación de memoria"
           control={<StrategistModelSelector />}
         />
 
         {/* ── Modelo Ejecutor ── */}
         <SettingRow
           label="Modelo ejecutor"
-          description="Títulos, resúmenes, compactación y tareas ligeras"
+          description="Títulos de chats/apps, mensajes de commit en Git y agente rápido de mockups"
           control={<ExecutorModelSelector />}
         />
 

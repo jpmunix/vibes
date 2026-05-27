@@ -154,7 +154,9 @@ const config: ForgeConfig = {
       "node_modules/@vscode",
     ],
   },
-  rebuildConfig: {},
+  rebuildConfig: {
+    onlyModules: [],
+  },
   makers: [
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
