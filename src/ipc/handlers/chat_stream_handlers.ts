@@ -14,6 +14,8 @@ import {
   type ToolExecutionOptions,
 } from "ai";
 
+import { getAuthContext } from "../../lib/auth/store";
+import { notifyStreamStarted, notifyStreamEnded } from "../../main/tray";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
@@ -310,9 +312,8 @@ function registerChatStreamHandlers() {
 
       // Notify tray: stream started → green icon
       try {
-        const { notifyStreamStarted } = require("../../../main/tray");
         notifyStreamStarted();
-      } catch (_) { /* tray not critical */ }
+      } catch (err) { logger.error("Tray notifyStreamStarted error:", err); }
 
       // Notify renderer that stream is starting
       safeSend(event.sender, "chat:stream:start", { chatId: req.chatId });
@@ -2099,9 +2100,8 @@ This conversation includes one or more image attachments. When the user uploads 
 
       // Notify tray: stream ended → red icon (if last stream)
       try {
-        const { notifyStreamEnded } = require("../../../main/tray");
         notifyStreamEnded({ text: streamChatTitle || "Tarea completada", chatId: req.chatId });
-      } catch (_) { /* tray not critical */ }
+      } catch (err) { logger.error("Tray notifyStreamEnded error:", err); }
 
       // Notify renderer that stream has ended
       safeSend(event.sender, "chat:stream:end", { chatId: req.chatId });

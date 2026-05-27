@@ -19,6 +19,8 @@
  */
 
 import log from "electron-log";
+import { sendNotificationToUI, checkPermissionConfig } from "./helpers";
+import { setTrayBadge } from "../../main/tray";
 import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk";
 import { type IpcMainInvokeEvent, BrowserWindow } from "electron";
 import { readSettings, writeSettings, decrypt } from "../../main/settings";
@@ -3630,7 +3632,6 @@ async function processEvents(
                                 const { BrowserWindow } = require("electron");
                                 const win = BrowserWindow.fromWebContents(event.sender);
                                 if (win && !win.isFocused()) {
-                                    const { setTrayBadge } = require("../../../main/tray");
                                     setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
                                 }
                             } catch (_) { /* tray badge not critical */ }
@@ -3723,7 +3724,6 @@ async function processEvents(
                             notif.show();
 
                             // Activate tray badge (red dot) with question text
-                            const { setTrayBadge } = require("../../../main/tray");
                             const badgeText = questionText.length > 70 ? questionText.slice(0, 67) + "…" : questionText;
                             setTrayBadge(`❓ ${badgeText}`, chatId);
                         }
