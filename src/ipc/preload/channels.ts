@@ -145,6 +145,8 @@ export const VALID_INVOKE_CHANNELS = [
 
   // Tray badge control (renderer -> main, fire-and-forget)
   "tray:set-badge",
+  "tray:stream-started",
+  "tray:stream-ended",
 ] as const;
 
 // =============================================================================

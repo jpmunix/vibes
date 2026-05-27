@@ -3631,7 +3631,7 @@ async function processEvents(
                                 const win = BrowserWindow.fromWebContents(event.sender);
                                 if (win && !win.isFocused()) {
                                     const { setTrayBadge } = require("../../../main/tray");
-                                    setTrayBadge();
+                                    setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
                                 }
                             } catch (_) { /* tray badge not critical */ }
 
@@ -3722,9 +3722,10 @@ async function processEvents(
                             });
                             notif.show();
 
-                            // Activate tray badge (red dot)
+                            // Activate tray badge (red dot) with question text
                             const { setTrayBadge } = require("../../../main/tray");
-                            setTrayBadge();
+                            const badgeText = questionText.length > 70 ? questionText.slice(0, 67) + "…" : questionText;
+                            setTrayBadge(`❓ ${badgeText}`, chatId);
                         }
                     } catch (_) { /* notification not critical */ }
                     break;
