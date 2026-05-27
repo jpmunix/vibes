@@ -1948,7 +1948,7 @@ export function registerCommitMessageStreamHandler() {
         return;
       }
 
-      const filesToAnalyze = uncommittedFiles.slice(0, 10);
+      const filesToAnalyze = uncommittedFiles.slice(0, 30);
 
       const diffsPromises = filesToAnalyze.map(async (file: { path: string; status: string }) => {
         try {
