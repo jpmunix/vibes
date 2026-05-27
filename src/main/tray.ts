@@ -64,12 +64,9 @@ export function createTray(
 
   rebuildContextMenu();
 
-  // Left-click on tray icon → show context menu with notifications + actions
-  tray.on("click", () => {
-    if (tray && !tray.isDestroyed()) {
-      tray.popUpContextMenu();
-    }
-  });
+  // NOTE: No explicit 'click' handler needed. On Linux (Cinnamon/AppIndicator),
+  // setContextMenu() already makes the menu appear on both left and right click.
+  // Adding a 'click' handler would consume the event and prevent the native menu.
 
   // When the window gains focus, clear the red badge and notifications
   mainWindow.on("focus", () => {
