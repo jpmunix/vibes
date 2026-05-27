@@ -297,6 +297,7 @@ function registerChatStreamHandlers() {
       return;
     }
     const db = getRemoteDb();
+    let streamChatTitle: string | undefined;
 
     try {
       const fileUploadsState = FileUploadsState.getInstance();
@@ -306,6 +307,12 @@ function registerChatStreamHandlers() {
       // Create an AbortController for this stream
       const abortController = new AbortController();
       activeStreams.set(req.chatId, abortController);
+
+      // Notify tray: stream started → green icon
+      try {
+        const { notifyStreamStarted } = require("../../main/tray");
+        notifyStreamStarted();
+      } catch (_) { /* tray not critical */ }
 
       // Notify renderer that stream is starting
       safeSend(event.sender, "chat:stream:start", { chatId: req.chatId });
@@ -324,6 +331,9 @@ function registerChatStreamHandlers() {
       if (!chat) {
         throw new Error(`Chat not found: ${req.chatId}`);
       }
+
+      // Capture title for tray notification (accessible in finally block)
+      streamChatTitle = (chat as any).title || undefined;
 
       // ── Custom Agents & Slash Commands Resolution ──────────────────
       const customAgents = await db
@@ -2086,6 +2096,12 @@ This conversation includes one or more image attachments. When the user uploads 
     } finally {
       // Clean up the abort controller
       activeStreams.delete(req.chatId);
+
+      // Notify tray: stream ended → red icon (if last stream)
+      try {
+        const { notifyStreamEnded } = require("../../main/tray");
+        notifyStreamEnded({ text: streamChatTitle || "Tarea completada", chatId: req.chatId });
+      } catch (_) { /* tray not critical */ }
 
       // Notify renderer that stream has ended
       safeSend(event.sender, "chat:stream:end", { chatId: req.chatId });

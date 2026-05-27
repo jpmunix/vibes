@@ -8,6 +8,7 @@ const logger = log.scope("tray");
 let tray: Tray | null = null;
 let mainWindowRef: BrowserWindow | null = null;
 let flavorRef: FlavorConfig | null = null;
+let currentMenu: Electron.Menu | null = null;
 
 // Icon variants
 let normalIcon: Electron.NativeImage | null = null;
@@ -32,10 +33,11 @@ const MAX_PENDING_NOTIFICATIONS = 5;
 /**
  * Creates a system-tray icon with a context menu.
  *
- * Behaviour:
- * - Left-click on the tray icon → show / focus the main window.
- * - Right-click → context menu with pending notifications + "Mostrar Vibes" + "Salir".
- * - "Salir" performs a real app.quit() (bypasses the close-to-tray logic).
+ * Both left-click and right-click open the context menu showing:
+ * - Pending notifications (if any)
+ * - Active stream count (if any)
+ * - "Mostrar Vibes" to restore the window
+ * - "Salir" to fully quit
  *
  * State colors:
  * - Normal: default icon (no activity)
@@ -64,9 +66,14 @@ export function createTray(
 
   rebuildContextMenu();
 
-  // NOTE: No explicit 'click' handler needed. On Linux (Cinnamon/AppIndicator),
-  // setContextMenu() already makes the menu appear on both left and right click.
-  // Adding a 'click' handler would consume the event and prevent the native menu.
+  // Left-click: explicitly pop up the same context menu.
+  // On Linux Mint/Cinnamon, right-click uses setContextMenu() natively,
+  // but left-click needs an explicit popUpContextMenu() call.
+  tray.on("click", () => {
+    if (tray && !tray.isDestroyed() && currentMenu) {
+      tray.popUpContextMenu(currentMenu);
+    }
+  });
 
   // When the window gains focus, clear the red badge and notifications
   mainWindow.on("focus", () => {
@@ -130,6 +137,7 @@ function setTrayState(state: TrayState) {
 export function notifyStreamStarted() {
   activeStreamCount++;
   setTrayState("green");
+  rebuildContextMenu();
 }
 
 /**
@@ -157,6 +165,8 @@ export function notifyStreamEnded(notification?: { text: string; chatId?: number
     }
   }
   // else: still running streams → stay green
+
+  rebuildContextMenu();
 }
 
 // ── Pending Notifications (shown in context menu) ───────────────────────────
@@ -270,7 +280,9 @@ function rebuildContextMenu() {
     },
   });
 
-  tray.setContextMenu(Menu.buildFromTemplate(template));
+  // Store reference for left-click popUpContextMenu
+  currentMenu = Menu.buildFromTemplate(template);
+  tray.setContextMenu(currentMenu);
 }
 
 // ── Cleanup ─────────────────────────────────────────────────────────────────
@@ -288,6 +300,7 @@ export function destroyTray() {
   normalIcon = null;
   greenIcon = null;
   redIcon = null;
+  currentMenu = null;
   currentState = "normal";
   activeStreamCount = 0;
   pendingNotifications.length = 0;

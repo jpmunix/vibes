@@ -220,9 +220,6 @@ export function useStreamChat({
       updateMapAtom(setErrorById, chatId, null);
       updateMapAtom(setIsStreamingById, chatId, true);
 
-      // Notify tray: stream started → green badge
-      try { (window as any).electron?.ipcRenderer?.invoke("tray:stream-started"); } catch {}
-
       // Convert FileAttachment[] (with File objects) to ChatAttachment[] (base64 encoded)
       let convertedAttachments: ChatAttachment[] | undefined;
       if (attachments && attachments.length > 0) {
@@ -428,12 +425,6 @@ export function useStreamChat({
                 sendAppNotification({ title: appName, body, settings });
               }
 
-              // Notify tray: stream ended → red badge + notification text in menu
-              try {
-                const trayText = response.chatSummary || chat?.title || "Tarea completada";
-                (window as any).electron?.ipcRenderer?.invoke("tray:stream-ended", { text: trayText, chatId });
-              } catch {}
-
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
 
@@ -565,11 +556,6 @@ export function useStreamChat({
 
               console.error(`[CHAT] Stream error for ${chatId}:`, errorMessage);
               updateMapAtom(setErrorById, chatId, errorMessage);
-
-              // Notify tray: stream ended with error → red badge
-              try {
-                (window as any).electron?.ipcRenderer?.invoke("tray:stream-ended", { text: `Error: ${errorMessage.slice(0, 60)}`, chatId });
-              } catch {}
 
               const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
