@@ -310,7 +310,7 @@ function registerChatStreamHandlers() {
 
       // Notify tray: stream started → green icon
       try {
-        const { notifyStreamStarted } = require("../../main/tray");
+        const { notifyStreamStarted } = require("../../../main/tray");
         notifyStreamStarted();
       } catch (_) { /* tray not critical */ }
 
@@ -2099,7 +2099,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
       // Notify tray: stream ended → red icon (if last stream)
       try {
-        const { notifyStreamEnded } = require("../../main/tray");
+        const { notifyStreamEnded } = require("../../../main/tray");
         notifyStreamEnded({ text: streamChatTitle || "Tarea completada", chatId: req.chatId });
       } catch (_) { /* tray not critical */ }
 
