@@ -3460,10 +3460,26 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         }
         if (selectedChatId === chatId) {
           setSelectedChatId(null);
-          navigate({
-            to: "/",
-            search: selectedAppId ? { appId: selectedAppId } : {},
-          });
+        }
+
+        // If no chats remain in this workspace, auto-create a new empty one
+        if (selectedAppId) {
+          const remaining = await ipc.chat.getChats(selectedAppId);
+          if (remaining.length === 0) {
+            const newChatId = await ipc.chat.createChat(selectedAppId);
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+            navigate({
+              to: "/",
+              search: { appId: selectedAppId, chatId: newChatId },
+            });
+          } else if (selectedChatId === chatId) {
+            navigate({
+              to: "/",
+              search: { appId: selectedAppId },
+            });
+          }
+        } else if (selectedChatId === chatId) {
+          navigate({ to: "/" });
         }
       } catch (e) {
         showError(e);
