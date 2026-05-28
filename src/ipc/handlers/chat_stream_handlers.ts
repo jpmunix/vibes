@@ -2337,17 +2337,21 @@ function escapeVibesTags(text: string): string {
     .replace(/<dyad/g, "＜dyad")
     .replace(/<\/dyad/g, "＜/dyad")
     .replace(/<assistant_/g, "＜assistant_")
-    .replace(/<\/assistant_/g, "＜/assistant_");
+    .replace(/<\/assistant_/g, "＜/assistant_")
+    .replace(/<assistant/g, "＜assistant")
+    .replace(/<\/assistant/g, "＜/assistant");
 }
 
 /**
- * Strip Gemini-style wrapper tags from streamed content.
+ * Strip Gemini-style/Llama-style wrapper tags from streamed content.
  * - <assistant_response>...</assistant_response> → keeps inner content (the actual response)
+ * - <assistant>...</assistant> → keeps inner content (the actual response)
  * - <assistant_thought>...</assistant_thought> → converts to <think>...</think> (already handled by the app)
  */
 function stripAssistantWrapperTags(text: string): string {
   return text
     .replace(/<\/?assistant_response>/g, "")
+    .replace(/<\/?assistant>/g, "")
     .replace(
       /<assistant_thought>([\s\S]*?)<\/assistant_thought>/g,
       "<think>$1</think>",

@@ -3954,6 +3954,11 @@ function cleanResponseText(text: string): string {
     // Remove <redacted>...</redacted> blocks
     cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
 
+    // Strip Gemini-style/Llama-style assistant wrapper tags
+    cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
+    cleaned = cleaned.replace(/<\/?assistant>/gi, "");
+    cleaned = cleaned.replace(/<assistant_thought>([\s\S]*?)<\/assistant_thought>/gi, "<think>$1</think>");
+
     // Strip ALL HTML/XML tags from inside <think> blocks and remove empty ones
     cleaned = cleaned.replace(/<think>([\s\S]*?)<\/think>/gi, (_match, inner: string) => {
         // Remove all XML/HTML tags from reasoning content
