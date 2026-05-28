@@ -5,13 +5,6 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useAtomValue } from "jotai";
 import { preferencesHydratedAtom } from "@/atoms/preferenceAtoms";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
 export function OpenRouterCreditsButton() {
   const hydrated = useAtomValue(preferencesHydratedAtom);
 
@@ -32,52 +25,41 @@ export function OpenRouterCreditsButton() {
     return null; // Don't show if there's no API key or error
   }
 
-  const formattedUsage = data.totalUsage.toFixed(2).replace(".", ",");
   const formattedBalance = data.availableCredits.toFixed(2).replace(".", ",");
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className="no-app-region-drag topnav-util-btn gap-1 !w-auto px-2"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            style={{ display: 'flex', alignItems: 'center' }}
-          >
-            {isFetching ? (
-              <RefreshCw size={15} className="animate-spin" />
-            ) : (
-              <DollarSign size={15} />
-            )}
-            <span className="typo-badge leading-none opacity-70">
-              {isLoading ? "..." : formattedBalance}
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="p-4 rounded-xl shadow-lg border-border bg-popover text-popover-foreground" arrowClassName="fill-popover">
-          <div className="space-y-1">
-            <p className="typo-menu-header mb-3">
-              {data.label || "OpenRouter"}
-            </p>
-            <div className="flex justify-between gap-4 typo-body">
-              <span className="text-muted-foreground">Gasto Total:</span>
-              <span className="typo-mono text-foreground">${data.totalUsage.toFixed(2)}</span>
+    <>
+      <div className="h-px bg-border/50 my-1 mx-1" />
+      <div className="px-2 py-1.5">
+        <div className="rounded-lg bg-accent/30 border border-border/50 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <DollarSign size={13} className="text-primary" />
+              <span>Saldo OpenRouter</span>
             </div>
-            <div className="flex justify-between gap-4 typo-body">
-              <span className="text-muted-foreground">Créditos Restantes:</span>
-              <span className="typo-mono text-foreground">${data.availableCredits.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between gap-4 typo-body border-t border-border mt-3 pt-3">
-              <span className="text-muted-foreground">Total Recargado:</span>
-              <span className="typo-mono text-foreground">${data.totalCredits.toFixed(2)}</span>
-            </div>
-            <p className="typo-micro mt-3 text-right opacity-50">
-              Click para actualizar
-            </p>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                refetch();
+              }}
+              disabled={isFetching}
+              className="text-muted-foreground hover:text-foreground disabled:opacity-50 p-0.5 rounded transition-colors cursor-pointer"
+              title="Actualizar saldo"
+            >
+              <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
+            </button>
           </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-lg font-bold typo-mono text-foreground leading-none">
+              {isLoading ? "..." : `$${formattedBalance}`}
+            </span>
+            <span className="text-[10px] text-muted-foreground typo-mono">
+              Gasto: ${data.totalUsage.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

@@ -28,13 +28,12 @@ De izquierda a derecha:
 ### 🚀 Notas de Versión
 Aparece cuando hay una nueva versión. Muestra un **punto pulsante** que indica novedades sin leer. Click para abrir la ventana de release notes. Desaparece al cerrar la app.
 
-### 💰 Créditos OpenRouter
-Muestra tu saldo actual en OpenRouter. Click para ver detalles.
-
 ### 👤 Avatar de usuario
 Tu foto de perfil. Click para abrir el menú con:
 
-- **Tu perfil**: nombre y email
-- **Ajustes**: abre la página de configuración
-- **Panel Admin**: solo visible para administradores
+- **Tu perfil**: nombre y email.
+- **💰 Créditos OpenRouter**: muestra tu saldo disponible en OpenRouter y gasto total, con un botón para actualizar el saldo sin salir del menú.
+- **Editar Perfil**: abre el modal para cambiar los datos de tu cuenta.
+- **📖 Documentación** (solo visible para administradores): abre la ventana de documentación del sistema.
+- **Panel Admin**: solo visible para administradores.
 - **Cerrar sesión**

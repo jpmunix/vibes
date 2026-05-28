@@ -1,9 +1,9 @@
-import { dropdownOpenAtom, sidebarActionAtom, type SidebarAction } from "@/atoms/uiAtoms";
+import { sidebarActionAtom, type SidebarAction } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+
 import {
   Bot,
   Settings,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
-import { useSettings } from "@/hooks/useSettings";
+
 
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
@@ -39,7 +39,7 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isAdmin as checkIsAdmin } from "@/lib/admin";
 
-import { useRouter } from "@tanstack/react-router";
+
 
 
 import { SettingsList } from "./SettingsList";
@@ -92,8 +92,7 @@ export function TopNavbar() {
 
   // User avatar state
   const user = useAtomValue(userAtom);
-  const { navigate } = useRouter();
-  const { settings } = useSettings();
+
   const { theme, intensity } = useTheme();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -122,14 +121,7 @@ export function TopNavbar() {
     }
   };
 
-  // Get the display label for the active section
-  const getActiveLabel = () => {
-    const found = items.find((i) => i.tabKey === activeTab);
-    if (found) return found.title;
-    if (activeTab === "Ajustes") return "Ajustes";
-    if (activeTab === "Biblioteca") return "Biblioteca";
-    return "";
-  };
+
 
   return (
     <>
@@ -352,23 +344,7 @@ export function TopNavbar() {
             </button>
           )}
 
-          {isAdmin && (
-            <button
-              type="button"
-              className="topnav-util-btn no-app-region-drag"
-              title="Documentación"
-              onClick={() => {
-                ipc.system.openDocsWindow({
-                  theme: theme as "light" | "dark" | "system",
-                  themeIntensity: intensity,
-                });
-              }}
-            >
-              <BookOpen size={17} />
-            </button>
-          )}
 
-          <OpenRouterCreditsButton />
 
           {/* User Avatar */}
           {user && (
@@ -413,6 +389,8 @@ export function TopNavbar() {
                     </span>
                   </div>
                 </div>
+                <OpenRouterCreditsButton />
+                <div className="h-px bg-border/50 my-1 mx-1" />
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent"
                   onClick={() => setIsProfileModalOpen(true)}
@@ -420,6 +398,20 @@ export function TopNavbar() {
                   <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                   <span className="typo-tab">Editar Perfil</span>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    className="py-2 cursor-pointer focus:bg-accent"
+                    onClick={() => {
+                      ipc.system.openDocsWindow({
+                        theme: theme as "light" | "dark" | "system",
+                        themeIntensity: intensity,
+                      });
+                    }}
+                  >
+                    <BookOpen className="mr-3 h-4 w-4 text-muted-foreground" />
+                    <span className="typo-tab">Documentación</span>
+                  </DropdownMenuItem>
+                )}
                 {isAdmin && (
                   <DropdownMenuItem
                     className="py-2 cursor-pointer focus:bg-accent"
