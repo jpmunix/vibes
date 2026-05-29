@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGitPanel } from "@/hooks/useGitPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +22,7 @@ interface GitQuickCommitProps {
   onDismiss: () => void;
 }
 
-export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps) {
+export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuickCommitProps) {
   const queryClient = useQueryClient();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -37,6 +37,16 @@ export function GitQuickCommit({ appId, chatId, onDismiss }: GitQuickCommitProps
     isPushing,
     isGeneratingMessage,
   } = useGitPanel(appId);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [chatId, appId]);
+
+  useEffect(() => {
+    if (uncommittedFiles.length === 0) {
+      setIsExpanded(false);
+    }
+  }, [uncommittedFiles.length]);
 
   if (uncommittedFiles.length === 0) {
     return null;

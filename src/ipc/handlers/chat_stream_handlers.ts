@@ -1513,6 +1513,11 @@ This conversation includes one or more image attachments. When the user uploads 
           const langName = langMap[chatLang] || chatLang;
 
           for (const prompt of activePromptsRows) {
+            // If it's a custom agent in replace mode, we only keep the language rule from system prompts (ctx_*)
+            if (customPromptMode === "replace" && prompt.systemId && prompt.systemId !== "ctx_language") {
+              continue;
+            }
+
             // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
             if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
               const scope = (prompt as any).scope || "all";
@@ -1540,7 +1545,7 @@ This conversation includes one or more image attachments. When the user uploads 
           }
 
           // Fallback: if not in DB and build mode active, inject default
-          if (!hasWalkthroughInDb && agentId === "build") {
+          if (!hasWalkthroughInDb && agentId === "build" && customPromptMode !== "replace") {
             const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
             if (defaultWalkthrough) {
               contextInstructions.push(defaultWalkthrough);

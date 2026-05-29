@@ -195,6 +195,11 @@ export function ChatInput({
     }
     prevStreamingRef.current = isStreaming;
   }, [isStreaming]);
+
+  // Reset quick commit dismissal state when switching chats
+  useEffect(() => {
+    setIsQuickCommitDismissed(false);
+  }, [chatId]);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -872,6 +877,7 @@ export function ChatInput({
 
               {appId && chatId && !isStreaming && !isQuickCommitDismissed && (
                 <GitQuickCommit
+                  key={`${appId}-${chatId}`}
                   appId={appId}
                   chatId={chatId}
                   onDismiss={() => setIsQuickCommitDismissed(true)}
