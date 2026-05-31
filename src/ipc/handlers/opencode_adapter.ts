@@ -155,6 +155,19 @@ export function resolveModelForAgent(
 // the user's answer directly into the live chat stream content.
 let activeTextInjector: ((text: string) => void) | null = null;
 
+// ── Multi-question response accumulator ──
+// Tracks partial answers for multi-question QuestionRequests.
+// Key: requestId, Value: { totalQuestions, answers (index → string[]), timeoutId }
+interface PendingQuestionGroup {
+    totalQuestions: number;
+    answers: Map<number, string[]>;  // questionIndex → answer labels
+    timeoutId?: ReturnType<typeof setTimeout>;
+}
+const pendingQuestionGroups = new Map<string, PendingQuestionGroup>();
+
+/** Timeout for auto-rejecting questions the user doesn't answer (5 minutes). */
+const QUESTION_TIMEOUT_MS = 5 * 60 * 1000;
+
 // ── Permission response infrastructure ──
 // Pending permission resolvers: Map<permissionRequestId, resolve function>
 const pendingPermissionResolvers = new Map<string, (response: string) => void>();
@@ -3678,14 +3691,7 @@ async function processEvents(
                         break;
                     }
 
-                    // Handle the FIRST question (most common case — multi-question support can be added later)
-                    const q = questions[0];
-                    const questionText = q.question || q.header || "";
-                    const questionOptions = Array.isArray(q.options)
-                        ? q.options.map((o: any) => o.label || String(o))
-                        : [];
-
-                    logger.info(`[OC:Event] ❓ Question asked: "${questionText}" (id=${questionRequestId}, options=${questionOptions.length})`);
+                    logger.info(`[OC:Event] ❓ Question asked: ${questions.length} question(s) (id=${questionRequestId})`);
 
                     // Close any open think block before the question UI
                     if (isCurrentlyReasoning) {
@@ -3693,28 +3699,72 @@ async function processEvents(
                         isCurrentlyReasoning = false;
                     }
 
-                    // Question UI is rendered only in the ChatInput area (via atom),
-                    // not inline in the agent bubble — so we don't emit a vibes-ask-user tag.
                     sendUpdate();
 
-                    // 2. Send IPC event to renderer so VibesAskUser pending state is populated
-                    safeSend(event.sender, "agent-tool:ask-user-request", {
-                        requestId: questionRequestId,
-                        chatId,
-                        question: questionText,
-                        options: questionOptions.length > 0 ? questionOptions : null,
-                        context: null,
-                        multiple: !!q.multiple,
+                    // Initialize multi-question group tracker
+                    const totalQ = questions.length;
+                    pendingQuestionGroups.set(questionRequestId, {
+                        totalQuestions: totalQ,
+                        answers: new Map(),
                     });
 
-                    // 3. Native OS notification + tray badge if the window is not focused
+                    // Set a 5-minute timeout to auto-reject if user doesn't respond
+                    const timeoutId = setTimeout(async () => {
+                        const group = pendingQuestionGroups.get(questionRequestId);
+                        if (!group) return; // Already answered
+                        pendingQuestionGroups.delete(questionRequestId);
+                        logger.warn(`[OC:Event] ⏱️ Question ${questionRequestId} timed out after ${QUESTION_TIMEOUT_MS / 1000}s — auto-rejecting`);
+                        try {
+                            const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+                            const url = `${serverUrl}/question/${encodeURIComponent(questionRequestId)}/reject${dirParam}`;
+                            await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
+                        } catch (e: any) {
+                            logger.error(`[OC:Event] Failed to reject timed-out question: ${e.message}`);
+                        }
+                        // Inject timeout notice into the live stream
+                        if (activeTextInjector) {
+                            activeTextInjector(`\n\n> ⏱️ _Pregunta expirada sin respuesta (${QUESTION_TIMEOUT_MS / 60000} min)_\n\n`);
+                        }
+                    }, QUESTION_TIMEOUT_MS);
+
+                    const groupEntry = pendingQuestionGroups.get(questionRequestId)!;
+                    groupEntry.timeoutId = timeoutId;
+
+                    // Emit ALL questions as separate PendingAskUser entries
+                    for (let i = 0; i < questions.length; i++) {
+                        const q = questions[i];
+                        const questionText = q.question || q.header || "";
+                        const questionOptions = Array.isArray(q.options)
+                            ? q.options.map((o: any) => o.label || String(o))
+                            : [];
+
+                        logger.info(`[OC:Event] ❓ Q[${i + 1}/${totalQ}]: "${questionText}" (options=${questionOptions.length}, multiple=${!!q.multiple})`);
+
+                        safeSend(event.sender, "agent-tool:ask-user-request", {
+                            requestId: questionRequestId,
+                            chatId,
+                            question: questionText,
+                            options: questionOptions.length > 0 ? questionOptions : null,
+                            context: null,
+                            multiple: !!q.multiple,
+                            questionIndex: i,
+                            totalQuestions: totalQ,
+                        });
+                    }
+
+                    // Native OS notification + tray badge for the first question
                     try {
+                        const firstQ = questions[0];
+                        const firstText = firstQ.question || firstQ.header || "";
                         const { Notification, BrowserWindow } = require("electron");
                         const win = BrowserWindow.fromWebContents(event.sender);
                         if (win && !win.isFocused()) {
+                            const body = totalQ > 1
+                                ? `${totalQ} preguntas del agente`
+                                : (firstText.length > 120 ? firstText.slice(0, 117) + "…" : firstText);
                             const notif = new Notification({
                                 title: "El agente necesita tu respuesta",
-                                body: questionText.length > 120 ? questionText.slice(0, 117) + "…" : questionText,
+                                body,
                                 silent: false,
                             });
                             notif.on("click", () => {
@@ -3723,8 +3773,7 @@ async function processEvents(
                             });
                             notif.show();
 
-                            // Activate tray badge (red dot) with question text
-                            const badgeText = questionText.length > 70 ? questionText.slice(0, 67) + "…" : questionText;
+                            const badgeText = firstText.length > 70 ? firstText.slice(0, 67) + "…" : firstText;
                             setTrayBadge(`❓ ${badgeText}`, chatId);
                         }
                     } catch (_) { /* notification not critical */ }
@@ -3754,6 +3803,13 @@ async function processEvents(
 
     // Clear the text injector when the stream ends
     activeTextInjector = null;
+
+    // Clean up any pending question groups and their timeouts
+    for (const [reqId, group] of pendingQuestionGroups.entries()) {
+        if (group.timeoutId) clearTimeout(group.timeoutId);
+        pendingQuestionGroups.delete(reqId);
+        logger.info(`[OC:Event] 🧹 Cleaned up pending question group ${reqId} (stream ended)`);
+    }
 }
 
 /**
@@ -4188,7 +4244,7 @@ import { agentContracts } from "../types/agent";
  */
 export function registerQuestionHandler() {
     createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
-        const { requestId, response } = params;
+        const { requestId, response, questionIndex = 0 } = params;
 
         if (!serverUrl) {
             logger.error("[OC:AskUser] No OpenCode server URL — cannot reply to question");
@@ -4197,38 +4253,75 @@ export function registerQuestionHandler() {
 
         // response can be a single string or an array of strings (multi-select)
         const answerLabels = Array.isArray(response) ? response : [response];
-        logger.info(`[OC:AskUser] Replying to question ${requestId}: ${JSON.stringify(answerLabels).substring(0, 120)}`);
+        logger.info(`[OC:AskUser] Answer for question ${requestId}[${questionIndex}]: ${JSON.stringify(answerLabels).substring(0, 120)}`);
 
-        try {
-            // The v1 SDK client doesn't expose `question` — use direct HTTP.
-            // Endpoint: POST /question/{requestID}/reply?directory=...
-            // Body: { answers: Array<Array<string>> }  (one answer array per question)
-            const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
-            const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ answers: [answerLabels] }),
-            });
-
-            const text = await res.text();
-
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}: ${text}`);
-            }
-
-            logger.info(`[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`);
-
-            // Inject the user's answer as a blockquote into the live stream
-            // Uses a zero-width space (\u200B) as invisible marker for purple styling
-            if (activeTextInjector) {
-                const answerDisplay = answerLabels.join(", ");
-                activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
-            }
-        } catch (e: any) {
-            logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
-            throw e;
+        // Inject the user's answer as a blockquote into the live stream immediately
+        if (activeTextInjector) {
+            const answerDisplay = answerLabels.join(", ");
+            activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
         }
+
+        // Check if this is part of a multi-question group
+        const group = pendingQuestionGroups.get(requestId);
+
+        if (!group || group.totalQuestions <= 1) {
+            // Single question (or legacy flow) — send immediately
+            pendingQuestionGroups.delete(requestId);
+            if (group?.timeoutId) clearTimeout(group.timeoutId);
+
+            try {
+                const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+                const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ answers: [answerLabels] }),
+                });
+
+                const text = await res.text();
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+                logger.info(`[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`);
+            } catch (e: any) {
+                logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
+                throw e;
+            }
+            return;
+        }
+
+        // Multi-question: accumulate this answer
+        group.answers.set(questionIndex, answerLabels);
+        logger.info(`[OC:AskUser] Accumulated ${group.answers.size}/${group.totalQuestions} answers for ${requestId}`);
+
+        // Check if all questions have been answered
+        if (group.answers.size >= group.totalQuestions) {
+            // All answered — clear timeout and send the combined reply
+            if (group.timeoutId) clearTimeout(group.timeoutId);
+            pendingQuestionGroups.delete(requestId);
+
+            // Build answers array in order: [[q0_labels], [q1_labels], ...]
+            const orderedAnswers: string[][] = [];
+            for (let i = 0; i < group.totalQuestions; i++) {
+                orderedAnswers.push(group.answers.get(i) || ["(sin respuesta)"]);
+            }
+
+            try {
+                const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+                const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ answers: orderedAnswers }),
+                });
+
+                const text = await res.text();
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+                logger.info(`[OC:AskUser] ✅ Multi-question reply sent (${group.totalQuestions} answers) for ${requestId}. Server: ${text}`);
+            } catch (e: any) {
+                logger.error(`[OC:AskUser] ❌ Failed to reply to multi-question ${requestId}: ${e.message}`);
+                throw e;
+            }
+        }
+        // Otherwise, wait for remaining answers — UI will show next question
     });
 }
 

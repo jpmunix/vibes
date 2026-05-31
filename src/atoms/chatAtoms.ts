@@ -63,6 +63,10 @@ export interface PendingAskUser {
   options: string[] | null;
   context: string | null;
   multiple?: boolean;
+  /** Index of this question within a multi-question QuestionRequest (0-based) */
+  questionIndex: number;
+  /** Total number of questions in the parent QuestionRequest */
+  totalQuestions: number;
 }
 
 export const pendingAskUsersAtom = atom<PendingAskUser[]>([]);

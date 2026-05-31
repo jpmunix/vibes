@@ -55,6 +55,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
 
     const isMultiple = !!pendingEntry?.multiple;
     const isWaitingForResponse = !!pendingEntry;
+    const isPartOfGroup = (pendingEntry?.totalQuestions ?? 1) > 1;
 
     // Focus custom input when switching to custom mode
     useEffect(() => {
@@ -112,16 +113,14 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
             await ipc.agent.respondToAskUser({
                 requestId: pendingEntry.requestId,
                 response,
+                questionIndex: pendingEntry.questionIndex,
             });
-            // Remove from pending — the answer blockquote is injected
-            // directly into the chat stream by the main process handler,
-            // so we don't need to show any confirmation here.
-            // Remove ALL entries matching this question+chatId (not just requestId)
-            // to handle duplicate question.asked events from OpenCode.
+            // Remove only THIS specific question from pending — don't remove
+            // other questions from the same multi-question group.
             setPendingAskUsers((prev) =>
                 prev.filter(
                     (p) =>
-                        p.requestId !== pendingEntry.requestId &&
+                        !(p.requestId === pendingEntry.requestId && p.questionIndex === pendingEntry.questionIndex) &&
                         !(p.chatId === chatId && p.question === question),
                 ),
             );
@@ -172,6 +171,11 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
 
                 {/* Status indicator */}
                 <div className="ml-auto flex items-center gap-1.5">
+                    {isPartOfGroup && (
+                        <span className="text-[10px] font-medium mr-1.5" style={{ color: "var(--accent-teal-label)" }}>
+                            {(pendingEntry?.questionIndex ?? 0) + 1}/{pendingEntry?.totalQuestions}
+                        </span>
+                    )}
                     <span
                         className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
                         style={{ background: "var(--accent-teal-pulse)" }}
