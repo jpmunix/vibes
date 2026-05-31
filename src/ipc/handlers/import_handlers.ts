@@ -36,167 +36,193 @@ export function registerImportHandlers() {
   });
 
   // Handler for checking if AI_RULES.md exists
-  createTypedHandler(importContracts.checkAiRules, async (_, { path: appPath }) => {
-    try {
-      await fs.access(path.join(appPath, "AI_RULES.md"));
-      return { exists: true };
-    } catch {
-      return { exists: false };
-    }
-  });
-
-  // Handler for checking if an app name is already taken
-  createTypedHandler(importContracts.checkAppName, async (_, { appName, skipCopy }, context) => {
-    // Only check filesystem if we're copying to vibes-apps
-    if (!skipCopy) {
-      const appPath = getVibesAppPath(appName);
+  createTypedHandler(
+    importContracts.checkAiRules,
+    async (_, { path: appPath }) => {
       try {
-        await fs.access(appPath);
-        // Folder exists in vibes-apps — check if it's already registered in the DB for this user
-        const existingApp = context.userId
-          ? await getRemoteDb().query.apps.findFirst({
-              where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
-            })
-          : await getRemoteDb().query.apps.findFirst({
-              where: eq(remoteSchema.apps.name, appName),
-            });
-        if (existingApp) {
-          return { exists: true, existingAppId: existingApp.id };
-        }
+        await fs.access(path.join(appPath, "AI_RULES.md"));
         return { exists: true };
       } catch {
-        // Path doesn't exist, continue checking database
+        return { exists: false };
       }
-    }
+    },
+  );
 
-    // Check database — scope to the current user so we don't collide with other users' apps
-    const existingApp = context.userId
-      ? await getRemoteDb().query.apps.findFirst({
-          where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
-        })
-      : await getRemoteDb().query.apps.findFirst({
-          where: eq(remoteSchema.apps.name, appName),
-        });
-
-    return {
-      exists: !!existingApp,
-      existingAppId: existingApp?.id,
-    };
-  });
-
-  // Handler for importing an app
-  createTypedHandler(importContracts.importApp, async (_, { path: sourcePath, appName, installCommand, startCommand, skipCopy }) => {
-    // Validate the source path exists
-    try {
-      await fs.access(sourcePath);
-    } catch {
-      throw new Error("Source folder does not exist");
-    }
-
-    // Determine the app path based on skipCopy
-    const appPath = skipCopy ? sourcePath : getVibesAppPath(appName);
-
-    if (!skipCopy) {
-      // Check if the app already exists in vibes-apps
-      const errorMessage = "An app with this name already exists";
-      try {
-        await fs.access(appPath);
-        throw new Error(errorMessage);
-      } catch (error: any) {
-        if (error.message === errorMessage) {
-          throw error;
+  // Handler for checking if an app name is already taken
+  createTypedHandler(
+    importContracts.checkAppName,
+    async (_, { appName, skipCopy }, context) => {
+      // Only check filesystem if we're copying to vibes-apps
+      if (!skipCopy) {
+        const appPath = getVibesAppPath(appName);
+        try {
+          await fs.access(appPath);
+          // Folder exists in vibes-apps — check if it's already registered in the DB for this user
+          const existingApp = context.userId
+            ? await getRemoteDb().query.apps.findFirst({
+                where: and(
+                  eq(remoteSchema.apps.name, appName),
+                  eq(remoteSchema.apps.userId, context.userId),
+                ),
+              })
+            : await getRemoteDb().query.apps.findFirst({
+                where: eq(remoteSchema.apps.name, appName),
+              });
+          if (existingApp) {
+            return { exists: true, existingAppId: existingApp.id };
+          }
+          return { exists: true };
+        } catch {
+          // Path doesn't exist, continue checking database
         }
       }
-      // Copy the app folder to the Vibes apps directory.
-      // Why not use fs.cp? Because we want stable ordering for
-      // tests.
-      await copyDirectoryRecursive(sourcePath, appPath);
-    }
 
-    const isGitRepo = await fs
-      .access(path.join(appPath, ".git"))
-      .then(() => true)
-      .catch(() => false);
-    if (!isGitRepo) {
-      // Initialize git repo and create first commit
-      await gitInit({ path: appPath, ref: "main" });
+      // Check database — scope to the current user so we don't collide with other users' apps
+      const existingApp = context.userId
+        ? await getRemoteDb().query.apps.findFirst({
+            where: and(
+              eq(remoteSchema.apps.name, appName),
+              eq(remoteSchema.apps.userId, context.userId),
+            ),
+          })
+        : await getRemoteDb().query.apps.findFirst({
+            where: eq(remoteSchema.apps.name, appName),
+          });
 
-      // Only stage + commit if the folder has trackable files
-      const entries = await fs.readdir(appPath);
-      const hasFiles = entries.some((e) => e !== ".git");
-      if (hasFiles) {
-        await gitAdd({ path: appPath, filepath: "." });
-        await gitCommit({
-          path: appPath,
-          message: "Init vibes app",
-        });
+      return {
+        exists: !!existingApp,
+        existingAppId: existingApp?.id,
+      };
+    },
+  );
+
+  // Handler for importing an app
+  createTypedHandler(
+    importContracts.importApp,
+    async (
+      _,
+      { path: sourcePath, appName, installCommand, startCommand, skipCopy },
+    ) => {
+      // Validate the source path exists
+      try {
+        await fs.access(sourcePath);
+      } catch {
+        throw new Error("Source folder does not exist");
       }
-    }
 
-    const userId = readSettings().userId;
-    if (!userId) throw new Error("Unauthorized");
-    // Create a new app
-    // Store the full absolute path when skipCopy is true, otherwise store appName
-    const [app] = await getRemoteDb()
-      .insert(remoteSchema.apps)
-      .values({
-        userId,
-        name: appName,
-        path: skipCopy ? sourcePath : appName,
-        installCommand: installCommand ?? null,
-        startCommand: startCommand ?? null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+      // Determine the app path based on skipCopy
+      const appPath = skipCopy ? sourcePath : getVibesAppPath(appName);
 
-    // Detect primary language and persist it
-    try {
-      const { primaryLanguage, projectType } = await detectProjectLanguage(appPath);
-      if (primaryLanguage !== "unknown") {
-        await getRemoteDb()
-          .update(remoteSchema.apps)
-          .set({ primaryLanguage, projectType })
-          .where(eq(remoteSchema.apps.id, app.id));
+      if (!skipCopy) {
+        // Check if the app already exists in vibes-apps
+        const errorMessage = "An app with this name already exists";
+        try {
+          await fs.access(appPath);
+          throw new Error(errorMessage);
+        } catch (error: any) {
+          if (error.message === errorMessage) {
+            throw error;
+          }
+        }
+        // Copy the app folder to the Vibes apps directory.
+        // Why not use fs.cp? Because we want stable ordering for
+        // tests.
+        await copyDirectoryRecursive(sourcePath, appPath);
       }
-    } catch (e) {
-      logger.warn(`Failed to detect language for imported app ${app.id}:`, e);
-    }
 
-    // Create an initial chat for this app
-    const [chat] = await getRemoteDb()
-      .insert(remoteSchema.chats)
-      .values({
-        userId,
-        appId: app.id,
-        createdAt: new Date(),
-      })
-      .returning();
+      const isGitRepo = await fs
+        .access(path.join(appPath, ".git"))
+        .then(() => true)
+        .catch(() => false);
+      if (!isGitRepo) {
+        // Initialize git repo and create first commit
+        await gitInit({ path: appPath, ref: "main" });
 
-    // Fire-and-forget: trigger memory bootstrap (DNA collection) immediately
-    // so the agent has project context before the first prompt.
-    try {
-      const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
-      const { setDebugContext } = await import("../utils/memory_debug_log");
-      setDebugContext(appName, app.id);
-      const needs = await needsBootstrap(app.id, userId);
-      if (needs) {
-        logger.info(`🧬 Memory bootstrap triggered on import for appId=${app.id}`);
-        runMemoryBootstrap({
-          appId: app.id,
+        // Only stage + commit if the folder has trackable files
+        const entries = await fs.readdir(appPath);
+        const hasFiles = entries.some((e) => e !== ".git");
+        if (hasFiles) {
+          await gitAdd({ path: appPath, filepath: "." });
+          await gitCommit({
+            path: appPath,
+            message: "Init vibes app",
+          });
+        }
+      }
+
+      const userId = readSettings().userId;
+      if (!userId) throw new Error("Unauthorized");
+      // Create a new app
+      // Store the full absolute path when skipCopy is true, otherwise store appName
+      const [app] = await getRemoteDb()
+        .insert(remoteSchema.apps)
+        .values({
           userId,
-          projectDir: appPath,
-          appName,
-        }).catch((err: any) => {
-          logger.warn(`🧬 Memory bootstrap failed on import (non-fatal): ${err.message}`);
-        });
-      }
-    } catch (bootstrapErr: any) {
-      logger.warn(`🧬 Memory bootstrap import hook failed (non-fatal): ${bootstrapErr.message}`);
-    }
+          name: appName,
+          path: skipCopy ? sourcePath : appName,
+          installCommand: installCommand ?? null,
+          startCommand: startCommand ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
-    return { appId: app.id, chatId: chat.id };
-  });
+      // Detect primary language and persist it
+      try {
+        const { primaryLanguage, projectType } =
+          await detectProjectLanguage(appPath);
+        if (primaryLanguage !== "unknown") {
+          await getRemoteDb()
+            .update(remoteSchema.apps)
+            .set({ primaryLanguage, projectType })
+            .where(eq(remoteSchema.apps.id, app.id));
+        }
+      } catch (e) {
+        logger.warn(`Failed to detect language for imported app ${app.id}:`, e);
+      }
+
+      // Create an initial chat for this app
+      const [chat] = await getRemoteDb()
+        .insert(remoteSchema.chats)
+        .values({
+          userId,
+          appId: app.id,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Fire-and-forget: trigger memory bootstrap (DNA collection) immediately
+      // so the agent has project context before the first prompt.
+      try {
+        const { needsBootstrap, runMemoryBootstrap } =
+          await import("../utils/memory_bootstrap");
+        const { setDebugContext } = await import("../utils/memory_debug_log");
+        setDebugContext(appName, app.id);
+        const needs = await needsBootstrap(app.id, userId);
+        if (needs) {
+          logger.info(
+            `🧬 Memory bootstrap triggered on import for appId=${app.id}`,
+          );
+          runMemoryBootstrap({
+            appId: app.id,
+            userId,
+            projectDir: appPath,
+            appName,
+          }).catch((err: any) => {
+            logger.warn(
+              `🧬 Memory bootstrap failed on import (non-fatal): ${err.message}`,
+            );
+          });
+        }
+      } catch (bootstrapErr: any) {
+        logger.warn(
+          `🧬 Memory bootstrap import hook failed (non-fatal): ${bootstrapErr.message}`,
+        );
+      }
+
+      return { appId: app.id, chatId: chat.id };
+    },
+  );
 
   logger.debug("Registered import IPC handlers");
 }

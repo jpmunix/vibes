@@ -195,7 +195,10 @@
     // Remove all overlays with the same componentId
     const indicesToRemove = [];
     overlays.forEach((item, index) => {
-      if (item.el.dataset.dyadId === componentId || item.el.dataset.vibesId === componentId) {
+      if (
+        item.el.dataset.dyadId === componentId ||
+        item.el.dataset.vibesId === componentId
+      ) {
         indicesToRemove.push(index);
       }
     });
@@ -209,7 +212,8 @@
 
     if (
       highlightedElement &&
-      (highlightedElement.dataset.dyadId || highlightedElement.dataset.vibesId) === componentId
+      (highlightedElement.dataset.dyadId ||
+        highlightedElement.dataset.vibesId) === componentId
     ) {
       highlightedElement = null;
     }
@@ -327,7 +331,8 @@
     }
 
     let el = e.target;
-    while (el && !el.dataset.dyadId && !el.dataset.vibesId) el = el.parentElement;
+    while (el && !el.dataset.dyadId && !el.dataset.vibesId)
+      el = el.parentElement;
 
     const hoveredItem = overlays.find((item) => item.el === el);
 
@@ -397,7 +402,8 @@
     e.preventDefault();
     e.stopPropagation();
 
-    const clickedComponentId = state.element.dataset.dyadId || state.element.dataset.vibesId;
+    const clickedComponentId =
+      state.element.dataset.dyadId || state.element.dataset.vibesId;
     const selectedItem = overlays.find((item) => item.el === state.element);
 
     // If clicking on the currently highlighted component, deselect it
@@ -449,7 +455,10 @@
     }
 
     // Assign a unique runtime ID to this element if it doesn't have one
-    if (!state.element.dataset.dyadRuntimeId && !state.element.dataset.vibesRuntimeId) {
+    if (
+      !state.element.dataset.dyadRuntimeId &&
+      !state.element.dataset.vibesRuntimeId
+    ) {
       state.element.dataset.dyadRuntimeId = `dyad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
@@ -459,8 +468,11 @@
         type: "vibes-component-selected",
         component: {
           id: clickedComponentId,
-          name: state.element.dataset.dyadName || state.element.dataset.vibesName,
-          runtimeId: state.element.dataset.dyadRuntimeId || state.element.dataset.vibesRuntimeId,
+          name:
+            state.element.dataset.dyadName || state.element.dataset.vibesName,
+          runtimeId:
+            state.element.dataset.dyadRuntimeId ||
+            state.element.dataset.vibesRuntimeId,
         },
         coordinates: {
           top: rect.top,
@@ -535,10 +547,13 @@
       activate();
     }
     if (e.data.type === "ping-vibes-component-selector") {
-      if (document.body && document.body.querySelector("[data-dyad-id], [data-vibes-id]")) {
+      if (
+        document.body &&
+        document.body.querySelector("[data-dyad-id], [data-vibes-id]")
+      ) {
         window.parent.postMessage(
           { type: "vibes-component-selector-initialized" },
-          "*"
+          "*",
         );
       }
     }

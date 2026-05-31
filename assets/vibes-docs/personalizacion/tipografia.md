@@ -22,11 +22,11 @@ Puedes usar una fuente más legible para texto largo (como Georgia o Merriweathe
 
 Desde **Ajustes → Tema → Tamaño de fuente** puedes ajustar tres escalas independientes:
 
-| Escala | Qué afecta |
-|---|---|
+| Escala       | Qué afecta              |
+| ------------ | ----------------------- |
 | **Interfaz** | Menús, botones, paneles |
-| **Sidebar** | Listas de apps y chats |
-| **Chat** | Mensajes y respuestas |
+| **Sidebar**  | Listas de apps y chats  |
+| **Chat**     | Mensajes y respuestas   |
 
 Cada escala va de 0.8× a 1.3× con incrementos de 0.05.
 

@@ -35,7 +35,9 @@ export class WorkspaceManager {
 
     if (!fs.existsSync(appsDir)) {
       await fs.promises.mkdir(appsDir, { recursive: true });
-      console.log(`[Workspace] Created workspace for user ${userId}: ${appsDir}`);
+      console.log(
+        `[Workspace] Created workspace for user ${userId}: ${appsDir}`,
+      );
 
       // Symlink shared scaffolds (read-only, saves disk space)
       for (const scaffold of SHARED_SCAFFOLDS) {
@@ -75,7 +77,9 @@ export class WorkspaceManager {
    */
   async listWorkspaces(): Promise<string[]> {
     if (!fs.existsSync(this.baseDir)) return [];
-    const entries = await fs.promises.readdir(this.baseDir, { withFileTypes: true });
+    const entries = await fs.promises.readdir(this.baseDir, {
+      withFileTypes: true,
+    });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name);
   }
 }

@@ -34,7 +34,9 @@ export interface PendingQueuedMessage {
   prompt: string;
   attachments?: FileAttachment[]; // photos / files attached at queue time
 }
-export const pendingMessageQueueByIdAtom = atom<Map<number, PendingQueuedMessage[]>>(new Map());
+export const pendingMessageQueueByIdAtom = atom<
+  Map<number, PendingQueuedMessage[]>
+>(new Map());
 
 // Quoted messages for the reply/cite feature (supports multiple)
 export interface QuotedMessage {
@@ -116,7 +118,9 @@ export interface PendingOpenCodePermission {
   toolInput?: string | null;
 }
 
-export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>([]);
+export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>(
+  [],
+);
 
 // Memory Router: selected memories injected into agent context per chat
 export interface SelectedMemoryMeta {
@@ -125,7 +129,9 @@ export interface SelectedMemoryMeta {
   key: string | null;
   content: string;
 }
-export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[]>>(new Map());
+export const selectedMemoriesByChatIdAtom = atom<
+  Map<number, SelectedMemoryMeta[]>
+>(new Map());
 
 // @deprecated — No longer used. All modes use selectedModel now.
 // Kept for backwards compat; safe to remove after confirming no consumers.

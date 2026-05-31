@@ -7,6 +7,7 @@ title: Vista de Detalles
 Cuando seleccionas una aplicación, se abre la **vista de detalles** que combina el chat con las herramientas de desarrollo.
 
 ![Vista de detalles](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura de la vista de detalles mostrando chat + preview" -->
 
 ## Cabecera de la app
@@ -29,12 +30,12 @@ A la derecha (o izquierda, configurable) aparece el **panel de vista previa** do
 
 ### Controles de la vista previa
 
-| Control | Función |
-|---|---|
-| **URL** | Dirección local de la app (editable para navegar) |
-| **Recargar** | Fuerza una recarga de la vista previa |
-| **Abrir en navegador** | Abre la app en tu navegador por defecto |
-| **Herramientas** | Acceso al visor de código, terminal, Git, consola, base de datos |
+| Control                | Función                                                          |
+| ---------------------- | ---------------------------------------------------------------- |
+| **URL**                | Dirección local de la app (editable para navegar)                |
+| **Recargar**           | Fuerza una recarga de la vista previa                            |
+| **Abrir en navegador** | Abre la app en tu navegador por defecto                          |
+| **Herramientas**       | Acceso al visor de código, terminal, Git, consola, base de datos |
 
 ### Configurar la posición
 
@@ -46,13 +47,13 @@ También puedes configurar si se abre automáticamente cuando hay cambios o solo
 
 Debajo de la vista previa hay una barra de herramientas con acceso directo a:
 
-| Herramienta | Icono | Descripción |
-|---|---|---|
-| **Código** | 📄 | Explorador de archivos del proyecto |
-| **Terminal** | ⌨️ | Consola de sistema del proyecto |
-| **Git** | 🔀 | Panel de control de versiones |
-| **Consola** | 📋 | Logs del servidor de desarrollo |
-| **Base de datos** | 🗄️ | Visor de base de datos (si aplica) |
-| **Memorias** | 🧠 | Panel de memoria del proyecto |
+| Herramienta       | Icono | Descripción                         |
+| ----------------- | ----- | ----------------------------------- |
+| **Código**        | 📄    | Explorador de archivos del proyecto |
+| **Terminal**      | ⌨️    | Consola de sistema del proyecto     |
+| **Git**           | 🔀    | Panel de control de versiones       |
+| **Consola**       | 📋    | Logs del servidor de desarrollo     |
+| **Base de datos** | 🗄️    | Visor de base de datos (si aplica)  |
+| **Memorias**      | 🧠    | Panel de memoria del proyecto       |
 
 Cada herramienta se abre en su propia **ventana secundaria** dedicada.

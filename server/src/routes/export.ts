@@ -41,7 +41,10 @@ function isIgnored(relativePath: string, patterns: string[]): boolean {
     }
 
     // Path prefix match (e.g., "dist/" matches "dist/index.js")
-    if (relativePath.startsWith(cleanPattern + "/") || relativePath === cleanPattern) {
+    if (
+      relativePath.startsWith(cleanPattern + "/") ||
+      relativePath === cleanPattern
+    ) {
       return true;
     }
   }
@@ -114,7 +117,9 @@ export function registerExportRoutes(app: FastifyInstance) {
 
         // Build ignore patterns: always exclude node_modules + .git, plus .gitignore entries
         const ignorePatterns = ["node_modules", ".git"];
-        const gitignorePatterns = parseGitignore(path.join(appPath, ".gitignore"));
+        const gitignorePatterns = parseGitignore(
+          path.join(appPath, ".gitignore"),
+        );
         ignorePatterns.push(...gitignorePatterns);
 
         // Generate ZIP

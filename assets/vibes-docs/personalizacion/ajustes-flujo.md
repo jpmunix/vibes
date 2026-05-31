@@ -22,11 +22,11 @@ Cuando está activado, el agente hace commits automáticos en Git después de ca
 
 Controla si la vista previa se abre automáticamente cuando el agente modifica código:
 
-| Opción | Comportamiento |
-|---|---|
-| **Desactivado** | Solo se abre manualmente |
-| **Derecha** | Se abre a la derecha del chat |
-| **Izquierda** | Se abre a la izquierda del chat |
+| Opción          | Comportamiento                  |
+| --------------- | ------------------------------- |
+| **Desactivado** | Solo se abre manualmente        |
+| **Derecha**     | Se abre a la derecha del chat   |
+| **Izquierda**   | Se abre a la izquierda del chat |
 
 ## Notificaciones de respuesta
 

@@ -15,16 +15,17 @@ Si tienes activado **Confirmar cambios en Git** en **Ajustes → Flujo de trabaj
 Accede al panel de Git desde la barra de herramientas de la vista previa. Se abre en una ventana secundaria dedicada.
 
 ![Panel de Git](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del panel de Git mostrando historial de commits" -->
 
 ### Funcionalidades
 
-| Función | Descripción |
-|---|---|
-| **Historial de commits** | Lista cronológica de todos los cambios |
-| **Diff visual** | Compara archivos modificados lado a lado |
-| **Branches** | Crear, cambiar y fusionar ramas |
-| **Push/Pull** | Sincronizar con repositorio remoto (requiere GitHub) |
+| Función                  | Descripción                                          |
+| ------------------------ | ---------------------------------------------------- |
+| **Historial de commits** | Lista cronológica de todos los cambios               |
+| **Diff visual**          | Compara archivos modificados lado a lado             |
+| **Branches**             | Crear, cambiar y fusionar ramas                      |
+| **Push/Pull**            | Sincronizar con repositorio remoto (requiere GitHub) |
 
 ## Integración con GitHub
 

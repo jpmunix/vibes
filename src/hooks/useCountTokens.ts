@@ -66,4 +66,3 @@ export function useCountTokens(chatId: number | null, input: string = "") {
     invalidateTokenCount,
   };
 }
-

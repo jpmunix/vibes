@@ -114,9 +114,7 @@ function PromptCard({
           <div>
             <h3 className="text-lg font-semibold">{prompt.title}</h3>
             {prompt.description && (
-              <p className="typo-caption">
-                {prompt.description}
-              </p>
+              <p className="typo-caption">{prompt.description}</p>
             )}
           </div>
           <div className="flex gap-2">

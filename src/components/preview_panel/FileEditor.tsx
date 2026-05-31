@@ -246,7 +246,11 @@ export const FileEditor = ({
   }
 
   if (content === null) {
-    return <div className="p-4 text-muted-foreground">No hay contenido disponible</div>;
+    return (
+      <div className="p-4 text-muted-foreground">
+        No hay contenido disponible
+      </div>
+    );
   }
 
   return (

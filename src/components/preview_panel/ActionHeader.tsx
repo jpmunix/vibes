@@ -1,8 +1,15 @@
 import { useAtom, useAtomValue } from "jotai";
-import { previewModeAtom, selectedAppIdAtom, currentAppAtom } from "../../atoms/appAtoms";
+import {
+  previewModeAtom,
+  selectedAppIdAtom,
+  currentAppAtom,
+} from "../../atoms/appAtoms";
 import { ipc } from "@/ipc/types";
-import { ExpandPreviewButton, OpenExternalButton, DeviceModeButton } from "./PreviewIframe";
-
+import {
+  ExpandPreviewButton,
+  OpenExternalButton,
+  DeviceModeButton,
+} from "./PreviewIframe";
 
 import {
   Eye,
@@ -77,7 +84,11 @@ export const ActionHeader = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const currentApp = useAtomValue(currentAppAtom);
-  const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
+  const hasDatabase = Boolean(
+    currentApp?.supabaseProjectId ||
+    currentApp?.bunnyConfig ||
+    currentApp?.pocketbaseConfig,
+  );
   const { theme, intensity } = useTheme();
   const { settings } = useSettings();
   const memoriesEnabled = settings?.memoriesEnabled !== false;
@@ -108,7 +119,6 @@ export const ActionHeader = () => {
   }, []);
 
   const isCompact = windowWidth < 888;
-
 
   // Track window width
   useEffect(() => {
@@ -225,9 +235,11 @@ export const ActionHeader = () => {
         requestAnimationFrame(updateIndicator);
       });
 
-      if (previewGroupRef.current) resizeObserver.observe(previewGroupRef.current);
+      if (previewGroupRef.current)
+        resizeObserver.observe(previewGroupRef.current);
       if (codeGroupRef.current) resizeObserver.observe(codeGroupRef.current);
-      if (versionsGroupRef.current) resizeObserver.observe(versionsGroupRef.current);
+      if (versionsGroupRef.current)
+        resizeObserver.observe(versionsGroupRef.current);
       if (configureRef.current) resizeObserver.observe(configureRef.current);
     }
 
@@ -235,7 +247,15 @@ export const ActionHeader = () => {
       clearTimeout(timeoutId);
       if (resizeObserver) resizeObserver.disconnect();
     };
-  }, [activeGroup, displayCount, isPreviewOpen, isCompact, previewMode, versions?.length, versionsLoading]);
+  }, [
+    activeGroup,
+    displayCount,
+    isPreviewOpen,
+    isCompact,
+    previewMode,
+    versions?.length,
+    versionsLoading,
+  ]);
 
   const iconSize = 17;
 
@@ -260,18 +280,14 @@ export const ActionHeader = () => {
       case "versions":
         return {
           icon: <History size={iconSize} />,
-          label: versionsLoading
-            ? "..."
-            : `Versión ${versions.length}`,
+          label: versionsLoading ? "..." : `Versión ${versions.length}`,
         };
       case "publish":
         return { icon: <Globe size={iconSize} />, label: "Publicar" };
       default:
         return {
           icon: <History size={iconSize} />,
-          label: versionsLoading
-            ? "..."
-            : `Versión ${versions.length}`,
+          label: versionsLoading ? "..." : `Versión ${versions.length}`,
         };
     }
   };
@@ -280,7 +296,8 @@ export const ActionHeader = () => {
   const versionGroupInfo = getVersionGroupInfo();
 
   // Button style for the 3 main groups
-  const groupButtonBase = "no-app-region-drag cursor-pointer relative flex items-center gap-1.5 px-4 h-8 rounded-lg typo-tab z-10 transition-all duration-150";
+  const groupButtonBase =
+    "no-app-region-drag cursor-pointer relative flex items-center gap-1.5 px-4 h-8 rounded-lg typo-tab z-10 transition-all duration-150";
   const groupButtonClass = (isActive: boolean) =>
     `${groupButtonBase} ${isActive && isPreviewOpen ? "text-primary" : "hover:bg-sidebar-accent"}`;
 
@@ -304,7 +321,13 @@ export const ActionHeader = () => {
           />
 
           {/* ─── Vista previa group ─── */}
-          <DropdownMenu modal={false} open={openMenu === "preview"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
+          <DropdownMenu
+            modal={false}
+            open={openMenu === "preview"}
+            onOpenChange={(open) => {
+              if (!open) setOpenMenu(null);
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 ref={previewGroupRef}
@@ -316,15 +339,25 @@ export const ActionHeader = () => {
               >
                 <Eye size={iconSize} />
                 {!isCompact && <span>Vista previa</span>}
-                <ChevronDown size={10} className={activeGroup === "preview" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
+                <ChevronDown
+                  size={10}
+                  className={
+                    activeGroup === "preview" && isPreviewOpen
+                      ? "text-primary/60"
+                      : "text-muted-foreground"
+                  }
+                />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-80" onMouseEnter={() => handleMenuHoverEnter("preview")} onMouseLeave={handleMenuHoverLeave}>
+            <DropdownMenuContent
+              align="start"
+              className="w-80"
+              onMouseEnter={() => handleMenuHoverEnter("preview")}
+              onMouseLeave={handleMenuHoverLeave}
+            >
               <DropdownMenuItem
                 onClick={() => selectPanel("preview")}
-                className={cn(
-                  previewMode === "preview" && "bg-accent",
-                )}
+                className={cn(previewMode === "preview" && "bg-accent")}
               >
                 <Eye size={14} />
                 <span>Vista previa</span>
@@ -369,7 +402,13 @@ export const ActionHeader = () => {
           </DropdownMenu>
 
           {/* ─── Código group ─── */}
-          <DropdownMenu modal={false} open={openMenu === "code"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
+          <DropdownMenu
+            modal={false}
+            open={openMenu === "code"}
+            onOpenChange={(open) => {
+              if (!open) setOpenMenu(null);
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 ref={codeGroupRef}
@@ -386,10 +425,22 @@ export const ActionHeader = () => {
                     {displayCount}
                   </span>
                 )}
-                <ChevronDown size={10} className={activeGroup === "code" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
+                <ChevronDown
+                  size={10}
+                  className={
+                    activeGroup === "code" && isPreviewOpen
+                      ? "text-primary/60"
+                      : "text-muted-foreground"
+                  }
+                />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("code")} onMouseLeave={handleMenuHoverLeave}>
+            <DropdownMenuContent
+              align="start"
+              className="w-52"
+              onMouseEnter={() => handleMenuHoverEnter("code")}
+              onMouseLeave={handleMenuHoverLeave}
+            >
               <DropdownMenuItem
                 onClick={() => {
                   if (selectedAppId != null) {
@@ -407,9 +458,7 @@ export const ActionHeader = () => {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}
-                className={cn(
-                  previewMode === "problems" && "bg-accent",
-                )}
+                className={cn(previewMode === "problems" && "bg-accent")}
               >
                 <AlertTriangle size={14} />
                 <div className="flex items-center gap-2">
@@ -474,7 +523,13 @@ export const ActionHeader = () => {
           </DropdownMenu>
 
           {/* ─── Versión group ─── */}
-          <DropdownMenu modal={false} open={openMenu === "versions"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
+          <DropdownMenu
+            modal={false}
+            open={openMenu === "versions"}
+            onOpenChange={(open) => {
+              if (!open) setOpenMenu(null);
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 ref={versionsGroupRef}
@@ -486,15 +541,25 @@ export const ActionHeader = () => {
               >
                 {versionGroupInfo.icon}
                 {!isCompact && <span>{versionGroupInfo.label}</span>}
-                <ChevronDown size={10} className={activeGroup === "versions" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
+                <ChevronDown
+                  size={10}
+                  className={
+                    activeGroup === "versions" && isPreviewOpen
+                      ? "text-primary/60"
+                      : "text-muted-foreground"
+                  }
+                />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("versions")} onMouseLeave={handleMenuHoverLeave}>
+            <DropdownMenuContent
+              align="start"
+              className="w-52"
+              onMouseEnter={() => handleMenuHoverEnter("versions")}
+              onMouseLeave={handleMenuHoverLeave}
+            >
               <DropdownMenuItem
                 onClick={() => selectPanel("versions")}
-                className={cn(
-                  previewMode === "versions" && "bg-accent",
-                )}
+                className={cn(previewMode === "versions" && "bg-accent")}
               >
                 <History size={14} />
                 <span>
@@ -506,7 +571,11 @@ export const ActionHeader = () => {
               <DropdownMenuItem
                 onClick={() => {
                   if (selectedAppId != null) {
-                    ipc.system.openGitWindow({ appId: selectedAppId, theme, themeIntensity: intensity });
+                    ipc.system.openGitWindow({
+                      appId: selectedAppId,
+                      theme,
+                      themeIntensity: intensity,
+                    });
                   }
                 }}
               >
@@ -515,9 +584,7 @@ export const ActionHeader = () => {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("publish")}
-                className={cn(
-                  previewMode === "publish" && "bg-accent",
-                )}
+                className={cn(previewMode === "publish" && "bg-accent")}
               >
                 <Globe size={14} />
                 <span>Publicar</span>

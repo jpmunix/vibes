@@ -46,7 +46,7 @@ export function playNotificationSound(volume: number = 0.3): void {
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = "sine";
-    osc1.frequency.setValueAtTime(587.33, now);       // D5
+    osc1.frequency.setValueAtTime(587.33, now); // D5
     osc1.frequency.setValueAtTime(659.25, now + 0.08); // E5
     gain1.gain.setValueAtTime(0, now);
     gain1.gain.linearRampToValueAtTime(0.6, now + 0.02);
@@ -89,7 +89,10 @@ export function playNotificationSound(volume: number = 0.3): void {
       masterGain.disconnect();
     }, 600);
   } catch (error) {
-    console.warn("[notification-sound] Could not play notification sound:", error);
+    console.warn(
+      "[notification-sound] Could not play notification sound:",
+      error,
+    );
   }
 }
 
@@ -98,7 +101,10 @@ export function playNotificationSound(volume: number = 0.3): void {
 interface NotificationParams {
   title: string;
   body: string;
-  settings: Pick<UserSettings, "enableChatCompletionNotifications" | "enableNotificationSound"> | null;
+  settings: Pick<
+    UserSettings,
+    "enableChatCompletionNotifications" | "enableNotificationSound"
+  > | null;
 }
 
 /**
@@ -108,8 +114,13 @@ interface NotificationParams {
  *
  * Designed to work on unsigned macOS apps where native notifications may fail.
  */
-export function sendAppNotification({ title, body, settings }: NotificationParams): void {
-  const notificationsEnabled = settings?.enableChatCompletionNotifications === true;
+export function sendAppNotification({
+  title,
+  body,
+  settings,
+}: NotificationParams): void {
+  const notificationsEnabled =
+    settings?.enableChatCompletionNotifications === true;
   const soundEnabled = settings?.enableNotificationSound !== false; // default true
 
   // Native notification (always silent — sound is handled separately)
@@ -132,7 +143,10 @@ export function sendAppNotification({ title, body, settings }: NotificationParam
   // even if the window is minimized to the system tray
   if (notificationsEnabled || soundEnabled) {
     try {
-      (window as any).electron?.ipcRenderer?.invoke("tray:set-badge", `📬 ${body}`);
+      (window as any).electron?.ipcRenderer?.invoke(
+        "tray:set-badge",
+        `📬 ${body}`,
+      );
     } catch {
       // Not critical — tray badge is a nice-to-have
     }

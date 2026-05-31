@@ -299,7 +299,6 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           Compartir chat
         </button>
 
-
         {/* Summarize to new chat */}
         <button
           type="button"
@@ -1629,7 +1628,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     const TITLE_WEIGHT = 3;
 
     const scored: Array<{
-      chat: typeof archivedChats[number];
+      chat: (typeof archivedChats)[number];
       score: number;
       matchedSnippet?: string;
     }> = [];
@@ -1658,7 +1657,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     // Sort by score descending, then by date descending
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return new Date(b.chat.createdAt).getTime() - new Date(a.chat.createdAt).getTime();
+      return (
+        new Date(b.chat.createdAt).getTime() -
+        new Date(a.chat.createdAt).getTime()
+      );
     });
 
     return scored.map(({ chat, matchedSnippet }) => ({
@@ -2445,7 +2447,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
                           placeholder="Buscar chats archivados..."
                           value={archivedSearchQuery}
-                          onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                          onChange={(e) =>
+                            setArchivedSearchQuery(e.target.value)
+                          }
                           autoFocus
                         />
                         {archivedSearchQuery && (
@@ -2465,7 +2469,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       {loadingArchived ? (
                         <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
                           <Loader2 size={16} className="animate-spin" />
-                          <span className="text-sm">Cargando archivados...</span>
+                          <span className="text-sm">
+                            Cargando archivados...
+                          </span>
                         </div>
                       ) : archivedChats.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
@@ -2501,7 +2507,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                             <div
                               key={chat.id}
                               className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
-                              onClick={() => handlePreviewChat(chat.id, chat.title)}
+                              onClick={() =>
+                                handlePreviewChat(chat.id, chat.title)
+                              }
                             >
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-sm truncate font-medium text-foreground">
@@ -2548,13 +2556,19 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 </div>
                                 <span className="text-xs text-muted-foreground/55 mt-1.5">
                                   Archivado ·{" "}
-                                  {formatDistanceToNow(safeDate(chat.createdAt), {
-                                    addSuffix: true,
-                                    locale: es,
-                                  })}
+                                  {formatDistanceToNow(
+                                    safeDate(chat.createdAt),
+                                    {
+                                      addSuffix: true,
+                                      locale: es,
+                                    },
+                                  )}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className="flex items-center gap-1 shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <button
                                   type="button"
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
@@ -2563,7 +2577,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   title="Restaurar"
                                 >
                                   {unarchivingId === chat.id ? (
-                                    <Loader2 size={15} className="animate-spin" />
+                                    <Loader2
+                                      size={15}
+                                      className="animate-spin"
+                                    />
                                   ) : (
                                     <ArchiveRestore size={15} strokeWidth={2} />
                                   )}
@@ -3777,7 +3794,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     const isMenuOpen = pinnedMenuId === pinned.id;
                     const isPinnedUnread = isActive
                       ? pinned.isRead === false
-                      : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false);
+                      : recentStreamChatIds.has(pinned.id) ||
+                        pinned.isRead === false;
                     return (
                       <div
                         key={pinned.id}
@@ -3948,9 +3966,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   (() => {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
-                    const isUnread = selectedChatId === pinnedMenuId
-                      ? pin.isRead === false
-                      : (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false);
+                    const isUnread =
+                      selectedChatId === pinnedMenuId
+                        ? pin.isRead === false
+                        : recentStreamChatIds.has(pinnedMenuId) ||
+                          pin.isRead === false;
                     return (
                       <ChatContextMenuPortal
                         chatId={pinnedMenuId}
@@ -3967,15 +3987,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         onRename={(chatId, title) => {
                           setPinnedRenamingId(chatId);
                           setPinnedRenameValue(title);
-                          setTimeout(
-                            () => {
-                              if (pinnedRenameInputRef.current) {
-                                pinnedRenameInputRef.current.focus();
-                                pinnedRenameInputRef.current.select();
-                              }
-                            },
-                            50,
-                          );
+                          setTimeout(() => {
+                            if (pinnedRenameInputRef.current) {
+                              pinnedRenameInputRef.current.focus();
+                              pinnedRenameInputRef.current.select();
+                            }
+                          }, 50);
                         }}
                         onArchive={handleArchiveChatClick}
                         onDelete={handleDeleteChatClick}

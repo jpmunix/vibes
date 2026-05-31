@@ -26,7 +26,9 @@ export function useAppOutputSubscription() {
   const appId = useAtomValue(selectedAppIdAtom);
 
   // Ref to debounce recovery refreshes - avoid multiple rapid refreshes
-  const recoveryRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoveryRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const processProxyServerOutput = useCallback(
     (output: AppOutput) => {
@@ -58,7 +60,9 @@ export function useAppOutputSubscription() {
           clearTimeout(recoveryRefreshTimerRef.current);
         }
         recoveryRefreshTimerRef.current = setTimeout(() => {
-          console.log("[useRunApp] Upstream recovered after retries, refreshing iframe...");
+          console.log(
+            "[useRunApp] Upstream recovered after retries, refreshing iframe...",
+          );
           setPreviewPanelKey((prevKey) => prevKey + 1);
           recoveryRefreshTimerRef.current = null;
         }, 300); // Small delay to let remaining sub-resources also recover
@@ -187,9 +191,9 @@ export function useRunApp() {
         error instanceof Error
           ? { message: error.message, source: "vibes-app" }
           : {
-            message: error?.toString() || "Unknown error",
-            source: "vibes-app",
-          },
+              message: error?.toString() || "Unknown error",
+              source: "vibes-app",
+            },
       );
     } finally {
       setLoading(false);
@@ -212,9 +216,9 @@ export function useRunApp() {
         error instanceof Error
           ? { message: error.message, source: "vibes-app" }
           : {
-            message: error?.toString() || "Unknown error",
-            source: "vibes-app",
-          },
+              message: error?.toString() || "Unknown error",
+              source: "vibes-app",
+            },
       );
     } finally {
       setLoading(false);
@@ -273,9 +277,9 @@ export function useRunApp() {
           error instanceof Error
             ? { message: error.message, source: "vibes-app" }
             : {
-              message: error?.toString() || "Unknown error",
-              source: "vibes-app",
-            },
+                message: error?.toString() || "Unknown error",
+                source: "vibes-app",
+              },
         );
       } finally {
         setPreviewPanelKey((prevKey) => prevKey + 1);

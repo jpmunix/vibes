@@ -1,11 +1,14 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const file = path.join(__dirname, 'src/components/admin_window/UserPreferencesEditor.tsx');
-let content = fs.readFileSync(file, 'utf8');
+const file = path.join(
+  __dirname,
+  "src/components/admin_window/UserPreferencesEditor.tsx",
+);
+let content = fs.readFileSync(file, "utf8");
 
 content = content.replace(
-  '                ) : (\n                    <input',
+  "                ) : (\n                    <input",
   `                ) : pref.key.startsWith("prompt:") ? (
                     <textarea
                         value={editValue}
@@ -16,8 +19,8 @@ content = content.replace(
                         autoFocus
                     />
                 ) : (
-                    <input`
+                    <input`,
 );
 
 fs.writeFileSync(file, content);
-console.log('Patched textarea');
+console.log("Patched textarea");

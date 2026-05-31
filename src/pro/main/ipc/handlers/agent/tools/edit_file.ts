@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import log from "electron-log";
-import { ToolDefinition, ToolError, AgentContext, escapeXmlAttr } from "./types";
+import {
+  ToolDefinition,
+  ToolError,
+  AgentContext,
+  escapeXmlAttr,
+} from "./types";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import { deploySupabaseFunction } from "../../../../../../supabase_admin/supabase_management_client";
 import {
@@ -153,7 +158,8 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
     let retryAttr = "";
     if (ctx?.fileEditTracker?.[args.path]) {
       const counts = ctx.fileEditTracker[args.path];
-      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      const total =
+        counts.edit_file + counts.write_file + counts.search_replace;
       if (total > 0) {
         retryAttr = ` retry-count="${total}"`;
       }

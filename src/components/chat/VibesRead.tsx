@@ -40,7 +40,9 @@ export const VibesRead: React.FC<VibesReadProps> = ({
           )}
           <div className="text-xs text-muted-foreground font-medium">Read</div>
           {lineRangeText && (
-            <span className="text-xs text-muted-foreground">({lineRangeText})</span>
+            <span className="text-xs text-muted-foreground">
+              ({lineRangeText})
+            </span>
           )}
         </div>
       </div>

@@ -1,1 +1,5 @@
-declare global { interface Window { electron: any; } }
+declare global {
+  interface Window {
+    electron: any;
+  }
+}

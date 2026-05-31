@@ -9,18 +9,24 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 function extractTextFromChildren(children: any): string {
   if (!children) return "";
   if (typeof children === "string") return children;
-  if (Array.isArray(children)) return children.map(extractTextFromChildren).join("");
-  if (children?.props?.children) return extractTextFromChildren(children.props.children);
+  if (Array.isArray(children))
+    return children.map(extractTextFromChildren).join("");
+  if (children?.props?.children)
+    return extractTextFromChildren(children.props.children);
   return "";
 }
 
 interface VibesGitCommitProps {
   action?: string; // "commit" | "commit-push"
-  files?: string;  // Comma-separated list of files
+  files?: string; // Comma-separated list of files
   children?: React.ReactNode; // Commit message
 }
 
-export const VibesGitCommit: React.FC<VibesGitCommitProps> = ({ action, files, children }) => {
+export const VibesGitCommit: React.FC<VibesGitCommitProps> = ({
+  action,
+  files,
+  children,
+}) => {
   const appId = useAtomValue(selectedAppIdAtom);
 
   // Extract commit message lines properly from React nodes
@@ -30,16 +36,24 @@ export const VibesGitCommit: React.FC<VibesGitCommitProps> = ({ action, files, c
   const bodyLines = lines.slice(1).filter((line) => line.trim() !== "");
 
   // Extract file list
-  const fileArray = files ? files.split(",").map(f => f.trim()).filter(Boolean) : [];
+  const fileArray = files
+    ? files
+        .split(",")
+        .map((f) => f.trim())
+        .filter(Boolean)
+    : [];
 
   const isPush = action === "commit-push";
 
-  const handleFileClick = useCallback((filePath: string) => {
-    if (!appId) return;
-    ipc.app.openAppFile({ appId, filePath }).catch((err: any) => {
-      console.error("Error opening file:", err);
-    });
-  }, [appId]);
+  const handleFileClick = useCallback(
+    (filePath: string) => {
+      if (!appId) return;
+      ipc.app.openAppFile({ appId, filePath }).catch((err: any) => {
+        console.error("Error opening file:", err);
+      });
+    },
+    [appId],
+  );
 
   return (
     <div className="space-y-3">
@@ -78,11 +92,11 @@ export const VibesGitCommit: React.FC<VibesGitCommitProps> = ({ action, files, c
           </span>
           <ul className="space-y-1">
             {fileArray.map((filePath, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-1.5"
-              >
-                <FileCode size={12} className="text-muted-foreground/50 shrink-0" />
+              <li key={i} className="flex items-center gap-1.5">
+                <FileCode
+                  size={12}
+                  className="text-muted-foreground/50 shrink-0"
+                />
                 <button
                   onClick={() => handleFileClick(filePath)}
                   className="text-xs font-mono text-muted-foreground/85 cursor-pointer hover:underline transition-colors text-left truncate"

@@ -10,17 +10,18 @@ Vibes te permite personalizar completamente la apariencia visual de la aplicaci�
 
 Elige entre tres modos desde **Ajustes → Tema → Modo**:
 
-| Modo | Descripción |
-|---|---|
+| Modo        | Descripción                                  |
+| ----------- | -------------------------------------------- |
 | **Sistema** | Sigue la preferencia de tu sistema operativo |
-| **Claro** | Fondo claro con texto oscuro |
-| **Oscuro** | Fondo oscuro con texto claro |
+| **Claro**   | Fondo claro con texto oscuro                 |
+| **Oscuro**  | Fondo oscuro con texto claro                 |
 
 ## Color primario
 
 El color primario se aplica a botones, enlaces, indicadores activos y acentos visuales por toda la interfaz.
 
 ![Selector de color primario](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del selector de color primario mostrando la cuadrícula de colores" -->
 
 ### Paleta de colores
@@ -42,10 +43,10 @@ El selector muestra el color **tal como se verá** aplicado al tema activo, teni
 
 El control de intensidad ajusta la luminosidad base de los colores de la interfaz:
 
-| Intensidad | Efecto |
-|---|---|
-| **Por defecto** | Los colores estándar del tema |
-| **Más claro** | Superficies ligeramente más luminosas |
+| Intensidad      | Efecto                                |
+| --------------- | ------------------------------------- |
+| **Por defecto** | Los colores estándar del tema         |
+| **Más claro**   | Superficies ligeramente más luminosas |
 
 ## Tema claro mejorado
 

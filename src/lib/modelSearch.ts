@@ -12,24 +12,24 @@
  * matches "openrouter/caca-vaca".
  */
 export function matchesModelSearch(
-    query: string,
-    ...fields: (string | undefined)[]
+  query: string,
+  ...fields: (string | undefined)[]
 ): boolean {
-    const words = query
-        .trim()
-        .toLowerCase()
-        .replace(/[-/]/g, " ")
-        .split(/\s+/)
-        .filter((w) => w.length >= 2);
+  const words = query
+    .trim()
+    .toLowerCase()
+    .replace(/[-/]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
 
-    if (words.length === 0) return true;
+  if (words.length === 0) return true;
 
-    // Combine all fields into a single searchable string
-    const haystack = fields
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .replace(/[-/]/g, " ");
+  // Combine all fields into a single searchable string
+  const haystack = fields
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/[-/]/g, " ");
 
-    return words.every((word) => haystack.includes(word));
+  return words.every((word) => haystack.includes(word));
 }

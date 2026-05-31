@@ -10,50 +10,66 @@ import { miscContracts } from "../types/misc";
 const logger = log.scope("problems_handlers");
 
 /** Languages that support TSC problem checking */
-const TSC_COMPATIBLE_LANGUAGES = new Set(["javascript", "typescript", "unknown"]);
+const TSC_COMPATIBLE_LANGUAGES = new Set([
+  "javascript",
+  "typescript",
+  "unknown",
+]);
 
 export function registerProblemsHandlers() {
-  createTypedHandler(miscContracts.checkProblems, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    try {
-      // Get the app to find its path
-      const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)),
-      });
-
-      if (!app) {
-        // Graceful fallback: app may have been deleted while UI still references it.
-        // Return empty problems instead of throwing to avoid flooding error logs.
-        logger.warn(`[checkProblems] App not found (transient?): appId=${params.appId}, userId=${context.userId ?? 'UNDEFINED'}`);
-        return { problems: [] };
-      }
-
-      // Skip TSC for non-Node projects (e.g. PHP, Python, etc.)
-      const lang = app.primaryLanguage?.toLowerCase() || "unknown";
-      if (!TSC_COMPATIBLE_LANGUAGES.has(lang)) {
-        logger.info(`Skipping TSC check for non-Node app ${params.appId} (${lang})`);
-        return { problems: [] };
-      }
-
-      const appPath = getVibesAppPath(app.path);
-
+  createTypedHandler(
+    miscContracts.checkProblems,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       try {
-        // Call autofix with empty full response to just run TypeScript checking
-        const problemReport = await generateProblemReport({
-          fullResponse: "",
-          appPath,
+        // Get the app to find its path
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, params.appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
         });
-        return problemReport;
-      } catch (tscError) {
-        // Just log the error and return empty problems. We don't want a TSC failure to break the whole agent/chat UI
-        logger.error(`Error generating problem report for app ${appPath}:`, tscError);
-        return { problems: [] };
-      }
 
-    } catch (error) {
-      logger.error("Error in checkProblems handler:", error);
-      throw error;
-    }
-  });
+        if (!app) {
+          // Graceful fallback: app may have been deleted while UI still references it.
+          // Return empty problems instead of throwing to avoid flooding error logs.
+          logger.warn(
+            `[checkProblems] App not found (transient?): appId=${params.appId}, userId=${context.userId ?? "UNDEFINED"}`,
+          );
+          return { problems: [] };
+        }
+
+        // Skip TSC for non-Node projects (e.g. PHP, Python, etc.)
+        const lang = app.primaryLanguage?.toLowerCase() || "unknown";
+        if (!TSC_COMPATIBLE_LANGUAGES.has(lang)) {
+          logger.info(
+            `Skipping TSC check for non-Node app ${params.appId} (${lang})`,
+          );
+          return { problems: [] };
+        }
+
+        const appPath = getVibesAppPath(app.path);
+
+        try {
+          // Call autofix with empty full response to just run TypeScript checking
+          const problemReport = await generateProblemReport({
+            fullResponse: "",
+            appPath,
+          });
+          return problemReport;
+        } catch (tscError) {
+          // Just log the error and return empty problems. We don't want a TSC failure to break the whole agent/chat UI
+          logger.error(
+            `Error generating problem report for app ${appPath}:`,
+            tscError,
+          );
+          return { problems: [] };
+        }
+      } catch (error) {
+        logger.error("Error in checkProblems handler:", error);
+        throw error;
+      }
+    },
+  );
 }

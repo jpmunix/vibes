@@ -1,31 +1,34 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const file = path.join(__dirname, 'src/components/admin_window/UserPreferencesEditor.tsx');
-let content = fs.readFileSync(file, 'utf8');
+const file = path.join(
+  __dirname,
+  "src/components/admin_window/UserPreferencesEditor.tsx",
+);
+let content = fs.readFileSync(file, "utf8");
 
 // 1. Add "prompts" to Category type and CATEGORY_LABELS
 content = content.replace(
   'type Category = "models" | "keys" | "appearance" | "behavior" | "internal" | "other";',
-  'type Category = "models" | "keys" | "appearance" | "behavior" | "internal" | "other" | "prompts";'
+  'type Category = "models" | "keys" | "appearance" | "behavior" | "internal" | "other" | "prompts";',
 );
 
 content = content.replace(
   '    other: { icon: Package, label: "Otros" },',
-  '    other: { icon: Package, label: "Otros" },\n    prompts: { icon: Bot, label: "Prompts y Contexto" },'
+  '    other: { icon: Package, label: "Otros" },\n    prompts: { icon: Bot, label: "Prompts y Contexto" },',
 );
 
 content = content.replace(
   'const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "internal", "other"];',
-  'const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "prompts", "internal", "other"];'
+  'const CATEGORY_ORDER: Category[] = ["models", "keys", "appearance", "behavior", "prompts", "internal", "other"];',
 );
 
 // 2. Update categorizeKey function
 content = content.replace(
-  'function categorizeKey(key: string): Category {\n    // ── Models & providers ──',
+  "function categorizeKey(key: string): Category {\n    // ── Models & providers ──",
   `function categorizeKey(key: string): Category {
     if (key.startsWith("prompt:")) return "prompts";
-    // ── Models & providers ──`
+    // ── Models & providers ──`,
 );
 
 // 3. Update detectValueType function so it shows as JSON or text.

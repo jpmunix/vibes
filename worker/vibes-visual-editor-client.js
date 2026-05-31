@@ -7,11 +7,9 @@
   function findElementByVibesId(vibesId, runtimeId) {
     // If runtimeId is provided, try to find element by runtime ID first
     if (runtimeId) {
-      const elementByRuntimeId = document.querySelector(
-        `[data-dyad-runtime-id="${runtimeId}"]`,
-      ) || document.querySelector(
-        `[data-vibes-runtime-id="${runtimeId}"]`,
-      );
+      const elementByRuntimeId =
+        document.querySelector(`[data-dyad-runtime-id="${runtimeId}"]`) ||
+        document.querySelector(`[data-vibes-runtime-id="${runtimeId}"]`);
       if (elementByRuntimeId) {
         return elementByRuntimeId;
       }
@@ -19,8 +17,10 @@
 
     // Fall back to finding by dyad-id / vibes-id (will get first match)
     const escaped = CSS.escape(vibesId);
-    return document.querySelector(`[data-dyad-id="${escaped}"]`) ||
-           document.querySelector(`[data-vibes-id="${escaped}"]`);
+    return (
+      document.querySelector(`[data-dyad-id="${escaped}"]`) ||
+      document.querySelector(`[data-vibes-id="${escaped}"]`)
+    );
   }
 
   function applyStyles(element, styles) {
@@ -263,7 +263,10 @@
       // Mixed content: update only text nodes, preserve elements
       let textUpdated = false;
       Array.from(element.childNodes).forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
+        if (
+          node.nodeType === Node.TEXT_NODE &&
+          node.textContent.trim().length > 0
+        ) {
           if (!textUpdated) {
             node.textContent = " " + text + " ";
             textUpdated = true;
@@ -317,7 +320,8 @@
             hasOnClick: !!element.onclick || element.hasAttribute("onclick"),
             hasSrc: element.hasAttribute("src"),
             hasHref: element.hasAttribute("href"),
-            childrenText: element.children.length === 0 ? element.innerText : null,
+            childrenText:
+              element.children.length === 0 ? element.innerText : null,
             computedDisplay: computedStyle.display,
           },
         },

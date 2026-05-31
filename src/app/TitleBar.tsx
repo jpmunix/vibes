@@ -23,8 +23,6 @@ export const TitleBar = () => {
   const [showWindowControls, setShowWindowControls] = useState(false);
   const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
-
-
   useEffect(() => {
     // Check if we're running on Windows
     const checkPlatform = async () => {
@@ -38,8 +36,6 @@ export const TitleBar = () => {
 
     checkPlatform();
   }, []);
-
-
 
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
   useEffect(() => {
@@ -70,23 +66,21 @@ export const TitleBar = () => {
 
         {/* Logo hidden for now */}
 
-
         {
           <div className="flex-1 flex justify-end items-center mr-2">
-            {
-              location.pathname === "/chat" && !isPreviewExpanded && (
-                <ActionHeader />
-              )
-            }
+            {location.pathname === "/chat" && !isPreviewExpanded && (
+              <ActionHeader />
+            )}
           </div>
         }
 
-        {showWindowControls && <WindowsControls className="ml-auto h-full pr-1" buttonClassName="h-full" />}
-      </div >
-
-
+        {showWindowControls && (
+          <WindowsControls
+            className="ml-auto h-full pr-1"
+            buttonClassName="h-full"
+          />
+        )}
+      </div>
     </>
   );
 };
-
-

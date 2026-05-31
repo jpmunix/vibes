@@ -23,8 +23,8 @@ interface DetectedStack {
  */
 const FILE_MARKERS: Array<{ file: string; lang: string; type: string }> = [
   { file: "composer.json", lang: "php", type: "php" },
-  { file: "artisan", lang: "php", type: "php" },              // Laravel
-  { file: "wp-config.php", lang: "php", type: "php" },        // WordPress
+  { file: "artisan", lang: "php", type: "php" }, // Laravel
+  { file: "wp-config.php", lang: "php", type: "php" }, // WordPress
   { file: "Cargo.toml", lang: "rust", type: "generic" },
   { file: "go.mod", lang: "go", type: "generic" },
   { file: "pom.xml", lang: "java", type: "generic" },
@@ -48,7 +48,9 @@ const FILE_MARKERS: Array<{ file: string; lang: string; type: string }> = [
  * For Node projects, checks for tsconfig.json or typescript in deps to
  * distinguish TypeScript from JavaScript.
  */
-export async function detectProjectLanguage(appPath: string): Promise<DetectedStack> {
+export async function detectProjectLanguage(
+  appPath: string,
+): Promise<DetectedStack> {
   for (const marker of FILE_MARKERS) {
     try {
       await fsPromises.access(path.join(appPath, marker.file));

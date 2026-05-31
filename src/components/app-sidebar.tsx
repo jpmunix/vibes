@@ -24,7 +24,6 @@ import {
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
-
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
   DropdownMenu,
@@ -39,15 +38,16 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isAdmin as checkIsAdmin } from "@/lib/admin";
 
-
-
-
 import { SettingsList } from "./SettingsList";
 import { WorkspaceList } from "./WorkspaceList";
 import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
 
 // Menu items.
-type NavMenuAction = { label: string; icon: React.ElementType; action: SidebarAction };
+type NavMenuAction = {
+  label: string;
+  icon: React.ElementType;
+  action: SidebarAction;
+};
 
 const items: {
   title: string;
@@ -62,11 +62,23 @@ const items: {
     to: "/",
     icon: Bot,
     menuItems: [
-      { label: "Nuevo proyecto", icon: FolderPlus, action: "workspace:new-project" },
-      { label: "Abrir workspace", icon: FolderOpen, action: "workspace:open-folder" },
+      {
+        label: "Nuevo proyecto",
+        icon: FolderPlus,
+        action: "workspace:new-project",
+      },
+      {
+        label: "Abrir workspace",
+        icon: FolderOpen,
+        action: "workspace:open-folder",
+      },
       { label: "Buscar workspaces", icon: Search, action: "workspace:search" },
       { label: "_separator", icon: Plus, action: null },
-      { label: "Cerrar workspaces", icon: FolderX, action: "workspace:bulk-close" },
+      {
+        label: "Cerrar workspaces",
+        icon: FolderX,
+        action: "workspace:bulk-close",
+      },
     ],
   },
   {
@@ -88,7 +100,6 @@ export function TopNavbar() {
   const dispatchAction = useSetAtom(sidebarActionAtom);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
 
   // User avatar state
   const user = useAtomValue(userAtom);
@@ -120,8 +131,6 @@ export function TopNavbar() {
       setUser(null);
     }
   };
-
-
 
   return (
     <>
@@ -250,7 +259,11 @@ export function TopNavbar() {
           <button
             className="sidebar-toggle-btn no-app-region-drag"
             onClick={toggleSidebar}
-            title={state === "expanded" ? "Cerrar panel lateral" : "Abrir panel lateral"}
+            title={
+              state === "expanded"
+                ? "Cerrar panel lateral"
+                : "Abrir panel lateral"
+            }
           >
             <Menu size={18} />
           </button>
@@ -261,17 +274,22 @@ export function TopNavbar() {
           <div className="flex items-center gap-3">
             {items.map((item) => {
               const isActive = item.tabKey === activeTab;
-              const hasMenu = isActive && item.menuItems && item.menuItems.length > 0;
+              const hasMenu =
+                isActive && item.menuItems && item.menuItems.length > 0;
               return (
                 <div
                   key={item.title}
                   className="relative"
                   onMouseEnter={() => {
-                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                    if (hoverTimeoutRef.current)
+                      clearTimeout(hoverTimeoutRef.current);
                     if (hasMenu) setHoveredMenu(item.tabKey);
                   }}
                   onMouseLeave={() => {
-                    hoverTimeoutRef.current = setTimeout(() => setHoveredMenu(null), 150);
+                    hoverTimeoutRef.current = setTimeout(
+                      () => setHoveredMenu(null),
+                      150,
+                    );
                   }}
                 >
                   <Link
@@ -280,7 +298,9 @@ export function TopNavbar() {
                     onClick={(e) => {
                       if (hasMenu) {
                         e.preventDefault();
-                        setHoveredMenu(hoveredMenu === item.tabKey ? null : item.tabKey);
+                        setHoveredMenu(
+                          hoveredMenu === item.tabKey ? null : item.tabKey,
+                        );
                       } else if (isActive) {
                         e.preventDefault();
                       } else {
@@ -300,7 +320,12 @@ export function TopNavbar() {
                     <div className="topnav-dropdown">
                       {item.menuItems!.map((mi, idx) => {
                         if (mi.label === "_separator") {
-                          return <div key={`sep-${idx}`} className="h-px bg-border/60 my-1 mx-1" />;
+                          return (
+                            <div
+                              key={`sep-${idx}`}
+                              className="h-px bg-border/60 my-1 mx-1"
+                            />
+                          );
                         }
                         return (
                           <button
@@ -308,11 +333,17 @@ export function TopNavbar() {
                             type="button"
                             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
                             onClick={() => {
-                              dispatchAction({ action: mi.action, ts: Date.now() });
+                              dispatchAction({
+                                action: mi.action,
+                                ts: Date.now(),
+                              });
                               setHoveredMenu(null);
                             }}
                           >
-                            <mi.icon size={14} className="opacity-60 shrink-0" />
+                            <mi.icon
+                              size={14}
+                              className="opacity-60 shrink-0"
+                            />
                             <span>{mi.label}</span>
                           </button>
                         );
@@ -344,8 +375,6 @@ export function TopNavbar() {
             </button>
           )}
 
-
-
           {/* User Avatar */}
           {user && (
             <DropdownMenu>
@@ -365,7 +394,11 @@ export function TopNavbar() {
                   />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="bottom" align="end" className="w-64 p-2 shadow-xl border-border/50">
+              <DropdownMenuContent
+                side="bottom"
+                align="end"
+                className="w-64 p-2 shadow-xl border-border/50"
+              >
                 <DropdownMenuLabel className="typo-micro uppercase tracking-wider px-2 py-1">
                   Cuenta
                 </DropdownMenuLabel>
@@ -384,9 +417,7 @@ export function TopNavbar() {
                     <span className="typo-label !text-sm truncate">
                       {user.displayName || "Usuario"}
                     </span>
-                    <span className="typo-micro truncate">
-                      {user.email}
-                    </span>
+                    <span className="typo-micro truncate">{user.email}</span>
                   </div>
                 </div>
                 <OpenRouterCreditsButton />
@@ -434,8 +465,6 @@ export function TopNavbar() {
         </div>
       </div>
 
-
-
       {/* User modals */}
       {user && (
         <>
@@ -455,7 +484,8 @@ export function TopNavbar() {
  * Rendered alongside the main content area, collapsible via the toggle button.
  */
 export function SecondarySidebar() {
-  const { state, open, setOpen, setWidth, isResizing, setIsResizing } = useSidebar();
+  const { state, open, setOpen, setWidth, isResizing, setIsResizing } =
+    useSidebar();
   const [activeTab] = useActiveTab();
   const draggingRef = useRef(false);
 
@@ -473,7 +503,9 @@ export function SecondarySidebar() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const value = JSON.stringify(stateCacheRef.current);
-      ipc.misc.setPreference({ key: PREF_SIDEBAR_SECTIONS, value }).catch(() => {});
+      ipc.misc
+        .setPreference({ key: PREF_SIDEBAR_SECTIONS, value })
+        .catch(() => {});
     }, 500);
   }, []);
 
@@ -481,20 +513,25 @@ export function SecondarySidebar() {
   useEffect(() => {
     if (dbLoadedRef.current) return;
     dbLoadedRef.current = true;
-    ipc.misc.getPreference({ key: PREF_SIDEBAR_SECTIONS }).then((raw) => {
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          stateCacheRef.current = parsed;
-          // Apply stored state for current tab
-          if (activeTab && parsed[activeTab]) {
-            const s = parsed[activeTab] as SectionState;
-            if (s.width) setWidth(s.width);
-            if (s.open !== undefined) setOpen(s.open);
+    ipc.misc
+      .getPreference({ key: PREF_SIDEBAR_SECTIONS })
+      .then((raw) => {
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            stateCacheRef.current = parsed;
+            // Apply stored state for current tab
+            if (activeTab && parsed[activeTab]) {
+              const s = parsed[activeTab] as SectionState;
+              if (s.width) setWidth(s.width);
+              if (s.open !== undefined) setOpen(s.open);
+            }
+          } catch {
+            /* ignore bad data */
           }
-        } catch { /* ignore bad data */ }
-      }
-    }).catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // When the active tab changes, save current section state and restore new section state
@@ -689,10 +726,7 @@ function useActiveTab(): [string | null, (tab: string) => void] {
     } else {
       setActiveTab("Workspace");
     }
-  }, [
-    isSettingsRoute,
-    routerState.location.pathname,
-  ]);
+  }, [isSettingsRoute, routerState.location.pathname]);
 
   return [activeTab, setActiveTab];
 }

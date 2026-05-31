@@ -8,18 +8,18 @@ Vibes utiliza **ventanas flotantes independientes** para herramientas que necesi
 
 ## Ventanas disponibles
 
-| Ventana | Acceso | Contenido |
-|---|---|---|
-| **Visor de Código** | Barra de herramientas de la app | Explorador de archivos con resaltado de sintaxis |
-| **Terminal** | Barra de herramientas | Consola del sistema con historial |
-| **Git** | Barra de herramientas | Commits, branches, diff visual |
-| **Consola de App** | Barra de herramientas | Logs del servidor de desarrollo |
-| **Base de datos** | Barra de herramientas | Visor de tablas y datos |
-| **Memorias** | Barra de herramientas | Panel de gestión de memoria del agente |
-| **Playground** | Menú del chat | Sandbox para probar prompts |
-| **Notas de Versión** | Topbar (🚀) o Ajustes | Historial de novedades por versión |
-| **Documentación** | Topbar (📖) | Esta documentación |
-| **Admin** | Avatar → Panel Admin | Administración de usuarios |
+| Ventana              | Acceso                          | Contenido                                        |
+| -------------------- | ------------------------------- | ------------------------------------------------ |
+| **Visor de Código**  | Barra de herramientas de la app | Explorador de archivos con resaltado de sintaxis |
+| **Terminal**         | Barra de herramientas           | Consola del sistema con historial                |
+| **Git**              | Barra de herramientas           | Commits, branches, diff visual                   |
+| **Consola de App**   | Barra de herramientas           | Logs del servidor de desarrollo                  |
+| **Base de datos**    | Barra de herramientas           | Visor de tablas y datos                          |
+| **Memorias**         | Barra de herramientas           | Panel de gestión de memoria del agente           |
+| **Playground**       | Menú del chat                   | Sandbox para probar prompts                      |
+| **Notas de Versión** | Topbar (🚀) o Ajustes           | Historial de novedades por versión               |
+| **Documentación**    | Topbar (📖)                     | Esta documentación                               |
+| **Admin**            | Avatar → Panel Admin            | Administración de usuarios                       |
 
 ## Comportamiento común
 
@@ -39,6 +39,7 @@ El visor de código abre un explorador de archivos del proyecto con:
 - Arranque con directorios **colapsados por defecto** para mantener la vista limpia
 
 ![Visor de código](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del visor de código mostrando un proyecto abierto" -->
 
 ## Notas de Versión

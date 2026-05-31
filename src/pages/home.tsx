@@ -97,12 +97,17 @@ export default function HomePage() {
       }
     };
     updateLastVersionLaunched();
-  }, [appVersion, settings, updateSettings, theme, intensity, setShowReleaseNotesBadge]);
+  }, [
+    appVersion,
+    settings,
+    updateSettings,
+    theme,
+    intensity,
+    setShowReleaseNotesBadge,
+  ]);
 
   // Get the appId from search params
   const appId = search.appId ? Number(search.appId) : null;
-
-
 
   // Redirect to app details page if appId is present
   useEffect(() => {
@@ -164,12 +169,24 @@ export default function HomePage() {
       const prompt = inputValue;
 
       // Convert FileAttachments to base64 ChatAttachments for IPC transfer
-      let convertedAttachments: Array<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }> | undefined;
+      let convertedAttachments:
+        | Array<{
+            name: string;
+            type: string;
+            data: string;
+            attachmentType: "upload-to-codebase" | "chat-context";
+          }>
+        | undefined;
       if (attachments && attachments.length > 0) {
         convertedAttachments = await Promise.all(
           attachments.map(
             (attachment) =>
-              new Promise<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }>((resolve, reject) => {
+              new Promise<{
+                name: string;
+                type: string;
+                data: string;
+                attachmentType: "upload-to-codebase" | "chat-context";
+              }>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
                   resolve({
@@ -193,20 +210,39 @@ export default function HomePage() {
       await invalidateAppQuery(queryClient, { appId: result.app.id });
       // Install selected design system (DESIGN.md) into the project before opening the chat
       console.log(`[Home] 🎨 DESIGN CHECK — selectedDesign:`, selectedDesign);
-      console.log(`[Home] 🎨 DESIGN CHECK — app.path: "${result.app.path}", app.id: ${result.app.id}`);
+      console.log(
+        `[Home] 🎨 DESIGN CHECK — app.path: "${result.app.path}", app.id: ${result.app.id}`,
+      );
       if (selectedDesign) {
-        console.log(`[Home] 🎨 DESIGN: id="${selectedDesign.id}", hasCustomContent=${!!selectedDesign.customContent}, customContentLen=${selectedDesign.customContent?.length ?? 0}`);
+        console.log(
+          `[Home] 🎨 DESIGN: id="${selectedDesign.id}", hasCustomContent=${!!selectedDesign.customContent}, customContentLen=${selectedDesign.customContent?.length ?? 0}`,
+        );
         try {
           if (selectedDesign.customContent) {
             // Custom design — write content directly
-            console.log(`[Home] 🎨 DESIGN: Calling writeCustomDesign (content ${selectedDesign.customContent.length} chars, appPath "${result.app.path}")`);
-            const writeResult = await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: result.app.path });
-            console.log(`[Home] 🎨 DESIGN: writeCustomDesign result:`, writeResult);
+            console.log(
+              `[Home] 🎨 DESIGN: Calling writeCustomDesign (content ${selectedDesign.customContent.length} chars, appPath "${result.app.path}")`,
+            );
+            const writeResult = await ipc.design.writeCustomDesign({
+              content: selectedDesign.customContent,
+              appPath: result.app.path,
+            });
+            console.log(
+              `[Home] 🎨 DESIGN: writeCustomDesign result:`,
+              writeResult,
+            );
           } else {
             // Brand design — download via getdesign CLI
-            console.log(`[Home] 🎨 DESIGN: Calling addDesign (brand "${selectedDesign.id}", appPath "${result.app.path}")`);
-            const addResult = await ipc.design.addDesign({ brand: selectedDesign.id, appPath: result.app.path });
-            console.log(`[Home] 🎨 DESIGN: addDesign result: contentLen=${addResult?.content?.length}`);
+            console.log(
+              `[Home] 🎨 DESIGN: Calling addDesign (brand "${selectedDesign.id}", appPath "${result.app.path}")`,
+            );
+            const addResult = await ipc.design.addDesign({
+              brand: selectedDesign.id,
+              appPath: result.app.path,
+            });
+            console.log(
+              `[Home] 🎨 DESIGN: addDesign result: contentLen=${addResult?.content?.length}`,
+            );
           }
         } catch (designError) {
           // Non-blocking — log but don't prevent app creation
@@ -238,12 +274,36 @@ export default function HomePage() {
 
   // Dynamic loading phases for app creation
   const CREATION_PHASES = [
-    { title: "Pensando un nombre genial", subtitle: "La IA está eligiendo el nombre perfecto para tu app…", icon: "💭" },
-    { title: "Preparando el proyecto", subtitle: "Creando la estructura de archivos y configuración…", icon: "📁" },
-    { title: "Instalando dependencias", subtitle: "Preparando todo lo necesario para tu nueva app…", icon: "📦" },
-    { title: "Inicializando el repositorio", subtitle: "Configurando Git para control de versiones…", icon: "🔧" },
-    { title: "Aplicando tu tema", subtitle: "Personalizando los estilos y colores de la app…", icon: "🎨" },
-    { title: "¡Casi listo!", subtitle: "Abriendo el entorno de desarrollo…", icon: "🚀" },
+    {
+      title: "Pensando un nombre genial",
+      subtitle: "La IA está eligiendo el nombre perfecto para tu app…",
+      icon: "💭",
+    },
+    {
+      title: "Preparando el proyecto",
+      subtitle: "Creando la estructura de archivos y configuración…",
+      icon: "📁",
+    },
+    {
+      title: "Instalando dependencias",
+      subtitle: "Preparando todo lo necesario para tu nueva app…",
+      icon: "📦",
+    },
+    {
+      title: "Inicializando el repositorio",
+      subtitle: "Configurando Git para control de versiones…",
+      icon: "🔧",
+    },
+    {
+      title: "Aplicando tu tema",
+      subtitle: "Personalizando los estilos y colores de la app…",
+      icon: "🎨",
+    },
+    {
+      title: "¡Casi listo!",
+      subtitle: "Abriendo el entorno de desarrollo…",
+      icon: "🚀",
+    },
   ];
 
   const [creationPhase, setCreationPhase] = useState(0);
@@ -356,11 +416,11 @@ export default function HomePage() {
             <div className="absolute top-0 left-0 w-full h-full border-8 border-t-primary rounded-full animate-spin"></div>
           </div>
 
-          <div className="relative w-full" style={{ minHeight: '5rem' }}>
-            <div className={`phase-fade ${phaseVisible ? 'visible' : 'hidden'} flex flex-col items-center w-full`}>
-              <h2 className="typo-section-title mb-2">
-                {phase.title}
-              </h2>
+          <div className="relative w-full" style={{ minHeight: "5rem" }}>
+            <div
+              className={`phase-fade ${phaseVisible ? "visible" : "hidden"} flex flex-col items-center w-full`}
+            >
+              <h2 className="typo-section-title mb-2">{phase.title}</h2>
               <p className="typo-caption text-center max-w-md mb-6">
                 {phase.subtitle}
               </p>
@@ -376,9 +436,8 @@ export default function HomePage() {
                 style={{
                   width: i === creationPhase ? 24 : 8,
                   height: 8,
-                  backgroundColor: i <= creationPhase
-                    ? 'var(--primary)'
-                    : 'var(--muted)',
+                  backgroundColor:
+                    i <= creationPhase ? "var(--primary)" : "var(--muted)",
                   opacity: i <= creationPhase ? 1 : 0.3,
                 }}
               />
@@ -417,7 +476,8 @@ export default function HomePage() {
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[1]"
         style={{
-          backgroundImage: "radial-gradient(circle, var(--foreground) 0.4px, transparent 0.4px)",
+          backgroundImage:
+            "radial-gradient(circle, var(--foreground) 0.4px, transparent 0.4px)",
           backgroundSize: "24px 24px",
           opacity: 0.03,
         }}

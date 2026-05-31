@@ -97,7 +97,10 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("typo-subsection-title leading-none font-semibold", className)}
+      className={cn(
+        "typo-subsection-title leading-none font-semibold",
+        className,
+      )}
       {...props}
     />
   );

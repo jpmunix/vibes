@@ -1,14 +1,32 @@
-import React, { useState, useEffect, memo, useCallback, lazy, Suspense, type ReactNode } from "react";
+import React, {
+  useState,
+  useEffect,
+  memo,
+  useCallback,
+  lazy,
+  Suspense,
+  type ReactNode,
+} from "react";
 import ShikiHighlighter, {
   isInlineCode,
   createHighlighterCore,
   createJavaScriptRegexEngine,
 } from "react-shiki/core";
 
-const MermaidBlock = lazy(() => import("./MermaidBlock").then(m => ({ default: m.MermaidBlock })));
+const MermaidBlock = lazy(() =>
+  import("./MermaidBlock").then((m) => ({ default: m.MermaidBlock })),
+);
 import type { Element as HastElement } from "hast";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Copy, Check, FileCode2, X, ExternalLink, Maximize2, Minimize2 } from "@/components/ui/icons";
+import {
+  Copy,
+  Check,
+  FileCode2,
+  X,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+} from "@/components/ui/icons";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
@@ -48,7 +66,14 @@ const LAZY_LANG_LOADERS: Record<string, () => Promise<any>> = {
 };
 
 // Track which languages have been loaded to avoid redundant loading
-const loadedLanguages = new Set<string>(["javascript", "typescript", "html", "css", "js", "ts"]);
+const loadedLanguages = new Set<string>([
+  "javascript",
+  "typescript",
+  "html",
+  "css",
+  "js",
+  "ts",
+]);
 
 // Create a singleton highlighter instance with only the most common languages
 let highlighterPromise: Promise<HighlighterCore> | null = null;
@@ -107,33 +132,97 @@ export function useHighlighter(language?: string) {
 // ── File path detection ─────────────────────────────────────────────────────
 // Known file extensions that indicate inline code is a file reference
 const FILE_EXTENSIONS = new Set([
-  "ts", "tsx", "js", "jsx", "mjs", "cjs",
-  "css", "scss", "less", "sass",
-  "html", "htm", "vue", "svelte", "astro",
-  "json", "yaml", "yml", "toml",
-  "md", "mdx", "txt", "csv",
-  "py", "rb", "go", "rs", "java", "kt", "swift",
-  "sql", "graphql", "gql",
-  "sh", "bash", "zsh",
-  "xml", "svg",
-  "env", "gitignore", "dockerignore", "dockerfile",
-  "prisma", "proto",
-  "makefile", "license", "lock"
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "css",
+  "scss",
+  "less",
+  "sass",
+  "html",
+  "htm",
+  "vue",
+  "svelte",
+  "astro",
+  "json",
+  "yaml",
+  "yml",
+  "toml",
+  "md",
+  "mdx",
+  "txt",
+  "csv",
+  "py",
+  "rb",
+  "go",
+  "rs",
+  "java",
+  "kt",
+  "swift",
+  "sql",
+  "graphql",
+  "gql",
+  "sh",
+  "bash",
+  "zsh",
+  "xml",
+  "svg",
+  "env",
+  "gitignore",
+  "dockerignore",
+  "dockerfile",
+  "prisma",
+  "proto",
+  "makefile",
+  "license",
+  "lock",
 ]);
 
 // Extension → language mapping for syntax highlighting
 const EXT_TO_LANG: Record<string, string> = {
-  ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx", mjs: "javascript", cjs: "javascript",
-  css: "css", scss: "scss", less: "less", sass: "sass",
-  html: "html", htm: "html", vue: "vue", svelte: "html", astro: "html",
-  json: "json", yaml: "markdown", yml: "markdown", toml: "markdown",
-  md: "markdown", mdx: "markdown", txt: "markdown",
-  py: "python", rb: "markdown", go: "markdown", rs: "markdown", java: "java",
-  sql: "sql", graphql: "graphql", gql: "graphql",
-  sh: "shell", bash: "shell", zsh: "shell",
-  xml: "html", svg: "html",
-  env: "shell", prisma: "markdown",
-  makefile: "makefile", license: "markdown", lock: "json"
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  mjs: "javascript",
+  cjs: "javascript",
+  css: "css",
+  scss: "scss",
+  less: "less",
+  sass: "sass",
+  html: "html",
+  htm: "html",
+  vue: "vue",
+  svelte: "html",
+  astro: "html",
+  json: "json",
+  yaml: "markdown",
+  yml: "markdown",
+  toml: "markdown",
+  md: "markdown",
+  mdx: "markdown",
+  txt: "markdown",
+  py: "python",
+  rb: "markdown",
+  go: "markdown",
+  rs: "markdown",
+  java: "java",
+  sql: "sql",
+  graphql: "graphql",
+  gql: "graphql",
+  sh: "shell",
+  bash: "shell",
+  zsh: "shell",
+  xml: "html",
+  svg: "html",
+  env: "shell",
+  prisma: "markdown",
+  makefile: "makefile",
+  license: "markdown",
+  lock: "json",
 };
 
 function isFilePath(text: string): boolean {
@@ -141,18 +230,18 @@ function isFilePath(text: string): boolean {
   if (trimmed.includes(" ") || trimmed.length > 120) return false;
   if (trimmed.startsWith("http")) return false;
 
-  const cleanPath = trimmed.replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, '');
+  const cleanPath = trimmed.replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, "");
 
   // Check for known file extension
   const ext = cleanPath.split(".").pop()?.toLowerCase();
-  
+
   if (ext && FILE_EXTENSIONS.has(ext)) {
     // If it has a dot (like .env or file.ts), it's a file
     if (cleanPath.includes(".")) return true;
-    
+
     // If it has a slash (like /src/gitignore), it's a file
     if (cleanPath.includes("/")) return true;
-    
+
     // Extensionless exact matches just in case
     if (["dockerfile", "makefile", "license"].includes(ext)) {
       return true;
@@ -213,7 +302,9 @@ function FileViewerModal({
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [appId, filePath]);
 
   // Close on Escape
@@ -284,7 +375,11 @@ function FileViewerModal({
                 onClick={handleCopy}
                 type="button"
               >
-                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                {copied ? (
+                  <Check size={12} className="text-emerald-500" />
+                ) : (
+                  <Copy size={12} />
+                )}
                 <span>{copied ? "Copiado" : "Copiar"}</span>
               </button>
             )}
@@ -311,7 +406,9 @@ function FileViewerModal({
           {loading && (
             <div className="flex items-center justify-center py-16">
               <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-muted-foreground">Leyendo archivo…</span>
+              <span className="ml-3 text-sm text-muted-foreground">
+                Leyendo archivo…
+              </span>
             </div>
           )}
           {error && (
@@ -332,7 +429,9 @@ function FileViewerModal({
                 <ShikiHighlighter
                   highlighter={highlighter}
                   language={lang}
-                  theme={isDarkMode ? "github-dark-default" : "github-light-default"}
+                  theme={
+                    isDarkMode ? "github-dark-default" : "github-light-default"
+                  }
                   delay={100}
                 >
                   {content}
@@ -390,21 +489,21 @@ export const CodeHighlight = memo(
     // Mermaid diagrams: render as interactive SVG instead of syntax-highlighted code
     if (!isInline && language === "mermaid") {
       return (
-        <Suspense fallback={
-          <div className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm bg-muted/50 dark:bg-zinc-950/50 px-6 py-8 flex items-center justify-center gap-2 text-muted-foreground">
-            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <span className="text-sm">Cargando mermaid…</span>
-          </div>
-        }>
+        <Suspense
+          fallback={
+            <div className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm bg-muted/50 dark:bg-zinc-950/50 px-6 py-8 flex items-center justify-center gap-2 text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-sm">Cargando mermaid…</span>
+            </div>
+          }
+        >
           <MermaidBlock code={code} />
         </Suspense>
       );
     }
 
     return !isInline ? (
-      <div
-        className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code bg-muted/50 dark:bg-zinc-950/50"
-      >
+      <div className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code bg-muted/50 dark:bg-zinc-950/50">
         {language ? (
           <div className="flex items-center justify-between px-4 py-2 bg-muted/80 dark:bg-zinc-900 border-b border-border/40">
             <div className="flex items-center gap-2">
@@ -423,7 +522,11 @@ export const CodeHighlight = memo(
                 onClick={handleCopy}
                 type="button"
               >
-                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                {copied ? (
+                  <Check size={12} className="text-emerald-500" />
+                ) : (
+                  <Copy size={12} />
+                )}
                 <span>{copied ? "Copiado" : "Copiar"}</span>
               </button>
             )}
@@ -434,7 +537,9 @@ export const CodeHighlight = memo(
             <ShikiHighlighter
               highlighter={highlighter}
               language={language}
-              theme={isDarkMode ? "github-dark-default" : "github-light-default"}
+              theme={
+                isDarkMode ? "github-dark-default" : "github-light-default"
+              }
               delay={150}
             >
               {code}
@@ -450,9 +555,11 @@ export const CodeHighlight = memo(
       <>
         {filePathDetected ? (
           <code
-            className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
+            className={`${className || ""} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
             onClick={() => {
-              const cleanPath = code.trim().replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, '');
+              const cleanPath = code
+                .trim()
+                .replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, "");
               setViewingFile(cleanPath);
             }}
             title={`Ver archivo: ${code}`}
@@ -461,7 +568,10 @@ export const CodeHighlight = memo(
             {children}
           </code>
         ) : (
-          <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight`} {...props}>
+          <code
+            className={`${className || ""} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight`}
+            {...props}
+          >
             {children}
           </code>
         )}

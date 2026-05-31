@@ -32,24 +32,34 @@ export function useCustomAgents() {
   };
 }
 
-export function getUltimateBaseAgent(baseAgent: string, allAgents: CustomAgentDto[]): "build" | "plan" | "explore" {
+export function getUltimateBaseAgent(
+  baseAgent: string,
+  allAgents: CustomAgentDto[],
+): "build" | "plan" | "explore" {
   let currentBase = baseAgent;
   const visited = new Set<number>();
   while (currentBase.startsWith("custom-agent::")) {
     const parentId = parseInt(currentBase.split("::")[1]);
     if (visited.has(parentId)) break;
     visited.add(parentId);
-    const parent = allAgents.find(a => a.id === parentId);
+    const parent = allAgents.find((a) => a.id === parentId);
     if (!parent) break;
     currentBase = parent.baseAgent;
   }
-  if (currentBase === "build" || currentBase === "plan" || currentBase === "explore") {
+  if (
+    currentBase === "build" ||
+    currentBase === "plan" ||
+    currentBase === "explore"
+  ) {
     return currentBase;
   }
   return "build";
 }
 
-export function resolveEffectiveChatMode(mode: string, allAgents: CustomAgentDto[]): "build" | "plan" | "explore" {
+export function resolveEffectiveChatMode(
+  mode: string,
+  allAgents: CustomAgentDto[],
+): "build" | "plan" | "explore" {
   if (mode === "agent" || mode === "build") return "build";
   if (mode === "plan") return "plan";
   if (mode === "ask" || mode === "explore") return "explore";
@@ -58,4 +68,3 @@ export function resolveEffectiveChatMode(mode: string, allAgents: CustomAgentDto
   }
   return "build";
 }
-

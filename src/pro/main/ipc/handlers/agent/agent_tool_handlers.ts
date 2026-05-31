@@ -35,15 +35,21 @@ export function registerAgentToolHandlers() {
   });
 
   // Handle consent response from renderer
-  createTypedHandler(agentContracts.respondToConsent, async (_event, params) => {
-    resolveAgentToolConsent(params.requestId, params.decision);
-  });
+  createTypedHandler(
+    agentContracts.respondToConsent,
+    async (_event, params) => {
+      resolveAgentToolConsent(params.requestId, params.decision);
+    },
+  );
 
   // Handle ask_user response from renderer
-  createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
-    const responseStr = Array.isArray(params.response)
-      ? params.response.join(", ")
-      : String(params.response ?? "");
-    resolveAskUserResponse(params.requestId, responseStr);
-  });
+  createTypedHandler(
+    agentContracts.respondToAskUser,
+    async (_event, params) => {
+      const responseStr = Array.isArray(params.response)
+        ? params.response.join(", ")
+        : String(params.response ?? "");
+      resolveAskUserResponse(params.requestId, responseStr);
+    },
+  );
 }

@@ -126,7 +126,11 @@ export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
  * Check if the Ollama server is reachable and count available models.
  * Used by the Settings UI to show connection status.
  */
-export async function checkOllamaStatus(): Promise<{ online: boolean; modelCount: number; url: string }> {
+export async function checkOllamaStatus(): Promise<{
+  online: boolean;
+  modelCount: number;
+  url: string;
+}> {
   const url = getOllamaApiUrl();
   const settings = readSettings();
   if (settings.ollamaEnabled === false) {

@@ -13,7 +13,10 @@
  */
 import { useCallback, useEffect, useMemo } from "react";
 import { useAtom } from "jotai";
-import { preferencesMapAtom, preferencesHydratedAtom } from "@/atoms/preferenceAtoms";
+import {
+  preferencesMapAtom,
+  preferencesHydratedAtom,
+} from "@/atoms/preferenceAtoms";
 import { ipc } from "@/ipc/types";
 
 /**
@@ -23,7 +26,10 @@ import { ipc } from "@/ipc/types";
  * @param defaultValue - Fallback value when the key doesn't exist in the store
  * @returns [value, setValue] tuple — same ergonomics as useState
  */
-export function usePreference<T>(key: string, defaultValue: T): [T, (newValue: T) => void] {
+export function usePreference<T>(
+  key: string,
+  defaultValue: T,
+): [T, (newValue: T) => void] {
   const [prefsMap, setPrefsMap] = useAtom(preferencesMapAtom);
 
   // Parse the stored JSON string into the expected type
@@ -40,9 +46,8 @@ export function usePreference<T>(key: string, defaultValue: T): [T, (newValue: T
 
   const setValue = useCallback(
     (newValue: T) => {
-      const serialized = typeof newValue === "string"
-        ? newValue
-        : JSON.stringify(newValue);
+      const serialized =
+        typeof newValue === "string" ? newValue : JSON.stringify(newValue);
 
       // 1. Optimistic update of the Jotai atom (instant UI update)
       setPrefsMap((prev) => ({ ...prev, [key]: serialized }));
@@ -98,7 +103,9 @@ export function useHydratePreferences() {
         }
       },
     );
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribe?.();
+    };
   }, [setPrefsMap]);
 
   return hydrated;

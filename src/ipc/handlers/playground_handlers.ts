@@ -9,50 +9,52 @@ const logger = log.scope("playground");
 let activeController: AbortController | null = null;
 
 export function registerPlaygroundHandlers() {
-  createTypedHandler(miscContracts.playgroundCompletion, async (_, { model, prompt }) => {
-    logger.info(`Playground completion request: model=${model}`);
+  createTypedHandler(
+    miscContracts.playgroundCompletion,
+    async (_, { model, prompt }) => {
+      logger.info(`Playground completion request: model=${model}`);
 
-    // Abort any previous in-flight request
-    if (activeController) {
-      activeController.abort();
-    }
-
-    const controller = new AbortController();
-    activeController = controller;
-
-    try {
-      const data = await openRouterCompletion({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        title: "playground",
-        signal: controller.signal,
-      });
-
-      const text =
-        data?.choices?.[0]?.message?.content ||
-        JSON.stringify(data, null, 2);
-
-      return {
-        text,
-        inputTokens: data?.usage?.prompt_tokens,
-        outputTokens: data?.usage?.completion_tokens,
-      };
-    } catch (error: any) {
-      if (error.name === "AbortError" || controller.signal.aborted) {
-        logger.info(`Playground request cancelled: model=${model}`);
-        throw new Error("Cancelado");
+      // Abort any previous in-flight request
+      if (activeController) {
+        activeController.abort();
       }
-      logger.error("Playground completion failed:", error);
-      return {
-        text: `Error: ${error.message || String(error)}`,
-      };
-    } finally {
-      if (activeController === controller) {
-        activeController = null;
+
+      const controller = new AbortController();
+      activeController = controller;
+
+      try {
+        const data = await openRouterCompletion({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          title: "playground",
+          signal: controller.signal,
+        });
+
+        const text =
+          data?.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
+
+        return {
+          text,
+          inputTokens: data?.usage?.prompt_tokens,
+          outputTokens: data?.usage?.completion_tokens,
+        };
+      } catch (error: any) {
+        if (error.name === "AbortError" || controller.signal.aborted) {
+          logger.info(`Playground request cancelled: model=${model}`);
+          throw new Error("Cancelado");
+        }
+        logger.error("Playground completion failed:", error);
+        return {
+          text: `Error: ${error.message || String(error)}`,
+        };
+      } finally {
+        if (activeController === controller) {
+          activeController = null;
+        }
       }
-    }
-  });
+    },
+  );
 
   createTypedHandler(miscContracts.playgroundCancel, async () => {
     if (activeController) {
@@ -65,27 +67,39 @@ export function registerPlaygroundHandlers() {
   });
 
   // ── Playground Analysis ──────────────────────────────────────────────
-  createTypedHandler(miscContracts.playgroundAnalyze, async (_, { model, originalPrompt, results }) => {
-    logger.info(`Playground analysis request: model=${model}, results=${results.length}`);
+  createTypedHandler(
+    miscContracts.playgroundAnalyze,
+    async (_, { model, originalPrompt, results }) => {
+      logger.info(
+        `Playground analysis request: model=${model}, results=${results.length}`,
+      );
 
-    // Filter out errored/timed-out results
-    const valid = results.filter(r => !r.error && !r.timeout && r.text?.trim());
-    if (valid.length === 0) {
-      return { text: JSON.stringify({ error: "No hay resultados válidos para analizar." }) };
-    }
+      // Filter out errored/timed-out results
+      const valid = results.filter(
+        (r) => !r.error && !r.timeout && r.text?.trim(),
+      );
+      if (valid.length === 0) {
+        return {
+          text: JSON.stringify({
+            error: "No hay resultados válidos para analizar.",
+          }),
+        };
+      }
 
-    // Build context block for the analyst
-    const resultsBlock = valid.map((r, i) => {
-      return `### Modelo ${i + 1}: ${r.modelDisplayName} (${r.modelApiName})
+      // Build context block for the analyst
+      const resultsBlock = valid
+        .map((r, i) => {
+          return `### Modelo ${i + 1}: ${r.modelDisplayName} (${r.modelApiName})
 - Latencia: ${r.durationMs}ms
 - Tokens entrada: ${r.inputTokens ?? "N/A"}
 - Tokens salida: ${r.outputTokens ?? "N/A"}
 
 Respuesta:
 ${r.text}`;
-    }).join("\n\n---\n\n");
+        })
+        .join("\n\n---\n\n");
 
-    const systemPrompt = `Eres un analista experto en evaluar respuestas de modelos de inteligencia artificial. Tu trabajo es analizar las respuestas dadas por múltiples modelos al mismo prompt y determinar cuál es el mejor.
+      const systemPrompt = `Eres un analista experto en evaluar respuestas de modelos de inteligencia artificial. Tu trabajo es analizar las respuestas dadas por múltiples modelos al mismo prompt y determinar cuál es el mejor.
 
 Tu análisis DEBE ser en formato JSON estricto con esta estructura exacta:
 {
@@ -123,32 +137,35 @@ Criterios de evaluación:
 - El ranking debe incluir TODOS los modelos ordenados por overallScore descendente
 - Responde ÚNICAMENTE con el JSON, sin texto adicional`;
 
-    const userMessage = `Prompt original del usuario:
+      const userMessage = `Prompt original del usuario:
 "${originalPrompt}"
 
 Resultados de los modelos:
 
 ${resultsBlock}`;
 
-    try {
-      const data = await openRouterCompletion({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 0.3,
-        title: "playground-analysis",
-        response_format: { type: "json_object" },
-      });
+      try {
+        const data = await openRouterCompletion({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          temperature: 0.3,
+          title: "playground-analysis",
+          response_format: { type: "json_object" },
+        });
 
-      const text = data?.choices?.[0]?.message?.content || "{}";
-      return { text };
-    } catch (error: any) {
-      logger.error("Playground analysis failed:", error);
-      return { text: JSON.stringify({ error: error.message || String(error) }) };
-    }
-  });
+        const text = data?.choices?.[0]?.message?.content || "{}";
+        return { text };
+      } catch (error: any) {
+        logger.error("Playground analysis failed:", error);
+        return {
+          text: JSON.stringify({ error: error.message || String(error) }),
+        };
+      }
+    },
+  );
 
   logger.info("Registered playground handlers");
 }

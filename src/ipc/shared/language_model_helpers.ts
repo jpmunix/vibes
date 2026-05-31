@@ -21,9 +21,9 @@ const logger = log.scope("language_model_helpers");
  * merging them with custom providers taking precedence.
  * @returns A promise that resolves to an array of LanguageModelProvider objects.
  */
-export async function getLanguageModelProviders(_userId?: string): Promise<
-  LanguageModelProvider[]
-> {
+export async function getLanguageModelProviders(
+  _userId?: string,
+): Promise<LanguageModelProvider[]> {
   // Get hardcoded cloud providers
   const hardcodedProviders: LanguageModelProvider[] = [];
   for (const providerKey in CLOUD_PROVIDERS) {
@@ -60,7 +60,9 @@ export async function getLanguageModelProviders(_userId?: string): Promise<
 
   // ── Custom providers from user settings ──
   const settings = readSettings();
-  const customProviders: LanguageModelProvider[] = (settings.customProviders ?? []).map(cp => ({
+  const customProviders: LanguageModelProvider[] = (
+    settings.customProviders ?? []
+  ).map((cp) => ({
     id: cp.id,
     name: cp.name,
     apiBaseUrl: cp.apiBaseUrl,
@@ -74,17 +76,21 @@ export async function getLanguageModelProviders(_userId?: string): Promise<
 /**
  * Fetch user's custom models from BunnyDB for a given provider.
  */
-async function getCustomModels(providerId: string, userId?: string): Promise<LanguageModel[]> {
+async function getCustomModels(
+  providerId: string,
+  userId?: string,
+): Promise<LanguageModel[]> {
   if (!userId) return [];
   try {
     const db = getRemoteDb();
-    const rows = await db.select().from(remoteSchema.languageModels).where(
-      eq(remoteSchema.languageModels.userId, userId),
-    );
+    const rows = await db
+      .select()
+      .from(remoteSchema.languageModels)
+      .where(eq(remoteSchema.languageModels.userId, userId));
     // Filter to the requested provider (or return all if provider matches)
     return rows
-      .filter(r => (r.builtinProviderId || "openrouter") === providerId)
-      .map(r => ({
+      .filter((r) => (r.builtinProviderId || "openrouter") === providerId)
+      .map((r) => ({
         id: r.id,
         apiName: r.apiName,
         displayName: r.displayName,
@@ -158,7 +164,9 @@ export async function getLanguageModels({
   } else if (provider.type === "custom") {
     // Fetch from generic OpenAI-compatible endpoint
     const settings = readSettings();
-    const customConfig = settings.customProviders?.find(p => p.id === providerId);
+    const customConfig = settings.customProviders?.find(
+      (p) => p.id === providerId,
+    );
     if (customConfig && customConfig.modelsSource !== "manual") {
       try {
         const dynamicModels = await fetchCompatibleModels(
@@ -172,7 +180,9 @@ export async function getLanguageModels({
           type: "cloud" as const,
         }));
       } catch (err: any) {
-        logger.warn(`Failed to fetch models for custom provider ${providerId}: ${err.message}`);
+        logger.warn(
+          `Failed to fetch models for custom provider ${providerId}: ${err.message}`,
+        );
       }
     }
   }
@@ -183,9 +193,11 @@ export async function getLanguageModels({
   // (allows overriding display name, context window, etc.)
   const customModels = await getCustomModels(providerId, userId);
   if (customModels.length > 0) {
-    const customApiNames = new Set(customModels.map(m => m.apiName));
+    const customApiNames = new Set(customModels.map((m) => m.apiName));
     // Remove cloud models that are overridden by custom ones
-    hardcodedModels = hardcodedModels.filter(m => !customApiNames.has(m.apiName));
+    hardcodedModels = hardcodedModels.filter(
+      (m) => !customApiNames.has(m.apiName),
+    );
     // Prepend custom models
     hardcodedModels = [...customModels, ...hardcodedModels];
   }
@@ -197,9 +209,9 @@ export async function getLanguageModels({
  * Fetches all language models grouped by their provider IDs.
  * @returns A promise that resolves to a Record mapping provider IDs to arrays of LanguageModel objects.
  */
-export async function getLanguageModelsByProviders(userId?: string): Promise<
-  Record<string, LanguageModel[]>
-> {
+export async function getLanguageModelsByProviders(
+  userId?: string,
+): Promise<Record<string, LanguageModel[]>> {
   const providers = await getLanguageModelProviders(userId);
   const settings = readSettings();
   const disabledProviders = settings.disabledProviders ?? [];
@@ -208,7 +220,10 @@ export async function getLanguageModelsByProviders(userId?: string): Promise<
   const modelPromises = providers
     .filter((p) => p.type !== "local" && !disabledProviders.includes(p.id))
     .map(async (provider) => {
-      const models = await getLanguageModels({ providerId: provider.id, userId });
+      const models = await getLanguageModels({
+        providerId: provider.id,
+        userId,
+      });
       return { providerId: provider.id, models };
     });
 

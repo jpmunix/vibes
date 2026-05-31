@@ -47,7 +47,11 @@ import { getVibesAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
-import { openRouterCompletion, hasOpenRouterApiKey, openRouterStreamCompletion } from "../utils/openrouter";
+import {
+  openRouterCompletion,
+  hasOpenRouterApiKey,
+  openRouterStreamCompletion,
+} from "../utils/openrouter";
 import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
 import { streamText } from "ai";
@@ -150,7 +154,12 @@ export async function prepareLocalBranch({
   userId: string;
 }) {
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, userId),
+    ),
+  });
   if (!app) {
     throw new Error("App not found");
   }
@@ -193,13 +202,13 @@ export async function prepareLocalBranch({
         if (isGitMergeInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a merge is in progress. " +
-            "Please complete or abort the merge and try again.",
+              "Please complete or abort the merge and try again.",
           );
         }
         if (isGitRebaseInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a rebase is in progress. " +
-            "Please complete or abort the rebase and try again.",
+              "Please complete or abort the rebase and try again.",
           );
         }
 
@@ -224,7 +233,10 @@ export async function prepareLocalBranch({
         }
       } else if (!isClean) {
         // Auto-commit is disabled and workspace is dirty — fail early
-        await ensureCleanWorkspace(appPath, `preparing branch '${targetBranch}'`);
+        await ensureCleanWorkspace(
+          appPath,
+          `preparing branch '${targetBranch}'`,
+        );
       }
 
       // List branches and check if target branch exists
@@ -275,8 +287,8 @@ export async function prepareLocalBranch({
               } catch (innerErr: any) {
                 throw new Error(
                   `Failed to resolve remote branch 'origin/${targetBranch}' to a commit. ` +
-                  "Ensure 'git fetch' succeeded and the remote branch exists. " +
-                  `${innerErr?.message || String(innerErr)}`,
+                    "Ensure 'git fetch' succeeded and the remote branch exists. " +
+                    `${innerErr?.message || String(innerErr)}`,
                 );
               }
             }
@@ -301,7 +313,7 @@ export async function prepareLocalBranch({
               } else {
                 logger.warn(
                   "[GitHub Handler] Previous branch unknown; repository may remain in detached HEAD at " +
-                  `${commitSha}.`,
+                    `${commitSha}.`,
                 );
               }
               throw error;
@@ -442,8 +454,9 @@ async function pollForAccessToken(event: IpcMainInvokeEvent) {
   } catch (error) {
     logger.error("Error polling for GitHub access token:", error);
     event.sender.send("github:flow-error", {
-      error: `Network or unexpected error during polling: ${error instanceof Error ? error.message : String(error)
-        }`,
+      error: `Network or unexpected error during polling: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     });
     stopPolling();
   }
@@ -839,7 +852,13 @@ async function handleConnectToExistingRepo(
     });
 
     // Store org, repo, and branch in the app's DB row
-    await updateAppGithubRepo({ appId, org: owner, repo, branch, userId: context.userId });
+    await updateAppGithubRepo({
+      appId,
+      org: owner,
+      repo,
+      branch,
+      userId: context.userId,
+    });
   } catch (err: any) {
     logger.error("[GitHub Handler] Failed to connect to existing repo:", err);
     throw new Error(err.message || "Failed to connect to existing repository.");
@@ -869,7 +888,12 @@ async function handlePushToGithub(
   const accessToken = settings.githubAccessToken?.value;
 
   // Get app info from DB
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) {
     throw new Error("App not found.");
   }
@@ -883,7 +907,9 @@ async function handlePushToGithub(
     // Check if the git repo itself has a remote configured
     const hasRemote = await gitHasRemote({ path: appPath });
     if (!hasRemote) {
-      throw new Error("App is not linked to a GitHub repo and has no git remote configured.");
+      throw new Error(
+        "App is not linked to a GitHub repo and has no git remote configured.",
+      );
     }
     if (!accessToken) {
       throw new Error("Not authenticated with GitHub.");
@@ -893,7 +919,8 @@ async function handlePushToGithub(
     throw new Error("Not authenticated with GitHub.");
   }
 
-  const branch = app.githubBranch || await gitCurrentBranch({ path: appPath }) || "main";
+  const branch =
+    app.githubBranch || (await gitCurrentBranch({ path: appPath })) || "main";
 
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
@@ -904,13 +931,13 @@ async function handlePushToGithub(
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a merge is in progress. " +
-          "Please complete or abort the merge and try again.",
+            "Please complete or abort the merge and try again.",
         );
       }
       if (isGitRebaseInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a rebase is in progress. " +
-          "Please complete or abort the rebase and try again.",
+            "Please complete or abort the rebase and try again.",
         );
       }
 
@@ -951,11 +978,17 @@ async function handlePushToGithub(
     // Read existing remote URL and inject token for auth
     try {
       const { exec: execDugite } = await import("dugite");
-      const urlResult = await execDugite(["remote", "get-url", "origin"], appPath);
+      const urlResult = await execDugite(
+        ["remote", "get-url", "origin"],
+        appPath,
+      );
       if (urlResult.exitCode === 0) {
         originalRemoteUrl = urlResult.stdout.trim();
         // Only inject if it's an HTTPS URL without existing auth
-        if (originalRemoteUrl.startsWith("https://") && !originalRemoteUrl.includes("@")) {
+        if (
+          originalRemoteUrl.startsWith("https://") &&
+          !originalRemoteUrl.includes("@")
+        ) {
           const authedUrl = originalRemoteUrl.replace(
             "https://",
             `https://${accessToken}:x-oauth-basic@`,
@@ -967,7 +1000,10 @@ async function handlePushToGithub(
         }
       }
     } catch (err) {
-      logger.warn("[GitHub Handler] Failed to inject auth into native remote URL:", err);
+      logger.warn(
+        "[GitHub Handler] Failed to inject auth into native remote URL:",
+        err,
+      );
     }
   }
 
@@ -981,7 +1017,8 @@ async function handlePushToGithub(
         );
 
         // Generate AI commit message from the combined diff
-        let squashMessage = commitMessage || `[vibes] Update (${aheadCount} changes)`;
+        let squashMessage =
+          commitMessage || `[vibes] Update (${aheadCount} changes)`;
         try {
           squashMessage = await generateSquashCommitMessage({
             appPath,
@@ -990,7 +1027,10 @@ async function handlePushToGithub(
             fallbackMessage: squashMessage,
           });
         } catch (err) {
-          logger.warn("[GitHub Handler] Failed to generate squash message, using fallback:", err);
+          logger.warn(
+            "[GitHub Handler] Failed to generate squash message, using fallback:",
+            err,
+          );
         }
 
         // Squash: reset --soft to the common ancestor, then re-commit everything
@@ -1096,7 +1136,10 @@ async function handlePushToGithub(
       try {
         await gitSetRemoteUrl({ path: appPath, remoteUrl: originalRemoteUrl });
       } catch (restoreErr) {
-        logger.warn("[GitHub Handler] Failed to restore original remote URL:", restoreErr);
+        logger.warn(
+          "[GitHub Handler] Failed to restore original remote URL:",
+          restoreErr,
+        );
       }
     }
   }
@@ -1109,7 +1152,12 @@ async function handleAbortRebase(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -1123,7 +1171,12 @@ async function handleContinueRebase(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -1142,7 +1195,12 @@ async function handleRebaseFromGithub(
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
@@ -1188,7 +1246,7 @@ export async function ensureCleanWorkspace(
   if (isClean) return;
   throw new Error(
     `Workspace is not clean before ${operationDescription}. ` +
-    "Please commit or stash your changes manually and try again.",
+      "Please commit or stash your changes manually and try again.",
   );
 }
 
@@ -1204,11 +1262,18 @@ async function handleGetGitState(
 }> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) {
     // Graceful fallback: app may have been deleted while polling continues.
     // Return safe defaults instead of throwing to avoid flooding error logs.
-    logger.warn(`[getGitState] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+    logger.warn(
+      `[getGitState] App not found (transient?): appId=${appId}, userId=${context.userId ?? "UNDEFINED"}`,
+    );
     return { mergeInProgress: false, rebaseInProgress: false };
   }
   const appPath = getVibesAppPath(app.path);
@@ -1253,7 +1318,12 @@ async function handleListCollaborators(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1324,7 +1394,12 @@ async function handleInviteCollaborator(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1348,7 +1423,7 @@ async function handleInviteCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-        `Failed to invite collaborator: ${response.status} ${response.statusText}`,
+          `Failed to invite collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1371,7 +1446,12 @@ async function handleRemoveCollaborator(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1391,7 +1471,7 @@ async function handleRemoveCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-        `Failed to remove collaborator: ${response.status} ${response.statusText}`,
+          `Failed to remove collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1407,7 +1487,12 @@ async function handleGetMergeConflicts(
 ): Promise<string[]> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -1426,7 +1511,10 @@ async function handleDisconnectGithubRepo(
 
   // Get the app from the database
   const app = await db.query.apps.findFirst({
-    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
   });
 
   if (!app) {
@@ -1441,13 +1529,20 @@ async function handleDisconnectGithubRepo(
       githubOrg: null,
       githubBranch: null,
     })
-    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+    .where(
+      and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    );
 
   // Also remove the git remote from the local repository
   const appPath = getVibesAppPath(app.path);
   try {
     await gitRemoveRemote({ path: appPath });
-    logger.log(`[GitHub Handler] Removed git remote 'origin' for appId: ${appId}`);
+    logger.log(
+      `[GitHub Handler] Removed git remote 'origin' for appId: ${appId}`,
+    );
   } catch (err: any) {
     logger.warn(`[GitHub Handler] Could not remove git remote: ${err.message}`);
   }
@@ -1491,7 +1586,10 @@ async function handleCloneRepoFromUrl(
     }
     const finalAppName = appName && appName.trim() ? appName.trim() : repoName;
     const existingApp = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.name, finalAppName), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(
+        eq(remoteSchema.apps.name, finalAppName),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
     });
 
     if (existingApp) {
@@ -1589,7 +1687,12 @@ async function handleGetPreview(
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
   try {
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app) {
       throw new Error("App not found");
     }
@@ -1681,7 +1784,10 @@ async function handleGetPreview(
           fallbackMessage: `Actualización (${localCommits.length} cambios)`,
         });
       } catch (err) {
-        logger.warn("[GitHub Handler] Failed to generate squash message for preview:", err);
+        logger.warn(
+          "[GitHub Handler] Failed to generate squash message for preview:",
+          err,
+        );
       }
     }
 
@@ -1739,20 +1845,27 @@ async function generateSquashCommitMessage({
     return fallbackMessage;
   }
 
-  const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
+  const systemPrompt = await getSystemPrompt(
+    "auto_commit_message",
+    settings.userId,
+  );
 
   const data = await openRouterCompletion({
     model,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `Esta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}` },
+      {
+        role: "user",
+        content: `Esta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}`,
+      },
     ],
     temperature: 0.7,
     max_tokens: 10000,
     title: "Vibes - Squash Commit Message",
   });
 
-  let generated = data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
+  let generated =
+    data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
   generated = generated.replace(/^["'`]+|["'`]+$/g, "");
 
   if (!generated || generated.length > 120) {
@@ -1780,9 +1893,12 @@ export function registerGithubHandlers() {
     return handleIsRepoAvailable(event, params);
   });
 
-  createTypedHandler(githubContracts.createRepo, async (event, params, context) => {
-    return handleCreateRepo(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.createRepo,
+    async (event, params, context) => {
+      return handleCreateRepo(event, params, context);
+    },
+  );
 
   createTypedHandler(
     githubContracts.connectExistingRepo,
@@ -1799,13 +1915,19 @@ export function registerGithubHandlers() {
     return handleRebaseFromGithub(event, params, context);
   });
 
-  createTypedHandler(githubContracts.rebaseAbort, async (event, params, context) => {
-    return handleAbortRebase(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.rebaseAbort,
+    async (event, params, context) => {
+      return handleAbortRebase(event, params, context);
+    },
+  );
 
-  createTypedHandler(githubContracts.rebaseContinue, async (event, params, context) => {
-    return handleContinueRebase(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.rebaseContinue,
+    async (event, params, context) => {
+      return handleContinueRebase(event, params, context);
+    },
+  );
 
   createTypedHandler(
     githubContracts.listCollaborators,
@@ -1828,17 +1950,26 @@ export function registerGithubHandlers() {
     },
   );
 
-  createTypedHandler(githubContracts.getConflicts, async (event, params, context) => {
-    return handleGetMergeConflicts(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.getConflicts,
+    async (event, params, context) => {
+      return handleGetMergeConflicts(event, params, context);
+    },
+  );
 
-  createTypedHandler(githubContracts.getGitState, async (event, params, context) => {
-    return handleGetGitState(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.getGitState,
+    async (event, params, context) => {
+      return handleGetGitState(event, params, context);
+    },
+  );
 
-  createTypedHandler(githubContracts.disconnect, async (event, params, context) => {
-    return handleDisconnectGithubRepo(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.disconnect,
+    async (event, params, context) => {
+      return handleDisconnectGithubRepo(event, params, context);
+    },
+  );
 
   createTypedHandler(
     githubContracts.cloneRepoFromUrl,
@@ -1847,9 +1978,12 @@ export function registerGithubHandlers() {
     },
   );
 
-  createTypedHandler(githubContracts.getPreview, async (event, params, context) => {
-    return handleGetPreview(event, params, context);
-  });
+  createTypedHandler(
+    githubContracts.getPreview,
+    async (event, params, context) => {
+      return handleGetPreview(event, params, context);
+    },
+  );
 
   // generateCommitMessage is registered separately via ipcMain.handle
   // (see registerCommitMessageStreamHandler below)
@@ -1860,11 +1994,14 @@ export function registerGithubHandlers() {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(
+          eq(remoteSchema.apps.id, params.appId),
+          eq(remoteSchema.apps.userId, context.userId),
+        ),
       });
       if (!app) throw new Error("App not found");
       const appPath = getVibesAppPath(app.path);
-      const branch = await gitCurrentBranch({ path: appPath }) || "main";
+      const branch = (await gitCurrentBranch({ path: appPath })) || "main";
 
       const message = await generateSquashCommitMessage({
         appPath,
@@ -1898,7 +2035,12 @@ export async function updateAppGithubRepo({
       githubRepo: repo,
       githubBranch: branch || "main",
     })
-    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
+    .where(
+      and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, userId),
+      ),
+    );
 }
 
 /**
@@ -1910,89 +2052,111 @@ export async function updateAppGithubRepo({
  * - Renderer calls invoke() without await (fire-and-forget)
  */
 export function registerCommitMessageStreamHandler() {
-  ipcMain.handle("github:generate-commit-message-stream", async (event, req) => {
-    const { appId } = req;
-    const settings = readSettings();
-    const userId = settings.userId;
+  ipcMain.handle(
+    "github:generate-commit-message-stream",
+    async (event, req) => {
+      const { appId } = req;
+      const settings = readSettings();
+      const userId = settings.userId;
 
-    if (!userId) {
-      safeSend(event.sender, "git:commit-message-error", { error: "Unauthorized" });
-      return;
-    }
-
-    try {
-      if (!hasOpenRouterApiKey()) {
-        safeSend(event.sender, "git:commit-message-error", { error: "OpenRouter API key not found" });
+      if (!userId) {
+        safeSend(event.sender, "git:commit-message-error", {
+          error: "Unauthorized",
+        });
         return;
       }
 
-      const db = getRemoteDb();
-      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
-
-      const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
-      });
-      if (!app) {
-        safeSend(event.sender, "git:commit-message-error", { error: "App not found" });
-        return;
-      }
-
-      const appPath = getVibesAppPath(app.path);
-
-      // Notify renderer that stream is starting
-      safeSend(event.sender, "git:commit-message-start", {});
-
-      const uncommittedFiles = req.files || [];
-
-      if (uncommittedFiles.length === 0) {
-        safeSend(event.sender, "git:commit-message-token", { token: "No hay cambios para confirmar" });
-        safeSend(event.sender, "git:commit-message-done", {});
-        return;
-      }
-
-      const filesToAnalyze = uncommittedFiles.slice(0, 30);
-
-      const diffsPromises = filesToAnalyze.map(async (file: { path: string; status: string }) => {
-        try {
-          const { diff } = await gitDiffFile({ path: appPath, filepath: file.path });
-          return `File: ${file.path} (${file.status})\n${diff.slice(0, 3000)}`;
-        } catch {
-          return `File: ${file.path} (${file.status})`;
+      try {
+        if (!hasOpenRouterApiKey()) {
+          safeSend(event.sender, "git:commit-message-error", {
+            error: "OpenRouter API key not found",
+          });
+          return;
         }
-      });
 
-      const diffs = await Promise.all(diffsPromises);
-      const diffsContext = diffs.join("\n\n");
+        const db = getRemoteDb();
+        const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
-      const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, userId),
+          ),
+        });
+        if (!app) {
+          safeSend(event.sender, "git:commit-message-error", {
+            error: "App not found",
+          });
+          return;
+        }
 
-      // NOTE: We intentionally bypass getModelClient here.
-      // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.
-      // When OpenRouter receives a request with `tools`, it does a routing/planning pass before
-      // generating — adding 40-50s of TTFT even for nano models. For commit messages we want a
-      // plain, tool-free completion, so we use openRouterStreamCompletion directly.
-      const stream = openRouterStreamCompletion({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Cambios:\n${diffsContext}` },
-        ],
-        temperature: 0.7,
-        max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
-        title: "Vibes - Commit Message",
-      });
+        const appPath = getVibesAppPath(app.path);
 
-      for await (const chunk of stream) {
-        if (event.sender.isDestroyed()) break;
-        safeSend(event.sender, "git:commit-message-token", { token: chunk });
+        // Notify renderer that stream is starting
+        safeSend(event.sender, "git:commit-message-start", {});
+
+        const uncommittedFiles = req.files || [];
+
+        if (uncommittedFiles.length === 0) {
+          safeSend(event.sender, "git:commit-message-token", {
+            token: "No hay cambios para confirmar",
+          });
+          safeSend(event.sender, "git:commit-message-done", {});
+          return;
+        }
+
+        const filesToAnalyze = uncommittedFiles.slice(0, 30);
+
+        const diffsPromises = filesToAnalyze.map(
+          async (file: { path: string; status: string }) => {
+            try {
+              const { diff } = await gitDiffFile({
+                path: appPath,
+                filepath: file.path,
+              });
+              return `File: ${file.path} (${file.status})\n${diff.slice(0, 3000)}`;
+            } catch {
+              return `File: ${file.path} (${file.status})`;
+            }
+          },
+        );
+
+        const diffs = await Promise.all(diffsPromises);
+        const diffsContext = diffs.join("\n\n");
+
+        const systemPrompt = await getSystemPrompt(
+          "auto_commit_message",
+          settings.userId,
+        );
+
+        // NOTE: We intentionally bypass getModelClient here.
+        // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.
+        // When OpenRouter receives a request with `tools`, it does a routing/planning pass before
+        // generating — adding 40-50s of TTFT even for nano models. For commit messages we want a
+        // plain, tool-free completion, so we use openRouterStreamCompletion directly.
+        const stream = openRouterStreamCompletion({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Cambios:\n${diffsContext}` },
+          ],
+          temperature: 0.7,
+          max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
+          title: "Vibes - Commit Message",
+        });
+
+        for await (const chunk of stream) {
+          if (event.sender.isDestroyed()) break;
+          safeSend(event.sender, "git:commit-message-token", { token: chunk });
+        }
+
+        safeSend(event.sender, "git:commit-message-done", {});
+      } catch (err: any) {
+        logger.error("[CommitMessageStream] Error:", err);
+        safeSend(event.sender, "git:commit-message-error", {
+          error: err.message || "Failed to generate commit message",
+        });
       }
-
-      safeSend(event.sender, "git:commit-message-done", {});
-    } catch (err: any) {
-      logger.error("[CommitMessageStream] Error:", err);
-      safeSend(event.sender, "git:commit-message-error", {
-        error: err.message || "Failed to generate commit message",
-      });
-    }
-  });
+    },
+  );
 }

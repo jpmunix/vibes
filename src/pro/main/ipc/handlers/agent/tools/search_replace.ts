@@ -75,7 +75,8 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
     let retryAttr = "";
     if (ctx?.fileEditTracker?.[args.file_path]) {
       const counts = ctx.fileEditTracker[args.file_path];
-      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      const total =
+        counts.edit_file + counts.write_file + counts.search_replace;
       if (total > 0) {
         retryAttr = ` retry-count="${total}"`;
       }
@@ -162,8 +163,6 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
 
     await fs.promises.writeFile(fullFilePath, result.content);
     logger.log(`Successfully applied search-replace to: ${fullFilePath}`);
-
-
 
     sendTelemetryEvent("local_agent:search_replace:success", {
       filePath: args.file_path,

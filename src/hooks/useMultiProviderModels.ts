@@ -31,34 +31,37 @@ export function useMultiProviderModels() {
   const ollamaEnabled = settings?.ollamaEnabled !== false;
 
   // 1. OpenRouter models
-  const {
-    data: openRouterModels,
-    isLoading: openRouterLoading,
-  } = useQuery<LanguageModel[]>({
-    queryKey: queryKeys.languageModels.forProvider({ providerId: "openrouter" }),
+  const { data: openRouterModels, isLoading: openRouterLoading } = useQuery<
+    LanguageModel[]
+  >({
+    queryKey: queryKeys.languageModels.forProvider({
+      providerId: "openrouter",
+    }),
     queryFn: () => ipc.languageModel.getModels({ providerId: "openrouter" }),
     enabled: !disabledProviders.includes("openrouter"),
   });
 
   // 2. Custom provider models (one query per custom provider)
   const customProviderIds = useMemo(
-    () => customProviders
-      .map((cp: any) => cp.id as string)
-      .filter((id) => !disabledProviders.includes(id)),
+    () =>
+      customProviders
+        .map((cp: any) => cp.id as string)
+        .filter((id) => !disabledProviders.includes(id)),
     [customProviders, disabledProviders],
   );
 
-  const {
-    data: customModelsMap,
-    isLoading: customLoading,
-  } = useQuery<Record<string, LanguageModel[]>>({
+  const { data: customModelsMap, isLoading: customLoading } = useQuery<
+    Record<string, LanguageModel[]>
+  >({
     queryKey: ["multi-provider-custom-models", ...customProviderIds],
     queryFn: async () => {
       const result: Record<string, LanguageModel[]> = {};
       await Promise.all(
         customProviderIds.map(async (id) => {
           try {
-            const models = await ipc.languageModel.getModels({ providerId: id });
+            const models = await ipc.languageModel.getModels({
+              providerId: id,
+            });
             result[id] = models;
           } catch {
             result[id] = [];
@@ -71,10 +74,7 @@ export function useMultiProviderModels() {
   });
 
   // 3. Ollama models (local)
-  const {
-    data: ollamaResult,
-    isLoading: ollamaLoading,
-  } = useQuery({
+  const { data: ollamaResult, isLoading: ollamaLoading } = useQuery({
     queryKey: ["ollama-models"],
     queryFn: () => ipc.languageModel.listOllamaModels(),
     refetchInterval: 30_000,
@@ -100,7 +100,9 @@ export function useMultiProviderModels() {
     if (customModelsMap) {
       for (const [providerId, models] of Object.entries(customModelsMap)) {
         if (disabledProviders.includes(providerId)) continue;
-        const providerConfig = customProviders.find((cp: any) => cp.id === providerId);
+        const providerConfig = customProviders.find(
+          (cp: any) => cp.id === providerId,
+        );
         const providerLabel = providerConfig?.name || providerId;
         for (const m of models) {
           result.push({
@@ -128,7 +130,14 @@ export function useMultiProviderModels() {
     }
 
     return result;
-  }, [openRouterModels, customModelsMap, ollamaResult, customProviders, disabledProviders, ollamaEnabled]);
+  }, [
+    openRouterModels,
+    customModelsMap,
+    ollamaResult,
+    customProviders,
+    disabledProviders,
+    ollamaEnabled,
+  ]);
 
   return {
     data: models,

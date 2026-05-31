@@ -30,12 +30,13 @@ export function VibesSupabaseProjectInfo({
 
   return (
     <div
-      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${isLoading
-        ? "border-amber-500"
-        : isAborted
-          ? "border-red-500"
-          : "border-border"
-        }`}
+      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
+        isLoading
+          ? "border-amber-500"
+          : isAborted
+            ? "border-red-500"
+            : "border-border"
+      }`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >
       <div className="flex items-center justify-between">
@@ -45,7 +46,11 @@ export function VibesSupabaseProjectInfo({
           ) : isAborted ? (
             <CircleX className="size-4 text-red-500" />
           ) : (
-            <img src={supabaseLogo} alt="Supabase" className="size-4 brightness-0 dark:invert opacity-70" />
+            <img
+              src={supabaseLogo}
+              alt="Supabase"
+              className="size-4 brightness-0 dark:invert opacity-70"
+            />
           )}
           <span className="text-foreground font-medium text-sm">
             Supabase Project Info

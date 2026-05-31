@@ -2,24 +2,24 @@ import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
 import { X, Wrench, Paperclip } from "@/components/ui/icons";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { useCustomAgents } from "@/hooks/useCustomAgents";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 interface UserMessageContentProps {
-    content: string;
-    aiMessagesJson?: any;
-    /** When true, image thumbnails are hidden (parent renders a compact badge instead) */
-    hideImages?: boolean;
+  content: string;
+  aiMessagesJson?: any;
+  /** When true, image thumbnails are hidden (parent renders a compact badge instead) */
+  hideImages?: boolean;
 }
 
 /**
@@ -28,52 +28,54 @@ interface UserMessageContentProps {
  * Returns an array of { src, mimeType } where src is either a data URL or a CDN URL.
  */
 export function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
-    src: string;
-    mimeType: string;
+  src: string;
+  mimeType: string;
 }> {
-    if (!aiMessagesJson) {
-        return [];
+  if (!aiMessagesJson) {
+    return [];
+  }
+
+  let parsed = aiMessagesJson;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch (e) {
+      console.warn(
+        "[UserMessageContent] Failed to parse aiMessagesJson string",
+        e,
+      );
+      return [];
     }
+  }
 
-    let parsed = aiMessagesJson;
-    if (typeof parsed === "string") {
-        try {
-            parsed = JSON.parse(parsed);
-        } catch (e) {
-            console.warn("[UserMessageContent] Failed to parse aiMessagesJson string", e);
-            return [];
-        }
+  // Handle both new format {messages: [...]} and old format [...]
+  const messages = Array.isArray(parsed) ? parsed : parsed?.messages;
+
+  if (!messages || !Array.isArray(messages)) {
+    return [];
+  }
+
+  const images: Array<{ src: string; mimeType: string }> = [];
+
+  for (const msg of messages) {
+    if (msg.role !== "user") continue;
+    if (!Array.isArray(msg.content)) continue;
+
+    for (const part of msg.content) {
+      if (part.type === "image" && part.image) {
+        const mimeType = part.mediaType || part.mimeType || "image/png";
+        // Detect whether image value is a URL or base64 data
+        const isUrl =
+          part.image.startsWith("http://") || part.image.startsWith("https://");
+        const src = isUrl
+          ? part.image
+          : `data:${mimeType};base64,${part.image}`;
+        images.push({ src, mimeType });
+      }
     }
+  }
 
-    // Handle both new format {messages: [...]} and old format [...]
-    const messages = Array.isArray(parsed)
-        ? parsed
-        : parsed?.messages;
-
-    if (!messages || !Array.isArray(messages)) {
-        return [];
-    }
-
-    const images: Array<{ src: string; mimeType: string }> = [];
-
-    for (const msg of messages) {
-        if (msg.role !== "user") continue;
-        if (!Array.isArray(msg.content)) continue;
-
-        for (const part of msg.content) {
-            if (part.type === "image" && part.image) {
-                const mimeType = part.mediaType || part.mimeType || "image/png";
-                // Detect whether image value is a URL or base64 data
-                const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
-                const src = isUrl
-                    ? part.image
-                    : `data:${mimeType};base64,${part.image}`;
-                images.push({ src, mimeType });
-            }
-        }
-    }
-
-    return images;
+  return images;
 }
 
 /**
@@ -82,263 +84,277 @@ export function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
  * The raw attachment text section is stripped from the markdown display.
  */
 export const UserMessageContent = React.memo(function UserMessageContent({
-    content,
-    aiMessagesJson,
-    hideImages,
+  content,
+  aiMessagesJson,
+  hideImages,
 }: UserMessageContentProps) {
-    const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
-    // Parse attached images from aiMessagesJson
-    const images = useMemo(
-        () => extractImagesFromAiMessages(aiMessagesJson),
-        [aiMessagesJson],
+  // Parse attached images from aiMessagesJson
+  const images = useMemo(
+    () => extractImagesFromAiMessages(aiMessagesJson),
+    [aiMessagesJson],
+  );
+
+  // Strip the "Attachments:" section and anything after it for display
+  const cleanContent = useMemo(() => {
+    let text = content;
+
+    // Remove attachment metadata
+    const attachmentMarker = text.indexOf("\n\nAttachments:\n");
+    if (attachmentMarker !== -1) {
+      text = text.substring(0, attachmentMarker);
+    }
+
+    // Also remove selected components info
+    const componentMarker = text.indexOf("\n\nSelected components:\n");
+    if (componentMarker !== -1) {
+      text = text.substring(0, componentMarker);
+    }
+
+    // Also remove file upload instructions
+    const uploadMarker = text.indexOf("\n\nFile to upload to codebase:");
+    if (uploadMarker !== -1) {
+      text = text.substring(0, uploadMarker);
+    }
+
+    // Convert single \n into markdown hard breaks (two trailing spaces + \n)
+    // so plain-text messages preserve line breaks without whitespace-pre-wrap,
+    // while markdown block elements (lists, headings) still render correctly.
+    text = text.replace(/\n(?!\n)/g, "  \n");
+
+    return text.trim();
+  }, [content]);
+
+  // Detect "Fix error:" messages
+  const isFixError = cleanContent.startsWith("Fix error:");
+
+  // Check if there are image attachment references in the raw content
+  const hasAttachmentText = content.includes("\n\nAttachments:\n");
+
+  const { customAgents } = useCustomAgents();
+
+  const commandMatch = useMemo(() => {
+    if (!cleanContent) return null;
+    const match = cleanContent.match(/^\/([a-zA-Z0-9_-]+)(?:\s+|$)/);
+    if (!match) return null;
+
+    const cmdName = match[1];
+    const lowerCmd = cmdName.toLowerCase();
+
+    // Check custom agents first
+    const customAgent = customAgents.find(
+      (ca) => ca.slashCommand.toLowerCase() === lowerCmd,
     );
+    if (customAgent) {
+      return {
+        rawMatch: match[0],
+        label: customAgent.name,
+        description: customAgent.description || "",
+        slashCommand: `/${customAgent.slashCommand}`,
+      };
+    }
 
-    // Strip the "Attachments:" section and anything after it for display
-    const cleanContent = useMemo(() => {
-        let text = content;
+    // Check native agents
+    if (lowerCmd === "agent" || lowerCmd === "build") {
+      return {
+        rawMatch: match[0],
+        label: "Agente",
+        description: "Desarrolla, edita y depura con herramientas avanzadas",
+        slashCommand: `/${lowerCmd}`,
+      };
+    }
+    if (lowerCmd === "plan") {
+      return {
+        rawMatch: match[0],
+        label: "Planificar",
+        description: "Diseña un plan de acción antes de implementar",
+        slashCommand: "/plan",
+      };
+    }
+    if (lowerCmd === "ask" || lowerCmd === "explore") {
+      return {
+        rawMatch: match[0],
+        label: "Preguntar",
+        description: "Consulta sobre tu código sin realizar cambios",
+        slashCommand: `/${lowerCmd}`,
+      };
+    }
 
-        // Remove attachment metadata
-        const attachmentMarker = text.indexOf("\n\nAttachments:\n");
-        if (attachmentMarker !== -1) {
-            text = text.substring(0, attachmentMarker);
-        }
+    return null;
+  }, [cleanContent, customAgents]);
 
-        // Also remove selected components info
-        const componentMarker = text.indexOf("\n\nSelected components:\n");
-        if (componentMarker !== -1) {
-            text = text.substring(0, componentMarker);
-        }
+  const { badgeContent, restOfContent } = useMemo(() => {
+    if (!commandMatch) {
+      return { badgeContent: null, restOfContent: cleanContent };
+    }
+    return {
+      badgeContent: commandMatch,
+      restOfContent: cleanContent.slice(commandMatch.rawMatch.length).trim(),
+    };
+  }, [cleanContent, commandMatch]);
 
-        // Also remove file upload instructions
-        const uploadMarker = text.indexOf("\n\nFile to upload to codebase:");
-        if (uploadMarker !== -1) {
-            text = text.substring(0, uploadMarker);
-        }
+  const badgeClassName = useMemo(() => {
+    if (!badgeContent) return "";
+    const lowerCmd = badgeContent.slashCommand.toLowerCase();
+    let colorClasses = "";
+    if (lowerCmd === "/agent" || lowerCmd === "/build") {
+      colorClasses =
+        "border border-input bg-muted/80 text-foreground hover:bg-muted";
+    } else if (
+      lowerCmd === "/plan" ||
+      lowerCmd === "/ask" ||
+      lowerCmd === "/explore"
+    ) {
+      colorClasses =
+        "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/30";
+    } else {
+      // Custom agents
+      colorClasses =
+        "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/30";
+    }
+    return `cursor-help px-2 py-0.5 font-mono font-semibold rounded-md text-xs select-none inline-flex items-center mt-0.5 transition-colors ${colorClasses}`;
+  }, [badgeContent]);
 
-        // Convert single \n into markdown hard breaks (two trailing spaces + \n)
-        // so plain-text messages preserve line breaks without whitespace-pre-wrap,
-        // while markdown block elements (lists, headings) still render correctly.
-        text = text.replace(/\n(?!\n)/g, '  \n');
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
 
-        return text.trim();
-    }, [content]);
+  const handleImageClick = useCallback((dataUrl: string) => {
+    setExpandedImage(dataUrl);
+  }, []);
 
-    // Detect "Fix error:" messages
-    const isFixError = cleanContent.startsWith("Fix error:");
+  const handleCloseExpanded = useCallback(() => {
+    setExpandedImage(null);
+  }, []);
 
-    // Check if there are image attachment references in the raw content
-    const hasAttachmentText = content.includes("\n\nAttachments:\n");
-
-    const { customAgents } = useCustomAgents();
-
-    const commandMatch = useMemo(() => {
-        if (!cleanContent) return null;
-        const match = cleanContent.match(/^\/([a-zA-Z0-9_-]+)(?:\s+|$)/);
-        if (!match) return null;
-
-        const cmdName = match[1];
-        const lowerCmd = cmdName.toLowerCase();
-
-        // Check custom agents first
-        const customAgent = customAgents.find(
-            (ca) => ca.slashCommand.toLowerCase() === lowerCmd
-        );
-        if (customAgent) {
-            return {
-                rawMatch: match[0],
-                label: customAgent.name,
-                description: customAgent.description || "",
-                slashCommand: `/${customAgent.slashCommand}`,
-            };
-        }
-
-        // Check native agents
-        if (lowerCmd === "agent" || lowerCmd === "build") {
-            return {
-                rawMatch: match[0],
-                label: "Agente",
-                description: "Desarrolla, edita y depura con herramientas avanzadas",
-                slashCommand: `/${lowerCmd}`,
-            };
-        }
-        if (lowerCmd === "plan") {
-            return {
-                rawMatch: match[0],
-                label: "Planificar",
-                description: "Diseña un plan de acción antes de implementar",
-                slashCommand: "/plan",
-            };
-        }
-        if (lowerCmd === "ask" || lowerCmd === "explore") {
-            return {
-                rawMatch: match[0],
-                label: "Preguntar",
-                description: "Consulta sobre tu código sin realizar cambios",
-                slashCommand: `/${lowerCmd}`,
-            };
-        }
-
-        return null;
-    }, [cleanContent, customAgents]);
-
-    const { badgeContent, restOfContent } = useMemo(() => {
-        if (!commandMatch) {
-            return { badgeContent: null, restOfContent: cleanContent };
-        }
-        return {
-            badgeContent: commandMatch,
-            restOfContent: cleanContent.slice(commandMatch.rawMatch.length).trim(),
-        };
-    }, [cleanContent, commandMatch]);
-
-    const badgeClassName = useMemo(() => {
-        if (!badgeContent) return "";
-        const lowerCmd = badgeContent.slashCommand.toLowerCase();
-        let colorClasses = "";
-        if (lowerCmd === "/agent" || lowerCmd === "/build") {
-            colorClasses = "border border-input bg-muted/80 text-foreground hover:bg-muted";
-        } else if (lowerCmd === "/plan" || lowerCmd === "/ask" || lowerCmd === "/explore") {
-            colorClasses = "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/30";
-        } else {
-            // Custom agents
-            colorClasses = "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/30";
-        }
-        return `cursor-help px-2 py-0.5 font-mono font-semibold rounded-md text-xs select-none inline-flex items-center mt-0.5 transition-colors ${colorClasses}`;
-    }, [badgeContent]);
-
-    const [errorModalOpen, setErrorModalOpen] = useState(false);
-
-    const handleImageClick = useCallback((dataUrl: string) => {
-        setExpandedImage(dataUrl);
-    }, []);
-
-    const handleCloseExpanded = useCallback(() => {
-        setExpandedImage(null);
-    }, []);
-
-    return (
+  return (
+    <>
+      {/* Render content: compact badge for fix-error, normal markdown otherwise */}
+      {isFixError ? (
         <>
-            {/* Render content: compact badge for fix-error, normal markdown otherwise */}
-            {isFixError ? (
-                <>
-                    <div
-                        onClick={() => setErrorModalOpen(true)}
-                        className="not-prose flex items-center gap-2 cursor-pointer"
-                    >
-                        <Wrench size={14} className="text-destructive flex-shrink-0" />
-                        <span className="typo-button font-normal text-foreground">Soluciona este error</span>
-                    </div>
-                    <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
-                        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-destructive">
-                                    <Wrench size={20} />
-                                    Detalle del error
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="mt-2 prose dark:prose-invert prose-sm max-w-none">
-                                <VanillaMarkdownParser content={cleanContent} />
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </>
-            ) : (
-                cleanContent && (
-                    badgeContent ? (
-                        <div className="flex items-start gap-2 flex-wrap">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span className={badgeClassName}>
-                                            {badgeContent.slashCommand}
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="p-3 min-w-[200px] max-w-[280px]">
-                                        <div className="flex flex-col gap-1 text-xs">
-                                            <div className="flex items-center justify-between w-full font-semibold border-b border-border/40 pb-1">
-                                                <span className="text-foreground">{badgeContent.label}</span>
-                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10px]">
-                                                    {badgeContent.slashCommand}
-                                                </span>
-                                            </div>
-                                            <span className="text-muted-foreground leading-normal mt-1 font-normal">
-                                                {badgeContent.description}
-                                            </span>
-                                        </div>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            {restOfContent && (
-                                <div className="flex-1 min-w-0">
-                                    <VanillaMarkdownParser content={restOfContent} />
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div>
-                            <VanillaMarkdownParser content={cleanContent} />
-                        </div>
-                    )
-                )
-            )}
-
-            {/* Render image thumbnails — styled like quote cards (hidden when parent collapses) */}
-            {!hideImages && images.length > 0 && (
-                <div className="not-prose flex flex-wrap gap-2 mt-2">
-                    {images.map((img, index) => {
-                        return (
-                            <button
-                                key={index}
-                                onClick={() => handleImageClick(img.src)}
-                                className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
-                                style={{ width: 120, height: 120, flexShrink: 0 }}
-                            >
-                                <img
-                                    src={img.src}
-                                    alt={`Captura ${index + 1}`}
-                                    className="block w-full h-full object-cover rounded-lg"
-                                />
-                                {/* Title overlay on hover */}
-                                <div className="absolute inset-x-0 bottom-0 flex items-center px-2 py-1 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <span className="text-[9px] font-medium text-white/90 drop-shadow-sm">Captura {index + 1}</span>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Fallback: if we have attachment text but no aiMessagesJson images,
-          show a subtle indicator that there were attachments */}
-            {!hideImages && hasAttachmentText && images.length === 0 && (
-                <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
-                    <span className="flex items-center gap-1"><Paperclip size={11} /> Adjuntos enviados</span>
-                </div>
-            )}
-
-            {/* Expanded image overlay */}
-            {expandedImage && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
-                    onClick={handleCloseExpanded}
-                >
-                    <div className="relative max-w-[90vw] max-h-[90vh]">
-                        <button
-                            onClick={handleCloseExpanded}
-                            className="absolute -top-3 -right-3 z-10 bg-background/90 rounded-full p-1.5 shadow-lg hover:bg-background transition-colors border border-border"
-                        >
-                            <X size={16} />
-                        </button>
-                        <img
-                            src={expandedImage}
-                            alt="Captura ampliada"
-                            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                </div>
-            )}
+          <div
+            onClick={() => setErrorModalOpen(true)}
+            className="not-prose flex items-center gap-2 cursor-pointer"
+          >
+            <Wrench size={14} className="text-destructive flex-shrink-0" />
+            <span className="typo-button font-normal text-foreground">
+              Soluciona este error
+            </span>
+          </div>
+          <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
+            <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <Wrench size={20} />
+                  Detalle del error
+                </DialogTitle>
+              </DialogHeader>
+              <div className="mt-2 prose dark:prose-invert prose-sm max-w-none">
+                <VanillaMarkdownParser content={cleanContent} />
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
-    );
+      ) : (
+        cleanContent &&
+        (badgeContent ? (
+          <div className="flex items-start gap-2 flex-wrap">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={badgeClassName}>
+                    {badgeContent.slashCommand}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="p-3 min-w-[200px] max-w-[280px]">
+                  <div className="flex flex-col gap-1 text-xs">
+                    <div className="flex items-center justify-between w-full font-semibold border-b border-border/40 pb-1">
+                      <span className="text-foreground">
+                        {badgeContent.label}
+                      </span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10px]">
+                        {badgeContent.slashCommand}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground leading-normal mt-1 font-normal">
+                      {badgeContent.description}
+                    </span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {restOfContent && (
+              <div className="flex-1 min-w-0">
+                <VanillaMarkdownParser content={restOfContent} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <VanillaMarkdownParser content={cleanContent} />
+          </div>
+        ))
+      )}
+
+      {/* Render image thumbnails — styled like quote cards (hidden when parent collapses) */}
+      {!hideImages && images.length > 0 && (
+        <div className="not-prose flex flex-wrap gap-2 mt-2">
+          {images.map((img, index) => {
+            return (
+              <button
+                key={index}
+                onClick={() => handleImageClick(img.src)}
+                className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
+                style={{ width: 120, height: 120, flexShrink: 0 }}
+              >
+                <img
+                  src={img.src}
+                  alt={`Captura ${index + 1}`}
+                  className="block w-full h-full object-cover rounded-lg"
+                />
+                {/* Title overlay on hover */}
+                <div className="absolute inset-x-0 bottom-0 flex items-center px-2 py-1 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <span className="text-[9px] font-medium text-white/90 drop-shadow-sm">
+                    Captura {index + 1}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Fallback: if we have attachment text but no aiMessagesJson images,
+          show a subtle indicator that there were attachments */}
+      {!hideImages && hasAttachmentText && images.length === 0 && (
+        <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
+          <span className="flex items-center gap-1">
+            <Paperclip size={11} /> Adjuntos enviados
+          </span>
+        </div>
+      )}
+
+      {/* Expanded image overlay */}
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
+          onClick={handleCloseExpanded}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <button
+              onClick={handleCloseExpanded}
+              className="absolute -top-3 -right-3 z-10 bg-background/90 rounded-full p-1.5 shadow-lg hover:bg-background transition-colors border border-border"
+            >
+              <X size={16} />
+            </button>
+            <img
+              src={expandedImage}
+              alt="Captura ampliada"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
 });

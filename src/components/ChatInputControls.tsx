@@ -16,18 +16,13 @@ export function ChatInputControls({
   showDesignPicker?: boolean;
   chatId?: number;
 }) {
-
   return (
     <div className="flex items-center gap-2">
       <ChatModeSelector chatId={chatId} />
-      <ModelPicker />
+      <ModelPicker chatId={chatId} />
       <InferenceTunerPicker />
-      {showTemplatePicker && (
-        <TemplatePicker variant="compact" />
-      )}
-      {showDesignPicker && (
-        <DesignPicker />
-      )}
+      {showTemplatePicker && <TemplatePicker variant="compact" />}
+      {showDesignPicker && <DesignPicker />}
       {showContextFilesPicker && (
         <>
           <ContextFilesPicker />

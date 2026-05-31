@@ -8,7 +8,5 @@
  */
 export function normalizeLegacyTags(content: string): string {
   if (!content || !content.includes("dyad-")) return content;
-  return content
-    .replace(/<dyad-/g, "<vibes-")
-    .replace(/<\/dyad-/g, "</vibes-");
+  return content.replace(/<dyad-/g, "<vibes-").replace(/<\/dyad-/g, "</vibes-");
 }

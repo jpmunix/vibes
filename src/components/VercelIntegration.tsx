@@ -37,13 +37,9 @@ export function VercelIntegration() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Triangle className="h-4 w-4 text-muted-foreground shrink-0 fill-current" />
-          <h3 className="typo-label flex items-center gap-2">
-            Vercel
-          </h3>
+          <h3 className="typo-label flex items-center gap-2">Vercel</h3>
         </div>
-        <p className="typo-caption mt-1">
-          Tu cuenta está conectada a Vercel
-        </p>
+        <p className="typo-caption mt-1">Tu cuenta está conectada a Vercel</p>
       </div>
       <div className="shrink-0">
         <Button

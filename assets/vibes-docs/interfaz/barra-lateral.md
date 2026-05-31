@@ -9,6 +9,7 @@ La barra lateral izquierda es tu centro de navegación. Su contenido cambia seg�
 ## Lista de Apps
 
 ![Barra lateral con apps](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura de la barra lateral mostrando la lista de apps" -->
 
 Cuando estás en la sección **Apps**, la barra lateral muestra:
@@ -21,12 +22,12 @@ Cuando estás en la sección **Apps**, la barra lateral muestra:
 
 En la parte superior de la lista hay un menú desplegable con acciones rápidas:
 
-| Acción | Qué hace |
-|---|---|
+| Acción           | Qué hace                               |
+| ---------------- | -------------------------------------- |
 | Nueva aplicación | Crea un proyecto vacío desde plantilla |
 | Importar carpeta | Abre un proyecto existente de tu disco |
-| Buscar | Activa el filtro de búsqueda |
-| Cerrar todas | Cierra todas las apps abiertas |
+| Buscar           | Activa el filtro de búsqueda           |
+| Cerrar todas     | Cierra todas las apps abiertas         |
 
 ## Lista de Chats (dentro de una app)
 

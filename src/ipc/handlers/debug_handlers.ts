@@ -136,10 +136,16 @@ export function registerDebugHandlers() {
       // Get chat data from remote database
       const db = getRemoteDb();
       const chatRecord = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
+        where: and(
+          eq(remoteSchema.chats.id, chatId),
+          eq(remoteSchema.chats.userId, context.userId),
+        ),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
+            orderBy: (messages, { asc }) => [
+              asc(messages.createdAt),
+              asc(messages.id),
+            ],
           },
         },
       });
@@ -162,7 +168,10 @@ export function registerDebugHandlers() {
 
       // Get app data from remote database
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, chatRecord.appId), eq(remoteSchema.apps.userId, context.userId)),
+        where: and(
+          eq(remoteSchema.apps.id, chatRecord.appId),
+          eq(remoteSchema.apps.userId, context.userId),
+        ),
       });
 
       if (!app) {
@@ -196,7 +205,8 @@ export function registerDebugHandlers() {
   });
 
   createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    const win =
+      BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
     if (!win) throw new Error("No window to capture");
 
     // Capture the window's current contents

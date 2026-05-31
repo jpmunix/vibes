@@ -10,20 +10,53 @@ import {
 
 // ── Human-readable labels ──
 const TOOL_LABELS: Record<string, { label: string; desc: string }> = {
-  edit:                { label: "editar archivos",      desc: "Crear, modificar y borrar archivos del proyecto" },
-  bash:                { label: "terminal",             desc: "Ejecutar comandos en la terminal del proyecto" },
-  read:                { label: "leer archivos",        desc: "Leer el contenido de archivos del proyecto" },
-  list:                { label: "listar directorio",    desc: "Listar el contenido de un directorio" },
-  glob:                { label: "buscar archivos",      desc: "Buscar archivos por patrón en el proyecto" },
-  grep:                { label: "buscar en archivos",   desc: "Buscar texto dentro de archivos del proyecto" },
-  webfetch:            { label: "acceso web",           desc: "Acceder a URLs externas" },
-  websearch:           { label: "búsqueda web",         desc: "Buscar información en internet" },
-  lsp:                 { label: "diagnósticos LSP",     desc: "Ejecutar verificación de tipos por archivo" },
-  task:                { label: "subagente",            desc: "Lanzar un sub-agente para tareas paralelas" },
-  skill:               { label: "skill",                desc: "Ejecutar un skill o prompt predefinido" },
-  external_directory:  { label: "directorio externo",   desc: "Acceder a archivos fuera del directorio del proyecto" },
-  todowrite:           { label: "lista de tareas",      desc: "Gestionar la lista de tareas del agente" },
-  doom_loop:           { label: "recuperación",         desc: "Auto-recuperación cuando el agente entra en bucle" },
+  edit: {
+    label: "editar archivos",
+    desc: "Crear, modificar y borrar archivos del proyecto",
+  },
+  bash: {
+    label: "terminal",
+    desc: "Ejecutar comandos en la terminal del proyecto",
+  },
+  read: {
+    label: "leer archivos",
+    desc: "Leer el contenido de archivos del proyecto",
+  },
+  list: {
+    label: "listar directorio",
+    desc: "Listar el contenido de un directorio",
+  },
+  glob: {
+    label: "buscar archivos",
+    desc: "Buscar archivos por patrón en el proyecto",
+  },
+  grep: {
+    label: "buscar en archivos",
+    desc: "Buscar texto dentro de archivos del proyecto",
+  },
+  webfetch: { label: "acceso web", desc: "Acceder a URLs externas" },
+  websearch: { label: "búsqueda web", desc: "Buscar información en internet" },
+  lsp: {
+    label: "diagnósticos LSP",
+    desc: "Ejecutar verificación de tipos por archivo",
+  },
+  task: {
+    label: "subagente",
+    desc: "Lanzar un sub-agente para tareas paralelas",
+  },
+  skill: { label: "skill", desc: "Ejecutar un skill o prompt predefinido" },
+  external_directory: {
+    label: "directorio externo",
+    desc: "Acceder a archivos fuera del directorio del proyecto",
+  },
+  todowrite: {
+    label: "lista de tareas",
+    desc: "Gestionar la lista de tareas del agente",
+  },
+  doom_loop: {
+    label: "recuperación",
+    desc: "Auto-recuperación cuando el agente entra en bucle",
+  },
 };
 
 interface VibesPermissionBannerProps {
@@ -42,7 +75,8 @@ export function VibesPermissionBanner({
 
   // Collapsible input preview
   const [isInputExpanded, setIsInputExpanded] = React.useState(false);
-  const [inputCollapsedMaxHeight, setInputCollapsedMaxHeight] = React.useState<number>(0);
+  const [inputCollapsedMaxHeight, setInputCollapsedMaxHeight] =
+    React.useState<number>(0);
   const [inputHasOverflow, setInputHasOverflow] = React.useState(false);
   const inputRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -75,8 +109,7 @@ export function VibesPermissionBanner({
           <ShieldCheck size={14} />
         </div>
         <span className="text-[13px] font-medium text-foreground">
-          ¿Permitir{" "}
-          <span className="font-mono">{meta.label}</span>?
+          ¿Permitir <span className="font-mono">{meta.label}</span>?
           {queueTotal > 1 && (
             <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
               (1 de {queueTotal})
@@ -95,7 +128,6 @@ export function VibesPermissionBanner({
             </Tooltip>
           </TooltipProvider>
         )}
-
       </div>
 
       {/* Body */}

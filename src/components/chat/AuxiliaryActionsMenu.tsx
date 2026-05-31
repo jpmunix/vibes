@@ -2,7 +2,12 @@ import { useRef } from "react";
 import { Plus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AuxiliaryActionsMenuProps {
   onFileSelect: (

@@ -33,8 +33,8 @@ export async function cleanupOldAiMessagesJson() {
         .where(
           and(
             lt(remoteSchema.messages.createdAt, cutoffDate),
-            isNotNull(remoteSchema.messages.aiMessagesJson)
-          )
+            isNotNull(remoteSchema.messages.aiMessagesJson),
+          ),
         )
         .limit(BATCH_SIZE);
 
@@ -51,7 +51,7 @@ export async function cleanupOldAiMessagesJson() {
       totalAffected += ids.length;
 
       // Brief pause to be nice to the network/server
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     if (totalAffected > 0) {

@@ -6,7 +6,10 @@ interface ChatErrorProps {
   onDismiss: () => void;
 }
 
-export const ChatError = React.memo(function ChatError({ error, onDismiss }: ChatErrorProps) {
+export const ChatError = React.memo(function ChatError({
+  error,
+  onDismiss,
+}: ChatErrorProps) {
   if (!error) {
     return null;
   }

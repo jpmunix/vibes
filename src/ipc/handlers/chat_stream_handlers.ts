@@ -21,9 +21,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
 import { DEFAULT_PROMPTS } from "../../prompts/defaults";
-import {
-  constructSystemPrompt,
-} from "../../prompts/system_prompt";
+import { constructSystemPrompt } from "../../prompts/system_prompt";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -33,7 +31,10 @@ import {
   BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/bunny_prompt";
 import type { BunnyConfig } from "@/ipc/types/bunny";
-import { getPocketBaseAvailableSystemPrompt, POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT } from "../../prompts/pocketbase_prompt";
+import {
+  getPocketBaseAvailableSystemPrompt,
+  POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT,
+} from "../../prompts/pocketbase_prompt";
 import { getVibesAppPath } from "../../paths/paths";
 import { readSettings } from "../../main/settings";
 import type { ChatResponseEnd, ChatStreamParams } from "@/ipc/types";
@@ -42,9 +43,7 @@ import {
   extractCodebase,
   readFileWithCache,
 } from "../../utils/codebase";
-import {
-  processFullResponseActions,
-} from "../processors/response_processor";
+import { processFullResponseActions } from "../processors/response_processor";
 import { streamTestResponse } from "./testing_chat_handlers";
 import { getTestResponse } from "./testing_chat_handlers";
 import { getModelClient, ModelClient } from "../utils/get_model_client";
@@ -61,18 +60,25 @@ import * as os from "os";
 import * as crypto from "crypto";
 import { readFile, writeFile, unlink, rm as fsRm } from "fs/promises";
 
-function getUltimateBaseAgent(baseAgent: string, allAgents: any[]): "build" | "plan" | "explore" {
+function getUltimateBaseAgent(
+  baseAgent: string,
+  allAgents: any[],
+): "build" | "plan" | "explore" {
   let currentBase = baseAgent;
   const visited = new Set<number>();
   while (currentBase.startsWith("custom-agent::")) {
     const parentId = parseInt(currentBase.split("::")[1]);
     if (visited.has(parentId)) break;
     visited.add(parentId);
-    const parent = allAgents.find(a => a.id === parentId);
+    const parent = allAgents.find((a) => a.id === parentId);
     if (!parent) break;
     currentBase = parent.baseAgent;
   }
-  if (currentBase === "build" || currentBase === "plan" || currentBase === "explore") {
+  if (
+    currentBase === "build" ||
+    currentBase === "plan" ||
+    currentBase === "explore"
+  ) {
     return currentBase;
   }
   return "build";
@@ -81,29 +87,38 @@ function getUltimateBaseAgent(baseAgent: string, allAgents: any[]): "build" | "p
 function resolveStackedSystemPrompt(agent: any, allAgents: any[]): string {
   const visited = new Set<number>();
   const prompts: string[] = [];
-  
+
   let current = agent;
   while (current) {
     prompts.unshift(current.systemPrompt);
-    
+
     if (current.baseAgent.startsWith("custom-agent::")) {
       const parentId = parseInt(current.baseAgent.split("::")[1]);
       if (visited.has(parentId)) break;
       visited.add(parentId);
-      current = allAgents.find(a => a.id === parentId);
+      current = allAgents.find((a) => a.id === parentId);
     } else {
       current = null;
     }
   }
-  
+
   return prompts.join("\n\n---\n\n");
 }
-import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "../utils/token_utils";
+import {
+  getMaxTokens,
+  getTemperature,
+  getContextWindow,
+  estimateTokens,
+} from "../utils/token_utils";
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
-import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
+import {
+  handleOpenCodeStream,
+  revertLastOpenCodeMessage,
+  destroyOpenCodeSession,
+} from "./opencode_adapter";
 import { uploadChatAttachment } from "./bunny_handlers";
 import { bufferChatRound } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
@@ -133,9 +148,12 @@ import z from "zod";
 import {
   isSupabaseConnected,
   DEFAULT_STANDARD_MODEL,
-  DEFAULT_EXECUTOR_MODEL
+  DEFAULT_EXECUTOR_MODEL,
 } from "@/lib/schemas";
-import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
+import {
+  AI_STREAMING_ERROR_MESSAGE_PREFIX,
+  PERSISTED_ERROR_PREFIX,
+} from "@/shared/texts";
 import { classifyError } from "../utils/error_classifier";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
@@ -295,7 +313,10 @@ function registerChatStreamHandlers() {
     const settings = readSettings();
     const currentUserId = settings.userId;
     if (!currentUserId) {
-      safeSend(event.sender, "chat:stream:error", { chatId: req.chatId, error: "Unauthorized" });
+      safeSend(event.sender, "chat:stream:error", {
+        chatId: req.chatId,
+        error: "Unauthorized",
+      });
       return;
     }
     const db = getRemoteDb();
@@ -313,17 +334,25 @@ function registerChatStreamHandlers() {
       // Notify tray: stream started → green icon
       try {
         notifyStreamStarted();
-      } catch (err) { logger.error("Tray notifyStreamStarted error:", err); }
+      } catch (err) {
+        logger.error("Tray notifyStreamStarted error:", err);
+      }
 
       // Notify renderer that stream is starting
       safeSend(event.sender, "chat:stream:start", { chatId: req.chatId });
 
       // Get the chat to check for existing messages
       const chat = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
+        where: and(
+          eq(remoteSchema.chats.id, req.chatId),
+          eq(remoteSchema.chats.userId, currentUserId as string),
+        ),
         with: {
           messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
+            orderBy: (messages, { asc }) => [
+              asc(messages.createdAt),
+              asc(messages.id),
+            ],
           },
           app: true, // Include app information
         },
@@ -342,12 +371,15 @@ function registerChatStreamHandlers() {
         .from(remoteSchema.customAgents)
         .where(eq(remoteSchema.customAgents.userId, currentUserId as string));
 
-      let effectiveChatMode: string = req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
+      let effectiveChatMode: string =
+        req.chatMode || chat.chatMode || settings.selectedChatMode || "agent";
       const originalPrompt = req.prompt;
 
       // Detect slash command anywhere in the prompt (safely matching command tokens)
       const knownCommands = ["agent", "build", "plan", "ask", "explore"];
-      const customAgentCommands = customAgents.map(ca => ca.slashCommand.toLowerCase());
+      const customAgentCommands = customAgents.map((ca) =>
+        ca.slashCommand.toLowerCase(),
+      );
       const allCommands = [...knownCommands, ...customAgentCommands];
       allCommands.sort((a, b) => b.length - a.length);
 
@@ -358,17 +390,29 @@ function registerChatStreamHandlers() {
         const match = req.prompt.match(cmdRegex);
         if (match) {
           if (cmdName === "agent" || cmdName === "build") {
-            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+            const replacer = customAgents.find(
+              (ca) =>
+                ca.isDefaultBase === 1 &&
+                getUltimateBaseAgent(ca.baseAgent, customAgents) === "build",
+            );
             matchedMode = replacer ? `custom-agent::${replacer.id}` : "agent";
           } else if (cmdName === "plan") {
-            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+            const replacer = customAgents.find(
+              (ca) =>
+                ca.isDefaultBase === 1 &&
+                getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan",
+            );
             matchedMode = replacer ? `custom-agent::${replacer.id}` : "plan";
           } else if (cmdName === "ask" || cmdName === "explore") {
-            const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+            const replacer = customAgents.find(
+              (ca) =>
+                ca.isDefaultBase === 1 &&
+                getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore",
+            );
             matchedMode = replacer ? `custom-agent::${replacer.id}` : "ask";
           } else {
             const matchedAgent = customAgents.find(
-              (ca) => ca.slashCommand.toLowerCase() === cmdName
+              (ca) => ca.slashCommand.toLowerCase() === cmdName,
             );
             if (matchedAgent) {
               matchedMode = `custom-agent::${matchedAgent.id}`;
@@ -378,7 +422,9 @@ function registerChatStreamHandlers() {
           if (matchedMode) {
             effectiveChatMode = matchedMode;
             req.prompt = req.prompt.replace(cmdRegex, " ").trim();
-            logger.info(`[ChatStream] Intercepted slash command /${cmdName} anywhere. Setting effectiveChatMode to ${effectiveChatMode}. Remaining prompt: "${req.prompt}"`);
+            logger.info(
+              `[ChatStream] Intercepted slash command /${cmdName} anywhere. Setting effectiveChatMode to ${effectiveChatMode}. Remaining prompt: "${req.prompt}"`,
+            );
             await db
               .update(remoteSchema.chats)
               .set({ chatMode: effectiveChatMode })
@@ -390,13 +436,28 @@ function registerChatStreamHandlers() {
 
       // ── Default Base Replacements Resolution ────────────────────────
       if (effectiveChatMode === "agent" || effectiveChatMode === "build") {
-        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "build");
+        const replacer = customAgents.find(
+          (ca) =>
+            ca.isDefaultBase === 1 &&
+            getUltimateBaseAgent(ca.baseAgent, customAgents) === "build",
+        );
         if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
       } else if (effectiveChatMode === "plan") {
-        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan");
+        const replacer = customAgents.find(
+          (ca) =>
+            ca.isDefaultBase === 1 &&
+            getUltimateBaseAgent(ca.baseAgent, customAgents) === "plan",
+        );
         if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
-      } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
-        const replacer = customAgents.find(ca => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore");
+      } else if (
+        effectiveChatMode === "ask" ||
+        effectiveChatMode === "explore"
+      ) {
+        const replacer = customAgents.find(
+          (ca) =>
+            ca.isDefaultBase === 1 &&
+            getUltimateBaseAgent(ca.baseAgent, customAgents) === "explore",
+        );
         if (replacer) effectiveChatMode = `custom-agent::${replacer.id}`;
       }
 
@@ -428,28 +489,38 @@ function registerChatStreamHandlers() {
 
             // Simple heuristic to remove appended attachment info
             // This matches the way attachmentInfo is appended below
-            const attachmentMarkerIndex = cleanPrompt.indexOf("\n\nAttachments:\n");
+            const attachmentMarkerIndex =
+              cleanPrompt.indexOf("\n\nAttachments:\n");
             if (attachmentMarkerIndex !== -1) {
               cleanPrompt = cleanPrompt.substring(0, attachmentMarkerIndex);
             }
 
             // Also clean up selected components info
-            const componentMarkerIndex = cleanPrompt.indexOf("\n\nSelected components:\n");
+            const componentMarkerIndex = cleanPrompt.indexOf(
+              "\n\nSelected components:\n",
+            );
             if (componentMarkerIndex !== -1) {
               cleanPrompt = cleanPrompt.substring(0, componentMarkerIndex);
             }
 
             // Also check for "File to upload to codebase:" and remove it
-            const uploadToCodebaseMarkerIndex = cleanPrompt.indexOf("\n\nFile to upload to codebase:");
+            const uploadToCodebaseMarkerIndex = cleanPrompt.indexOf(
+              "\n\nFile to upload to codebase:",
+            );
             if (uploadToCodebaseMarkerIndex !== -1) {
-              cleanPrompt = cleanPrompt.substring(0, uploadToCodebaseMarkerIndex);
+              cleanPrompt = cleanPrompt.substring(
+                0,
+                uploadToCodebaseMarkerIndex,
+              );
             }
 
             // Recover attachments from aiMessagesJson if present
             const attachmentsToRestore: any[] = [];
             const aiMessagesJson = lastUserMessage.aiMessagesJson as any;
             if (aiMessagesJson) {
-              const aiMessages = Array.isArray(aiMessagesJson) ? aiMessagesJson : aiMessagesJson.messages;
+              const aiMessages = Array.isArray(aiMessagesJson)
+                ? aiMessagesJson
+                : aiMessagesJson.messages;
               if (aiMessages && Array.isArray(aiMessages)) {
                 const userMsg = aiMessages.find((m: any) => m.role === "user");
                 if (userMsg && Array.isArray(userMsg.content)) {
@@ -458,7 +529,8 @@ function registerChatStreamHandlers() {
                       attachmentsToRestore.push({
                         type: part.type,
                         image: part.image,
-                        mediaType: part.mediaType || part.mimeType || "image/png"
+                        mediaType:
+                          part.mediaType || part.mimeType || "image/png",
                       });
                     }
                   });
@@ -469,14 +541,25 @@ function registerChatStreamHandlers() {
             safeSend(event.sender, "chat:undo-redo:content", {
               chatId: req.chatId,
               prompt: cleanPrompt,
-              attachments: attachmentsToRestore.length > 0 ? attachmentsToRestore : undefined
+              attachments:
+                attachmentsToRestore.length > 0
+                  ? attachmentsToRestore
+                  : undefined,
             });
           }
 
           // Delete the user message
           await db
             .delete(remoteSchema.messages)
-            .where(and(eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex].id), eq(remoteSchema.messages.userId, currentUserId as string)));
+            .where(
+              and(
+                eq(
+                  remoteSchema.messages.id,
+                  chatMessages[lastUserMessageIndex].id,
+                ),
+                eq(remoteSchema.messages.userId, currentUserId as string),
+              ),
+            );
 
           // If there's an assistant message after the user message, delete it too
           if (
@@ -487,8 +570,11 @@ function registerChatStreamHandlers() {
               .delete(remoteSchema.messages)
               .where(
                 and(
-                  eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex + 1].id),
-                  eq(remoteSchema.messages.userId, currentUserId as string)
+                  eq(
+                    remoteSchema.messages.id,
+                    chatMessages[lastUserMessageIndex + 1].id,
+                  ),
+                  eq(remoteSchema.messages.userId, currentUserId as string),
                 ),
               );
           }
@@ -513,7 +599,10 @@ function registerChatStreamHandlers() {
       if (req.attachments && req.attachments.length > 0) {
         attachmentInfo = "\n\nAttachments:\n";
         for (const [index, attachment] of req.attachments.entries()) {
-          const hash = crypto.createHash("md5").update(attachment.name + Date.now()).digest("hex");
+          const hash = crypto
+            .createHash("md5")
+            .update(attachment.name + Date.now())
+            .digest("hex");
           const fileExtension = path.extname(attachment.name);
           const filename = `${hash}${fileExtension}`;
           const filePath = path.join(TEMP_DIR, filename);
@@ -523,7 +612,10 @@ function registerChatStreamHandlers() {
 
           if (attachment.attachmentType === "upload-to-codebase") {
             const fileId = `VIBES_ATTACHMENT_${index}`;
-            fileUploadsState.addFileUpload({ chatId: req.chatId, fileId }, { filePath, originalName: attachment.name });
+            fileUploadsState.addFileUpload(
+              { chatId: req.chatId, fileId },
+              { filePath, originalName: attachment.name },
+            );
             attachmentInfo += `\n\nFile to upload to codebase: ${attachment.name} (file id: ${fileId})\n`;
           } else {
             attachmentInfo += `- ${attachment.name} (${attachment.type})\n`;
@@ -544,7 +636,12 @@ function registerChatStreamHandlers() {
           const referenced = await db
             .select()
             .from(remoteSchema.prompts)
-            .where(and(inArray(remoteSchema.prompts.id, ids), eq(remoteSchema.prompts.userId, currentUserId as string)));
+            .where(
+              and(
+                inArray(remoteSchema.prompts.id, ids),
+                eq(remoteSchema.prompts.userId, currentUserId as string),
+              ),
+            );
           if (referenced.length > 0) {
             const promptsMap: Record<number, string> = {};
             for (const p of referenced) {
@@ -605,7 +702,11 @@ ${componentSnippet}
       // We build two versions: one with base64 for the LLM, one with CDN URLs for DB storage
       let userAiMessagesJson: any = null;
       if (attachmentPaths.length > 0) {
-        const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths, currentUserId);
+        const { dbMessage } = await prepareMessageWithAttachments(
+          { role: "user", content: userPrompt } as any,
+          attachmentPaths,
+          currentUserId,
+        );
         const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
         if (json) userAiMessagesJson = JSON.stringify(json);
       }
@@ -621,7 +722,10 @@ ${componentSnippet}
             const priorAttachmentPaths: string[] = [];
             let priorAttachmentInfo = "\n\nAttachments:\n";
             for (const att of prior.attachments) {
-              const hash = crypto.createHash("md5").update(att.name + Date.now()).digest("hex");
+              const hash = crypto
+                .createHash("md5")
+                .update(att.name + Date.now())
+                .digest("hex");
               const ext = path.extname(att.name);
               const filePath = path.join(TEMP_DIR, `${hash}${ext}`);
               const base64Data = att.data.split(";base64,").pop() || "";
@@ -631,7 +735,11 @@ ${componentSnippet}
             }
             priorContent += priorAttachmentInfo;
             // Build aiMessagesJson for image visibility in the UI (CDN URLs for DB)
-            const { dbMessage } = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths, currentUserId);
+            const { dbMessage } = await prepareMessageWithAttachments(
+              { role: "user", content: priorContent } as any,
+              priorAttachmentPaths,
+              currentUserId,
+            );
             const json = getAiMessagesJsonIfWithinLimit([dbMessage]);
             if (json) priorAiMessagesJson = JSON.stringify(json);
           }
@@ -647,7 +755,9 @@ ${componentSnippet}
           // 1ms gap to guarantee insertion order
           await new Promise((r) => setTimeout(r, 1));
         }
-        logger.info(`[Stream] Inserted ${req.priorMessages.length} prior queued message(s) into DB for chat ${req.chatId}`);
+        logger.info(
+          `[Stream] Inserted ${req.priorMessages.length} prior queued message(s) into DB for chat ${req.chatId}`,
+        );
       }
 
       const [insertedUserMessage] = await db
@@ -677,7 +787,7 @@ ${componentSnippet}
 
       const resolvedChatMode = effectiveChatMode;
       const agentId = agentIdMap[resolvedChatMode] || "build";
-      
+
       let effectiveModelName = settings.selectedModel.name;
       const activeProvider = settings.selectedModel?.provider || "openrouter";
       // All modes (agent, plan, ask) use the selectedModel from the dropdown.
@@ -686,16 +796,26 @@ ${componentSnippet}
       if (resolvedChatMode.startsWith("custom-agent::")) {
         const agentIdNum = parseInt(resolvedChatMode.split("::")[1]);
         const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
-        if (matchedAgent && matchedAgent.modelSource === "static" && matchedAgent.model) {
+        if (
+          matchedAgent &&
+          matchedAgent.modelSource === "static" &&
+          matchedAgent.model
+        ) {
           const { parseModelString } = await import("../../lib/schemas");
-          const { provider: staticProv, name: staticName } = parseModelString(matchedAgent.model, activeProvider);
+          const { provider: staticProv, name: staticName } = parseModelString(
+            matchedAgent.model,
+            activeProvider,
+          );
           effectiveModelName = staticName.replace(/^openrouter\//, "");
           selectedModel = { name: staticName, provider: staticProv };
         }
       } else if (agentId === "mockup") {
         const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
         const { parseModelString } = await import("../../lib/schemas");
-        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+        const { provider: execProv, name: execName } = parseModelString(
+          rawExec,
+          activeProvider,
+        );
         effectiveModelName = execName.replace(/^openrouter\//, "");
         selectedModel = { name: effectiveModelName, provider: execProv };
       }
@@ -730,10 +850,16 @@ ${componentSnippet}
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
+          where: and(
+            eq(remoteSchema.chats.id, req.chatId),
+            eq(remoteSchema.chats.userId, currentUserId as string),
+          ),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
+              orderBy: (messages, { asc }) => [
+                asc(messages.createdAt),
+                asc(messages.id),
+              ],
             },
             app: true,
           },
@@ -760,7 +886,6 @@ ${componentSnippet}
       } else {
         // Normal AI processing for non-test prompts
 
-
         // Create placeholder assistant message after model selection is complete
         [placeholderAssistantMessage] = await db
           .insert(remoteSchema.messages)
@@ -781,25 +906,36 @@ ${componentSnippet}
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
 
         // ── A1: Register durable stream task in DB ──────────────────────
-        await db.insert(remoteSchema.streamTasks).values({
-          userId: currentUserId as string,
-          chatId: req.chatId,
-          messageId: placeholderAssistantMessage.id,
-          status: "running",
-          startedAt: new Date(),
-          model: effectiveModelName,
-          agentId: agentIdMap[resolvedChatMode] || "build",
-        }).catch(err => logger.error("[StreamTask] Failed to insert stream task:", err));
+        await db
+          .insert(remoteSchema.streamTasks)
+          .values({
+            userId: currentUserId as string,
+            chatId: req.chatId,
+            messageId: placeholderAssistantMessage.id,
+            status: "running",
+            startedAt: new Date(),
+            model: effectiveModelName,
+            agentId: agentIdMap[resolvedChatMode] || "build",
+          })
+          .catch((err) =>
+            logger.error("[StreamTask] Failed to insert stream task:", err),
+          );
 
         // Reset stream start time for the actual streaming phase
         streamStartedAt = Date.now();
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
+          where: and(
+            eq(remoteSchema.chats.id, req.chatId),
+            eq(remoteSchema.chats.userId, currentUserId as string),
+          ),
           with: {
             messages: {
-              orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
+              orderBy: (messages, { asc }) => [
+                asc(messages.createdAt),
+                asc(messages.id),
+              ],
             },
             app: true,
           },
@@ -816,7 +952,6 @@ ${componentSnippet}
         });
 
         // Log selected model before starting stream
-        
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -829,14 +964,14 @@ ${componentSnippet}
         // we handle this specially below.
         const chatContext =
           req.selectedComponents &&
-            req.selectedComponents.length > 0 &&
-            !isSmartContextEnabled
+          req.selectedComponents.length > 0 &&
+          !isSmartContextEnabled
             ? {
-              contextPaths: req.selectedComponents.map((component) => ({
-                globPath: component.relativePath,
-              })),
-              smartContextAutoIncludes: [],
-            }
+                contextPaths: req.selectedComponents.map((component) => ({
+                  globPath: component.relativePath,
+                })),
+                smartContextAutoIncludes: [],
+              }
             : validateChatContext(updatedChat.app.chatContext);
 
         // Skip codebase extraction for summarize intent and OpenCode agent mode.
@@ -848,7 +983,8 @@ ${componentSnippet}
         // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
         const currentChatMode = effectiveChatMode;
-        const isAgentMode = currentChatMode === "agent" ||
+        const isAgentMode =
+          currentChatMode === "agent" ||
           currentChatMode === "ask" ||
           currentChatMode === "plan" ||
           currentChatMode === "mockup" ||
@@ -896,7 +1032,9 @@ ${componentSnippet}
         // ── Build-mode preprocessing (skipped for OpenCode agent mode) ──────
         // OpenCode manages its own project context. Vibes injects additional
         // These variables are only used by the build/ask mode branches below.
-        let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
+        let mentionedAppsCodebases: Awaited<
+          ReturnType<typeof extractMentionedAppsCodebases>
+        > = [];
         let willUseAgentStream = isAgentMode;
         let isDeepContextEnabled = false;
         let otherAppsCodebaseInfo = "";
@@ -922,7 +1060,7 @@ ${componentSnippet}
           isDeepContextEnabled = Boolean(
             isEngineEnabled &&
             settings.proSmartContextOption !== "balanced" &&
-            mentionedAppsCodebases.length === 0
+            mentionedAppsCodebases.length === 0,
           );
           logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
 
@@ -950,8 +1088,6 @@ ${componentSnippet}
             codebaseInfo.length / 4,
           );
 
-          
-
           // Prepare message history for the AI
           const messageHistory = updatedChat.messages.map((message: any) => ({
             role: message.role as "user" | "assistant" | "system",
@@ -970,7 +1106,10 @@ ${componentSnippet}
               .filter((msg: any) => msg.role !== "system")
               .slice(-maxChatTurns * 2);
 
-            if (recentMessages.length > 0 && recentMessages[0].role !== "user") {
+            if (
+              recentMessages.length > 0 &&
+              recentMessages[0].role !== "user"
+            ) {
               const firstUserIndex = recentMessages.findIndex(
                 (msg: any) => msg.role === "user",
               );
@@ -995,11 +1134,16 @@ ${componentSnippet}
           let systemPromptMode: "ask" | "agent" | "plan" = "agent";
           if (effectiveChatMode === "plan") {
             systemPromptMode = "plan";
-          } else if (effectiveChatMode === "ask" || effectiveChatMode === "explore") {
+          } else if (
+            effectiveChatMode === "ask" ||
+            effectiveChatMode === "explore"
+          ) {
             systemPromptMode = "ask";
           } else if (effectiveChatMode.startsWith("custom-agent::")) {
             const agentIdNum = parseInt(effectiveChatMode.split("::")[1]);
-            const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
+            const matchedAgent = customAgents.find(
+              (ca) => ca.id === agentIdNum,
+            );
             if (matchedAgent) {
               const baseMap: Record<string, "ask" | "agent" | "plan"> = {
                 build: "agent",
@@ -1028,7 +1172,6 @@ ${componentSnippet}
           }
         } // end !isAgentMode
 
-
         if (
           updatedChat.app?.supabaseProjectId &&
           isSupabaseConnected(settings)
@@ -1042,13 +1185,15 @@ ${componentSnippet}
             getSupabaseAvailableSystemPrompt(supabaseClientCode) +
             "\n\n" +
             // For local agent, we will explicitly fetch the database context when needed.
-            (effectiveChatMode === "agent" || effectiveChatMode === "mockup" || effectiveChatMode.startsWith("custom-agent::")
+            (effectiveChatMode === "agent" ||
+            effectiveChatMode === "mockup" ||
+            effectiveChatMode.startsWith("custom-agent::")
               ? ""
               : await getSupabaseContext({
-                supabaseProjectId: updatedChat.app.supabaseProjectId,
-                organizationSlug:
-                  updatedChat.app.supabaseOrganizationSlug ?? null,
-              }));
+                  supabaseProjectId: updatedChat.app.supabaseProjectId,
+                  organizationSlug:
+                    updatedChat.app.supabaseOrganizationSlug ?? null,
+                }));
         } else if (
           // Neon projects don't need Supabase.
           !updatedChat.app?.neonProjectId &&
@@ -1062,7 +1207,11 @@ ${componentSnippet}
 
         // Bunny.net prompt injection
         const bunnyConfig = updatedChat.app?.bunnyConfig as BunnyConfig | null;
-        if (bunnyConfig && (bunnyConfig.databases?.length > 0 || bunnyConfig.storageZones?.length > 0)) {
+        if (
+          bunnyConfig &&
+          (bunnyConfig.databases?.length > 0 ||
+            bunnyConfig.storageZones?.length > 0)
+        ) {
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
           effectiveChatMode !== "agent" &&
@@ -1074,8 +1223,13 @@ ${componentSnippet}
 
         // PocketBase prompt injection
         const pocketbaseConfig = updatedChat.app?.pocketbaseConfig as any;
-        if (pocketbaseConfig && pocketbaseConfig.url && pocketbaseConfig.adminEmail) {
-          systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
+        if (
+          pocketbaseConfig &&
+          pocketbaseConfig.url &&
+          pocketbaseConfig.adminEmail
+        ) {
+          systemPrompt +=
+            "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
           effectiveChatMode !== "agent" &&
           effectiveChatMode !== "mockup" &&
@@ -1083,7 +1237,6 @@ ${componentSnippet}
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
-
 
         // Update the system prompt for images if there are image attachments
         const hasImageAttachments =
@@ -1095,7 +1248,8 @@ ${componentSnippet}
         const hasUploadedAttachments =
           req.attachments &&
           req.attachments.some(
-            (attachment: any) => attachment.attachmentType === "upload-to-codebase",
+            (attachment: any) =>
+              attachment.attachmentType === "upload-to-codebase",
           );
         // If there's mixed attachments (e.g. some upload to codebase attachments and some upload images as chat context attachemnts)
         // we will just include the file upload system prompt, otherwise the AI gets confused and doesn't reliably
@@ -1146,52 +1300,55 @@ This conversation includes one or more image attachments. When the user uploads 
 
         const codebasePrefix = isEngineEnabled
           ? // No codebase prefix if engine is set, we will take of it there.
-          []
+            []
           : ([
-            {
-              role: "user",
-              content: createCodebasePrompt(codebaseInfo),
-            },
-            {
-              role: "assistant",
-              content: "OK, got it. I'm ready to help",
-            },
-          ] as const);
+              {
+                role: "user",
+                content: createCodebasePrompt(codebaseInfo),
+              },
+              {
+                role: "assistant",
+                content: "OK, got it. I'm ready to help",
+              },
+            ] as const);
 
         // If engine is enabled, we will send the other apps codebase info to the engine
         // and process it with smart context.
         const otherCodebasePrefix =
           otherAppsCodebaseInfo && !isEngineEnabled
             ? ([
-              {
-                role: "user",
-                content: createOtherAppsCodebasePrompt(otherAppsCodebaseInfo),
-              },
-              {
-                role: "assistant",
-                content: "OK.",
-              },
-            ] as const)
+                {
+                  role: "user",
+                  content: createOtherAppsCodebasePrompt(otherAppsCodebaseInfo),
+                },
+                {
+                  role: "assistant",
+                  content: "OK.",
+                },
+              ] as const)
             : [];
 
-        const limitedHistoryChatMessages = limitedMessageHistory.map((msg: any) => ({
-          role: msg.role as "user" | "assistant" | "system",
-          // Why remove thinking tags?
-          // Thinking tags are generally not critical for the context
-          // and eats up extra tokens.
-          content:
-            currentChatMode === "ask" ||
+        const limitedHistoryChatMessages = limitedMessageHistory.map(
+          (msg: any) => ({
+            role: msg.role as "user" | "assistant" | "system",
+            // Why remove thinking tags?
+            // Thinking tags are generally not critical for the context
+            // and eats up extra tokens.
+            content:
+              currentChatMode === "ask" ||
               currentChatMode === "plan" ||
-              (currentChatMode.startsWith("custom-agent::") && (agentId === "plan" || agentId === "explore"))
-              ? removeVibesTags(removeNonEssentialTags(msg.content))
-              : removeNonEssentialTags(msg.content),
-          providerOptions: {
-            "vibes-engine": {
-              sourceCommitHash: msg.sourceCommitHash,
-              commitHash: msg.commitHash,
+              (currentChatMode.startsWith("custom-agent::") &&
+                (agentId === "plan" || agentId === "explore"))
+                ? removeVibesTags(removeNonEssentialTags(msg.content))
+                : removeNonEssentialTags(msg.content),
+            providerOptions: {
+              "vibes-engine": {
+                sourceCommitHash: msg.sourceCommitHash,
+                commitHash: msg.commitHash,
+              },
             },
-          },
-        }));
+          }),
+        );
 
         let chatMessages: ModelMessage[] = [
           ...codebasePrefix,
@@ -1218,7 +1375,6 @@ This conversation includes one or more image attachments. When the user uploads 
           );
         }
 
-
         const simpleStreamText = async ({
           chatMessages,
           modelClient,
@@ -1243,10 +1399,8 @@ This conversation includes one or more image attachments. When the user uploads 
               "sending AI request to engine with request id:",
               vibesRequestId,
             );
-            
           } else {
             logger.log("sending AI request");
-            
           }
           let versionedFiles: VersionedFiles | undefined;
           if (isDeepContextEnabled) {
@@ -1276,20 +1430,22 @@ This conversation includes one or more image attachments. When the user uploads 
             "Starting direct AI request (no engine):",
             modelClient.model,
           );
-          
 
           // Dynamic maxOutputTokens capping based on estimated input
           const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
           const contextWindow = await getContextWindow();
 
           // Estimate current prompt tokens (1.5x safety buffer for system/overhead)
-          let estimatedInputTokens = Math.round(estimateTokens(systemPromptOverride) * 1.5);
-          for (const msg of chatMessages.filter(m => m.content)) {
-            if (typeof msg.content === 'string') {
+          let estimatedInputTokens = Math.round(
+            estimateTokens(systemPromptOverride) * 1.5,
+          );
+          for (const msg of chatMessages.filter((m) => m.content)) {
+            if (typeof msg.content === "string") {
               estimatedInputTokens += estimateTokens(msg.content);
             } else if (Array.isArray(msg.content)) {
               for (const part of msg.content) {
-                if (part.type === 'text') estimatedInputTokens += estimateTokens(part.text);
+                if (part.type === "text")
+                  estimatedInputTokens += estimateTokens(part.text);
               }
             }
           }
@@ -1301,19 +1457,36 @@ This conversation includes one or more image attachments. When the user uploads 
           let finalMaxOutputTokens = requestedMaxOutput;
           // If requested max tokens + input exceeds context, we cap it
           // We always want at least 4k for output if possible.
-          if (finalMaxOutputTokens && (estimatedInputTokens + finalMaxOutputTokens > contextWindow)) {
-            finalMaxOutputTokens = Math.max(4096, contextWindow - estimatedInputTokens - 2000);
-            logger.log(`Capping maxOutputTokens from ${requestedMaxOutput} to ${finalMaxOutputTokens} to fit in context window of ${contextWindow} (estimated input: ${estimatedInputTokens})`);
+          if (
+            finalMaxOutputTokens &&
+            estimatedInputTokens + finalMaxOutputTokens > contextWindow
+          ) {
+            finalMaxOutputTokens = Math.max(
+              4096,
+              contextWindow - estimatedInputTokens - 2000,
+            );
+            logger.log(
+              `Capping maxOutputTokens from ${requestedMaxOutput} to ${finalMaxOutputTokens} to fit in context window of ${contextWindow} (estimated input: ${estimatedInputTokens})`,
+            );
           }
 
           // Anti-continuation: wrap last user message to prevent the model from
           // continuing/completing the user's text instead of responding as assistant.
-          const framedMessages = chatMessages.filter((m: any) => m.content).map((m, i, arr) => {
-            if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
-              return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
-            }
-            return m;
-          });
+          const framedMessages = chatMessages
+            .filter((m: any) => m.content)
+            .map((m, i, arr) => {
+              if (
+                i === arr.length - 1 &&
+                m.role === "user" &&
+                typeof m.content === "string"
+              ) {
+                return {
+                  ...m,
+                  content: `<user_request>\n${m.content}\n</user_request>`,
+                };
+              }
+              return m;
+            });
 
           const streamResult = streamText({
             headers: getAiHeaders({
@@ -1335,18 +1508,22 @@ This conversation includes one or more image attachments. When the user uploads 
               // Use totalUsage (accumulated across ALL steps) rather than usage (last step only)
               const accumulated = response.totalUsage;
               const lastStep = response.usage;
-              const totalTokens = accumulated?.totalTokens ?? lastStep?.totalTokens;
+              const totalTokens =
+                accumulated?.totalTokens ?? lastStep?.totalTokens;
               // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
               const promptTokens =
-                accumulated?.inputTokens ?? lastStep?.promptTokens ?? lastStep?.inputTokens;
+                accumulated?.inputTokens ??
+                lastStep?.promptTokens ??
+                lastStep?.inputTokens;
               const completionTokens =
                 accumulated?.outputTokens ??
                 lastStep?.completionTokens ??
                 lastStep?.outputTokens ??
-                (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
+                (totalTokens && promptTokens
+                  ? totalTokens - promptTokens
+                  : undefined);
 
               // Log the query to the dedicated AI query log
-              
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1357,7 +1534,12 @@ This conversation includes one or more image attachments. When the user uploads 
                 void db
                   .update(remoteSchema.messages)
                   .set({ maxTokensUsed: maxTokensUsed })
-                  .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id))
+                  .where(
+                    eq(
+                      remoteSchema.messages.id,
+                      placeholderAssistantMessage.id,
+                    ),
+                  )
                   .catch((error) => {
                     logger.error(
                       "Failed to save total tokens for assistant message",
@@ -1370,8 +1552,6 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Log token usage for verbose chat logs
-                
-
               } else {
                 logger.log("Total tokens used: unknown");
               }
@@ -1387,8 +1567,6 @@ This conversation includes one or more image attachments. When the user uploads 
                 error,
               );
 
-              
-
               const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
               safeSend(event.sender, "chat:response:error", {
                 chatId: req.chatId,
@@ -1397,9 +1575,19 @@ This conversation includes one or more image attachments. When the user uploads 
               // Persist error text in DB so it survives reload
               void db
                 .update(remoteSchema.messages)
-                .set({ content: `${PERSISTED_ERROR_PREFIX}${fullErrorText}`, status: "failed" as any })
-                .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id))
-                .catch((err) => logger.error("Failed to persist error in message content", err));
+                .set({
+                  content: `${PERSISTED_ERROR_PREFIX}${fullErrorText}`,
+                  status: "failed" as any,
+                })
+                .where(
+                  eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+                )
+                .catch((err) =>
+                  logger.error(
+                    "Failed to persist error in message content",
+                    err,
+                  ),
+                );
               // Clean up the abort controller
               activeStreams.delete(req.chatId);
             },
@@ -1426,7 +1614,9 @@ This conversation includes one or more image attachments. When the user uploads 
             await db
               .update(remoteSchema.messages)
               .set({ content: fullResponse })
-              .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id));
+              .where(
+                eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+              );
 
             lastDbSaveAt = now;
           }
@@ -1462,16 +1652,30 @@ This conversation includes one or more image attachments. When the user uploads 
           const agentIdNum = parseInt(currentChatMode.split("::")[1]);
           const matchedAgent = customAgents.find((ca) => ca.id === agentIdNum);
           if (matchedAgent) {
-            customSystemPrompt = resolveStackedSystemPrompt(matchedAgent, customAgents);
+            customSystemPrompt = resolveStackedSystemPrompt(
+              matchedAgent,
+              customAgents,
+            );
             // If it inherits from another custom agent, we treat it as additive stacking.
-            const inheritsFromCustom = matchedAgent.baseAgent.startsWith("custom-agent::");
-            customPromptMode = inheritsFromCustom ? "additive" : (matchedAgent.promptMode as "additive" | "replace");
-            agentId = getUltimateBaseAgent(matchedAgent.baseAgent, customAgents);
-            customAgentModelSource = matchedAgent.modelSource as "chat" | "static";
+            const inheritsFromCustom =
+              matchedAgent.baseAgent.startsWith("custom-agent::");
+            customPromptMode = inheritsFromCustom
+              ? "additive"
+              : (matchedAgent.promptMode as "additive" | "replace");
+            agentId = getUltimateBaseAgent(
+              matchedAgent.baseAgent,
+              customAgents,
+            );
+            customAgentModelSource = matchedAgent.modelSource as
+              | "chat"
+              | "static";
             customAgentModel = matchedAgent.model;
           }
         } else {
-          const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
+          const agentIdMap: Record<
+            string,
+            "build" | "plan" | "explore" | "mockup"
+          > = {
             agent: "build",
             "crush-agent": "build",
             plan: "plan",
@@ -1483,8 +1687,9 @@ This conversation includes one or more image attachments. When the user uploads 
 
         if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${currentChatMode})`);
-
+          logger.log(
+            `[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${currentChatMode})`,
+          );
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode
@@ -1495,26 +1700,33 @@ This conversation includes one or more image attachments. When the user uploads 
           const activePromptsRows = await db.query.prompts.findMany({
             where: and(
               eq(remoteSchema.prompts.userId, currentUserId as string),
-              eq(remoteSchema.prompts.enabled, 1)
+              eq(remoteSchema.prompts.enabled, 1),
             ),
             orderBy: (p: any, { asc }: any) => [asc(p.id)],
           });
-          
+
           const walkthroughDbPrompt = await db.query.prompts.findFirst({
             where: and(
               eq(remoteSchema.prompts.userId, currentUserId as string),
-              eq(remoteSchema.prompts.systemId, "ctx_build_walkthrough")
+              eq(remoteSchema.prompts.systemId, "ctx_build_walkthrough"),
             ),
           });
           const hasWalkthroughInDb = !!walkthroughDbPrompt;
-          
+
           const chatLang = settings.chatLanguage || "es";
-          const langMap: Record<string, string> = { es: "español", en: "English" };
+          const langMap: Record<string, string> = {
+            es: "español",
+            en: "English",
+          };
           const langName = langMap[chatLang] || chatLang;
 
           for (const prompt of activePromptsRows) {
             // If it's a custom agent in replace mode, we only keep the language rule from system prompts (ctx_*)
-            if (customPromptMode === "replace" && prompt.systemId && prompt.systemId !== "ctx_language") {
+            if (
+              customPromptMode === "replace" &&
+              prompt.systemId &&
+              prompt.systemId !== "ctx_language"
+            ) {
               continue;
             }
 
@@ -1522,20 +1734,28 @@ This conversation includes one or more image attachments. When the user uploads 
             if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
               const scope = (prompt as any).scope || "all";
               if (scope !== "all") {
-                const allowedScopes = scope.split(",").map((s: string) => s.trim());
+                const allowedScopes = scope
+                  .split(",")
+                  .map((s: string) => s.trim());
                 let shouldInclude = false;
                 if (agentId === "build" && allowedScopes.includes("agent")) {
                   shouldInclude = true;
-                } else if (agentId === "plan" && allowedScopes.includes("plan")) {
+                } else if (
+                  agentId === "plan" &&
+                  allowedScopes.includes("plan")
+                ) {
                   shouldInclude = true;
-                } else if (agentId === "explore" && allowedScopes.includes("ask")) {
+                } else if (
+                  agentId === "explore" &&
+                  allowedScopes.includes("ask")
+                ) {
                   shouldInclude = true;
                 }
                 if (!shouldInclude) {
                   continue;
                 }
               }
-              
+
               let content = prompt.content;
               if (prompt.systemId === "ctx_language") {
                 content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
@@ -1545,19 +1765,23 @@ This conversation includes one or more image attachments. When the user uploads 
           }
 
           // Fallback: if not in DB and build mode active, inject default
-          if (!hasWalkthroughInDb && agentId === "build" && customPromptMode !== "replace") {
+          if (
+            !hasWalkthroughInDb &&
+            agentId === "build" &&
+            customPromptMode !== "replace"
+          ) {
             const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
             if (defaultWalkthrough) {
               contextInstructions.push(defaultWalkthrough);
             }
           }
-          
+
           // MCP Server instructions
           try {
             const enabledMcpServers = await db.query.mcpServers.findMany({
               where: and(
                 eq(remoteSchema.mcpServers.userId, currentUserId as string),
-                eq(remoteSchema.mcpServers.enabled, 1)
+                eq(remoteSchema.mcpServers.enabled, 1),
               ),
             });
             for (const server of enabledMcpServers) {
@@ -1566,24 +1790,37 @@ This conversation includes one or more image attachments. When the user uploads 
                 let inst = server.instructions;
                 inst = inst.replace(/\{\{SERVER_PREFIX\}\}/g, serverKey);
                 if (updatedChat.app?.path) {
-                  inst = inst.replace(/\{\{PROJECT_PATH\}\}/g, getVibesAppPath(updatedChat.app.path));
+                  inst = inst.replace(
+                    /\{\{PROJECT_PATH\}\}/g,
+                    getVibesAppPath(updatedChat.app.path),
+                  );
                 }
                 contextInstructions.push(inst);
-                logger.log(`[OPENCODE] Injected instructions for MCP server ${server.name}`);
+                logger.log(
+                  `[OPENCODE] Injected instructions for MCP server ${server.name}`,
+                );
               }
             }
           } catch (e: any) {
-            logger.warn(`[OPENCODE] Failed to inject MCP instructions: ${e.message}`);
+            logger.warn(
+              `[OPENCODE] Failed to inject MCP instructions: ${e.message}`,
+            );
           }
 
           // Supabase
-          if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
+          if (
+            updatedChat.app?.supabaseProjectId &&
+            isSupabaseConnected(settings)
+          ) {
             try {
               const supabaseClientCode = await getSupabaseClientCode({
                 projectId: updatedChat.app.supabaseProjectId,
-                organizationSlug: updatedChat.app.supabaseOrganizationSlug ?? null,
+                organizationSlug:
+                  updatedChat.app.supabaseOrganizationSlug ?? null,
               });
-              contextInstructions.push(getSupabaseAvailableSystemPrompt(supabaseClientCode));
+              contextInstructions.push(
+                getSupabaseAvailableSystemPrompt(supabaseClientCode),
+              );
               logger.log("[OPENCODE] Supabase context injected");
             } catch (e) {
               logger.warn("[OPENCODE] Supabase prompt failed:", e);
@@ -1591,16 +1828,25 @@ This conversation includes one or more image attachments. When the user uploads 
           }
 
           // Bunny.net
-          const ocBunnyConfig = updatedChat.app?.bunnyConfig as BunnyConfig | null;
-          if (ocBunnyConfig && (ocBunnyConfig.databases?.length > 0 || ocBunnyConfig.storageZones?.length > 0)) {
-            contextInstructions.push(getBunnyAvailableSystemPrompt(ocBunnyConfig));
+          const ocBunnyConfig = updatedChat.app
+            ?.bunnyConfig as BunnyConfig | null;
+          if (
+            ocBunnyConfig &&
+            (ocBunnyConfig.databases?.length > 0 ||
+              ocBunnyConfig.storageZones?.length > 0)
+          ) {
+            contextInstructions.push(
+              getBunnyAvailableSystemPrompt(ocBunnyConfig),
+            );
             logger.log("[OPENCODE] Bunny context injected");
           }
 
           // PocketBase
           const ocPocketbaseConfig = updatedChat.app?.pocketbaseConfig as any;
           if (ocPocketbaseConfig?.url && ocPocketbaseConfig.adminEmail) {
-            contextInstructions.push(getPocketBaseAvailableSystemPrompt(ocPocketbaseConfig));
+            contextInstructions.push(
+              getPocketBaseAvailableSystemPrompt(ocPocketbaseConfig),
+            );
             logger.log("[OPENCODE] PocketBase context injected");
           }
 
@@ -1612,16 +1858,17 @@ This conversation includes one or more image attachments. When the user uploads 
               const chatArtifacts = await db.query.chatArtifacts.findMany({
                 where: and(
                   eq(remoteSchema.chatArtifacts.chatId, req.chatId),
-                  eq(remoteSchema.chatArtifacts.appId, updatedChat.app.id)
-                )
+                  eq(remoteSchema.chatArtifacts.appId, updatedChat.app.id),
+                ),
               });
 
               if (chatArtifacts.length > 0) {
                 const projectDir = getVibesAppPath(updatedChat.app.path);
-                
-                let artifactsContext = "PLANNING ARTIFACTS AVAILABLE:\nThe following artifacts were generated during the planning phase. Read and use them to guide your implementation. As you make progress, you MUST update these files (e.g. checking off checkboxes, updating statuses) to keep the plan in sync with the codebase:\n\n";
+
+                let artifactsContext =
+                  "PLANNING ARTIFACTS AVAILABLE:\nThe following artifacts were generated during the planning phase. Read and use them to guide your implementation. As you make progress, you MUST update these files (e.g. checking off checkboxes, updating statuses) to keep the plan in sync with the codebase:\n\n";
                 let artifactsAdded = 0;
-                
+
                 for (const artifact of chatArtifacts) {
                   const fullPath = path.join(projectDir, artifact.path);
                   if (fs.existsSync(fullPath)) {
@@ -1630,14 +1877,19 @@ This conversation includes one or more image attachments. When the user uploads 
                     artifactsAdded++;
                   }
                 }
-                
+
                 if (artifactsAdded > 0) {
                   contextInstructions.push(artifactsContext);
-                  logger.log(`[OPENCODE] Injected ${artifactsAdded} artifacts as context`);
+                  logger.log(
+                    `[OPENCODE] Injected ${artifactsAdded} artifacts as context`,
+                  );
                 }
               }
             } catch (err) {
-              logger.error("Failed to load artifacts for context injection:", err);
+              logger.error(
+                "Failed to load artifacts for context injection:",
+                err,
+              );
             }
           }
 
@@ -1675,31 +1927,46 @@ This conversation includes one or more image attachments. When the user uploads 
           // ── END FULL INJECTION ─────────────────────────────────────────────
           {
             const resolvedAppPath = getVibesAppPath(updatedChat.app.path);
-            const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
+            const designMdPath = path.join(
+              resolvedAppPath,
+              "docs",
+              "DESIGN.md",
+            );
             if (fs.existsSync(designMdPath)) {
               contextInstructions.push(
                 `DESIGN SYSTEM: This project has a design system defined in docs/DESIGN.md. ` +
-                `Read this file with your Read tool before writing or modifying any UI code.`,
+                  `Read this file with your Read tool before writing or modifying any UI code.`,
               );
             }
           }
 
-
           // 4. Build integration env vars — accessible via bash in OpenCode
           // ── Memory decay + context injection ─────────────────────────────
           // Decay stale auto-extracted memories (fire-and-forget, non-blocking)
-          decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
-            .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
+          decayMemoriesAsync(updatedChat.app.id, currentUserId as string).catch(
+            (err) => logger.warn(`🧠 [MEMORY] Decay failed:`, err),
+          );
 
           // Load memories (app-specific + global) — injected via noReply (invisible to user)
-          let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
+          let selectedMemories: {
+            id: number;
+            type: string;
+            key: string | null;
+            content: string;
+          }[] = [];
           try {
             // Build recent messages trail (last 2 prior messages + current userPrompt = 3 total context)
             const priorMessages = (updatedChat.messages || [])
-              .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content)
+              .filter(
+                (m: any) =>
+                  (m.role === "user" || m.role === "assistant") && m.content,
+              )
               .map((m: any) => ({
                 role: m.role as string,
-                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+                content:
+                  typeof m.content === "string"
+                    ? m.content
+                    : JSON.stringify(m.content),
               }))
               .slice(-2); // last 2 prior messages (e.g. prev user + prev assistant)
 
@@ -1713,7 +1980,9 @@ This conversation includes one or more image attachments. When the user uploads 
               // Inject as system prompt (not user message) — joins other contextInstructions
               contextInstructions.push(memoryResult.block);
               selectedMemories = memoryResult.memories;
-              logger.info(`🧠 [MEMORY] Injected ${selectedMemories.length} directives into system prompt`);
+              logger.info(
+                `🧠 [MEMORY] Injected ${selectedMemories.length} directives into system prompt`,
+              );
             }
           } catch (memErr: any) {
             logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
@@ -1726,10 +1995,14 @@ This conversation includes one or more image attachments. When the user uploads 
             const db0 = ocBunnyConfig.databases[0];
             integrationEnvVars.BUNNY_DB_URL = db0.databaseUrl;
             integrationEnvVars.BUNNY_DB_TOKEN = db0.fullAccessToken;
-            if (db0.readOnlyToken) integrationEnvVars.BUNNY_DB_READONLY_TOKEN = db0.readOnlyToken;
+            if (db0.readOnlyToken)
+              integrationEnvVars.BUNNY_DB_READONLY_TOKEN = db0.readOnlyToken;
           }
           // Bunny Storage
-          if (ocBunnyConfig?.storageZones && ocBunnyConfig.storageZones.length > 0) {
+          if (
+            ocBunnyConfig?.storageZones &&
+            ocBunnyConfig.storageZones.length > 0
+          ) {
             const sz0 = ocBunnyConfig.storageZones[0];
             integrationEnvVars.BUNNY_STORAGE_HOSTNAME = sz0.hostname;
             integrationEnvVars.BUNNY_STORAGE_USERNAME = sz0.username;
@@ -1738,42 +2011,63 @@ This conversation includes one or more image attachments. When the user uploads 
           // PocketBase
           if (ocPocketbaseConfig?.url) {
             integrationEnvVars.POCKETBASE_URL = ocPocketbaseConfig.url;
-            if (ocPocketbaseConfig.adminEmail) integrationEnvVars.POCKETBASE_ADMIN_EMAIL = ocPocketbaseConfig.adminEmail;
-            if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
+            if (ocPocketbaseConfig.adminEmail)
+              integrationEnvVars.POCKETBASE_ADMIN_EMAIL =
+                ocPocketbaseConfig.adminEmail;
+            if (ocPocketbaseConfig.adminPassword)
+              integrationEnvVars.POCKETBASE_ADMIN_PASSWORD =
+                ocPocketbaseConfig.adminPassword;
           }
 
           // ── Snapshot package.json BEFORE the agent runs ──────────────────
           // Used later to decide if node_modules needs a clean reinstall.
           let pkgJsonHashBefore: string | null = null;
           try {
-            const pkgJsonPath = path.join(getVibesAppPath(updatedChat.app.path), "package.json");
+            const pkgJsonPath = path.join(
+              getVibesAppPath(updatedChat.app.path),
+              "package.json",
+            );
             if (fs.existsSync(pkgJsonPath)) {
-              pkgJsonHashBefore = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+              pkgJsonHashBefore = crypto
+                .createHash("md5")
+                .update(fs.readFileSync(pkgJsonPath))
+                .digest("hex");
             }
-          } catch { /* ignore — if we can't read it, we skip the optimization */ }
+          } catch {
+            /* ignore — if we can't read it, we skip the optimization */
+          }
 
-          logger.info(`[ChatStream] Invoking handleOpenCodeStream. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`);
-
-          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
-            event,
-            req,
-            abortController,
-            {
-              placeholderMessageId: placeholderAssistantMessage.id,
-              appPath: updatedChat.app.path,
-              chatMessages: updatedChat.messages,
-              agentId,
-              contextInstructions,
-              attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
-              attachments: req.attachments as any,
-              integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
-              priorMessages: req.priorMessages as any,
-              customSystemPrompt,
-              customPromptMode,
-              customAgentModelSource,
-              customAgentModel,
-            },
+          logger.info(
+            `[ChatStream] Invoking handleOpenCodeStream. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`,
           );
+
+          const {
+            fullResponse: openCodeResponse,
+            success,
+            inputTokens: ocInputTokens,
+            outputTokens: ocOutputTokens,
+            reasoningTokens: ocReasoningTokens,
+            cachedTokens: ocCachedTokens,
+            costUsd: ocCostUsd,
+          } = await handleOpenCodeStream(event, req, abortController, {
+            placeholderMessageId: placeholderAssistantMessage.id,
+            appPath: updatedChat.app.path,
+            chatMessages: updatedChat.messages,
+            agentId,
+            contextInstructions,
+            attachmentPaths:
+              attachmentPaths.length > 0 ? attachmentPaths : undefined,
+            attachments: req.attachments as any,
+            integrationEnvVars:
+              Object.keys(integrationEnvVars).length > 0
+                ? integrationEnvVars
+                : undefined,
+            priorMessages: req.priorMessages as any,
+            customSystemPrompt,
+            customPromptMode,
+            customAgentModelSource,
+            customAgentModel,
+          });
 
           // ── Handle cancellation gracefully ──────────────────────────────
           if (abortController.signal.aborted) {
@@ -1787,11 +2081,15 @@ This conversation includes one or more image attachments. When the user uploads 
 
             if (!hasMeaningfulContent) {
               // No real content — instantly update the frontend, then clean DB in background
-              logger.info(`[OpenCode] Cancelled with no content — removing placeholder ${placeholderAssistantMessage.id} and user message ${userMessageId}`);
+              logger.info(
+                `[OpenCode] Cancelled with no content — removing placeholder ${placeholderAssistantMessage.id} and user message ${userMessageId}`,
+              );
 
               // Optimistically compute cleaned message list (remove user msg + assistant placeholder)
               const cleanedMessages = (updatedChat.messages as any[]).filter(
-                (m: any) => m.id !== placeholderAssistantMessage.id && m.id !== userMessageId,
+                (m: any) =>
+                  m.id !== placeholderAssistantMessage.id &&
+                  m.id !== userMessageId,
               );
 
               // Send to frontend IMMEDIATELY — no DB wait
@@ -1809,18 +2107,30 @@ This conversation includes one or more image attachments. When the user uploads 
               void (async () => {
                 try {
                   // Mark stream task as cancelled
-                  await db.update(remoteSchema.streamTasks)
+                  await db
+                    .update(remoteSchema.streamTasks)
                     .set({ status: "cancelled", completedAt: new Date() })
-                    .where(and(
-                      eq(remoteSchema.streamTasks.chatId, req.chatId),
-                      eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
-                    ));
+                    .where(
+                      and(
+                        eq(remoteSchema.streamTasks.chatId, req.chatId),
+                        eq(
+                          remoteSchema.streamTasks.messageId,
+                          placeholderAssistantMessage.id,
+                        ),
+                      ),
+                    );
                   await db
                     .delete(remoteSchema.messages)
                     .where(
                       and(
-                        eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
-                        eq(remoteSchema.messages.userId, currentUserId as string),
+                        eq(
+                          remoteSchema.messages.id,
+                          placeholderAssistantMessage.id,
+                        ),
+                        eq(
+                          remoteSchema.messages.userId,
+                          currentUserId as string,
+                        ),
                       ),
                     );
                   await db
@@ -1828,11 +2138,17 @@ This conversation includes one or more image attachments. When the user uploads 
                     .where(
                       and(
                         eq(remoteSchema.messages.id, userMessageId),
-                        eq(remoteSchema.messages.userId, currentUserId as string),
+                        eq(
+                          remoteSchema.messages.userId,
+                          currentUserId as string,
+                        ),
                       ),
                     );
                 } catch (e) {
-                  logger.error("[OpenCode] Failed to clean up cancelled messages:", e);
+                  logger.error(
+                    "[OpenCode] Failed to clean up cancelled messages:",
+                    e,
+                  );
                 }
               })();
 
@@ -1840,14 +2156,17 @@ This conversation includes one or more image attachments. When the user uploads 
             }
 
             // Has partial content — save it with a "cancelled" visual indicator
-            fullResponse = openCodeResponse + "\n\n<vibes-cancelled></vibes-cancelled>\n";
+            fullResponse =
+              openCodeResponse + "\n\n<vibes-cancelled></vibes-cancelled>\n";
             const openCodeDurationMs = Date.now() - streamStartedAt;
 
             const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
             const ocTotalTokens = ocInputTokens + ocBillableOutput;
 
             if (ocTotalTokens > 0) {
-              const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
+              const webSearchCount = (
+                openCodeResponse.match(/<vibes-web-crawl\b/g) || []
+              ).length;
               // Prefer the real cost reported by OpenCode over manual token × price calculation.
               // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
               // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
@@ -1857,18 +2176,23 @@ This conversation includes one or more image attachments. When the user uploads 
               if (directCost === null) {
                 // Fallback: derive from OpenRouter model pricing
                 try {
-                  const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+                  const { fetchOpenRouterModels } =
+                    await import("../utils/openrouter_models_service");
                   const models = await fetchOpenRouterModels();
-                  const modelData = models.find(m => m.name === settings.selectedModel.name);
+                  const modelData = models.find(
+                    (m) => m.name === settings.selectedModel.name,
+                  );
                   priceIn = modelData?.pricingInput || "";
                   priceOut = modelData?.pricingOutput || "";
-                } catch { /* pricing unavailable */ }
+                } catch {
+                  /* pricing unavailable */
+                }
               }
-              const tokenXml = directCost !== null
-                ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
-                : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+              const tokenXml =
+                directCost !== null
+                  ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+                  : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
-
             }
 
             await db
@@ -1877,9 +2201,10 @@ This conversation includes one or more image attachments. When the user uploads 
                 content: fullResponse,
                 status: "completed",
                 durationMs: openCodeDurationMs,
-                injectedMemories: selectedMemories.length > 0
-                  ? JSON.stringify(selectedMemories) as any
-                  : null,
+                injectedMemories:
+                  selectedMemories.length > 0
+                    ? (JSON.stringify(selectedMemories) as any)
+                    : null,
               })
               .where(
                 and(
@@ -1889,18 +2214,32 @@ This conversation includes one or more image attachments. When the user uploads 
               );
 
             // Mark stream task as cancelled (with partial content)
-            await db.update(remoteSchema.streamTasks)
+            await db
+              .update(remoteSchema.streamTasks)
               .set({ status: "cancelled", completedAt: new Date() })
-              .where(and(
-                eq(remoteSchema.streamTasks.chatId, req.chatId),
-                eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
-              )).catch(err => logger.error("[StreamTask] Failed to update on cancel:", err));
+              .where(
+                and(
+                  eq(remoteSchema.streamTasks.chatId, req.chatId),
+                  eq(
+                    remoteSchema.streamTasks.messageId,
+                    placeholderAssistantMessage.id,
+                  ),
+                ),
+              )
+              .catch((err) =>
+                logger.error("[StreamTask] Failed to update on cancel:", err),
+              );
 
             safeSend(event.sender, "chat:response:chunk", {
               chatId: req.chatId,
               messages: [
                 ...updatedChat.messages.slice(0, -1),
-                { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
+                {
+                  ...placeholderAssistantMessage,
+                  content: fullResponse,
+                  durationMs: openCodeDurationMs,
+                  totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
+                },
               ],
             });
             safeSend(event.sender, "chat:response:end", {
@@ -1908,7 +2247,7 @@ This conversation includes one or more image attachments. When the user uploads 
               updatedFiles: false,
               totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
             } satisfies ChatResponseEnd);
-            
+
             // Log telemetry
             sendTelemetryEvent("chat:stream:end", {
               chatMode: `opencode-${agentId}`,
@@ -1923,7 +2262,11 @@ This conversation includes one or more image attachments. When the user uploads 
             // Even if the user stopped the stream, there may be valuable knowledge
             // in whatever was already generated.
             // SKIP plan mode: proposals are not confirmed facts.
-            if (updatedChat.app?.id && openCodeResponse.length > 100 && agentId !== "plan") {
+            if (
+              updatedChat.app?.id &&
+              openCodeResponse.length > 100 &&
+              agentId !== "plan"
+            ) {
               bufferChatRound({
                 chatId: String(req.chatId),
                 appId: updatedChat.app.id,
@@ -1948,7 +2291,9 @@ This conversation includes one or more image attachments. When the user uploads 
           // Append token usage badge to the response (like legacy agent does)
           if (ocTotalTokens > 0) {
             // Count web searches to calculate correct cost (each search via OpenCode webfetch tool)
-            const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
+            const webSearchCount = (
+              openCodeResponse.match(/<vibes-web-crawl\b/g) || []
+            ).length;
             // Prefer the real cost reported by OpenCode over manual token × price calculation.
             // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
             // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
@@ -1958,16 +2303,22 @@ This conversation includes one or more image attachments. When the user uploads 
             if (directCost === null) {
               // Fallback: derive from OpenRouter model pricing
               try {
-                const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+                const { fetchOpenRouterModels } =
+                  await import("../utils/openrouter_models_service");
                 const models = await fetchOpenRouterModels();
-                const modelData = models.find(m => m.name === settings.selectedModel.name);
+                const modelData = models.find(
+                  (m) => m.name === settings.selectedModel.name,
+                );
                 priceIn = modelData?.pricingInput || "";
                 priceOut = modelData?.pricingOutput || "";
-              } catch { /* pricing unavailable */ }
+              } catch {
+                /* pricing unavailable */
+              }
             }
-            const tokenXml = directCost !== null
-              ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
-              : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+            const tokenXml =
+              directCost !== null
+                ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+                : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
           }
 
@@ -1977,9 +2328,10 @@ This conversation includes one or more image attachments. When the user uploads 
               content: fullResponse,
               status: "completed",
               durationMs: openCodeDurationMs,
-              injectedMemories: selectedMemories.length > 0
-                ? JSON.stringify(selectedMemories) as any
-                : null,
+              injectedMemories:
+                selectedMemories.length > 0
+                  ? (JSON.stringify(selectedMemories) as any)
+                  : null,
             })
             .where(
               and(
@@ -1989,17 +2341,31 @@ This conversation includes one or more image attachments. When the user uploads 
             );
 
           // ── A1: Mark stream task as completed in DB ──────────────────────
-          await db.update(remoteSchema.streamTasks)
+          await db
+            .update(remoteSchema.streamTasks)
             .set({ status: "completed", completedAt: new Date() })
-            .where(and(
-              eq(remoteSchema.streamTasks.chatId, req.chatId),
-              eq(remoteSchema.streamTasks.messageId, placeholderAssistantMessage.id),
-            )).catch(err => logger.error("[StreamTask] Failed to mark completed:", err));
+            .where(
+              and(
+                eq(remoteSchema.streamTasks.chatId, req.chatId),
+                eq(
+                  remoteSchema.streamTasks.messageId,
+                  placeholderAssistantMessage.id,
+                ),
+              ),
+            )
+            .catch((err) =>
+              logger.error("[StreamTask] Failed to mark completed:", err),
+            );
 
           // Send the final response to the frontend
           const finalMessages = [
             ...updatedChat.messages.slice(0, -1),
-            { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
+            {
+              ...placeholderAssistantMessage,
+              content: fullResponse,
+              durationMs: openCodeDurationMs,
+              totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
+            },
           ];
 
           safeSend(event.sender, "chat:response:chunk", {
@@ -2013,7 +2379,8 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             updatedFiles: !!success,
             totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
-            selectedMemories: selectedMemories.length > 0 ? selectedMemories : undefined,
+            selectedMemories:
+              selectedMemories.length > 0 ? selectedMemories : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 
@@ -2042,28 +2409,46 @@ This conversation includes one or more image attachments. When the user uploads 
           // ── Post-agent clean install (ONLY if package.json changed) ─────
           // Compare package.json hash before vs after. If unchanged, skip
           // the expensive node_modules wipe — the agent didn't touch deps.
-          if (success && updatedChat.app?.id && !runningApps.has(updatedChat.app.id)) {
+          if (
+            success &&
+            updatedChat.app?.id &&
+            !runningApps.has(updatedChat.app.id)
+          ) {
             try {
               const cleanupAppPath = getVibesAppPath(updatedChat.app.path);
               const pkgJsonPath = path.join(cleanupAppPath, "package.json");
               let pkgJsonHashAfter: string | null = null;
               if (fs.existsSync(pkgJsonPath)) {
-                pkgJsonHashAfter = crypto.createHash("md5").update(fs.readFileSync(pkgJsonPath)).digest("hex");
+                pkgJsonHashAfter = crypto
+                  .createHash("md5")
+                  .update(fs.readFileSync(pkgJsonPath))
+                  .digest("hex");
               }
 
               const pkgChanged = pkgJsonHashBefore !== pkgJsonHashAfter;
               if (pkgChanged) {
-                const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
+                const nodeModulesPath = path.join(
+                  cleanupAppPath,
+                  "node_modules",
+                );
                 if (fs.existsSync(nodeModulesPath)) {
-                  logger.info(`🧹 [POST-AGENT] package.json changed — removing node_modules for clean install (app ${updatedChat.app.id})`);
+                  logger.info(
+                    `🧹 [POST-AGENT] package.json changed — removing node_modules for clean install (app ${updatedChat.app.id})`,
+                  );
                   await fsRm(nodeModulesPath, { recursive: true, force: true });
-                  logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+                  logger.info(
+                    `🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`,
+                  );
                 }
               } else {
-                logger.info(`🧹 [POST-AGENT] package.json unchanged — skipping node_modules cleanup (app ${updatedChat.app.id})`);
+                logger.info(
+                  `🧹 [POST-AGENT] package.json unchanged — skipping node_modules cleanup (app ${updatedChat.app.id})`,
+                );
               }
             } catch (cleanupErr: any) {
-              logger.warn(`🧹 [POST-AGENT] Failed during post-agent cleanup: ${cleanupErr.message}`);
+              logger.warn(
+                `🧹 [POST-AGENT] Failed during post-agent cleanup: ${cleanupErr.message}`,
+              );
             }
           }
 
@@ -2086,16 +2471,31 @@ This conversation includes one or more image attachments. When the user uploads 
       if (outerPlaceholderMessageId) {
         void db
           .update(remoteSchema.messages)
-          .set({ content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`, status: "failed" as any })
+          .set({
+            content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`,
+            status: "failed" as any,
+          })
           .where(eq(remoteSchema.messages.id, outerPlaceholderMessageId))
-          .catch((err) => logger.error("Failed to persist error in message content", err));
+          .catch((err) =>
+            logger.error("Failed to persist error in message content", err),
+          );
         // Mark stream task as failed
-        void db.update(remoteSchema.streamTasks)
-          .set({ status: "failed", completedAt: new Date(), error: String(error) })
-          .where(and(
-            eq(remoteSchema.streamTasks.chatId, req.chatId),
-            eq(remoteSchema.streamTasks.messageId, outerPlaceholderMessageId),
-          )).catch(err => logger.error("[StreamTask] Failed to mark as failed:", err));
+        void db
+          .update(remoteSchema.streamTasks)
+          .set({
+            status: "failed",
+            completedAt: new Date(),
+            error: String(error),
+          })
+          .where(
+            and(
+              eq(remoteSchema.streamTasks.chatId, req.chatId),
+              eq(remoteSchema.streamTasks.messageId, outerPlaceholderMessageId),
+            ),
+          )
+          .catch((err) =>
+            logger.error("[StreamTask] Failed to mark as failed:", err),
+          );
       }
 
       return "error";
@@ -2105,8 +2505,13 @@ This conversation includes one or more image attachments. When the user uploads 
 
       // Notify tray: stream ended → red icon (if last stream)
       try {
-        notifyStreamEnded({ text: streamChatTitle || "Tarea completada", chatId: req.chatId });
-      } catch (err) { logger.error("Tray notifyStreamEnded error:", err); }
+        notifyStreamEnded({
+          text: streamChatTitle || "Tarea completada",
+          chatId: req.chatId,
+        });
+      } catch (err) {
+        logger.error("Tray notifyStreamEnded error:", err);
+      }
 
       // Notify renderer that stream has ended
       safeSend(event.sender, "chat:stream:end", { chatId: req.chatId });
@@ -2164,8 +2569,6 @@ This conversation includes one or more image attachments. When the user uploads 
 }
 
 export default registerChatStreamHandlers;
-
-
 
 // Helper function to replace text attachment placeholders with full content
 async function replaceTextAttachmentWithContent(
@@ -2258,14 +2661,21 @@ async function prepareMessageWithAttachments(
 
         // DB version: upload to Bunny CDN and store the lightweight URL
         try {
-          const cdnUrl = await uploadChatAttachment(imageBuffer, mimeType, ext, userId);
+          const cdnUrl = await uploadChatAttachment(
+            imageBuffer,
+            mimeType,
+            ext,
+            userId,
+          );
           dbParts.push({
             type: "image",
-            image: cdnUrl,   // CDN URL instead of base64
+            image: cdnUrl, // CDN URL instead of base64
             mediaType: mimeType,
           } as any);
         } catch (uploadErr) {
-          logger.warn(`Bunny upload failed, falling back to base64 for DB: ${uploadErr}`);
+          logger.warn(
+            `Bunny upload failed, falling back to base64 for DB: ${uploadErr}`,
+          );
           // Fallback: store base64 (may still fail on very large images)
           dbParts.push({
             type: "image",
@@ -2377,4 +2787,3 @@ These are the other apps that I've mentioned in my prompt. These other apps' cod
 ${otherAppsCodebaseInfo}
 `;
 }
-

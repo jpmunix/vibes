@@ -8,7 +8,7 @@
 
 **Mi opinión: totalmente de acuerdo, y voy un paso más allá.**
 
-Mandar el historial completo al synthesizer cada mensaje es desperdicio. Pero cada 3 rondas sí es un buen *chunk* semántico — típicamente en 3 intercambios ya has tomado decisiones, construido algo concreto, o resuelto un problema.
+Mandar el historial completo al synthesizer cada mensaje es desperdicio. Pero cada 3 rondas sí es un buen _chunk_ semántico — típicamente en 3 intercambios ya has tomado decisiones, construido algo concreto, o resuelto un problema.
 
 El flujo que propongo:
 
@@ -19,10 +19,12 @@ Ronda 3: usuario confirma → IA entrega       → ✅ SYNTHESIS
 ```
 
 **Qué recibe el synthesizer en la ronda 3:**
+
 - Resumen anterior de esta sesión (si existe) — el "estado acumulado"
 - Las últimas 3 rondas nuevas (6 mensajes) — el "delta"
 
 **Qué produce:**
+
 - Un resumen actualizado que **reemplaza** el anterior (no se acumula, evoluciona)
 
 Es como un **incremental build** de conocimiento: no recompila todo, solo integra lo nuevo.
@@ -38,6 +40,7 @@ Es como un **incremental build** de conocimiento: no recompila todo, solo integr
 **Mi opinión: el bootstrap debería generar exactamente UNA memoria densa, no 10 facts atómicos.**
 
 Ahora genera:
+
 ```
 • [fact] El frontend usa React 19
 • [fact] Se usa Tailwind CSS 4
@@ -48,11 +51,12 @@ Ahora genera:
 ```
 
 Debería generar:
+
 ```
 • [session] key:project_bootstrap
-  "Stack: React 19 + Router DOM, Tailwind 4 vía Vite, Radix UI 
-  para componentes base, TypeScript strict con configs separadas 
-  app/node, Drizzle ORM + Supabase para persistencia remota, 
+  "Stack: React 19 + Router DOM, Tailwind 4 vía Vite, Radix UI
+  para componentes base, TypeScript strict con configs separadas
+  app/node, Drizzle ORM + Supabase para persistencia remota,
   SQLite local para settings. Electron como host."
 ```
 
@@ -64,13 +68,14 @@ Las categorías actuales son 6: `fact`, `preference`, `decision`, `issue`, `epis
 
 **Mi propuesta: reducir a 3 tipos.**
 
-| Tipo | Para qué | Ejemplo |
-|---|---|---|
-| **session** | Resúmenes de sesión + conocimiento arquitectural. Es el tipo principal. Reemplaza `fact` + `episode`. | "Migramos SPECS.md → AGENTS.md con delimitadores. El contenido dinámico va al final de AGENTS.md" |
-| **preference** | Preferencias del usuario que NO cambian entre sesiones. Son pocas y de alta importancia. | "El usuario no quiere modales. Siempre usar collapsibles inline" |
-| **issue** | Problemas activos con ciclo de vida (open→resolved). Se auto-desactivan al resolverse. | "Bug: el splash screen no cierra si init tarda >5s" |
+| Tipo           | Para qué                                                                                              | Ejemplo                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **session**    | Resúmenes de sesión + conocimiento arquitectural. Es el tipo principal. Reemplaza `fact` + `episode`. | "Migramos SPECS.md → AGENTS.md con delimitadores. El contenido dinámico va al final de AGENTS.md" |
+| **preference** | Preferencias del usuario que NO cambian entre sesiones. Son pocas y de alta importancia.              | "El usuario no quiere modales. Siempre usar collapsibles inline"                                  |
+| **issue**      | Problemas activos con ciclo de vida (open→resolved). Se auto-desactivan al resolverse.                | "Bug: el splash screen no cierra si init tarda >5s"                                               |
 
 **Eliminados:**
+
 - `fact` → absorbido por `session` (los facts útiles van dentro del resumen de sesión)
 - `decision` → absorbido por `session` (las decisiones se narran en el resumen: "decidimos X en vez de Y")
 - `episode` → renombrado a `session` que es más claro
@@ -84,6 +89,7 @@ Las categorías actuales son 6: `fact`, `preference`, `decision`, `issue`, `epis
 **Mi opinión: 1 por sesión, con párrafos internos por tema.**
 
 Razones:
+
 - Partir por tema requiere que el LLM detecte fronteras temáticas → más complejidad, más errores
 - Un resumen de 2-3 párrafos ya cubre múltiples temas naturalmente
 - El router selecciona por relevancia semántica — un párrafo sobre "bunny CDN" dentro de un resumen se matchea igual que una memoria dedicada
@@ -95,8 +101,8 @@ Formato del resumen:
 Sesión 05-may — markdownbin-pro
 
 [1] Implementamos la integración con Bunny.net CDN: upload de assets,
-purge de caché, y configuración por zona. El usuario quiere que el 
-purge sea silencioso (sin toast de confirmación). Ficheros: 
+purge de caché, y configuración por zona. El usuario quiere que el
+purge sea silencioso (sin toast de confirmación). Ficheros:
 bunny_handlers.ts, BunnyConnector.tsx.
 
 [2] Corregimos un race condition en el IPC de ventanas auxiliares
@@ -113,10 +119,12 @@ Si una sesión solo toca un tema, es un solo párrafo. Si toca 4, son 4 párrafo
 **Mi opinión: 100% automática.** Sin botones, sin decisiones del usuario.
 
 **Cuándo corre:**
+
 - Tras cada synthesis, si el proyecto tiene >20 memorias activas de tipo `session`
 - Fire-and-forget, no bloquea nada
 
 **Qué hace:**
+
 1. Agrupa memorias `session` que tengan >30 días de antigüedad
 2. Las pasa por un LLM: "Fusiona estas N sesiones antiguas en un resumen compacto"
 3. Crea 1 memoria `session` compactada (key: `compacted_apr_2025`)

@@ -75,8 +75,6 @@ import { detectProjectLanguage } from "../utils/detect_language";
 
 const logger = log.scope("app_handlers");
 
-
-
 export function registerAppHandlers() {
   createTypedHandler(systemContracts.restartVibes, async () => {
     app.relaunch();
@@ -85,7 +83,9 @@ export function registerAppHandlers() {
 
   createTypedHandler(systemContracts.restartOpenCodeServer, async () => {
     await shutdownOpenCode();
-    logger.info("[OpenCode] Server shutdown by user (config change). Will reinit on next chat.");
+    logger.info(
+      "[OpenCode] Server shutdown by user (config change). Will reinit on next chat.",
+    );
   });
 
   createTypedHandler(appContracts.createApp, async (_, params, context) => {
@@ -97,11 +97,12 @@ export function registerAppHandlers() {
     const slugify = (str: string): string =>
       str
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")   // strip diacritics (ñ→n, á→a)
-        .replace(/ñ/g, "n").replace(/Ñ/g, "n")  // explicit ñ fallback
+        .replace(/[\u0300-\u036f]/g, "") // strip diacritics (ñ→n, á→a)
+        .replace(/ñ/g, "n")
+        .replace(/Ñ/g, "n") // explicit ñ fallback
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")       // non-alphanum → hyphen
-        .replace(/^-+|-+$/g, "");           // trim leading/trailing hyphens
+        .replace(/[^a-z0-9]+/g, "-") // non-alphanum → hyphen
+        .replace(/^-+|-+$/g, ""); // trim leading/trailing hyphens
 
     const displayName = params.name.trim();
     const baseSlug = slugify(displayName);
@@ -110,9 +111,15 @@ export function registerAppHandlers() {
     let appPath = baseSlug;
     let fullAppPath = getVibesAppPath(appPath);
     let suffix = 1;
-    while (fs.existsSync(fullAppPath) || await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.path, appPath), eq(remoteSchema.apps.userId, context.userId!)),
-    })) {
+    while (
+      fs.existsSync(fullAppPath) ||
+      (await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.path, appPath),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
+      }))
+    ) {
       suffix++;
       appPath = `${baseSlug}-${suffix}`;
       fullAppPath = getVibesAppPath(appPath);
@@ -181,17 +188,26 @@ export function registerAppHandlers() {
       .set({
         initialCommitHash: commitHash,
       })
-      .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId!)));
+      .where(
+        and(
+          eq(remoteSchema.chats.id, chat.id),
+          eq(remoteSchema.chats.userId, context.userId!),
+        ),
+      );
 
     // Detect and persist primary language (fire-and-forget)
-    detectProjectLanguage(fullAppPath).then(async ({ primaryLanguage, projectType }) => {
-      if (primaryLanguage !== "unknown") {
-        await db
-          .update(remoteSchema.apps)
-          .set({ primaryLanguage, projectType })
-          .where(eq(remoteSchema.apps.id, app.id));
-      }
-    }).catch(() => { /* best-effort */ });
+    detectProjectLanguage(fullAppPath)
+      .then(async ({ primaryLanguage, projectType }) => {
+        if (primaryLanguage !== "unknown") {
+          await db
+            .update(remoteSchema.apps)
+            .set({ primaryLanguage, projectType })
+            .where(eq(remoteSchema.apps.id, app.id));
+        }
+      })
+      .catch(() => {
+        /* best-effort */
+      });
 
     return {
       app: { ...app, resolvedPath: fullAppPath },
@@ -204,7 +220,10 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)),
+      where: and(
+        eq(remoteSchema.apps.id, params.appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
     });
 
     if (!app) throw new Error("App not found");
@@ -218,33 +237,46 @@ export function registerAppHandlers() {
     // Check 1: Are there meaningful files beyond the bare .gitignore skeleton?
     try {
       const entries = await fsPromises.readdir(fullAppPath);
-      const meaningful = entries.filter(e => e !== ".git" && e !== ".gitignore" && e !== "node_modules");
+      const meaningful = entries.filter(
+        (e) => e !== ".git" && e !== ".gitignore" && e !== "node_modules",
+      );
       if (meaningful.length > 0) {
-        logger.info(`applyTemplate skipped for app ${params.appId} — directory has ${meaningful.length} file(s) beyond skeleton`);
+        logger.info(
+          `applyTemplate skipped for app ${params.appId} — directory has ${meaningful.length} file(s) beyond skeleton`,
+        );
         return { success: true };
       }
-    } catch { /* directory doesn't exist yet — proceed with scaffold */ }
+    } catch {
+      /* directory doesn't exist yet — proceed with scaffold */
+    }
 
     // Check 2: Does this app have any prior messages? (belt-and-suspenders for edge cases)
     const appChats = await db.query.chats.findMany({
-      where: and(eq(remoteSchema.chats.appId, params.appId), eq(remoteSchema.chats.userId, context.userId)),
+      where: and(
+        eq(remoteSchema.chats.appId, params.appId),
+        eq(remoteSchema.chats.userId, context.userId),
+      ),
       columns: { id: true },
     });
     if (appChats.length > 0) {
-      const chatIds = appChats.map(c => c.id);
+      const chatIds = appChats.map((c) => c.id);
       const [row] = await db
         .select({ total: count(remoteSchema.messages.id) })
         .from(remoteSchema.messages)
-        .where(and(
-          inArray(remoteSchema.messages.chatId, chatIds),
-          eq(remoteSchema.messages.userId, context.userId),
-        ));
+        .where(
+          and(
+            inArray(remoteSchema.messages.chatId, chatIds),
+            eq(remoteSchema.messages.userId, context.userId),
+          ),
+        );
       if (row && row.total > 0) {
-        logger.info(`applyTemplate skipped for app ${params.appId} — app has ${row.total} existing message(s)`);
+        logger.info(
+          `applyTemplate skipped for app ${params.appId} — app has ${row.total} existing message(s)`,
+        );
         return { success: true };
       }
     }
-    
+
     // We pass forceDefaultScaffold false, so it reads settings.selectedTemplateId
     await createFromTemplate({
       fullAppPath,
@@ -264,7 +296,7 @@ export function registerAppHandlers() {
     // Copy node_modules AFTER git operations to prevent massive isomorphic-git slowdowns
     // (copying 40k files takes ~1s, but scanning them with git.add takes ~50s)
     // Fire and forget so we don't block the UI and the agent can start thinking immediately!
-    copyScaffoldNodeModules(fullAppPath).catch(err => {
+    copyScaffoldNodeModules(fullAppPath).catch((err) => {
       console.error("Background node_modules copy failed:", err);
     });
 
@@ -279,7 +311,10 @@ export function registerAppHandlers() {
 
     // 1. Check if an app with the new name already exists
     const existingApp = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.name, newAppName), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.name, newAppName),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (existingApp) {
@@ -288,7 +323,10 @@ export function registerAppHandlers() {
 
     // 2. Find the original app
     const originalApp = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!originalApp) {
@@ -357,7 +395,10 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) {
@@ -447,17 +488,21 @@ export function registerAppHandlers() {
     // Lazy backfill: detect language for apps that don't have it yet (fire-and-forget)
     for (const app of appsWithResolvedPath) {
       if (!app.primaryLanguage && app.localPathExists) {
-        detectProjectLanguage(app.resolvedPath).then(async ({ primaryLanguage, projectType }) => {
-          if (primaryLanguage !== "unknown") {
-            await db
-              .update(remoteSchema.apps)
-              .set({ primaryLanguage, projectType })
-              .where(eq(remoteSchema.apps.id, app.id));
-            // Mutate in-place so this listing already reflects the detection
-            (app as any).primaryLanguage = primaryLanguage;
-            (app as any).projectType = projectType;
-          }
-        }).catch(() => { /* best-effort */ });
+        detectProjectLanguage(app.resolvedPath)
+          .then(async ({ primaryLanguage, projectType }) => {
+            if (primaryLanguage !== "unknown") {
+              await db
+                .update(remoteSchema.apps)
+                .set({ primaryLanguage, projectType })
+                .where(eq(remoteSchema.apps.id, app.id));
+              // Mutate in-place so this listing already reflects the detection
+              (app as any).primaryLanguage = primaryLanguage;
+              (app as any).projectType = projectType;
+            }
+          })
+          .catch(() => {
+            /* best-effort */
+          });
       }
     }
 
@@ -467,48 +512,60 @@ export function registerAppHandlers() {
   });
 
   // Archive / unarchive an app
-  createTypedHandler(appContracts.archiveApp, async (_, { appId, archived }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    await db.update(remoteSchema.apps)
-      .set({ isArchived: archived ? 1 : 0 })
-      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
-  });
+  createTypedHandler(
+    appContracts.archiveApp,
+    async (_, { appId, archived }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      await db
+        .update(remoteSchema.apps)
+        .set({ isArchived: archived ? 1 : 0 })
+        .where(
+          and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId!),
+          ),
+        );
+    },
+  );
 
   // Get archived apps
-  createTypedHandler(appContracts.getArchivedApps, async (_, _input, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
+  createTypedHandler(
+    appContracts.getArchivedApps,
+    async (_, _input, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
 
-    const archivedApps = await db.query.apps.findMany({
-      where: and(
-        eq(remoteSchema.apps.userId, context.userId!),
-        eq(remoteSchema.apps.isArchived, 1),
-      ),
-      orderBy: [desc(remoteSchema.apps.createdAt)],
-    });
+      const archivedApps = await db.query.apps.findMany({
+        where: and(
+          eq(remoteSchema.apps.userId, context.userId!),
+          eq(remoteSchema.apps.isArchived, 1),
+        ),
+        orderBy: [desc(remoteSchema.apps.createdAt)],
+      });
 
-    const appsWithResolvedPath = await Promise.all(
-      archivedApps.map(async (app) => {
-        const resolvedPath = getVibesAppPath(app.path);
-        let localPathExists = false;
-        try {
-          await fsPromises.access(resolvedPath);
-          localPathExists = true;
-        } catch {
-          // Path does not exist
-        }
-        return {
-          ...app,
-          resolvedPath,
-          localPathExists,
-          canClone: !!(app.githubOrg && app.githubRepo),
-        };
-      }),
-    );
+      const appsWithResolvedPath = await Promise.all(
+        archivedApps.map(async (app) => {
+          const resolvedPath = getVibesAppPath(app.path);
+          let localPathExists = false;
+          try {
+            await fsPromises.access(resolvedPath);
+            localPathExists = true;
+          } catch {
+            // Path does not exist
+          }
+          return {
+            ...app,
+            resolvedPath,
+            localPathExists,
+            canClone: !!(app.githubOrg && app.githubRepo),
+          };
+        }),
+      );
 
-    return appsWithResolvedPath;
-  });
+      return appsWithResolvedPath;
+    },
+  );
 
   createTypedHandler(appContracts.readAppFile, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -516,7 +573,10 @@ export function registerAppHandlers() {
 
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) {
@@ -550,7 +610,10 @@ export function registerAppHandlers() {
 
     const { appId, filePath } = params;
     const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!appRecord) throw new Error("App not found");
@@ -617,7 +680,10 @@ export function registerAppHandlers() {
       }
 
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (!app) {
@@ -733,101 +799,107 @@ export function registerAppHandlers() {
     return { status: "running" as const };
   });
 
-  createTypedHandler(appContracts.restartApp, async (event, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
+  createTypedHandler(
+    appContracts.restartApp,
+    async (event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
 
-    const { appId, removeNodeModules } = params;
-    logger.log(`Restarting app ${appId}`);
-    // Clear auto-recovery flag so the next start cycle gets a fresh attempt
-    autoRecoveryAttempted.delete(appId);
-    return withLock(appId, async () => {
-      try {
-        // First stop the app if it's running
-        const appInfo = runningApps.get(appId);
-        if (appInfo) {
-          const { processId } = appInfo;
-          logger.log(
-            `Stopping app ${appId} (processId ${processId}) before restart`,
-          );
-          proxyUrlByApp.delete(appId);
-          await stopAppByInfo(appId, appInfo);
-        } else {
-          logger.log(`App ${appId} not running. Proceeding to start.`);
-        }
-
-        // There may have been a previous run that left a process on this port.
-        await cleanUpPort(getAppPort(appId));
-
-        // Now start the app again
-        const app = await db.query.apps.findFirst({
-          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
-        });
-
-        if (!app) {
-          throw new Error("App not found");
-        }
-
-        const appPath = getVibesAppPath(app.path);
-
-        // Remove node_modules if requested
-        if (removeNodeModules) {
-          const settings = readSettings();
-          const runtimeMode = settings.runtimeMode2 ?? "host";
-
-          const nodeModulesPath = path.join(appPath, "node_modules");
-          logger.log(
-            `Removing node_modules for app ${appId} at ${nodeModulesPath}`,
-          );
-          if (fs.existsSync(nodeModulesPath)) {
-            await fsPromises.rm(nodeModulesPath, {
-              recursive: true,
-              force: true,
-            });
-            logger.log(`Successfully removed node_modules for app ${appId}`);
+      const { appId, removeNodeModules } = params;
+      logger.log(`Restarting app ${appId}`);
+      // Clear auto-recovery flag so the next start cycle gets a fresh attempt
+      autoRecoveryAttempted.delete(appId);
+      return withLock(appId, async () => {
+        try {
+          // First stop the app if it's running
+          const appInfo = runningApps.get(appId);
+          if (appInfo) {
+            const { processId } = appInfo;
+            logger.log(
+              `Stopping app ${appId} (processId ${processId}) before restart`,
+            );
+            proxyUrlByApp.delete(appId);
+            await stopAppByInfo(appId, appInfo);
           } else {
-            logger.log(`No node_modules directory found for app ${appId}`);
+            logger.log(`App ${appId} not running. Proceeding to start.`);
           }
 
-          // If running in Docker mode, also remove container volumes so deps reinstall freshly
-          if (runtimeMode === "docker") {
+          // There may have been a previous run that left a process on this port.
+          await cleanUpPort(getAppPort(appId));
+
+          // Now start the app again
+          const app = await db.query.apps.findFirst({
+            where: and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          });
+
+          if (!app) {
+            throw new Error("App not found");
+          }
+
+          const appPath = getVibesAppPath(app.path);
+
+          // Remove node_modules if requested
+          if (removeNodeModules) {
+            const settings = readSettings();
+            const runtimeMode = settings.runtimeMode2 ?? "host";
+
+            const nodeModulesPath = path.join(appPath, "node_modules");
             logger.log(
-              `Docker mode detected for app ${appId}. Removing Docker volumes vibes-pnpm-${appId}...`,
+              `Removing node_modules for app ${appId} at ${nodeModulesPath}`,
             );
-            try {
-              await removeDockerVolumesForApp(appId);
+            if (fs.existsSync(nodeModulesPath)) {
+              await fsPromises.rm(nodeModulesPath, {
+                recursive: true,
+                force: true,
+              });
+              logger.log(`Successfully removed node_modules for app ${appId}`);
+            } else {
+              logger.log(`No node_modules directory found for app ${appId}`);
+            }
+
+            // If running in Docker mode, also remove container volumes so deps reinstall freshly
+            if (runtimeMode === "docker") {
               logger.log(
-                `Removed Docker volumes for app ${appId} (vibes-pnpm-${appId}).`,
+                `Docker mode detected for app ${appId}. Removing Docker volumes vibes-pnpm-${appId}...`,
               );
-            } catch (e) {
-              // Best-effort cleanup; log and continue
-              logger.warn(
-                `Failed to remove Docker volumes for app ${appId}. Continuing: ${e}`,
-              );
+              try {
+                await removeDockerVolumesForApp(appId);
+                logger.log(
+                  `Removed Docker volumes for app ${appId} (vibes-pnpm-${appId}).`,
+                );
+              } catch (e) {
+                // Best-effort cleanup; log and continue
+                logger.warn(
+                  `Failed to remove Docker volumes for app ${appId}. Continuing: ${e}`,
+                );
+              }
             }
           }
+
+          logger.debug(
+            `Executing app ${appId} in path ${app.path} after restart request`,
+          ); // Adjusted log
+
+          await executeApp({
+            appPath,
+            appId,
+            event,
+            isNeon: !!app.neonProjectId,
+            installCommand: app.installCommand,
+            startCommand: app.startCommand,
+          }); // This will handle starting either mode
+
+          return;
+        } catch (error) {
+          logger.error(`Error restarting app ${appId}:`, error);
+          throw error;
         }
-
-        logger.debug(
-          `Executing app ${appId} in path ${app.path} after restart request`,
-        ); // Adjusted log
-
-        await executeApp({
-          appPath,
-          appId,
-          event,
-          isNeon: !!app.neonProjectId,
-          installCommand: app.installCommand,
-          startCommand: app.startCommand,
-        }); // This will handle starting either mode
-
-        return;
-      } catch (error) {
-        logger.error(`Error restarting app ${appId}:`, error);
-        throw error;
-      }
-    });
-  });
+      });
+    },
+  );
 
   createTypedHandler(appContracts.editAppFile, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -837,7 +909,10 @@ export function registerAppHandlers() {
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) {
@@ -861,7 +936,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-          error,
+            error,
         );
       }
     }
@@ -943,7 +1018,10 @@ export function registerAppHandlers() {
 
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) throw new Error("App not found");
@@ -960,7 +1038,9 @@ export function registerAppHandlers() {
       } else {
         await fsPromises.unlink(fullPath);
       }
-      logger.debug(`Deleted ${stat.isDirectory() ? "directory" : "file"} ${filePath} from app ${appId}`);
+      logger.debug(
+        `Deleted ${stat.isDirectory() ? "directory" : "file"} ${filePath} from app ${appId}`,
+      );
     } catch (error: any) {
       if (error.code === "ENOENT") return; // Already gone, idempotent
       logger.error(`Error deleting file ${filePath} for app ${appId}:`, error);
@@ -975,7 +1055,10 @@ export function registerAppHandlers() {
 
     const { appId, oldPath, newPath } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) throw new Error("App not found");
@@ -995,7 +1078,10 @@ export function registerAppHandlers() {
       await fsPromises.rename(fullOld, fullNew);
       logger.debug(`Renamed ${oldPath} → ${newPath} in app ${appId}`);
     } catch (error: any) {
-      logger.error(`Error renaming ${oldPath} to ${newPath} for app ${appId}:`, error);
+      logger.error(
+        `Error renaming ${oldPath} to ${newPath} for app ${appId}:`,
+        error,
+      );
       throw new Error(`Failed to rename: ${error.message}`);
     }
   });
@@ -1010,7 +1096,10 @@ export function registerAppHandlers() {
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (!app) {
@@ -1035,32 +1124,48 @@ export function registerAppHandlers() {
       // Clean up OpenCode sessions before DB cascade deletes the chats
       // (FK cascade would lose the opencodeSessionId references)
       try {
-        const { cleanupOpenCodeSessionsForApp } = await import("./opencode_adapter");
+        const { cleanupOpenCodeSessionsForApp } =
+          await import("./opencode_adapter");
         await cleanupOpenCodeSessionsForApp(appId);
       } catch (e: any) {
-        logger.warn(`Failed to cleanup OpenCode sessions for app ${appId}: ${e.message}`);
+        logger.warn(
+          `Failed to cleanup OpenCode sessions for app ${appId}: ${e.message}`,
+        );
       }
 
       // Delete app from database
       try {
         // Manual cascade for tables without FK onDelete (prevent orphan data)
-        await db.delete(remoteSchema.memories)
+        await db
+          .delete(remoteSchema.memories)
           .where(eq(remoteSchema.memories.appId, appId));
-        await db.delete(remoteSchema.memoryTelemetry)
+        await db
+          .delete(remoteSchema.memoryTelemetry)
           .where(eq(remoteSchema.memoryTelemetry.appId, appId));
-        await db.delete(remoteSchema.memoryPipelineLogs)
+        await db
+          .delete(remoteSchema.memoryPipelineLogs)
           .where(eq(remoteSchema.memoryPipelineLogs.appId, appId));
-        await db.delete(remoteSchema.memoryDebugLogs)
+        await db
+          .delete(remoteSchema.memoryDebugLogs)
           .where(eq(remoteSchema.memoryDebugLogs.appId, appId));
-        await db.delete(remoteSchema.userPreferences)
-          .where(and(
-            eq(remoteSchema.userPreferences.userId, context.userId!),
-            eq(remoteSchema.userPreferences.appId, appId),
-          ));
+        await db
+          .delete(remoteSchema.userPreferences)
+          .where(
+            and(
+              eq(remoteSchema.userPreferences.userId, context.userId!),
+              eq(remoteSchema.userPreferences.appId, appId),
+            ),
+          );
 
         // Delete the app row (chats, versions, todos, etc. cascade via FK)
-        await db.delete(remoteSchema.apps)
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
+        await db
+          .delete(remoteSchema.apps)
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          );
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
         throw new Error(`Failed to delete app from database: ${error.message}`);
@@ -1093,15 +1198,26 @@ export function registerAppHandlers() {
                   updatedAt: new Date(),
                 })
                 .onConflictDoUpdate({
-                  target: [remoteSchema.userPreferences.userId, remoteSchema.userPreferences.key, remoteSchema.userPreferences.appId],
+                  target: [
+                    remoteSchema.userPreferences.userId,
+                    remoteSchema.userPreferences.key,
+                    remoteSchema.userPreferences.appId,
+                  ],
                   set: { value: "", updatedAt: new Date() },
                 });
-              logger.log(`Cleared stale sidebar.lastSelection for deleted app ${appId}`);
+              logger.log(
+                `Cleared stale sidebar.lastSelection for deleted app ${appId}`,
+              );
             }
-          } catch { /* ignore parse errors */ }
+          } catch {
+            /* ignore parse errors */
+          }
         }
       } catch (e) {
-        logger.warn(`Failed to check/clear sidebar.lastSelection on app delete:`, e);
+        logger.warn(
+          `Failed to check/clear sidebar.lastSelection on app delete:`,
+          e,
+        );
       }
 
       // Only delete files if explicitly requested
@@ -1113,11 +1229,18 @@ export function registerAppHandlers() {
             await fsPromises.rm(appPath, { recursive: true, force: true });
             break; // Success, exit retry loop
           } catch (error: any) {
-            if (attempt < maxRetries && (error.code === 'ENOTEMPTY' || error.code === 'EBUSY' || error.code === 'EPERM')) {
+            if (
+              attempt < maxRetries &&
+              (error.code === "ENOTEMPTY" ||
+                error.code === "EBUSY" ||
+                error.code === "EPERM")
+            ) {
               logger.warn(
                 `Attempt ${attempt}/${maxRetries} to delete app files failed (${error.code}). Retrying in ${attempt * 500}ms...`,
               );
-              await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+              await new Promise((resolve) =>
+                setTimeout(resolve, attempt * 500),
+              );
             } else {
               logger.error(`Error deleting app files for app ${appId}:`, error);
               // App is already removed from DB, so just warn
@@ -1128,7 +1251,9 @@ export function registerAppHandlers() {
           }
         }
       } else {
-        logger.log(`App ${appId} unlinked from Vibes (files preserved on disk).`);
+        logger.log(
+          `App ${appId} unlinked from Vibes (files preserved on disk).`,
+        );
       }
     });
   });
@@ -1144,7 +1269,12 @@ export function registerAppHandlers() {
         const result = await db
           .select({ isFavorite: remoteSchema.apps.isFavorite })
           .from(remoteSchema.apps)
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          )
           .limit(1);
 
         if (result.length === 0) {
@@ -1157,7 +1287,12 @@ export function registerAppHandlers() {
         const updated = await db
           .update(remoteSchema.apps)
           .set({ isFavorite: currentIsFavorite ? 0 : 1 })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          )
           .returning({ isFavorite: remoteSchema.apps.isFavorite });
 
         if (updated.length === 0) {
@@ -1178,32 +1313,37 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.updateAppCommands, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
+  createTypedHandler(
+    appContracts.updateAppCommands,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
 
-    const { appId, installCommand, startCommand } = params;
-    return withLock(appId, async () => {
-      try {
-        await db
-          .update(remoteSchema.apps)
-          .set({
-            installCommand: installCommand?.trim() || null,
-            startCommand: startCommand?.trim() || null,
-          })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
-        logger.info(
-          `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
-        );
-      } catch (error: any) {
-        logger.error(
-          `Error updating commands for app ID ${appId}:`,
-          error,
-        );
-        throw new Error(`Failed to update app commands: ${error.message}`);
-      }
-    });
-  });
+      const { appId, installCommand, startCommand } = params;
+      return withLock(appId, async () => {
+        try {
+          await db
+            .update(remoteSchema.apps)
+            .set({
+              installCommand: installCommand?.trim() || null,
+              startCommand: startCommand?.trim() || null,
+            })
+            .where(
+              and(
+                eq(remoteSchema.apps.id, appId),
+                eq(remoteSchema.apps.userId, context.userId!),
+              ),
+            );
+          logger.info(
+            `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
+          );
+        } catch (error: any) {
+          logger.error(`Error updating commands for app ID ${appId}:`, error);
+          throw new Error(`Failed to update app commands: ${error.message}`);
+        }
+      });
+    },
+  );
 
   createTypedHandler(appContracts.renameApp, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -1214,7 +1354,10 @@ export function registerAppHandlers() {
       let appPath = newPath;
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (!app) {
@@ -1247,7 +1390,10 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.name, appName),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1259,9 +1405,9 @@ export function registerAppHandlers() {
       const currentResolvedPath = getVibesAppPath(app.path);
       const newAppPath = !pathChanged
         ? currentResolvedPath
-        : (path.isAbsolute(app.path)
-            ? path.join(path.dirname(app.path), appPath)
-            : getVibesAppPath(appPath));
+        : path.isAbsolute(app.path)
+          ? path.join(path.dirname(app.path), appPath)
+          : getVibesAppPath(appPath);
 
       let hasPathConflict = false;
       if (pathChanged) {
@@ -1357,7 +1503,12 @@ export function registerAppHandlers() {
             name: appName,
             path: pathToStore,
           })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          )
           .returning();
 
         return;
@@ -1393,7 +1544,10 @@ export function registerAppHandlers() {
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (!app) {
@@ -1402,7 +1556,10 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId!)),
+        where: and(
+          eq(remoteSchema.apps.name, appName),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1414,13 +1571,20 @@ export function registerAppHandlers() {
         await db
           .update(remoteSchema.apps)
           .set({ name: appName })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)))
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId!),
+            ),
+          )
           .returning();
 
         return;
       } catch (error: any) {
         logger.error(`Error updating app name ${appId} in database:`, error);
-        throw new Error(`Failed to update app name in database: ${error.message}`);
+        throw new Error(
+          `Failed to update app name in database: ${error.message}`,
+        );
       }
     });
   });
@@ -1443,12 +1607,15 @@ export function registerAppHandlers() {
 
     // Purge all OpenCode sessions (everything is being wiped)
     try {
-      const { purgeAllOrphanedOpenCodeSessions } = await import("./opencode_adapter");
+      const { purgeAllOrphanedOpenCodeSessions } =
+        await import("./opencode_adapter");
       // Not dry-run: delete everything since all apps are being removed
       await purgeAllOrphanedOpenCodeSessions(false);
       logger.log("OpenCode sessions purged.");
     } catch (e: any) {
-      logger.warn(`Failed to purge OpenCode sessions during reset: ${e.message}`);
+      logger.warn(
+        `Failed to purge OpenCode sessions during reset: ${e.message}`,
+      );
     }
 
     logger.log("deleting settings...");
@@ -1493,7 +1660,8 @@ export function registerAppHandlers() {
 
     // Use the in-memory cache populated at startup by ensureOpenCodeInstalled()
     // instead of spawning a subprocess (which was blocking for ~2-5s).
-    const { getCachedOpenCodeVersion } = await import("../../main/ensure_opencode");
+    const { getCachedOpenCodeVersion } =
+      await import("../../main/ensure_opencode");
     const opencodeVersion = getCachedOpenCodeVersion();
 
     return {
@@ -1512,7 +1680,10 @@ export function registerAppHandlers() {
 
     const { appId, oldBranchName, newBranchName } = params;
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
     });
 
     if (!app) {
@@ -1588,165 +1759,175 @@ export function registerAppHandlers() {
   // Track current working directory per app for persistent cd
   const shellCwdMap = new Map<number, string>();
 
-  createTypedHandler(appContracts.executeShellCommand, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
+  createTypedHandler(
+    appContracts.executeShellCommand,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
 
-    const { appId, command, timeoutMs } = params;
+      const { appId, command, timeoutMs } = params;
 
-    // Get app path
-    const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
-    });
+      // Get app path
+      const appRecord = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
+      });
 
-    if (!appRecord) {
-      throw new Error(`App ${appId} not found`);
-    }
-
-    const appPath = getVibesAppPath(appRecord.path);
-    const currentCwd = shellCwdMap.get(appId) || appPath;
-
-    // Kill any previously running shell command for this app
-    const existingProcess = runningShellCommands.get(appId);
-    if (existingProcess && !existingProcess.killed) {
-      try {
-        if (existingProcess.pid) {
-          process.kill(-existingProcess.pid, "SIGTERM");
-        }
-      } catch {
-        // Process may already be dead
+      if (!appRecord) {
+        throw new Error(`App ${appId} not found`);
       }
-      runningShellCommands.delete(appId);
-    }
 
-    const trimmedCommand = command.trim();
+      const appPath = getVibesAppPath(appRecord.path);
+      const currentCwd = shellCwdMap.get(appId) || appPath;
 
-    // Handle "cd" specially to track CWD changes
-    const cdMatch = trimmedCommand.match(/^cd\s+(.*)/);
-    if (cdMatch || trimmedCommand === "cd") {
-      const target = cdMatch?.[1]?.trim() || process.env.HOME || "/";
-      // Resolve the new CWD by running cd + pwd
-      const resolveCmd = `cd ${JSON.stringify(currentCwd)} && cd ${target} && pwd`;
+      // Kill any previously running shell command for this app
+      const existingProcess = runningShellCommands.get(appId);
+      if (existingProcess && !existingProcess.killed) {
+        try {
+          if (existingProcess.pid) {
+            process.kill(-existingProcess.pid, "SIGTERM");
+          }
+        } catch {
+          // Process may already be dead
+        }
+        runningShellCommands.delete(appId);
+      }
 
+      const trimmedCommand = command.trim();
+
+      // Handle "cd" specially to track CWD changes
+      const cdMatch = trimmedCommand.match(/^cd\s+(.*)/);
+      if (cdMatch || trimmedCommand === "cd") {
+        const target = cdMatch?.[1]?.trim() || process.env.HOME || "/";
+        // Resolve the new CWD by running cd + pwd
+        const resolveCmd = `cd ${JSON.stringify(currentCwd)} && cd ${target} && pwd`;
+
+        return new Promise((resolve) => {
+          let stdout = "";
+          let stderr = "";
+
+          const p = spawn(resolveCmd, [], {
+            cwd: appPath,
+            shell: true,
+            stdio: "pipe",
+          });
+
+          p.stdout?.on("data", (data) => {
+            stdout += data.toString();
+          });
+          p.stderr?.on("data", (data) => {
+            stderr += data.toString();
+          });
+
+          p.on("close", (code) => {
+            if (code === 0 && stdout.trim()) {
+              const newCwd = stdout.trim();
+              shellCwdMap.set(appId, newCwd);
+              resolve({
+                stdout: "",
+                stderr: "",
+                exitCode: 0,
+                cwd: newCwd,
+              });
+            } else {
+              resolve({
+                stdout: "",
+                stderr: stderr || `cd: ${target}: No existe el directorio`,
+                exitCode: code ?? 1,
+                cwd: currentCwd,
+              });
+            }
+          });
+
+          p.on("error", (err) => {
+            resolve({
+              stdout: "",
+              stderr: err.message,
+              exitCode: 1,
+              cwd: currentCwd,
+            });
+          });
+        });
+      }
+
+      // For all other commands, execute in the tracked CWD
       return new Promise((resolve) => {
         let stdout = "";
         let stderr = "";
+        let settled = false;
 
-        const p = spawn(resolveCmd, [], {
-          cwd: appPath,
+        const shellProcess = spawn(trimmedCommand, [], {
+          cwd: currentCwd,
           shell: true,
           stdio: "pipe",
+          detached: true,
         });
 
-        p.stdout?.on("data", (data) => { stdout += data.toString(); });
-        p.stderr?.on("data", (data) => { stderr += data.toString(); });
+        runningShellCommands.set(appId, shellProcess);
 
-        p.on("close", (code) => {
-          if (code === 0 && stdout.trim()) {
-            const newCwd = stdout.trim();
-            shellCwdMap.set(appId, newCwd);
+        const timeout = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            try {
+              if (shellProcess.pid) {
+                process.kill(-shellProcess.pid, "SIGTERM");
+              }
+            } catch {
+              // ignore
+            }
+            runningShellCommands.delete(appId);
             resolve({
-              stdout: "",
-              stderr: "",
-              exitCode: 0,
-              cwd: newCwd,
+              stdout,
+              stderr,
+              exitCode: null,
+              error: `Command timed out after ${timeoutMs}ms`,
+              cancelled: false,
+              cwd: currentCwd,
             });
-          } else {
+          }
+        }, timeoutMs);
+
+        shellProcess.stdout?.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        shellProcess.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        shellProcess.on("close", (code) => {
+          clearTimeout(timeout);
+          runningShellCommands.delete(appId);
+          if (!settled) {
+            settled = true;
             resolve({
-              stdout: "",
-              stderr: stderr || `cd: ${target}: No existe el directorio`,
-              exitCode: code ?? 1,
+              stdout,
+              stderr,
+              exitCode: code,
               cwd: currentCwd,
             });
           }
         });
 
-        p.on("error", (err) => {
-          resolve({
-            stdout: "",
-            stderr: err.message,
-            exitCode: 1,
-            cwd: currentCwd,
-          });
+        shellProcess.on("error", (err) => {
+          clearTimeout(timeout);
+          runningShellCommands.delete(appId);
+          if (!settled) {
+            settled = true;
+            resolve({
+              stdout,
+              stderr,
+              exitCode: null,
+              error: err.message,
+              cwd: currentCwd,
+            });
+          }
         });
       });
-    }
-
-    // For all other commands, execute in the tracked CWD
-    return new Promise((resolve) => {
-      let stdout = "";
-      let stderr = "";
-      let settled = false;
-
-      const shellProcess = spawn(trimmedCommand, [], {
-        cwd: currentCwd,
-        shell: true,
-        stdio: "pipe",
-        detached: true,
-      });
-
-      runningShellCommands.set(appId, shellProcess);
-
-      const timeout = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          try {
-            if (shellProcess.pid) {
-              process.kill(-shellProcess.pid, "SIGTERM");
-            }
-          } catch {
-            // ignore
-          }
-          runningShellCommands.delete(appId);
-          resolve({
-            stdout,
-            stderr,
-            exitCode: null,
-            error: `Command timed out after ${timeoutMs}ms`,
-            cancelled: false,
-            cwd: currentCwd,
-          });
-        }
-      }, timeoutMs);
-
-      shellProcess.stdout?.on("data", (data) => {
-        stdout += data.toString();
-      });
-
-      shellProcess.stderr?.on("data", (data) => {
-        stderr += data.toString();
-      });
-
-      shellProcess.on("close", (code) => {
-        clearTimeout(timeout);
-        runningShellCommands.delete(appId);
-        if (!settled) {
-          settled = true;
-          resolve({
-            stdout,
-            stderr,
-            exitCode: code,
-            cwd: currentCwd,
-          });
-        }
-      });
-
-      shellProcess.on("error", (err) => {
-        clearTimeout(timeout);
-        runningShellCommands.delete(appId);
-        if (!settled) {
-          settled = true;
-          resolve({
-            stdout,
-            stderr,
-            exitCode: null,
-            error: err.message,
-            cwd: currentCwd,
-          });
-        }
-      });
-    });
-  });
+    },
+  );
 
   createTypedHandler(appContracts.cancelShellCommand, async (_, params) => {
     const { appId } = params;
@@ -1761,178 +1942,220 @@ export function registerAppHandlers() {
         process.kill(-shellProcess.pid, "SIGTERM");
       }
     } catch (error: any) {
-      logger.warn(`Error killing shell command for app ${appId}:`, error.message);
+      logger.warn(
+        `Error killing shell command for app ${appId}:`,
+        error.message,
+      );
     }
 
     runningShellCommands.delete(appId);
   });
 
-  createTypedHandler(appContracts.getShellCompletions, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-
-    const { appId, partial } = params;
-
-    const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
-    });
-
-    if (!appRecord) {
-      return { completions: [] };
-    }
-
-    const appPath = getVibesAppPath(appRecord.path);
-    const currentCwd = shellCwdMap.get(appId) || appPath;
-
-    return new Promise((resolve) => {
-      // Use compgen for bash-style completion of files/directories
-      const escapedPartial = partial.replace(/'/g, "'\\''");
-      const cmd = `cd ${JSON.stringify(currentCwd)} && compgen -f -- '${escapedPartial}' 2>/dev/null | head -20`;
-
-      const p = spawn(cmd, [], {
-        cwd: currentCwd,
-        shell: true,
-        stdio: "pipe",
-      });
-
-      let stdout = "";
-      p.stdout?.on("data", (data) => { stdout += data.toString(); });
-
-      p.on("close", () => {
-        const completions = stdout
-          .trim()
-          .split("\n")
-          .filter((line) => line.length > 0);
-        resolve({ completions });
-      });
-
-      p.on("error", () => {
-        resolve({ completions: [] });
-      });
-
-      // Timeout for completion
-      setTimeout(() => {
-        try { p.kill(); } catch { /* ignore */ }
-        resolve({ completions: [] });
-      }, 3000);
-    });
-  });
-
-  createTypedHandler(appContracts.searchAppFiles, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-
-    const { appId, query } = params;
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) {
-      return [];
-    }
-
-    const appRecord = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
-    });
-
-    if (!appRecord) {
-      throw new Error("App not found");
-    }
-
-    const appPath = getVibesAppPath(appRecord.path);
-
-    // Search file contents with ripgrep
-    const contentMatches = await searchAppFilesWithRipgrep({
-      appPath,
-      query: trimmedQuery,
-    });
-
-    return contentMatches;
-  });
-
-  createTypedHandler(appContracts.searchApps, async (_, searchQuery) => {
-      const settings = readSettings();
-      if (!settings.userId) throw new Error("Unauthorized");
+  createTypedHandler(
+    appContracts.getShellCompletions,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
-      // Use parameterized query to prevent SQL injection
-      const pattern = `%${searchQuery.replace(/[%_]/g, "\\$&")}%`;
+      const { appId, partial } = params;
 
-      // 1) Apps whose name matches
-      const appNameMatches = await db
-        .select({
-          id: remoteSchema.apps.id,
-          name: remoteSchema.apps.name,
-          createdAt: remoteSchema.apps.createdAt,
-        })
-        .from(remoteSchema.apps)
-        .where(and(like(remoteSchema.apps.name, pattern), eq(remoteSchema.apps.userId, settings.userId)))
-        .orderBy(desc(remoteSchema.apps.createdAt));
+      const appRecord = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
+      });
 
-      const appNameMatchesResult: AppSearchResult[] = appNameMatches.map(
-        (r) => ({
-          id: r.id,
-          name: r.name,
-          createdAt: r.createdAt as unknown as Date,
-          matchedChatTitle: null,
-          matchedChatMessage: null,
-        }),
-      );
+      if (!appRecord) {
+        return { completions: [] };
+      }
 
-      // 2) Apps whose chat title matches
-      const chatTitleMatches = await db
-        .select({
-          id: remoteSchema.apps.id,
-          name: remoteSchema.apps.name,
-          createdAt: remoteSchema.apps.createdAt,
-          matchedChatTitle: remoteSchema.chats.title,
-        })
-        .from(remoteSchema.apps)
-        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
-        .where(and(like(remoteSchema.chats.title, pattern), eq(remoteSchema.apps.userId, settings.userId)))
-        .orderBy(desc(remoteSchema.apps.createdAt));
+      const appPath = getVibesAppPath(appRecord.path);
+      const currentCwd = shellCwdMap.get(appId) || appPath;
 
-      const chatTitleMatchesResult: AppSearchResult[] = chatTitleMatches.map(
-        (r) => ({
-          id: r.id,
-          name: r.name,
-          createdAt: r.createdAt as unknown as Date,
-          matchedChatTitle: r.matchedChatTitle,
-          matchedChatMessage: null,
-        }),
-      );
+      return new Promise((resolve) => {
+        // Use compgen for bash-style completion of files/directories
+        const escapedPartial = partial.replace(/'/g, "'\\''");
+        const cmd = `cd ${JSON.stringify(currentCwd)} && compgen -f -- '${escapedPartial}' 2>/dev/null | head -20`;
 
-      // 3) Apps whose chat message content matches
-      const chatMessageMatches = await db
-        .select({
-          id: remoteSchema.apps.id,
-          name: remoteSchema.apps.name,
-          createdAt: remoteSchema.apps.createdAt,
-          matchedChatTitle: remoteSchema.chats.title,
-          matchedChatMessage: remoteSchema.messages.content,
-        })
-        .from(remoteSchema.apps)
-        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
-        .innerJoin(remoteSchema.messages, eq(remoteSchema.chats.id, remoteSchema.messages.chatId))
-        .where(and(like(remoteSchema.messages.content, pattern), eq(remoteSchema.apps.userId, settings.userId)))
-        .orderBy(desc(remoteSchema.apps.createdAt));
+        const p = spawn(cmd, [], {
+          cwd: currentCwd,
+          shell: true,
+          stdio: "pipe",
+        });
 
-      // Flatten and dedupe by app id
-      const allMatches: AppSearchResult[] = [
-        ...appNameMatchesResult,
-        ...chatTitleMatchesResult,
-        ...chatMessageMatches,
-      ];
-      const uniqueApps = Array.from(
-        new Map(allMatches.map((app) => [app.id, app])).values(),
-      );
+        let stdout = "";
+        p.stdout?.on("data", (data) => {
+          stdout += data.toString();
+        });
 
-      // Sort newest apps first
-      uniqueApps.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+        p.on("close", () => {
+          const completions = stdout
+            .trim()
+            .split("\n")
+            .filter((line) => line.length > 0);
+          resolve({ completions });
+        });
 
-      return uniqueApps;
+        p.on("error", () => {
+          resolve({ completions: [] });
+        });
+
+        // Timeout for completion
+        setTimeout(() => {
+          try {
+            p.kill();
+          } catch {
+            /* ignore */
+          }
+          resolve({ completions: [] });
+        }, 3000);
+      });
     },
   );
+
+  createTypedHandler(
+    appContracts.searchAppFiles,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
+      const { appId, query } = params;
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
+        return [];
+      }
+
+      const appRecord = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
+      });
+
+      if (!appRecord) {
+        throw new Error("App not found");
+      }
+
+      const appPath = getVibesAppPath(appRecord.path);
+
+      // Search file contents with ripgrep
+      const contentMatches = await searchAppFilesWithRipgrep({
+        appPath,
+        query: trimmedQuery,
+      });
+
+      return contentMatches;
+    },
+  );
+
+  createTypedHandler(appContracts.searchApps, async (_, searchQuery) => {
+    const settings = readSettings();
+    if (!settings.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // Use parameterized query to prevent SQL injection
+    const pattern = `%${searchQuery.replace(/[%_]/g, "\\$&")}%`;
+
+    // 1) Apps whose name matches
+    const appNameMatches = await db
+      .select({
+        id: remoteSchema.apps.id,
+        name: remoteSchema.apps.name,
+        createdAt: remoteSchema.apps.createdAt,
+      })
+      .from(remoteSchema.apps)
+      .where(
+        and(
+          like(remoteSchema.apps.name, pattern),
+          eq(remoteSchema.apps.userId, settings.userId),
+        ),
+      )
+      .orderBy(desc(remoteSchema.apps.createdAt));
+
+    const appNameMatchesResult: AppSearchResult[] = appNameMatches.map((r) => ({
+      id: r.id,
+      name: r.name,
+      createdAt: r.createdAt as unknown as Date,
+      matchedChatTitle: null,
+      matchedChatMessage: null,
+    }));
+
+    // 2) Apps whose chat title matches
+    const chatTitleMatches = await db
+      .select({
+        id: remoteSchema.apps.id,
+        name: remoteSchema.apps.name,
+        createdAt: remoteSchema.apps.createdAt,
+        matchedChatTitle: remoteSchema.chats.title,
+      })
+      .from(remoteSchema.apps)
+      .innerJoin(
+        remoteSchema.chats,
+        eq(remoteSchema.apps.id, remoteSchema.chats.appId),
+      )
+      .where(
+        and(
+          like(remoteSchema.chats.title, pattern),
+          eq(remoteSchema.apps.userId, settings.userId),
+        ),
+      )
+      .orderBy(desc(remoteSchema.apps.createdAt));
+
+    const chatTitleMatchesResult: AppSearchResult[] = chatTitleMatches.map(
+      (r) => ({
+        id: r.id,
+        name: r.name,
+        createdAt: r.createdAt as unknown as Date,
+        matchedChatTitle: r.matchedChatTitle,
+        matchedChatMessage: null,
+      }),
+    );
+
+    // 3) Apps whose chat message content matches
+    const chatMessageMatches = await db
+      .select({
+        id: remoteSchema.apps.id,
+        name: remoteSchema.apps.name,
+        createdAt: remoteSchema.apps.createdAt,
+        matchedChatTitle: remoteSchema.chats.title,
+        matchedChatMessage: remoteSchema.messages.content,
+      })
+      .from(remoteSchema.apps)
+      .innerJoin(
+        remoteSchema.chats,
+        eq(remoteSchema.apps.id, remoteSchema.chats.appId),
+      )
+      .innerJoin(
+        remoteSchema.messages,
+        eq(remoteSchema.chats.id, remoteSchema.messages.chatId),
+      )
+      .where(
+        and(
+          like(remoteSchema.messages.content, pattern),
+          eq(remoteSchema.apps.userId, settings.userId),
+        ),
+      )
+      .orderBy(desc(remoteSchema.apps.createdAt));
+
+    // Flatten and dedupe by app id
+    const allMatches: AppSearchResult[] = [
+      ...appNameMatchesResult,
+      ...chatTitleMatchesResult,
+      ...chatMessageMatches,
+    ];
+    const uniqueApps = Array.from(
+      new Map(allMatches.map((app) => [app.id, app])).values(),
+    );
+
+    // Sort newest apps first
+    uniqueApps.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    return uniqueApps;
+  });
 
   // Handler for adding logs to central store from renderer
   createTypedHandler(miscContracts.addLog, async (_, entry) => {
@@ -1944,7 +2167,9 @@ export function registerAppHandlers() {
     clearLogs(appId);
   });
 
-  createTypedHandler(appContracts.selectAppLocation, async (_, { defaultPath }) => {
+  createTypedHandler(
+    appContracts.selectAppLocation,
+    async (_, { defaultPath }) => {
       const result = await dialog.showOpenDialog({
         properties: ["openDirectory", "createDirectory"],
         title: "Select a folder where this app will be stored",
@@ -1959,149 +2184,172 @@ export function registerAppHandlers() {
     },
   );
 
-  createTypedHandler(appContracts.changeAppLocation, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
+  createTypedHandler(
+    appContracts.changeAppLocation,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
 
-    const { appId, parentDirectory } = params;
+      const { appId, parentDirectory } = params;
 
-    if (!parentDirectory) {
-      throw new Error("No destination folder provided.");
-    }
-
-    if (!path.isAbsolute(parentDirectory)) {
-      throw new Error("Please select an absolute destination folder.");
-    }
-
-    const normalizedParentDir = path.normalize(parentDirectory);
-
-    return withLock(appId, async () => {
-      const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)),
-      });
-
-      if (!app) {
-        throw new Error("App not found");
+      if (!parentDirectory) {
+        throw new Error("No destination folder provided.");
       }
 
-      const currentResolvedPath = getVibesAppPath(app.path);
-      // Extract app folder name from current path (works for both absolute and relative paths)
-      const appFolderName = path.basename(
-        path.isAbsolute(app.path) ? app.path : currentResolvedPath,
-      );
-      const nextResolvedPath = path.join(normalizedParentDir, appFolderName);
-
-      if (currentResolvedPath === nextResolvedPath) {
-        // Path hasn't changed, but we should update to absolute path format if needed
-        if (!path.isAbsolute(app.path)) {
-          await db
-            .update(remoteSchema.apps)
-            .set({ path: nextResolvedPath })
-            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
-        }
-        return {
-          resolvedPath: nextResolvedPath,
-        };
+      if (!path.isAbsolute(parentDirectory)) {
+        throw new Error("Please select an absolute destination folder.");
       }
 
-      const allApps = await db.query.apps.findMany({
-        where: eq(remoteSchema.apps.userId, context.userId!),
-      });
-      const conflict = allApps.some(
-        (existingApp) =>
-          existingApp.id !== appId &&
-          getVibesAppPath(existingApp.path) === nextResolvedPath,
-      );
+      const normalizedParentDir = path.normalize(parentDirectory);
 
-      if (conflict) {
-        throw new Error(
-          `Another app already exists at '${nextResolvedPath}'. Please choose a different folder.`,
-        );
-      }
-
-      if (fs.existsSync(nextResolvedPath)) {
-        throw new Error(
-          `Destination path '${nextResolvedPath}' already exists. Please choose an empty folder.`,
-        );
-      }
-
-      // Check if source path exists - if not, just update the DB path without copying
-      const sourceExists = fs.existsSync(currentResolvedPath);
-      if (!sourceExists) {
-        logger.warn(
-          `Source path ${currentResolvedPath} does not exist. Updating database path only.`,
-        );
-        await db
-          .update(remoteSchema.apps)
-          .set({ path: nextResolvedPath })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
-        return {
-          resolvedPath: nextResolvedPath,
-        };
-      }
-
-      if (runningApps.has(appId)) {
-        const appInfo = runningApps.get(appId)!;
-        try {
-          await stopAppByInfo(appId, appInfo);
-        } catch (error: any) {
-          logger.error(`Error stopping app ${appId} before moving:`, error);
-          throw new Error(`Failed to stop app before moving: ${error.message}`);
-        }
-      }
-
-      await fsPromises.mkdir(normalizedParentDir, { recursive: true });
-
-      try {
-        // Copy the directory without node_modules
-        await copyDir(currentResolvedPath, nextResolvedPath, undefined, {
-          excludeNodeModules: true,
+      return withLock(appId, async () => {
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId!),
+          ),
         });
 
-        // Update path to absolute path
-        await db
-          .update(remoteSchema.apps)
-          .set({ path: nextResolvedPath })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId!)));
+        if (!app) {
+          throw new Error("App not found");
+        }
 
-        try {
-          await fsPromises.rm(currentResolvedPath, {
-            recursive: true,
-            force: true,
-          });
-        } catch (error: any) {
-          logger.warn(
-            `Error deleting old app directory ${currentResolvedPath}:`,
-            error,
+        const currentResolvedPath = getVibesAppPath(app.path);
+        // Extract app folder name from current path (works for both absolute and relative paths)
+        const appFolderName = path.basename(
+          path.isAbsolute(app.path) ? app.path : currentResolvedPath,
+        );
+        const nextResolvedPath = path.join(normalizedParentDir, appFolderName);
+
+        if (currentResolvedPath === nextResolvedPath) {
+          // Path hasn't changed, but we should update to absolute path format if needed
+          if (!path.isAbsolute(app.path)) {
+            await db
+              .update(remoteSchema.apps)
+              .set({ path: nextResolvedPath })
+              .where(
+                and(
+                  eq(remoteSchema.apps.id, appId),
+                  eq(remoteSchema.apps.userId, context.userId!),
+                ),
+              );
+          }
+          return {
+            resolvedPath: nextResolvedPath,
+          };
+        }
+
+        const allApps = await db.query.apps.findMany({
+          where: eq(remoteSchema.apps.userId, context.userId!),
+        });
+        const conflict = allApps.some(
+          (existingApp) =>
+            existingApp.id !== appId &&
+            getVibesAppPath(existingApp.path) === nextResolvedPath,
+        );
+
+        if (conflict) {
+          throw new Error(
+            `Another app already exists at '${nextResolvedPath}'. Please choose a different folder.`,
           );
         }
 
-        return {
-          resolvedPath: nextResolvedPath,
-        };
-      } catch (error: any) {
-        // Attempt cleanup if destination exists (partial copy may have occurred)
         if (fs.existsSync(nextResolvedPath)) {
+          throw new Error(
+            `Destination path '${nextResolvedPath}' already exists. Please choose an empty folder.`,
+          );
+        }
+
+        // Check if source path exists - if not, just update the DB path without copying
+        const sourceExists = fs.existsSync(currentResolvedPath);
+        if (!sourceExists) {
+          logger.warn(
+            `Source path ${currentResolvedPath} does not exist. Updating database path only.`,
+          );
+          await db
+            .update(remoteSchema.apps)
+            .set({ path: nextResolvedPath })
+            .where(
+              and(
+                eq(remoteSchema.apps.id, appId),
+                eq(remoteSchema.apps.userId, context.userId!),
+              ),
+            );
+          return {
+            resolvedPath: nextResolvedPath,
+          };
+        }
+
+        if (runningApps.has(appId)) {
+          const appInfo = runningApps.get(appId)!;
           try {
-            await fsPromises.rm(nextResolvedPath, {
-              recursive: true,
-              force: true,
-            });
-          } catch (cleanupError) {
-            logger.warn(
-              `Failed to clean up partial move at ${nextResolvedPath}:`,
-              cleanupError,
+            await stopAppByInfo(appId, appInfo);
+          } catch (error: any) {
+            logger.error(`Error stopping app ${appId} before moving:`, error);
+            throw new Error(
+              `Failed to stop app before moving: ${error.message}`,
             );
           }
         }
-        logger.error(
-          `Error moving app files from ${currentResolvedPath} to ${nextResolvedPath}:`,
-          error,
-        );
-        throw new Error(`Failed to move app files: ${error.message}`);
-      }
-    });
-  });
+
+        await fsPromises.mkdir(normalizedParentDir, { recursive: true });
+
+        try {
+          // Copy the directory without node_modules
+          await copyDir(currentResolvedPath, nextResolvedPath, undefined, {
+            excludeNodeModules: true,
+          });
+
+          // Update path to absolute path
+          await db
+            .update(remoteSchema.apps)
+            .set({ path: nextResolvedPath })
+            .where(
+              and(
+                eq(remoteSchema.apps.id, appId),
+                eq(remoteSchema.apps.userId, context.userId!),
+              ),
+            );
+
+          try {
+            await fsPromises.rm(currentResolvedPath, {
+              recursive: true,
+              force: true,
+            });
+          } catch (error: any) {
+            logger.warn(
+              `Error deleting old app directory ${currentResolvedPath}:`,
+              error,
+            );
+          }
+
+          return {
+            resolvedPath: nextResolvedPath,
+          };
+        } catch (error: any) {
+          // Attempt cleanup if destination exists (partial copy may have occurred)
+          if (fs.existsSync(nextResolvedPath)) {
+            try {
+              await fsPromises.rm(nextResolvedPath, {
+                recursive: true,
+                force: true,
+              });
+            } catch (cleanupError) {
+              logger.warn(
+                `Failed to clean up partial move at ${nextResolvedPath}:`,
+                cleanupError,
+              );
+            }
+          }
+          logger.error(
+            `Error moving app files from ${currentResolvedPath} to ${nextResolvedPath}:`,
+            error,
+          );
+          throw new Error(`Failed to move app files: ${error.message}`);
+        }
+      });
+    },
+  );
 
   createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
     const settings = readSettings();
@@ -2112,11 +2360,12 @@ export function registerAppHandlers() {
       return { title: generateCuteAppName() };
     }
 
-    const model =
-      settings.executorModel || DEFAULT_STANDARD_MODEL;
+    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
-    logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
+    logger.info(
+      `[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? "..." : ""}"`,
+    );
 
     try {
       const data = await openRouterCompletion({
@@ -2139,17 +2388,24 @@ export function registerAppHandlers() {
       const rawTitle = data?.choices?.[0]?.message?.content?.trim();
       if (!rawTitle) {
         const fallback = generateCuteAppName();
-        logger.warn(`[AppTitle] API returned empty title, using fallback: "${fallback}"`);
+        logger.warn(
+          `[AppTitle] API returned empty title, using fallback: "${fallback}"`,
+        );
         return { title: fallback };
       }
 
       // Sanitize title (remove quotes, etc)
       const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 30);
-      logger.info(`[AppTitle] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
+      logger.info(
+        `[AppTitle] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`,
+      );
       return { title: sanitizedTitle };
     } catch (error) {
       const fallback = generateCuteAppName();
-      logger.error(`[AppTitle] Error generating title, using fallback: "${fallback}"`, error);
+      logger.error(
+        `[AppTitle] Error generating title, using fallback: "${fallback}"`,
+        error,
+      );
       return { title: fallback };
     }
   });
@@ -2168,10 +2424,11 @@ export function registerAppHandlers() {
         return { title: generateCuteAppName() };
       }
 
-      const model =
-        settings.executorModel || DEFAULT_STANDARD_MODEL;
+      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
-      logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
+      logger.info(
+        `[AppNamePro] Generating name for appId=${appId} with model: ${model}`,
+      );
 
       try {
         // Fetch the first user message where they define what they want
@@ -2180,19 +2437,32 @@ export function registerAppHandlers() {
             content: remoteSchema.messages.content,
           })
           .from(remoteSchema.messages)
-          .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
-          .where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.messages.role, "user"), eq(remoteSchema.chats.userId, context.userId!)))
+          .innerJoin(
+            remoteSchema.chats,
+            eq(remoteSchema.messages.chatId, remoteSchema.chats.id),
+          )
+          .where(
+            and(
+              eq(remoteSchema.chats.appId, appId),
+              eq(remoteSchema.messages.role, "user"),
+              eq(remoteSchema.chats.userId, context.userId!),
+            ),
+          )
           .orderBy(remoteSchema.messages.createdAt) // Get oldest first
           .limit(1);
 
         if (!firstUserMessage.length) {
           const fallback = generateCuteAppName();
-          logger.warn(`[AppNamePro] No user message found for appId=${appId}, using fallback: "${fallback}"`);
+          logger.warn(
+            `[AppNamePro] No user message found for appId=${appId}, using fallback: "${fallback}"`,
+          );
           return { title: fallback };
         }
 
         const userPrompt = firstUserMessage[0].content;
-        logger.info(`[AppNamePro] User prompt: "${userPrompt.slice(0, 100)}${userPrompt.length > 100 ? '...' : ''}"`);
+        logger.info(
+          `[AppNamePro] User prompt: "${userPrompt.slice(0, 100)}${userPrompt.length > 100 ? "..." : ""}"`,
+        );
 
         const data = await openRouterCompletion({
           model,
@@ -2212,65 +2482,79 @@ export function registerAppHandlers() {
         });
 
         const rawTitle = data?.choices?.[0]?.message?.content?.trim();
-        logger.info(`[AppNamePro] API response: data=${data ? 'present' : 'null'}, choices=${data?.choices?.length ?? 'none'}, content="${rawTitle ?? '<empty>'}", finish_reason=${data?.choices?.[0]?.finish_reason ?? 'unknown'}`);
+        logger.info(
+          `[AppNamePro] API response: data=${data ? "present" : "null"}, choices=${data?.choices?.length ?? "none"}, content="${rawTitle ?? "<empty>"}", finish_reason=${data?.choices?.[0]?.finish_reason ?? "unknown"}`,
+        );
         if (!rawTitle) {
           const fallback = generateCuteAppName();
-          logger.warn(`[AppNamePro] API returned empty name, using fallback: "${fallback}". Full response: ${JSON.stringify(data)?.slice(0, 500)}`);
+          logger.warn(
+            `[AppNamePro] API returned empty name, using fallback: "${fallback}". Full response: ${JSON.stringify(data)?.slice(0, 500)}`,
+          );
           return { title: fallback };
         }
 
         // Sanitize title
-        const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 40);
-        logger.info(`[AppNamePro] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
+        const sanitizedTitle = rawTitle
+          .replace(/^["']|["']$/g, "")
+          .slice(0, 40);
+        logger.info(
+          `[AppNamePro] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`,
+        );
         return { title: sanitizedTitle };
       } catch (error) {
         const fallback = generateCuteAppName();
-        logger.error(`[AppNamePro] Error generating name for appId=${appId}, using fallback: "${fallback}"`, error);
+        logger.error(
+          `[AppNamePro] Error generating name for appId=${appId}, using fallback: "${fallback}"`,
+          error,
+        );
         return { title: fallback };
       }
     },
   );
 
-  createTypedHandler(appContracts.downloadApp, async (_, { appId }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const appInfo = await db.query.apps.findFirst({
-      where: and(
-        eq(remoteSchema.apps.id, appId),
-        eq(remoteSchema.apps.userId, context.userId!),
-      ),
-    });
-
-    if (!appInfo) throw new Error("App not found");
-    if (!appInfo.githubOrg || !appInfo.githubRepo) {
-      throw new Error(
-        "Esta aplicación no tiene un repositorio de GitHub asociado.",
-      );
-    }
-
-    const settings = readSettings();
-    const githubSettings = settings.providerSettings?.github as any;
-    const accessToken = githubSettings?.accessToken?.value;
-
-    const resolvedPath = getVibesAppPath(appInfo.path);
-    const parentDir = path.dirname(resolvedPath);
-
-    if (!fs.existsSync(parentDir)) {
-      await fsPromises.mkdir(parentDir, { recursive: true });
-    }
-
-    const url = `https://github.com/${appInfo.githubOrg}/${appInfo.githubRepo}.git`;
-
-    try {
-      await gitClone({
-        path: resolvedPath,
-        url,
-        accessToken,
+  createTypedHandler(
+    appContracts.downloadApp,
+    async (_, { appId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const appInfo = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId!),
+        ),
       });
-      return { success: true };
-    } catch (error: any) {
-      logger.error(`Failed to clone app ${appId}:`, error);
-      return { success: false, error: error.message };
-    }
-  });
+
+      if (!appInfo) throw new Error("App not found");
+      if (!appInfo.githubOrg || !appInfo.githubRepo) {
+        throw new Error(
+          "Esta aplicación no tiene un repositorio de GitHub asociado.",
+        );
+      }
+
+      const settings = readSettings();
+      const githubSettings = settings.providerSettings?.github as any;
+      const accessToken = githubSettings?.accessToken?.value;
+
+      const resolvedPath = getVibesAppPath(appInfo.path);
+      const parentDir = path.dirname(resolvedPath);
+
+      if (!fs.existsSync(parentDir)) {
+        await fsPromises.mkdir(parentDir, { recursive: true });
+      }
+
+      const url = `https://github.com/${appInfo.githubOrg}/${appInfo.githubRepo}.git`;
+
+      try {
+        await gitClone({
+          path: resolvedPath,
+          url,
+          accessToken,
+        });
+        return { success: true };
+      } catch (error: any) {
+        logger.error(`Failed to clone app ${appId}:`, error);
+        return { success: false, error: error.message };
+      }
+    },
+  );
 }

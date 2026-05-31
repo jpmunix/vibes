@@ -13,6 +13,7 @@ En lugar de configurar un modelo para cada tarea interna, Vibes simplifica con d
 ### Modelo principal (Estratega)
 
 Se usa para:
+
 - Conversación con el agente en modo Agente
 - Planificación en modo Plan
 - Respuestas en modo Preguntar
@@ -23,6 +24,7 @@ Se usa para:
 ### Modelo ejecutor
 
 Se usa para tareas internas automáticas:
+
 - Generar títulos para apps y chats
 - Crear resúmenes al condensar conversaciones
 - Compactar memorias
@@ -37,6 +39,7 @@ Configura ambos desde **Ajustes → Agente**.
 En la cabecera de cada chat hay un **selector de modelo** que te permite cambiar el modelo sobre la marcha:
 
 ![Selector de modelo](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del selector de modelo desplegado" -->
 
 - En modo **Agente**: muestra el modelo de agente
@@ -56,12 +59,12 @@ Desde **Ajustes → OpenRouter → Modelos habilitados** puedes:
 
 ## Controles avanzados
 
-| Ajuste | Ubicación | Efecto |
-|---|---|---|
-| **Esfuerzo de razonamiento** | Ajustes → Agente | Controla cuánto "piensa" el modelo antes de responder |
-| **Verbosidad** | Ajustes → Agente | Cuánto detalle incluye en las respuestas |
-| **Búsqueda web** | Ajustes → Flujo de trabajo | Permite al modelo buscar en internet |
-| **Modo Cavernas** | Ajustes → Agente | Fuerza respuestas ultra-breves para ahorrar tokens |
+| Ajuste                       | Ubicación                  | Efecto                                                |
+| ---------------------------- | -------------------------- | ----------------------------------------------------- |
+| **Esfuerzo de razonamiento** | Ajustes → Agente           | Controla cuánto "piensa" el modelo antes de responder |
+| **Verbosidad**               | Ajustes → Agente           | Cuánto detalle incluye en las respuestas              |
+| **Búsqueda web**             | Ajustes → Flujo de trabajo | Permite al modelo buscar en internet                  |
+| **Modo Cavernas**            | Ajustes → Agente           | Fuerza respuestas ultra-breves para ahorrar tokens    |
 
 ## Ver el gasto
 

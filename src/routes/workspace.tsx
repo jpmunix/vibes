@@ -13,4 +13,3 @@ export const workspaceRoute = createRoute({
     throw redirect({ to: "/", search });
   },
 });
-

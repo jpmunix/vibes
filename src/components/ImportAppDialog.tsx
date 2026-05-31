@@ -84,8 +84,6 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     }
   }, [isOpen, isAuthenticated]);
 
-
-
   const fetchRepos = async () => {
     setLoading(true);
     try {
@@ -113,7 +111,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-          (error as any).toString(),
+            (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -144,7 +142,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
+      ipc.system.openChatWindow({
+        appId: result.app.id,
+        chatId,
+        theme,
+        themeIntensity: intensity,
+      });
       navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
@@ -181,7 +184,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
+      ipc.system.openChatWindow({
+        appId: result.app.id,
+        chatId,
+        theme,
+        themeIntensity: intensity,
+      });
       navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
@@ -214,7 +222,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-          (error as any).toString(),
+            (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -288,7 +296,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       onClose();
 
       navigate({ to: "/app-details", search: { appId: result.appId } });
-      ipc.system.openChatWindow({ appId: result.appId, chatId: result.chatId, theme, themeIntensity: intensity });
+      ipc.system.openChatWindow({
+        appId: result.appId,
+        chatId: result.chatId,
+        theme,
+        themeIntensity: intensity,
+      });
       if (!hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -346,26 +359,16 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
-
           <Tabs defaultValue="local-folder" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
-              <TabsTrigger
-                value="local-folder"
-                className="typo-body px-2 py-2"
-              >
+              <TabsTrigger value="local-folder" className="typo-body px-2 py-2">
                 Directorio local
               </TabsTrigger>
-              <TabsTrigger
-                value="github-repos"
-                className="typo-body px-2 py-2"
-              >
+              <TabsTrigger value="github-repos" className="typo-body px-2 py-2">
                 <span className="hidden sm:inline">Mis repos de GitHub</span>
                 <span className="sm:hidden">GitHub</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="github-url"
-                className="typo-body px-2 py-2"
-              >
+              <TabsTrigger value="github-url" className="typo-body px-2 py-2">
                 GitHub URL
               </TabsTrigger>
             </TabsList>
@@ -410,7 +413,6 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                         </Button>
                       </div>
                     </div>
-
 
                     <div className="space-y-2">
                       {nameExists && !existingAppId && (
@@ -530,7 +532,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     if (existingAppId) {
                       // Open the existing app directly
                       setSelectedAppId(existingAppId);
-                      navigate({ to: "/app-details", search: { appId: existingAppId } });
+                      navigate({
+                        to: "/app-details",
+                        search: { appId: existingAppId },
+                      });
                       onClose();
                     } else {
                       handleImport();
@@ -683,9 +688,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
-                <Label className="typo-body">
-                  URL del repositorio
-                </Label>
+                <Label className="typo-body">URL del repositorio</Label>
                 <Input
                   placeholder="https://github.com/user/repo.git"
                   value={url}
@@ -738,9 +741,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label className="typo-body">
-                        Comando de inicio
-                      </Label>
+                      <Label className="typo-body">Comando de inicio</Label>
                       <Input
                         value={startCommand}
                         onChange={(e) => setStartCommand(e.target.value)}

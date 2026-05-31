@@ -92,7 +92,9 @@
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .nep-close-btn:hover {
@@ -190,7 +192,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .nep-align-btn:not(:last-child) {
@@ -290,7 +294,10 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
   box-shadow: 0 2px 8px hsla(267, 96%, 56%, 0.3);
 }
 
@@ -310,7 +317,6 @@
 }
 
 @keyframes sparkleFloat {
-
   0%,
   100% {
     transform: translateY(0) scale(1);
@@ -441,7 +447,9 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   white-space: nowrap;
 }
 
@@ -473,7 +481,9 @@
   font-size: 12px;
   color: var(--muted-foreground);
   opacity: 0.4;
-  transition: opacity 0.3s ease, color 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    color 0.3s ease;
 }
 
 .nep-quick-chat-phase.active {

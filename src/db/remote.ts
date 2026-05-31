@@ -25,7 +25,7 @@ let _remoteSchemaInitialized = false;
 export function getClient(): Client {
   if (!_client) {
     logger.info("Creating libSQL client connection to Bunny Edge SQL...");
-    if (typeof fetch === 'undefined') {
+    if (typeof fetch === "undefined") {
       logger.error("Global fetch is not available. Remote DB will fail.");
     }
 
@@ -35,22 +35,24 @@ export function getClient(): Client {
       fetch: async (input: any, init: any) => {
         return retryWithRateLimit(
           async () => {
-            const url = typeof input === 'string' ? input : input.url;
+            const url = typeof input === "string" ? input : input.url;
             const options = init || {};
 
             // Merge from Request if input is an object
-            if (typeof input === 'object' && input !== null) {
-              if (!options.method && input.method) options.method = input.method;
-              if (!options.headers && input.headers) options.headers = input.headers;
+            if (typeof input === "object" && input !== null) {
+              if (!options.method && input.method)
+                options.method = input.method;
+              if (!options.headers && input.headers)
+                options.headers = input.headers;
               if (!options.body && input.body) options.body = input.body;
             }
 
             const resp = await fetch(url, options);
-            if (resp.body && typeof (resp.body as any).cancel !== 'function') {
+            if (resp.body && typeof (resp.body as any).cancel !== "function") {
               const body = resp.body as any;
               body.cancel = async () => {
-                if (typeof body.destroy === 'function') body.destroy();
-                else if (typeof body.close === 'function') body.close();
+                if (typeof body.destroy === "function") body.destroy();
+                else if (typeof body.close === "function") body.close();
               };
             }
             return resp;
@@ -137,11 +139,17 @@ export async function initializeRemoteSchema(): Promise<void> {
       )
     `);
     // Add accepted column if missing (added v8.5)
-    await client.execute(`ALTER TABLE chat_artifacts ADD COLUMN accepted INTEGER DEFAULT 0`).catch(() => {});
-    
+    await client
+      .execute(
+        `ALTER TABLE chat_artifacts ADD COLUMN accepted INTEGER DEFAULT 0`,
+      )
+      .catch(() => {});
+
     // Add instructions column to mcp_servers if missing
-    await client.execute(`ALTER TABLE mcp_servers ADD COLUMN instructions TEXT`).catch(() => {});
-    
+    await client
+      .execute(`ALTER TABLE mcp_servers ADD COLUMN instructions TEXT`)
+      .catch(() => {});
+
     // Auto-create chat_labels if missing
     await client.execute(`
       CREATE TABLE IF NOT EXISTS chat_labels (
@@ -167,9 +175,11 @@ export async function initializeRemoteSchema(): Promise<void> {
     `);
 
     // Add label_id column to chat_labels if missing
-    await client.execute(`
+    await client
+      .execute(`
       ALTER TABLE chat_labels ADD COLUMN label_id INTEGER REFERENCES labels(id) ON DELETE CASCADE
-    `).catch(() => {});
+    `)
+      .catch(() => {});
 
     // Migrate existing data from old chat_labels asynchronously to avoid blocking app startup
     (async () => {
@@ -178,7 +188,9 @@ export async function initializeRemoteSchema(): Promise<void> {
           SELECT id, user_id, label, color, created_at FROM chat_labels WHERE label_id IS NULL
         `);
         if (oldRows.rows && oldRows.rows.length > 0) {
-          logger.info(`[Migration] Starting async migration of ${oldRows.rows.length} chat labels...`);
+          logger.info(
+            `[Migration] Starting async migration of ${oldRows.rows.length} chat labels...`,
+          );
           for (const row of oldRows.rows) {
             const rowId = row.id as number;
             const userId = row.user_id as string;
@@ -190,14 +202,14 @@ export async function initializeRemoteSchema(): Promise<void> {
             let labelId: number;
             const existingLabel = await client.execute({
               sql: `SELECT id FROM labels WHERE user_id = ? AND name = ?`,
-              args: [userId, labelName]
+              args: [userId, labelName],
             });
             if (existingLabel.rows && existingLabel.rows.length > 0) {
               labelId = existingLabel.rows[0].id as number;
             } else {
               const insertResult = await client.execute({
                 sql: `INSERT INTO labels (user_id, name, color, created_at) VALUES (?, ?, ?, ?)`,
-                args: [userId, labelName, color, createdAt]
+                args: [userId, labelName, color, createdAt],
               });
               labelId = Number(insertResult.lastInsertRowid);
             }
@@ -205,19 +217,22 @@ export async function initializeRemoteSchema(): Promise<void> {
             // Update chat_labels with the label_id
             await client.execute({
               sql: `UPDATE chat_labels SET label_id = ? WHERE id = ?`,
-              args: [labelId, rowId]
+              args: [labelId, rowId],
             });
           }
-          logger.info("[Migration] Async migration of chat labels completed successfully.");
+          logger.info(
+            "[Migration] Async migration of chat labels completed successfully.",
+          );
         }
       } catch (err) {
         logger.warn("[Migration] chat_labels migration error:", err);
       }
-    })().catch(err => {
+    })().catch((err) => {
       logger.warn("[Migration] chat_labels migration promise exception:", err);
     });
     // Auto-create language_models if missing (custom model presets)
-    await client.execute(`
+    await client
+      .execute(`
       CREATE TABLE IF NOT EXISTS language_models (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -231,9 +246,11 @@ export async function initializeRemoteSchema(): Promise<void> {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
-    `).catch(() => {});
+    `)
+      .catch(() => {});
     // Auto-create stream_tasks if missing (durable stream state — v8.6)
-    await client.execute(`
+    await client
+      .execute(`
       CREATE TABLE IF NOT EXISTS stream_tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -246,10 +263,12 @@ export async function initializeRemoteSchema(): Promise<void> {
         agent_id TEXT,
         error TEXT
       )
-    `).catch(() => {});
+    `)
+      .catch(() => {});
 
     // Auto-create custom_agents if missing (added v8.7)
-    await client.execute(`
+    await client
+      .execute(`
       CREATE TABLE IF NOT EXISTS custom_agents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -266,27 +285,50 @@ export async function initializeRemoteSchema(): Promise<void> {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
-    `).catch(() => {});
+    `)
+      .catch(() => {});
 
     // Add model_source and model columns to custom_agents if missing (added v8.7~dev.3)
-    await client.execute(`ALTER TABLE custom_agents ADD COLUMN model_source TEXT NOT NULL DEFAULT 'chat'`).catch(() => {});
-    await client.execute(`ALTER TABLE custom_agents ADD COLUMN model TEXT`).catch(() => {});
-    await client.execute(`ALTER TABLE custom_agents ADD COLUMN prompt TEXT`).catch(() => {});
-    await client.execute(`ALTER TABLE custom_agents ADD COLUMN is_default_base INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+    await client
+      .execute(
+        `ALTER TABLE custom_agents ADD COLUMN model_source TEXT NOT NULL DEFAULT 'chat'`,
+      )
+      .catch(() => {});
+    await client
+      .execute(`ALTER TABLE custom_agents ADD COLUMN model TEXT`)
+      .catch(() => {});
+    await client
+      .execute(`ALTER TABLE custom_agents ADD COLUMN prompt TEXT`)
+      .catch(() => {});
+    await client
+      .execute(
+        `ALTER TABLE custom_agents ADD COLUMN is_default_base INTEGER NOT NULL DEFAULT 0`,
+      )
+      .catch(() => {});
 
     // Add chat_mode column to chats if missing (added v8.7)
-    await client.execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`).catch(() => {});
+    await client
+      .execute(`ALTER TABLE chats ADD COLUMN chat_mode TEXT DEFAULT 'agent'`)
+      .catch(() => {});
 
     // Add scope column to prompts if missing
-    await client.execute(`ALTER TABLE prompts ADD COLUMN scope TEXT NOT NULL DEFAULT 'all'`).catch(() => {});
+    await client
+      .execute(
+        `ALTER TABLE prompts ADD COLUMN scope TEXT NOT NULL DEFAULT 'all'`,
+      )
+      .catch(() => {});
 
     // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
     // Bug: some records had created_at stored as Date.now() (millis) instead of
     // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.
-    for (const table of ['chats', 'messages', 'chat_artifacts']) {
-      await client.execute(`UPDATE ${table} SET created_at = created_at / 1000 WHERE created_at > 1000000000000`).catch(() => {});
+    for (const table of ["chats", "messages", "chat_artifacts"]) {
+      await client
+        .execute(
+          `UPDATE ${table} SET created_at = created_at / 1000 WHERE created_at > 1000000000000`,
+        )
+        .catch(() => {});
     }
-    logger.info('Auto-heal: normalized any millisecond timestamps to seconds');
+    logger.info("Auto-heal: normalized any millisecond timestamps to seconds");
   } catch (e) {
     logger.warn("schema migration (non-fatal):", e);
   }

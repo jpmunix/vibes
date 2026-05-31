@@ -1,7 +1,14 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { safeDate } from "@/lib/safeDate";
-import { Pin, ExternalLink, AlertTriangle, CloudDownload, Loader2, Archive } from "@/components/ui/icons";
+import {
+  Pin,
+  ExternalLink,
+  AlertTriangle,
+  CloudDownload,
+  Loader2,
+  Archive,
+} from "@/components/ui/icons";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
@@ -63,7 +70,9 @@ export function AppItem({
 
   return (
     <SidebarMenuItem className="mb-0.5">
-      <div className={`flex items-center relative group/menu-item overflow-hidden ${selectionMode ? "ml-2 mr-4 gap-3" : "ml-4 mr-2"}`}>
+      <div
+        className={`flex items-center relative group/menu-item overflow-hidden ${selectionMode ? "ml-2 mr-4 gap-3" : "ml-4 mr-2"}`}
+      >
         {/* ── Checkbox for bulk selection mode ── */}
         {selectionMode && (
           <div
@@ -88,13 +97,14 @@ export function AppItem({
             }
           }}
           className={`justify-start h-auto w-full min-w-0 shrink text-left cursor-pointer rounded-xl py-2 transition-all duration-150 ${selectionMode ? "pr-3" : "pr-1"}
-            ${selectionMode && isSelected
-              ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-              : selectionMode
-                ? "hover:bg-sidebar-accent/40"
-                : selectedAppId === app.id
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-sidebar-accent/60"
+            ${
+              selectionMode && isSelected
+                ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+                : selectionMode
+                  ? "hover:bg-sidebar-accent/40"
+                  : selectedAppId === app.id
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-sidebar-accent/60"
             }`}
           data-testid={`app-list-item-${app.name}`}
         >
@@ -132,10 +142,11 @@ export function AppItem({
         {!selectionMode && (
           <div
             className={`absolute right-0 top-0 bottom-0 w-20 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 rounded-r-xl
-          ${selectedAppId === app.id
-                ? "bg-gradient-to-l from-primary/10 to-transparent"
-                : "bg-gradient-to-l from-[var(--sidebar-accent)]/60 to-transparent"
-              }`}
+          ${
+            selectedAppId === app.id
+              ? "bg-gradient-to-l from-primary/10 to-transparent"
+              : "bg-gradient-to-l from-[var(--sidebar-accent)]/60 to-transparent"
+          }`}
           />
         )}
 
@@ -173,7 +184,10 @@ export function AppItem({
                 }
               />
             </SidebarMenuAction>
-            {(!app.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(app.primaryLanguage.toLowerCase())) && (
+            {(!app.primaryLanguage ||
+              ["javascript", "typescript", "unknown"].includes(
+                app.primaryLanguage.toLowerCase(),
+              )) && (
               <SidebarMenuAction
                 showOnHover
                 onClick={(e) => handleOpenChat(app.id, e)}

@@ -10,171 +10,187 @@ import AdmZip from "adm-zip";
 
 const logger = log.scope("backup_handlers");
 
-
-
 export function registerBackupHandlers() {
-    createTypedHandler(backupContracts.performBackup, async (_, params, context) => {
-        if (!context.userId) throw new Error("Unauthorized");
-        const { includeSettings, includeDatabase, includeStats } = params;
+  createTypedHandler(
+    backupContracts.performBackup,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { includeSettings, includeDatabase, includeStats } = params;
 
-        // Create a temporary directory for the backup files
-        const tempDir = path.join(os.tmpdir(), `vibes-backup-${Date.now()}`);
-        fs.mkdirSync(tempDir, { recursive: true });
+      // Create a temporary directory for the backup files
+      const tempDir = path.join(os.tmpdir(), `vibes-backup-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
 
-        try {
-            const zip = new AdmZip();
+      try {
+        const zip = new AdmZip();
 
-            // Add settings files
-            if (includeSettings) {
-                const sessionPath = path.join(getUserDataPath(), "session.json");
-                if (fs.existsSync(sessionPath)) {
-                    logger.log("Adding session to backup");
-                    zip.addLocalFile(sessionPath, "", "session.json");
-                }
-                const runtimePath = path.join(getUserDataPath(), "runtime-state.json");
-                if (fs.existsSync(runtimePath)) {
-                    logger.log("Adding runtime state to backup");
-                    zip.addLocalFile(runtimePath, "", "runtime-state.json");
-                }
-            }
-
-            // Add stats file
-            if (includeStats) {
-                const statsPath = path.join(getUserDataPath(), "token-stats.jsonl");
-                if (fs.existsSync(statsPath)) {
-                    logger.log("Adding stats to backup");
-                    zip.addLocalFile(statsPath, "", "token-stats.jsonl");
-                }
-            }
-
-            // Generate the ZIP file as a buffer
-            const zipBuffer = zip.toBuffer();
-
-            logger.log(`Backup ZIP created, size: ${(zipBuffer.length / 1024).toFixed(2)} KB`);
-
-            return {
-                success: true,
-                message: "Backup ZIP creado correctamente",
-                backupData: [{
-                    name: "backup.zip",
-                    content: zipBuffer.toString("base64"),
-                    contentType: "application/zip"
-                }]
-            };
-        } catch (error: any) {
-            logger.error("Backup creation failed:", error);
-            return {
-                success: false,
-                message: error.message || "Error al crear el backup",
-                backupData: []
-            };
-        } finally {
-            // Clean up temp directory
-            try {
-                if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, { recursive: true, force: true });
-                }
-            } catch (cleanupError) {
-                logger.warn("Failed to clean up temp directory:", cleanupError);
-            }
+        // Add settings files
+        if (includeSettings) {
+          const sessionPath = path.join(getUserDataPath(), "session.json");
+          if (fs.existsSync(sessionPath)) {
+            logger.log("Adding session to backup");
+            zip.addLocalFile(sessionPath, "", "session.json");
+          }
+          const runtimePath = path.join(
+            getUserDataPath(),
+            "runtime-state.json",
+          );
+          if (fs.existsSync(runtimePath)) {
+            logger.log("Adding runtime state to backup");
+            zip.addLocalFile(runtimePath, "", "runtime-state.json");
+          }
         }
-    });
 
-    createTypedHandler(backupContracts.restoreBackup, async (_, params, context) => {
-        if (!context.userId) throw new Error("Unauthorized");
-        const { downloadUrl } = params;
+        // Add stats file
+        if (includeStats) {
+          const statsPath = path.join(getUserDataPath(), "token-stats.jsonl");
+          if (fs.existsSync(statsPath)) {
+            logger.log("Adding stats to backup");
+            zip.addLocalFile(statsPath, "", "token-stats.jsonl");
+          }
+        }
 
-        // Create a temporary directory for extraction
-        const tempDir = path.join(os.tmpdir(), `vibes-restore-${Date.now()}`);
-        fs.mkdirSync(tempDir, { recursive: true });
+        // Generate the ZIP file as a buffer
+        const zipBuffer = zip.toBuffer();
 
+        logger.log(
+          `Backup ZIP created, size: ${(zipBuffer.length / 1024).toFixed(2)} KB`,
+        );
+
+        return {
+          success: true,
+          message: "Backup ZIP creado correctamente",
+          backupData: [
+            {
+              name: "backup.zip",
+              content: zipBuffer.toString("base64"),
+              contentType: "application/zip",
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error("Backup creation failed:", error);
+        return {
+          success: false,
+          message: error.message || "Error al crear el backup",
+          backupData: [],
+        };
+      } finally {
+        // Clean up temp directory
         try {
-            logger.log("Starting backup restoration from URL");
+          if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+          }
+        } catch (cleanupError) {
+          logger.warn("Failed to clean up temp directory:", cleanupError);
+        }
+      }
+    },
+  );
 
-            // Download ZIP file
-            const tempZipPath = path.join(tempDir, "backup.zip");
-            await new Promise<void>((resolve, reject) => {
-                const file = fs.createWriteStream(tempZipPath);
-                https.get(downloadUrl, (response) => {
-                    if (response.statusCode === 200) {
-                        response.pipe(file);
-                        file.on('finish', () => {
-                            file.close();
-                            resolve();
-                        });
-                    } else {
-                        reject(new Error(`Failed to download: ${response.statusCode}`));
-                    }
-                }).on('error', (err) => {
-                    fs.unlink(tempZipPath, () => { });
-                    reject(err);
+  createTypedHandler(
+    backupContracts.restoreBackup,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { downloadUrl } = params;
+
+      // Create a temporary directory for extraction
+      const tempDir = path.join(os.tmpdir(), `vibes-restore-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      try {
+        logger.log("Starting backup restoration from URL");
+
+        // Download ZIP file
+        const tempZipPath = path.join(tempDir, "backup.zip");
+        await new Promise<void>((resolve, reject) => {
+          const file = fs.createWriteStream(tempZipPath);
+          https
+            .get(downloadUrl, (response) => {
+              if (response.statusCode === 200) {
+                response.pipe(file);
+                file.on("finish", () => {
+                  file.close();
+                  resolve();
                 });
+              } else {
+                reject(new Error(`Failed to download: ${response.statusCode}`));
+              }
+            })
+            .on("error", (err) => {
+              fs.unlink(tempZipPath, () => {});
+              reject(err);
             });
+        });
 
-            logger.log("ZIP downloaded successfully");
+        logger.log("ZIP downloaded successfully");
 
-            // Extract ZIP
-            const zip = new AdmZip(tempZipPath);
-            zip.extractAllTo(tempDir, true);
+        // Extract ZIP
+        const zip = new AdmZip(tempZipPath);
+        zip.extractAllTo(tempDir, true);
 
-            // Restore settings files
-            const sessionPath = path.join(getUserDataPath(), "session.json");
-            const extractedSession = path.join(tempDir, "session.json");
-            if (fs.existsSync(extractedSession)) {
-                logger.log("Restoring session");
-                fs.copyFileSync(extractedSession, sessionPath);
-            }
-            
-            const runtimePath = path.join(getUserDataPath(), "runtime-state.json");
-            const extractedRuntime = path.join(tempDir, "runtime-state.json");
-            if (fs.existsSync(extractedRuntime)) {
-                logger.log("Restoring runtime state");
-                fs.copyFileSync(extractedRuntime, runtimePath);
-            }
-
-            // Restoring database is no longer supported locally
-            if (fs.existsSync(path.join(tempDir, "sqlite.db"))) {
-                logger.warn("Ignorando backup de base de datos local (V3 usa BD remota).");
-            }
-
-            // Restore stats
-            const statsPath = path.join(getUserDataPath(), "token-stats.jsonl");
-            const extractedStats = path.join(tempDir, "token-stats.jsonl");
-            if (fs.existsSync(extractedStats)) {
-                logger.log("Restoring stats");
-                fs.copyFileSync(extractedStats, statsPath);
-            }
-
-            logger.log("Backup restoration completed successfully");
-
-            // Schedule app restart after a short delay
-            setTimeout(() => {
-                const { app } = require("electron");
-                app.relaunch();
-                app.exit(0);
-            }, 1000);
-
-            return {
-                success: true,
-                message: "Backup restaurado correctamente. La aplicación se reiniciará.",
-            };
-        } catch (error: any) {
-            logger.error("Backup restoration failed:", error);
-            return {
-                success: false,
-                message: error.message || "Error al restaurar el backup",
-            };
-        } finally {
-            // Clean up temp directory (after a delay to allow restart)
-            setTimeout(() => {
-                try {
-                    if (fs.existsSync(tempDir)) {
-                        fs.rmSync(tempDir, { recursive: true, force: true });
-                    }
-                } catch (cleanupError) {
-                    logger.warn("Failed to clean up temp directory:", cleanupError);
-                }
-            }, 2000);
+        // Restore settings files
+        const sessionPath = path.join(getUserDataPath(), "session.json");
+        const extractedSession = path.join(tempDir, "session.json");
+        if (fs.existsSync(extractedSession)) {
+          logger.log("Restoring session");
+          fs.copyFileSync(extractedSession, sessionPath);
         }
-    });
+
+        const runtimePath = path.join(getUserDataPath(), "runtime-state.json");
+        const extractedRuntime = path.join(tempDir, "runtime-state.json");
+        if (fs.existsSync(extractedRuntime)) {
+          logger.log("Restoring runtime state");
+          fs.copyFileSync(extractedRuntime, runtimePath);
+        }
+
+        // Restoring database is no longer supported locally
+        if (fs.existsSync(path.join(tempDir, "sqlite.db"))) {
+          logger.warn(
+            "Ignorando backup de base de datos local (V3 usa BD remota).",
+          );
+        }
+
+        // Restore stats
+        const statsPath = path.join(getUserDataPath(), "token-stats.jsonl");
+        const extractedStats = path.join(tempDir, "token-stats.jsonl");
+        if (fs.existsSync(extractedStats)) {
+          logger.log("Restoring stats");
+          fs.copyFileSync(extractedStats, statsPath);
+        }
+
+        logger.log("Backup restoration completed successfully");
+
+        // Schedule app restart after a short delay
+        setTimeout(() => {
+          const { app } = require("electron");
+          app.relaunch();
+          app.exit(0);
+        }, 1000);
+
+        return {
+          success: true,
+          message:
+            "Backup restaurado correctamente. La aplicación se reiniciará.",
+        };
+      } catch (error: any) {
+        logger.error("Backup restoration failed:", error);
+        return {
+          success: false,
+          message: error.message || "Error al restaurar el backup",
+        };
+      } finally {
+        // Clean up temp directory (after a delay to allow restart)
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempDir)) {
+              fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+          } catch (cleanupError) {
+            logger.warn("Failed to clean up temp directory:", cleanupError);
+          }
+        }, 2000);
+      }
+    },
+  );
 }

@@ -170,9 +170,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
               <div className="flex items-start gap-2">
-                <div className="typo-label text-destructive">
-                  Error:
-                </div>
+                <div className="typo-label text-destructive">Error:</div>
                 <div className="typo-body text-destructive flex-1">{error}</div>
                 <button
                   onClick={() => setError(null)}

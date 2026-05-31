@@ -35,7 +35,7 @@ let cachedOpenCodeVersion: string | null = null;
 
 /** Get the cached OpenCode version (populated at startup). */
 export function getCachedOpenCodeVersion(): string | null {
-    return cachedOpenCodeVersion;
+  return cachedOpenCodeVersion;
 }
 
 /**
@@ -43,14 +43,14 @@ export function getCachedOpenCodeVersion(): string | null {
  * Uses Electron's userData path so it persists across updates.
  */
 function getOpenCodePrefix(): string {
-    return path.join(app.getPath("userData"), "opencode");
+  return path.join(app.getPath("userData"), "opencode");
 }
 
 /**
  * Get the bin directory where opencode binary will be after install.
  */
 function getOpenCodeBinDir(): string {
-    return path.join(getOpenCodePrefix(), "bin");
+  return path.join(getOpenCodePrefix(), "bin");
 }
 
 /**
@@ -59,114 +59,114 @@ function getOpenCodeBinDir(): string {
  * node_runtime.ts which runs earlier in the startup sequence.
  */
 function ensureOpenCodePathDirs(): void {
-    const dirsToAdd: string[] = [];
+  const dirsToAdd: string[] = [];
 
-    // Add our local opencode bin dir
-    dirsToAdd.push(getOpenCodeBinDir());
+  // Add our local opencode bin dir
+  dirsToAdd.push(getOpenCodeBinDir());
 
-    // Also add node_modules/.bin from our prefix (npm --prefix puts binaries here)
-    const localBinDir = path.join(getOpenCodePrefix(), "node_modules", ".bin");
-    dirsToAdd.push(localBinDir);
+  // Also add node_modules/.bin from our prefix (npm --prefix puts binaries here)
+  const localBinDir = path.join(getOpenCodePrefix(), "node_modules", ".bin");
+  dirsToAdd.push(localBinDir);
 
-    const currentPath = process.env.PATH || "";
-    process.env.PATH = [...dirsToAdd, currentPath].join(path.delimiter);
+  const currentPath = process.env.PATH || "";
+  process.env.PATH = [...dirsToAdd, currentPath].join(path.delimiter);
 }
 
 /**
  * Check if `opencode` binary is available in PATH.
  */
 async function isOpenCodeInstalled(): Promise<boolean> {
-    try {
-        const cmd = process.platform === "win32" ? "where" : "which";
-        await execFileAsync(cmd, ["opencode"]);
-        return true;
-    } catch {
-        return false;
-    }
+  try {
+    const cmd = process.platform === "win32" ? "where" : "which";
+    await execFileAsync(cmd, ["opencode"]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Get the installed version of the opencode binary.
  */
 async function getInstalledVersion(): Promise<string | null> {
-    try {
-        const { stdout } = await execAsync("opencode --version");
-        // Output format varies: "opencode v1.3.13" or just "1.3.13"
-        const match = stdout.trim().match(/(\d+\.\d+\.\d+)/);
-        return match ? match[1] : null;
-    } catch {
-        return null;
-    }
+  try {
+    const { stdout } = await execAsync("opencode --version");
+    // Output format varies: "opencode v1.3.13" or just "1.3.13"
+    const match = stdout.trim().match(/(\d+\.\d+\.\d+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Get the latest published version from npm registry.
  */
 async function getLatestNpmVersion(): Promise<string | null> {
-    try {
-        const { stdout } = await execAsync("npm view opencode-ai version", {
-            timeout: 15_000,
-        });
-        return stdout.trim();
-    } catch {
-        return null;
-    }
+  try {
+    const { stdout } = await execAsync("npm view opencode-ai version", {
+      timeout: 15_000,
+    });
+    return stdout.trim();
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Run npm install to install or update opencode-ai.
  */
 async function npmInstallOpenCode(): Promise<boolean> {
-    const prefix = getOpenCodePrefix();
-    try {
-        fs.mkdirSync(prefix, { recursive: true });
-    } catch (e: any) {
-        logger.error(`Failed to create prefix dir ${prefix}: ${e.message}`);
-        return false;
+  const prefix = getOpenCodePrefix();
+  try {
+    fs.mkdirSync(prefix, { recursive: true });
+  } catch (e: any) {
+    logger.error(`Failed to create prefix dir ${prefix}: ${e.message}`);
+    return false;
+  }
+
+  try {
+    const cmd = `npm install --prefix ${JSON.stringify(prefix)} opencode-ai@latest`;
+    logger.info(`Running: ${cmd}`);
+
+    const { stdout, stderr } = await execAsync(cmd, {
+      env: { ...process.env },
+      timeout: 120_000,
+    });
+
+    if (stdout) logger.info("npm stdout:", stdout.trim());
+    if (stderr) logger.warn("npm stderr:", stderr.trim());
+
+    // Verify binary exists
+    const localBinDir = path.join(prefix, "node_modules", ".bin");
+    if (fs.existsSync(path.join(localBinDir, "opencode"))) {
+      process.env.PATH = `${localBinDir}:${process.env.PATH}`;
+      return true;
     }
 
-    try {
-        const cmd = `npm install --prefix ${JSON.stringify(prefix)} opencode-ai@latest`;
-        logger.info(`Running: ${cmd}`);
-
-        const { stdout, stderr } = await execAsync(cmd, {
-            env: { ...process.env },
-            timeout: 120_000,
-        });
-
-        if (stdout) logger.info("npm stdout:", stdout.trim());
-        if (stderr) logger.warn("npm stderr:", stderr.trim());
-
-        // Verify binary exists
-        const localBinDir = path.join(prefix, "node_modules", ".bin");
-        if (fs.existsSync(path.join(localBinDir, "opencode"))) {
-            process.env.PATH = `${localBinDir}:${process.env.PATH}`;
-            return true;
-        }
-
-        const prefixBinDir = getOpenCodeBinDir();
-        if (fs.existsSync(path.join(prefixBinDir, "opencode"))) {
-            return true;
-        }
-
-        logger.error("opencode install command succeeded but binary not found");
-        return false;
-    } catch (error: any) {
-        logger.error("Failed to install opencode:", error.message);
-        return false;
+    const prefixBinDir = getOpenCodeBinDir();
+    if (fs.existsSync(path.join(prefixBinDir, "opencode"))) {
+      return true;
     }
+
+    logger.error("opencode install command succeeded but binary not found");
+    return false;
+  } catch (error: any) {
+    logger.error("Failed to install opencode:", error.message);
+    return false;
+  }
 }
 
 /**
  * Check if an update check is needed (based on 36h interval).
  */
 function shouldCheckForUpdate(): boolean {
-    const settings = readSettings();
-    const lastCheck = settings.lastOpenCodeUpdateCheck;
-    if (!lastCheck) return true;
+  const settings = readSettings();
+  const lastCheck = settings.lastOpenCodeUpdateCheck;
+  if (!lastCheck) return true;
 
-    const lastCheckTime = new Date(lastCheck as string).getTime();
-    return Date.now() - lastCheckTime > UPDATE_CHECK_INTERVAL_MS;
+  const lastCheckTime = new Date(lastCheck as string).getTime();
+  return Date.now() - lastCheckTime > UPDATE_CHECK_INTERVAL_MS;
 }
 
 /**
@@ -178,55 +178,57 @@ function shouldCheckForUpdate(): boolean {
  * @returns Object with installation status and version info
  */
 export async function ensureOpenCodeInstalled(): Promise<{
-    ok: boolean;
-    version: string | null;
-    updated?: boolean;
+  ok: boolean;
+  version: string | null;
+  updated?: boolean;
 }> {
-    ensureOpenCodePathDirs();
+  ensureOpenCodePathDirs();
 
-    const installed = await isOpenCodeInstalled();
+  const installed = await isOpenCodeInstalled();
 
-    if (!installed) {
-        // Fresh install
-        logger.info("opencode binary NOT found — installing to local prefix...");
-        const success = await npmInstallOpenCode();
-        if (success) {
-            const version = await getInstalledVersion();
-            cachedOpenCodeVersion = version;
-            logger.info(`opencode installed successfully (v${version}) ✓`);
-            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
-            return { ok: true, version, updated: true };
-        }
-        return { ok: false, version: null };
+  if (!installed) {
+    // Fresh install
+    logger.info("opencode binary NOT found — installing to local prefix...");
+    const success = await npmInstallOpenCode();
+    if (success) {
+      const version = await getInstalledVersion();
+      cachedOpenCodeVersion = version;
+      logger.info(`opencode installed successfully (v${version}) ✓`);
+      writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+      return { ok: true, version, updated: true };
     }
+    return { ok: false, version: null };
+  }
 
-    // Already installed — check for updates if interval elapsed
-    const currentVersion = await getInstalledVersion();
-    cachedOpenCodeVersion = currentVersion;
-    logger.info(`opencode binary found in PATH (v${currentVersion}) ✓`);
+  // Already installed — check for updates if interval elapsed
+  const currentVersion = await getInstalledVersion();
+  cachedOpenCodeVersion = currentVersion;
+  logger.info(`opencode binary found in PATH (v${currentVersion}) ✓`);
 
-    if (shouldCheckForUpdate()) {
-        logger.info("Checking for opencode updates...");
-        const latestVersion = await getLatestNpmVersion();
+  if (shouldCheckForUpdate()) {
+    logger.info("Checking for opencode updates...");
+    const latestVersion = await getLatestNpmVersion();
 
-        if (latestVersion && currentVersion && latestVersion !== currentVersion) {
-            logger.info(`opencode update available: v${currentVersion} → v${latestVersion}`);
-            const success = await npmInstallOpenCode();
-            if (success) {
-                const newVersion = await getInstalledVersion();
-                cachedOpenCodeVersion = newVersion;
-                logger.info(`opencode updated to v${newVersion} ✓`);
-                writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
-                return { ok: true, version: newVersion, updated: true };
-            }
-            // Update failed but old version still works
-            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
-            return { ok: true, version: currentVersion };
-        } else {
-            logger.info(`opencode is up to date (v${currentVersion})`);
-            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
-        }
+    if (latestVersion && currentVersion && latestVersion !== currentVersion) {
+      logger.info(
+        `opencode update available: v${currentVersion} → v${latestVersion}`,
+      );
+      const success = await npmInstallOpenCode();
+      if (success) {
+        const newVersion = await getInstalledVersion();
+        cachedOpenCodeVersion = newVersion;
+        logger.info(`opencode updated to v${newVersion} ✓`);
+        writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+        return { ok: true, version: newVersion, updated: true };
+      }
+      // Update failed but old version still works
+      writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+      return { ok: true, version: currentVersion };
+    } else {
+      logger.info(`opencode is up to date (v${currentVersion})`);
+      writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
     }
+  }
 
-    return { ok: true, version: currentVersion };
+  return { ok: true, version: currentVersion };
 }

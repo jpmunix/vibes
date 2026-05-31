@@ -92,7 +92,10 @@ export async function generateAutoCommitMessage({
     const diffsContext = diffs.join("\n\n");
 
     // Use the editable prompt from settings
-    const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
+    const systemPrompt = await getSystemPrompt(
+      "auto_commit_message",
+      settings.userId,
+    );
 
     // Separate system/user messages for better model comprehension
     // (aligned with the streaming handler in github_handlers.ts)

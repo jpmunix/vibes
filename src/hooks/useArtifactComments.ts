@@ -14,10 +14,7 @@ export function useArtifactComments(artifactId: number | null) {
   const queryClient = useQueryClient();
   const queryKey = ["artifactComments", artifactId];
 
-  const {
-    data: comments = [],
-    isLoading,
-  } = useQuery({
+  const { data: comments = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
       if (!artifactId) return [];

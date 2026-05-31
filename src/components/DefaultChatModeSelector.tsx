@@ -1,5 +1,8 @@
 import { useSettings } from "@/hooks/useSettings";
-import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
+import {
+  UnifiedSelector,
+  type SelectorOption,
+} from "@/components/ui/UnifiedSelector";
 
 import type { ChatMode } from "@/lib/schemas";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";

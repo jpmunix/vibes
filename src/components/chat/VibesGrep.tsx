@@ -84,7 +84,9 @@ export const VibesGrep: React.FC<VibesGrepProps> = ({ children, node }) => {
             </span>
             {description}
             {resultSummary && (
-              <span className="ml-2 text-muted-foreground">({resultSummary})</span>
+              <span className="ml-2 text-muted-foreground">
+                ({resultSummary})
+              </span>
             )}
           </span>
           {inProgress && (

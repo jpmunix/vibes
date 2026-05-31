@@ -41,7 +41,12 @@ export function SettingsList({ show }: { show: boolean }) {
     const calculateActiveSection = () => {
       if (!scrollContainer) return;
 
-      const isAtBottom = Math.abs(scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight) <= 10;
+      const isAtBottom =
+        Math.abs(
+          scrollContainer.scrollHeight -
+            scrollContainer.scrollTop -
+            scrollContainer.clientHeight,
+        ) <= 10;
       if (isAtBottom && settingsSections.length > 0) {
         setActiveSection(settingsSections[settingsSections.length - 1].id);
         return;

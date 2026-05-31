@@ -22,13 +22,11 @@ function getNodeDownloadUrl(): string {
   let nodeDownloadUrl = `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.pkg`;
   if (platform() == "win32") {
     if (arch() === "arm64" || arch() === "arm") {
-      nodeDownloadUrl =
-        `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-arm64.msi`;
+      nodeDownloadUrl = `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-arm64.msi`;
     } else {
       // x64 is the most common architecture for Windows so it's the
       // default download url.
-      nodeDownloadUrl =
-        `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-x64.msi`;
+      nodeDownloadUrl = `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-x64.msi`;
     }
   }
   return nodeDownloadUrl;
@@ -52,7 +50,7 @@ export function registerNodeHandlers() {
   createTypedHandler(systemContracts.getNodejsStatus, async () => {
     // Return cached result if fresh
     const now = Date.now();
-    if (cachedNodeStatus && (now - cachedAt) < CACHE_TTL_MS) {
+    if (cachedNodeStatus && now - cachedAt < CACHE_TTL_MS) {
       logger.debug("nodejs-status: returning cached result");
       return cachedNodeStatus;
     }
@@ -149,7 +147,10 @@ export function registerNodeHandlers() {
 // Moved outside registerNodeHandlers so it can be pre-populated from main.ts
 // after ensureNodeRuntime runs. This prevents the SetupBanner from briefly
 // flashing "install Node.js" when Node is actually available.
-let cachedNodeStatus: { nodeVersion: string | null; nodeDownloadUrl: string } | null = null;
+let cachedNodeStatus: {
+  nodeVersion: string | null;
+  nodeDownloadUrl: string;
+} | null = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 60_000; // 60s
 

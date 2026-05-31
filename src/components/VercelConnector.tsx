@@ -7,7 +7,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useVercelDeployments } from "@/hooks/useVercelDeployments";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
-import { } from "@/components/ui/dialog";
+import {} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -76,9 +76,7 @@ function ConnectedVercelConnector({
       className="mt-4 w-full rounded-md"
       data-testid="vercel-connected-project"
     >
-      <p className="typo-caption">
-        Conectado al proyecto de Vercel:
-      </p>
+      <p className="typo-caption">Conectado al proyecto de Vercel:</p>
       <a
         onClick={(e) => {
           e.preventDefault();
@@ -113,7 +111,11 @@ function ConnectedVercelConnector({
         </div>
       )}
       <div className="mt-2 flex gap-2">
-        <Button onClick={handleGetDeployments} disabled={isLoadingOrRefreshing} variant="outline">
+        <Button
+          onClick={handleGetDeployments}
+          disabled={isLoadingOrRefreshing}
+          variant="outline"
+        >
           {isLoadingOrRefreshing ? (
             <>
               <Loader2 className="animate-spin h-5 w-5 mr-2 inline" />
@@ -141,10 +143,7 @@ function ConnectedVercelConnector({
           <h4 className="font-medium mb-2">Despliegues recientes:</h4>
           <div className="space-y-2">
             {deployments.map((deployment) => (
-              <div
-                key={deployment.uid}
-                className="bg-muted rounded-md p-3"
-              >
+              <div key={deployment.uid} className="bg-muted rounded-md p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge
@@ -341,7 +340,7 @@ function UnconnectedVercelConnector({
     } catch (err: any) {
       setCreateProjectError(
         err.message ||
-        `Error al ${projectSetupMode === "create" ? "crear" : "conectar al"} proyecto.`,
+          `Error al ${projectSetupMode === "create" ? "crear" : "conectar al"} proyecto.`,
       );
     } finally {
       setIsCreatingProject(false);
@@ -423,9 +422,7 @@ function UnconnectedVercelConnector({
 
             {tokenError && (
               <div className="bg-destructive/5 border border-destructive/20 rounded-md p-3">
-                <p className="text-sm text-destructive">
-                  {tokenError}
-                </p>
+                <p className="text-sm text-destructive">{tokenError}</p>
               </div>
             )}
 
@@ -459,10 +456,11 @@ function UnconnectedVercelConnector({
               <Button
                 type="button"
                 variant={projectSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${projectSetupMode === "create"
+                className={`flex-1 rounded-none rounded-l-md border-0 ${
+                  projectSetupMode === "create"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-muted"
-                  }`}
+                }`}
                 onClick={() => {
                   setProjectSetupMode("create");
                   setCreateProjectError(null);
@@ -474,10 +472,11 @@ function UnconnectedVercelConnector({
               <Button
                 type="button"
                 variant={projectSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${projectSetupMode === "existing"
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${
+                  projectSetupMode === "existing"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-muted"
-                  }`}
+                }`}
                 onClick={() => {
                   setProjectSetupMode("existing");
                   setCreateProjectError(null);

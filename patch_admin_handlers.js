@@ -1,12 +1,12 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const file = path.join(__dirname, 'src/ipc/handlers/admin_handlers.ts');
-let content = fs.readFileSync(file, 'utf8');
+const file = path.join(__dirname, "src/ipc/handlers/admin_handlers.ts");
+let content = fs.readFileSync(file, "utf8");
 
 // 1. Update getUserPreferences
 content = content.replace(
-  '        const preferences = rows.map((r) => ({\n            key: r.key,\n            value: r.value,\n            updatedAt: r.updatedAt instanceof Date\n                ? r.updatedAt.toISOString()\n                : r.updatedAt ? String(r.updatedAt) : null,\n        }));\n\n        return { preferences };',
+  "        const preferences = rows.map((r) => ({\n            key: r.key,\n            value: r.value,\n            updatedAt: r.updatedAt instanceof Date\n                ? r.updatedAt.toISOString()\n                : r.updatedAt ? String(r.updatedAt) : null,\n        }));\n\n        return { preferences };",
   `        const preferences = rows.map((r) => ({
             key: r.key,
             value: r.value,
@@ -35,12 +35,12 @@ content = content.replace(
             });
         }
 
-        return { preferences };`
+        return { preferences };`,
 );
 
 // 2. Update setUserPreference
 content = content.replace(
-  '        await db\n            .insert(remoteSchema.userPreferences)',
+  "        await db\n            .insert(remoteSchema.userPreferences)",
   `        if (input.key.startsWith("prompt:")) {
             const systemId = input.key.substring(7);
             await db.update(remoteSchema.prompts)
@@ -56,12 +56,12 @@ content = content.replace(
         }
 
         await db
-            .insert(remoteSchema.userPreferences)`
+            .insert(remoteSchema.userPreferences)`,
 );
 
 // 3. Update deleteUserPreference
 content = content.replace(
-  '    createTypedHandler(adminContracts.deleteUserPreference, async (_event, input, context) => {\n        assertAdmin(context);\n        await initializeRemoteSchema();\n        const db = getRemoteDb();\n\n        await db',
+  "    createTypedHandler(adminContracts.deleteUserPreference, async (_event, input, context) => {\n        assertAdmin(context);\n        await initializeRemoteSchema();\n        const db = getRemoteDb();\n\n        await db",
   `    createTypedHandler(adminContracts.deleteUserPreference, async (_event, input, context) => {
         assertAdmin(context);
         await initializeRemoteSchema();
@@ -80,8 +80,8 @@ content = content.replace(
             return { success: true };
         }
 
-        await db`
+        await db`,
 );
 
 fs.writeFileSync(file, content);
-console.log('Patched admin_handlers.ts');
+console.log("Patched admin_handlers.ts");

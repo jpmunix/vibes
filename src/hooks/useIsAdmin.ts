@@ -7,6 +7,6 @@ import { isAdmin as checkAdmin } from "@/lib/admin";
  * Reusable across any component.
  */
 export function useIsAdmin(): boolean {
-    const user = useAtomValue(userAtom);
-    return checkAdmin(user?.id);
+  const user = useAtomValue(userAtom);
+  return checkAdmin(user?.id);
 }

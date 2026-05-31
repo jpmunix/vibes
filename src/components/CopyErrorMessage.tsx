@@ -26,10 +26,11 @@ export const CopyErrorMessage = ({
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isCopied
-        ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
-        : "bg-gray-100 dark:bg-gray-700 text-foreground hover:bg-accent dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
-        } ${className}`}
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+        isCopied
+          ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
+          : "bg-gray-100 dark:bg-gray-700 text-foreground hover:bg-accent dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
+      } ${className}`}
       title={isCopied ? "¡Copiado!" : "Copiar mensaje de error"}
     >
       {isCopied ? (

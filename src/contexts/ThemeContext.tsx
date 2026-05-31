@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { ipc } from "@/ipc/types";
 import {
   getColorById,
@@ -6,7 +13,12 @@ import {
   DEFAULT_LIGHT_COLOR,
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
-import { getFontById, getGoogleFontsUrl, DEFAULT_FONT_ID, type FontOption } from "@/shared/fonts";
+import {
+  getFontById,
+  getGoogleFontsUrl,
+  DEFAULT_FONT_ID,
+  type FontOption,
+} from "@/shared/fonts";
 
 type Theme = "system" | "light" | "dark";
 
@@ -18,7 +30,12 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   intensity: number;
   setIntensity: (intensity: number) => void;
-  applyPrimaryColors: (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => void;
+  applyPrimaryColors: (
+    lightColorId?: string,
+    darkColorId?: string,
+    lightChroma?: number,
+    darkChroma?: number,
+  ) => void;
   applyFont: (fontId: string) => void;
   applyChatFont: (fontId: string) => void;
   applyFontScale: (group: FontScaleGroup, scale: number) => void;
@@ -40,7 +57,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
  * We set both light and dark values so the correct one is picked
  * by the existing :root / .dark rule cascade.
  */
-function applyColorToDOM(lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) {
+function applyColorToDOM(
+  lightColorId?: string,
+  darkColorId?: string,
+  lightChroma?: number,
+  darkChroma?: number,
+) {
   const lightColor = getColorById(lightColorId || DEFAULT_LIGHT_COLOR);
   const darkColor = getColorById(darkColorId || DEFAULT_DARK_COLOR);
 
@@ -50,10 +72,16 @@ function applyColorToDOM(lightColorId?: string, darkColorId?: string, lightChrom
   const root = document.documentElement;
 
   if (lightColor) {
-    root.style.setProperty("--primary-color-light", adjustChroma(lightColor.light, lightFactor));
+    root.style.setProperty(
+      "--primary-color-light",
+      adjustChroma(lightColor.light, lightFactor),
+    );
   }
   if (darkColor) {
-    root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
+    root.style.setProperty(
+      "--primary-color-dark",
+      adjustChroma(darkColor.dark, darkFactor),
+    );
   }
 }
 
@@ -82,13 +110,19 @@ function ensureFontLoaded(font: FontOption) {
 function applyFontToDOM(fontId: string) {
   const font = getFontById(fontId);
   ensureFontLoaded(font);
-  document.documentElement.style.setProperty("--default-font-family", font.family);
+  document.documentElement.style.setProperty(
+    "--default-font-family",
+    font.family,
+  );
 }
 
 function applyChatFontToDOM(fontId: string) {
   const font = getFontById(fontId);
   ensureFontLoaded(font);
-  document.documentElement.style.setProperty("--default-chat-font-family", font.family);
+  document.documentElement.style.setProperty(
+    "--default-chat-font-family",
+    font.family,
+  );
 }
 
 /** CSS variable name for each font-scale group */
@@ -103,7 +137,10 @@ function applyBubbleWidthToDOM(pct: number) {
 }
 
 function applyFontScaleToDOM(group: FontScaleGroup, scale: number) {
-  document.documentElement.style.setProperty(SCALE_CSS_VAR[group], scale.toString());
+  document.documentElement.style.setProperty(
+    SCALE_CSS_VAR[group],
+    scale.toString(),
+  );
 }
 
 function applyAllFontScalesToDOM(scales: Record<FontScaleGroup, number>) {
@@ -135,20 +172,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [currentChatFontId, setCurrentChatFontId] = useState<string>(() => {
-    return window.localStorage?.getItem("selected-chat-font") || "jetbrains-mono"; // matches DEFAULT_CHAT_FONT_ID
+    return (
+      window.localStorage?.getItem("selected-chat-font") || "jetbrains-mono"
+    ); // matches DEFAULT_CHAT_FONT_ID
   });
 
-  const [fontScales, setFontScales] = useState<Record<FontScaleGroup, number>>(() => {
-    const parse = (key: string) => {
-      const v = window.localStorage?.getItem(key);
-      return v ? parseFloat(v) : 1;
-    };
-    return {
-      ui: parse("font-scale-ui"),
-      sidebar: parse("font-scale-sidebar"),
-      chat: parse("font-scale-chat"),
-    };
-  });
+  const [fontScales, setFontScales] = useState<Record<FontScaleGroup, number>>(
+    () => {
+      const parse = (key: string) => {
+        const v = window.localStorage?.getItem(key);
+        return v ? parseFloat(v) : 1;
+      };
+      return {
+        ui: parse("font-scale-ui"),
+        sidebar: parse("font-scale-sidebar"),
+        chat: parse("font-scale-chat"),
+      };
+    },
+  );
 
   const [bubbleWidthPct, setBubbleWidthPct] = useState<number>(() => {
     const v = window.localStorage?.getItem("bubble-width-pct");
@@ -156,7 +197,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   const applyPrimaryColors = useCallback(
-    (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => {
+    (
+      lightColorId?: string,
+      darkColorId?: string,
+      lightChroma?: number,
+      darkChroma?: number,
+    ) => {
       applyColorToDOM(lightColorId, darkColorId, lightChroma, darkChroma);
     },
     [],
@@ -198,7 +244,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeFlavorLightState(flavor);
     localStorage.setItem("theme-flavor-light", flavor);
     if (themeBootedRef.current) {
-      ipc.settings.setUserSettings({ themeFlavorLight: flavor }).catch(() => {});
+      ipc.settings
+        .setUserSettings({ themeFlavorLight: flavor })
+        .catch(() => {});
     }
   }, []);
 
@@ -207,7 +255,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeBootedRef = useRef(false);
   useEffect(() => {
     // Allow settings hydration to complete before enabling writes
-    const timer = setTimeout(() => { themeBootedRef.current = true; }, 2000);
+    const timer = setTimeout(() => {
+      themeBootedRef.current = true;
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -282,7 +332,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           else if (prevTheme === "dark") nextTheme = "light";
           else {
             // If system, toggle based on current system preference
-            const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const isDark = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches;
             nextTheme = isDark ? "light" : "dark";
           }
           return nextTheme;
@@ -296,7 +348,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight }}
+      value={{
+        theme,
+        setTheme,
+        intensity,
+        setIntensity,
+        applyPrimaryColors,
+        applyFont,
+        applyChatFont,
+        applyFontScale,
+        applyBubbleWidth,
+        currentFontId,
+        currentChatFontId,
+        fontScales,
+        bubbleWidthPct,
+        themeFlavorDark,
+        setThemeFlavorDark,
+        themeFlavorLight,
+        setThemeFlavorLight,
+      }}
     >
       {children}
     </ThemeContext.Provider>
@@ -309,8 +379,25 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight } =
-    context;
+  const {
+    theme,
+    setTheme,
+    intensity,
+    setIntensity,
+    applyPrimaryColors,
+    applyFont,
+    applyChatFont,
+    applyFontScale,
+    applyBubbleWidth,
+    currentFontId,
+    currentChatFontId,
+    fontScales,
+    bubbleWidthPct,
+    themeFlavorDark,
+    setThemeFlavorDark,
+    themeFlavorLight,
+    setThemeFlavorLight,
+  } = context;
 
   // Determine if dark mode is active when component mounts or theme changes
   useEffect(() => {

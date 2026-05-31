@@ -1,11 +1,11 @@
 /**
  * migrate_settings_to_kv.ts
- * 
+ *
  * Migrates ALL users from the monolithic `user_settings` JSON blob
  * to individual key-value rows in `user_preferences`.
- * 
+ *
  * Safe to run multiple times (idempotent via upserts).
- * 
+ *
  * Usage:
  *   npx tsx scripts/migrate_settings_to_kv.ts
  *   npx tsx scripts/migrate_settings_to_kv.ts --dry-run   # preview only
@@ -20,8 +20,8 @@ const BUNNY_DB_TOKEN =
 
 // ── Keys to SKIP (session data, internal state) ──
 const SKIP_KEYS = new Set([
-  "userId",         // session — stored locally, not a preference
-  "sessionToken",   // session — stored locally
+  "userId", // session — stored locally, not a preference
+  "sessionToken", // session — stored locally
 ]);
 
 // ── Keys that are LOCAL-ONLY state (machine-specific, NOT preferences) ──
@@ -51,7 +51,9 @@ async function main() {
   });
 
   // ── Step 0: Ensure unique index exists for upserts ──
-  console.log("[0/4] Ensuring unique index on user_preferences(user_id, key, app_id)...");
+  console.log(
+    "[0/4] Ensuring unique index on user_preferences(user_id, key, app_id)...",
+  );
   if (!DRY_RUN) {
     await client.execute(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_user_preferences_upsert
@@ -63,7 +65,7 @@ async function main() {
   // ── Step 1: Fetch all user_settings blobs ──
   console.log("[1/4] Fetching all user_settings rows...");
   const settingsRows = await client.execute(
-    "SELECT user_id, settings_json, updated_at FROM user_settings"
+    "SELECT user_id, settings_json, updated_at FROM user_settings",
   );
   console.log(`  Found ${settingsRows.rows.length} user(s)\n`);
 
@@ -128,9 +130,8 @@ async function main() {
       }
 
       // Serialize everything as JSON string
-      const serialized = typeof rawValue === "string"
-        ? rawValue
-        : JSON.stringify(rawValue);
+      const serialized =
+        typeof rawValue === "string" ? rawValue : JSON.stringify(rawValue);
 
       toMigrate.push({ key, value: serialized });
     }

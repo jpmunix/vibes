@@ -44,13 +44,21 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     .trim();
 
   // Irrecuperables
-  if (/insufficient.*(credit|fund|balance)|ExceededBudget|exceeded.*budget/i.test(msg)) {
+  if (
+    /insufficient.*(credit|fund|balance)|ExceededBudget|exceeded.*budget/i.test(
+      msg,
+    )
+  ) {
     return {
       code: "credits_exhausted",
       recoverable: false,
       userMessage: "Parece que se agotaron los creditos de IA de tu cuenta.",
       actions: [
-        { type: "open_external", label: "Recargar creditos", url: "https://openrouter.ai/credits" },
+        {
+          type: "open_external",
+          label: "Recargar creditos",
+          url: "https://openrouter.ai/credits",
+        },
         { type: "navigate", label: "Cambiar modelo", route: "/settings" },
       ],
     };
@@ -59,23 +67,38 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "auth_invalid",
       recoverable: false,
-      userMessage: "Parece que hay un problema con tu clave API. Revisala en ajustes.",
-      actions: [{ type: "navigate", label: "Abrir Ajustes", route: "/settings" }],
+      userMessage:
+        "Parece que hay un problema con tu clave API. Revisala en ajustes.",
+      actions: [
+        { type: "navigate", label: "Abrir Ajustes", route: "/settings" },
+      ],
     };
   }
-  if (/model.*not.*found|does not exist|invalid.*model|No endpoints found/i.test(msg)) {
+  if (
+    /model.*not.*found|does not exist|invalid.*model|No endpoints found/i.test(
+      msg,
+    )
+  ) {
     return {
       code: "model_not_found",
       recoverable: false,
-      userMessage: "Parece que el modelo seleccionado no esta disponible. Prueba con otro.",
-      actions: [{ type: "navigate", label: "Cambiar modelo", route: "/settings" }],
+      userMessage:
+        "Parece que el modelo seleccionado no esta disponible. Prueba con otro.",
+      actions: [
+        { type: "navigate", label: "Cambiar modelo", route: "/settings" },
+      ],
     };
   }
-  if (/context.*(too long|exceeded|limit)|max.*tokens|token.*limit|context_length/i.test(msg)) {
+  if (
+    /context.*(too long|exceeded|limit)|max.*tokens|token.*limit|context_length/i.test(
+      msg,
+    )
+  ) {
     return {
       code: "context_exceeded",
       recoverable: false,
-      userMessage: "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.",
+      userMessage:
+        "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.",
       actions: [
         { type: "new_chat", label: "Nuevo chat" },
         { type: "navigate", label: "Cambiar modelo", route: "/settings" },
@@ -86,7 +109,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "content_filtered",
       recoverable: false,
-      userMessage: "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.",
+      userMessage:
+        "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.",
       actions: [],
     };
   }
@@ -94,7 +118,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "opencode_not_installed",
       recoverable: false,
-      userMessage: "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.",
+      userMessage:
+        "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.",
       actions: [],
     };
   }
@@ -102,18 +127,26 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "disk_full",
       recoverable: false,
-      userMessage: "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.",
+      userMessage:
+        "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.",
       actions: [],
     };
   }
 
   // Recuperables
-  if (/rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(msg)) {
+  if (
+    /rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(
+      msg,
+    )
+  ) {
     return {
       code: "rate_limit",
       recoverable: true,
-      userMessage: "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.",
-      actions: [{ type: "retry_delayed", label: "Reintentar en 10s", delayMs: 10_000 }],
+      userMessage:
+        "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.",
+      actions: [
+        { type: "retry_delayed", label: "Reintentar en 10s", delayMs: 10_000 },
+      ],
     };
   }
   if (/timeout|timed?\s*out|APIConnectionTimeoutError/i.test(msg)) {
@@ -124,11 +157,16 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
       actions: [{ type: "retry", label: "Reintentar" }],
     };
   }
-  if (/network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket|APIConnectionError/i.test(msg)) {
+  if (
+    /network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket|APIConnectionError/i.test(
+      msg,
+    )
+  ) {
     return {
       code: "network_error",
       recoverable: true,
-      userMessage: "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.",
+      userMessage:
+        "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.",
       actions: [{ type: "retry", label: "Reintentar" }],
     };
   }
@@ -136,7 +174,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "server_error",
       recoverable: true,
-      userMessage: "Error del servidor de IA. Intentalo de nuevo en unos segundos.",
+      userMessage:
+        "Error del servidor de IA. Intentalo de nuevo en unos segundos.",
       actions: [{ type: "retry", label: "Reintentar" }],
     };
   }
@@ -144,8 +183,11 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "session_busy",
       recoverable: true,
-      userMessage: "El agente esta ocupado con otra tarea. Espera a que termine.",
-      actions: [{ type: "retry_delayed", label: "Reintentar en 3s", delayMs: 3_000 }],
+      userMessage:
+        "El agente esta ocupado con otra tarea. Espera a que termine.",
+      actions: [
+        { type: "retry_delayed", label: "Reintentar en 3s", delayMs: 3_000 },
+      ],
     };
   }
   if (/session.*not.*found|Session creation returned no data/i.test(msg)) {
@@ -176,7 +218,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "server_crash",
       recoverable: true,
-      userMessage: "Error interno de la aplicacion. Reinicia Vibes para resolverlo.",
+      userMessage:
+        "Error interno de la aplicacion. Reinicia Vibes para resolverlo.",
       actions: [{ type: "retry", label: "Reintentar" }],
     };
   }
@@ -223,7 +266,11 @@ interface ErrorBubbleProps {
   onNewChat?: () => void;
 }
 
-export function ErrorBubble({ rawError, onRetry, onNewChat }: ErrorBubbleProps) {
+export function ErrorBubble({
+  rawError,
+  onRetry,
+  onNewChat,
+}: ErrorBubbleProps) {
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
@@ -279,7 +326,9 @@ export function ErrorBubble({ rawError, onRetry, onNewChat }: ErrorBubbleProps) 
       {/* Mensaje principal */}
       <div className="flex items-start gap-2 text-rose-600 dark:text-rose-400">
         <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-        <span className="typo-label leading-relaxed">{classified.userMessage}</span>
+        <span className="typo-label leading-relaxed">
+          {classified.userMessage}
+        </span>
       </div>
 
       {/* Botones de accion */}
@@ -301,9 +350,10 @@ export function ErrorBubble({ rawError, onRetry, onNewChat }: ErrorBubbleProps) 
                 className={`
                   inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5
                   text-xs font-medium transition-colors cursor-pointer
-                  ${isCountingDown
-                    ? "bg-muted text-muted-foreground cursor-wait"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs"
+                  ${
+                    isCountingDown
+                      ? "bg-muted text-muted-foreground cursor-wait"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs"
                   }
                 `}
               >

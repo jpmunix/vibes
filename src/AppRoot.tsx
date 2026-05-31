@@ -129,10 +129,18 @@ export default function AppRoot() {
     const unsubscribe = ipc.events.agent.onAskUserRequest((payload) => {
       setPendingAskUsers((prev) => {
         // Deduplicate: skip if this exact requestId+questionIndex already exists
-        if (prev.some((p) => p.requestId === payload.requestId && p.questionIndex === payload.questionIndex)) return prev;
+        if (
+          prev.some(
+            (p) =>
+              p.requestId === payload.requestId &&
+              p.questionIndex === payload.questionIndex,
+          )
+        )
+          return prev;
         // Replace any existing entry for the same question+chatId (OpenCode fires duplicates with different IDs)
         const filtered = prev.filter(
-          (p) => !(p.chatId === payload.chatId && p.question === payload.question),
+          (p) =>
+            !(p.chatId === payload.chatId && p.question === payload.question),
         );
         return [
           ...filtered,
@@ -178,9 +186,7 @@ export default function AppRoot() {
       setPendingAgentConsents((prev) =>
         prev.filter((consent) => consent.chatId !== chatId),
       );
-      setPendingAskUsers((prev) =>
-        prev.filter((ask) => ask.chatId !== chatId),
-      );
+      setPendingAskUsers((prev) => prev.filter((ask) => ask.chatId !== chatId));
       setPendingOCPermissions((prev) =>
         prev.filter((p) => p.chatId !== chatId),
       );
@@ -195,7 +201,9 @@ export default function AppRoot() {
         next.set(
           chatId,
           todos.map((t) =>
-            t.status === "in_progress" ? { ...t, status: "completed" as const } : t,
+            t.status === "in_progress"
+              ? { ...t, status: "completed" as const }
+              : t,
           ),
         );
         return next;
@@ -220,7 +228,10 @@ export default function AppRoot() {
     const unsubscribe = window.electron?.ipcRenderer?.on?.(
       "navigate-to-route",
       (payload: { route: string; search?: Record<string, any> }) => {
-        router.navigate({ to: payload.route as any, search: payload.search as any });
+        router.navigate({
+          to: payload.route as any,
+          search: payload.search as any,
+        });
       },
     );
     return () => unsubscribe?.();
@@ -239,7 +250,10 @@ export default function AppRoot() {
           setQuotedForConsole((prev) => {
             // Use timestamp as unique id to avoid duplicates
             const id = Date.now();
-            return [...prev, { id, role: "console" as const, content: payload.formattedLog }];
+            return [
+              ...prev,
+              { id, role: "console" as const, content: payload.formattedLog },
+            ];
           });
         }
       },
@@ -259,7 +273,12 @@ export default function AppRoot() {
   }, [queryClient]);
 
   // Update checker — shows a dialog when a new version is available
-  const { updateVersion, isOpen: isUpdateOpen, dismiss: dismissUpdate, download: downloadUpdate } = useUpdateChecker();
+  const {
+    updateVersion,
+    isOpen: isUpdateOpen,
+    dismiss: dismissUpdate,
+    download: downloadUpdate,
+  } = useUpdateChecker();
 
   return (
     <>

@@ -62,8 +62,15 @@ export const LiveThinkingPanel: React.FC<{
         className="flex items-center gap-1.5 px-3 py-1.5"
         style={{ borderBottom: "1px solid var(--accent-think-header-border)" }}
       >
-        <Brain size={12} style={{ color: "var(--accent-think-icon)" }} className={isActive ? "animate-pulse" : ""} />
-        <span className="text-xs font-medium" style={{ color: "var(--accent-think-label)" }}>
+        <Brain
+          size={12}
+          style={{ color: "var(--accent-think-icon)" }}
+          className={isActive ? "animate-pulse" : ""}
+        />
+        <span
+          className="text-xs font-medium"
+          style={{ color: "var(--accent-think-label)" }}
+        >
           {isActive ? "Pensando..." : "Pensamiento"}
         </span>
       </div>
@@ -72,7 +79,10 @@ export const LiveThinkingPanel: React.FC<{
         ref={scrollRef}
         className="live-think-scroll px-3 py-2 max-h-[150px] overflow-y-auto text-xs leading-relaxed text-muted-foreground/70 prose prose-xs dark:prose-invert max-w-none"
       >
-        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          components={MARKDOWN_COMPONENTS}
+        >
           {content.length > 10000 ? "..." + content.slice(-10000) : content}
         </ReactMarkdown>
       </div>

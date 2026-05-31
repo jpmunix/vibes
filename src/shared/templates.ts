@@ -69,7 +69,8 @@ export interface TemplateTechStack {
 export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
   react: {
     title: "React.js",
-    stack: "React 19, Vite, TypeScript, Tailwind CSS 3, Shadcn/ui, React Router DOM 6",
+    stack:
+      "React 19, Vite, TypeScript, Tailwind CSS 3, Shadcn/ui, React Router DOM 6",
     context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
     scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
     requiredFiles: [
@@ -83,14 +84,15 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "src/main.tsx — entry point con ReactDOM.createRoot",
       "src/App.tsx — componente raíz con contenido mínimo visible",
       "src/index.css — con @tailwind base/components/utilities",
-      "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
-      "vercel.json — rewrites para SPA: [{\"source\":\"/(.*)\",\"destination\":\"/index.html\"}]",
+      'src/vite-env.d.ts — con /// <reference types="vite/client" />',
+      'vercel.json — rewrites para SPA: [{"source":"/(.*)","destination":"/index.html"}]',
     ],
     verifyCommand: "npx tsc --noEmit",
   },
   react19: {
     title: "React 19",
-    stack: "React 19, Vite 6, TypeScript, Tailwind CSS 4 (plugin Vite), Shadcn/ui, React Router DOM 7",
+    stack:
+      "React 19, Vite 6, TypeScript, Tailwind CSS 4 (plugin Vite), Shadcn/ui, React Router DOM 7",
     context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
     scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
     requiredFiles: [
@@ -101,7 +103,7 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "src/main.tsx — entry point con ReactDOM.createRoot + BrowserRouter",
       "src/App.tsx — componente raíz con Outlet de react-router-dom",
       "src/globals.css — con @import 'tailwindcss' + @theme block (NO @tailwind directives)",
-      "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
+      'src/vite-env.d.ts — con /// <reference types="vite/client" />',
       "components.json — configuración de Shadcn/ui",
     ],
     verifyCommand: "npx oxlint",
@@ -110,7 +112,8 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
     title: "Next.js",
     stack: "Next.js (App Router), React, TypeScript, Tailwind CSS 4, Shadcn/ui",
     context7Libs: ["vercel/next.js", "tailwindlabs/tailwindcss"],
-    scaffoldCommand: "npx -y create-next-app@latest . --ts --tailwind --eslint --app --src-dir --no-import-alias --yes",
+    scaffoldCommand:
+      "npx -y create-next-app@latest . --ts --tailwind --eslint --app --src-dir --no-import-alias --yes",
     requiredFiles: [
       "package.json — dependencias + scripts (dev, build, start, lint)",
       "next.config.ts (o next.config.mjs)",
@@ -122,7 +125,7 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "app/page.tsx — página principal con contenido mínimo visible",
       "app/globals.css — con @tailwind base/components/utilities",
       "public/ — directorio (puede estar vacío)",
-      "next-env.d.ts — con /// <reference types=\"next\" />",
+      'next-env.d.ts — con /// <reference types="next" />',
     ],
     verifyCommand: "npx next lint",
   },
@@ -135,13 +138,13 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
       "vite.config.ts — con plugin Vue (@vitejs/plugin-vue)",
       "tsconfig.json, tsconfig.app.json, tsconfig.node.json",
-      "env.d.ts — con /// <reference types=\"vite/client\" />",
+      'env.d.ts — con /// <reference types="vite/client" />',
       "eslint.config.js",
       "postcss.config.js",
       "tailwind.config.ts (o .js)",
       "index.html — con div#app, script type=module apuntando a src/main.ts",
       "src/main.ts — createApp + mount con Pinia y Vue Router",
-      "src/App.vue — componente raíz con <script setup lang=\"ts\">, <template>, <style>",
+      'src/App.vue — componente raíz con <script setup lang="ts">, <template>, <style>',
       "src/router/index.ts — configuración de Vue Router",
       "src/stores/ — al menos un store Pinia de ejemplo",
       "src/assets/main.css — con @tailwind base/components/utilities",
@@ -151,13 +154,15 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
   },
   astro: {
     title: "Astro",
-    stack: "Astro, React integración (@astrojs/react), TypeScript, Tailwind CSS 4",
+    stack:
+      "Astro, React integración (@astrojs/react), TypeScript, Tailwind CSS 4",
     context7Libs: ["withastro/astro", "tailwindlabs/tailwindcss"],
-    scaffoldCommand: "npx -y create-astro@latest . --template minimal --yes --typescript strict --no-install --no-git",
+    scaffoldCommand:
+      "npx -y create-astro@latest . --template minimal --yes --typescript strict --no-install --no-git",
     requiredFiles: [
       "package.json — dependencias + scripts (dev, build, preview)",
       "astro.config.mjs — con integración React (@astrojs/react) y Tailwind (@astrojs/tailwind)",
-      "tsconfig.json — con extends: \"astro/tsconfigs/strict\"",
+      'tsconfig.json — con extends: "astro/tsconfigs/strict"',
       "tailwind.config.mjs",
       "src/layouts/Layout.astro — layout base con <html>, <head>, <body>, <slot />",
       "src/pages/index.astro — página principal con contenido mínimo visible",
@@ -171,12 +176,13 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
     title: "SvelteKit",
     stack: "SvelteKit 2, Svelte 5, TypeScript, Tailwind CSS 4, Vite",
     context7Libs: ["sveltejs/svelte", "tailwindlabs/tailwindcss"],
-    scaffoldCommand: "npx -y sv create . --template minimal --types ts --no-add-ons --no-install",
+    scaffoldCommand:
+      "npx -y sv create . --template minimal --types ts --no-add-ons --no-install",
     requiredFiles: [
       "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
       "vite.config.ts — con plugin SvelteKit (@sveltejs/kit/vite)",
       "svelte.config.js — con adapter-auto y preprocessor",
-      "tsconfig.json — con extends: \"./.svelte-kit/tsconfig.json\"",
+      'tsconfig.json — con extends: "./.svelte-kit/tsconfig.json"',
       "postcss.config.js",
       "tailwind.config.ts (o .js)",
       "src/app.html — template HTML con %sveltekit.head% y %sveltekit.body%",
@@ -209,7 +215,8 @@ export const localTemplatesData: Template[] = [
   {
     id: "react19",
     title: "React 19",
-    description: "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui. Última tecnología.",
+    description:
+      "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui. Última tecnología.",
     isOfficial: true,
     tags: ["SPA", "Frontend"],
   },
@@ -238,7 +245,8 @@ export const localTemplatesData: Template[] = [
   {
     id: "astro",
     title: "Astro",
-    description: "Astro, Tailwind y TypeScript. Ideal para sitios de contenido.",
+    description:
+      "Astro, Tailwind y TypeScript. Ideal para sitios de contenido.",
     isOfficial: true,
     tags: ["Static Site", "SSG"],
   },

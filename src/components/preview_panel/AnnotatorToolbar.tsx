@@ -41,10 +41,8 @@ interface AnnotatorToolbarProps {
   hasSubmitHandler: boolean;
 }
 
-const activeClass =
-  "bg-primary text-primary-foreground hover:bg-primary/90";
-const inactiveClass =
-  "text-primary hover:bg-primary/15";
+const activeClass = "bg-primary text-primary-foreground hover:bg-primary/90";
+const inactiveClass = "text-primary hover:bg-primary/15";
 const actionClass =
   "p-1 rounded transition-colors duration-200 text-primary hover:bg-primary/15 disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -65,11 +63,7 @@ export const AnnotatorToolbar = ({
   onDeactivate,
   hasSubmitHandler,
 }: AnnotatorToolbarProps) => {
-  const toolBtn = (
-    id: ToolType,
-    label: string,
-    Icon: React.ElementType,
-  ) => (
+  const toolBtn = (id: ToolType, label: string, Icon: React.ElementType) => (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
@@ -89,9 +83,7 @@ export const AnnotatorToolbar = ({
     </Tooltip>
   );
 
-  const Divider = () => (
-    <div className="w-px bg-border h-4" />
-  );
+  const Divider = () => <div className="w-px bg-border h-4" />;
 
   return (
     <div className="flex items-center justify-center p-2 border-b border-border bg-muted/50 space-x-2">

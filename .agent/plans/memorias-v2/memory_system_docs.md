@@ -45,19 +45,19 @@ flowchart TB
 
 ## Archivos clave
 
-| Archivo | Rol | Pipeline |
-|---|---|---|
-| [memory_bootstrap.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_bootstrap.ts) | Cold start: DNA scan + Explore | Bootstrap |
-| [memory_guardian.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_guardian.ts) | Filtros determinísticos (<1ms) | Read + Write |
-| [memory_extractor.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_extractor.ts) | Synthesizer V3: extrae memorias de chats | Write |
-| [memory_context_builder.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_context_builder.ts) | Router: selecciona memorias relevantes | Read |
-| [memory_lifecycle.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_lifecycle.ts) | Verdugo, hard limit, issue transitions | Lifecycle |
-| [memory_telemetry.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_telemetry.ts) | Logging de pipeline a DB | Observabilidad |
-| [memory_debug_log.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_debug_log.ts) | Volcado de prompts a `/tmp/opencode/` | Debug |
-| [memory.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/types/memory.ts) | IPC contracts + schemas Zod | Tipos |
-| [memory_handlers.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/handlers/memory_handlers.ts) | Handlers IPC (CRUD + pipeline triggers) | IPC |
-| [remote-schema.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/db/remote-schema.ts#L454-L472) | Tabla `memories` en Drizzle | DB |
-| [prompts/index.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/prompts/index.ts) | System prompts de Synthesis, Router y Onboarding | Prompts |
+| Archivo                                                                                                                 | Rol                                              | Pipeline       |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------- |
+| [memory_bootstrap.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_bootstrap.ts)             | Cold start: DNA scan + Explore                   | Bootstrap      |
+| [memory_guardian.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_guardian.ts)               | Filtros determinísticos (<1ms)                   | Read + Write   |
+| [memory_extractor.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_extractor.ts)             | Synthesizer V3: extrae memorias de chats         | Write          |
+| [memory_context_builder.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_context_builder.ts) | Router: selecciona memorias relevantes           | Read           |
+| [memory_lifecycle.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_lifecycle.ts)             | Verdugo, hard limit, issue transitions           | Lifecycle      |
+| [memory_telemetry.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_telemetry.ts)             | Logging de pipeline a DB                         | Observabilidad |
+| [memory_debug_log.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/utils/memory_debug_log.ts)             | Volcado de prompts a `/tmp/opencode/`            | Debug          |
+| [memory.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/types/memory.ts)                                 | IPC contracts + schemas Zod                      | Tipos          |
+| [memory_handlers.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/ipc/handlers/memory_handlers.ts)            | Handlers IPC (CRUD + pipeline triggers)          | IPC            |
+| [remote-schema.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/db/remote-schema.ts#L454-L472)                | Tabla `memories` en Drizzle                      | DB             |
+| [prompts/index.ts](file:///home/munix/Desarrollo/GitRepo/minube-vibes/src/prompts/index.ts)                             | System prompts de Synthesis, Router y Onboarding | Prompts        |
 
 ---
 
@@ -82,6 +82,7 @@ memories
 ```
 
 **Tablas auxiliares:**
+
 - `memory_telemetry` — contadores por acción (skipped_trivial, synthesized, routed, etc.)
 - `memory_pipeline_logs` — payloads completos de cada llamada LLM (system prompt, user message, raw response, duración)
 
@@ -92,6 +93,7 @@ memories
 Cuando un proyecto es nuevo o no tiene memorias, se ejecuta automáticamente:
 
 ### Phase 1: DNA Scan (~3-5s)
+
 1. Lee archivos de configuración del proyecto: `package.json`, `tsconfig.json`, `docker-compose.yml`, etc. (14 patterns fijos + 8 globs)
 2. Lee `AGENTS.md` y `DESIGN.md` si existen
 3. Genera el árbol de directorios (2 niveles)
@@ -101,11 +103,13 @@ Cuando un proyecto es nuevo o no tiene memorias, se ejecuta automáticamente:
 7. Máximo **10 memorias** por DNA scan
 
 ### Phase 2: Explore (~20s)
+
 - Lanza un sub-agente OpenCode en modo read-only
 - El agente navega el codebase libremente para descubrir patrones no visibles en configs
 - Genera memorias complementarias a las del DNA
 
 ### Regla de consolidación (nueva)
+
 El prompt de onboarding instruye explícitamente al LLM a **no fragmentar**: plugins/middleware del mismo framework → 1 sola memoria. Ejemplo: Fastify + CORS + Helmet + rate limiting = 1 memoria `backend_middleware`, no 4.
 
 ---
@@ -159,7 +163,7 @@ User prompt
   Update lastUsed para las seleccionadas (feedback loop)
        ↓
   Formatear bloque de contexto:
-  
+
   <agent_memory type="fact" key="backend_framework">
   El backend usa Fastify con Drizzle ORM
   </agent_memory>
@@ -173,13 +177,14 @@ El bloque formateado se guarda también en `messages.injectedMemories` para audi
 
 ## Lifecycle: Verdugo + Hard Limit
 
-| Regla | Condición | Acción |
-|---|---|---|
-| **Verdugo** | `source=auto` + `lastUsed > 90 días` + `importance < 30` | `enabled = 0` |
-| **Hard Limit** | `> 500 memorias activas` por app | Prune 50 con peor importance + lastUsed |
-| **Confirm** | Usuario confirma manualmente | `source → manual`, `importance → 80`, inmune al Verdugo |
+| Regla          | Condición                                                | Acción                                                  |
+| -------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| **Verdugo**    | `source=auto` + `lastUsed > 90 días` + `importance < 30` | `enabled = 0`                                           |
+| **Hard Limit** | `> 500 memorias activas` por app                         | Prune 50 con peor importance + lastUsed                 |
+| **Confirm**    | Usuario confirma manualmente                             | `source → manual`, `importance → 80`, inmune al Verdugo |
 
 ### Issue Lifecycle (state machine)
+
 ```
 active → fix_attempted → suspected_resolved → resolved → deprecated
                     ↑ (regression: any → active)
@@ -189,22 +194,22 @@ active → fix_attempted → suspected_resolved → resolved → deprecated
 
 ## IPC Contracts
 
-| Canal | Input | Output | Descripción |
-|---|---|---|---|
-| `get-memories` | `appId: number` | `MemoryEntry[]` | Listar memorias de un app |
-| `create-memory` | `CreateMemoryParams` | `number (id)` | Crear manual |
-| `update-memory` | `UpdateMemoryParams` | `void` | Editar |
-| `delete-memory` | `memoryId: number` | `void` | Borrar |
-| `delete-all-memories` | `appId: number` | `number (count)` | Purgar app |
-| `get-memory-context` | `appId: number` | `string (block)` | Contexto formateado |
-| `extract-memories` | `ExtractMemoriesParams` | `MemoryEntry[]` | Trigger manual de extracción |
-| `decay-memories` | `appId: number` | `number (count)` | Ejecutar Verdugo |
-| `get-all-memories` | `void` | `MemoryEntry[]` | Global stats |
-| `bootstrap-project-memories` | `{appId}` | `{phase1Count, phase2Count}` | Cold start manual |
-| `get-pipeline-logs` | `{appId?, stage?, limit?}` | `PipelineLog[]` | Logs completos |
-| `get-memory-telemetry-stats` | `appId?` | `{action, count}[]` | Contadores |
-| `get-memory-telemetry-recent` | `appId?` | events[] | Últimos 50 eventos |
-| `purge-all-memory-stats` | `void` | `{telemetryDeleted, pipelineLogsDeleted}` | Limpieza |
+| Canal                         | Input                      | Output                                    | Descripción                  |
+| ----------------------------- | -------------------------- | ----------------------------------------- | ---------------------------- |
+| `get-memories`                | `appId: number`            | `MemoryEntry[]`                           | Listar memorias de un app    |
+| `create-memory`               | `CreateMemoryParams`       | `number (id)`                             | Crear manual                 |
+| `update-memory`               | `UpdateMemoryParams`       | `void`                                    | Editar                       |
+| `delete-memory`               | `memoryId: number`         | `void`                                    | Borrar                       |
+| `delete-all-memories`         | `appId: number`            | `number (count)`                          | Purgar app                   |
+| `get-memory-context`          | `appId: number`            | `string (block)`                          | Contexto formateado          |
+| `extract-memories`            | `ExtractMemoriesParams`    | `MemoryEntry[]`                           | Trigger manual de extracción |
+| `decay-memories`              | `appId: number`            | `number (count)`                          | Ejecutar Verdugo             |
+| `get-all-memories`            | `void`                     | `MemoryEntry[]`                           | Global stats                 |
+| `bootstrap-project-memories`  | `{appId}`                  | `{phase1Count, phase2Count}`              | Cold start manual            |
+| `get-pipeline-logs`           | `{appId?, stage?, limit?}` | `PipelineLog[]`                           | Logs completos               |
+| `get-memory-telemetry-stats`  | `appId?`                   | `{action, count}[]`                       | Contadores                   |
+| `get-memory-telemetry-recent` | `appId?`                   | events[]                                  | Últimos 50 eventos           |
+| `purge-all-memory-stats`      | `void`                     | `{telemetryDeleted, pipelineLogsDeleted}` | Limpieza                     |
 
 ---
 
@@ -212,11 +217,11 @@ active → fix_attempted → suspected_resolved → resolved → deprecated
 
 ```typescript
 // En UserSettings (schemas.ts)
-memoriesEnabled: boolean            // Master switch
-memoriesAutoExtract: boolean        // Auto-extract tras cada chat
-memoriesSynthesisModelV2: string    // Modelo para el Synthesizer
-memoriesRouterModelV2: string       // Modelo para el Router
-memoriesMaxSelection: number        // Máx memorias inyectadas (default: 10)
+memoriesEnabled: boolean; // Master switch
+memoriesAutoExtract: boolean; // Auto-extract tras cada chat
+memoriesSynthesisModelV2: string; // Modelo para el Synthesizer
+memoriesRouterModelV2: string; // Modelo para el Router
+memoriesMaxSelection: number; // Máx memorias inyectadas (default: 10)
 ```
 
 ---
@@ -228,6 +233,7 @@ memoriesMaxSelection: number        // Máx memorias inyectadas (default: 10)
 Accesible desde el menú del workspace del agente → "Ver memorias".
 
 ### Vista principal
+
 - **Lista de cards** con todas las memorias del proyecto activo
 - Cada card muestra:
   - Badge de tipo (Hecho, Preferencia, Problema, Episodio, Decisión)
@@ -240,6 +246,7 @@ Accesible desde el menú del workspace del agente → "Ver memorias".
   - Botón de eliminación
 
 ### Acciones
+
 - **Crear memoria manual**: formulario con tipo, key, content, importance
 - **Editar inline**: click en la card → campos editables
 - **Eliminar**: confirmación antes de borrar
@@ -258,6 +265,7 @@ Dentro de Ajustes → sección "Memorias del agente":
 - **Máx selección** — slider/número (cuántas memorias inyectar máx)
 
 ### Analyzer (telemetría)
+
 - Gráfico de contadores por acción (skipped, synthesized, routed)
 - Timeline de eventos recientes
 - Logs de pipeline con payloads expandibles (system prompt, user message, raw response)
@@ -270,6 +278,7 @@ Dentro de Ajustes → sección "Memorias del agente":
 Herramienta de benchmarking para comparar modelos LLM.
 
 ### Layout (nuevo)
+
 ```
 [Buscar modelos...▼] [chip] [chip] [chip]     ← Fila 1: search + pills
 [Presets ▼] [Guardar] [Actualizar]            ← Preset bar
@@ -279,7 +288,9 @@ Herramienta de benchmarking para comparar modelos LLM.
 ```
 
 ### Modo "Memorias"
+
 Cuando el toggle está en **Memorias** (default), las respuestas JSON se parsean y se renderizan como cards de memoria:
+
 - Badge de tipo
 - Content completo
 - Key en monospace
@@ -289,9 +300,11 @@ Cuando el toggle está en **Memorias** (default), las respuestas JSON se parsean
 Esto permite **evaluar visualmente** qué memorias generaría cada modelo para el mismo prompt.
 
 ### Modo "Raw"
+
 Muestra la respuesta tal cual (JSON formateado, code blocks, texto plano).
 
 ### Presets de modelos
+
 - **Guardar**: persistir la selección actual con un nombre
 - **Cargar**: recuperar un preset del dropdown
 - **Actualizar**: sobreescribir preset activo con selección modificada (indicador ámbar de cambio)
@@ -300,6 +313,7 @@ Muestra la respuesta tal cual (JSON formateado, code blocks, texto plano).
 - Persistencia: `settings.playgroundModelSets: [{name, models}]`
 
 ### Features extra
+
 - **Morph toggle**: botón que carga/descarga test de Morph V3 (illuminated state)
 - **Auto-colapso**: al completar un resultado, el anterior se colapsa automáticamente (on por defecto)
 - **Toggle durante ejecución**: las cards son expandibles/colapsables mientras los tests corren

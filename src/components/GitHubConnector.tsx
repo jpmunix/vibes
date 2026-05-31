@@ -84,7 +84,9 @@ function ConnectedGitHubConnector({
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncSuccess, setSyncSuccess] = useState<"push" | "pull" | false>(false);
+  const [syncSuccess, setSyncSuccess] = useState<"push" | "pull" | false>(
+    false,
+  );
   const [showForceDialog, setShowForceDialog] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
@@ -110,9 +112,11 @@ function ConnectedGitHubConnector({
       ? "merge-in-progress"
       : syncError.includes("index.lock") || syncError.includes("index'.lock")
         ? "index-lock"
-        : syncError.includes("Merge conflict") || syncError.includes("GitConflictError")
+        : syncError.includes("Merge conflict") ||
+            syncError.includes("GitConflictError")
           ? "merge-conflict"
-          : syncError.includes("ENOENT") || syncError.includes("Git failed to execute")
+          : syncError.includes("ENOENT") ||
+              syncError.includes("Git failed to execute")
             ? "git-not-found"
             : null
     : null;
@@ -177,8 +181,11 @@ function ConnectedGitHubConnector({
   const handleOpenGitPanel = useCallback(() => {
     ipc.system.openGitWindow({
       appId,
-      theme: (localStorage.getItem("theme") as "light" | "dark" | "system") ?? undefined,
-      themeIntensity: parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
+      theme:
+        (localStorage.getItem("theme") as "light" | "dark" | "system") ??
+        undefined,
+      themeIntensity:
+        parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
     });
   }, [appId]);
 
@@ -249,7 +256,10 @@ function ConnectedGitHubConnector({
     (async () => {
       setIsGeneratingMessage(true);
       try {
-        const result = await ipc.github.generateSquashMessage({ appId, aheadCount });
+        const result = await ipc.github.generateSquashMessage({
+          appId,
+          aheadCount,
+        });
         if (!cancelled && !isCommitMessageEdited) {
           setCommitMessage(result.message);
         }
@@ -259,7 +269,9 @@ function ConnectedGitHubConnector({
         if (!cancelled) setIsGeneratingMessage(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [appId, aheadCount, isCommitMessageEdited]);
 
   const handleDisconnectRepo = async () => {
@@ -554,7 +566,7 @@ function ConnectedGitHubConnector({
               className={cn(
                 "bg-card",
                 !commitMessage.trim() &&
-                "border-destructive focus-visible:ring-destructive",
+                  "border-destructive focus-visible:ring-destructive",
               )}
             />
             <p className="text-xs text-muted-foreground">
@@ -588,7 +600,9 @@ function ConnectedGitHubConnector({
               setSyncSuccess("pull");
               refreshApp();
             } catch (err: any) {
-              setSyncError(err.message || "Error al descargar del repositorio.");
+              setSyncError(
+                err.message || "Error al descargar del repositorio.",
+              );
             } finally {
               setIsPulling(false);
             }
@@ -657,7 +671,8 @@ function ConnectedGitHubConnector({
                     Git está bloqueado por un proceso anterior
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Un proceso de git previo dejó un archivo lock. Se puede eliminar de forma segura.
+                    Un proceso de git previo dejó un archivo lock. Se puede
+                    eliminar de forma segura.
                   </p>
                 </div>
               </div>
@@ -685,7 +700,8 @@ function ConnectedGitHubConnector({
                     Conflictos de merge detectados
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Hay archivos con cambios incompatibles entre tu versión local y la remota. Elige cómo resolverlos:
+                    Hay archivos con cambios incompatibles entre tu versión
+                    local y la remota. Elige cómo resolverlos:
                   </p>
                 </div>
               </div>
@@ -755,12 +771,15 @@ function ConnectedGitHubConnector({
                     Git no encontrado en el sistema
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Asegúrate de que Git esté instalado en tu sistema. Puedes descargarlo desde git-scm.com.
+                    Asegúrate de que Git esté instalado en tu sistema. Puedes
+                    descargarlo desde git-scm.com.
                   </p>
                 </div>
               </div>
               <Button
-                onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                onClick={() =>
+                  ipc.system.openExternalUrl("https://git-scm.com/downloads")
+                }
                 variant="outline"
                 size="sm"
                 className="w-full"
@@ -776,7 +795,9 @@ function ConnectedGitHubConnector({
               <a
                 onClick={(e) => {
                   e.preventDefault();
-                  ipc.system.openExternalUrl("https://github.com/jpmunix/vibes/");
+                  ipc.system.openExternalUrl(
+                    "https://github.com/jpmunix/vibes/",
+                  );
                 }}
                 className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
                 target="_blank"
@@ -860,13 +881,13 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {rebaseStatusMessage && (
-        <p className="typo-caption mt-2">
-          {rebaseStatusMessage}
-        </p>
+        <p className="typo-caption mt-2">{rebaseStatusMessage}</p>
       )}
       {syncSuccess && (
         <p className="typo-caption mt-2">
-          {syncSuccess === "pull" ? "¡Descargado de GitHub con éxito!" : "¡Subido a GitHub con éxito!"}
+          {syncSuccess === "pull"
+            ? "¡Descargado de GitHub con éxito!"
+            : "¡Subido a GitHub con éxito!"}
         </p>
       )}
       {disconnectError && (
@@ -980,9 +1001,11 @@ export function UnconnectedGitHubConnector({
   const setupErrorType = createRepoError
     ? createRepoError.includes("merge is in progress")
       ? "merge-in-progress"
-      : createRepoError.includes("index.lock") || createRepoError.includes("index'.lock")
+      : createRepoError.includes("index.lock") ||
+          createRepoError.includes("index'.lock")
         ? "index-lock"
-        : createRepoError.includes("ENOENT") || createRepoError.includes("Git failed to execute")
+        : createRepoError.includes("ENOENT") ||
+            createRepoError.includes("Git failed to execute")
           ? "git-not-found"
           : null
     : null;
@@ -1164,7 +1187,7 @@ export function UnconnectedGitHubConnector({
       } catch (err: any) {
         setRepoCheckError(
           err.message ||
-          "Error al comprobar la disponibilidad del repositorio.",
+            "Error al comprobar la disponibilidad del repositorio.",
         );
       } finally {
         setIsCheckingRepo(false);
@@ -1219,7 +1242,7 @@ export function UnconnectedGitHubConnector({
     } catch (err: any) {
       setCreateRepoError(
         err.message ||
-        `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
+          `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
       );
     } finally {
       setIsCreatingRepo(false);
@@ -1248,9 +1271,7 @@ export function UnconnectedGitHubConnector({
           <div className="mt-6 p-4 border rounded-md bg-muted/50 border-border">
             <h4 className="font-medium mb-2">Conexión con GitHub</h4>
             {githubError && (
-              <p className="text-destructive mb-2">
-                Error: {githubError}
-              </p>
+              <p className="text-destructive mb-2">Error: {githubError}</p>
             )}
             {githubUserCode && githubVerificationUri && (
               <div className="mb-2">
@@ -1301,9 +1322,7 @@ export function UnconnectedGitHubConnector({
               </div>
             )}
             {githubStatusMessage && (
-              <p className="typo-caption">
-                {githubStatusMessage}
-              </p>
+              <p className="typo-caption">{githubStatusMessage}</p>
             )}
           </div>
         )}
@@ -1317,10 +1336,9 @@ export function UnconnectedGitHubConnector({
       <button
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
-        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
-          ? "cursor-pointer hover:bg-muted"
-          : ""
-          }`}
+        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${
+          !isExpanded ? "cursor-pointer hover:bg-muted" : ""
+        }`}
       >
         <span className="typo-label">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
@@ -1330,8 +1348,9 @@ export function UnconnectedGitHubConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-          }`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${
+          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+        }`}
       >
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
@@ -1340,10 +1359,11 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted"
-                  }`}
+                className={`flex-1 rounded-none rounded-l-md border-0 ${
+                  repoSetupMode === "create"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                }`}
                 onClick={() => {
                   setRepoSetupMode("create");
                   setCreateRepoError(null);
@@ -1355,10 +1375,11 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${repoSetupMode === "existing"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted"
-                  }`}
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${
+                  repoSetupMode === "existing"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
                   setCreateRepoError(null);
@@ -1594,7 +1615,11 @@ export function UnconnectedGitHubConnector({
                   </div>
                   <Button
                     type="button"
-                    onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                    onClick={() =>
+                      ipc.system.openExternalUrl(
+                        "https://git-scm.com/downloads",
+                      )
+                    }
                     variant="outline"
                     size="sm"
                     className="w-full"

@@ -35,10 +35,7 @@ export function useAttachments() {
   );
 
   const handleFileSelect = useCallback(
-    (
-      fileList: FileList,
-      type: "chat-context" | "upload-to-codebase",
-    ) => {
+    (fileList: FileList, type: "chat-context" | "upload-to-codebase") => {
       const files = Array.from(fileList);
       const fileAttachments: FileAttachment[] = files.map((file) => ({
         file,
@@ -74,13 +71,13 @@ export function useAttachments() {
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         let files = Array.from(e.dataTransfer.files);
-        
+
         if (!supportsImages) {
-          const hasImages = files.some(f => f.type.startsWith("image/"));
+          const hasImages = files.some((f) => f.type.startsWith("image/"));
           if (hasImages) {
-             showWarning("El modelo actual no soporta imágenes");
-             files = files.filter(f => !f.type.startsWith("image/"));
-             if (files.length === 0) return;
+            showWarning("El modelo actual no soporta imágenes");
+            files = files.filter((f) => !f.type.startsWith("image/"));
+            if (files.length === 0) return;
           }
         }
         const fileAttachments: FileAttachment[] = files.map((file) => ({
@@ -117,9 +114,7 @@ export function useAttachments() {
       if (!clipboardData) return;
 
       const items = Array.from(clipboardData.items);
-      const imageItems = items.filter((item) =>
-        item.type.startsWith("image/"),
-      );
+      const imageItems = items.filter((item) => item.type.startsWith("image/"));
 
       if (imageItems.length > 0) {
         e.preventDefault(); // Prevent default paste behavior for images

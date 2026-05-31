@@ -27,17 +27,18 @@ El sistema gestiona las memorias sin que tengas que hacer nada:
 Accede al panel de memoria desde la barra de herramientas de la app (icono 🧠) o desde **Ajustes → Memoria**.
 
 ![Panel de memoria](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del panel de memoria mostrando memorias con filtros" -->
 
 ### Funcionalidades del panel
 
-| Función | Descripción |
-|---|---|
-| **Ver memorias** | Lista completa con preview del contenido |
-| **Filtrar** | Por relevancia, fecha o estado |
-| **Ordenar** | Cronológico o por relevancia |
-| **Compactar** | Fusiona memorias antiguas en resúmenes más limpios |
-| **Eliminar** | Borra memorias individuales que ya no sean relevantes |
+| Función          | Descripción                                           |
+| ---------------- | ----------------------------------------------------- |
+| **Ver memorias** | Lista completa con preview del contenido              |
+| **Filtrar**      | Por relevancia, fecha o estado                        |
+| **Ordenar**      | Cronológico o por relevancia                          |
+| **Compactar**    | Fusiona memorias antiguas en resúmenes más limpios    |
+| **Eliminar**     | Borra memorias individuales que ya no sean relevantes |
 
 ## Condensar un chat
 

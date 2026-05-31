@@ -113,7 +113,10 @@ export function VisualEditingChangesDialog({
         (change) => !change.textContent && change.textContent !== "",
       );
 
-      if (changesNeedingIframeText.length > 0 && iframeRef?.current?.contentWindow) {
+      if (
+        changesNeedingIframeText.length > 0 &&
+        iframeRef?.current?.contentWindow
+      ) {
         // Reset state for new request
         setAllResponsesReceived(false);
         expectedResponsesRef.current.clear();
@@ -137,8 +140,13 @@ export function VisualEditingChangesDialog({
 
         // Safety timeout: if iframe doesn't respond within 2 seconds, proceed anyway
         setTimeout(() => {
-          if (isWaitingForResponses.current && expectedResponsesRef.current.size > 0) {
-            console.warn("Timeout waiting for iframe text responses, proceeding with save");
+          if (
+            isWaitingForResponses.current &&
+            expectedResponsesRef.current.size > 0
+          ) {
+            console.warn(
+              "Timeout waiting for iframe text responses, proceeding with save",
+            );
             expectedResponsesRef.current.clear();
             setAllResponsesReceived(true);
           }

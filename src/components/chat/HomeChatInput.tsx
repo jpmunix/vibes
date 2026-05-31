@@ -129,8 +129,9 @@ export function HomeChatInput({
         <div className="max-w-3xl mx-auto">
           <div className="home-input-border-wrap">
             <div
-              className={`home-input-inner relative flex flex-col overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
-                }`}
+              className={`home-input-inner relative flex flex-col overflow-hidden ${
+                isDraggingOver ? "ring-2 ring-blue-500" : ""
+              }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -162,7 +163,11 @@ export function HomeChatInput({
                   hideContextFilesPicker
                 />
                 <div className="flex items-center ml-2.5">
-                  <ChatInputControls showContextFilesPicker={false} showTemplatePicker={true} showDesignPicker={true} />
+                  <ChatInputControls
+                    showContextFilesPicker={false}
+                    showTemplatePicker={true}
+                    showDesignPicker={true}
+                  />
                 </div>
 
                 <div className="ml-auto flex items-center gap-1.5">
@@ -192,4 +197,3 @@ export function HomeChatInput({
     </>
   );
 }
-

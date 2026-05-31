@@ -108,14 +108,16 @@ export async function storeDbTimestampAtCurrentVersion({
       );
     } else {
       // Create new version record
-      await getRemoteDb().insert(versions).values({
-        userId: readSettings().userId || "",
-        appId,
-        commitHash: currentCommitHash,
-        neonDbTimestamp: currentTimestamp,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      await getRemoteDb()
+        .insert(versions)
+        .values({
+          userId: readSettings().userId || "",
+          appId,
+          commitHash: currentCommitHash,
+          neonDbTimestamp: currentTimestamp,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       logger.info(
         `Created new version record for commit ${currentCommitHash} with timestamp ${currentTimestamp}`,
       );

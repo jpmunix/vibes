@@ -10,16 +10,16 @@ De notas atómicas a memorias compactadas.
 
 ## Estado Final
 
-| Aspecto | Antes | Después |
-|---|---|---|
-| Tipos | 5 (`fact`, `preference`, `issue`, `episode`, `decision`) | ✅ 3 (`session`, `preference`, `issue`) + legacy compat |
-| Síntesis | Cada mensaje → LLM | ✅ Cada 3 rondas → LLM (batching) |
-| Bootstrap | 10 facts atómicos | ✅ 3 memorias densas tipo `session` |
-| Compactación | ❌ No existía | ✅ Automática: fusionar sessions >30 días |
-| Prompt synthesis | ✅ Ya migrado a v2 | ✅ Ya migrado |
-| Prompt onboarding | Usaba `fact`/`decision` | ✅ Migrado a `session` |
-| Migración DB | ❌ No existía | ✅ Auto-migración legacy→session al startup |
-| UI Labels | Solo legacy types | ✅ `session` como tipo principal en filtros y selector |
+| Aspecto           | Antes                                                    | Después                                                 |
+| ----------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| Tipos             | 5 (`fact`, `preference`, `issue`, `episode`, `decision`) | ✅ 3 (`session`, `preference`, `issue`) + legacy compat |
+| Síntesis          | Cada mensaje → LLM                                       | ✅ Cada 3 rondas → LLM (batching)                       |
+| Bootstrap         | 10 facts atómicos                                        | ✅ 3 memorias densas tipo `session`                     |
+| Compactación      | ❌ No existía                                            | ✅ Automática: fusionar sessions >30 días               |
+| Prompt synthesis  | ✅ Ya migrado a v2                                       | ✅ Ya migrado                                           |
+| Prompt onboarding | Usaba `fact`/`decision`                                  | ✅ Migrado a `session`                                  |
+| Migración DB      | ❌ No existía                                            | ✅ Auto-migración legacy→session al startup             |
+| UI Labels         | Solo legacy types                                        | ✅ `session` como tipo principal en filtros y selector  |
 
 ---
 
@@ -41,13 +41,15 @@ De notas atómicas a memorias compactadas.
 > Completado el 2026-05-06.
 
 ### Diseño implementado
+
 ```
 Ronda 1: usuario pide → IA responde     → bufferChatRound() → buffer
-Ronda 2: usuario ajusta → IA corrige    → bufferChatRound() → buffer  
+Ronda 2: usuario ajusta → IA corrige    → bufferChatRound() → buffer
 Ronda 3: usuario confirma → IA entrega  → bufferChatRound() → ✅ SYNTHESIS (batch de 3)
 ```
 
 ### Cambios
+
 - `memory_extractor.ts`: Nuevo sistema `bufferChatRound()` + `flushChatBuffer()` + `extractMemoriesFromBatch()`
   - Buffer in-memory por chatId (`Map<string, ChatBuffer>`)
   - El batch construye un user message con todas las rondas y el presupuesto de tokens distribuido
@@ -62,12 +64,14 @@ Ronda 3: usuario confirma → IA entrega  → bufferChatRound() → ✅ SYNTHESI
 > Completado el 2026-05-06.
 
 ### Diseño implementado
+
 - Trigger: tras cada batch synthesis exitoso (fire-and-forget)
 - Condición: >20 sessions activas Y ≥5 con `updatedAt` > 30 días
 - LLM genera 1 párrafo denso (100-300 palabras) con las decisiones clave
 - Originales desactivadas (`enabled = 0`), compactada insertada como nueva
 
 ### Cambios
+
 - `memory_lifecycle.ts`: Nueva función `compactOldSessions(appId, userId)`
   - Prompt de compactación dedicado (fusionar, eliminar redundancias, priorizar lo reciente)
   - Key auto-generada: `compacted_sessions_YYYYMMDD`
@@ -79,6 +83,7 @@ Ronda 3: usuario confirma → IA entrega  → bufferChatRound() → ✅ SYNTHESI
 > Completado el 2026-05-06.
 
 ### Cambios
+
 - `memory_bootstrap.ts`: Cap reducido de `operations.slice(0, 10)` → `operations.slice(0, 3)`
 - `prompts/index.ts`: Prompt `memory_onboarding` migrado a tipos v2 (`session`)
 
@@ -89,6 +94,7 @@ Ronda 3: usuario confirma → IA entrega  → bufferChatRound() → ✅ SYNTHESI
 > Completado el 2026-05-06 (integrado en P0).
 
 ### Cambios
+
 - `MemoryPanel.tsx`:
   - `TYPE_LABELS`: `session: "Sesión"` como primer tipo
   - `TYPE_WEIGHTS`: `session: 1.0`

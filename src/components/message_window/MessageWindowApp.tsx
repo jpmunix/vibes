@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { WindowsControls } from "@/components/WindowsControls";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import {
-    createRouter,
-    createRootRoute,
-    createRoute,
-    createMemoryHistory,
-    RouterProvider,
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  createMemoryHistory,
+  RouterProvider,
 } from "@tanstack/react-router";
 
 import { Provider } from "jotai";
@@ -20,37 +24,46 @@ import { ThemeProvider } from "../../contexts/ThemeContext";
 
 const queryClient = new QueryClient();
 
-
 // Route setup
-function createMessageWindowRouter(appId: number, chatId: number, messageId: number) {
-    const rootRoute = createRootRoute({
-        component: () => <MessageWindowContent appId={appId} chatId={chatId} messageId={messageId} />,
-    });
+function createMessageWindowRouter(
+  appId: number,
+  chatId: number,
+  messageId: number,
+) {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <MessageWindowContent
+        appId={appId}
+        chatId={chatId}
+        messageId={messageId}
+      />
+    ),
+  });
 
-    const chatRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: "/chat",
-        component: () => null,
-        validateSearch: () => ({ id: chatId }),
-    });
+  const chatRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/chat",
+    component: () => null,
+    validateSearch: () => ({ id: chatId }),
+  });
 
-    const catchAllRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: "/*",
-        component: () => null,
-    });
+  const catchAllRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/*",
+    component: () => null,
+  });
 
-    const routeTree = rootRoute.addChildren([chatRoute, catchAllRoute]);
+  const routeTree = rootRoute.addChildren([chatRoute, catchAllRoute]);
 
-    const memoryHistory = createMemoryHistory({
-        initialEntries: [`/chat?id=${chatId}`],
-    });
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [`/chat?id=${chatId}`],
+  });
 
-    return createRouter({
-        routeTree,
-        history: memoryHistory,
-        defaultNotFoundComponent: () => null,
-    });
+  return createRouter({
+    routeTree,
+    history: memoryHistory,
+    defaultNotFoundComponent: () => null,
+  });
 }
 
 interface MessageWindowAppProps {
@@ -59,7 +72,15 @@ interface MessageWindowAppProps {
   messageId: number;
 }
 
-function GlobalStateHydrator({ appId, chatId, children }: { appId: number, chatId: number, children: React.ReactNode }) {
+function GlobalStateHydrator({
+  appId,
+  chatId,
+  children,
+}: {
+  appId: number;
+  chatId: number;
+  children: React.ReactNode;
+}) {
   useHydrateAtoms([
     [selectedAppIdAtom, appId],
     [selectedChatIdAtom, chatId],
@@ -67,8 +88,16 @@ function GlobalStateHydrator({ appId, chatId, children }: { appId: number, chatI
   return <>{children}</>;
 }
 
-function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProps) {
-  const { data: chat, isLoading, error } = useQuery({
+function MessageWindowContent({
+  appId,
+  chatId,
+  messageId,
+}: MessageWindowAppProps) {
+  const {
+    data: chat,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["chat", chatId],
     queryFn: () => chatClient.getChat(chatId),
   });
@@ -90,7 +119,9 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
         <div className="flex flex-1 items-center justify-center p-8 text-foreground">
           <div className="text-destructive text-center">
             <p className="font-semibold mb-2">Error al cargar el mensaje</p>
-            <p className="text-sm opacity-80">{String(error || "Chat no encontrado")}</p>
+            <p className="text-sm opacity-80">
+              {String(error || "Chat no encontrado")}
+            </p>
           </div>
         </div>
       );
@@ -101,7 +132,9 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
         <div className="flex flex-1 items-center justify-center p-8 text-foreground">
           <div className="text-muted-foreground text-center">
             <p className="font-semibold mb-2">Mensaje no encontrado</p>
-            <p className="text-sm opacity-80">El mensaje con ID {messageId} no existe en este chat.</p>
+            <p className="text-sm opacity-80">
+              El mensaje con ID {messageId} no existe en este chat.
+            </p>
           </div>
         </div>
       );
@@ -113,14 +146,23 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
         <div className="mb-6 pb-4 border-b w-full">
           <h1 className="text-lg font-medium">Debug de Mensaje</h1>
           <div className="text-xs text-muted-foreground flex gap-4 mt-2">
-            <span>Chat: {chat.title} (ID: {chatId})</span>
+            <span>
+              Chat: {chat.title} (ID: {chatId})
+            </span>
             <span>App ID: {appId}</span>
             <span>Mensaje ID: {messageId}</span>
           </div>
         </div>
         {/* Message - min 80% width */}
-        <div className="chat-container" style={{ minWidth: '80%', width: '80%', margin: '0 auto' }}>
-            <ChatMessage message={message} isLastMessage={false} forceFullMode={true} />
+        <div
+          className="chat-container"
+          style={{ minWidth: "80%", width: "80%", margin: "0 auto" }}
+        >
+          <ChatMessage
+            message={message}
+            isLastMessage={false}
+            forceFullMode={true}
+          />
         </div>
       </div>
     );
@@ -135,10 +177,13 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
     <div className="flex flex-col h-screen bg-background">
       {/* Title Bar - Draggable */}
       <div className="z-50 w-full h-11 bg-sidebar border-b border-border app-region-drag flex items-center shrink-0">
-          <div className="flex-1 text-sm font-medium text-foreground pl-4 truncate">
-            {chat?.title || "Mensaje"}
-          </div>
-          <WindowsControls className="ml-auto pr-1 pointer-events-auto" buttonClassName="h-full" />
+        <div className="flex-1 text-sm font-medium text-foreground pl-4 truncate">
+          {chat?.title || "Mensaje"}
+        </div>
+        <WindowsControls
+          className="ml-auto pr-1 pointer-events-auto"
+          buttonClassName="h-full"
+        />
       </div>
 
       {/* Main Content - Scrollable */}
@@ -148,18 +193,20 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
 }
 
 export function MessageWindowApp(props: MessageWindowAppProps) {
-  const [chatRouter] = useState(() => createMessageWindowRouter(props.appId, props.chatId, props.messageId));
+  const [chatRouter] = useState(() =>
+    createMessageWindowRouter(props.appId, props.chatId, props.messageId),
+  );
 
   return (
     <Provider>
       <GlobalStateHydrator appId={props.appId} chatId={props.chatId}>
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-              <div className="vibes-theme-root h-screen w-screen overflow-hidden bg-background font-sans text-foreground">
-                {/* @ts-ignore */}
-                <RouterProvider router={chatRouter} />
-              </div>
-            </ThemeProvider>
+          <ThemeProvider>
+            <div className="vibes-theme-root h-screen w-screen overflow-hidden bg-background font-sans text-foreground">
+              {/* @ts-ignore */}
+              <RouterProvider router={chatRouter} />
+            </div>
+          </ThemeProvider>
         </QueryClientProvider>
       </GlobalStateHydrator>
     </Provider>

@@ -11,31 +11,28 @@ const DEFAULT_MODEL = "google/gemini-3-flash-preview";
  * Default (`google/gemini-3-flash-preview`) only applies when the setting has never been set.
  */
 export function MemorySelectionModelSelector() {
-    const { settings, updateSettings } = useSettings();
-    const { data: openRouterModels, isLoading } =
-        useLanguageModelsForProvider("openrouter");
+  const { settings, updateSettings } = useSettings();
+  const { data: openRouterModels, isLoading } =
+    useLanguageModelsForProvider("openrouter");
 
-    const currentValue =
-        !settings?.memoriesRouterModelV2 || settings?.memoriesRouterModelV2 === ""
-            ? DEFAULT_MODEL
-            : settings?.memoriesRouterModelV2;
+  const currentValue =
+    !settings?.memoriesRouterModelV2 || settings?.memoriesRouterModelV2 === ""
+      ? DEFAULT_MODEL
+      : settings?.memoriesRouterModelV2;
 
-    const handleChange = async (value: string) => {
-        await updateSettings(
-            { memoriesRouterModelV2: value },
-            { showToast: true },
-        );
-    };
+  const handleChange = async (value: string) => {
+    await updateSettings({ memoriesRouterModelV2: value }, { showToast: true });
+  };
 
-    return (
-        <SettingsModelSelector
-            variant="pill"
-            selectedModel={currentValue}
-            onModelSelect={handleChange}
-            models={openRouterModels || []}
-            loading={isLoading}
-            placeholder="Selecciona un modelo"
-            disableEnabledFilter
-        />
-    );
+  return (
+    <SettingsModelSelector
+      variant="pill"
+      selectedModel={currentValue}
+      onModelSelect={handleChange}
+      models={openRouterModels || []}
+      loading={isLoading}
+      placeholder="Selecciona un modelo"
+      disableEnabledFilter
+    />
+  );
 }

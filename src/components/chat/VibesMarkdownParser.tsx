@@ -1,7 +1,13 @@
 import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { StopCircle, CheckCircle2, Clock, XCircle, FileText } from "@/components/ui/icons";
+import {
+  StopCircle,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  FileText,
+} from "@/components/ui/icons";
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
@@ -25,13 +31,20 @@ import { VibesCodebaseContext } from "./VibesCodebaseContext";
 import { VibesThink } from "./VibesThink";
 import { CodeHighlight } from "./CodeHighlight";
 import { useAtomValue, useSetAtom } from "jotai";
-import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom, isFlowModeAtom } from "@/atoms/chatAtoms";
-import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import {
+  isStreamingByIdAtom,
+  selectedChatIdAtom,
+  isZenModeAtom,
+  isFlowModeAtom,
+} from "@/atoms/chatAtoms";
+import {
+  artifactsSidebarOpenAtom,
+  selectedArtifactPathAtom,
+} from "@/atoms/uiAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { FilesChangedBar } from "./FilesChangedBar";
 import { VibesProblemSummary } from "./VibesProblemSummary";
-
 
 import { VibesWebCrawl } from "./VibesWebCrawl";
 import { VibesCodeSearchResult } from "./VibesCodeSearchResult";
@@ -45,7 +58,13 @@ import { VibesStatus } from "./VibesStatus";
 import { SuggestedAction } from "@/lib/schemas";
 import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
-import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
+import {
+  CompactToolBadge,
+  shouldCompact,
+  getToolDetail,
+  resolveToolMeta,
+  type ToolBadgeState,
+} from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
 import { FlowThinkBlock } from "./FlowThinkBlock";
@@ -69,7 +88,6 @@ function cleanVibesPath(p: string): string {
   return p;
 }
 
-
 /** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */
 const TokenUsageBadge: React.FC<{
   icon: React.ElementType;
@@ -86,9 +104,7 @@ const TokenUsageBadge: React.FC<{
         className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 hover:bg-accent text-xs mb-4 cursor-pointer transition-colors"
       >
         <Icon size={12} className={color} />
-        {detail && (
-          <span className="text-muted-foreground">{detail}</span>
-        )}
+        {detail && <span className="text-muted-foreground">{detail}</span>}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
@@ -96,7 +112,11 @@ const TokenUsageBadge: React.FC<{
             <DialogTitle className={`flex items-center gap-2 ${color}`}>
               <Icon size={20} />
               {label}
-              {detail && <span className="text-muted-foreground font-normal typo-body ml-1">{detail}</span>}
+              {detail && (
+                <span className="text-muted-foreground font-normal typo-body ml-1">
+                  {detail}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2">{modalContent}</div>
@@ -210,8 +230,10 @@ const customBlockquote = ({ children, ...props }: any) => {
 // Extract text from React children for content detection
 function extractTextFromChildren(children: any): string {
   if (typeof children === "string") return children;
-  if (Array.isArray(children)) return children.map(extractTextFromChildren).join("");
-  if (children?.props?.children) return extractTextFromChildren(children.props.children);
+  if (Array.isArray(children))
+    return children.map(extractTextFromChildren).join("");
+  if (children?.props?.children)
+    return extractTextFromChildren(children.props.children);
   return "";
 }
 
@@ -221,7 +243,10 @@ function stripZwsMarker(children: any): any {
   if (Array.isArray(children)) return children.map(stripZwsMarker);
   if (children?.props?.children) {
     const { children: innerChildren, ...rest } = children.props;
-    return { ...children, props: { ...rest, children: stripZwsMarker(innerChildren) } };
+    return {
+      ...children,
+      props: { ...rest, children: stripZwsMarker(innerChildren) },
+    };
   }
   return children;
 }
@@ -232,9 +257,16 @@ export const MARKDOWN_COMPONENTS = {
   blockquote: customBlockquote,
 };
 
-export const VanillaMarkdownParser = React.memo(function VanillaMarkdownParser({ content }: { content: string }) {
+export const VanillaMarkdownParser = React.memo(function VanillaMarkdownParser({
+  content,
+}: {
+  content: string;
+}) {
   return (
-    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
+    <ReactMarkdown
+      remarkPlugins={REMARK_PLUGINS}
+      components={MARKDOWN_COMPONENTS}
+    >
       {content}
     </ReactMarkdown>
   );
@@ -261,7 +293,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const chatId = forceChatId ?? selectedChatId;
   const isStreamingMap = useAtomValue(isStreamingByIdAtom);
-  const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
+  const isStreaming = forceStreaming ?? isStreamingMap.get(chatId!) ?? false;
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const isFlowModeAtomValue = useAtomValue(isFlowModeAtom);
@@ -314,7 +346,6 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
   // Extract error messages and track positions
   const { errorMessages, lastErrorIndex, errorCount } = useMemo(() => {
-
     const errors: string[] = [];
     let lastIndex = -1;
     let count = 0;
@@ -363,7 +394,9 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0) {
         // Token-usage badges are no longer rendered inline — they live in ChatMessage footer.
-        const groupableBadges = badgeGroup.filter(b => b.tag !== "vibes-token-usage");
+        const groupableBadges = badgeGroup.filter(
+          (b) => b.tag !== "vibes-token-usage",
+        );
 
         const currentGroupIndex = groupIndex;
         groupIndex++;
@@ -377,7 +410,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                 isStreaming={isStreaming}
                 isFirstGroup={currentGroupIndex === 0}
               />
-            </div>
+            </div>,
           );
         }
 
@@ -411,14 +444,20 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             content={merged}
             markdownComponents={MARKDOWN_COMPONENTS}
             isStreaming={isActivelyStreaming}
-          />
+          />,
         );
         flowThinkBuffer = [];
       }
     };
 
     // Tags that produce visible output in zen/flow mode
-    const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled", "vibes-git-commit", "vibes-files-changed"]);
+    const ZEN_ALLOWED_TAGS = new Set([
+      "vibes-output",
+      "vibes-ask-user",
+      "vibes-cancelled",
+      "vibes-git-commit",
+      "vibes-files-changed",
+    ]);
 
     // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
     // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
@@ -432,7 +471,8 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         if (next.type === "custom-tag") {
           const nextTag = next.tagInfo.tag;
           // Think tag with content → yes, merge
-          if (THINK_TAGS.has(nextTag) && next.tagInfo.content?.trim()) return true;
+          if (THINK_TAGS.has(nextTag) && next.tagInfo.content?.trim())
+            return true;
           // Visible zen tag (output, ask-user) → breaks the run
           if (ZEN_ALLOWED_TAGS.has(nextTag)) return false;
           // Everything else (tool tags) is invisible in flow mode → skip over
@@ -446,12 +486,23 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       if (piece.type === "markdown") {
         const isWhitespaceOnly = !piece.content || !piece.content.trim();
         // Only flush if this is real markdown content AND we're not between compactable tags
-        if (!isZenMode && isWhitespaceOnly && badgeGroup.length > 0 && isNextPieceCompactable(index)) {
+        if (
+          !isZenMode &&
+          isWhitespaceOnly &&
+          badgeGroup.length > 0 &&
+          isNextPieceCompactable(index)
+        ) {
           // Skip whitespace between compactable tags — don't break the row
           return;
         }
         // In flow mode, skip whitespace between consecutive think tags (keep them merged)
-        if (isFlowMode && isZenMode && isWhitespaceOnly && flowThinkBuffer.length > 0 && isNextPieceFlowThink(index)) {
+        if (
+          isFlowMode &&
+          isZenMode &&
+          isWhitespaceOnly &&
+          flowThinkBuffer.length > 0 &&
+          isNextPieceFlowThink(index)
+        ) {
           return;
         }
         // Real prose content: flush any pending flow think buffer first
@@ -468,7 +519,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               >
                 {piece.content}
               </ReactMarkdown>
-            </React.Fragment>
+            </React.Fragment>,
           );
         }
       } else {
@@ -488,9 +539,13 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             elements.push(
               <React.Fragment key={index}>
                 {renderCustomTag(piece.tagInfo, { isStreaming })}
-              </React.Fragment>
+              </React.Fragment>,
             );
-          } else if (isFlowMode && isThinkTag && piece.tagInfo.content?.trim()) {
+          } else if (
+            isFlowMode &&
+            isThinkTag &&
+            piece.tagInfo.content?.trim()
+          ) {
             // Flow mode: accumulate consecutive think tags into the buffer
             flowThinkBuffer.push(piece.tagInfo.content);
             // If the next piece is NOT another think tag, flush now —
@@ -498,17 +553,25 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             // If we're just at the end of the parsed content during streaming,
             // let the final flush handle it (it knows about streaming state).
             if (!isNextPieceFlowThink(index)) {
-              const hasVisibleContentAfter = contentPieces.slice(index + 1).some((p) => {
-                if (p.type === "markdown") return !!(p.content && p.content.trim());
-                if (p.type === "custom-tag") return ZEN_ALLOWED_TAGS.has(p.tagInfo.tag);
-                return false;
-              });
+              const hasVisibleContentAfter = contentPieces
+                .slice(index + 1)
+                .some((p) => {
+                  if (p.type === "markdown")
+                    return !!(p.content && p.content.trim());
+                  if (p.type === "custom-tag")
+                    return ZEN_ALLOWED_TAGS.has(p.tagInfo.tag);
+                  return false;
+                });
               if (hasVisibleContentAfter || !isStreaming) {
                 flushFlowThinkBuffer(); // non-think content follows → think block is done
               }
               // else: streaming and nothing visible after → let final flush handle it
             }
-          } else if (isFlowMode && shouldCompact(tag) && tag !== "vibes-token-usage") {
+          } else if (
+            isFlowMode &&
+            shouldCompact(tag) &&
+            tag !== "vibes-token-usage"
+          ) {
             // Enhanced Flow Mode: Render a quiet inline text-only status line
             flushFlowThinkBuffer();
             elements.push(
@@ -517,8 +580,10 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                 tag={tag}
                 attributes={attributes}
                 state={state}
-                originalContent={renderModalContent(piece.tagInfo, { isStreaming })}
-              />
+                originalContent={renderModalContent(piece.tagInfo, {
+                  isStreaming,
+                })}
+              />,
             );
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
@@ -537,7 +602,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                   errorMessages={errorMessages}
                   chatId={chatId}
                 />
-              </div>
+              </div>,
             );
           }
           return; // Skip full-mode rendering below
@@ -546,18 +611,25 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         // ── Full Mode (existing behavior) ──
         if (shouldCompact(tag)) {
           const detail = getToolDetail(tag, attributes);
-          const originalContent = renderModalContent(piece.tagInfo, { isStreaming });
+          const originalContent = renderModalContent(piece.tagInfo, {
+            isStreaming,
+          });
           const badgeState: ToolBadgeState = state;
 
           // During streaming, keep the LAST think tag expanded as a LiveThinkingPanel
-          if (isThinkTag && isStreaming && index === lastThinkIndex && piece.tagInfo.content) {
+          if (
+            isThinkTag &&
+            isStreaming &&
+            index === lastThinkIndex &&
+            piece.tagInfo.content
+          ) {
             flushBadgeGroup();
             elements.push(
               <LiveThinkingPanel
                 key={`live-think-${index}`}
                 content={piece.tagInfo.content}
                 isActive={inProgress}
-              />
+              />,
             );
           } else if (badgeState === "pending") {
             // Other pending tags: skip — the streaming loader handles in-progress indication
@@ -577,7 +649,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           elements.push(
             <React.Fragment key={index}>
               {renderCustomTag(piece.tagInfo, { isStreaming })}
-            </React.Fragment>
+            </React.Fragment>,
           );
         }
 
@@ -595,7 +667,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                 errorMessages={errorMessages}
                 chatId={chatId}
               />
-            </div>
+            </div>,
           );
         }
       }
@@ -612,12 +684,21 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         if (piece.type === "markdown") {
           if (piece.content) {
             // Match any .md file inside .vibes/ (not just plan/walkthrough)
-            const matches = Array.from(piece.content.matchAll(/\.?vibes\/[\w\-.]+\.md/g) || []).map(m => cleanVibesPath(m[0]));
+            const matches = Array.from(
+              piece.content.matchAll(/\.?vibes\/[\w\-.]+\.md/g) || [],
+            ).map((m) => cleanVibesPath(m[0]));
             for (const m of matches) vibesMatchSet.add(m);
           }
         } else if (piece.type === "custom-tag") {
           const tag = piece.tagInfo.tag;
-          if (["vibes-write", "vibes-patch", "vibes-edit", "vibes-search-replace"].includes(tag)) {
+          if (
+            [
+              "vibes-write",
+              "vibes-patch",
+              "vibes-edit",
+              "vibes-search-replace",
+            ].includes(tag)
+          ) {
             const pathAttr = piece.tagInfo.attributes.path;
             if (pathAttr && /\.?vibes\/[\w\-.]+\.md/.test(pathAttr)) {
               vibesMatchSet.add(cleanVibesPath(pathAttr));
@@ -630,14 +711,22 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
       if (pathsToRender.length > 0) {
         elements.push(
-          <div key="artifact-buttons" className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2">
+          <div
+            key="artifact-buttons"
+            className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2"
+          >
             {pathsToRender.map((artifactPath) => {
               // Derive a human-friendly label from the filename prefix
               const basename = artifactPath.split("/").pop() || artifactPath;
               let label = "Ver documento";
               if (/^plan[-_]/i.test(basename)) label = "Ver plan";
-              else if (/^walk(?:through)?[-_]/i.test(basename)) label = "Ver cambios";
-              else if (/^summary[-_]/i.test(basename) || /^resumen[-_]/i.test(basename)) label = "Ver resumen";
+              else if (/^walk(?:through)?[-_]/i.test(basename))
+                label = "Ver cambios";
+              else if (
+                /^summary[-_]/i.test(basename) ||
+                /^resumen[-_]/i.test(basename)
+              )
+                label = "Ver resumen";
 
               return (
                 <button
@@ -655,7 +744,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                 </button>
               );
             })}
-          </div>
+          </div>,
         );
       }
     }
@@ -1055,7 +1144,6 @@ function renderCustomTag(
         </VibesCodebaseContext>
       );
 
-
     case "vibes-output":
       return (
         <VibesOutput
@@ -1201,10 +1289,7 @@ function renderCustomTag(
 
     case "vibes-git-commit":
       return (
-        <VibesGitCommit
-          action={attributes.action}
-          files={attributes.files}
-        >
+        <VibesGitCommit action={attributes.action} files={attributes.files}>
           {content}
         </VibesGitCommit>
       );
@@ -1241,23 +1326,34 @@ function renderCustomTag(
       const count = attributes.count || "";
 
       const headerLabel = cmd || url || processId || tag;
-      const statusColor = status === "success" || status === "ok" || status === "ready"
-        ? "text-green-500"
-        : status === "error" || status === "crashed"
-          ? "text-red-500"
-          : status === "timeout"
-            ? "text-amber-500"
-            : "text-muted-foreground";
+      const statusColor =
+        status === "success" || status === "ok" || status === "ready"
+          ? "text-green-500"
+          : status === "error" || status === "crashed"
+            ? "text-red-500"
+            : status === "timeout"
+              ? "text-amber-500"
+              : "text-muted-foreground";
 
       return (
         <div className="my-2 rounded-lg border border-border bg-muted/30 overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 text-xs font-mono border-b border-border">
             <span className="text-muted-foreground">$</span>
             <span className="font-medium">{headerLabel}</span>
-            {status && <span className={`ml-auto font-medium ${statusColor}`}>{status}</span>}
-            {exitCode && <span className="text-muted-foreground">exit: {exitCode}</span>}
-            {duration && <span className="text-muted-foreground">{duration}</span>}
-            {count && <span className="text-muted-foreground">{count} processes</span>}
+            {status && (
+              <span className={`ml-auto font-medium ${statusColor}`}>
+                {status}
+              </span>
+            )}
+            {exitCode && (
+              <span className="text-muted-foreground">exit: {exitCode}</span>
+            )}
+            {duration && (
+              <span className="text-muted-foreground">{duration}</span>
+            )}
+            {count && (
+              <span className="text-muted-foreground">{count} processes</span>
+            )}
           </div>
           {content && (
             <div className="px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
@@ -1300,7 +1396,10 @@ function renderCustomTag(
             marginTop: "8px",
           }}
         >
-          <StopCircle size={13} style={{ color: "var(--muted-foreground)", opacity: 0.7 }} />
+          <StopCircle
+            size={13}
+            style={{ color: "var(--muted-foreground)", opacity: 0.7 }}
+          />
           <span
             style={{
               fontSize: "12px",
@@ -1361,18 +1460,23 @@ function renderModalContent(
             <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
               {path}
               {retryCount && Number(retryCount) > 1 && (
-                <span className="ml-2 italic text-amber-500">(reintento {Number(retryCount) - 1})</span>
+                <span className="ml-2 italic text-amber-500">
+                  (reintento {Number(retryCount) - 1})
+                </span>
               )}
             </div>
           )}
           {description && (
             <div className="typo-caption">
-              <span className="font-medium">Summary: </span>{description}
+              <span className="font-medium">Summary: </span>
+              {description}
             </div>
           )}
           {content && (
             <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-typescript">{content}</CodeHighlight>
+              <CodeHighlight className="language-typescript">
+                {content}
+              </CodeHighlight>
             </div>
           )}
         </div>
@@ -1385,7 +1489,8 @@ function renderModalContent(
       const startLine = attributes.start_line;
       const endLine = attributes.end_line;
       let lineRangeText = "";
-      if (startLine && endLine) lineRangeText = `líneas ${startLine}-${endLine}`;
+      if (startLine && endLine)
+        lineRangeText = `líneas ${startLine}-${endLine}`;
       else if (startLine) lineRangeText = `desde línea ${startLine}`;
       else if (endLine) lineRangeText = `hasta línea ${endLine}`;
 
@@ -1405,7 +1510,11 @@ function renderModalContent(
           {path && (
             <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
               {path}
-              {lineRangeText && <span className="ml-2 text-muted-foreground">({lineRangeText})</span>}
+              {lineRangeText && (
+                <span className="ml-2 text-muted-foreground">
+                  ({lineRangeText})
+                </span>
+              )}
             </div>
           )}
           {content && (
@@ -1462,13 +1571,19 @@ function renderModalContent(
       let description = `"${query}"`;
       if (includePattern) description += ` in ${includePattern}`;
       if (excludePattern) description += ` excluding ${excludePattern}`;
-      const resultSummary = count ? `${count} match${count === "1" ? "" : "es"}` : "";
+      const resultSummary = count
+        ? `${count} match${count === "1" ? "" : "es"}`
+        : "";
 
       return (
         <div className="space-y-2">
           <div className="typo-caption">
             {description}
-            {resultSummary && <span className="ml-2 text-muted-foreground/70">({resultSummary})</span>}
+            {resultSummary && (
+              <span className="ml-2 text-muted-foreground/70">
+                ({resultSummary})
+              </span>
+            )}
           </div>
           {content && (
             <div className="text-xs overflow-hidden">
@@ -1484,9 +1599,13 @@ function renderModalContent(
       const query = attributes.query || "";
       return (
         <div className="space-y-2">
-          {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
+          {query && (
+            <div className="text-sm italic text-muted-foreground">{query}</div>
+          )}
           {content && (
-            <div className="text-xs font-mono whitespace-pre-wrap break-all">{content}</div>
+            <div className="text-xs font-mono whitespace-pre-wrap break-all">
+              {content}
+            </div>
           )}
         </div>
       );
@@ -1499,7 +1618,9 @@ function renderModalContent(
         <div className="space-y-2">
           {content && (
             <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-markdown">{content}</CodeHighlight>
+              <CodeHighlight className="language-markdown">
+                {content}
+              </CodeHighlight>
             </div>
           )}
         </div>
@@ -1508,24 +1629,38 @@ function renderModalContent(
 
     // === Code search result ===
     case "vibes-code-search-result": {
-      const files = content ? content.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("<") && !l.startsWith(">")) : [];
+      const files = content
+        ? content
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l && !l.startsWith("<") && !l.startsWith(">"))
+        : [];
       return (
         <div className="space-y-2">
           {files.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {files.map((file, i) => {
                 const fileName = file.split("/").pop() || file;
-                const pathPart = file.substring(0, file.length - fileName.length) || "";
+                const pathPart =
+                  file.substring(0, file.length - fileName.length) || "";
                 return (
                   <div key={i} className="px-2 py-1 bg-muted rounded-lg">
                     <div className="text-sm font-medium">{fileName}</div>
-                    {pathPart && <div className="text-xs text-muted-foreground">{pathPart}</div>}
+                    {pathPart && (
+                      <div className="text-xs text-muted-foreground">
+                        {pathPart}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           ) : (
-            content && <div className="text-xs font-mono whitespace-pre-wrap break-all">{content}</div>
+            content && (
+              <div className="text-xs font-mono whitespace-pre-wrap break-all">
+                {content}
+              </div>
+            )
           )}
         </div>
       );
@@ -1539,7 +1674,8 @@ function renderModalContent(
         <div className="space-y-2">
           {directory && (
             <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
-              {directory}{isRecursive ? " (recursive)" : ""}
+              {directory}
+              {isRecursive ? " (recursive)" : ""}
             </div>
           )}
           {content && (
@@ -1556,7 +1692,9 @@ function renderModalContent(
       const query = attributes.query || content || "";
       return (
         <div className="space-y-2">
-          {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
+          {query && (
+            <div className="text-sm italic text-muted-foreground">{query}</div>
+          )}
           {content && content !== query && (
             <div className="typo-caption">{content}</div>
           )}
@@ -1578,11 +1716,7 @@ function renderModalContent(
 
     // === Web crawl ===
     case "vibes-web-crawl":
-      return (
-        <div className="typo-caption">
-          {content || ""}
-        </div>
-      );
+      return <div className="typo-caption">{content || ""}</div>;
 
     // === Add dependency ===
     case "vibes-add-dependency": {
@@ -1592,7 +1726,10 @@ function renderModalContent(
           {packages.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {packages.map((p) => (
-                <span key={p} className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                <span
+                  key={p}
+                  className="text-sm font-mono bg-muted px-2 py-1 rounded"
+                >
                   {p}
                 </span>
               ))}
@@ -1600,7 +1737,9 @@ function renderModalContent(
           )}
           {content && (
             <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-shell">{content}</CodeHighlight>
+              <CodeHighlight className="language-shell">
+                {content}
+              </CodeHighlight>
             </div>
           )}
         </div>
@@ -1642,7 +1781,8 @@ function renderModalContent(
         <div className="space-y-2">
           {(logCount || filterDesc) && (
             <div className="typo-caption">
-              {logCount ? `${logCount} logs` : "Logs"}{filterDesc}
+              {logCount ? `${logCount} logs` : "Logs"}
+              {filterDesc}
             </div>
           )}
           {content && (
@@ -1656,18 +1796,26 @@ function renderModalContent(
 
     // === Codebase context ===
     case "vibes-codebase-context": {
-      const files = (attributes.files || "").split(",").map(f => f.trim()).filter(Boolean);
+      const files = (attributes.files || "")
+        .split(",")
+        .map((f) => f.trim())
+        .filter(Boolean);
       return (
         <div className="space-y-2">
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {files.map((file, i) => {
                 const fileName = file.split("/").pop() || file;
-                const pathPart = file.substring(0, file.length - fileName.length) || "";
+                const pathPart =
+                  file.substring(0, file.length - fileName.length) || "";
                 return (
                   <div key={i} className="px-2 py-1 bg-muted rounded-lg">
                     <div className="text-sm font-medium">{fileName}</div>
-                    {pathPart && <div className="text-xs text-muted-foreground">{pathPart}</div>}
+                    {pathPart && (
+                      <div className="text-xs text-muted-foreground">
+                        {pathPart}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1692,9 +1840,7 @@ function renderModalContent(
       const table = attributes.table || "";
       return (
         <div className="space-y-2">
-          {table && (
-            <div className="typo-caption font-medium">{table}</div>
-          )}
+          {table && <div className="typo-caption font-medium">{table}</div>}
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
               {content}
@@ -1773,7 +1919,14 @@ function renderModalContent(
       const status = attributes.status || "";
       const exitCode = attributes["exit-code"] || "";
       const duration = attributes.duration || "";
-      const statusIcon = status === "success" ? <CheckCircle2 size={12} className="text-green-500" /> : status === "timeout" ? <Clock size={12} className="text-amber-500" /> : status === "error" ? <XCircle size={12} className="text-red-500" /> : null;
+      const statusIcon =
+        status === "success" ? (
+          <CheckCircle2 size={12} className="text-green-500" />
+        ) : status === "timeout" ? (
+          <Clock size={12} className="text-amber-500" />
+        ) : status === "error" ? (
+          <XCircle size={12} className="text-red-500" />
+        ) : null;
 
       return (
         <div className="space-y-2">
@@ -1782,8 +1935,12 @@ function renderModalContent(
               <span>$</span>
               <span className="font-medium">{cmd}</span>
               {statusIcon && <span className="ml-auto">{statusIcon}</span>}
-              {exitCode && <span className="text-muted-foreground">exit: {exitCode}</span>}
-              {duration && <span className="text-muted-foreground">{duration}</span>}
+              {exitCode && (
+                <span className="text-muted-foreground">exit: {exitCode}</span>
+              )}
+              {duration && (
+                <span className="text-muted-foreground">{duration}</span>
+              )}
             </div>
           )}
           {content && (
@@ -1804,11 +1961,18 @@ function renderModalContent(
       return (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
-            {cmd && <><span>$</span><span className="font-medium">{cmd}</span></>}
+            {cmd && (
+              <>
+                <span>$</span>
+                <span className="font-medium">{cmd}</span>
+              </>
+            )}
             {processId && <span className="font-medium">{processId}</span>}
             {status && <span className="ml-auto font-medium">{status}</span>}
           </div>
-          {content && <div className="typo-caption whitespace-pre-wrap">{content}</div>}
+          {content && (
+            <div className="typo-caption whitespace-pre-wrap">{content}</div>
+          )}
         </div>
       );
     }
@@ -1833,18 +1997,27 @@ function renderModalContent(
       const httpStatus = attributes["http-status"] || "";
       const attempts = attributes.attempts || "";
       const responseTime = attributes["response-time"] || "";
-      const statusIcon = status === "ok" ? <CheckCircle2 size={12} className="text-green-500" /> : <Clock size={12} className="text-amber-500" />;
+      const statusIcon =
+        status === "ok" ? (
+          <CheckCircle2 size={12} className="text-green-500" />
+        ) : (
+          <Clock size={12} className="text-amber-500" />
+        );
 
       return (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
             <span>{statusIcon}</span>
             <span className="font-medium">{url}</span>
-            {httpStatus && <span className="text-green-500">HTTP {httpStatus}</span>}
+            {httpStatus && (
+              <span className="text-green-500">HTTP {httpStatus}</span>
+            )}
             {attempts && <span>{attempts} intentos</span>}
             {responseTime && <span>{responseTime}</span>}
           </div>
-          {content && <div className="typo-caption whitespace-pre-wrap">{content}</div>}
+          {content && (
+            <div className="typo-caption whitespace-pre-wrap">{content}</div>
+          )}
         </div>
       );
     }
@@ -1876,16 +2049,18 @@ function renderModalContent(
       // Path 1: direct cost from OpenCode (ground truth)
       const directCostStr = attributes["cost"];
       const directCost = directCostStr ? parseFloat(directCostStr) : null;
-      const hasPricing = directCost !== null || priceIn > 0 || priceOut > 0 || webSearches > 0;
+      const hasPricing =
+        directCost !== null || priceIn > 0 || priceOut > 0 || webSearches > 0;
 
       // Path 2: legacy calculation (used only when no direct cost is available)
       const costInput = (inp - cached) * priceIn;
       const costCached = cached * priceIn * 0.5;
       const costOutput = out * priceOut;
       const costWebSearches = webSearches * 0.02; // Exa search cost is $0.02
-      const costTotal = directCost !== null
-        ? directCost
-        : costInput + costCached + costOutput + costWebSearches;
+      const costTotal =
+        directCost !== null
+          ? directCost
+          : costInput + costCached + costOutput + costWebSearches;
 
       const fmtCost = (c: number) => {
         if (c < 0.001) return `$${c.toFixed(6)}`;
@@ -1897,36 +2072,82 @@ function renderModalContent(
         <div className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-blue-100 dark:bg-blue-500/10 rounded-lg p-3">
-              <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Input</div>
-              <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{inp.toLocaleString()}</div>
-              {directCost === null && priceIn > 0 && <div className="text-xs text-blue-500/70 dark:text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
+              <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+                Input
+              </div>
+              <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                {inp.toLocaleString()}
+              </div>
+              {directCost === null && priceIn > 0 && (
+                <div className="text-xs text-blue-500/70 dark:text-blue-400/70 mt-1">
+                  {fmtCost(costInput)}
+                </div>
+              )}
             </div>
             <div className="bg-amber-100 dark:bg-amber-500/10 rounded-lg p-3">
-              <div className="text-xs text-amber-600 dark:text-amber-400 mb-1">Output</div>
-              <div className="text-lg font-bold text-amber-700 dark:text-amber-300">{out.toLocaleString()}</div>
-              {directCost === null && priceOut > 0 && <div className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
+              <div className="text-xs text-amber-600 dark:text-amber-400 mb-1">
+                Output
+              </div>
+              <div className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                {out.toLocaleString()}
+              </div>
+              {directCost === null && priceOut > 0 && (
+                <div className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-1">
+                  {fmtCost(costOutput)}
+                </div>
+              )}
             </div>
           </div>
           {cached > 0 && (
             <div className="bg-emerald-100 dark:bg-emerald-500/10 rounded-lg p-3">
-              <div className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Cached Input</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{cached.toLocaleString()}</span>
-                <span className="text-xs text-emerald-500/70 dark:text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">
+                Cached Input
               </div>
-              {directCost === null && priceIn > 0 && <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                  {cached.toLocaleString()}
+                </span>
+                <span className="text-xs text-emerald-500/70 dark:text-emerald-400/70">
+                  ({Math.round((cached / inp) * 100)}% del input)
+                </span>
+              </div>
+              {directCost === null && priceIn > 0 && (
+                <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">
+                  {fmtCost(costCached)} (50% descuento)
+                </div>
+              )}
             </div>
           )}
           {webSearches > 0 && (
             <div className="bg-fuchsia-100 dark:bg-fuchsia-500/10 rounded-lg p-3">
-              <div className="text-xs text-fuchsia-600 dark:text-fuchsia-400 mb-1">Búsquedas Web</div>
-              <div className="text-lg font-bold text-fuchsia-700 dark:text-fuchsia-300">{webSearches.toLocaleString()}</div>
-              {directCost === null && <div className="text-xs text-fuchsia-500/70 dark:text-fuchsia-400/70 mt-1">{fmtCost(costWebSearches)} ($0.02 por búsqueda)</div>}
+              <div className="text-xs text-fuchsia-600 dark:text-fuchsia-400 mb-1">
+                Búsquedas Web
+              </div>
+              <div className="text-lg font-bold text-fuchsia-700 dark:text-fuchsia-300">
+                {webSearches.toLocaleString()}
+              </div>
+              {directCost === null && (
+                <div className="text-xs text-fuchsia-500/70 dark:text-fuchsia-400/70 mt-1">
+                  {fmtCost(costWebSearches)} ($0.02 por búsqueda)
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
-            <span>Total: <strong className="text-foreground">{total.toLocaleString()} tokens</strong></span>
-            {hasPricing && <span>Coste: <strong className="text-amber-600 dark:text-yellow-400">{fmtCost(costTotal)}</strong></span>}
+            <span>
+              Total:{" "}
+              <strong className="text-foreground">
+                {total.toLocaleString()} tokens
+              </strong>
+            </span>
+            {hasPricing && (
+              <span>
+                Coste:{" "}
+                <strong className="text-amber-600 dark:text-yellow-400">
+                  {fmtCost(costTotal)}
+                </strong>
+              </span>
+            )}
           </div>
           {hasPricing && (
             <div className="text-xs text-muted-foreground/60 text-center mt-3">

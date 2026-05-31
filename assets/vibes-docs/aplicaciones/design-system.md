@@ -25,6 +25,7 @@ Puedes pegar directamente el contenido de un archivo de diseño personalizado.
 Sube una **captura de pantalla** de un diseño que te guste y la IA analizará los colores, tipografías, espaciado y componentes para generar automáticamente un DESIGN.md basado en la imagen.
 
 ![Selector de diseño](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del selector de diseño mostrando las opciones" -->
 
 ## Descargar el DESIGN.md

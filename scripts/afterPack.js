@@ -16,11 +16,15 @@ exports.default = async function afterPack(context) {
   }
 
   if (electronPlatformName === "darwin") {
-    console.log("[afterPack] ✅ Darwin build — no native dependency fixes needed");
+    console.log(
+      "[afterPack] ✅ Darwin build — no native dependency fixes needed",
+    );
     return;
   }
 
-  console.log(`[afterPack] Skipping platform-specific fixes for ${electronPlatformName}`);
+  console.log(
+    `[afterPack] Skipping platform-specific fixes for ${electronPlatformName}`,
+  );
 };
 
 /**

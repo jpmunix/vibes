@@ -29,41 +29,41 @@ function getSvgPathFromStroke(stroke: number[][]) {
 type Point = [number, number];
 type Shape =
   | {
-    id: string;
-    type: "line";
-    points: Point[];
-    color: string;
-    size: number;
-    isComplete: boolean;
-  }
+      id: string;
+      type: "line";
+      points: Point[];
+      color: string;
+      size: number;
+      isComplete: boolean;
+    }
   | {
-    id: string;
-    type: "rect";
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    color: string;
-    strokeWidth: number;
-    isComplete: boolean;
-  }
+      id: string;
+      type: "rect";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+      strokeWidth: number;
+      isComplete: boolean;
+    }
   | {
-    id: string;
-    type: "text";
-    x: number;
-    y: number;
-    text: string;
-    fontSize: number;
-    color: string;
-  }
+      id: string;
+      type: "text";
+      x: number;
+      y: number;
+      text: string;
+      fontSize: number;
+      color: string;
+    }
   | {
-    id: string;
-    type: "arrow";
-    points: [number, number, number, number];
-    color: string;
-    strokeWidth: number;
-    isComplete: boolean;
-  };
+      id: string;
+      type: "arrow";
+      points: [number, number, number, number];
+      color: string;
+      strokeWidth: number;
+      isComplete: boolean;
+    };
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;
@@ -162,7 +162,11 @@ export const AnnotationCanvas = ({
                   onTap={() => tool === "select" && onShapeSelect(shape.id)}
                   onDragEnd={(e) => {
                     const node = e.target;
-                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
+                    onShapeDragEnd(
+                      shape.id,
+                      node.x() / scale,
+                      node.y() / scale,
+                    );
                   }}
                 />
               );
@@ -208,7 +212,11 @@ export const AnnotationCanvas = ({
                   onTap={() => tool === "select" && onShapeSelect(shape.id)}
                   onDragEnd={(e) => {
                     const node = e.target;
-                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
+                    onShapeDragEnd(
+                      shape.id,
+                      node.x() / scale,
+                      node.y() / scale,
+                    );
                   }}
                 />
               );

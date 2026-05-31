@@ -28,7 +28,9 @@ let designListCache: DesignListCache | null = null;
  * Parses the output of `npx getdesign list`.
  * Each line has the format: "brand - Description text here."
  */
-function parseDesignList(stdout: string): { id: string; description: string }[] {
+function parseDesignList(
+  stdout: string,
+): { id: string; description: string }[] {
   return stdout
     .split("\n")
     .map((line) => line.trim())
@@ -45,14 +47,19 @@ function parseDesignList(stdout: string): { id: string; description: string }[] 
 /**
  * Writes DESIGN.md content to docs/DESIGN.md inside an app folder.
  */
-async function writeDesignToApp(appPath: string, content: string): Promise<void> {
+async function writeDesignToApp(
+  appPath: string,
+  content: string,
+): Promise<void> {
   const fullAppPath = getVibesAppPath(appPath);
   const docsDir = path.join(fullAppPath, "docs");
   const designMdPath = path.join(docsDir, "DESIGN.md");
 
   await fsPromises.mkdir(docsDir, { recursive: true });
   await fsPromises.writeFile(designMdPath, content, "utf-8");
-  logger.info(`[Design] Wrote DESIGN.md to ${designMdPath} (${content.length} chars)`);
+  logger.info(
+    `[Design] Wrote DESIGN.md to ${designMdPath} (${content.length} chars)`,
+  );
   // DESIGN.md is NOT registered in opencode.json — it's injected into SPECS.md
   // only on the first message of a chat to avoid bloating every subsequent request.
 }
@@ -61,7 +68,10 @@ async function writeDesignToApp(appPath: string, content: string): Promise<void>
  * Ensures `docs/DESIGN.md` is listed in the project's `opencode.json` `instructions` array.
  * Creates the file if it doesn't exist; merges if it does.
  */
-export async function patchOpencodeJsonInstructions(projectDir: string, instructionPath: string): Promise<void> {
+export async function patchOpencodeJsonInstructions(
+  projectDir: string,
+  instructionPath: string,
+): Promise<void> {
   const ocJsonPath = path.join(projectDir, "opencode.json");
 
   let config: Record<string, any> = {};
@@ -82,8 +92,14 @@ export async function patchOpencodeJsonInstructions(projectDir: string, instruct
     config.instructions.push(instructionPath);
   }
 
-  await fsPromises.writeFile(ocJsonPath, JSON.stringify(config, null, 2), "utf-8");
-  logger.info(`[Design] Updated opencode.json — instructions: ${JSON.stringify(config.instructions)}`);
+  await fsPromises.writeFile(
+    ocJsonPath,
+    JSON.stringify(config, null, 2),
+    "utf-8",
+  );
+  logger.info(
+    `[Design] Updated opencode.json — instructions: ${JSON.stringify(config.instructions)}`,
+  );
 }
 
 export function registerDesignHandlers() {
@@ -92,21 +108,32 @@ export function registerDesignHandlers() {
   // ─── List available designs ───────────────────────────────────────────────
   createTypedHandler(designContracts.listDesigns, async () => {
     // Return cached data if still fresh
-    if (designListCache && Date.now() - designListCache.fetchedAt < CACHE_TTL_MS) {
-      logger.info(`[Design] Returning cached design list (${designListCache.data.length} items)`);
+    if (
+      designListCache &&
+      Date.now() - designListCache.fetchedAt < CACHE_TTL_MS
+    ) {
+      logger.info(
+        `[Design] Returning cached design list (${designListCache.data.length} items)`,
+      );
       return designListCache.data;
     }
 
     logger.info("[Design] Fetching design list via npx getdesign list...");
 
     try {
-      const { stdout } = await execFileAsync("npx", ["-y", "getdesign@latest", "list"], {
-        timeout: 30_000,
-        env: { ...process.env },
-      });
+      const { stdout } = await execFileAsync(
+        "npx",
+        ["-y", "getdesign@latest", "list"],
+        {
+          timeout: 30_000,
+          env: { ...process.env },
+        },
+      );
 
       const designs = parseDesignList(stdout);
-      logger.info(`[Design] Parsed ${designs.length} designs from getdesign list`);
+      logger.info(
+        `[Design] Parsed ${designs.length} designs from getdesign list`,
+      );
 
       // Update cache
       designListCache = {
@@ -132,59 +159,83 @@ export function registerDesignHandlers() {
   // Runs `npx getdesign add <brand>` in a temp directory, then copies the
   // resulting DESIGN.md to <appPath>/docs/DESIGN.md. This avoids the CLI's
   // relative-path quirks with --out.
-  createTypedHandler(designContracts.addDesign, async (_, { brand, appPath }) => {
-    logger.info(`[Design] Adding design "${brand}" to app "${appPath}"`);
+  createTypedHandler(
+    designContracts.addDesign,
+    async (_, { brand, appPath }) => {
+      logger.info(`[Design] Adding design "${brand}" to app "${appPath}"`);
 
-    // Create a temp dir where getdesign will write its output
-    const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), "vibes-design-"));
-
-    try {
-      await execFileAsync(
-        "npx",
-        ["-y", "getdesign@latest", "add", brand, "--force"],
-        {
-          timeout: 30_000,
-          cwd: tmpDir,
-          env: { ...process.env },
-        },
+      // Create a temp dir where getdesign will write its output
+      const tmpDir = await fsPromises.mkdtemp(
+        path.join(os.tmpdir(), "vibes-design-"),
       );
 
-      // getdesign writes DESIGN.md in the CWD
-      const tmpDesignPath = path.join(tmpDir, "DESIGN.md");
-      if (!fs.existsSync(tmpDesignPath)) {
-        throw new Error(`getdesign did not create DESIGN.md in ${tmpDir}`);
-      }
-
-      const content = await fsPromises.readFile(tmpDesignPath, "utf-8");
-      logger.info(`[Design] Downloaded DESIGN.md for "${brand}" (${content.length} chars)`);
-
-      // Write to the actual app docs/ folder
-      await writeDesignToApp(appPath, content);
-
-      return { content };
-    } catch (error: any) {
-      logger.error(`[Design] Failed to add design "${brand}":`, error.message);
-      throw new Error(`Error al instalar el diseño "${brand}": ${error.message}`);
-    } finally {
-      // Cleanup temp dir
       try {
-        await fsPromises.rm(tmpDir, { recursive: true, force: true });
-      } catch { /* best effort */ }
-    }
-  });
+        await execFileAsync(
+          "npx",
+          ["-y", "getdesign@latest", "add", brand, "--force"],
+          {
+            timeout: 30_000,
+            cwd: tmpDir,
+            env: { ...process.env },
+          },
+        );
+
+        // getdesign writes DESIGN.md in the CWD
+        const tmpDesignPath = path.join(tmpDir, "DESIGN.md");
+        if (!fs.existsSync(tmpDesignPath)) {
+          throw new Error(`getdesign did not create DESIGN.md in ${tmpDir}`);
+        }
+
+        const content = await fsPromises.readFile(tmpDesignPath, "utf-8");
+        logger.info(
+          `[Design] Downloaded DESIGN.md for "${brand}" (${content.length} chars)`,
+        );
+
+        // Write to the actual app docs/ folder
+        await writeDesignToApp(appPath, content);
+
+        return { content };
+      } catch (error: any) {
+        logger.error(
+          `[Design] Failed to add design "${brand}":`,
+          error.message,
+        );
+        throw new Error(
+          `Error al instalar el diseño "${brand}": ${error.message}`,
+        );
+      } finally {
+        // Cleanup temp dir
+        try {
+          await fsPromises.rm(tmpDir, { recursive: true, force: true });
+        } catch {
+          /* best effort */
+        }
+      }
+    },
+  );
 
   // ─── Write custom (uploaded/pasted) DESIGN.md to a project ────────────────
-  createTypedHandler(designContracts.writeCustomDesign, async (_, { content, appPath }) => {
-    logger.info(`[Design] Writing custom DESIGN.md to app "${appPath}" (${content.length} chars)`);
+  createTypedHandler(
+    designContracts.writeCustomDesign,
+    async (_, { content, appPath }) => {
+      logger.info(
+        `[Design] Writing custom DESIGN.md to app "${appPath}" (${content.length} chars)`,
+      );
 
-    try {
-      await writeDesignToApp(appPath, content);
-      return { written: true };
-    } catch (error: any) {
-      logger.error("[Design] Failed to write custom DESIGN.md:", error.message);
-      throw new Error(`Error al guardar el diseño personalizado: ${error.message}`);
-    }
-  });
+      try {
+        await writeDesignToApp(appPath, content);
+        return { written: true };
+      } catch (error: any) {
+        logger.error(
+          "[Design] Failed to write custom DESIGN.md:",
+          error.message,
+        );
+        throw new Error(
+          `Error al guardar el diseño personalizado: ${error.message}`,
+        );
+      }
+    },
+  );
 
   // ─── Read docs/DESIGN.md from a project ───────────────────────────────────
   createTypedHandler(designContracts.readDesign, async (_, { appPath }) => {
@@ -211,12 +262,16 @@ export function registerDesignHandlers() {
   });
 
   // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
-  createTypedHandler(designContracts.generateFromScreenshot, async (_, { imageDataUrl, model }) => {
-    logger.info(`[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`);
+  createTypedHandler(
+    designContracts.generateFromScreenshot,
+    async (_, { imageDataUrl, model }) => {
+      logger.info(
+        `[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`,
+      );
 
-    const { openRouterCompletion } = await import("../utils/openrouter");
+      const { openRouterCompletion } = await import("../utils/openrouter");
 
-    const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
+      const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
 
 Tu objetivo: Analizar la captura de pantalla adjunta y aplicar ingeniería inversa para generar un archivo DESIGN.md completo, adhiriéndote estrictamente a la especificación estándar de DESIGN.md. Este archivo será la fuente de verdad tanto para humanos como para agentes de IA.
 
@@ -301,58 +356,73 @@ Lineamientos prácticos, mejores prácticas de contraste y errores a evitar.
 * Sé preciso: Usa valores exactos (HEX, px, rem) entre paréntesis en la prosa cuando sea útil.
 * Sé funcional y evocativo en las descripciones.`;
 
-    try {
-      const data = await openRouterCompletion({
-        model,
-        title: "design-screenshot-analysis",
-        temperature: 0.2,
-        max_tokens: 8000,
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Analiza esta captura de pantalla y genera el archivo DESIGN.md completo. Recuerda: SOLO el contenido del archivo, sin texto adicional.",
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageDataUrl,
+      try {
+        const data = await openRouterCompletion({
+          model,
+          title: "design-screenshot-analysis",
+          temperature: 0.2,
+          max_tokens: 8000,
+          messages: [
+            {
+              role: "system",
+              content: SYSTEM_PROMPT,
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Analiza esta captura de pantalla y genera el archivo DESIGN.md completo. Recuerda: SOLO el contenido del archivo, sin texto adicional.",
                 },
-              },
-            ],
-          },
-        ] as any,
-      });
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: imageDataUrl,
+                  },
+                },
+              ],
+            },
+          ] as any,
+        });
 
-      let content = data?.choices?.[0]?.message?.content?.trim() || "";
+        let content = data?.choices?.[0]?.message?.content?.trim() || "";
 
-      // Strip any accidental markdown code fences the model might add
-      if (content.startsWith("```")) {
-        // Remove opening fence (```markdown, ```yaml, ```, etc.)
-        content = content.replace(/^```[a-z]*\n?/, "");
-        // Remove closing fence
-        content = content.replace(/\n?```\s*$/, "");
+        // Strip any accidental markdown code fences the model might add
+        if (content.startsWith("```")) {
+          // Remove opening fence (```markdown, ```yaml, ```, etc.)
+          content = content.replace(/^```[a-z]*\n?/, "");
+          // Remove closing fence
+          content = content.replace(/\n?```\s*$/, "");
+        }
+
+        if (!content || content.length < 50) {
+          throw new Error(
+            "La IA no generó contenido suficiente para el DESIGN.md",
+          );
+        }
+
+        logger.info(
+          `[Design] Generated DESIGN.md from screenshot (${content.length} chars)`,
+        );
+        return { content };
+      } catch (error: any) {
+        logger.error(
+          "[Design] Failed to generate DESIGN.md from screenshot:",
+          error.message,
+        );
+        // Detect OpenRouter vision-not-supported error
+        if (
+          error.message?.includes("support image input") ||
+          error.message?.includes("image_url")
+        ) {
+          throw new Error(
+            "El modelo seleccionado no soporta imágenes. Cambia a un modelo con visión (ej. Claude, GPT-4o, Gemini) e inténtalo de nuevo.",
+          );
+        }
+        throw new Error(
+          `Error al generar el diseño desde la captura: ${error.message}`,
+        );
       }
-
-      if (!content || content.length < 50) {
-        throw new Error("La IA no generó contenido suficiente para el DESIGN.md");
-      }
-
-      logger.info(`[Design] Generated DESIGN.md from screenshot (${content.length} chars)`);
-      return { content };
-    } catch (error: any) {
-      logger.error("[Design] Failed to generate DESIGN.md from screenshot:", error.message);
-      // Detect OpenRouter vision-not-supported error
-      if (error.message?.includes("support image input") || error.message?.includes("image_url")) {
-        throw new Error("El modelo seleccionado no soporta imágenes. Cambia a un modelo con visión (ej. Claude, GPT-4o, Gemini) e inténtalo de nuevo.");
-      }
-      throw new Error(`Error al generar el diseño desde la captura: ${error.message}`);
-    }
-  });
+    },
+  );
 }

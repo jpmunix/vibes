@@ -33,7 +33,11 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { composeModelWithVariant } from "../shared/model_variants";
-import { DEFAULT_STRATEGIST_MODEL, DEFAULT_EXECUTOR_MODEL, parseModelString } from "../../lib/schemas";
+import {
+  DEFAULT_STRATEGIST_MODEL,
+  DEFAULT_EXECUTOR_MODEL,
+  parseModelString,
+} from "../../lib/schemas";
 import { McpServer } from "../types/mcp";
 import { app } from "electron";
 import * as fs from "node:fs";
@@ -45,30 +49,40 @@ const logger = log.scope("opencode_adapter");
  * an OpenCode models registry. This ensures every model is pre-registered
  * so the user can switch between them without restarting the server.
  */
-function buildCustomProviderModels(providerId: string, selectedModelID: string): Record<string, object> {
-    const models: Record<string, object> = {};
-    // Always include the selected model
-    models[selectedModelID] = {};
+function buildCustomProviderModels(
+  providerId: string,
+  selectedModelID: string,
+): Record<string, object> {
+  const models: Record<string, object> = {};
+  // Always include the selected model
+  models[selectedModelID] = {};
 
-    try {
-        const sanitized = providerId.replace(/[^a-zA-Z0-9_-]/g, "_");
-        const cachePath = path.join(app.getPath("userData"), `${sanitized}-models-cache.json`);
-        const raw = fs.readFileSync(cachePath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed?.models && Array.isArray(parsed.models)) {
-            for (const m of parsed.models) {
-                if (m.name && typeof m.name === "string") {
-                    models[m.name] = {};
-                }
-            }
-            logger.info(`[OpenCode] Pre-registered ${Object.keys(models).length} models from cache for ${providerId}`);
+  try {
+    const sanitized = providerId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const cachePath = path.join(
+      app.getPath("userData"),
+      `${sanitized}-models-cache.json`,
+    );
+    const raw = fs.readFileSync(cachePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed?.models && Array.isArray(parsed.models)) {
+      for (const m of parsed.models) {
+        if (m.name && typeof m.name === "string") {
+          models[m.name] = {};
         }
-    } catch (err: any) {
-        // Cache file doesn't exist or is corrupt — fall back to just the selected model
-        logger.warn(`[OpenCode] Could not read models cache for ${providerId}: ${err.message}`);
+      }
+      logger.info(
+        `[OpenCode] Pre-registered ${Object.keys(models).length} models from cache for ${providerId}`,
+      );
     }
+  } catch (err: any) {
+    // Cache file doesn't exist or is corrupt — fall back to just the selected model
+    logger.warn(
+      `[OpenCode] Could not read models cache for ${providerId}: ${err.message}`,
+    );
+  }
 
-    return models;
+  return models;
 }
 
 // ============================================================================
@@ -89,7 +103,7 @@ let lastProjectDir: string | null = null;
 
 /** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
 export function getOpenCodeClientInstance() {
-    return clientInstance;
+  return clientInstance;
 }
 
 /**
@@ -100,55 +114,80 @@ export function getOpenCodeClientInstance() {
  *   - `compaction`, `title`, `summary`, `mockup` → strategistModel (lightweight background tasks)
  */
 export function resolveModelForAgent(
-    agentId: "build" | "plan" | "explore" | "general" | "compaction" | "title" | "summary" | "mockup",
-    settings: any, // UserSettings
-    /** @deprecated No longer used — kept for API compat. */
-    modelOverride?: string,
-    customAgentModelSource?: "chat" | "static",
-    customAgentModel?: string | null,
-): { model: { name: string; provider: string }; providerID: string; modelID: string } {
-    // Primary agents (build, plan, explore, general) all use selectedModel
-    const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
-    const activeProvider = settings.selectedModel?.provider || "openrouter";
+  agentId:
+    | "build"
+    | "plan"
+    | "explore"
+    | "general"
+    | "compaction"
+    | "title"
+    | "summary"
+    | "mockup",
+  settings: any, // UserSettings
+  /** @deprecated No longer used — kept for API compat. */
+  modelOverride?: string,
+  customAgentModelSource?: "chat" | "static",
+  customAgentModel?: string | null,
+): {
+  model: { name: string; provider: string };
+  providerID: string;
+  modelID: string;
+} {
+  // Primary agents (build, plan, explore, general) all use selectedModel
+  const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
+  const activeProvider = settings.selectedModel?.provider || "openrouter";
 
-    if (PRIMARY_AGENTS.has(agentId)) {
-        let model = settings.selectedModel;
+  if (PRIMARY_AGENTS.has(agentId)) {
+    let model = settings.selectedModel;
 
-        if (customAgentModelSource === "static" && customAgentModel) {
-            const { provider, name } = parseModelString(customAgentModel, activeProvider);
-            model = { provider, name };
-        }
-
-        const result = {
-            model,
-            providerID: mapProviderForOpenCode(model),
-            modelID: composeModelWithVariant(
-                sanitizeModelName(model.name),
-                settings.selectedModelVariant ?? "",
-            ),
-        };
-        logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (${customAgentModelSource === "static" ? "static agent model" : "selectedModel"})`);
-        return result;
+    if (customAgentModelSource === "static" && customAgentModel) {
+      const { provider, name } = parseModelString(
+        customAgentModel,
+        activeProvider,
+      );
+      model = { provider, name };
     }
 
-    // Background/auxiliary agents use strategistModel.
-    // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
-    const rawStratModel = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
-    const { provider: bgProvider, name: bgModelName } = parseModelString(rawStratModel, activeProvider);
-
-    const providerForBackground = mapProviderForOpenCode({ provider: bgProvider, name: bgModelName });
-
-    const agentModel = {
-        name: bgModelName,
-        provider: bgProvider,
-    };
     const result = {
-        model: agentModel,
-        providerID: providerForBackground,
-        modelID: sanitizeModelName(bgModelName),
+      model,
+      providerID: mapProviderForOpenCode(model),
+      modelID: composeModelWithVariant(
+        sanitizeModelName(model.name),
+        settings.selectedModelVariant ?? "",
+      ),
     };
-    logger.info(`[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist, provider=${bgProvider})`);
+    logger.info(
+      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (${customAgentModelSource === "static" ? "static agent model" : "selectedModel"})`,
+    );
     return result;
+  }
+
+  // Background/auxiliary agents use strategistModel.
+  // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+  const rawStratModel = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+  const { provider: bgProvider, name: bgModelName } = parseModelString(
+    rawStratModel,
+    activeProvider,
+  );
+
+  const providerForBackground = mapProviderForOpenCode({
+    provider: bgProvider,
+    name: bgModelName,
+  });
+
+  const agentModel = {
+    name: bgModelName,
+    provider: bgProvider,
+  };
+  const result = {
+    model: agentModel,
+    providerID: providerForBackground,
+    modelID: sanitizeModelName(bgModelName),
+  };
+  logger.info(
+    `[AgentModel] ${agentId.toUpperCase()} → ${providerForBackground}/${result.modelID} (background/strategist, provider=${bgProvider})`,
+  );
+  return result;
 }
 
 // Active stream text injector — allows the question reply handler to inject
@@ -159,9 +198,9 @@ let activeTextInjector: ((text: string) => void) | null = null;
 // Tracks partial answers for multi-question QuestionRequests.
 // Key: requestId, Value: { totalQuestions, answers (index → string[]), timeoutId }
 interface PendingQuestionGroup {
-    totalQuestions: number;
-    answers: Map<number, string[]>;  // questionIndex → answer labels
-    timeoutId?: ReturnType<typeof setTimeout>;
+  totalQuestions: number;
+  answers: Map<number, string[]>; // questionIndex → answer labels
+  timeoutId?: ReturnType<typeof setTimeout>;
 }
 const pendingQuestionGroups = new Map<string, PendingQuestionGroup>();
 
@@ -170,7 +209,10 @@ const QUESTION_TIMEOUT_MS = 5 * 60 * 1000;
 
 // ── Permission response infrastructure ──
 // Pending permission resolvers: Map<permissionRequestId, resolve function>
-const pendingPermissionResolvers = new Map<string, (response: string) => void>();
+const pendingPermissionResolvers = new Map<
+  string,
+  (response: string) => void
+>();
 
 /**
  * Default permission values for each tool.
@@ -179,16 +221,16 @@ const pendingPermissionResolvers = new Map<string, (response: string) => void>()
  * but they MUST agree to avoid phantom settings (user sees one value, backend uses another).
  */
 const PERMISSION_DEFAULTS: Record<string, "allow" | "ask" | "deny"> = {
-    edit: "ask",
-    read: "allow",   // Read ops are non-destructive — always allowed
-    list: "allow",   // Directory listing — non-destructive, always allowed
-    bash: "allow",
-    webfetch: "ask",
-    websearch: "ask",
-    lsp: "allow",
-    task: "allow",              // Subagent launch — safe by default
-    skill: "allow",             // Skill execution — safe by default
-    externalDirectory: "ask",   // Access outside project — ask by default
+  edit: "ask",
+  read: "allow", // Read ops are non-destructive — always allowed
+  list: "allow", // Directory listing — non-destructive, always allowed
+  bash: "allow",
+  webfetch: "ask",
+  websearch: "ask",
+  lsp: "allow",
+  task: "allow", // Subagent launch — safe by default
+  skill: "allow", // Skill execution — safe by default
+  externalDirectory: "ask", // Access outside project — ask by default
 };
 
 // ============================================================================
@@ -217,15 +259,15 @@ const VIBES_RULES_MD = `# Vibes Platform Rules
  * with AGENTS.md by OpenCode natively.
  */
 async function writeVibesRules(projectDir: string): Promise<void> {
-    const fs = await import("node:fs");
-    const docsDir = path.join(projectDir, "docs");
-    const rulesPath = path.join(docsDir, "vibes-rules.md");
+  const fs = await import("node:fs");
+  const docsDir = path.join(projectDir, "docs");
+  const rulesPath = path.join(docsDir, "vibes-rules.md");
 
-    if (!fs.existsSync(docsDir)) {
-        fs.mkdirSync(docsDir, { recursive: true });
-    }
-    fs.writeFileSync(rulesPath, VIBES_RULES_MD, "utf-8");
-    logger.info(`[OpenCode] Wrote vibes-rules.md to ${rulesPath}`);
+  if (!fs.existsSync(docsDir)) {
+    fs.mkdirSync(docsDir, { recursive: true });
+  }
+  fs.writeFileSync(rulesPath, VIBES_RULES_MD, "utf-8");
+  logger.info(`[OpenCode] Wrote vibes-rules.md to ${rulesPath}`);
 }
 
 /**
@@ -233,96 +275,96 @@ async function writeVibesRules(projectDir: string): Promise<void> {
  * Falls back to PERMISSION_DEFAULTS if no settings are configured.
  */
 function buildPermissionConfig(settings: any) {
-    const perms = settings?.openCodePermissions2;
+  const perms = settings?.openCodePermissions2;
 
-    // Build bash object with granular rules.
-    // OpenCode pattern matching: last matching rule wins → put "*" first, specifics after.
-    //
-    // Safe-command allowlist: these read-only/inspection commands are always allowed
-    // even when the user sets bash to "ask". This prevents frustration from being
-    // asked about harmless commands, which would lead the user to just allow everything.
-    const bashRules: Record<string, string> = {
-        "*": perms?.bash ?? "allow",
-        // ── Read-only / inspection — always safe ──
-        "ls *": "allow",
-        "cat *": "allow",
-        "head *": "allow",
-        "tail *": "allow",
-        "grep *": "allow",
-        "rg *": "allow",
-        "find *": "allow",
-        "wc *": "allow",
-        "pwd": "allow",
-        "echo *": "allow",
-        "which *": "allow",
-        "type *": "allow",
-        "file *": "allow",
-        "stat *": "allow",
-        "du *": "allow",
-        "df *": "allow",
-        "env": "allow",
-        "printenv *": "allow",
-        "node --version*": "allow",
-        "node -e *": "allow",
-        "npm list*": "allow",
-        "npm ls*": "allow",
-        "npm --version*": "allow",
-        "npx --version*": "allow",
-        "git status*": "allow",
-        "git log*": "allow",
-        "git diff*": "allow",
-        "git show*": "allow",
-        "git branch": "allow",       // list branches (no args = read-only)
-        "git branch -a*": "allow",   // list all branches
-        "git branch -v*": "allow",   // list with verbose
-        "git remote*": "allow",
-        "git stash list*": "allow",
-        // ── Filesystem — dangerous ──
-        "rm *": perms?.bashRm ?? "ask",
-        // ── Git — staging ──
-        "git add *": perms?.gitAdd ?? "ask",
-        // ── Git — repo-local destructive ──
-        "git commit *": perms?.gitCommit ?? perms?.bashGitCommit ?? "deny",
-        "git reset *": perms?.gitReset ?? "ask",
-        "git checkout *": perms?.gitCheckout ?? "ask",
-        "git restore *": perms?.gitRestore ?? "ask",
-        "git clean *": perms?.gitClean ?? "ask",
-        "git rebase *": perms?.gitRebase ?? "ask",
-        "git merge --abort*": perms?.gitMergeAbort ?? "ask",
-        "git stash drop*": perms?.gitStashDrop ?? "ask",
-        "git branch -D *": perms?.gitBranchDelete ?? "ask",
-        "git branch -d *": perms?.gitBranchDelete ?? "ask",
-        "git branch --delete *": perms?.gitBranchDelete ?? "ask",
-        "git cherry-pick --abort*": perms?.gitCherryPickAbort ?? "ask",
-        // ── Git — remote destructive (deny by default) ──
-        "git push *": perms?.gitPush ?? perms?.bashGitPush ?? "deny",
-        "git push --force*": perms?.gitPushForce ?? "deny",
-        "git push -f *": perms?.gitPushForce ?? "deny",
-        "git push --delete *": perms?.gitPushDelete ?? "deny",
-    };
+  // Build bash object with granular rules.
+  // OpenCode pattern matching: last matching rule wins → put "*" first, specifics after.
+  //
+  // Safe-command allowlist: these read-only/inspection commands are always allowed
+  // even when the user sets bash to "ask". This prevents frustration from being
+  // asked about harmless commands, which would lead the user to just allow everything.
+  const bashRules: Record<string, string> = {
+    "*": perms?.bash ?? "allow",
+    // ── Read-only / inspection — always safe ──
+    "ls *": "allow",
+    "cat *": "allow",
+    "head *": "allow",
+    "tail *": "allow",
+    "grep *": "allow",
+    "rg *": "allow",
+    "find *": "allow",
+    "wc *": "allow",
+    pwd: "allow",
+    "echo *": "allow",
+    "which *": "allow",
+    "type *": "allow",
+    "file *": "allow",
+    "stat *": "allow",
+    "du *": "allow",
+    "df *": "allow",
+    env: "allow",
+    "printenv *": "allow",
+    "node --version*": "allow",
+    "node -e *": "allow",
+    "npm list*": "allow",
+    "npm ls*": "allow",
+    "npm --version*": "allow",
+    "npx --version*": "allow",
+    "git status*": "allow",
+    "git log*": "allow",
+    "git diff*": "allow",
+    "git show*": "allow",
+    "git branch": "allow", // list branches (no args = read-only)
+    "git branch -a*": "allow", // list all branches
+    "git branch -v*": "allow", // list with verbose
+    "git remote*": "allow",
+    "git stash list*": "allow",
+    // ── Filesystem — dangerous ──
+    "rm *": perms?.bashRm ?? "ask",
+    // ── Git — staging ──
+    "git add *": perms?.gitAdd ?? "ask",
+    // ── Git — repo-local destructive ──
+    "git commit *": perms?.gitCommit ?? perms?.bashGitCommit ?? "deny",
+    "git reset *": perms?.gitReset ?? "ask",
+    "git checkout *": perms?.gitCheckout ?? "ask",
+    "git restore *": perms?.gitRestore ?? "ask",
+    "git clean *": perms?.gitClean ?? "ask",
+    "git rebase *": perms?.gitRebase ?? "ask",
+    "git merge --abort*": perms?.gitMergeAbort ?? "ask",
+    "git stash drop*": perms?.gitStashDrop ?? "ask",
+    "git branch -D *": perms?.gitBranchDelete ?? "ask",
+    "git branch -d *": perms?.gitBranchDelete ?? "ask",
+    "git branch --delete *": perms?.gitBranchDelete ?? "ask",
+    "git cherry-pick --abort*": perms?.gitCherryPickAbort ?? "ask",
+    // ── Git — remote destructive (deny by default) ──
+    "git push *": perms?.gitPush ?? perms?.bashGitPush ?? "deny",
+    "git push --force*": perms?.gitPushForce ?? "deny",
+    "git push -f *": perms?.gitPushForce ?? "deny",
+    "git push --delete *": perms?.gitPushDelete ?? "deny",
+  };
 
-    // Append user custom rules (last → highest priority)
-    for (const rule of perms?.bashCustomRules ?? []) {
-        bashRules[rule.pattern] = rule.permission;
-    }
+  // Append user custom rules (last → highest priority)
+  for (const rule of perms?.bashCustomRules ?? []) {
+    bashRules[rule.pattern] = rule.permission;
+  }
 
-    return {
-        edit: perms?.edit ?? PERMISSION_DEFAULTS.edit,
-        read: "allow",    // Read ops (read, glob, grep, list) are always allowed — non-destructive
-        glob: "allow",
-        grep: "allow",
-        list: "allow",    // Directory listing — CRITICAL: without this, OpenCode blocks on ls/list
-        bash: bashRules,
-        webfetch: perms?.webfetch ?? PERMISSION_DEFAULTS.webfetch,
-        websearch: perms?.websearch ?? PERMISSION_DEFAULTS.websearch,
-        lsp: perms?.lsp ?? PERMISSION_DEFAULTS.lsp,
-        task: perms?.task ?? "allow",              // Subagent launch
-        question: "allow",
-        todowrite: "allow",                        // Agent TODO management — non-destructive
-        doom_loop: "allow",                        // Auto-recovery from stuck loops — non-destructive
-        skill: perms?.skill ?? "allow",            // Skill/prompt execution
-        external_directory: perms?.externalDirectory ?? "ask",
-    };
+  return {
+    edit: perms?.edit ?? PERMISSION_DEFAULTS.edit,
+    read: "allow", // Read ops (read, glob, grep, list) are always allowed — non-destructive
+    glob: "allow",
+    grep: "allow",
+    list: "allow", // Directory listing — CRITICAL: without this, OpenCode blocks on ls/list
+    bash: bashRules,
+    webfetch: perms?.webfetch ?? PERMISSION_DEFAULTS.webfetch,
+    websearch: perms?.websearch ?? PERMISSION_DEFAULTS.websearch,
+    lsp: perms?.lsp ?? PERMISSION_DEFAULTS.lsp,
+    task: perms?.task ?? "allow", // Subagent launch
+    question: "allow",
+    todowrite: "allow", // Agent TODO management — non-destructive
+    doom_loop: "allow", // Auto-recovery from stuck loops — non-destructive
+    skill: perms?.skill ?? "allow", // Skill/prompt execution
+    external_directory: perms?.externalDirectory ?? "ask",
+  };
 }
 
 /**
@@ -330,41 +372,41 @@ function buildPermissionConfig(settings: any) {
  * For bash, checks granular sub-rules. For other tools, returns the global pill.
  */
 function resolveToolPermission(
-    toolName: string,
-    toolInput: string,
-    permsConfig?: any,
+  toolName: string,
+  toolInput: string,
+  permsConfig?: any,
 ): "allow" | "ask" | "deny" {
-    if (!permsConfig) return "allow"; // No config → default allow (backwards compat)
+  if (!permsConfig) return "allow"; // No config → default allow (backwards compat)
 
-    // Map OpenCode tool names to our settings keys.
-    // glob/grep/list are separate tools in OpenCode but follow the user's "read" pill.
-    // external_directory uses underscore in OpenCode but camelCase in settings.
-    const TOOL_ALIAS: Record<string, string> = {
-        glob: "read",
-        grep: "read",
-        list: "read",
-        external_directory: "externalDirectory",
-    };
-    const settingsKey = TOOL_ALIAS[toolName] ?? toolName;
+  // Map OpenCode tool names to our settings keys.
+  // glob/grep/list are separate tools in OpenCode but follow the user's "read" pill.
+  // external_directory uses underscore in OpenCode but camelCase in settings.
+  const TOOL_ALIAS: Record<string, string> = {
+    glob: "read",
+    grep: "read",
+    list: "read",
+    external_directory: "externalDirectory",
+  };
+  const settingsKey = TOOL_ALIAS[toolName] ?? toolName;
 
-    // ── Read-family tools are ALWAYS auto-allowed regardless of config ──
-    // These are non-destructive operations that should never block the agent.
-    // Without this safeguard, a missing config key causes the agent to stall
-    // waiting for a user permission response that may never come.
-    const READ_FAMILY_TOOLS = new Set(["read", "glob", "grep", "list"]);
-    if (READ_FAMILY_TOOLS.has(toolName)) {
-        return "allow";
-    }
+  // ── Read-family tools are ALWAYS auto-allowed regardless of config ──
+  // These are non-destructive operations that should never block the agent.
+  // Without this safeguard, a missing config key causes the agent to stall
+  // waiting for a user permission response that may never come.
+  const READ_FAMILY_TOOLS = new Set(["read", "glob", "grep", "list"]);
+  if (READ_FAMILY_TOOLS.has(toolName)) {
+    return "allow";
+  }
 
-    const value = permsConfig[settingsKey as keyof typeof permsConfig];
+  const value = permsConfig[settingsKey as keyof typeof permsConfig];
 
-    // For tools with a simple pill (edit, read, webfetch, websearch, lsp)
-    if (value === "allow" || value === "ask" || value === "deny") {
-        return value;
-    }
+  // For tools with a simple pill (edit, read, webfetch, websearch, lsp)
+  if (value === "allow" || value === "ask" || value === "deny") {
+    return value;
+  }
 
-    // If value is something unexpected (e.g. stale "once"), default to "ask" (safe fallback)
-    return PERMISSION_DEFAULTS[settingsKey] ?? "ask";
+  // If value is something unexpected (e.g. stale "once"), default to "ask" (safe fallback)
+  return PERMISSION_DEFAULTS[settingsKey] ?? "ask";
 }
 
 /**
@@ -372,20 +414,23 @@ function resolveToolPermission(
  * Returns the user's choice: "once" | "always" | "reject".
  * Times out after `timeoutMs` and auto-rejects.
  */
-function waitForPermissionResponse(requestId: string, timeoutMs: number): Promise<string> {
-    return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-            pendingPermissionResolvers.delete(requestId);
-            logger.warn(`[OC:Permission] Timeout for ${requestId} — auto-rejecting`);
-            resolve("reject");
-        }, timeoutMs);
+function waitForPermissionResponse(
+  requestId: string,
+  timeoutMs: number,
+): Promise<string> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pendingPermissionResolvers.delete(requestId);
+      logger.warn(`[OC:Permission] Timeout for ${requestId} — auto-rejecting`);
+      resolve("reject");
+    }, timeoutMs);
 
-        pendingPermissionResolvers.set(requestId, (response: string) => {
-            clearTimeout(timer);
-            pendingPermissionResolvers.delete(requestId);
-            resolve(response);
-        });
+    pendingPermissionResolvers.set(requestId, (response: string) => {
+      clearTimeout(timer);
+      pendingPermissionResolvers.delete(requestId);
+      resolve(response);
     });
+  });
 }
 
 /**
@@ -411,105 +456,129 @@ function waitForPermissionResponse(requestId: string, timeoutMs: number): Promis
  * @param commandInput   - The raw command/input that triggered the permission
  */
 async function persistPermissionToSettings(
-    toolName: string,
-    value: "allow" | "deny",
-    alwaysPatterns: string[],
-    commandInput: string,
+  toolName: string,
+  value: "allow" | "deny",
+  alwaysPatterns: string[],
+  commandInput: string,
 ) {
-    try {
-        const current = readSettings();
-        const perms = { ...current.openCodePermissions2 };
+  try {
+    const current = readSettings();
+    const perms = { ...current.openCodePermissions2 };
 
-        if (toolName === "bash") {
-            // ── Bash: add a specific custom rule, never touch the global pill ──
-            // Priority: use OpenCode's suggested `always` patterns if available,
-            // otherwise extract the command prefix (first word) + wildcard.
-            const rules: Array<{ id: string; pattern: string; permission: "ask" | "allow" | "deny" }> =
-                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules as any] : [];
+    if (toolName === "bash") {
+      // ── Bash: add a specific custom rule, never touch the global pill ──
+      // Priority: use OpenCode's suggested `always` patterns if available,
+      // otherwise extract the command prefix (first word) + wildcard.
+      const rules: Array<{
+        id: string;
+        pattern: string;
+        permission: "ask" | "allow" | "deny";
+      }> = Array.isArray(perms.bashCustomRules)
+        ? [...(perms.bashCustomRules as any)]
+        : [];
 
-            const patternsToAdd: string[] = [];
+      const patternsToAdd: string[] = [];
 
-            if (alwaysPatterns.length > 0) {
-                // Use OpenCode's own suggestions (e.g. ["ls *", "git status*"])
-                for (const p of alwaysPatterns) {
-                    if (!rules.some((r) => r.pattern === p)) {
-                        patternsToAdd.push(p);
-                    }
-                }
-            } else if (commandInput.trim()) {
-                // Fallback: extract first word → "command *"
-                const firstWord = commandInput.trim().split(/\s+/)[0];
-                const pattern = `${firstWord} *`;
-                if (!rules.some((r) => r.pattern === pattern)) {
-                    patternsToAdd.push(pattern);
-                }
-            }
-
-            for (const pattern of patternsToAdd) {
-                rules.push({
-                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                    pattern,
-                    permission: value as "ask" | "allow" | "deny",
-                });
-                logger.info(`[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`);
-            }
-
-            perms.bashCustomRules = rules;
-        } else {
-            // ── Non-bash: set the global tool pill ──
-            const TOOL_TO_KEY: Record<string, string> = {
-                edit: "edit", read: "read", glob: "read", grep: "read", list: "read",
-                webfetch: "webfetch", websearch: "websearch", lsp: "lsp",
-                task: "task", skill: "skill", external_directory: "externalDirectory",
-            };
-            const key = TOOL_TO_KEY[toolName];
-            if (!key) {
-                logger.warn(`[OC:Permission] Unknown tool "${toolName}" — cannot persist`);
-                return;
-            }
-            (perms as any)[key] = value;
-            logger.info(`[OC:Permission] Persisted ${toolName} → ${value} (global pill)`);
+      if (alwaysPatterns.length > 0) {
+        // Use OpenCode's own suggestions (e.g. ["ls *", "git status*"])
+        for (const p of alwaysPatterns) {
+          if (!rules.some((r) => r.pattern === p)) {
+            patternsToAdd.push(p);
+          }
         }
-
-        writeSettings({ ...current, openCodePermissions2: perms });
-        const updated = readSettings();
-        logger.info(`[OC:Permission] Saved to settings.json`);
-
-        // ── Notify renderer so the UI atom refreshes immediately ──
-        for (const win of BrowserWindow.getAllWindows()) {
-            if (!win.isDestroyed() && win.webContents) {
-                safeSend(win.webContents, "settings:updated-from-backend", updated);
-            }
+      } else if (commandInput.trim()) {
+        // Fallback: extract first word → "command *"
+        const firstWord = commandInput.trim().split(/\s+/)[0];
+        const pattern = `${firstWord} *`;
+        if (!rules.some((r) => r.pattern === pattern)) {
+          patternsToAdd.push(pattern);
         }
-        logger.info(`[OC:Permission] Broadcasted to renderer`);
+      }
 
-        // ── Sync to Bunny DB so getUserSettings merge doesn't overwrite ──
-        try {
-            const userId = updated.userId;
-            if (userId) {
-                const db = getRemoteDb();
-                const { userId: _u, sessionToken: _s, ...syncable } = updated;
-                const settingsJson = JSON.stringify(syncable);
-                const existing = await db.query.userSettings.findFirst({
-                    where: eq(remoteSchema.userSettings.userId, userId),
-                });
-                if (existing) {
-                    await db.update(remoteSchema.userSettings)
-                        .set({ settingsJson, updatedAt: new Date() })
-                        .where(eq(remoteSchema.userSettings.userId, userId));
-                } else {
-                    await db.insert(remoteSchema.userSettings).values({
-                        userId, settingsJson, updatedAt: new Date(),
-                    });
-                }
-                logger.info(`[OC:Permission] Synced to Bunny DB`);
-            }
-        } catch (syncErr: any) {
-            logger.warn(`[OC:Permission] Bunny DB sync failed (non-fatal): ${syncErr.message}`);
-        }
-    } catch (e: any) {
-        logger.error(`[OC:Permission] Failed to persist setting: ${e.message}`);
+      for (const pattern of patternsToAdd) {
+        rules.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          pattern,
+          permission: value as "ask" | "allow" | "deny",
+        });
+        logger.info(
+          `[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`,
+        );
+      }
+
+      perms.bashCustomRules = rules;
+    } else {
+      // ── Non-bash: set the global tool pill ──
+      const TOOL_TO_KEY: Record<string, string> = {
+        edit: "edit",
+        read: "read",
+        glob: "read",
+        grep: "read",
+        list: "read",
+        webfetch: "webfetch",
+        websearch: "websearch",
+        lsp: "lsp",
+        task: "task",
+        skill: "skill",
+        external_directory: "externalDirectory",
+      };
+      const key = TOOL_TO_KEY[toolName];
+      if (!key) {
+        logger.warn(
+          `[OC:Permission] Unknown tool "${toolName}" — cannot persist`,
+        );
+        return;
+      }
+      (perms as any)[key] = value;
+      logger.info(
+        `[OC:Permission] Persisted ${toolName} → ${value} (global pill)`,
+      );
     }
+
+    writeSettings({ ...current, openCodePermissions2: perms });
+    const updated = readSettings();
+    logger.info(`[OC:Permission] Saved to settings.json`);
+
+    // ── Notify renderer so the UI atom refreshes immediately ──
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && win.webContents) {
+        safeSend(win.webContents, "settings:updated-from-backend", updated);
+      }
+    }
+    logger.info(`[OC:Permission] Broadcasted to renderer`);
+
+    // ── Sync to Bunny DB so getUserSettings merge doesn't overwrite ──
+    try {
+      const userId = updated.userId;
+      if (userId) {
+        const db = getRemoteDb();
+        const { userId: _u, sessionToken: _s, ...syncable } = updated;
+        const settingsJson = JSON.stringify(syncable);
+        const existing = await db.query.userSettings.findFirst({
+          where: eq(remoteSchema.userSettings.userId, userId),
+        });
+        if (existing) {
+          await db
+            .update(remoteSchema.userSettings)
+            .set({ settingsJson, updatedAt: new Date() })
+            .where(eq(remoteSchema.userSettings.userId, userId));
+        } else {
+          await db.insert(remoteSchema.userSettings).values({
+            userId,
+            settingsJson,
+            updatedAt: new Date(),
+          });
+        }
+        logger.info(`[OC:Permission] Synced to Bunny DB`);
+      }
+    } catch (syncErr: any) {
+      logger.warn(
+        `[OC:Permission] Bunny DB sync failed (non-fatal): ${syncErr.message}`,
+      );
+    }
+  } catch (e: any) {
+    logger.error(`[OC:Permission] Failed to persist setting: ${e.message}`);
+  }
 }
 
 /**
@@ -522,38 +591,46 @@ async function persistPermissionToSettings(
  * caused the server to silently fail to route the reply to the correct instance.
  */
 async function replyToPermission(
-    requestId: string,
-    response: "once" | "always" | "reject",
-    sessionId: string,
+  requestId: string,
+  response: "once" | "always" | "reject",
+  sessionId: string,
 ): Promise<boolean> {
-    if (!serverUrl) {
-        logger.error(`[OC:Permission] ❌ No serverUrl — cannot reply`);
-        return false;
+  if (!serverUrl) {
+    logger.error(`[OC:Permission] ❌ No serverUrl — cannot reply`);
+    return false;
+  }
+
+  const dirParam = lastProjectDir
+    ? `?directory=${encodeURIComponent(lastProjectDir)}`
+    : "";
+  const url = `${serverUrl}/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}${dirParam}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response }),
+    });
+
+    const text = await res.text();
+
+    if (!res.ok) {
+      logger.error(
+        `[OC:Permission] ❌ HTTP ${res.status} for ${response}/${requestId}: ${text}`,
+      );
+      return false;
     }
 
-    const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
-    const url = `${serverUrl}/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}${dirParam}`;
-
-    try {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ response }),
-        });
-
-        const text = await res.text();
-
-        if (!res.ok) {
-            logger.error(`[OC:Permission] ❌ HTTP ${res.status} for ${response}/${requestId}: ${text}`);
-            return false;
-        }
-
-        logger.info(`[OC:Permission] ✅ ${response} for ${requestId} — server: ${text}`);
-        return true;
-    } catch (e: any) {
-        logger.error(`[OC:Permission] ❌ Fetch error for ${requestId}: ${e.message}`);
-        return false;
-    }
+    logger.info(
+      `[OC:Permission] ✅ ${response} for ${requestId} — server: ${text}`,
+    );
+    return true;
+  } catch (e: any) {
+    logger.error(
+      `[OC:Permission] ❌ Fetch error for ${requestId}: ${e.message}`,
+    );
+    return false;
+  }
 }
 
 // Map chatId → opencode sessionId
@@ -569,75 +646,90 @@ const visualEditSessionMap = new Map<string, string>();
  * all accumulated context instead of destroying the session.
  */
 export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
-    const sessionId = chatSessionMap.get(chatId);
-    if (!sessionId || !clientInstance) return;
+  const sessionId = chatSessionMap.get(chatId);
+  if (!sessionId || !clientInstance) return;
 
-    try {
-        // Get the last message ID from the session
-        const msgsResult = await clientInstance.session.messages({
-            path: { id: sessionId },
-            query: { limit: 4 },
-        });
-        const messages = msgsResult.data || [];
-        // Find the last assistant message to revert
-        const lastAssistant = [...messages].reverse().find(
-            (m: any) => m.info?.role === "assistant"
-        );
-        if (lastAssistant?.info?.id) {
-            await clientInstance.session.revert({
-                path: { id: sessionId },
-                body: { messageID: lastAssistant.info.id },
-            });
-            logger.info(`[OpenCode] Reverted message ${lastAssistant.info.id} in session ${sessionId} for chat ${chatId}`);
-        } else {
-            logger.warn(`[OpenCode] No assistant message found to revert in session ${sessionId}`);
-        }
-    } catch (error: any) {
-        logger.warn(`[OpenCode] session.revert failed for ${sessionId}: ${error.message} — attempting fork fallback`);
-
-        // Fallback: fork the session at the last user message to preserve context
-        try {
-            const msgsResult = await clientInstance.session.messages({
-                path: { id: sessionId },
-                query: { limit: 6 },
-            });
-            const messages = msgsResult.data || [];
-            // Find the last user message (the point we want to branch from)
-            const lastUser = [...messages].reverse().find(
-                (m: any) => m.info?.role === "user"
-            );
-            if (lastUser?.info?.id) {
-                const forked = await clientInstance.session.fork({
-                    path: { id: sessionId },
-                    body: { messageID: lastUser.info.id },
-                } as any);
-                const newSessionId = forked.data?.id;
-                if (newSessionId) {
-                    chatSessionMap.set(chatId, newSessionId);
-                    // Delete the original session (now replaced by the fork)
-                    deleteOpenCodeSessionById(sessionId);
-                    // Update DB reference to point to the new forked session
-                    try {
-                        const db = getRemoteDb();
-                        await db.update(remoteSchema.chats)
-                            .set({ opencodeSessionId: newSessionId })
-                            .where(eq(remoteSchema.chats.id, chatId));
-                    } catch (e: any) {
-                        logger.warn(`[OpenCode] Failed to persist forked sessionId: ${e.message}`);
-                    }
-                    logger.info(`[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`);
-                    return;
-                }
-            }
-        } catch (forkError: any) {
-            logger.warn(`[OpenCode] session.fork fallback also failed: ${forkError.message}`);
-        }
-
-        // Last resort: destroy session
-        chatSessionMap.delete(chatId);
-        deleteOpenCodeSessionById(sessionId);
-        logger.warn(`[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`);
+  try {
+    // Get the last message ID from the session
+    const msgsResult = await clientInstance.session.messages({
+      path: { id: sessionId },
+      query: { limit: 4 },
+    });
+    const messages = msgsResult.data || [];
+    // Find the last assistant message to revert
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((m: any) => m.info?.role === "assistant");
+    if (lastAssistant?.info?.id) {
+      await clientInstance.session.revert({
+        path: { id: sessionId },
+        body: { messageID: lastAssistant.info.id },
+      });
+      logger.info(
+        `[OpenCode] Reverted message ${lastAssistant.info.id} in session ${sessionId} for chat ${chatId}`,
+      );
+    } else {
+      logger.warn(
+        `[OpenCode] No assistant message found to revert in session ${sessionId}`,
+      );
     }
+  } catch (error: any) {
+    logger.warn(
+      `[OpenCode] session.revert failed for ${sessionId}: ${error.message} — attempting fork fallback`,
+    );
+
+    // Fallback: fork the session at the last user message to preserve context
+    try {
+      const msgsResult = await clientInstance.session.messages({
+        path: { id: sessionId },
+        query: { limit: 6 },
+      });
+      const messages = msgsResult.data || [];
+      // Find the last user message (the point we want to branch from)
+      const lastUser = [...messages]
+        .reverse()
+        .find((m: any) => m.info?.role === "user");
+      if (lastUser?.info?.id) {
+        const forked = await clientInstance.session.fork({
+          path: { id: sessionId },
+          body: { messageID: lastUser.info.id },
+        } as any);
+        const newSessionId = forked.data?.id;
+        if (newSessionId) {
+          chatSessionMap.set(chatId, newSessionId);
+          // Delete the original session (now replaced by the fork)
+          deleteOpenCodeSessionById(sessionId);
+          // Update DB reference to point to the new forked session
+          try {
+            const db = getRemoteDb();
+            await db
+              .update(remoteSchema.chats)
+              .set({ opencodeSessionId: newSessionId })
+              .where(eq(remoteSchema.chats.id, chatId));
+          } catch (e: any) {
+            logger.warn(
+              `[OpenCode] Failed to persist forked sessionId: ${e.message}`,
+            );
+          }
+          logger.info(
+            `[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`,
+          );
+          return;
+        }
+      }
+    } catch (forkError: any) {
+      logger.warn(
+        `[OpenCode] session.fork fallback also failed: ${forkError.message}`,
+      );
+    }
+
+    // Last resort: destroy session
+    chatSessionMap.delete(chatId);
+    deleteOpenCodeSessionById(sessionId);
+    logger.warn(
+      `[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`,
+    );
+  }
 }
 
 /**
@@ -646,63 +738,73 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
  * would be too complex.
  */
 export function destroyOpenCodeSession(chatId: number): void {
-    const sessionId = chatSessionMap.get(chatId);
-    if (sessionId) {
-        chatSessionMap.delete(chatId);
-        logger.info(`[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`);
-        deleteOpenCodeSessionById(sessionId);
-    }
+  const sessionId = chatSessionMap.get(chatId);
+  if (sessionId) {
+    chatSessionMap.delete(chatId);
+    logger.info(
+      `[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`,
+    );
+    deleteOpenCodeSessionById(sessionId);
+  }
 }
 
 /**
  * Delete a specific OpenCode session from the backend by its ID.
  */
 export function deleteOpenCodeSessionById(sessionId: string): void {
-    if (clientInstance) {
-        clientInstance.session.delete({ path: { id: sessionId } }).catch((err: any) => {
-            logger.warn(`[OpenCode] Failed to delete session ${sessionId} from backend: ${err.message}`);
-        });
-    }
+  if (clientInstance) {
+    clientInstance.session
+      .delete({ path: { id: sessionId } })
+      .catch((err: any) => {
+        logger.warn(
+          `[OpenCode] Failed to delete session ${sessionId} from backend: ${err.message}`,
+        );
+      });
+  }
 }
 
 /**
  * Clean up ALL OpenCode sessions associated with a Vibes app.
  * Must be called BEFORE the app row is deleted (FK cascade would lose opencodeSessionId).
  */
-export async function cleanupOpenCodeSessionsForApp(appId: number): Promise<void> {
-    if (!clientInstance) return;
+export async function cleanupOpenCodeSessionsForApp(
+  appId: number,
+): Promise<void> {
+  if (!clientInstance) return;
 
-    const db = getRemoteDb();
+  const db = getRemoteDb();
 
-    // 1. Get all chats with opencode sessions for this app
-    const chatsWithSessions = await db.query.chats.findMany({
-        where: eq(remoteSchema.chats.appId, appId),
-        columns: { id: true, opencodeSessionId: true },
-    });
+  // 1. Get all chats with opencode sessions for this app
+  const chatsWithSessions = await db.query.chats.findMany({
+    where: eq(remoteSchema.chats.appId, appId),
+    columns: { id: true, opencodeSessionId: true },
+  });
 
-    // 2. Delete each session from OpenCode backend
-    for (const chat of chatsWithSessions) {
-        if (chat.opencodeSessionId) {
-            deleteOpenCodeSessionById(chat.opencodeSessionId);
-        }
-        chatSessionMap.delete(chat.id);
+  // 2. Delete each session from OpenCode backend
+  for (const chat of chatsWithSessions) {
+    if (chat.opencodeSessionId) {
+      deleteOpenCodeSessionById(chat.opencodeSessionId);
     }
+    chatSessionMap.delete(chat.id);
+  }
 
-    // 3. Clean up visual-edit session for this app's path
-    const app = await db.query.apps.findFirst({
-        where: eq(remoteSchema.apps.id, appId),
-        columns: { path: true },
-    });
-    if (app?.path) {
-        const appPath = getVibesAppPath(app.path);
-        const visualSessionId = visualEditSessionMap.get(appPath);
-        if (visualSessionId) {
-            deleteOpenCodeSessionById(visualSessionId);
-            visualEditSessionMap.delete(appPath);
-        }
+  // 3. Clean up visual-edit session for this app's path
+  const app = await db.query.apps.findFirst({
+    where: eq(remoteSchema.apps.id, appId),
+    columns: { path: true },
+  });
+  if (app?.path) {
+    const appPath = getVibesAppPath(app.path);
+    const visualSessionId = visualEditSessionMap.get(appPath);
+    if (visualSessionId) {
+      deleteOpenCodeSessionById(visualSessionId);
+      visualEditSessionMap.delete(appPath);
     }
+  }
 
-    logger.info(`[OpenCode] Cleaned up ${chatsWithSessions.length} session(s) for app ${appId}`);
+  logger.info(
+    `[OpenCode] Cleaned up ${chatsWithSessions.length} session(s) for app ${appId}`,
+  );
 }
 
 /**
@@ -710,286 +812,383 @@ export async function cleanupOpenCodeSessionsForApp(appId: number): Promise<void
  * @param dryRun If true, returns a report without deleting anything.
  * @returns Summary object including a full markdown report string.
  */
-export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<{
-    totalInOpenCode: number;
-    knownInVibes: number;
-    orphaned: number;
-    deleted: number;
-    errors: number;
-    report: string;
+export async function purgeAllOrphanedOpenCodeSessions(
+  dryRun = false,
+): Promise<{
+  totalInOpenCode: number;
+  knownInVibes: number;
+  orphaned: number;
+  deleted: number;
+  errors: number;
+  report: string;
 }> {
-    const emptyResult = { totalInOpenCode: 0, knownInVibes: 0, orphaned: 0, deleted: 0, errors: 0, report: '' };
+  const emptyResult = {
+    totalInOpenCode: 0,
+    knownInVibes: 0,
+    orphaned: 0,
+    deleted: 0,
+    errors: 0,
+    report: "",
+  };
 
-    // Auto-start the OpenCode server if it's not running
-    if (!clientInstance) {
-        try {
-            const dummyPath = getVibesAppPath(".");
-            await getOpenCodeClient(dummyPath);
-        } catch (e: any) {
-            return { ...emptyResult, report: `❌ No se pudo iniciar el servidor de OpenCode: ${e.message}` };
-        }
-    }
-    if (!clientInstance) {
-        return { ...emptyResult, report: '❌ No se pudo obtener el cliente de OpenCode.' };
-    }
-
-    const startMs = Date.now();
-
-    // 1. Get ALL sessions from OpenCode (experimental endpoint: cross-project)
-    //    The v1 SDK only has session.list() which is project-scoped.
-    //    We use the raw HTTP endpoint /experimental/session to list across ALL projects.
-    let allOcSessions: Array<{ id: string; title: string; createdAt: string }> = [];
+  // Auto-start the OpenCode server if it's not running
+  if (!clientInstance) {
     try {
-        const url = `${serverUrl}/experimental/session?limit=10000`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const data = await res.json();
-        const sessions = Array.isArray(data) ? data : (data.data || data.sessions || []);
-        allOcSessions = sessions.map((s: any) => ({
-            id: s.id,
-            title: s.title || s.info?.title || '(sin título)',
-            createdAt: s.time?.created ? new Date(s.time.created * 1000).toISOString() : s.createdAt || '?',
-        }));
+      const dummyPath = getVibesAppPath(".");
+      await getOpenCodeClient(dummyPath);
     } catch (e: any) {
-        return { ...emptyResult, report: `❌ Error al listar sesiones OpenCode: ${e.message}` };
+      return {
+        ...emptyResult,
+        report: `❌ No se pudo iniciar el servidor de OpenCode: ${e.message}`,
+      };
     }
-
-    // 2. Get all known session IDs from Vibes DB
-    const db = getRemoteDb();
-    const allChats = await db.query.chats.findMany({
-        columns: { id: true, opencodeSessionId: true, title: true, appId: true },
-    });
-    const knownIds = new Set<string>();
-    const knownSessionDetails = new Map<string, { chatId: number; chatTitle: string | null; appId: number }>();
-    for (const c of allChats) {
-        if (c.opencodeSessionId) {
-            knownIds.add(c.opencodeSessionId);
-            knownSessionDetails.set(c.opencodeSessionId, {
-                chatId: c.id,
-                chatTitle: c.title,
-                appId: c.appId,
-            });
-        }
-    }
-    // Visual-edit sessions are also "known"
-    for (const [appPath, sid] of visualEditSessionMap.entries()) {
-        knownIds.add(sid);
-        knownSessionDetails.set(sid, { chatId: 0, chatTitle: `[visual-edit] ${appPath}`, appId: 0 });
-    }
-    // In-memory chat sessions (may not be persisted to DB yet)
-    for (const [chatId, sid] of chatSessionMap.entries()) {
-        if (!knownIds.has(sid)) {
-            knownIds.add(sid);
-            knownSessionDetails.set(sid, { chatId, chatTitle: `[en memoria]`, appId: 0 });
-        }
-    }
-
-    // 3. Classify
-    const orphanSessions = allOcSessions.filter(s => !knownIds.has(s.id));
-    const matchedSessions = allOcSessions.filter(s => knownIds.has(s.id));
-
-    // Diagnostic logging
-    logger.info(`[OpenCode] Purge diagnostic: ${allChats.length} chats in DB, ${knownIds.size} known IDs, ${chatSessionMap.size} in-memory, ${visualEditSessionMap.size} visual-edit`);
-    if (allChats.length > 0) {
-        const sample = allChats.slice(0, 3).map(c => `chat#${c.id}→${c.opencodeSessionId ?? 'NULL'}`).join(', ');
-        logger.info(`[OpenCode] DB sample: ${sample}`);
-    }
-    if (allOcSessions.length > 0) {
-        const sample = allOcSessions.slice(0, 3).map(s => s.id).join(', ');
-        logger.info(`[OpenCode] OC sample: ${sample}`);
-    }
-
-    // Helper: measure OpenCode data directory size
-    const measureDiskSize = (): number => {
-        try {
-            const { execSync } = require('child_process');
-            const HOME = process.env.HOME || `/home/${process.env.USER}`;
-            const ocDataDir = `${HOME}/.local/share/opencode`;
-            const output = execSync(`du -sb "${ocDataDir}" 2>/dev/null || echo "0"`, { encoding: 'utf-8' }).trim();
-            return parseInt(output.split('\t')[0], 10) || 0;
-        } catch { return 0; }
-    };
-    const formatBytes = (bytes: number): string => {
-        if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
-        const units = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-        return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
-    };
-
-    const sizeBefore = measureDiskSize();
-
-    // 4. Delete orphans (unless dryRun)
-    let deleted = 0;
-    let errors = 0;
-    const deleteResults: Array<{ id: string; title: string; success: boolean; error?: string }> = [];
-    if (!dryRun) {
-        for (const orphan of orphanSessions) {
-            try {
-                await clientInstance!.session.delete({ path: { id: orphan.id } });
-                deleted++;
-                deleteResults.push({ id: orphan.id, title: orphan.title, success: true });
-            } catch (e: any) {
-                errors++;
-                deleteResults.push({ id: orphan.id, title: orphan.title, success: false, error: e.message });
-            }
-        }
-
-        // 4b. Deep cleanup: remove orphan diff files from disk
-        let diffsCleaned = 0;
-        try {
-            const fs = require('fs');
-            const pathMod = require('path');
-            const HOME = process.env.HOME || `/home/${process.env.USER}`;
-            const diffDir = pathMod.join(HOME, '.local/share/opencode/storage/session_diff');
-            if (fs.existsSync(diffDir)) {
-                // Get remaining session IDs from DB
-                const { execSync } = require('child_process');
-                const dbPath = pathMod.join(HOME, '.local/share/opencode/opencode.db');
-                const existingIds = new Set<string>();
-                try {
-                    const output = execSync(`sqlite3 "${dbPath}" "SELECT id FROM session;"`, { encoding: 'utf-8' });
-                    output.trim().split('\n').filter(Boolean).forEach((id: string) => existingIds.add(id.trim()));
-                } catch { /* DB might be locked, skip */ }
-
-                if (existingIds.size > 0) {
-                    const files = fs.readdirSync(diffDir) as string[];
-                    for (const file of files) {
-                        const sessionId = file.replace('.json', '');
-                        if (!existingIds.has(sessionId)) {
-                            try {
-                                fs.unlinkSync(pathMod.join(diffDir, file));
-                                diffsCleaned++;
-                            } catch { /* skip locked files */ }
-                        }
-                    }
-                    logger.info(`[OpenCode] Cleaned ${diffsCleaned} orphan diff files`);
-                }
-            }
-        } catch (e: any) {
-            logger.warn(`[OpenCode] Diff cleanup error (non-fatal): ${e.message}`);
-        }
-
-        // 4c. Shut down server, then VACUUM + WAL checkpoint to reclaim disk space
-        try {
-            await shutdownOpenCode();
-            logger.info('[OpenCode] Server shut down for VACUUM');
-
-            const { execSync } = require('child_process');
-            const HOME = process.env.HOME || `/home/${process.env.USER}`;
-            const dbPath = `${HOME}/.local/share/opencode/opencode.db`;
-            execSync(`sqlite3 "${dbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 30000 });
-            logger.info('[OpenCode] VACUUM + WAL checkpoint completed');
-        } catch (e: any) {
-            logger.warn(`[OpenCode] VACUUM error (non-fatal): ${e.message}`);
-        }
-    }
-
-    const sizeAfter = dryRun ? sizeBefore : measureDiskSize();
-    const elapsedMs = Date.now() - startMs;
-
-    // 5. Build markdown report
-    const lines: string[] = [];
-    lines.push(`# Informe de Purgado OpenCode`);
-    lines.push('');
-    lines.push(`**Modo:** ${dryRun ? '🔍 Simulación (dry-run)' : '🗑️ Ejecución real'}`);
-    lines.push(`**Fecha:** ${new Date().toISOString()}`);
-    lines.push(`**Duración:** ${elapsedMs}ms`);
-    const freed = sizeBefore - sizeAfter;
-    lines.push(`**Almacenamiento OpenCode:** ${formatBytes(sizeBefore)}${!dryRun ? ` → ${formatBytes(sizeAfter)}${freed > 0 ? ` (liberado: ${formatBytes(freed)})` : ''}` : ''}`);
-    lines.push('');
-    lines.push(`## Diagnóstico`);
-    lines.push('');
-    lines.push(`| Fuente | Registros |`);
-    lines.push(`|--------|-----------|`);
-    lines.push(`| Chats en DB (tabla chats) | ${allChats.length} |`);
-    lines.push(`| Chats con opencodeSessionId | ${allChats.filter(c => c.opencodeSessionId).length} |`);
-    lines.push(`| chatSessionMap (memoria) | ${chatSessionMap.size} |`);
-    lines.push(`| visualEditSessionMap (memoria) | ${visualEditSessionMap.size} |`);
-    lines.push(`| IDs conocidos (total) | ${knownIds.size} |`);
-    lines.push(`| Sesiones en OpenCode | ${allOcSessions.length} |`);
-    lines.push('');
-    if (allChats.length > 0 && allChats.filter(c => c.opencodeSessionId).length > 0) {
-        lines.push(`**Muestra DB** (primeros 5 con sessionId):`);
-        const dbSample = allChats.filter(c => c.opencodeSessionId).slice(0, 5);
-        for (const c of dbSample) {
-            lines.push(`- chat #${c.id} → \`${c.opencodeSessionId}\``);
-        }
-        lines.push('');
-    }
-    if (allOcSessions.length > 0) {
-        lines.push(`**Muestra OpenCode** (primeros 5):`);
-        for (const s of allOcSessions.slice(0, 5)) {
-            lines.push(`- \`${s.id}\` — ${s.title}`);
-        }
-        lines.push('');
-    }
-    lines.push(`## Resumen`);
-    lines.push('');
-    lines.push(`| Métrica | Valor |`);
-    lines.push(`|---------|-------|`);
-    lines.push(`| Total sesiones en OpenCode | ${allOcSessions.length} |`);
-    lines.push(`| Sesiones vinculadas a Vibes | ${matchedSessions.length} |`);
-    lines.push(`| Sesiones huérfanas | ${orphanSessions.length} |`);
-    if (!dryRun) {
-        lines.push(`| Eliminadas | ${deleted} |`);
-        lines.push(`| Errores al eliminar | ${errors} |`);
-    }
-    lines.push('');
-
-    if (matchedSessions.length > 0) {
-        lines.push(`## ✅ Sesiones vinculadas (se conservan)`);
-        lines.push('');
-        lines.push(`| Session ID | Título OC | Chat Vibes | App ID |`);
-        lines.push(`|-----------|-----------|------------|--------|`);
-        for (const s of matchedSessions) {
-            const detail = knownSessionDetails.get(s.id);
-            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
-            lines.push(`| \`${sid}\` | ${s.title} | ${detail ? `#${detail.chatId} "${detail.chatTitle || ''}"` : '?'} | ${detail?.appId ?? '?'} |`);
-        }
-        lines.push('');
-    }
-
-    if (orphanSessions.length > 0) {
-        lines.push(`## ${dryRun ? '⚠️ Sesiones huérfanas (se eliminarían)' : '🗑️ Sesiones huérfanas eliminadas'}`);
-        lines.push('');
-        if (dryRun) {
-            lines.push(`| Session ID | Título | Creado |`);
-            lines.push(`|-----------|--------|--------|`);
-        } else {
-            lines.push(`| Session ID | Título | Creado | Estado |`);
-            lines.push(`|-----------|--------|--------|--------|`);
-        }
-        for (const s of orphanSessions) {
-            const sid = s.id.length > 12 ? s.id.slice(0, 12) + '…' : s.id;
-            if (dryRun) {
-                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} |`);
-            } else {
-                const result = deleteResults.find(r => r.id === s.id);
-                lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} | ${result?.success ? '✅' : `❌ ${result?.error}`} |`);
-            }
-        }
-        lines.push('');
-    }
-
-    if (orphanSessions.length === 0) {
-        lines.push(`> ✨ No se encontraron sesiones huérfanas. Todo sincronizado.`);
-        lines.push('');
-    }
-
-    const report = lines.join('\n');
-    logger.info(
-        `[OpenCode] Purge ${dryRun ? '(dry-run)' : ''}: ${allOcSessions.length} total, ` +
-        `${orphanSessions.length} orphaned, ${deleted} deleted, ${errors} errors (${elapsedMs}ms)`
-    );
-
+  }
+  if (!clientInstance) {
     return {
-        totalInOpenCode: allOcSessions.length,
-        knownInVibes: matchedSessions.length,
-        orphaned: orphanSessions.length,
-        deleted,
-        errors,
-        report,
+      ...emptyResult,
+      report: "❌ No se pudo obtener el cliente de OpenCode.",
     };
+  }
+
+  const startMs = Date.now();
+
+  // 1. Get ALL sessions from OpenCode (experimental endpoint: cross-project)
+  //    The v1 SDK only has session.list() which is project-scoped.
+  //    We use the raw HTTP endpoint /experimental/session to list across ALL projects.
+  let allOcSessions: Array<{ id: string; title: string; createdAt: string }> =
+    [];
+  try {
+    const url = `${serverUrl}/experimental/session?limit=10000`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    const sessions = Array.isArray(data)
+      ? data
+      : data.data || data.sessions || [];
+    allOcSessions = sessions.map((s: any) => ({
+      id: s.id,
+      title: s.title || s.info?.title || "(sin título)",
+      createdAt: s.time?.created
+        ? new Date(s.time.created * 1000).toISOString()
+        : s.createdAt || "?",
+    }));
+  } catch (e: any) {
+    return {
+      ...emptyResult,
+      report: `❌ Error al listar sesiones OpenCode: ${e.message}`,
+    };
+  }
+
+  // 2. Get all known session IDs from Vibes DB
+  const db = getRemoteDb();
+  const allChats = await db.query.chats.findMany({
+    columns: { id: true, opencodeSessionId: true, title: true, appId: true },
+  });
+  const knownIds = new Set<string>();
+  const knownSessionDetails = new Map<
+    string,
+    { chatId: number; chatTitle: string | null; appId: number }
+  >();
+  for (const c of allChats) {
+    if (c.opencodeSessionId) {
+      knownIds.add(c.opencodeSessionId);
+      knownSessionDetails.set(c.opencodeSessionId, {
+        chatId: c.id,
+        chatTitle: c.title,
+        appId: c.appId,
+      });
+    }
+  }
+  // Visual-edit sessions are also "known"
+  for (const [appPath, sid] of visualEditSessionMap.entries()) {
+    knownIds.add(sid);
+    knownSessionDetails.set(sid, {
+      chatId: 0,
+      chatTitle: `[visual-edit] ${appPath}`,
+      appId: 0,
+    });
+  }
+  // In-memory chat sessions (may not be persisted to DB yet)
+  for (const [chatId, sid] of chatSessionMap.entries()) {
+    if (!knownIds.has(sid)) {
+      knownIds.add(sid);
+      knownSessionDetails.set(sid, {
+        chatId,
+        chatTitle: `[en memoria]`,
+        appId: 0,
+      });
+    }
+  }
+
+  // 3. Classify
+  const orphanSessions = allOcSessions.filter((s) => !knownIds.has(s.id));
+  const matchedSessions = allOcSessions.filter((s) => knownIds.has(s.id));
+
+  // Diagnostic logging
+  logger.info(
+    `[OpenCode] Purge diagnostic: ${allChats.length} chats in DB, ${knownIds.size} known IDs, ${chatSessionMap.size} in-memory, ${visualEditSessionMap.size} visual-edit`,
+  );
+  if (allChats.length > 0) {
+    const sample = allChats
+      .slice(0, 3)
+      .map((c) => `chat#${c.id}→${c.opencodeSessionId ?? "NULL"}`)
+      .join(", ");
+    logger.info(`[OpenCode] DB sample: ${sample}`);
+  }
+  if (allOcSessions.length > 0) {
+    const sample = allOcSessions
+      .slice(0, 3)
+      .map((s) => s.id)
+      .join(", ");
+    logger.info(`[OpenCode] OC sample: ${sample}`);
+  }
+
+  // Helper: measure OpenCode data directory size
+  const measureDiskSize = (): number => {
+    try {
+      const { execSync } = require("child_process");
+      const HOME = process.env.HOME || `/home/${process.env.USER}`;
+      const ocDataDir = `${HOME}/.local/share/opencode`;
+      const output = execSync(`du -sb "${ocDataDir}" 2>/dev/null || echo "0"`, {
+        encoding: "utf-8",
+      }).trim();
+      return parseInt(output.split("\t")[0], 10) || 0;
+    } catch {
+      return 0;
+    }
+  };
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes <= 0 || isNaN(bytes)) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.min(
+      Math.floor(Math.log(bytes) / Math.log(1024)),
+      units.length - 1,
+    );
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+  };
+
+  const sizeBefore = measureDiskSize();
+
+  // 4. Delete orphans (unless dryRun)
+  let deleted = 0;
+  let errors = 0;
+  const deleteResults: Array<{
+    id: string;
+    title: string;
+    success: boolean;
+    error?: string;
+  }> = [];
+  if (!dryRun) {
+    for (const orphan of orphanSessions) {
+      try {
+        await clientInstance!.session.delete({ path: { id: orphan.id } });
+        deleted++;
+        deleteResults.push({
+          id: orphan.id,
+          title: orphan.title,
+          success: true,
+        });
+      } catch (e: any) {
+        errors++;
+        deleteResults.push({
+          id: orphan.id,
+          title: orphan.title,
+          success: false,
+          error: e.message,
+        });
+      }
+    }
+
+    // 4b. Deep cleanup: remove orphan diff files from disk
+    let diffsCleaned = 0;
+    try {
+      const fs = require("fs");
+      const pathMod = require("path");
+      const HOME = process.env.HOME || `/home/${process.env.USER}`;
+      const diffDir = pathMod.join(
+        HOME,
+        ".local/share/opencode/storage/session_diff",
+      );
+      if (fs.existsSync(diffDir)) {
+        // Get remaining session IDs from DB
+        const { execSync } = require("child_process");
+        const dbPath = pathMod.join(HOME, ".local/share/opencode/opencode.db");
+        const existingIds = new Set<string>();
+        try {
+          const output = execSync(
+            `sqlite3 "${dbPath}" "SELECT id FROM session;"`,
+            { encoding: "utf-8" },
+          );
+          output
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .forEach((id: string) => existingIds.add(id.trim()));
+        } catch {
+          /* DB might be locked, skip */
+        }
+
+        if (existingIds.size > 0) {
+          const files = fs.readdirSync(diffDir) as string[];
+          for (const file of files) {
+            const sessionId = file.replace(".json", "");
+            if (!existingIds.has(sessionId)) {
+              try {
+                fs.unlinkSync(pathMod.join(diffDir, file));
+                diffsCleaned++;
+              } catch {
+                /* skip locked files */
+              }
+            }
+          }
+          logger.info(`[OpenCode] Cleaned ${diffsCleaned} orphan diff files`);
+        }
+      }
+    } catch (e: any) {
+      logger.warn(`[OpenCode] Diff cleanup error (non-fatal): ${e.message}`);
+    }
+
+    // 4c. Shut down server, then VACUUM + WAL checkpoint to reclaim disk space
+    try {
+      await shutdownOpenCode();
+      logger.info("[OpenCode] Server shut down for VACUUM");
+
+      const { execSync } = require("child_process");
+      const HOME = process.env.HOME || `/home/${process.env.USER}`;
+      const dbPath = `${HOME}/.local/share/opencode/opencode.db`;
+      execSync(
+        `sqlite3 "${dbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`,
+        { timeout: 30000 },
+      );
+      logger.info("[OpenCode] VACUUM + WAL checkpoint completed");
+    } catch (e: any) {
+      logger.warn(`[OpenCode] VACUUM error (non-fatal): ${e.message}`);
+    }
+  }
+
+  const sizeAfter = dryRun ? sizeBefore : measureDiskSize();
+  const elapsedMs = Date.now() - startMs;
+
+  // 5. Build markdown report
+  const lines: string[] = [];
+  lines.push(`# Informe de Purgado OpenCode`);
+  lines.push("");
+  lines.push(
+    `**Modo:** ${dryRun ? "🔍 Simulación (dry-run)" : "🗑️ Ejecución real"}`,
+  );
+  lines.push(`**Fecha:** ${new Date().toISOString()}`);
+  lines.push(`**Duración:** ${elapsedMs}ms`);
+  const freed = sizeBefore - sizeAfter;
+  lines.push(
+    `**Almacenamiento OpenCode:** ${formatBytes(sizeBefore)}${!dryRun ? ` → ${formatBytes(sizeAfter)}${freed > 0 ? ` (liberado: ${formatBytes(freed)})` : ""}` : ""}`,
+  );
+  lines.push("");
+  lines.push(`## Diagnóstico`);
+  lines.push("");
+  lines.push(`| Fuente | Registros |`);
+  lines.push(`|--------|-----------|`);
+  lines.push(`| Chats en DB (tabla chats) | ${allChats.length} |`);
+  lines.push(
+    `| Chats con opencodeSessionId | ${allChats.filter((c) => c.opencodeSessionId).length} |`,
+  );
+  lines.push(`| chatSessionMap (memoria) | ${chatSessionMap.size} |`);
+  lines.push(
+    `| visualEditSessionMap (memoria) | ${visualEditSessionMap.size} |`,
+  );
+  lines.push(`| IDs conocidos (total) | ${knownIds.size} |`);
+  lines.push(`| Sesiones en OpenCode | ${allOcSessions.length} |`);
+  lines.push("");
+  if (
+    allChats.length > 0 &&
+    allChats.filter((c) => c.opencodeSessionId).length > 0
+  ) {
+    lines.push(`**Muestra DB** (primeros 5 con sessionId):`);
+    const dbSample = allChats.filter((c) => c.opencodeSessionId).slice(0, 5);
+    for (const c of dbSample) {
+      lines.push(`- chat #${c.id} → \`${c.opencodeSessionId}\``);
+    }
+    lines.push("");
+  }
+  if (allOcSessions.length > 0) {
+    lines.push(`**Muestra OpenCode** (primeros 5):`);
+    for (const s of allOcSessions.slice(0, 5)) {
+      lines.push(`- \`${s.id}\` — ${s.title}`);
+    }
+    lines.push("");
+  }
+  lines.push(`## Resumen`);
+  lines.push("");
+  lines.push(`| Métrica | Valor |`);
+  lines.push(`|---------|-------|`);
+  lines.push(`| Total sesiones en OpenCode | ${allOcSessions.length} |`);
+  lines.push(`| Sesiones vinculadas a Vibes | ${matchedSessions.length} |`);
+  lines.push(`| Sesiones huérfanas | ${orphanSessions.length} |`);
+  if (!dryRun) {
+    lines.push(`| Eliminadas | ${deleted} |`);
+    lines.push(`| Errores al eliminar | ${errors} |`);
+  }
+  lines.push("");
+
+  if (matchedSessions.length > 0) {
+    lines.push(`## ✅ Sesiones vinculadas (se conservan)`);
+    lines.push("");
+    lines.push(`| Session ID | Título OC | Chat Vibes | App ID |`);
+    lines.push(`|-----------|-----------|------------|--------|`);
+    for (const s of matchedSessions) {
+      const detail = knownSessionDetails.get(s.id);
+      const sid = s.id.length > 12 ? s.id.slice(0, 12) + "…" : s.id;
+      lines.push(
+        `| \`${sid}\` | ${s.title} | ${detail ? `#${detail.chatId} "${detail.chatTitle || ""}"` : "?"} | ${detail?.appId ?? "?"} |`,
+      );
+    }
+    lines.push("");
+  }
+
+  if (orphanSessions.length > 0) {
+    lines.push(
+      `## ${dryRun ? "⚠️ Sesiones huérfanas (se eliminarían)" : "🗑️ Sesiones huérfanas eliminadas"}`,
+    );
+    lines.push("");
+    if (dryRun) {
+      lines.push(`| Session ID | Título | Creado |`);
+      lines.push(`|-----------|--------|--------|`);
+    } else {
+      lines.push(`| Session ID | Título | Creado | Estado |`);
+      lines.push(`|-----------|--------|--------|--------|`);
+    }
+    for (const s of orphanSessions) {
+      const sid = s.id.length > 12 ? s.id.slice(0, 12) + "…" : s.id;
+      if (dryRun) {
+        lines.push(`| \`${sid}\` | ${s.title} | ${s.createdAt} |`);
+      } else {
+        const result = deleteResults.find((r) => r.id === s.id);
+        lines.push(
+          `| \`${sid}\` | ${s.title} | ${s.createdAt} | ${result?.success ? "✅" : `❌ ${result?.error}`} |`,
+        );
+      }
+    }
+    lines.push("");
+  }
+
+  if (orphanSessions.length === 0) {
+    lines.push(`> ✨ No se encontraron sesiones huérfanas. Todo sincronizado.`);
+    lines.push("");
+  }
+
+  const report = lines.join("\n");
+  logger.info(
+    `[OpenCode] Purge ${dryRun ? "(dry-run)" : ""}: ${allOcSessions.length} total, ` +
+      `${orphanSessions.length} orphaned, ${deleted} deleted, ${errors} errors (${elapsedMs}ms)`,
+  );
+
+  return {
+    totalInOpenCode: allOcSessions.length,
+    knownInVibes: matchedSessions.length,
+    orphaned: orphanSessions.length,
+    deleted,
+    errors,
+    report,
+  };
 }
 
 /**
@@ -997,144 +1196,201 @@ export async function purgeAllOrphanedOpenCodeSessions(dryRun = false): Promise<
  * Called when user changes model or reasoning effort in settings.
  */
 export async function updateOpenCodeConfig(changes: {
-    selectedModel?: { provider?: string; name: string };
-    selectedModelVariant?: string;
-    strategistModel?: string;
-    executorModel?: string;
-    reasoningEffort?: string;
-    textVerbosity?: string;
-    agentModels?: Record<string, string>;
-    inferenceTemperature?: number;
-    inferenceTopP?: number;
-    inferenceRepetitionPenalty?: number;
+  selectedModel?: { provider?: string; name: string };
+  selectedModelVariant?: string;
+  strategistModel?: string;
+  executorModel?: string;
+  reasoningEffort?: string;
+  textVerbosity?: string;
+  agentModels?: Record<string, string>;
+  inferenceTemperature?: number;
+  inferenceTopP?: number;
+  inferenceRepetitionPenalty?: number;
 }): Promise<void> {
-    if (!clientInstance) return; // server not started yet
+  if (!clientInstance) return; // server not started yet
 
-    try {
-        const body: Record<string, any> = {};
-        const settings = readSettings();
-        const activeProvider = settings.selectedModel?.provider || "openrouter";
-        const isCustom = activeProvider.startsWith("custom::");
+  try {
+    const body: Record<string, any> = {};
+    const settings = readSettings();
+    const activeProvider = settings.selectedModel?.provider || "openrouter";
+    const isCustom = activeProvider.startsWith("custom::");
 
-        // Determine the providerID that OpenCode uses for routing
-        let activeProviderID: string;
-        if (changes.selectedModel) {
-            activeProviderID = mapProviderForOpenCode(changes.selectedModel);
-        } else {
-            // No model change — infer from current settings
-            activeProviderID = mapProviderForOpenCode(settings.selectedModel || { name: "", provider: isCustom ? activeProvider : "openrouter" });
-        }
-
-        if (changes.selectedModel) {
-            // Apply variant suffix if set (variant is ignored for free models)
-            const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
-            const modelID = composeModelWithVariant(sanitizeModelName(changes.selectedModel.name), variant);
-            const fullModel = `${activeProviderID}/${modelID}`;
-            body.model = fullModel;
-            // Also update plan/explore/general agents to use the same model
-            const agentConfig: Record<string, any> = body.agent || {};
-            for (const id of ["plan", "explore", "general"]) {
-                agentConfig[id] = { ...agentConfig[id], model: fullModel };
-            }
-            body.agent = agentConfig;
-        }
-        // Executor model → small_model (used for lightweight tasks)
-        // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
-        if (changes.executorModel) {
-            const { provider: eProv, name: eName } = parseModelString(changes.executorModel, activeProvider);
-            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
-            body.small_model = `${eProvID}/${sanitizeModelName(eName)}`;
-            // Register the provider if it's a different one (e.g. Ollama)
-            if (eProvID !== activeProviderID) {
-                registerExtraProvider(body, eProv, eName, settings);
-            }
-        }
-        if (changes.reasoningEffort || changes.textVerbosity || changes.inferenceTemperature !== undefined || changes.inferenceTopP !== undefined || changes.inferenceRepetitionPenalty !== undefined) {
-            body.agent = {
-                ...body.agent,
-                build: {
-                    ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
-                    ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
-                    ...(changes.inferenceTemperature !== undefined ? { temperature: changes.inferenceTemperature } : {}),
-                    ...(changes.inferenceTopP !== undefined ? { topP: changes.inferenceTopP } : {}),
-                    ...(changes.inferenceRepetitionPenalty !== undefined ? { repetitionPenalty: changes.inferenceRepetitionPenalty } : {}),
-                },
-            };
-        }
-        // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
-        // v2: supports provider::model format
-        if (changes.strategistModel) {
-            const { provider: sProv, name: sName } = parseModelString(changes.strategistModel, activeProvider);
-            const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
-            const agentConfig: Record<string, any> = body.agent || {};
-            const model = `${sProvID}/${sanitizeModelName(sName)}`;
-            for (const id of ["compaction", "title", "summary", "mockup"]) {
-                agentConfig[id] = { ...agentConfig[id], model };
-            }
-            body.agent = agentConfig;
-            // Register the provider if different
-            if (sProvID !== activeProviderID) {
-                registerExtraProvider(body, sProv, sName, settings);
-            }
-            logger.info(`[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`);
-        }
-
-        // Hot-update per-agent model overrides (all agents)
-        if (changes.agentModels) {
-            const agentConfig: Record<string, any> = body.agent || {};
-            const agentIds = ["plan", "explore", "general", "compaction", "title", "summary", "mockup"] as const;
-            for (const id of agentIds) {
-                if (changes.agentModels[id]) {
-                    agentConfig[id] = { ...agentConfig[id], model: `openrouter/${changes.agentModels[id]}` };
-                }
-            }
-            body.agent = agentConfig;
-            const models = changes.agentModels;
-            const summary = agentIds.map(id => `${id}=${models[id] || 'default'}`).join(', ');
-            logger.info(`[OpenCode] Agent models updated: ${summary}`);
-        }
-
-        // ── Always register the model in provider.models for hot-update ──
-        // Register under the correct providerID so OpenCode can find the model.
-        const currentModelID = body.model ? (body.model as string).replace(/^[^/]+\//, '') : '';
-        if (currentModelID) {
-            const allModels = isCustom
-                ? buildCustomProviderModels(activeProvider, currentModelID)
-                : { [currentModelID]: {} };
-            const providerSection: Record<string, any> = {
-                models: allModels,
-            };
-
-            // For custom providers, inject npm + baseURL + apiKey
-            if (isCustom) {
-                const customConfig = settings.customProviders?.find((p: any) => p.id === activeProvider);
-                if (customConfig) {
-                    providerSection.npm = "@ai-sdk/openai-compatible";
-                    providerSection.name = customConfig.name || activeProvider.replace(/^custom::/, "");
-                    providerSection.options = {
-                        baseURL: customConfig.apiBaseUrl,
-                        ...(customConfig.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
-                    };
-                }
-            }
-
-            // For Ollama as primary provider, inject npm + baseURL
-            if (activeProviderID === "ollama") {
-                const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
-                providerSection.npm = "@ai-sdk/openai-compatible";
-                providerSection.name = "Ollama (local)";
-                providerSection.options = { baseURL: `${ollamaUrl}/v1` };
-            }
-
-            body.provider = { [activeProviderID]: providerSection };
-            logger.info(`[OpenCode] Hot-registered model: ${activeProviderID}/${currentModelID}`);
-        }
-
-        await clientInstance.config.update({ body: body as any });
-        logger.info(`[OpenCode] Config updated in-place: ${JSON.stringify(body)}`);
-    } catch (error: any) {
-        logger.warn(`[OpenCode] config.update() failed: ${error.message}`);
+    // Determine the providerID that OpenCode uses for routing
+    let activeProviderID: string;
+    if (changes.selectedModel) {
+      activeProviderID = mapProviderForOpenCode(changes.selectedModel);
+    } else {
+      // No model change — infer from current settings
+      activeProviderID = mapProviderForOpenCode(
+        settings.selectedModel || {
+          name: "",
+          provider: isCustom ? activeProvider : "openrouter",
+        },
+      );
     }
+
+    if (changes.selectedModel) {
+      // Apply variant suffix if set (variant is ignored for free models)
+      const variant =
+        changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
+      const modelID = composeModelWithVariant(
+        sanitizeModelName(changes.selectedModel.name),
+        variant,
+      );
+      const fullModel = `${activeProviderID}/${modelID}`;
+      body.model = fullModel;
+      // Also update plan/explore/general agents to use the same model
+      const agentConfig: Record<string, any> = body.agent || {};
+      for (const id of ["plan", "explore", "general"]) {
+        agentConfig[id] = { ...agentConfig[id], model: fullModel };
+      }
+      body.agent = agentConfig;
+    }
+    // Executor model → small_model (used for lightweight tasks)
+    // v2: supports provider::model format (e.g. "ollama::qwen2.5-coder:7b")
+    if (changes.executorModel) {
+      const { provider: eProv, name: eName } = parseModelString(
+        changes.executorModel,
+        activeProvider,
+      );
+      const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
+      body.small_model = `${eProvID}/${sanitizeModelName(eName)}`;
+      // Register the provider if it's a different one (e.g. Ollama)
+      if (eProvID !== activeProviderID) {
+        registerExtraProvider(body, eProv, eName, settings);
+      }
+    }
+    if (
+      changes.reasoningEffort ||
+      changes.textVerbosity ||
+      changes.inferenceTemperature !== undefined ||
+      changes.inferenceTopP !== undefined ||
+      changes.inferenceRepetitionPenalty !== undefined
+    ) {
+      body.agent = {
+        ...body.agent,
+        build: {
+          ...(changes.reasoningEffort
+            ? { reasoningEffort: changes.reasoningEffort }
+            : {}),
+          ...(changes.textVerbosity
+            ? { textVerbosity: changes.textVerbosity }
+            : {}),
+          ...(changes.inferenceTemperature !== undefined
+            ? { temperature: changes.inferenceTemperature }
+            : {}),
+          ...(changes.inferenceTopP !== undefined
+            ? { topP: changes.inferenceTopP }
+            : {}),
+          ...(changes.inferenceRepetitionPenalty !== undefined
+            ? { repetitionPenalty: changes.inferenceRepetitionPenalty }
+            : {}),
+        },
+      };
+    }
+    // Hot-update background model tier (strategistModel → compaction/title/summary/mockup)
+    // v2: supports provider::model format
+    if (changes.strategistModel) {
+      const { provider: sProv, name: sName } = parseModelString(
+        changes.strategistModel,
+        activeProvider,
+      );
+      const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
+      const agentConfig: Record<string, any> = body.agent || {};
+      const model = `${sProvID}/${sanitizeModelName(sName)}`;
+      for (const id of ["compaction", "title", "summary", "mockup"]) {
+        agentConfig[id] = { ...agentConfig[id], model };
+      }
+      body.agent = agentConfig;
+      // Register the provider if different
+      if (sProvID !== activeProviderID) {
+        registerExtraProvider(body, sProv, sName, settings);
+      }
+      logger.info(
+        `[OpenCode] Background model updated: strategist=${sName} (provider=${sProv})`,
+      );
+    }
+
+    // Hot-update per-agent model overrides (all agents)
+    if (changes.agentModels) {
+      const agentConfig: Record<string, any> = body.agent || {};
+      const agentIds = [
+        "plan",
+        "explore",
+        "general",
+        "compaction",
+        "title",
+        "summary",
+        "mockup",
+      ] as const;
+      for (const id of agentIds) {
+        if (changes.agentModels[id]) {
+          agentConfig[id] = {
+            ...agentConfig[id],
+            model: `openrouter/${changes.agentModels[id]}`,
+          };
+        }
+      }
+      body.agent = agentConfig;
+      const models = changes.agentModels;
+      const summary = agentIds
+        .map((id) => `${id}=${models[id] || "default"}`)
+        .join(", ");
+      logger.info(`[OpenCode] Agent models updated: ${summary}`);
+    }
+
+    // ── Always register the model in provider.models for hot-update ──
+    // Register under the correct providerID so OpenCode can find the model.
+    const currentModelID = body.model
+      ? (body.model as string).replace(/^[^/]+\//, "")
+      : "";
+    if (currentModelID) {
+      const allModels = isCustom
+        ? buildCustomProviderModels(activeProvider, currentModelID)
+        : { [currentModelID]: {} };
+      const providerSection: Record<string, any> = {
+        models: allModels,
+      };
+
+      // For custom providers, inject npm + baseURL + apiKey
+      if (isCustom) {
+        const customConfig = settings.customProviders?.find(
+          (p: any) => p.id === activeProvider,
+        );
+        if (customConfig) {
+          providerSection.npm = "@ai-sdk/openai-compatible";
+          providerSection.name =
+            customConfig.name || activeProvider.replace(/^custom::/, "");
+          providerSection.options = {
+            baseURL: customConfig.apiBaseUrl,
+            ...(customConfig.apiKey?.value
+              ? { apiKey: customConfig.apiKey.value }
+              : {}),
+          };
+        }
+      }
+
+      // For Ollama as primary provider, inject npm + baseURL
+      if (activeProviderID === "ollama") {
+        const ollamaUrl = (
+          settings.ollamaBaseUrl || "http://localhost:11434"
+        ).replace(/\/+$/, "");
+        providerSection.npm = "@ai-sdk/openai-compatible";
+        providerSection.name = "Ollama (local)";
+        providerSection.options = { baseURL: `${ollamaUrl}/v1` };
+      }
+
+      body.provider = { [activeProviderID]: providerSection };
+      logger.info(
+        `[OpenCode] Hot-registered model: ${activeProviderID}/${currentModelID}`,
+      );
+    }
+
+    await clientInstance.config.update({ body: body as any });
+    logger.info(`[OpenCode] Config updated in-place: ${JSON.stringify(body)}`);
+  } catch (error: any) {
+    logger.warn(`[OpenCode] config.update() failed: ${error.message}`);
+  }
 }
 
 /**
@@ -1142,30 +1398,37 @@ export async function updateOpenCodeConfig(changes: {
  * Called when the user changes permission pills in Ajustes → Agente.
  */
 export async function updateOpenCodePermissions(settings: any): Promise<void> {
-    if (!clientInstance) return;
-    try {
-        const permission = buildPermissionConfig(settings);
-        await clientInstance.config.update({ body: { permission } as any });
-        logger.info(`[OpenCode] Permission config updated in-place: ${JSON.stringify(permission)}`);
-    } catch (error: any) {
-        logger.warn(`[OpenCode] config.update(permission) failed: ${error.message}`);
-    }
+  if (!clientInstance) return;
+  try {
+    const permission = buildPermissionConfig(settings);
+    await clientInstance.config.update({ body: { permission } as any });
+    logger.info(
+      `[OpenCode] Permission config updated in-place: ${JSON.stringify(permission)}`,
+    );
+  } catch (error: any) {
+    logger.warn(
+      `[OpenCode] config.update(permission) failed: ${error.message}`,
+    );
+  }
 }
 
 /**
  * Hot update OpenCode MCP servers config without restarting
  */
-export async function updateOpenCodeMcpConfig(servers: McpServer[], appPath?: string): Promise<void> {
-    if (!clientInstance) return;
-    try {
-        const mcpConfig = buildMcpConfig(servers, appPath);
-        if (mcpConfig) {
-            await clientInstance.config.update({ body: { mcp: mcpConfig } as any });
-            logger.info(`[OpenCode] MCP config updated in-place`);
-        }
-    } catch (error: any) {
-        logger.warn(`[OpenCode] config.update(mcp) failed: ${error.message}`);
+export async function updateOpenCodeMcpConfig(
+  servers: McpServer[],
+  appPath?: string,
+): Promise<void> {
+  if (!clientInstance) return;
+  try {
+    const mcpConfig = buildMcpConfig(servers, appPath);
+    if (mcpConfig) {
+      await clientInstance.config.update({ body: { mcp: mcpConfig } as any });
+      logger.info(`[OpenCode] MCP config updated in-place`);
     }
+  } catch (error: any) {
+    logger.warn(`[OpenCode] config.update(mcp) failed: ${error.message}`);
+  }
 }
 
 /**
@@ -1173,19 +1436,19 @@ export async function updateOpenCodeMcpConfig(servers: McpServer[], appPath?: st
  * Does nothing if the entry already exists or the file doesn't exist.
  */
 function ensureGitignoreEntry(projectPath: string, entry: string): void {
-    const fs = require("fs");
-    const gitignorePath = path.join(projectPath, ".gitignore");
-    try {
-        if (fs.existsSync(gitignorePath)) {
-            const content = fs.readFileSync(gitignorePath, "utf-8");
-            if (!content.includes(entry.replace("/", ""))) {
-                fs.appendFileSync(gitignorePath, `\n# CodeGraph index\n${entry}\n`);
-                logger.info(`[CodeGraph] Added ${entry} to ${gitignorePath}`);
-            }
-        }
-    } catch (e: any) {
-        logger.warn(`[CodeGraph] Failed to update .gitignore: ${e.message}`);
+  const fs = require("fs");
+  const gitignorePath = path.join(projectPath, ".gitignore");
+  try {
+    if (fs.existsSync(gitignorePath)) {
+      const content = fs.readFileSync(gitignorePath, "utf-8");
+      if (!content.includes(entry.replace("/", ""))) {
+        fs.appendFileSync(gitignorePath, `\n# CodeGraph index\n${entry}\n`);
+        logger.info(`[CodeGraph] Added ${entry} to ${gitignorePath}`);
+      }
     }
+  } catch (e: any) {
+    logger.warn(`[CodeGraph] Failed to update .gitignore: ${e.message}`);
+  }
 }
 
 /**
@@ -1200,48 +1463,55 @@ function ensureGitignoreEntry(projectPath: string, entry: string): void {
  * the init command fails for any reason, it logs a warning and returns without
  * blocking the agent stream.
  */
-async function ensureCodeGraphInit(appPath: string, enabledServers: any[]): Promise<void> {
-    const hasCodeGraph = enabledServers.some(
-        (s: any) => s.name?.toLowerCase() === "codegraph" && (s.enabled === true || s.enabled === 1)
-    );
-    if (!hasCodeGraph) return;
+async function ensureCodeGraphInit(
+  appPath: string,
+  enabledServers: any[],
+): Promise<void> {
+  const hasCodeGraph = enabledServers.some(
+    (s: any) =>
+      s.name?.toLowerCase() === "codegraph" &&
+      (s.enabled === true || s.enabled === 1),
+  );
+  if (!hasCodeGraph) return;
 
-    const fs = require("fs");
-    const dbPath = path.join(appPath, ".codegraph", "codegraph.db");
+  const fs = require("fs");
+  const dbPath = path.join(appPath, ".codegraph", "codegraph.db");
 
-    if (fs.existsSync(dbPath)) {
-        logger.info(`[CodeGraph] Already initialized at ${appPath}`);
-        return;
+  if (fs.existsSync(dbPath)) {
+    logger.info(`[CodeGraph] Already initialized at ${appPath}`);
+    return;
+  }
+
+  logger.info(`[CodeGraph] Initializing index for ${appPath}...`);
+  try {
+    const { execFile } = require("child_process");
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        "codegraph",
+        ["init", "-i", appPath],
+        { timeout: 90_000, env: process.env },
+        (err: any, stdout: string, stderr: string) => {
+          if (err) {
+            reject(err);
+          } else {
+            const out = (stdout || stderr || "").trim();
+            logger.info(`[CodeGraph] Auto-initialized for ${appPath}: ${out}`);
+            resolve();
+          }
+        },
+      );
+    });
+    // Add .codegraph/ to the project's .gitignore so it doesn't get committed
+    ensureGitignoreEntry(appPath, ".codegraph/");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      logger.warn(
+        `[CodeGraph] 'codegraph' binary not found in PATH — skipping auto-init`,
+      );
+    } else {
+      logger.warn(`[CodeGraph] Auto-init failed (non-fatal): ${err.message}`);
     }
-
-    logger.info(`[CodeGraph] Initializing index for ${appPath}...`);
-    try {
-        const { execFile } = require("child_process");
-        await new Promise<void>((resolve, reject) => {
-            execFile(
-                "codegraph",
-                ["init", "-i", appPath],
-                { timeout: 90_000, env: process.env },
-                (err: any, stdout: string, stderr: string) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        const out = (stdout || stderr || "").trim();
-                        logger.info(`[CodeGraph] Auto-initialized for ${appPath}: ${out}`);
-                        resolve();
-                    }
-                },
-            );
-        });
-        // Add .codegraph/ to the project's .gitignore so it doesn't get committed
-        ensureGitignoreEntry(appPath, ".codegraph/");
-    } catch (err: any) {
-        if (err.code === "ENOENT") {
-            logger.warn(`[CodeGraph] 'codegraph' binary not found in PATH — skipping auto-init`);
-        } else {
-            logger.warn(`[CodeGraph] Auto-init failed (non-fatal): ${err.message}`);
-        }
-    }
+  }
 }
 
 /**
@@ -1250,58 +1520,74 @@ async function ensureCodeGraphInit(appPath: string, enabledServers: any[]): Prom
  * and injects PROJECT_PATH env var into all stdio servers.
  */
 function buildMcpConfig(servers: McpServer[], appPath?: string) {
-    if (!servers || servers.length === 0) return undefined;
-    
-    const resolveArg = (arg: string): string => {
-        if (!appPath) return arg;
-        return arg.replace(/\{\{PROJECT_PATH\}\}/g, appPath);
-    };
-    
-    const result = Object.fromEntries(
-        servers.map(s => {
-            const serverKey = s.name.replace(/[^a-zA-Z0-9_-]/g, "");
-            
-            if (s.transport === "stdio") {
-                let resolvedArgs = (s.args ?? []).map(resolveArg);
-                const hadPlaceholder = (s.args ?? []).some((a: string) => a.includes("{{PROJECT_PATH}}"));
-                
-                if (appPath && hadPlaceholder) {
-                    logger.info(`[MCP] ${s.name}: resolved {{PROJECT_PATH}} → ${appPath}`);
-                }
+  if (!servers || servers.length === 0) return undefined;
 
-                // Autocomplete path for codegraph MCP if not explicitly specified
-                if (s.name.toLowerCase() === "codegraph" && appPath) {
-                    const hasPathArg = resolvedArgs.some(a => a === "-p" || a === "--path");
-                    if (!hasPathArg) {
-                        resolvedArgs = [...resolvedArgs, "-p", appPath];
-                        logger.info(`[MCP] Automatically appended project path -p "${appPath}" for server: ${s.name}`);
-                    }
-                }
-                
-                return [serverKey, {
-                    type: "local" as const,
-                    command: [s.command!, ...resolvedArgs],
-                    enabled: true,
-                    environment: {
-                        ...s.envJson,
-                        // Generic env var — any MCP server can read it
-                        ...(appPath ? { PROJECT_PATH: appPath } : {}),
-                    },
-                }];
-            }
-            
-            // Remote servers (http/sse) — unchanged
-            return [serverKey, {
-                type: "remote" as const,
-                url: s.url!,
-                enabled: true,
-                headers: { ...s.headersJson, ...s.envJson },
-            }];
-        })
-    );
-    
-    logger.info(`[MCP] Built config for ${servers.length} server(s)${appPath ? ` (appPath: ${appPath})` : ""}`);
-    return result;
+  const resolveArg = (arg: string): string => {
+    if (!appPath) return arg;
+    return arg.replace(/\{\{PROJECT_PATH\}\}/g, appPath);
+  };
+
+  const result = Object.fromEntries(
+    servers.map((s) => {
+      const serverKey = s.name.replace(/[^a-zA-Z0-9_-]/g, "");
+
+      if (s.transport === "stdio") {
+        let resolvedArgs = (s.args ?? []).map(resolveArg);
+        const hadPlaceholder = (s.args ?? []).some((a: string) =>
+          a.includes("{{PROJECT_PATH}}"),
+        );
+
+        if (appPath && hadPlaceholder) {
+          logger.info(
+            `[MCP] ${s.name}: resolved {{PROJECT_PATH}} → ${appPath}`,
+          );
+        }
+
+        // Autocomplete path for codegraph MCP if not explicitly specified
+        if (s.name.toLowerCase() === "codegraph" && appPath) {
+          const hasPathArg = resolvedArgs.some(
+            (a) => a === "-p" || a === "--path",
+          );
+          if (!hasPathArg) {
+            resolvedArgs = [...resolvedArgs, "-p", appPath];
+            logger.info(
+              `[MCP] Automatically appended project path -p "${appPath}" for server: ${s.name}`,
+            );
+          }
+        }
+
+        return [
+          serverKey,
+          {
+            type: "local" as const,
+            command: [s.command!, ...resolvedArgs],
+            enabled: true,
+            environment: {
+              ...s.envJson,
+              // Generic env var — any MCP server can read it
+              ...(appPath ? { PROJECT_PATH: appPath } : {}),
+            },
+          },
+        ];
+      }
+
+      // Remote servers (http/sse) — unchanged
+      return [
+        serverKey,
+        {
+          type: "remote" as const,
+          url: s.url!,
+          enabled: true,
+          headers: { ...s.headersJson, ...s.envJson },
+        },
+      ];
+    }),
+  );
+
+  logger.info(
+    `[MCP] Built config for ${servers.length} server(s)${appPath ? ` (appPath: ${appPath})` : ""}`,
+  );
+  return result;
 }
 
 /**
@@ -1317,18 +1603,20 @@ function buildMcpConfig(servers: McpServer[], appPath?: string) {
  * indefinitely and blocking the entire OpenCode session startup.
  */
 function sanitizeMcpArgs(args: string[] | string | null | undefined): string[] {
-    if (!args) return [];
-    // If already a proper array, split any elements that contain spaces
-    if (Array.isArray(args)) {
-        return args.flatMap(arg =>
-            typeof arg === "string" && arg.includes(" ") ? arg.split(/\s+/) : [arg]
-        ).filter(Boolean);
-    }
-    // Scalar string — split by whitespace
-    if (typeof args === "string") {
-        return args.split(/\s+/).filter(Boolean);
-    }
-    return [];
+  if (!args) return [];
+  // If already a proper array, split any elements that contain spaces
+  if (Array.isArray(args)) {
+    return args
+      .flatMap((arg) =>
+        typeof arg === "string" && arg.includes(" ") ? arg.split(/\s+/) : [arg],
+      )
+      .filter(Boolean);
+  }
+  // Scalar string — split by whitespace
+  if (typeof args === "string") {
+    return args.split(/\s+/).filter(Boolean);
+  }
+  return [];
 }
 
 /**
@@ -1340,238 +1628,298 @@ function sanitizeMcpArgs(args: string[] | string | null | undefined): string[] {
  * No chat is created in the user's UI.
  */
 export async function handleVisualQuickEdit(params: {
-    appPath: string;
-    componentFile: string;   // e.g. "src/pages/Login.tsx"
-    componentLine: number;   // e.g. 148
-    componentName: string;   // e.g. "Input"
-    prompt: string;          // e.g. "añade el típico ojo"
-    onStatus?: (status: string) => void; // optional status callback
+  appPath: string;
+  componentFile: string; // e.g. "src/pages/Login.tsx"
+  componentLine: number; // e.g. 148
+  componentName: string; // e.g. "Input"
+  prompt: string; // e.g. "añade el típico ojo"
+  onStatus?: (status: string) => void; // optional status callback
 }): Promise<{ success: boolean; summary?: string; error?: string }> {
-    const { appPath, componentFile, componentLine, componentName, prompt, onStatus } = params;
+  const {
+    appPath,
+    componentFile,
+    componentLine,
+    componentName,
+    prompt,
+    onStatus,
+  } = params;
 
-    let client: ReturnType<typeof createOpencodeClient>;
+  let client: ReturnType<typeof createOpencodeClient>;
+  try {
+    const result = await getOpenCodeClient(appPath);
+    client = result.client;
+  } catch (error: any) {
+    logger.error(
+      `[VisualEdit] Failed to get OpenCode client: ${error.message}`,
+    );
+    return {
+      success: false,
+      error: `Error al conectar con OpenCode: ${error.message}`,
+    };
+  }
+
+  // Reuse existing session for this app, or create a new one
+  let sessionId = visualEditSessionMap.get(appPath);
+  if (!sessionId) {
     try {
-        const result = await getOpenCodeClient(appPath);
-        client = result.client;
+      onStatus?.("Preparando el agente...");
+      const session = await client.session.create({
+        body: { title: `Visual Edit` },
+        query: { directory: appPath },
+      });
+      if (!session.data?.id) {
+        throw new Error("Session creation returned no data");
+      }
+      sessionId = session.data.id;
+      visualEditSessionMap.set(appPath, sessionId);
+      logger.info(
+        `[VisualEdit] Created persistent session ${sessionId} for ${appPath}`,
+      );
     } catch (error: any) {
-        logger.error(`[VisualEdit] Failed to get OpenCode client: ${error.message}`);
-        return { success: false, error: `Error al conectar con OpenCode: ${error.message}` };
+      logger.error(`[VisualEdit] Failed to create session: ${error.message}`);
+      return {
+        success: false,
+        error: `Error al crear sesión: ${error.message}`,
+      };
     }
+  } else {
+    logger.info(`[VisualEdit] Reusing session ${sessionId} for ${appPath}`);
+  }
 
-    // Reuse existing session for this app, or create a new one
-    let sessionId = visualEditSessionMap.get(appPath);
-    if (!sessionId) {
-        try {
-            onStatus?.("Preparando el agente...");
-            const session = await client.session.create({
-                body: { title: `Visual Edit` },
-                query: { directory: appPath },
-            });
-            if (!session.data?.id) {
-                throw new Error("Session creation returned no data");
+  try {
+    // Subscribe to SSE events to track progress
+    const sseAbortController = new AbortController();
+    const eventsResult = await client.global.event({
+      signal: sseAbortController.signal,
+    } as any);
+
+    let agentText = "";
+    let completed = false;
+    let eventCount = 0;
+    let filesEdited: string[] = [];
+
+    // Process events in background — mirrors processEvents() logic exactly
+    const eventDone = (async () => {
+      try {
+        for await (const rawEvt of eventsResult.stream) {
+          eventCount++;
+          const evt = (rawEvt as any).payload || rawEvt;
+          const props = evt.properties || {};
+          const eventType = evt.type || "";
+
+          // Session filtering — skip events that belong to a DIFFERENT session
+          // (but keep events that have no sessionID, like session.idle)
+          const partProps = props.part || {};
+          if (partProps.sessionID && partProps.sessionID !== sessionId)
+            continue;
+          if (props.sessionID && props.sessionID !== sessionId) continue;
+
+          // Log every event for debugging
+          logger.info(
+            `[VisualEdit] #${eventCount} ${eventType}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}`,
+          );
+
+          switch (eventType) {
+            case "message.part.updated": {
+              const part = props.part;
+              if (!part) break;
+
+              // Track text output from the agent
+              if (part.type === "text" && part.text) {
+                agentText = part.text;
+                logger.info(
+                  `[VisualEdit] 📝 Text: ${part.text.substring(0, 100)}...`,
+                );
+              }
+
+              // Track tool activity for status feedback
+              if (part.type === "tool") {
+                const toolState = part.state;
+                const toolName = part.tool || "unknown";
+                const status = toolState?.status || "unknown";
+                const input = toolState?.input || part.input || {};
+                const detail =
+                  input.file_path ||
+                  input.path ||
+                  input.filePath ||
+                  input.command ||
+                  "";
+
+                logger.info(
+                  `[VisualEdit] 🔧 Tool ${toolName}: ${status}${detail ? ` (${detail})` : ""}`,
+                );
+
+                if (status === "running" || status === "pending") {
+                  if (
+                    toolName === "read" ||
+                    toolName === "glob" ||
+                    toolName === "grep"
+                  ) {
+                    onStatus?.(`Leyendo ${detail || componentFile}...`);
+                  } else if (toolName === "edit" || toolName === "write") {
+                    onStatus?.("Aplicando cambios...");
+                  }
+                }
+              }
+              break;
             }
-            sessionId = session.data.id;
-            visualEditSessionMap.set(appPath, sessionId);
-            logger.info(`[VisualEdit] Created persistent session ${sessionId} for ${appPath}`);
-        } catch (error: any) {
-            logger.error(`[VisualEdit] Failed to create session: ${error.message}`);
-            return { success: false, error: `Error al crear sesión: ${error.message}` };
+
+            case "message.updated": {
+              const delta = props.delta;
+              if (typeof delta === "string" && delta.length > 0) {
+                // Text delta — accumulate
+                agentText += delta;
+              }
+              break;
+            }
+
+            case "file.edited": {
+              const file = props.file;
+              if (file) {
+                filesEdited.push(file);
+                logger.info(`[VisualEdit] 📂 File edited: ${file}`);
+                onStatus?.(`Editado: ${path.basename(file)}`);
+              }
+              break;
+            }
+
+            case "session.idle": {
+              logger.info(
+                `[VisualEdit] ✅ Session idle — complete. Total events: ${eventCount}, files edited: ${filesEdited.length}`,
+              );
+              completed = true;
+              return; // Exit the for-await loop
+            }
+
+            case "session.status": {
+              const status = props.status || props.session?.status;
+              logger.info(
+                `[VisualEdit] Session status: ${JSON.stringify(status)}`,
+              );
+              if (status?.type === "idle") {
+                completed = true;
+                return;
+              }
+              break;
+            }
+
+            case "permission.asked": {
+              const reqId = props.id || props.requestID;
+              if (!reqId) break;
+              // Auto-approve all permissions
+              try {
+                await replyToPermission(reqId, "always", sessionId);
+                logger.info(
+                  `[VisualEdit] Auto-approved permission: ${props.permission || props.type}`,
+                );
+              } catch (e: any) {
+                logger.error(`[VisualEdit] Permission error: ${e.message}`);
+              }
+              break;
+            }
+
+            // Ignore known noise events
+            case "server.connected":
+            case "session.updated":
+            case "file.watcher.updated":
+              break;
+
+            default:
+              if (eventCount <= 30) {
+                logger.info(`[VisualEdit] Unhandled: ${eventType}`);
+              }
+              break;
+          }
         }
-    } else {
-        logger.info(`[VisualEdit] Reusing session ${sessionId} for ${appPath}`);
-    }
+      } catch (err: any) {
+        if (!sseAbortController.signal.aborted) {
+          logger.warn(`[VisualEdit] SSE stream error: ${err.message}`);
+        }
+      }
+    })();
 
-    try {
-        // Subscribe to SSE events to track progress
-        const sseAbortController = new AbortController();
-        const eventsResult = await client.global.event({ signal: sseAbortController.signal } as any);
+    // Build the prompt with component context
+    const settings = readSettings();
+    const model = settings.selectedModel;
+    const providerID = mapProviderForOpenCode(model);
 
-        let agentText = "";
-        let completed = false;
-        let eventCount = 0;
-        let filesEdited: string[] = [];
+    const agentPrompt = [
+      `Edita el componente "${componentName}" en el archivo "${componentFile}" (línea ${componentLine}).`,
+      ``,
+      `Petición del usuario: ${prompt}`,
+      ``,
+      `IMPORTANTE: Lee el archivo primero para entender el contexto. Haz solo el cambio pedido.`,
+    ].join("\n");
 
-        // Process events in background — mirrors processEvents() logic exactly
-        const eventDone = (async () => {
-            try {
-                for await (const rawEvt of eventsResult.stream) {
-                    eventCount++;
-                    const evt = (rawEvt as any).payload || rawEvt;
-                    const props = evt.properties || {};
-                    const eventType = evt.type || "";
+    onStatus?.(`Editando ${componentName}...`);
 
-                    // Session filtering — skip events that belong to a DIFFERENT session
-                    // (but keep events that have no sessionID, like session.idle)
-                    const partProps = props.part || {};
-                    if (partProps.sessionID && partProps.sessionID !== sessionId) continue;
-                    if (props.sessionID && props.sessionID !== sessionId) continue;
+    // Send the prompt to the visual-edit subagent
+    await client.session.promptAsync({
+      path: { id: sessionId },
+      query: { directory: appPath },
+      body: {
+        model: {
+          providerID,
+          modelID: sanitizeModelName(model.name),
+        },
+        parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
+      },
+    });
 
-                    // Log every event for debugging
-                    logger.info(`[VisualEdit] #${eventCount} ${eventType}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}`);
+    logger.info(
+      `[VisualEdit] Prompt sent to visual-edit agent (model: ${providerID}/${model.name})`,
+    );
 
-                    switch (eventType) {
-                        case "message.part.updated": {
-                            const part = props.part;
-                            if (!part) break;
+    // Wait for completion with timeout (120s for slower models)
+    const timeout = new Promise<void>((resolve) =>
+      setTimeout(resolve, 120_000),
+    );
+    await Promise.race([eventDone, timeout]);
 
-                            // Track text output from the agent
-                            if (part.type === "text" && part.text) {
-                                agentText = part.text;
-                                logger.info(`[VisualEdit] 📝 Text: ${part.text.substring(0, 100)}...`);
-                            }
+    // Clean up SSE
+    sseAbortController.abort();
 
-                            // Track tool activity for status feedback
-                            if (part.type === "tool") {
-                                const toolState = part.state;
-                                const toolName = part.tool || "unknown";
-                                const status = toolState?.status || "unknown";
-                                const input = toolState?.input || part.input || {};
-                                const detail = input.file_path || input.path || input.filePath
-                                    || input.command || "";
-
-                                logger.info(`[VisualEdit] 🔧 Tool ${toolName}: ${status}${detail ? ` (${detail})` : ""}`);
-
-                                if (status === "running" || status === "pending") {
-                                    if (toolName === "read" || toolName === "glob" || toolName === "grep") {
-                                        onStatus?.(`Leyendo ${detail || componentFile}...`);
-                                    } else if (toolName === "edit" || toolName === "write") {
-                                        onStatus?.("Aplicando cambios...");
-                                    }
-                                }
-                            }
-                            break;
-                        }
-
-                        case "message.updated": {
-                            const delta = props.delta;
-                            if (typeof delta === "string" && delta.length > 0) {
-                                // Text delta — accumulate
-                                agentText += delta;
-                            }
-                            break;
-                        }
-
-                        case "file.edited": {
-                            const file = props.file;
-                            if (file) {
-                                filesEdited.push(file);
-                                logger.info(`[VisualEdit] 📂 File edited: ${file}`);
-                                onStatus?.(`Editado: ${path.basename(file)}`);
-                            }
-                            break;
-                        }
-
-                        case "session.idle": {
-                            logger.info(`[VisualEdit] ✅ Session idle — complete. Total events: ${eventCount}, files edited: ${filesEdited.length}`);
-                            completed = true;
-                            return; // Exit the for-await loop
-                        }
-
-                        case "session.status": {
-                            const status = props.status || props.session?.status;
-                            logger.info(`[VisualEdit] Session status: ${JSON.stringify(status)}`);
-                            if (status?.type === "idle") {
-                                completed = true;
-                                return;
-                            }
-                            break;
-                        }
-
-                        case "permission.asked": {
-                            const reqId = props.id || props.requestID;
-                            if (!reqId) break;
-                            // Auto-approve all permissions
-                            try {
-                                await replyToPermission(reqId, "always", sessionId);
-                                logger.info(`[VisualEdit] Auto-approved permission: ${props.permission || props.type}`);
-                            } catch (e: any) {
-                                logger.error(`[VisualEdit] Permission error: ${e.message}`);
-                            }
-                            break;
-                        }
-
-                        // Ignore known noise events
-                        case "server.connected":
-                        case "session.updated":
-                        case "file.watcher.updated":
-                            break;
-
-                        default:
-                            if (eventCount <= 30) {
-                                logger.info(`[VisualEdit] Unhandled: ${eventType}`);
-                            }
-                            break;
-                    }
-                }
-            } catch (err: any) {
-                if (!sseAbortController.signal.aborted) {
-                    logger.warn(`[VisualEdit] SSE stream error: ${err.message}`);
-                }
-            }
-        })();
-
-        // Build the prompt with component context
-        const settings = readSettings();
-        const model = settings.selectedModel;
-        const providerID = mapProviderForOpenCode(model);
-
-        const agentPrompt = [
-            `Edita el componente "${componentName}" en el archivo "${componentFile}" (línea ${componentLine}).`,
-            ``,
-            `Petición del usuario: ${prompt}`,
-            ``,
-            `IMPORTANTE: Lee el archivo primero para entender el contexto. Haz solo el cambio pedido.`,
-        ].join("\n");
-
-        onStatus?.(`Editando ${componentName}...`);
-
-        // Send the prompt to the visual-edit subagent
-        await client.session.promptAsync({
-            path: { id: sessionId },
-            query: { directory: appPath },
-            body: {
-                model: {
-                    providerID,
-                    modelID: sanitizeModelName(model.name),
-                },
-                parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
-            },
+    if (!completed) {
+      logger.warn(
+        `[VisualEdit] Timed out after 120s. Events received: ${eventCount}`,
+      );
+      // Try to abort the session so it doesn't keep running
+      try {
+        await client.session.abort({
+          path: { id: sessionId },
+          query: { directory: appPath },
         });
-
-        logger.info(`[VisualEdit] Prompt sent to visual-edit agent (model: ${providerID}/${model.name})`);
-
-        // Wait for completion with timeout (120s for slower models)
-        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 120_000));
-        await Promise.race([eventDone, timeout]);
-
-        // Clean up SSE
-        sseAbortController.abort();
-
-        if (!completed) {
-            logger.warn(`[VisualEdit] Timed out after 120s. Events received: ${eventCount}`);
-            // Try to abort the session so it doesn't keep running
-            try { await client.session.abort({ path: { id: sessionId }, query: { directory: appPath } }); } catch {}
-            return { success: false, error: "Tiempo de espera agotado. Verifica los logs para más detalle." };
-        }
-
-        // Extract summary from agent's text response
-        const summary = agentText.trim() || "Cambio aplicado";
-        logger.info(`[VisualEdit] ✅ Completed. Summary: ${summary.substring(0, 200)}`);
-
-        return {
-            success: filesEdited.length > 0 || agentText.length > 0,
-            summary,
-        };
-
-    } catch (error: any) {
-        logger.error(`[VisualEdit] Error: ${error.message}`);
-        // Invalidate session only on connection/protocol errors, not on model errors
-        if (error.message?.includes("session") || error.message?.includes("connect")) {
-            visualEditSessionMap.delete(appPath);
-            logger.info(`[VisualEdit] Invalidated session for ${appPath} due to connection error`);
-        }
-        return { success: false, error: error.message };
+      } catch {}
+      return {
+        success: false,
+        error: "Tiempo de espera agotado. Verifica los logs para más detalle.",
+      };
     }
+
+    // Extract summary from agent's text response
+    const summary = agentText.trim() || "Cambio aplicado";
+    logger.info(
+      `[VisualEdit] ✅ Completed. Summary: ${summary.substring(0, 200)}`,
+    );
+
+    return {
+      success: filesEdited.length > 0 || agentText.length > 0,
+      summary,
+    };
+  } catch (error: any) {
+    logger.error(`[VisualEdit] Error: ${error.message}`);
+    // Invalidate session only on connection/protocol errors, not on model errors
+    if (
+      error.message?.includes("session") ||
+      error.message?.includes("connect")
+    ) {
+      visualEditSessionMap.delete(appPath);
+      logger.info(
+        `[VisualEdit] Invalidated session for ${appPath} due to connection error`,
+      );
+    }
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -1579,438 +1927,555 @@ export async function handleVisualQuickEdit(params: {
  * The server runs on localhost and the client communicates via HTTP.
  */
 async function getOpenCodeClient(appPath: string) {
-    // ── Detect provider change → force restart ──
-    const currentSettings = readSettings();
-    const currentProvider = currentSettings.selectedModel?.provider || "openrouter";
-    if (clientInstance && opencodeInstance && lastActiveProviderId && lastActiveProviderId !== currentProvider) {
-        logger.info(`[OpenCode] Provider changed: ${lastActiveProviderId} → ${currentProvider}. Restarting server...`);
-        try {
-            opencodeInstance.server.close();
-        } catch (e: any) {
-            logger.warn(`[OpenCode] Error closing old server: ${e.message}`);
+  // ── Detect provider change → force restart ──
+  const currentSettings = readSettings();
+  const currentProvider =
+    currentSettings.selectedModel?.provider || "openrouter";
+  if (
+    clientInstance &&
+    opencodeInstance &&
+    lastActiveProviderId &&
+    lastActiveProviderId !== currentProvider
+  ) {
+    logger.info(
+      `[OpenCode] Provider changed: ${lastActiveProviderId} → ${currentProvider}. Restarting server...`,
+    );
+    try {
+      opencodeInstance.server.close();
+    } catch (e: any) {
+      logger.warn(`[OpenCode] Error closing old server: ${e.message}`);
+    }
+    opencodeInstance = null;
+    clientInstance = null;
+    serverUrl = null;
+    // Keep session maps — they're per-chat, not per-provider
+  }
+
+  if (clientInstance && opencodeInstance) {
+    return { client: clientInstance, opencode: opencodeInstance };
+  }
+
+  // Set OpenCode config directory to Vibes' custom directory to avoid conflicts
+  // with any system-wide opencode installation.
+  process.env.OPENCODE_CONFIG_DIR = path.join(
+    app.getPath("userData"),
+    "opencode-config",
+  );
+
+  // ─── Fix PATH for Electron ─────────────────────────────
+  // Electron doesn't inherit the terminal's NVM-managed PATH.
+  // The SDK spawns `opencode` internally, so we must ensure
+  // the binary is findable via process.env.PATH.
+  const HOME = process.env.HOME || "/home/" + process.env.USER;
+  const nvmDir = path.join(HOME, ".nvm/versions/node");
+  const fs = require("fs");
+
+  try {
+    if (fs.existsSync(nvmDir)) {
+      const versions = fs.readdirSync(nvmDir);
+
+      // Sort versions descending (e.g., v20 > v18 > v16) so the newest Node is prioritized in PATH
+      versions.sort((a: string, b: string) => {
+        const numA = a.replace("v", "").split(".").map(Number);
+        const numB = b.replace("v", "").split(".").map(Number);
+        for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+          const partA = numA[i] || 0;
+          const partB = numB[i] || 0;
+          if (partA !== partB) return partB - partA; // Descending
         }
-        opencodeInstance = null;
-        clientInstance = null;
-        serverUrl = null;
-        // Keep session maps — they're per-chat, not per-provider
+        return 0;
+      });
+
+      const nvmBins = versions.map((v: string) => path.join(nvmDir, v, "bin"));
+      const currentPath = process.env.PATH || "";
+      // Prepend NVM bins so they take priority
+      process.env.PATH = [...nvmBins, currentPath].join(":");
+      logger.info(
+        `[OpenCode] Injected ${nvmBins.length} NVM bin dirs into PATH (latest: ${versions[0]})`,
+      );
     }
+  } catch (e) {
+    logger.warn("[OpenCode] Could not scan NVM dirs:", e);
+  }
 
-    if (clientInstance && opencodeInstance) {
-        return { client: clientInstance, opencode: opencodeInstance };
+  // Build environment with API keys from Electron's secure storage
+  const envVars = extractApiKeysForEnv();
+
+  // Clear any stale keys from OpenCode's own auth.json so it doesn't override
+  // the keys we provide via config.json {env:...} substitution.
+  // This protects existing users who upgrade and still have an old/deleted key cached.
+  clearStaleOpenCodeAuth(envVars);
+
+  // Set API keys in the process environment before creating the instance
+  for (const [key, value] of Object.entries(envVars)) {
+    process.env[key] = value;
+  }
+
+  const settings = readSettings();
+  const model = settings.selectedModel;
+
+  // Determine provider/model mapping for opencode
+  const providerID = mapProviderForOpenCode(model);
+  // Apply variant suffix (ignored for free models)
+  const modelID = composeModelWithVariant(
+    sanitizeModelName(model.name),
+    settings.selectedModelVariant ?? "",
+  );
+
+  try {
+    // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
+    // Electron's CWD (our project root) and writes config.json there, which
+    // triggers Vite page reloads that kill SSE streaming.
+    // Fix: temporarily change cwd before spawning, then restore it.
+    let opencodeDataDir: string;
+    try {
+      const { app } = require("electron");
+      opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+    } catch {
+      // Server/web mode — no Electron, use a temp-like directory
+      const os = require("os");
+      opencodeDataDir = path.join(
+        os.homedir(),
+        ".config",
+        "vibes-server",
+        "opencode-server",
+      );
     }
-
-    // Set OpenCode config directory to Vibes' custom directory to avoid conflicts
-    // with any system-wide opencode installation.
-    process.env.OPENCODE_CONFIG_DIR = path.join(app.getPath("userData"), "opencode-config");
-
-    // ─── Fix PATH for Electron ─────────────────────────────
-    // Electron doesn't inherit the terminal's NVM-managed PATH.
-    // The SDK spawns `opencode` internally, so we must ensure
-    // the binary is findable via process.env.PATH.
-    const HOME = process.env.HOME || "/home/" + process.env.USER;
-    const nvmDir = path.join(HOME, ".nvm/versions/node");
     const fs = require("fs");
-
-    try {
-        if (fs.existsSync(nvmDir)) {
-            const versions = fs.readdirSync(nvmDir);
-
-            // Sort versions descending (e.g., v20 > v18 > v16) so the newest Node is prioritized in PATH
-            versions.sort((a: string, b: string) => {
-                const numA = a.replace('v', '').split('.').map(Number);
-                const numB = b.replace('v', '').split('.').map(Number);
-                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
-                    const partA = numA[i] || 0;
-                    const partB = numB[i] || 0;
-                    if (partA !== partB) return partB - partA; // Descending
-                }
-                return 0;
-            });
-
-            const nvmBins = versions.map((v: string) => path.join(nvmDir, v, "bin"));
-            const currentPath = process.env.PATH || "";
-            // Prepend NVM bins so they take priority
-            process.env.PATH = [...nvmBins, currentPath].join(":");
-            logger.info(`[OpenCode] Injected ${nvmBins.length} NVM bin dirs into PATH (latest: ${versions[0]})`);
-        }
-    } catch (e) {
-        logger.warn("[OpenCode] Could not scan NVM dirs:", e);
+    if (!fs.existsSync(opencodeDataDir)) {
+      fs.mkdirSync(opencodeDataDir, { recursive: true });
     }
 
-    // Build environment with API keys from Electron's secure storage
-    const envVars = extractApiKeysForEnv();
+    const originalCwd = process.cwd();
+    process.chdir(opencodeDataDir);
 
-    // Clear any stale keys from OpenCode's own auth.json so it doesn't override
-    // the keys we provide via config.json {env:...} substitution.
-    // This protects existing users who upgrade and still have an old/deleted key cached.
-    clearStaleOpenCodeAuth(envVars);
+    // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
+    // Admin-only feature. Non-admins always get built-in tools.
+    try {
+      const { deployMorphTools, removeMorphTools } =
+        await import("../utils/morph_patcher");
+      const { isAdmin } = await import("../../lib/admin");
+      const morphEnabled =
+        isAdmin((settings as any).userId) &&
+        (settings as any).enableMorphPatchTool === true;
 
-    // Set API keys in the process environment before creating the instance
-    for (const [key, value] of Object.entries(envVars)) {
-        process.env[key] = value;
+      if (morphEnabled) {
+        deployMorphTools();
+        logger.info(
+          `[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ${path.join(app.getPath("userData"), "opencode-config", "tools")}`,
+        );
+      } else {
+        removeMorphTools();
+        logger.info(
+          "[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools",
+        );
+      }
+    } catch (e: any) {
+      logger.warn(
+        `[OpenCode] Morph tools deployment failed (non-fatal): ${e.message}`,
+      );
     }
 
-    const settings = readSettings();
-    const model = settings.selectedModel;
-
-    // Determine provider/model mapping for opencode
-    const providerID = mapProviderForOpenCode(model);
-    // Apply variant suffix (ignored for free models)
-    const modelID = composeModelWithVariant(sanitizeModelName(model.name), settings.selectedModelVariant ?? "");
-
-    try {
-        // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
-        // Electron's CWD (our project root) and writes config.json there, which
-        // triggers Vite page reloads that kill SSE streaming.
-        // Fix: temporarily change cwd before spawning, then restore it.
-        let opencodeDataDir: string;
-        try {
-            const { app } = require("electron");
-            opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
-        } catch {
-            // Server/web mode — no Electron, use a temp-like directory
-            const os = require("os");
-            opencodeDataDir = path.join(os.homedir(), ".config", "vibes-server", "opencode-server");
+    // Load MCP servers
+    const { getRemoteDb } = await import("../../db/remote");
+    const db = getRemoteDb();
+    const settingsRecord = await db.query.userSettings.findFirst();
+    let enabledServers: any[] = [];
+    if (settingsRecord?.userId) {
+      enabledServers = await db.query.mcpServers.findMany({
+        where: and(
+          eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
+          eq(remoteSchema.mcpServers.enabled, 1),
+        ),
+      });
+      // Parse arguments — handle double/triple encoding from Turso DB
+      const safeParseField = (raw: any): any => {
+        if (raw == null) return null;
+        if (typeof raw !== "string") return raw;
+        let parsed: any = raw;
+        let rounds = 0;
+        while (typeof parsed === "string" && rounds < 3) {
+          try {
+            parsed = JSON.parse(parsed);
+            rounds++;
+          } catch {
+            break;
+          }
         }
-        const fs = require("fs");
-        if (!fs.existsSync(opencodeDataDir)) {
-            fs.mkdirSync(opencodeDataDir, { recursive: true });
-        }
+        if (rounds > 1)
+          logger.info(
+            `[MCP] Fixed multi-encoded field in opencode_adapter (${rounds} rounds)`,
+          );
+        return parsed;
+      };
+      enabledServers = enabledServers.map((s) => ({
+        ...s,
+        args: safeParseField(s.args),
+        envJson: safeParseField(s.envJson),
+        headersJson: safeParseField(s.headersJson),
+      }));
+    }
 
-        const originalCwd = process.cwd();
-        process.chdir(opencodeDataDir);
+    // Dynamic instructions are written to docs/vibes-context.md per-request
+    // and registered in the project's opencode.json (same pattern as DESIGN.md).
+    // ── Register models in provider.models ──
+    // OpenCode can't resolve models that aren't in its built-in catalogue.
+    // For custom providers, register ALL cached models so the user can switch
+    // without restarting. For built-in providers, just register the selected one.
+    const activeProvider = settings.selectedModel?.provider || "openrouter";
+    const registeredModels: Record<string, object> = activeProvider.startsWith(
+      "custom::",
+    )
+      ? buildCustomProviderModels(activeProvider, modelID)
+      : { [modelID]: {} };
+    logger.info(
+      `[OpenCode] Registered ${Object.keys(registeredModels).length} model(s) for ${providerID}`,
+    );
 
-        // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
-        // Admin-only feature. Non-admins always get built-in tools.
-        try {
-            const { deployMorphTools, removeMorphTools } = await import("../utils/morph_patcher");
-            const { isAdmin } = await import("../../lib/admin");
-            const morphEnabled = isAdmin((settings as any).userId) && (settings as any).enableMorphPatchTool === true;
-
-            if (morphEnabled) {
-                deployMorphTools();
-                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ${path.join(app.getPath("userData"), "opencode-config", "tools")}`);
-            } else {
-                removeMorphTools();
-                logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
-            }
-        } catch (e: any) {
-            logger.warn(`[OpenCode] Morph tools deployment failed (non-fatal): ${e.message}`);
-        }
-
-        // Load MCP servers
-        const { getRemoteDb } = await import("../../db/remote");
-        const db = getRemoteDb();
-        const settingsRecord = await db.query.userSettings.findFirst();
-        let enabledServers: any[] = [];
-        if (settingsRecord?.userId) {
-            enabledServers = await db.query.mcpServers.findMany({
-                where: and(
-                    eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
-                    eq(remoteSchema.mcpServers.enabled, 1)
-                ),
-            });
-            // Parse arguments — handle double/triple encoding from Turso DB
-            const safeParseField = (raw: any): any => {
-                if (raw == null) return null;
-                if (typeof raw !== "string") return raw;
-                let parsed: any = raw;
-                let rounds = 0;
-                while (typeof parsed === "string" && rounds < 3) {
-                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
+    const config = {
+      provider: {
+        [providerID]:
+          providerID === "openrouter"
+            ? {
+                name: "openrouter",
+                models: registeredModels,
+                options: {
+                  // Explicitly bind the API key from process.env so OpenCode uses
+                  // the key configured in Vibes instead of any stale auth.json file.
+                  apiKey: "{env:OPENROUTER_API_KEY}",
+                  headers: {
+                    "X-Title": "Vibes",
+                    "HTTP-Referer": "https://github.com/jpmunix/vibes",
+                  },
+                },
+              }
+            : providerID === "anthropic"
+              ? {
+                  models: registeredModels,
+                  options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
                 }
-                if (rounds > 1) logger.info(`[MCP] Fixed multi-encoded field in opencode_adapter (${rounds} rounds)`);
-                return parsed;
-            };
-            enabledServers = enabledServers.map(s => ({
-                ...s,
-                args: safeParseField(s.args),
-                envJson: safeParseField(s.envJson),
-                headersJson: safeParseField(s.headersJson),
-            }));
-        }
-
-        // Dynamic instructions are written to docs/vibes-context.md per-request
-        // and registered in the project's opencode.json (same pattern as DESIGN.md).
-        // ── Register models in provider.models ──
-        // OpenCode can't resolve models that aren't in its built-in catalogue.
-        // For custom providers, register ALL cached models so the user can switch
-        // without restarting. For built-in providers, just register the selected one.
-        const activeProvider = settings.selectedModel?.provider || "openrouter";
-        const registeredModels: Record<string, object> = activeProvider.startsWith("custom::")
-            ? buildCustomProviderModels(activeProvider, modelID)
-            : { [modelID]: {} };
-        logger.info(`[OpenCode] Registered ${Object.keys(registeredModels).length} model(s) for ${providerID}`);
-
-        const config = {
-                provider: {
-                    [providerID]: (providerID === "openrouter" ? {
-                            name: "openrouter",
+              : providerID === "google"
+                ? {
+                    models: registeredModels,
+                    options: { apiKey: "{env:GEMINI_API_KEY}" },
+                  }
+                : providerID === "openai"
+                  ? {
+                      models: registeredModels,
+                      options: { apiKey: "{env:OPENAI_API_KEY}" },
+                    }
+                  : providerID === "ollama"
+                    ? (() => {
+                        // Ollama as primary provider — local inference via openai-compatible API
+                        const ollamaUrl = (
+                          settings.ollamaBaseUrl || "http://localhost:11434"
+                        ).replace(/\/+$/, "");
+                        return {
+                          npm: "@ai-sdk/openai-compatible",
+                          name: "Ollama (local)",
+                          models: registeredModels,
+                          options: { baseURL: `${ollamaUrl}/v1` },
+                        };
+                      })()
+                    : providerID.startsWith("custom-")
+                      ? (() => {
+                          // Custom providers use @ai-sdk/openai-compatible
+                          const customProvId =
+                            settings.selectedModel?.provider || "openrouter";
+                          const customConfig = settings.customProviders?.find(
+                            (p: any) => p.id === customProvId,
+                          );
+                          const providerName =
+                            customConfig?.name ||
+                            activeProvider.replace(/^custom::/, "");
+                          return {
+                            npm: "@ai-sdk/openai-compatible",
+                            name: providerName,
                             models: registeredModels,
                             options: {
-                                // Explicitly bind the API key from process.env so OpenCode uses
-                                // the key configured in Vibes instead of any stale auth.json file.
-                                apiKey: "{env:OPENROUTER_API_KEY}",
-                                headers: {
-                                    "X-Title": "Vibes",
-                                    "HTTP-Referer": "https://github.com/jpmunix/vibes",
-                                },
+                              baseURL: customConfig?.apiBaseUrl || "",
+                              ...(customConfig?.apiKey?.value
+                                ? { apiKey: customConfig.apiKey.value }
+                                : {}),
                             },
-                        } : providerID === "anthropic" ? {
-                            models: registeredModels,
-                            options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
-                        } : providerID === "google" ? {
-                            models: registeredModels,
-                            options: { apiKey: "{env:GEMINI_API_KEY}" },
-                        } : providerID === "openai" ? {
-                            models: registeredModels,
-                            options: { apiKey: "{env:OPENAI_API_KEY}" },
-                        } : providerID === "ollama" ? (() => {
-                            // Ollama as primary provider — local inference via openai-compatible API
-                            const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
-                            return {
-                                npm: "@ai-sdk/openai-compatible",
-                                name: "Ollama (local)",
-                                models: registeredModels,
-                                options: { baseURL: `${ollamaUrl}/v1` },
-                            };
-                        })() : providerID.startsWith("custom-") ? (() => {
-                            // Custom providers use @ai-sdk/openai-compatible
-                            const customProvId = settings.selectedModel?.provider || "openrouter";
-                            const customConfig = settings.customProviders?.find((p: any) => p.id === customProvId);
-                            const providerName = customConfig?.name || activeProvider.replace(/^custom::/, "");
-                            return {
-                                npm: "@ai-sdk/openai-compatible",
-                                name: providerName,
-                                models: registeredModels,
-                                options: {
-                                    baseURL: customConfig?.apiBaseUrl || "",
-                                    ...(customConfig?.apiKey?.value ? { apiKey: customConfig.apiKey.value } : {}),
-                                },
-                            };
-                        })() : { models: registeredModels }),
-                    // ── Multi-provider registration ──
-                    // If strategistModel or executorModel point to a different provider
-                    // (e.g. "ollama::qwen2.5-coder:7b"), register that provider too.
-                    ...(() => {
-                        const extraProviders: Record<string, any> = {};
-                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
-                        const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
-                        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
-                        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
+                          };
+                        })()
+                      : { models: registeredModels },
+        // ── Multi-provider registration ──
+        // If strategistModel or executorModel point to a different provider
+        // (e.g. "ollama::qwen2.5-coder:7b"), register that provider too.
+        ...(() => {
+          const extraProviders: Record<string, any> = {};
+          const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+          const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+          const { provider: stratProv, name: stratName } = parseModelString(
+            rawStrat,
+            activeProvider,
+          );
+          const { provider: execProv, name: execName } = parseModelString(
+            rawExec,
+            activeProvider,
+          );
 
-                        // Register Ollama provider if either tier uses it
-                        for (const [prov, mName] of [[stratProv, stratName], [execProv, execName]] as const) {
-                            if (prov === "ollama" && mapProviderForOpenCode({ provider: prov, name: mName }) !== providerID) {
-                                const ollamaProvID = "ollama";
-                                if (!extraProviders[ollamaProvID]) {
-                                    const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
-                                    extraProviders[ollamaProvID] = {
-                                        npm: "@ai-sdk/openai-compatible",
-                                        name: "ollama",
-                                        models: {},
-                                        options: { baseURL: `${ollamaUrl}/v1` },
-                                    };
-                                }
-                                extraProviders["ollama"].models[sanitizeModelName(mName)] = {};
-                            }
-                        }
-                        return extraProviders;
-                    })(),
-                },
-                model: `${providerID}/${modelID}`,
-                // Executor model for lightweight tasks (titles, summaries, commit messages)
-                small_model: (() => {
-                    const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
-                    const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
-                    const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
-                    return `${execProvID}/${sanitizeModelName(execName)}`;
-                })(),
-                // Agent-level config: reasoning effort + text verbosity + unified model tiers
-                agent: {
-                    build: {
-                        reasoningEffort: settings.reasoningEffort || "medium",
-                        textVerbosity: settings.textVerbosity || "low",
-                    },
-                    // All primary agents use selectedModel (same as global `model` above)
-                    plan: {
-                        // model inherited from global `model` — no override needed
-                        permission: {
-                            edit: "allow",
-                            bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
-                        }
-                    },
-                    // explore and general inherit the global model automatically
-                    // Background/auxiliary tasks use strategistModel
-                    ...(() => {
-                        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
-                        const { provider: sProv, name: sName } = parseModelString(rawStrat, activeProvider);
-                        const sProvID = mapProviderForOpenCode({ provider: sProv, name: sName });
-                        const sModelFull = `${sProvID}/${sanitizeModelName(sName)}`;
-                        return {
-                            compaction: { model: sModelFull },
-                            title: { model: sModelFull },
-                            summary: { model: sModelFull },
-                        };
-                    })(),
-                    // Hidden subagent for quick visual edits from the NaturalEditingPanel.
-                    // Invoked programmatically — never shown in the UI.
-                    "visual-edit": {
-                        description: "Realiza ediciones visuales puntuales a componentes React/JSX. Solo edita el archivo indicado.",
-                        mode: "subagent",
-                        hidden: true,
-                        temperature: 0.1,
-                        permission: {
-                            edit: "allow",
-                            bash: { "*": "deny" },
-                            webfetch: "deny",
-                        },
-                        prompt: [
-                            "Eres un agente de edición visual rápida para componentes React/JSX.",
-                            "Tu ÚNICA tarea es hacer cambios pequeños y precisos al componente indicado.",
-                            "",
-                            "REGLAS ESTRICTAS:",
-                            "- Lee el archivo indicado y modifica SOLO las líneas relevantes del componente",
-                            "- Usa las clases/estilos existentes del proyecto (Tailwind, CSS modules, inline styles, etc.)",
-                            "- NO crees archivos nuevos",
-                            "- NO ejecutes comandos bash",
-                            "- NO hagas cambios fuera del componente especificado",
-                            "- Responde con un resumen de 1 línea de lo que cambiaste, en el mismo idioma del usuario",
-                            "- Si instalas una dependencia nueva (como un icono), añádela al import existente",
-                        ].join("\n"),
-                    },
-                    // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
-                    "mockup": {
-                        description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
-                        mode: "primary",
-                        reasoningEffort: "none",
-                        model: (() => {
-                            const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
-                            const { provider: eProv, name: eName } = parseModelString(rawExec, activeProvider);
-                            const eProvID = mapProviderForOpenCode({ provider: eProv, name: eName });
-                            return `${eProvID}/${sanitizeModelName(eName)}`;
-                        })(),
-                        tools: {
-                            write: true,
-                            edit: true,
-                            bash: false,
-                        },
-                        permission: {
-                            edit: "allow",
-                            bash: "deny",
-                            webfetch: "deny",
-                        },
-                        prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
-                    },
-                },
-                // Permissions: built from user settings
-                permission: buildPermissionConfig(settings),
-                // Always-on context compaction (documented at opencode.ai/docs/configuration)
-                // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
-                // the model stalling when context fills up mid-session (key fix for slow responses).
-                ...({ compaction: { auto: true, prune: true, reserved: 15000 } } as any),
-                // LSP servers (TypeScript, ESLint, etc.) are enabled by default in OpenCode
-                // when supported file extensions are detected. No explicit config needed.
-                // Optimize I/O by disabling OpenCode's snapshot system, which is too slow on large repos
-                ...({ snapshot: false } as any),
-                // Disable features we don't need (reduces overhead)
-                autoupdate: false,
-                formatter: false,
-                share: "disabled",
-                // Ignore heavy directories to prevent token drain
-                // (OpenCode's grep/glob use ripgrep which respects .gitignore,
-                //  but watcher.ignore provides an extra safety net for projects
-                //  without a proper .gitignore or not initialized as git repos)
-                watcher: {
-                    ignore: [
-                        "node_modules/**",
-                        ".vite/**",
-                        "dist/**",
-                        "build/**",
-                        ".next/**",
-                        ".nuxt/**",
-                        ".output/**",
-                        ".git/**",
-                        ".git",
-                        "*.lock",
-                        "*.log",
-                    ],
-                },
-                // Context7 is a mandatory built-in MCP server — always present
-                // regardless of user configuration. Used for dynamic scaffold
-                // generation and up-to-date documentation lookup.
-                mcp: {
-                    "context7": {
-                        type: "remote" as const,
-                        url: "https://mcp.context7.com/mcp",
-                        enabled: true,
-                        headers: { "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" },
-                    },
-                    ...buildMcpConfig(enabledServers, appPath),
-                },
-        };
-
-
-        let opencode: Awaited<ReturnType<typeof createOpencode>>;
-        // Timeout: 15s to accommodate macOS Gatekeeper/code-signing delays on first spawn.
-        // The SDK defaults to 5s which is too aggressive for some environments.
-        const STARTUP_TIMEOUT_MS = 15_000;
-        const MAX_RETRIES = 1;
-        let lastError: Error | null = null;
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                opencode = await createOpencode({
-                    hostname: "127.0.0.1",
-                    port: 0, // auto-assign port
-                    timeout: STARTUP_TIMEOUT_MS,
-                    config: config as any,
-                });
-                lastError = null;
-                break;
-            } catch (err: any) {
-                lastError = err;
-                if (attempt < MAX_RETRIES && err.message?.includes("Timeout")) {
-                    logger.warn(`[OpenCode] Startup timed out (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying...`);
-                    // Small delay before retry to let the system settle
-                    await new Promise(r => setTimeout(r, 1000));
-                }
+          // Register Ollama provider if either tier uses it
+          for (const [prov, mName] of [
+            [stratProv, stratName],
+            [execProv, execName],
+          ] as const) {
+            if (
+              prov === "ollama" &&
+              mapProviderForOpenCode({ provider: prov, name: mName }) !==
+                providerID
+            ) {
+              const ollamaProvID = "ollama";
+              if (!extraProviders[ollamaProvID]) {
+                const ollamaUrl = (
+                  settings.ollamaBaseUrl || "http://localhost:11434"
+                ).replace(/\/+$/, "");
+                extraProviders[ollamaProvID] = {
+                  npm: "@ai-sdk/openai-compatible",
+                  name: "ollama",
+                  models: {},
+                  options: { baseURL: `${ollamaUrl}/v1` },
+                };
+              }
+              extraProviders["ollama"].models[sanitizeModelName(mName)] = {};
             }
-        }
-        // Always restore CWD, even if createOpencode fails
-        process.chdir(originalCwd);
-        if (lastError || !opencode!) {
-            throw lastError || new Error("OpenCode failed to start after retries");
-        }
-
-        opencodeInstance = opencode;
-        clientInstance = opencode.client;
-        serverUrl = opencode.server.url;
-        lastActiveProviderId = settings.selectedModel?.provider || "openrouter";
-
-        logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
-        logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
-
-        // Log full agent→model mapping for visibility
-        // v2: parse provider::model to show correct provider per tier
-        const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+          }
+          return extraProviders;
+        })(),
+      },
+      model: `${providerID}/${modelID}`,
+      // Executor model for lightweight tasks (titles, summaries, commit messages)
+      small_model: (() => {
         const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
-        const { provider: stratProv, name: stratName } = parseModelString(rawStrat, activeProvider);
-        const { provider: execProv, name: execName } = parseModelString(rawExec, activeProvider);
-        const stratProvID = mapProviderForOpenCode({ provider: stratProv, name: stratName });
-        const execProvID = mapProviderForOpenCode({ provider: execProv, name: execName });
-        logger.info(
-            `[OpenCode] Agent model map:\n` +
-            `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
-            `  STRATEGIST  → ${stratProvID}/${sanitizeModelName(stratName)} (plan, explore, general)\n` +
-            `  EXECUTOR    → ${execProvID}/${sanitizeModelName(execName)} (compaction, title, summary, mockup)\n` +
-            `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`
+        const { provider: execProv, name: execName } = parseModelString(
+          rawExec,
+          activeProvider,
         );
+        const execProvID = mapProviderForOpenCode({
+          provider: execProv,
+          name: execName,
+        });
+        return `${execProvID}/${sanitizeModelName(execName)}`;
+      })(),
+      // Agent-level config: reasoning effort + text verbosity + unified model tiers
+      agent: {
+        build: {
+          reasoningEffort: settings.reasoningEffort || "medium",
+          textVerbosity: settings.textVerbosity || "low",
+        },
+        // All primary agents use selectedModel (same as global `model` above)
+        plan: {
+          // model inherited from global `model` — no override needed
+          permission: {
+            edit: "allow",
+            bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
+          },
+        },
+        // explore and general inherit the global model automatically
+        // Background/auxiliary tasks use strategistModel
+        ...(() => {
+          const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+          const { provider: sProv, name: sName } = parseModelString(
+            rawStrat,
+            activeProvider,
+          );
+          const sProvID = mapProviderForOpenCode({
+            provider: sProv,
+            name: sName,
+          });
+          const sModelFull = `${sProvID}/${sanitizeModelName(sName)}`;
+          return {
+            compaction: { model: sModelFull },
+            title: { model: sModelFull },
+            summary: { model: sModelFull },
+          };
+        })(),
+        // Hidden subagent for quick visual edits from the NaturalEditingPanel.
+        // Invoked programmatically — never shown in the UI.
+        "visual-edit": {
+          description:
+            "Realiza ediciones visuales puntuales a componentes React/JSX. Solo edita el archivo indicado.",
+          mode: "subagent",
+          hidden: true,
+          temperature: 0.1,
+          permission: {
+            edit: "allow",
+            bash: { "*": "deny" },
+            webfetch: "deny",
+          },
+          prompt: [
+            "Eres un agente de edición visual rápida para componentes React/JSX.",
+            "Tu ÚNICA tarea es hacer cambios pequeños y precisos al componente indicado.",
+            "",
+            "REGLAS ESTRICTAS:",
+            "- Lee el archivo indicado y modifica SOLO las líneas relevantes del componente",
+            "- Usa las clases/estilos existentes del proyecto (Tailwind, CSS modules, inline styles, etc.)",
+            "- NO crees archivos nuevos",
+            "- NO ejecutes comandos bash",
+            "- NO hagas cambios fuera del componente especificado",
+            "- Responde con un resumen de 1 línea de lo que cambiaste, en el mismo idioma del usuario",
+            "- Si instalas una dependencia nueva (como un icono), añádela al import existente",
+          ].join("\n"),
+        },
+        // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
+        mockup: {
+          description:
+            "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
+          mode: "primary",
+          reasoningEffort: "none",
+          model: (() => {
+            const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+            const { provider: eProv, name: eName } = parseModelString(
+              rawExec,
+              activeProvider,
+            );
+            const eProvID = mapProviderForOpenCode({
+              provider: eProv,
+              name: eName,
+            });
+            return `${eProvID}/${sanitizeModelName(eName)}`;
+          })(),
+          tools: {
+            write: true,
+            edit: true,
+            bash: false,
+          },
+          permission: {
+            edit: "allow",
+            bash: "deny",
+            webfetch: "deny",
+          },
+          prompt:
+            "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
+        },
+      },
+      // Permissions: built from user settings
+      permission: buildPermissionConfig(settings),
+      // Always-on context compaction (documented at opencode.ai/docs/configuration)
+      // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
+      // the model stalling when context fills up mid-session (key fix for slow responses).
+      ...({ compaction: { auto: true, prune: true, reserved: 15000 } } as any),
+      // LSP servers (TypeScript, ESLint, etc.) are enabled by default in OpenCode
+      // when supported file extensions are detected. No explicit config needed.
+      // Optimize I/O by disabling OpenCode's snapshot system, which is too slow on large repos
+      ...({ snapshot: false } as any),
+      // Disable features we don't need (reduces overhead)
+      autoupdate: false,
+      formatter: false,
+      share: "disabled",
+      // Ignore heavy directories to prevent token drain
+      // (OpenCode's grep/glob use ripgrep which respects .gitignore,
+      //  but watcher.ignore provides an extra safety net for projects
+      //  without a proper .gitignore or not initialized as git repos)
+      watcher: {
+        ignore: [
+          "node_modules/**",
+          ".vite/**",
+          "dist/**",
+          "build/**",
+          ".next/**",
+          ".nuxt/**",
+          ".output/**",
+          ".git/**",
+          ".git",
+          "*.lock",
+          "*.log",
+        ],
+      },
+      // Context7 is a mandatory built-in MCP server — always present
+      // regardless of user configuration. Used for dynamic scaffold
+      // generation and up-to-date documentation lookup.
+      mcp: {
+        context7: {
+          type: "remote" as const,
+          url: "https://mcp.context7.com/mcp",
+          enabled: true,
+          headers: {
+            CONTEXT7_API_KEY: "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e",
+          },
+        },
+        ...buildMcpConfig(enabledServers, appPath),
+      },
+    };
 
-        return { client: opencode.client, opencode };
-    } catch (error: any) {
-        logger.error("[OpenCode] Failed to start:", error.message);
-        throw error;
+    let opencode: Awaited<ReturnType<typeof createOpencode>>;
+    // Timeout: 15s to accommodate macOS Gatekeeper/code-signing delays on first spawn.
+    // The SDK defaults to 5s which is too aggressive for some environments.
+    const STARTUP_TIMEOUT_MS = 15_000;
+    const MAX_RETRIES = 1;
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        opencode = await createOpencode({
+          hostname: "127.0.0.1",
+          port: 0, // auto-assign port
+          timeout: STARTUP_TIMEOUT_MS,
+          config: config as any,
+        });
+        lastError = null;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        if (attempt < MAX_RETRIES && err.message?.includes("Timeout")) {
+          logger.warn(
+            `[OpenCode] Startup timed out (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying...`,
+          );
+          // Small delay before retry to let the system settle
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
     }
+    // Always restore CWD, even if createOpencode fails
+    process.chdir(originalCwd);
+    if (lastError || !opencode!) {
+      throw lastError || new Error("OpenCode failed to start after retries");
+    }
+
+    opencodeInstance = opencode;
+    clientInstance = opencode.client;
+    serverUrl = opencode.server.url;
+    lastActiveProviderId = settings.selectedModel?.provider || "openrouter";
+
+    logger.info(
+      `[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`,
+    );
+    logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
+
+    // Log full agent→model mapping for visibility
+    // v2: parse provider::model to show correct provider per tier
+    const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+    const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
+    const { provider: stratProv, name: stratName } = parseModelString(
+      rawStrat,
+      activeProvider,
+    );
+    const { provider: execProv, name: execName } = parseModelString(
+      rawExec,
+      activeProvider,
+    );
+    const stratProvID = mapProviderForOpenCode({
+      provider: stratProv,
+      name: stratName,
+    });
+    const execProvID = mapProviderForOpenCode({
+      provider: execProv,
+      name: execName,
+    });
+    logger.info(
+      `[OpenCode] Agent model map:\n` +
+        `  BUILD       → ${providerID}/${modelID} (selectedModel)\n` +
+        `  STRATEGIST  → ${stratProvID}/${sanitizeModelName(stratName)} (plan, explore, general)\n` +
+        `  EXECUTOR    → ${execProvID}/${sanitizeModelName(execName)} (compaction, title, summary, mockup)\n` +
+        `  VISUAL-EDIT → ${providerID}/${modelID} (selectedModel)`,
+    );
+
+    return { client: opencode.client, opencode };
+  } catch (error: any) {
+    logger.error("[OpenCode] Failed to start:", error.message);
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -2018,52 +2483,57 @@ async function getOpenCodeClient(appPath: string) {
 // ============================================================================
 
 function extractApiKeysForEnv(): Record<string, string> {
-    const settings = readSettings();
-    const env: Record<string, string> = {};
+  const settings = readSettings();
+  const env: Record<string, string> = {};
 
-    // Map provider settings to environment variables
-    const providerKeyMap: Record<string, string> = {
-        openai: "OPENAI_API_KEY",
-        anthropic: "ANTHROPIC_API_KEY",
-        google: "GEMINI_API_KEY",
-        groq: "GROQ_API_KEY",
-        openrouter: "OPENROUTER_API_KEY",
-    };
+  // Map provider settings to environment variables
+  const providerKeyMap: Record<string, string> = {
+    openai: "OPENAI_API_KEY",
+    anthropic: "ANTHROPIC_API_KEY",
+    google: "GEMINI_API_KEY",
+    groq: "GROQ_API_KEY",
+    openrouter: "OPENROUTER_API_KEY",
+  };
 
-    for (const [provider, envVar] of Object.entries(providerKeyMap)) {
-        const providerSetting = settings.providerSettings?.[provider] as any;
-        if (providerSetting?.apiKey?.value) {
-            const key = providerSetting.apiKey;
-            env[envVar] = key.encryptionType === "plaintext"
-                ? key.value
-                : decrypt(key);
-        }
+  for (const [provider, envVar] of Object.entries(providerKeyMap)) {
+    const providerSetting = settings.providerSettings?.[provider] as any;
+    if (providerSetting?.apiKey?.value) {
+      const key = providerSetting.apiKey;
+      env[envVar] =
+        key.encryptionType === "plaintext" ? key.value : decrypt(key);
     }
+  }
 
-    // Also check for OpenRouter keys array (use selectedKeyId if available)
-    const openRouterSettings = settings.providerSettings?.openrouter as any;
-    if (openRouterSettings?.keys?.length > 0 && !env.OPENROUTER_API_KEY) {
-        const selectedKeyId = openRouterSettings.selectedKeyId;
-        const selectedKey = selectedKeyId
-            ? openRouterSettings.keys.find((k: any) => k.id === selectedKeyId)
-            : openRouterSettings.keys[0];
+  // Also check for OpenRouter keys array (use selectedKeyId if available)
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+  if (openRouterSettings?.keys?.length > 0 && !env.OPENROUTER_API_KEY) {
+    const selectedKeyId = openRouterSettings.selectedKeyId;
+    const selectedKey = selectedKeyId
+      ? openRouterSettings.keys.find((k: any) => k.id === selectedKeyId)
+      : openRouterSettings.keys[0];
 
-        if (selectedKey?.key?.value) {
-            const key = selectedKey.key;
-            env.OPENROUTER_API_KEY = key.encryptionType === "plaintext"
-                ? key.value
-                : decrypt(key);
+    if (selectedKey?.key?.value) {
+      const key = selectedKey.key;
+      env.OPENROUTER_API_KEY =
+        key.encryptionType === "plaintext" ? key.value : decrypt(key);
 
-            const actual = env.OPENROUTER_API_KEY || "";
-            const masked = actual.length > 20 ? `${actual.slice(0, 15)}...${actual.slice(-4)}` : "***";
-            logger.info(`[OpenCode] Using OpenRouter key: "${selectedKey.alias || 'unnamed'}" (${masked})`);
-        }
+      const actual = env.OPENROUTER_API_KEY || "";
+      const masked =
+        actual.length > 20
+          ? `${actual.slice(0, 15)}...${actual.slice(-4)}`
+          : "***";
+      logger.info(
+        `[OpenCode] Using OpenRouter key: "${selectedKey.alias || "unnamed"}" (${masked})`,
+      );
     }
+  }
 
-    const keyNames = Object.keys(env);
-    logger.info(`[OpenCode] Available API keys: ${keyNames.join(", ") || "none"}`);
+  const keyNames = Object.keys(env);
+  logger.info(
+    `[OpenCode] Available API keys: ${keyNames.join(", ") || "none"}`,
+  );
 
-    return env;
+  return env;
 }
 
 /**
@@ -2079,70 +2549,77 @@ function extractApiKeysForEnv(): Record<string, string> {
  * via `opencode auth login`. It is a silent no-op if the file does not exist.
  */
 function clearStaleOpenCodeAuth(env: Record<string, string>): void {
-    try {
-        const fs = require("fs");
-        const os = require("os");
-        const home = os.homedir();
+  try {
+    const fs = require("fs");
+    const os = require("os");
+    const home = os.homedir();
 
-        // Resolve auth.json path per platform (same logic OpenCode uses internally)
-        let authDir: string;
-        switch (process.platform) {
-            case "win32":
-                authDir = path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "opencode");
-                break;
-            case "darwin":
-                authDir = path.join(home, "Library", "Application Support", "opencode");
-                break;
-            default:
-                authDir = path.join(process.env.XDG_DATA_HOME || path.join(home, ".local", "share"), "opencode");
-        }
-
-        const authFile = path.join(authDir, "auth.json");
-        if (!fs.existsSync(authFile)) return; // New user — nothing to clean
-
-        let auth: Record<string, any> = {};
-        try {
-            auth = JSON.parse(fs.readFileSync(authFile, "utf-8"));
-        } catch {
-            return; // Corrupt file — leave it alone
-        }
-
-        // Map from auth.json provider key → the env var that carries the current key
-        const providerEnvMap: Record<string, string> = {
-            openrouter: "OPENROUTER_API_KEY",
-            openai: "OPENAI_API_KEY",
-            anthropic: "ANTHROPIC_API_KEY",
-            google: "GEMINI_API_KEY",
-            groq: "GROQ_API_KEY",
-        };
-
-        let changed = false;
-        for (const [provider, envVar] of Object.entries(providerEnvMap)) {
-            const currentKey = env[envVar];
-            if (currentKey) {
-                // We have a key for this provider — overwrite with the correct one
-                if (auth[provider]?.key !== currentKey) {
-                    auth[provider] = { type: "api", key: currentKey };
-                    changed = true;
-                }
-            } else if (auth[provider]) {
-                // We have NO key configured in Vibes but auth.json has one — remove it
-                delete auth[provider];
-                changed = true;
-            }
-        }
-
-        if (changed) {
-            fs.writeFileSync(authFile, JSON.stringify(auth, null, 2), "utf-8");
-            logger.info(`[OpenCode] Cleaned stale auth.json (providers: ${Object.keys(auth).join(", ") || "none"})`);
-        }
-    } catch (e: any) {
-        // Non-fatal — worst case OpenCode uses the stale auth.json key, but config.json
-        // {env:...} substitution should still override it for providers we explicitly configure.
-        logger.warn(`[OpenCode] Could not clean auth.json: ${e.message}`);
+    // Resolve auth.json path per platform (same logic OpenCode uses internally)
+    let authDir: string;
+    switch (process.platform) {
+      case "win32":
+        authDir = path.join(
+          process.env.APPDATA || path.join(home, "AppData", "Roaming"),
+          "opencode",
+        );
+        break;
+      case "darwin":
+        authDir = path.join(home, "Library", "Application Support", "opencode");
+        break;
+      default:
+        authDir = path.join(
+          process.env.XDG_DATA_HOME || path.join(home, ".local", "share"),
+          "opencode",
+        );
     }
-}
 
+    const authFile = path.join(authDir, "auth.json");
+    if (!fs.existsSync(authFile)) return; // New user — nothing to clean
+
+    let auth: Record<string, any> = {};
+    try {
+      auth = JSON.parse(fs.readFileSync(authFile, "utf-8"));
+    } catch {
+      return; // Corrupt file — leave it alone
+    }
+
+    // Map from auth.json provider key → the env var that carries the current key
+    const providerEnvMap: Record<string, string> = {
+      openrouter: "OPENROUTER_API_KEY",
+      openai: "OPENAI_API_KEY",
+      anthropic: "ANTHROPIC_API_KEY",
+      google: "GEMINI_API_KEY",
+      groq: "GROQ_API_KEY",
+    };
+
+    let changed = false;
+    for (const [provider, envVar] of Object.entries(providerEnvMap)) {
+      const currentKey = env[envVar];
+      if (currentKey) {
+        // We have a key for this provider — overwrite with the correct one
+        if (auth[provider]?.key !== currentKey) {
+          auth[provider] = { type: "api", key: currentKey };
+          changed = true;
+        }
+      } else if (auth[provider]) {
+        // We have NO key configured in Vibes but auth.json has one — remove it
+        delete auth[provider];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      fs.writeFileSync(authFile, JSON.stringify(auth, null, 2), "utf-8");
+      logger.info(
+        `[OpenCode] Cleaned stale auth.json (providers: ${Object.keys(auth).join(", ") || "none"})`,
+      );
+    }
+  } catch (e: any) {
+    // Non-fatal — worst case OpenCode uses the stale auth.json key, but config.json
+    // {env:...} substitution should still override it for providers we explicitly configure.
+    logger.warn(`[OpenCode] Could not clean auth.json: ${e.message}`);
+  }
+}
 
 // ============================================================================
 // Model/provider mapping
@@ -2154,27 +2631,30 @@ function clearStaleOpenCodeAuth(env: Record<string, string>): void {
  * catalogue parsing artifacts (e.g. "amazon/nova-lite-v1." → "amazon/nova-lite-v1").
  */
 function sanitizeModelName(name: string): string {
-    return name.replace(/[\s.]+$/, '');
+  return name.replace(/[\s.]+$/, "");
 }
 
-function mapProviderForOpenCode(model: { provider?: string; name: string }): string {
-    const provider = (model.provider || "").toLowerCase();
+function mapProviderForOpenCode(model: {
+  provider?: string;
+  name: string;
+}): string {
+  const provider = (model.provider || "").toLowerCase();
 
-    if (provider.includes("openrouter")) return "openrouter";
-    if (provider.includes("anthropic")) return "anthropic";
-    if (provider.includes("openai")) return "openai";
-    if (provider.includes("google")) return "google";
-    if (provider === "ollama") return "ollama";
+  if (provider.includes("openrouter")) return "openrouter";
+  if (provider.includes("anthropic")) return "anthropic";
+  if (provider.includes("openai")) return "openai";
+  if (provider.includes("google")) return "google";
+  if (provider === "ollama") return "ollama";
 
-    // Custom providers (custom::*) get their own dedicated provider ID.
-    // OpenCode will be configured with npm: "@ai-sdk/openai-compatible" for these.
-    if (provider.startsWith("custom::")) {
-        // "custom::cortecs" → "custom-cortecs"
-        return provider.replace(/^custom::/, "custom-").replace(/[^a-z0-9-]/g, "-");
-    }
+  // Custom providers (custom::*) get their own dedicated provider ID.
+  // OpenCode will be configured with npm: "@ai-sdk/openai-compatible" for these.
+  if (provider.startsWith("custom::")) {
+    // "custom::cortecs" → "custom-cortecs"
+    return provider.replace(/^custom::/, "custom-").replace(/[^a-z0-9-]/g, "-");
+  }
 
-    // Default to openrouter
-    return "openrouter";
+  // Default to openrouter
+  return "openrouter";
 }
 
 /**
@@ -2182,18 +2662,25 @@ function mapProviderForOpenCode(model: { provider?: string; name: string }): str
  * Used when strategistModel or executorModel points to a provider different
  * from the active one (e.g. "ollama::qwen2.5-coder:7b").
  */
-function registerExtraProvider(body: Record<string, any>, providerKey: string, modelName: string, settings: any) {
-    if (providerKey === "ollama") {
-        const ollamaUrl = (settings.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "");
-        if (!body.provider) body.provider = {};
-        body.provider.ollama = {
-            npm: "@ai-sdk/openai-compatible",
-            name: "ollama",
-            models: { [sanitizeModelName(modelName)]: {} },
-            options: { baseURL: `${ollamaUrl}/v1` },
-        };
-    }
-    // Future: add support for other cross-provider registrations here
+function registerExtraProvider(
+  body: Record<string, any>,
+  providerKey: string,
+  modelName: string,
+  settings: any,
+) {
+  if (providerKey === "ollama") {
+    const ollamaUrl = (
+      settings.ollamaBaseUrl || "http://localhost:11434"
+    ).replace(/\/+$/, "");
+    if (!body.provider) body.provider = {};
+    body.provider.ollama = {
+      npm: "@ai-sdk/openai-compatible",
+      name: "ollama",
+      models: { [sanitizeModelName(modelName)]: {} },
+      options: { baseURL: `${ollamaUrl}/v1` },
+    };
+  }
+  // Future: add support for other cross-provider registrations here
 }
 
 // ============================================================================
@@ -2244,27 +2731,27 @@ function registerExtraProvider(body: Record<string, any>, providerKey: string, m
  * ============================================================================
  */
 export function attachToSystemPrompt(
-    contextInstructions?: string[],
-    customSystemPrompt?: string
+  contextInstructions?: string[],
+  customSystemPrompt?: string,
 ): string | undefined {
-    const parts: string[] = [];
+  const parts: string[] = [];
 
-    // 1. Inyectar primero la ristra de instrucciones estáticas del pipeline
-    // (Idioma, esquemas DB, MCPs, artefactos, etc.)
-    if (contextInstructions && contextInstructions.length > 0) {
-        parts.push(contextInstructions.join("\n\n"));
-    }
+  // 1. Inyectar primero la ristra de instrucciones estáticas del pipeline
+  // (Idioma, esquemas DB, MCPs, artefactos, etc.)
+  if (contextInstructions && contextInstructions.length > 0) {
+    parts.push(contextInstructions.join("\n\n"));
+  }
 
-    // 2. Inyectar el system prompt de agente personalizado (si existe)
-    if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
-        parts.push(customSystemPrompt);
-    }
+  // 2. Inyectar el system prompt de agente personalizado (si existe)
+  if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+    parts.push(customSystemPrompt);
+  }
 
-    if (parts.length === 0) {
-        return undefined;
-    }
+  if (parts.length === 0) {
+    return undefined;
+  }
 
-    return parts.join("\n\n---\n\n");
+  return parts.join("\n\n---\n\n");
 }
 
 /**
@@ -2273,1543 +2760,1995 @@ export function attachToSystemPrompt(
  * sends the user prompt, and forwards all events to the frontend.
  */
 export async function handleOpenCodeStream(
-    event: IpcMainInvokeEvent,
-    req: ChatStreamParams,
-    abortController: AbortController,
-    options: {
-        placeholderMessageId: number;
-        appPath: string;
-        chatMessages: any[];
-        /** OpenCode agent to use: "build" (full), "plan" (restricted), "explore" (read-only), "mockup" (fast UI designer) */
-        agentId?: "build" | "plan" | "explore" | "mockup";
-        /** Context instructions to inject via config.update */
-        contextInstructions?: string[];
-        /** Processed attachment file paths (images/text saved to temp dir) */
-        attachmentPaths?: string[];
-        /** Original attachment metadata */
-        attachments?: { name: string; type: string; data: string; attachmentType: string }[];
-        /** Integration env vars — set in process.env so bash tool can use them */
-        integrationEnvVars?: Record<string, string>;
-        /**
-         * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
-         * Each is sent with `noReply: true` so OpenCode records them in the conversation
-         * history without generating an AI response. This is the native way to "batch"
-         * multiple user messages typed while the previous stream was running.
-         */
-        priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
-        /** Custom agent prompt settings */
-        customSystemPrompt?: string;
-        customPromptMode?: "additive" | "replace";
-        /** Custom agent model settings */
-        customAgentModelSource?: "chat" | "static";
-        /** Custom agent static model setting */
-        customAgentModel?: string | null;
-    },
-    /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
-    _retryCount = 0,
-): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
-    const { placeholderMessageId, appPath, chatMessages } = options;
+  event: IpcMainInvokeEvent,
+  req: ChatStreamParams,
+  abortController: AbortController,
+  options: {
+    placeholderMessageId: number;
+    appPath: string;
+    chatMessages: any[];
+    /** OpenCode agent to use: "build" (full), "plan" (restricted), "explore" (read-only), "mockup" (fast UI designer) */
+    agentId?: "build" | "plan" | "explore" | "mockup";
+    /** Context instructions to inject via config.update */
+    contextInstructions?: string[];
+    /** Processed attachment file paths (images/text saved to temp dir) */
+    attachmentPaths?: string[];
+    /** Original attachment metadata */
+    attachments?: {
+      name: string;
+      type: string;
+      data: string;
+      attachmentType: string;
+    }[];
+    /** Integration env vars — set in process.env so bash tool can use them */
+    integrationEnvVars?: Record<string, string>;
+    /**
+     * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
+     * Each is sent with `noReply: true` so OpenCode records them in the conversation
+     * history without generating an AI response. This is the native way to "batch"
+     * multiple user messages typed while the previous stream was running.
+     */
+    priorMessages?: {
+      prompt: string;
+      attachments?: {
+        name: string;
+        type: string;
+        data: string;
+        attachmentType: string;
+      }[];
+    }[];
+    /** Custom agent prompt settings */
+    customSystemPrompt?: string;
+    customPromptMode?: "additive" | "replace";
+    /** Custom agent model settings */
+    customAgentModelSource?: "chat" | "static";
+    /** Custom agent static model setting */
+    customAgentModel?: string | null;
+  },
+  /** Contador interno de reintentos para auto-recovery. No pasar manualmente. */
+  _retryCount = 0,
+): Promise<{
+  fullResponse: string;
+  success: boolean;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  costUsd: number | null;
+}> {
+  const { placeholderMessageId, appPath, chatMessages } = options;
 
-    if (options.customPromptMode === "additive" && options.customSystemPrompt) {
-        if (!options.contextInstructions) {
-            options.contextInstructions = [];
-        }
-        options.contextInstructions.push(
-            `CUSTOM AGENT SYSTEM INSTRUCTIONS:\n${options.customSystemPrompt}`
-        );
-        logger.info(`[OpenCode] Appending custom agent prompt to context instructions (additive mode)`);
+  if (options.customPromptMode === "additive" && options.customSystemPrompt) {
+    if (!options.contextInstructions) {
+      options.contextInstructions = [];
     }
+    options.contextInstructions.push(
+      `CUSTOM AGENT SYSTEM INSTRUCTIONS:\n${options.customSystemPrompt}`,
+    );
+    logger.info(
+      `[OpenCode] Appending custom agent prompt to context instructions (additive mode)`,
+    );
+  }
 
-    // Resolve the full project directory path — this is CRITICAL for OpenCode
-    const projectDir = getVibesAppPath(appPath);
+  // Resolve the full project directory path — this is CRITICAL for OpenCode
+  const projectDir = getVibesAppPath(appPath);
 
-    // Determine agent mode for contextual logging prefix
-    const agentMode = options.agentId || "build";
-    const modeLabel = agentMode.charAt(0).toUpperCase() + agentMode.slice(1); // "Build", "Plan", "Explore"
-    const LP = `[OpenCode:${modeLabel}]`; // Log Prefix — used throughout this function
+  // Determine agent mode for contextual logging prefix
+  const agentMode = options.agentId || "build";
+  const modeLabel = agentMode.charAt(0).toUpperCase() + agentMode.slice(1); // "Build", "Plan", "Explore"
+  const LP = `[OpenCode:${modeLabel}]`; // Log Prefix — used throughout this function
 
-    // Inject integration env vars into the process so OpenCode's bash can use them
-    if (options.integrationEnvVars) {
-        for (const [key, value] of Object.entries(options.integrationEnvVars)) {
-            process.env[key] = value;
-        }
-        logger.info(`${LP} Injected ${Object.keys(options.integrationEnvVars).length} integration env vars: ${Object.keys(options.integrationEnvVars).join(', ')}`);
+  // Inject integration env vars into the process so OpenCode's bash can use them
+  if (options.integrationEnvVars) {
+    for (const [key, value] of Object.entries(options.integrationEnvVars)) {
+      process.env[key] = value;
     }
+    logger.info(
+      `${LP} Injected ${Object.keys(options.integrationEnvVars).length} integration env vars: ${Object.keys(options.integrationEnvVars).join(", ")}`,
+    );
+  }
 
-    logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
+  logger.info(
+    `${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`,
+  );
 
-
-    // ── One-time cleanup: strip old VIBES:CONTEXT from AGENTS.md ─────
-    // We no longer write to AGENTS.md (it's OpenCode's file). If a previous
-    // version left a VIBES:CONTEXT block, remove it once.
-    {
-        const fs = require("fs");
-        const agentsMdPath = path.join(projectDir, "AGENTS.md");
-        const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
-        const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
-        try {
-            if (fs.existsSync(agentsMdPath)) {
-                const content = fs.readFileSync(agentsMdPath, "utf-8");
-                const startIdx = content.indexOf(VIBES_START);
-                const endIdx = content.indexOf(VIBES_END);
-                if (startIdx !== -1 && endIdx !== -1) {
-                    const cleaned = content.substring(0, startIdx).trimEnd()
-                        + content.substring(endIdx + VIBES_END.length);
-                    fs.writeFileSync(agentsMdPath, cleaned.trimEnd() + "\n", "utf-8");
-                    logger.info(`${LP} 🧹 Stripped legacy VIBES:CONTEXT block from AGENTS.md`);
-                }
-            }
-        } catch { /* non-fatal */ }
-
-        // Also clean stale docs/SPECS.md if present
-        try {
-            const specsPath = path.join(projectDir, "docs", "SPECS.md");
-            if (fs.existsSync(specsPath)) {
-                fs.unlinkSync(specsPath);
-                logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
-            }
-        } catch { /* non-fatal */ }
-    }
-
-    let client: ReturnType<typeof createOpencodeClient>;
+  // ── One-time cleanup: strip old VIBES:CONTEXT from AGENTS.md ─────
+  // We no longer write to AGENTS.md (it's OpenCode's file). If a previous
+  // version left a VIBES:CONTEXT block, remove it once.
+  {
+    const fs = require("fs");
+    const agentsMdPath = path.join(projectDir, "AGENTS.md");
+    const VIBES_START = "<!-- VIBES:CONTEXT:START -->";
+    const VIBES_END = "<!-- VIBES:CONTEXT:END -->";
     try {
-        const result = await getOpenCodeClient(projectDir);
-        client = result.client;
-    } catch (error: any) {
-        const classified = classifyError(error);
-        logger.error(`${LP} Error al iniciar OpenCode: ${classified.technicalDetail}`);
-        return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
+      if (fs.existsSync(agentsMdPath)) {
+        const content = fs.readFileSync(agentsMdPath, "utf-8");
+        const startIdx = content.indexOf(VIBES_START);
+        const endIdx = content.indexOf(VIBES_END);
+        if (startIdx !== -1 && endIdx !== -1) {
+          const cleaned =
+            content.substring(0, startIdx).trimEnd() +
+            content.substring(endIdx + VIBES_END.length);
+          fs.writeFileSync(agentsMdPath, cleaned.trimEnd() + "\n", "utf-8");
+          logger.info(
+            `${LP} 🧹 Stripped legacy VIBES:CONTEXT block from AGENTS.md`,
+          );
+        }
+      }
+    } catch {
+      /* non-fatal */
     }
 
-    // Ensure MCP configuration is synchronized with the active project's path
+    // Also clean stale docs/SPECS.md if present
     try {
-        const db = getRemoteDb();
-        const settingsRecord = await db.query.userSettings.findFirst();
-        if (settingsRecord?.userId) {
-            const enabledServers = await db.query.mcpServers.findMany({
-                where: and(
-                    eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
-                    eq(remoteSchema.mcpServers.enabled, 1)
-                ),
-            });
-            const safeParseField = (raw: any): any => {
-                if (raw == null) return null;
-                if (typeof raw !== "string") return raw;
-                let parsed: any = raw;
-                let rounds = 0;
-                while (typeof parsed === "string" && rounds < 3) {
-                    try { parsed = JSON.parse(parsed); rounds++; } catch { break; }
-                }
-                return parsed;
-            };
-            const mappedServers = enabledServers.map(s => ({
-                id: s.id,
-                name: s.name,
-                transport: s.transport as "stdio" | "sse" | "http",
-                command: s.command,
-                args: safeParseField(s.args),
-                envJson: safeParseField(s.envJson),
-                headersJson: safeParseField(s.headersJson),
-                url: s.url,
-                enabled: s.enabled === 1,
-                createdAt: s.createdAt,
-                updatedAt: s.updatedAt,
-            }));
-
-            // Auto-initialize CodeGraph if enabled and not yet initialized for this project
-            await ensureCodeGraphInit(projectDir, mappedServers);
-
-            await updateOpenCodeMcpConfig(mappedServers, projectDir);
-        }
-    } catch (e: any) {
-        logger.warn(`${LP} Failed to sync MCP configuration with current project path: ${e.message}`);
+      const specsPath = path.join(projectDir, "docs", "SPECS.md");
+      if (fs.existsSync(specsPath)) {
+        fs.unlinkSync(specsPath);
+        logger.info(`${LP} 🗑️ Deleted stale docs/SPECS.md`);
+      }
+    } catch {
+      /* non-fatal */
     }
+  }
 
-    // Get or create session for this chat
-    let sessionId = chatSessionMap.get(req.chatId);
+  let client: ReturnType<typeof createOpencodeClient>;
+  try {
+    const result = await getOpenCodeClient(projectDir);
+    client = result.client;
+  } catch (error: any) {
+    const classified = classifyError(error);
+    logger.error(
+      `${LP} Error al iniciar OpenCode: ${classified.technicalDetail}`,
+    );
+    return {
+      fullResponse: classified.userMessage,
+      success: false,
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      cachedTokens: 0,
+      costUsd: null,
+    };
+  }
 
-    // Try to restore session from DB if not in memory
-    if (!sessionId) {
-        try {
-            const db = getRemoteDb();
-            const chatRecord = await db.query.chats.findFirst({
-                where: eq(remoteSchema.chats.id, req.chatId),
-                columns: { opencodeSessionId: true },
-            });
-            if (chatRecord?.opencodeSessionId) {
-                // Verify session still exists on the server
-                try {
-                    const sessionCheck = await client.session.get({
-                        path: { id: chatRecord.opencodeSessionId },
-                    });
-                    if (sessionCheck.data?.id) {
-                        sessionId = chatRecord.opencodeSessionId;
-                        chatSessionMap.set(req.chatId, sessionId);
-                        logger.info(`${LP} Restored session ${sessionId} from DB for chat ${req.chatId}`);
-                    }
-                } catch {
-                    logger.info(`${LP} Session ${chatRecord.opencodeSessionId} no longer valid, creating new one`);
-                }
-            }
-        } catch (e: any) {
-            logger.warn(`${LP} Failed to restore session from DB: ${e.message}`);
+  // Ensure MCP configuration is synchronized with the active project's path
+  try {
+    const db = getRemoteDb();
+    const settingsRecord = await db.query.userSettings.findFirst();
+    if (settingsRecord?.userId) {
+      const enabledServers = await db.query.mcpServers.findMany({
+        where: and(
+          eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
+          eq(remoteSchema.mcpServers.enabled, 1),
+        ),
+      });
+      const safeParseField = (raw: any): any => {
+        if (raw == null) return null;
+        if (typeof raw !== "string") return raw;
+        let parsed: any = raw;
+        let rounds = 0;
+        while (typeof parsed === "string" && rounds < 3) {
+          try {
+            parsed = JSON.parse(parsed);
+            rounds++;
+          } catch {
+            break;
+          }
         }
-    }
+        return parsed;
+      };
+      const mappedServers = enabledServers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        transport: s.transport as "stdio" | "sse" | "http",
+        command: s.command,
+        args: safeParseField(s.args),
+        envJson: safeParseField(s.envJson),
+        headersJson: safeParseField(s.headersJson),
+        url: s.url,
+        enabled: s.enabled === 1,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      }));
 
-    if (!sessionId) {
+      // Auto-initialize CodeGraph if enabled and not yet initialized for this project
+      await ensureCodeGraphInit(projectDir, mappedServers);
+
+      await updateOpenCodeMcpConfig(mappedServers, projectDir);
+    }
+  } catch (e: any) {
+    logger.warn(
+      `${LP} Failed to sync MCP configuration with current project path: ${e.message}`,
+    );
+  }
+
+  // Get or create session for this chat
+  let sessionId = chatSessionMap.get(req.chatId);
+
+  // Try to restore session from DB if not in memory
+  if (!sessionId) {
+    try {
+      const db = getRemoteDb();
+      const chatRecord = await db.query.chats.findFirst({
+        where: eq(remoteSchema.chats.id, req.chatId),
+        columns: { opencodeSessionId: true },
+      });
+      if (chatRecord?.opencodeSessionId) {
+        // Verify session still exists on the server
         try {
-            const session = await client.session.create({
-                body: { title: `Chat ${req.chatId}` },
-                query: { directory: projectDir },
-            });
-            logger.info(`${LP} Session create response: ${JSON.stringify(session)}`);
-            if (!session.data?.id) {
-                throw new Error(`Session creation returned no data: ${JSON.stringify(session)}`);
-            }
-            sessionId = session.data.id;
+          const sessionCheck = await client.session.get({
+            path: { id: chatRecord.opencodeSessionId },
+          });
+          if (sessionCheck.data?.id) {
+            sessionId = chatRecord.opencodeSessionId;
             chatSessionMap.set(req.chatId, sessionId);
-            logger.info(`${LP} Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`);
+            logger.info(
+              `${LP} Restored session ${sessionId} from DB for chat ${req.chatId}`,
+            );
+          }
+        } catch {
+          logger.info(
+            `${LP} Session ${chatRecord.opencodeSessionId} no longer valid, creating new one`,
+          );
+        }
+      }
+    } catch (e: any) {
+      logger.warn(`${LP} Failed to restore session from DB: ${e.message}`);
+    }
+  }
 
-            // Persist to DB for recovery across restarts
-            try {
-                const db = getRemoteDb();
-                await db.update(remoteSchema.chats)
-                    .set({ opencodeSessionId: sessionId })
-                    .where(eq(remoteSchema.chats.id, req.chatId));
-                logger.info(`${LP} Persisted sessionId ${sessionId} to DB for chat ${req.chatId}`);
-            } catch (e: any) {
-                logger.warn(`${LP} Failed to persist sessionId: ${e.message}`);
-            }
+  if (!sessionId) {
+    try {
+      const session = await client.session.create({
+        body: { title: `Chat ${req.chatId}` },
+        query: { directory: projectDir },
+      });
+      logger.info(`${LP} Session create response: ${JSON.stringify(session)}`);
+      if (!session.data?.id) {
+        throw new Error(
+          `Session creation returned no data: ${JSON.stringify(session)}`,
+        );
+      }
+      sessionId = session.data.id;
+      chatSessionMap.set(req.chatId, sessionId);
+      logger.info(
+        `${LP} Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`,
+      );
 
-            // ── INJECT CONVERSATION HISTORY INTO NEW SESSION ──────────────
-            // If this is a newly created session (e.g. from "Resumir a chat nuevo" or a lost session),
-            // we must ensure OpenCode knows about past messages before we send the active prompt.
-            if (options.chatMessages && options.chatMessages.length > 0) {
-                // Filter out system messages and the pending placeholder
-                let historyToInject = options.chatMessages.filter(
-                    (m: any) => m.role !== "system" && m.id !== options.placeholderMessageId && m.content && m.content.trim() !== ""
+      // Persist to DB for recovery across restarts
+      try {
+        const db = getRemoteDb();
+        await db
+          .update(remoteSchema.chats)
+          .set({ opencodeSessionId: sessionId })
+          .where(eq(remoteSchema.chats.id, req.chatId));
+        logger.info(
+          `${LP} Persisted sessionId ${sessionId} to DB for chat ${req.chatId}`,
+        );
+      } catch (e: any) {
+        logger.warn(`${LP} Failed to persist sessionId: ${e.message}`);
+      }
+
+      // ── INJECT CONVERSATION HISTORY INTO NEW SESSION ──────────────
+      // If this is a newly created session (e.g. from "Resumir a chat nuevo" or a lost session),
+      // we must ensure OpenCode knows about past messages before we send the active prompt.
+      if (options.chatMessages && options.chatMessages.length > 0) {
+        // Filter out system messages and the pending placeholder
+        let historyToInject = options.chatMessages.filter(
+          (m: any) =>
+            m.role !== "system" &&
+            m.id !== options.placeholderMessageId &&
+            m.content &&
+            m.content.trim() !== "",
+        );
+
+        // The current user prompt is already the last user message in chatMessages.
+        // We MUST filter it out because it will be sent later as the active prompt!
+        const lastUserMsgIndex = [...historyToInject]
+          .reverse()
+          .findIndex((m: any) => m.role === "user");
+        if (lastUserMsgIndex !== -1) {
+          const actualIndex = historyToInject.length - 1 - lastUserMsgIndex;
+          historyToInject.splice(actualIndex, 1);
+        }
+
+        // Limit to last 20 messages to prevent massive token usage on recovery
+        if (historyToInject.length > 20) {
+          historyToInject = historyToInject.slice(-20);
+        }
+
+        if (historyToInject.length > 0) {
+          logger.info(
+            `${LP} Injecting ${historyToInject.length} historical messages into new session...`,
+          );
+          const formattedHistory = historyToInject
+            .map((m: any) => {
+              const roleName = m.role === "assistant" ? "Asistente" : "Usuario";
+              // We strip complex vibes tags to save tokens, just like chat_stream_handlers does for standard mode
+              let cleaned = m.content;
+              cleaned = cleaned.replace(
+                /<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g,
+                "[Herramienta ejecutada]",
+              );
+              return `[Mensaje antiguo del ${roleName}]:\n${cleaned.trim()}`;
+            })
+            .join("\n\n---\n\n");
+
+          try {
+            await client.session.prompt({
+              path: { id: sessionId },
+              query: { directory: projectDir },
+              body: {
+                noReply: true,
+                parts: [
+                  {
+                    type: "text",
+                    text: `Historial de la conversación recuperado:\n\n${formattedHistory}`,
+                  },
+                ],
+              } as any,
+            });
+            logger.info(`${LP} Injected conversation history successfully.`);
+          } catch (e: any) {
+            logger.warn(
+              `${LP} Failed to inject conversation history: ${e.message}`,
+            );
+          }
+        }
+      }
+
+      // Initialize project context — generates AGENTS.md with tech stack,
+      // build commands, and architecture. This is the key mechanism that gives
+      // the agent native project knowledge (equivalent to /init in OpenCode CLI).
+      // Only runs ONCE per project: if AGENTS.md already exists, skip it.
+      // Runs SYNCHRONOUSLY so the agent has AGENTS.md before the first prompt.
+      // If the user already sent a message, the UI shows "Analizando tu proyecto...".
+      {
+        const fs = await import("fs");
+        const pathModule = await import("path");
+
+        // Pre-check: does the project directory actually exist?
+        if (!fs.existsSync(projectDir)) {
+          logger.warn(
+            `${LP} ⚠️ Project directory does NOT exist: ${projectDir} — skipping init`,
+          );
+        } else {
+          const agentsMdPaths = [
+            pathModule.join(projectDir, "AGENTS.md"),
+            pathModule.join(projectDir, ".opencode", "AGENTS.md"),
+            pathModule.join(projectDir, "docs", "AGENTS.md"),
+          ];
+          const hasAgentsMd = agentsMdPaths.some((p) => fs.existsSync(p));
+
+          if (!hasAgentsMd) {
+            logger.info(
+              `${LP} No AGENTS.md found — running init for ${projectDir}...`,
+            );
+
+            // Send "analyzing" status to the frontend
+            sendProgressUpdate(
+              event,
+              req.chatId,
+              chatMessages,
+              `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`,
+            );
+
+            // Fire-and-forget — init runs in background while the user's prompt proceeds.
+            // AGENTS.md will appear on disk once the server finishes; the agent works
+            // fine without it (just less context for the very first message).
+            const initSettings = readSettings();
+            const initModel = initSettings.selectedModel;
+            const initProviderID = mapProviderForOpenCode(initModel);
+
+            // Build init body — messageID must start with "msg" (server validates format)
+            const initBody: {
+              providerID: string;
+              modelID: string;
+              messageID: string;
+            } = {
+              providerID: initProviderID,
+              modelID: sanitizeModelName(initModel.name),
+              messageID: `msg_init_${Date.now()}`,
+            };
+
+            logger.info(
+              `${LP} 🔧 Running init (lazy) with model ${initProviderID}/${initModel.name} | dir=${projectDir}`,
+            );
+            client.session
+              .init({
+                path: { id: sessionId },
+                query: { directory: projectDir },
+                body: initBody,
+              })
+              .then((initResult: any) => {
+                const httpStatus =
+                  initResult?.response?.status ??
+                  initResult?.status ??
+                  "unknown";
+                logger.info(
+                  `${LP} ✅ Init completed (data: ${JSON.stringify(initResult.data)}, httpStatus: ${httpStatus})`,
                 );
 
-                // The current user prompt is already the last user message in chatMessages.
-                // We MUST filter it out because it will be sent later as the active prompt!
-                const lastUserMsgIndex = [...historyToInject].reverse().findIndex((m: any) => m.role === "user");
-                if (lastUserMsgIndex !== -1) {
-                    const actualIndex = historyToInject.length - 1 - lastUserMsgIndex;
-                    historyToInject.splice(actualIndex, 1);
+                if (initResult.error) {
+                  logger.error(
+                    `${LP} ❌ Init returned error from server: ${JSON.stringify(initResult.error)}`,
+                  );
                 }
 
-                // Limit to last 20 messages to prevent massive token usage on recovery
-                if (historyToInject.length > 20) {
-                    historyToInject = historyToInject.slice(-20);
+                if (initResult.data === undefined || initResult.data === null) {
+                  const debugInfo = {
+                    hasResponse: !!initResult?.response,
+                    responseStatus: httpStatus,
+                    responseStatusText: initResult?.response?.statusText,
+                    error: initResult.error,
+                    keys: Object.keys(initResult),
+                  };
+                  logger.warn(
+                    `${LP} ⚠️ Init .data is ${initResult.data} — full debug: ${JSON.stringify(debugInfo)}`,
+                  );
                 }
 
-                if (historyToInject.length > 0) {
-                    logger.info(`${LP} Injecting ${historyToInject.length} historical messages into new session...`);
-                    const formattedHistory = historyToInject.map((m: any) => {
-                        const roleName = m.role === "assistant" ? "Asistente" : "Usuario";
-                        // We strip complex vibes tags to save tokens, just like chat_stream_handlers does for standard mode
-                        let cleaned = m.content;
-                        cleaned = cleaned.replace(/<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "[Herramienta ejecutada]");
-                        return `[Mensaje antiguo del ${roleName}]:\n${cleaned.trim()}`;
-                    }).join("\n\n---\n\n");
-
-                    try {
-                        await client.session.prompt({
-                            path: { id: sessionId },
-                            query: { directory: projectDir },
-                            body: {
-                                noReply: true,
-                                parts: [{ type: "text", text: `Historial de la conversación recuperado:\n\n${formattedHistory}` }],
-                            } as any,
-                        });
-                        logger.info(`${LP} Injected conversation history successfully.`);
-                    } catch (e: any) {
-                        logger.warn(`${LP} Failed to inject conversation history: ${e.message}`);
-                    }
-                }
-            }
-
-            // Initialize project context — generates AGENTS.md with tech stack,
-            // build commands, and architecture. This is the key mechanism that gives
-            // the agent native project knowledge (equivalent to /init in OpenCode CLI).
-            // Only runs ONCE per project: if AGENTS.md already exists, skip it.
-            // Runs SYNCHRONOUSLY so the agent has AGENTS.md before the first prompt.
-            // If the user already sent a message, the UI shows "Analizando tu proyecto...".
-            {
-                const fs = await import("fs");
-                const pathModule = await import("path");
-
-                // Pre-check: does the project directory actually exist?
-                if (!fs.existsSync(projectDir)) {
-                    logger.warn(`${LP} ⚠️ Project directory does NOT exist: ${projectDir} — skipping init`);
+                // Verify AGENTS.md was actually created
+                const createdPath = agentsMdPaths.find((p) => fs.existsSync(p));
+                if (createdPath) {
+                  logger.info(`${LP} 📄 AGENTS.md created at: ${createdPath}`);
                 } else {
-                    const agentsMdPaths = [
-                        pathModule.join(projectDir, "AGENTS.md"),
-                        pathModule.join(projectDir, ".opencode", "AGENTS.md"),
-                        pathModule.join(projectDir, "docs", "AGENTS.md"),
-                    ];
-                    const hasAgentsMd = agentsMdPaths.some(p => fs.existsSync(p));
-
-                    if (!hasAgentsMd) {
-                        logger.info(`${LP} No AGENTS.md found — running init for ${projectDir}...`);
-
-                        // Send "analyzing" status to the frontend
-                        sendProgressUpdate(event, req.chatId, chatMessages,
-                            `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
-
-                        // Fire-and-forget — init runs in background while the user's prompt proceeds.
-                        // AGENTS.md will appear on disk once the server finishes; the agent works
-                        // fine without it (just less context for the very first message).
-                        const initSettings = readSettings();
-                        const initModel = initSettings.selectedModel;
-                        const initProviderID = mapProviderForOpenCode(initModel);
-
-                        // Build init body — messageID must start with "msg" (server validates format)
-                        const initBody: { providerID: string; modelID: string; messageID: string } = {
-                            providerID: initProviderID,
-                            modelID: sanitizeModelName(initModel.name),
-                            messageID: `msg_init_${Date.now()}`,
-                        };
-
-                        logger.info(`${LP} 🔧 Running init (lazy) with model ${initProviderID}/${initModel.name} | dir=${projectDir}`);
-                        client.session.init({
-                            path: { id: sessionId },
-                            query: { directory: projectDir },
-                            body: initBody,
-                        }).then((initResult: any) => {
-                            const httpStatus = initResult?.response?.status ?? initResult?.status ?? "unknown";
-                            logger.info(`${LP} ✅ Init completed (data: ${JSON.stringify(initResult.data)}, httpStatus: ${httpStatus})`);
-
-                            if (initResult.error) {
-                                logger.error(`${LP} ❌ Init returned error from server: ${JSON.stringify(initResult.error)}`);
-                            }
-
-                            if (initResult.data === undefined || initResult.data === null) {
-                                const debugInfo = {
-                                    hasResponse: !!initResult?.response,
-                                    responseStatus: httpStatus,
-                                    responseStatusText: initResult?.response?.statusText,
-                                    error: initResult.error,
-                                    keys: Object.keys(initResult),
-                                };
-                                logger.warn(`${LP} ⚠️ Init .data is ${initResult.data} — full debug: ${JSON.stringify(debugInfo)}`);
-                            }
-
-                            // Verify AGENTS.md was actually created
-                            const createdPath = agentsMdPaths.find(p => fs.existsSync(p));
-                            if (createdPath) {
-                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdPath}`);
-                            } else {
-                                logger.warn(`${LP} ⚠️ Init returned httpStatus=${httpStatus} but AGENTS.md not found on disk`);
-                            }
-                        }).catch((initError: any) => {
-                            logger.warn(`${LP} ❌ Init failed (non-fatal): ${initError.message}`);
-                            logger.warn(`${LP}    Full error:`, JSON.stringify({
-                                status: initError.status || initError.statusCode,
-                                body: initError.body || initError.response?.body,
-                                data: initError.data,
-                                stack: initError.stack?.split('\n').slice(0, 3).join(' → '),
-                            }));
-                        });
-
-                        // Clear the analyzing status from the UI immediately (init continues in background)
-                        sendChunk(event, req.chatId, chatMessages, "");
-                    } else {
-                        logger.info(`${LP} AGENTS.md already exists, skipping init`);
-                    }
+                  logger.warn(
+                    `${LP} ⚠️ Init returned httpStatus=${httpStatus} but AGENTS.md not found on disk`,
+                  );
                 }
-            }
+              })
+              .catch((initError: any) => {
+                logger.warn(
+                  `${LP} ❌ Init failed (non-fatal): ${initError.message}`,
+                );
+                logger.warn(
+                  `${LP}    Full error:`,
+                  JSON.stringify({
+                    status: initError.status || initError.statusCode,
+                    body: initError.body || initError.response?.body,
+                    data: initError.data,
+                    stack: initError.stack?.split("\n").slice(0, 3).join(" → "),
+                  }),
+                );
+              });
 
-        } catch (error: any) {
-            const classified = classifyError(error);
-            logger.error(`${LP} Error al crear sesion: ${classified.technicalDetail}`);
-            return { fullResponse: classified.userMessage, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: null };
+            // Clear the analyzing status from the UI immediately (init continues in background)
+            sendChunk(event, req.chatId, chatMessages, "");
+          } else {
+            logger.info(`${LP} AGENTS.md already exists, skipping init`);
+          }
         }
+      }
+    } catch (error: any) {
+      const classified = classifyError(error);
+      logger.error(
+        `${LP} Error al crear sesion: ${classified.technicalDetail}`,
+      );
+      return {
+        fullResponse: classified.userMessage,
+        success: false,
+        inputTokens: 0,
+        outputTokens: 0,
+        reasoningTokens: 0,
+        cachedTokens: 0,
+        costUsd: null,
+      };
     }
+  }
 
-    // ── Inject Vibes rules for Node.js projects (idempotent) ──────────
-    // Writes docs/vibes-rules.md and registers it in opencode.json.
-    // Runs for ALL projects (new + existing) but only if package.json exists.
-    // The file is combined with AGENTS.md by OpenCode natively.
+  // ── Inject Vibes rules for Node.js projects (idempotent) ──────────
+  // Writes docs/vibes-rules.md and registers it in opencode.json.
+  // Runs for ALL projects (new + existing) but only if package.json exists.
+  // The file is combined with AGENTS.md by OpenCode natively.
+  try {
+    const fsModule = await import("node:fs");
+    const pkgJsonPath = path.join(projectDir, "package.json");
+    if (fsModule.existsSync(pkgJsonPath)) {
+      const rulesPath = path.join(projectDir, "docs", "vibes-rules.md");
+      if (!fsModule.existsSync(rulesPath)) {
+        const { patchOpencodeJsonInstructions } =
+          await import("./design_handlers");
+        await writeVibesRules(projectDir);
+        await patchOpencodeJsonInstructions(projectDir, "docs/vibes-rules.md");
+        logger.info(`${LP} 📋 Vibes rules injected (Node.js project detected)`);
+      }
+    }
+  } catch (rulesErr: any) {
+    logger.warn(
+      `${LP} ⚠️ Failed to inject vibes-rules.md (non-fatal): ${rulesErr.message}`,
+    );
+  }
+
+  // ── Memory Bootstrap (cold start, fire-and-forget) ──
+  // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
+  // This ensures that if the first prompt found an empty project (no configs),
+  // subsequent prompts will re-check once the agent generates files.
+  // SKIP in plan mode: plan responses are proposals, not confirmed decisions.
+  if (agentMode === "plan") {
+    logger.info(
+      `${LP} 🧬 Memory bootstrap skipped — plan mode (proposals, not confirmed)`,
+    );
+  } else
     try {
-        const fsModule = await import("node:fs");
-        const pkgJsonPath = path.join(projectDir, "package.json");
-        if (fsModule.existsSync(pkgJsonPath)) {
-            const rulesPath = path.join(projectDir, "docs", "vibes-rules.md");
-            if (!fsModule.existsSync(rulesPath)) {
-                const { patchOpencodeJsonInstructions } = await import("./design_handlers");
-                await writeVibesRules(projectDir);
-                await patchOpencodeJsonInstructions(projectDir, "docs/vibes-rules.md");
-                logger.info(`${LP} 📋 Vibes rules injected (Node.js project detected)`);
-            }
-        }
-    } catch (rulesErr: any) {
-        logger.warn(`${LP} ⚠️ Failed to inject vibes-rules.md (non-fatal): ${rulesErr.message}`);
-    }
-
-    // ── Memory Bootstrap (cold start, fire-and-forget) ──
-    // Runs on EVERY prompt but guarded by needsBootstrap() (1 cheap DB query).
-    // This ensures that if the first prompt found an empty project (no configs),
-    // subsequent prompts will re-check once the agent generates files.
-    // SKIP in plan mode: plan responses are proposals, not confirmed decisions.
-    if (agentMode === "plan") {
-        logger.info(`${LP} 🧬 Memory bootstrap skipped — plan mode (proposals, not confirmed)`);
-    } else try {
-        const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
-        const { setDebugContext, debugLog } = await import("../utils/memory_debug_log");
-        const bootstrapSettings = readSettings();
-        const bootstrapUserId = bootstrapSettings.userId;
-        const db = getRemoteDb();
-        const chatWithApp = await db.query.chats.findFirst({
-            where: eq(remoteSchema.chats.id, req.chatId),
-            with: { app: true }
+      const { needsBootstrap, runMemoryBootstrap } =
+        await import("../utils/memory_bootstrap");
+      const { setDebugContext, debugLog } =
+        await import("../utils/memory_debug_log");
+      const bootstrapSettings = readSettings();
+      const bootstrapUserId = bootstrapSettings.userId;
+      const db = getRemoteDb();
+      const chatWithApp = await db.query.chats.findFirst({
+        where: eq(remoteSchema.chats.id, req.chatId),
+        with: { app: true },
+      });
+      if (bootstrapUserId && chatWithApp?.app?.id) {
+        const appName = chatWithApp.app?.name || `app_${chatWithApp.app.id}`;
+        setDebugContext(appName, chatWithApp.app.id);
+        debugLog("Trigger", `Bootstrap check`, {
+          appId: String(chatWithApp.app.id),
+          appName,
+          projectDir,
         });
-        if (bootstrapUserId && chatWithApp?.app?.id) {
-            const appName = chatWithApp.app?.name || `app_${chatWithApp.app.id}`;
-            setDebugContext(appName, chatWithApp.app.id);
-            debugLog("Trigger", `Bootstrap check`, {
-                appId: String(chatWithApp.app.id),
-                appName,
-                projectDir,
-            });
-            const needs = await needsBootstrap(chatWithApp.app.id, bootstrapUserId);
-            if (needs) {
-                debugLog("Trigger", `🧬 Bootstrap TRIGGERED — launching fire-and-forget`);
-                logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${chatWithApp.app.id}`);
-                runMemoryBootstrap({
-                    appId: chatWithApp.app.id,
-                    userId: bootstrapUserId,
-                    projectDir,
-                    appName,
-                }).catch((err: any) => {
-                    debugLog("Trigger", `❌ Bootstrap FAILED`, { error: err.message });
-                    logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
-                });
-            } else {
-                debugLog("Trigger", `⏭️ Bootstrap skipped — app already has memories`);
-            }
-        }
-    } catch (bootstrapErr: any) {
-        logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`);
-    }
-
-    // Instructions file was already written before getOpenCodeClient (above).
-    // No config.update needed — it's in the initial config.
-
-
-
-    // Subscribe to events for real-time streaming
-    // Chronological timeline: each entry is either a tool tag or a text chunk, in arrival order
-    const timeline: TimelineEntry[] = [];
-    const toolsActive = new Map<string, { tool: string; status: string; detail?: string }>();
-    const filesEdited: string[] = [];
-    const diffStats = { insertions: 0, deletions: 0 };
-    let stepCount = 0;
-    // Accumulated token usage across all steps
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    let totalReasoningTokens = 0;
-    let totalCachedTokens = 0;
-    // Real cost reported by OpenCode (from message.updated → info.usage.cost).
-    // When present, this is always more accurate than our manual token × price calculation.
-    let totalCostUsd: number | null = null;
-    let eventSubscription: any = null;
-    // Dedicated AbortController for the SSE stream — aborting this closes the
-    // underlying fetch connection immediately (the SDK SSE client respects `signal`).
-    const sseAbortController = new AbortController();
-
-    // Wire the user's abort signal to eagerly kill the SSE + tell OpenCode to stop.
-    // This runs AS SOON as the user clicks "Stop", not after processEvents finishes.
-    const onUserAbort = () => {
-        logger.info(`${LP} ⛔ User abort detected — killing SSE stream and sending session.abort()`);
-        sseAbortController.abort();
-        // Fire-and-forget session.abort() so the server stops generating
-        client.session.abort({ path: { id: sessionId! }, query: { directory: projectDir } }).catch(() => {});
-    };
-    if (abortController.signal.aborted) {
-        // Already aborted before we even started
-        onUserAbort();
-    } else {
-        abortController.signal.addEventListener("abort", onUserAbort, { once: true });
-    }
-
-    let checkpointIntervalId: NodeJS.Timeout | undefined;
-    try {
-        // Start global event subscription (captures ALL events across the server)
-        // Pass the SSE abort signal so the connection closes when we abort.
-        logger.info(`${LP} Subscribing to global events...`);
-        const eventsResult = await client.global.event({ signal: sseAbortController.signal } as any);
-        eventSubscription = eventsResult;
-        logger.info(`${LP} Event subscription ready.`);
-
-        // Process events in background
-        const eventProcessingDone = processEvents(
-            eventsResult.stream,
-            sessionId,
-            event,
-            req.chatId,
-            chatMessages,
-            {
-                onTextDelta: (delta: string) => {
-                    // Append text to the last text entry if it exists, or create a new one
-                    const last = timeline[timeline.length - 1];
-                    if (last && last.type === "text") {
-                        last.text += delta;
-                    } else {
-                        timeline.push({ type: "text", text: delta });
-                    }
-                },
-                onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => {
-                    toolsActive.set(toolId, { tool, status, detail });
-
-                    // Add to chronological timeline when a tool completes or errors
-                    if (status === "completed" || status === "error") {
-                        timeline.push({
-                            type: "tool",
-                            tool,
-                            detail: detail || "",
-                            error: status === "error",
-                            output: output || "",
-                        });
-                    }
-
-                    logger.info(`${LP} 🔨 Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}${output ? ` [${output.length}ch output]` : ""}`);
-                },
-                onStepStart: () => {
-                    stepCount++;
-                },
-                onStepTokens: (input: number, output: number, reasoning: number, cached: number) => {
-                    totalInputTokens += input;
-                    totalOutputTokens += output;
-                    totalReasoningTokens += reasoning;
-                    totalCachedTokens += cached;
-                },
-                onMessageCost: (costUsd: number) => {
-                    // OpenCode reports the exact cost after the message completes.
-                    // We always take the LATEST value (subsequent message.updated events
-                    // include cumulative cost, so the last one wins).
-                    totalCostUsd = costUsd;
-                    logger.info(`${LP} 💰 OpenCode reported real cost: $${costUsd.toFixed(6)}`);
-                },
-                onFileEdited: (file: string) => {
-                    // Normalize to basename to avoid duplicate entries for absolute vs relative paths
-                    const basename = path.basename(file);
-                    const alreadyTracked = filesEdited.some(f => path.basename(f) === basename);
-                    if (!alreadyTracked) {
-                        filesEdited.push(file);
-                        logger.info(`${LP} 📂 File edited: ${file}`);
-                    }
-                },
-                onDiffStats: (ins: number, del: number) => {
-                    diffStats.insertions += ins;
-                    diffStats.deletions += del;
-                },
-                getTimeline: () => timeline,
-                getToolsActive: () => toolsActive,
-                getFilesEdited: () => filesEdited,
-                getStepCount: () => stepCount,
-            },
-            abortController,
-        );
-
-        // Send the prompt ASYNC — returns immediately, we rely on events for completion
-        const settings = readSettings();
-        const effectiveAgent = options.agentId || "build";
-        const { model, providerID, modelID } = resolveModelForAgent(
-            effectiveAgent,
-            settings,
-            req.modelOverride,
-            options.customAgentModelSource,
-            options.customAgentModel,
-        );
-
-        logger.info(`${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`);
-        logger.info(`${LP} Project directory: ${projectDir}`);
-        lastProjectDir = projectDir;
-        logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
-
-        // Build prompt parts: text + optional file attachments
-        // On the very first message of a brand new app (no prior assistant messages),
-        // inject a build-mode instruction so the agent directly implements instead of
-        // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
-        let promptText = req.prompt;
-        const isMockupMode = effectiveAgent === "mockup";
-
-        // Detect first message (no prior assistant responses) — used by build-mode
-        // instruction and DESIGN.md hint below.
-        const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
-
-        if (isMockupMode) {
-            // Mockup mode uses the custom "mockup" primary agent defined in config
-            // (steps: 8, bash: false, write/edit: true)
-            logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
-        } else if (effectiveAgent === "build") {
-            // Build mode: no special first-message injection needed.
-            // Rules are in docs/SPECS.md via opencode.json instructions.
-        } else if (effectiveAgent === "plan") {
-            // Plan mode instructions are injected via ctx_plan_mode prompt
-            // (editable in Settings → Prompts) through contextInstructions in
-            // chat_stream_handlers.ts. No first-message injection needed here.
-        }
-
-        // DESIGN.md is loaded natively via opencode.json instructions — no hint needed.
-
-        const promptParts: any[] = [{ type: "text", text: promptText }];
-
-        // Add image attachments as file parts (OpenCode supports multimodal input)
-        if (options.attachments && options.attachmentPaths) {
-            for (let i = 0; i < options.attachments.length; i++) {
-                const att = options.attachments[i];
-                const attPath = options.attachmentPaths[i];
-                if (!attPath) continue;
-
-                // Images → send as data URL file parts for vision models
-                if (att.type.startsWith("image/")) {
-                    promptParts.push({
-                        type: "file",
-                        mime: att.type,
-                        filename: att.name,
-                        url: att.data, // already a data URL
-                    });
-                    logger.info(`${LP} Attached image: ${att.name}`);
-                }
-                // upload-to-codebase → copy to project and mention in prompt
-                else if (att.attachmentType === "upload-to-codebase") {
-                    const fs = require("fs");
-                    const destPath = path.join(projectDir, att.name);
-                    try {
-                        fs.copyFileSync(attPath, destPath);
-                        promptParts[0].text += `\n\n[Archivo subido al proyecto: ${att.name}]`;
-                        logger.info(`${LP} Uploaded to codebase: ${att.name}`);
-                    } catch (e: any) {
-                        logger.warn(`${LP} Failed to copy attachment: ${e.message}`);
-                    }
-                }
-                // Text files → inline content in prompt
-                else {
-                    try {
-                        const fs = require("fs");
-                        const content = fs.readFileSync(attPath, "utf-8");
-                        promptParts[0].text += `\n\nAdjunto (${att.name}):\n\`\`\`\n${content}\n\`\`\``;
-                        logger.info(`${LP} Inlined text attachment: ${att.name}`);
-                    } catch {
-                        promptParts[0].text += `\n\nAdjunto: ${att.name} (${att.type})`;
-                    }
-                }
-            }
-        }
-
-        // Inject prior messages (queued while previous stream ran) as silent user turns
-        // using OpenCode's native `noReply: true` flag. This puts them in the session's
-        // conversation history so the AI sees every queued message as a separate user turn.
-        if (options.priorMessages && options.priorMessages.length > 0) {
-            logger.info(`${LP} Injecting ${options.priorMessages.length} prior message(s) with noReply:true`);
-            for (const prior of options.priorMessages) {
-                const parts: any[] = [{ type: "text", text: prior.prompt }];
-                // Add image attachments if present
-                if (prior.attachments) {
-                    for (const att of prior.attachments) {
-                        if (att.type.startsWith("image/")) {
-                            parts.push({ type: "file", mime: att.type, filename: att.name, url: att.data });
-                        }
-                    }
-                }
-                try {
-                    await client.session.prompt({
-                        path: { id: sessionId },
-                        query: { directory: projectDir },
-                        body: {
-                            noReply: true,
-                            parts,
-                        } as any,
-                    });
-                    logger.info(`${LP}   → noReply injected: "${prior.prompt.substring(0, 60)}..."`);
-                } catch (e: any) {
-                    logger.warn(`${LP}   → noReply injection failed: ${e.message}`);
-                }
-            }
-        }
-
-        logger.info(`--- USER PROMPT ---\n${promptText}`);
-        logger.info(`------------------------------------------`);
-
-        // Memory/directives are now injected via contextInstructions → system prompt.
-        // No noReply injection needed.
-
-        // Fire the prompt (non-blocking)
-        const hasReplacePrompt = options.customSystemPrompt && options.customPromptMode === "replace";
-        const useAgentName = effectiveAgent;
-
-        // Si es modo "Reemplazar", el prompt del agente en el servidor se establece con tu prompt de sistema personalizado.
-        // Si es "Aditivo" (o no hay prompt personalizado), se limpia para usar el prompt nativo/default de OpenCode.
-        const agentPromptConfig = hasReplacePrompt ? options.customSystemPrompt : null;
-
-        // El systemPromptOverride para promptAsync.system contendrá las instrucciones de contexto estáticas
-        // de Vibes (como idioma, MCPs, credenciales y prompts activos habilitados en los ajustes).
-        const systemPromptOverride = attachToSystemPrompt(options.contextInstructions, undefined);
-
-        // Determine permission config based on the base agent
-        let permissionConfig: any;
-        if (effectiveAgent === "plan") {
-            permissionConfig = {
-                edit: "allow",
-                bash: { "*": "deny" }
-            };
-        } else if (effectiveAgent === "explore") {
-            permissionConfig = {
-                edit: "deny",
-                bash: "deny",
-                webfetch: "deny",
-                websearch: "deny"
-            };
+        const needs = await needsBootstrap(chatWithApp.app.id, bootstrapUserId);
+        if (needs) {
+          debugLog(
+            "Trigger",
+            `🧬 Bootstrap TRIGGERED — launching fire-and-forget`,
+          );
+          logger.info(
+            `${LP} 🧬 Memory bootstrap triggered for appId=${chatWithApp.app.id}`,
+          );
+          runMemoryBootstrap({
+            appId: chatWithApp.app.id,
+            userId: bootstrapUserId,
+            projectDir,
+            appName,
+          }).catch((err: any) => {
+            debugLog("Trigger", `❌ Bootstrap FAILED`, { error: err.message });
+            logger.warn(
+              `${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`,
+            );
+          });
         } else {
-            permissionConfig = buildPermissionConfig(settings);
+          debugLog(
+            "Trigger",
+            `⏭️ Bootstrap skipped — app already has memories`,
+          );
         }
+      }
+    } catch (bootstrapErr: any) {
+      logger.warn(
+        `${LP} 🧬 Memory bootstrap import failed (non-fatal): ${(bootstrapErr as any).message}`,
+      );
+    }
 
-        logger.info(`${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}, hasSystemPromptOverride=${!!systemPromptOverride}`);
-        try {
-            await client.config.update({
-                body: {
-                    agent: {
-                        [effectiveAgent]: {
-                            prompt: agentPromptConfig,
-                            permission: permissionConfig,
-                            reasoningEffort: settings.reasoningEffort || "medium",
-                            textVerbosity: settings.textVerbosity || "low",
-                        }
-                    }
-                } as any
+  // Instructions file was already written before getOpenCodeClient (above).
+  // No config.update needed — it's in the initial config.
+
+  // Subscribe to events for real-time streaming
+  // Chronological timeline: each entry is either a tool tag or a text chunk, in arrival order
+  const timeline: TimelineEntry[] = [];
+  const toolsActive = new Map<
+    string,
+    { tool: string; status: string; detail?: string }
+  >();
+  const filesEdited: string[] = [];
+  const diffStats = { insertions: 0, deletions: 0 };
+  let stepCount = 0;
+  // Accumulated token usage across all steps
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalReasoningTokens = 0;
+  let totalCachedTokens = 0;
+  // Real cost reported by OpenCode (from message.updated → info.usage.cost).
+  // When present, this is always more accurate than our manual token × price calculation.
+  let totalCostUsd: number | null = null;
+  let eventSubscription: any = null;
+  // Dedicated AbortController for the SSE stream — aborting this closes the
+  // underlying fetch connection immediately (the SDK SSE client respects `signal`).
+  const sseAbortController = new AbortController();
+
+  // Wire the user's abort signal to eagerly kill the SSE + tell OpenCode to stop.
+  // This runs AS SOON as the user clicks "Stop", not after processEvents finishes.
+  const onUserAbort = () => {
+    logger.info(
+      `${LP} ⛔ User abort detected — killing SSE stream and sending session.abort()`,
+    );
+    sseAbortController.abort();
+    // Fire-and-forget session.abort() so the server stops generating
+    client.session
+      .abort({ path: { id: sessionId! }, query: { directory: projectDir } })
+      .catch(() => {});
+  };
+  if (abortController.signal.aborted) {
+    // Already aborted before we even started
+    onUserAbort();
+  } else {
+    abortController.signal.addEventListener("abort", onUserAbort, {
+      once: true,
+    });
+  }
+
+  let checkpointIntervalId: NodeJS.Timeout | undefined;
+  try {
+    // Start global event subscription (captures ALL events across the server)
+    // Pass the SSE abort signal so the connection closes when we abort.
+    logger.info(`${LP} Subscribing to global events...`);
+    const eventsResult = await client.global.event({
+      signal: sseAbortController.signal,
+    } as any);
+    eventSubscription = eventsResult;
+    logger.info(`${LP} Event subscription ready.`);
+
+    // Process events in background
+    const eventProcessingDone = processEvents(
+      eventsResult.stream,
+      sessionId,
+      event,
+      req.chatId,
+      chatMessages,
+      {
+        onTextDelta: (delta: string) => {
+          // Append text to the last text entry if it exists, or create a new one
+          const last = timeline[timeline.length - 1];
+          if (last && last.type === "text") {
+            last.text += delta;
+          } else {
+            timeline.push({ type: "text", text: delta });
+          }
+        },
+        onToolUpdate: (
+          toolId: string,
+          tool: string,
+          status: string,
+          detail?: string,
+          output?: string,
+        ) => {
+          toolsActive.set(toolId, { tool, status, detail });
+
+          // Add to chronological timeline when a tool completes or errors
+          if (status === "completed" || status === "error") {
+            timeline.push({
+              type: "tool",
+              tool,
+              detail: detail || "",
+              error: status === "error",
+              output: output || "",
             });
-            if (hasReplacePrompt) {
-                logger.info(`${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`);
-            } else {
-                logger.info(`${LP} [CustomAgent] Successfully cleared/restored native system prompt for agent '${effectiveAgent}'`);
-            }
-        } catch (err: any) {
-            logger.warn(`${LP} [CustomAgent] Failed to update agent config in OpenCode: ${err.message}`);
+          }
+
+          logger.info(
+            `${LP} 🔨 Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}${output ? ` [${output.length}ch output]` : ""}`,
+          );
+        },
+        onStepStart: () => {
+          stepCount++;
+        },
+        onStepTokens: (
+          input: number,
+          output: number,
+          reasoning: number,
+          cached: number,
+        ) => {
+          totalInputTokens += input;
+          totalOutputTokens += output;
+          totalReasoningTokens += reasoning;
+          totalCachedTokens += cached;
+        },
+        onMessageCost: (costUsd: number) => {
+          // OpenCode reports the exact cost after the message completes.
+          // We always take the LATEST value (subsequent message.updated events
+          // include cumulative cost, so the last one wins).
+          totalCostUsd = costUsd;
+          logger.info(
+            `${LP} 💰 OpenCode reported real cost: $${costUsd.toFixed(6)}`,
+          );
+        },
+        onFileEdited: (file: string) => {
+          // Normalize to basename to avoid duplicate entries for absolute vs relative paths
+          const basename = path.basename(file);
+          const alreadyTracked = filesEdited.some(
+            (f) => path.basename(f) === basename,
+          );
+          if (!alreadyTracked) {
+            filesEdited.push(file);
+            logger.info(`${LP} 📂 File edited: ${file}`);
+          }
+        },
+        onDiffStats: (ins: number, del: number) => {
+          diffStats.insertions += ins;
+          diffStats.deletions += del;
+        },
+        getTimeline: () => timeline,
+        getToolsActive: () => toolsActive,
+        getFilesEdited: () => filesEdited,
+        getStepCount: () => stepCount,
+      },
+      abortController,
+    );
+
+    // Send the prompt ASYNC — returns immediately, we rely on events for completion
+    const settings = readSettings();
+    const effectiveAgent = options.agentId || "build";
+    const { model, providerID, modelID } = resolveModelForAgent(
+      effectiveAgent,
+      settings,
+      req.modelOverride,
+      options.customAgentModelSource,
+      options.customAgentModel,
+    );
+
+    logger.info(
+      `${LP} Sending prompt to session ${sessionId} with agent ${effectiveAgent} using model ${providerID}/${modelID} (original settings model: ${settings.selectedModel.name})`,
+    );
+    logger.info(`${LP} Project directory: ${projectDir}`);
+    lastProjectDir = projectDir;
+    logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
+
+    // Build prompt parts: text + optional file attachments
+    // On the very first message of a brand new app (no prior assistant messages),
+    // inject a build-mode instruction so the agent directly implements instead of
+    // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
+    let promptText = req.prompt;
+    const isMockupMode = effectiveAgent === "mockup";
+
+    // Detect first message (no prior assistant responses) — used by build-mode
+    // instruction and DESIGN.md hint below.
+    const hasAssistantMessages = chatMessages.some(
+      (m: any) => m.role === "assistant" && m.id !== placeholderMessageId,
+    );
+
+    if (isMockupMode) {
+      // Mockup mode uses the custom "mockup" primary agent defined in config
+      // (steps: 8, bash: false, write/edit: true)
+      logger.info(
+        `${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`,
+      );
+    } else if (effectiveAgent === "build") {
+      // Build mode: no special first-message injection needed.
+      // Rules are in docs/SPECS.md via opencode.json instructions.
+    } else if (effectiveAgent === "plan") {
+      // Plan mode instructions are injected via ctx_plan_mode prompt
+      // (editable in Settings → Prompts) through contextInstructions in
+      // chat_stream_handlers.ts. No first-message injection needed here.
+    }
+
+    // DESIGN.md is loaded natively via opencode.json instructions — no hint needed.
+
+    const promptParts: any[] = [{ type: "text", text: promptText }];
+
+    // Add image attachments as file parts (OpenCode supports multimodal input)
+    if (options.attachments && options.attachmentPaths) {
+      for (let i = 0; i < options.attachments.length; i++) {
+        const att = options.attachments[i];
+        const attPath = options.attachmentPaths[i];
+        if (!attPath) continue;
+
+        // Images → send as data URL file parts for vision models
+        if (att.type.startsWith("image/")) {
+          promptParts.push({
+            type: "file",
+            mime: att.type,
+            filename: att.name,
+            url: att.data, // already a data URL
+          });
+          logger.info(`${LP} Attached image: ${att.name}`);
         }
+        // upload-to-codebase → copy to project and mention in prompt
+        else if (att.attachmentType === "upload-to-codebase") {
+          const fs = require("fs");
+          const destPath = path.join(projectDir, att.name);
+          try {
+            fs.copyFileSync(attPath, destPath);
+            promptParts[0].text += `\n\n[Archivo subido al proyecto: ${att.name}]`;
+            logger.info(`${LP} Uploaded to codebase: ${att.name}`);
+          } catch (e: any) {
+            logger.warn(`${LP} Failed to copy attachment: ${e.message}`);
+          }
+        }
+        // Text files → inline content in prompt
+        else {
+          try {
+            const fs = require("fs");
+            const content = fs.readFileSync(attPath, "utf-8");
+            promptParts[0].text += `\n\nAdjunto (${att.name}):\n\`\`\`\n${content}\n\`\`\``;
+            logger.info(`${LP} Inlined text attachment: ${att.name}`);
+          } catch {
+            promptParts[0].text += `\n\nAdjunto: ${att.name} (${att.type})`;
+          }
+        }
+      }
+    }
 
-        const promptBody: any = {
-            model: {
-                providerID,
-                modelID,
-            },
-            agent: useAgentName !== "build" ? useAgentName : undefined,
-            parts: promptParts,
-            ...(systemPromptOverride ? {
-                system: systemPromptOverride
-            } : {})
-        };
-
-        await client.session.promptAsync({
+    // Inject prior messages (queued while previous stream ran) as silent user turns
+    // using OpenCode's native `noReply: true` flag. This puts them in the session's
+    // conversation history so the AI sees every queued message as a separate user turn.
+    if (options.priorMessages && options.priorMessages.length > 0) {
+      logger.info(
+        `${LP} Injecting ${options.priorMessages.length} prior message(s) with noReply:true`,
+      );
+      for (const prior of options.priorMessages) {
+        const parts: any[] = [{ type: "text", text: prior.prompt }];
+        // Add image attachments if present
+        if (prior.attachments) {
+          for (const att of prior.attachments) {
+            if (att.type.startsWith("image/")) {
+              parts.push({
+                type: "file",
+                mime: att.type,
+                filename: att.name,
+                url: att.data,
+              });
+            }
+          }
+        }
+        try {
+          await client.session.prompt({
             path: { id: sessionId },
             query: { directory: projectDir },
-            body: promptBody,
+            body: {
+              noReply: true,
+              parts,
+            } as any,
+          });
+          logger.info(
+            `${LP}   → noReply injected: "${prior.prompt.substring(0, 60)}..."`,
+          );
+        } catch (e: any) {
+          logger.warn(`${LP}   → noReply injection failed: ${e.message}`);
+        }
+      }
+    }
+
+    logger.info(`--- USER PROMPT ---\n${promptText}`);
+    logger.info(`------------------------------------------`);
+
+    // Memory/directives are now injected via contextInstructions → system prompt.
+    // No noReply injection needed.
+
+    // Fire the prompt (non-blocking)
+    const hasReplacePrompt =
+      options.customSystemPrompt && options.customPromptMode === "replace";
+    const useAgentName = effectiveAgent;
+
+    // Si es modo "Reemplazar", el prompt del agente en el servidor se establece con tu prompt de sistema personalizado.
+    // Si es "Aditivo" (o no hay prompt personalizado), se limpia para usar el prompt nativo/default de OpenCode.
+    const agentPromptConfig = hasReplacePrompt
+      ? options.customSystemPrompt
+      : null;
+
+    // El systemPromptOverride para promptAsync.system contendrá las instrucciones de contexto estáticas
+    // de Vibes (como idioma, MCPs, credenciales y prompts activos habilitados en los ajustes).
+    const systemPromptOverride = attachToSystemPrompt(
+      options.contextInstructions,
+      undefined,
+    );
+
+    // Determine permission config based on the base agent
+    let permissionConfig: any;
+    if (effectiveAgent === "plan") {
+      permissionConfig = {
+        edit: "allow",
+        bash: { "*": "deny" },
+      };
+    } else if (effectiveAgent === "explore") {
+      permissionConfig = {
+        edit: "deny",
+        bash: "deny",
+        webfetch: "deny",
+        websearch: "deny",
+      };
+    } else {
+      permissionConfig = buildPermissionConfig(settings);
+    }
+
+    logger.info(
+      `${LP} [CustomAgent] Configuring agent '${effectiveAgent}': replacePrompt=${!!hasReplacePrompt}, hasSystemPromptOverride=${!!systemPromptOverride}`,
+    );
+    try {
+      await client.config.update({
+        body: {
+          agent: {
+            [effectiveAgent]: {
+              prompt: agentPromptConfig,
+              permission: permissionConfig,
+              reasoningEffort: settings.reasoningEffort || "medium",
+              textVerbosity: settings.textVerbosity || "low",
+            },
+          },
+        } as any,
+      });
+      if (hasReplacePrompt) {
+        logger.info(
+          `${LP} [CustomAgent] Successfully registered custom system prompt for agent '${effectiveAgent}'. Prompt: "${options.customSystemPrompt!.substring(0, 100)}..."`,
+        );
+      } else {
+        logger.info(
+          `${LP} [CustomAgent] Successfully cleared/restored native system prompt for agent '${effectiveAgent}'`,
+        );
+      }
+    } catch (err: any) {
+      logger.warn(
+        `${LP} [CustomAgent] Failed to update agent config in OpenCode: ${err.message}`,
+      );
+    }
+
+    const promptBody: any = {
+      model: {
+        providerID,
+        modelID,
+      },
+      agent: useAgentName !== "build" ? useAgentName : undefined,
+      parts: promptParts,
+      ...(systemPromptOverride
+        ? {
+            system: systemPromptOverride,
+          }
+        : {}),
+    };
+
+    await client.session.promptAsync({
+      path: { id: sessionId },
+      query: { directory: projectDir },
+      body: promptBody,
+    });
+
+    logger.info(`${LP} Prompt sent (async). Waiting for events...`);
+
+    // ── A2: Periodic content checkpoint to DB ──────────────────────────
+    // Every 10 seconds, flush accumulated partial content to the messages
+    // table. This ensures that even if the server or connection dies mid-
+    // stream, the user sees partial progress instead of an empty bubble.
+    let lastCheckpointLength = 0;
+    checkpointIntervalId = setInterval(async () => {
+      try {
+        const currentPartial = timeline
+          .filter((e) => e.type === "text")
+          .map((e) => (e as any).text)
+          .join("");
+        // Only write if content has grown since last checkpoint
+        if (
+          currentPartial.length > lastCheckpointLength &&
+          currentPartial.length > 0
+        ) {
+          lastCheckpointLength = currentPartial.length;
+          const db = getRemoteDb();
+          await db
+            .update(remoteSchema.messages)
+            .set({ content: currentPartial })
+            .where(eq(remoteSchema.messages.id, placeholderMessageId));
+          logger.debug(
+            `${LP} 💾 Checkpoint: ${currentPartial.length}ch written to DB for message ${placeholderMessageId}`,
+          );
+        }
+      } catch (cpErr: any) {
+        logger.warn(
+          `${LP} ⚠️ Checkpoint write failed (non-fatal): ${cpErr.message}`,
+        );
+      }
+    }, 10_000);
+
+    // Wait for the event stream to signal completion.
+    // processEvents returns when session goes idle or the stream ends.
+    await eventProcessingDone;
+
+    // Stop checkpoint timer — final content will be written by chat_stream_handlers
+    clearInterval(checkpointIntervalId);
+
+    const getAbortedResponse = () => {
+      let partialText = timeline
+        .filter((e) => e.type === "text")
+        .map((e) => (e as any).text)
+        .join("");
+
+      // Append files-changed summary even on abort (agent may have edited files before cancel)
+      if (filesEdited.length > 0) {
+        const basenames = filesEdited.map((f) => path.basename(f));
+        const uniqueNames = [...new Set(basenames)];
+        partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+</vibes-files-changed>\n`;
+      }
+
+      // Estimate tokens since we might not have received the final usage chunk from upstream
+      // <think> blocks
+      const thinkMatches =
+        partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+      const thinkChars = thinkMatches.reduce((acc, m) => acc + m.length, 0);
+
+      // Standard text (excluding think)
+      const standardChars = Math.max(0, partialText.length - thinkChars);
+
+      let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+      let estReasoning = Math.max(
+        totalReasoningTokens,
+        Math.ceil(thinkChars / 4),
+      );
+
+      // Input tokens
+      let estInput = totalInputTokens;
+      if (estInput === 0) {
+        const inputString = chatMessages
+          .map((m: any) =>
+            typeof m.content === "string"
+              ? m.content
+              : JSON.stringify(m.content),
+          )
+          .join("\n");
+        estInput = Math.ceil(inputString.length / 4) + 1500; // 1500 for AGENTS.md/overhead
+      }
+
+      return {
+        fullResponse: partialText || "Operación cancelada",
+        success: false,
+        inputTokens: estInput,
+        outputTokens: estOutput,
+        reasoningTokens: estReasoning,
+        cachedTokens: totalCachedTokens,
+        costUsd: totalCostUsd,
+      };
+    };
+
+    // If the stream was aborted (stop button), session.abort() was already
+    // sent eagerly by the onUserAbort listener — just return partial text.
+    if (abortController.signal.aborted) {
+      logger.info(
+        `${LP} Aborted for chat ${req.chatId} — returning estimated partial response`,
+      );
+      return getAbortedResponse();
+    }
+
+    const totalText = timeline
+      .filter((e) => e.type === "text")
+      .map((e) => (e as any).text)
+      .join("");
+    const totalTools = timeline.filter((e) => e.type === "tool").length;
+    logger.info(
+      `${LP} ✅ Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`,
+    );
+
+    // Check for .vibes/ artifacts
+    if (filesEdited.length > 0) {
+      try {
+        const db = getRemoteDb();
+        const chat = await db.query.chats.findFirst({
+          where: eq(remoteSchema.chats.id, req.chatId),
+          columns: { appId: true },
         });
 
-        logger.info(`${LP} Prompt sent (async). Waiting for events...`);
-
-        // ── A2: Periodic content checkpoint to DB ──────────────────────────
-        // Every 10 seconds, flush accumulated partial content to the messages
-        // table. This ensures that even if the server or connection dies mid-
-        // stream, the user sees partial progress instead of an empty bubble.
-        let lastCheckpointLength = 0;
-        checkpointIntervalId = setInterval(async () => {
-            try {
-                const currentPartial = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-                // Only write if content has grown since last checkpoint
-                if (currentPartial.length > lastCheckpointLength && currentPartial.length > 0) {
-                    lastCheckpointLength = currentPartial.length;
-                    const db = getRemoteDb();
-                    await db.update(remoteSchema.messages)
-                        .set({ content: currentPartial })
-                        .where(eq(remoteSchema.messages.id, placeholderMessageId));
-                    logger.debug(`${LP} 💾 Checkpoint: ${currentPartial.length}ch written to DB for message ${placeholderMessageId}`);
+        if (chat) {
+          for (const file of filesEdited) {
+            const hasDot = file.includes(".vibes/");
+            const hasNoDot = file.includes("vibes/");
+            if ((hasDot || hasNoDot) && file.endsWith(".md")) {
+              let relativePath = file;
+              if (hasDot) {
+                const idx = file.indexOf(".vibes/");
+                if (idx !== -1) {
+                  relativePath = file.substring(idx);
                 }
-            } catch (cpErr: any) {
-                logger.warn(`${LP} ⚠️ Checkpoint write failed (non-fatal): ${cpErr.message}`);
-            }
-        }, 10_000);
+              } else {
+                const idx = file.indexOf("vibes/");
+                if (idx !== -1) {
+                  relativePath = "." + file.substring(idx);
+                }
+              }
 
-        // Wait for the event stream to signal completion.
-        // processEvents returns when session goes idle or the stream ends.
-        await eventProcessingDone;
+              const existing = await db.query.chatArtifacts.findFirst({
+                where: and(
+                  eq(remoteSchema.chatArtifacts.chatId, req.chatId),
+                  eq(remoteSchema.chatArtifacts.path, relativePath),
+                ),
+              });
 
-        // Stop checkpoint timer — final content will be written by chat_stream_handlers
-        clearInterval(checkpointIntervalId);
+              if (!existing) {
+                // Try to extract H1 heading from the file content
+                let artifactTitle = require("path").basename(relativePath);
+                try {
+                  const app = await db.query.apps.findFirst({
+                    where: eq(remoteSchema.apps.id, chat.appId),
+                    columns: { path: true },
+                  });
+                  if (app?.path) {
+                    const fsMod = require("fs");
+                    const pathMod = require("path");
+                    const fullPath = pathMod.join(
+                      getVibesAppPath(app.path),
+                      relativePath,
+                    );
+                    if (fsMod.existsSync(fullPath)) {
+                      const fileContent = fsMod.readFileSync(fullPath, "utf-8");
+                      const h1Match = fileContent.match(/^#\s+(.+)$/m);
+                      if (h1Match?.[1]) {
+                        artifactTitle = h1Match[1].trim();
+                      }
+                    }
+                  }
+                } catch {
+                  /* non-fatal — fall back to filename */
+                }
 
-        const getAbortedResponse = () => {
-            let partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-
-            // Append files-changed summary even on abort (agent may have edited files before cancel)
-            if (filesEdited.length > 0) {
-                const basenames = filesEdited.map(f => path.basename(f));
-                const uniqueNames = [...new Set(basenames)];
-                partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
-</vibes-files-changed>\n`;
-            }
-
-            // Estimate tokens since we might not have received the final usage chunk from upstream
-            // <think> blocks
-            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
-            const thinkChars = thinkMatches.reduce((acc, m) => acc + m.length, 0);
-
-            // Standard text (excluding think)
-            const standardChars = Math.max(0, partialText.length - thinkChars);
-
-            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
-            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
-
-            // Input tokens
-            let estInput = totalInputTokens;
-            if (estInput === 0) {
-               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
-               estInput = Math.ceil(inputString.length / 4) + 1500; // 1500 for AGENTS.md/overhead
-            }
-
-            return {
-                fullResponse: partialText || "Operación cancelada",
-                success: false,
-                inputTokens: estInput,
-                outputTokens: estOutput,
-                reasoningTokens: estReasoning,
-                cachedTokens: totalCachedTokens,
-                costUsd: totalCostUsd,
-            };
-        };
-
-        // If the stream was aborted (stop button), session.abort() was already
-        // sent eagerly by the onUserAbort listener — just return partial text.
-        if (abortController.signal.aborted) {
-            logger.info(`${LP} Aborted for chat ${req.chatId} — returning estimated partial response`);
-            return getAbortedResponse();
-        }
-
-        const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-        const totalTools = timeline.filter(e => e.type === "tool").length;
-        logger.info(`${LP} ✅ Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
-
-        // Check for .vibes/ artifacts
-        if (filesEdited.length > 0) {
-            try {
-                const db = getRemoteDb();
-                const chat = await db.query.chats.findFirst({
-                    where: eq(remoteSchema.chats.id, req.chatId),
-                    columns: { appId: true },
+                await db.insert(remoteSchema.chatArtifacts).values({
+                  userId: settings.userId!,
+                  appId: chat.appId,
+                  chatId: req.chatId,
+                  path: relativePath,
+                  title: artifactTitle,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
                 });
-
-                if (chat) {
-                    for (const file of filesEdited) {
-                        const hasDot = file.includes(".vibes/");
-                        const hasNoDot = file.includes("vibes/");
-                        if ((hasDot || hasNoDot) && file.endsWith(".md")) {
-                            let relativePath = file;
-                            if (hasDot) {
-                                const idx = file.indexOf(".vibes/");
-                                if (idx !== -1) {
-                                    relativePath = file.substring(idx);
-                                }
-                            } else {
-                                const idx = file.indexOf("vibes/");
-                                if (idx !== -1) {
-                                    relativePath = "." + file.substring(idx);
-                                }
-                            }
-
-                            const existing = await db.query.chatArtifacts.findFirst({
-                                where: and(
-                                    eq(remoteSchema.chatArtifacts.chatId, req.chatId),
-                                    eq(remoteSchema.chatArtifacts.path, relativePath)
-                                )
-                            });
-
-                            if (!existing) {
-                                // Try to extract H1 heading from the file content
-                                let artifactTitle = require("path").basename(relativePath);
-                                try {
-                                    const app = await db.query.apps.findFirst({
-                                        where: eq(remoteSchema.apps.id, chat.appId),
-                                        columns: { path: true },
-                                    });
-                                    if (app?.path) {
-                                        const fsMod = require("fs");
-                                        const pathMod = require("path");
-                                        const fullPath = pathMod.join(getVibesAppPath(app.path), relativePath);
-                                        if (fsMod.existsSync(fullPath)) {
-                                            const fileContent = fsMod.readFileSync(fullPath, "utf-8");
-                                            const h1Match = fileContent.match(/^#\s+(.+)$/m);
-                                            if (h1Match?.[1]) {
-                                                artifactTitle = h1Match[1].trim();
-                                            }
-                                        }
-                                    }
-                                } catch { /* non-fatal — fall back to filename */ }
-
-                                await db.insert(remoteSchema.chatArtifacts).values({
-                                    userId: settings.userId!,
-                                    appId: chat.appId,
-                                    chatId: req.chatId,
-                                    path: relativePath,
-                                    title: artifactTitle,
-                                    createdAt: new Date(),
-                                    updatedAt: new Date(),
-                                });
-                                logger.info(`${LP} Saved chat artifact ${relativePath} for chat ${req.chatId}`);
-                            }
-                        }
-                    }
-                }
-            } catch (err: any) {
-                logger.error(`${LP} Failed to save chat artifacts: ${err.message}`);
+                logger.info(
+                  `${LP} Saved chat artifact ${relativePath} for chat ${req.chatId}`,
+                );
+              }
             }
+          }
         }
-
-        // Send final response with all content
-        const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive, diffStats);
-        logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
-        sendChunk(event, req.chatId, chatMessages, finalContent);
-
-        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${(totalCostUsd as any).toFixed(6)}` : "unknown"}`);
-        return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens, costUsd: totalCostUsd };
-
-    } catch (error: any) {
-        if (abortController.signal.aborted) {
-            logger.info(`${LP} Aborted for chat ${req.chatId}`);
-
-            let partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-
-            // Append files-changed summary even on abort
-            if (filesEdited.length > 0) {
-                const basenames = filesEdited.map(f => path.basename(f));
-                const uniqueNames = [...new Set(basenames)];
-                partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
-</vibes-files-changed>\n`;
-            }
-
-            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
-            const thinkChars = thinkMatches.reduce((acc: number, m: string) => acc + m.length, 0);
-            const standardChars = Math.max(0, partialText.length - thinkChars);
-            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
-            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
-            let estInput = totalInputTokens;
-            if (estInput === 0) {
-               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
-               estInput = Math.ceil(inputString.length / 4) + 1500;
-            }
-            return {
-                fullResponse: partialText || "Operación cancelada",
-                success: false,
-                inputTokens: estInput,
-                outputTokens: estOutput,
-                reasoningTokens: estReasoning,
-                cachedTokens: totalCachedTokens,
-                costUsd: totalCostUsd as number | null,
-            };
-        }
-
-        const classified = classifyError(error);
-        logger.error(`${LP} Stream error: ${classified.technicalDetail}`);
-
-        // Auto-recovery silencioso: intentar reparar antes de fallar (max 1 retry)
-        if (classified.autoFix && _retryCount === 0) {
-            logger.info(`${LP} Auto-recovery: estrategia=${classified.autoFix} (intento ${_retryCount + 1})`);
-            try {
-                switch (classified.autoFix) {
-                    case "restart_opencode":
-                        await shutdownOpenCode();
-                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
-
-                    case "recreate_session":
-                        chatSessionMap.delete(req.chatId);
-                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
-
-                    case "abort_and_retry": {
-                        const sid = chatSessionMap.get(req.chatId);
-                        if (sid) {
-                            try {
-                                await client.session.abort({ path: { id: sid }, query: { directory: projectDir } });
-                            } catch { /* ignorar si ya no existe */ }
-                        }
-                        await new Promise(r => setTimeout(r, 2000));
-                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
-                    }
-
-                    case "retry_with_backoff":
-                        await new Promise(r => setTimeout(r, 5000));
-                        return handleOpenCodeStream(event, req, abortController, options, _retryCount + 1);
-                }
-            } catch (recoveryErr: any) {
-                logger.error(`${LP} Auto-recovery fallo: ${recoveryErr.message}`);
-                // Continuar con el error original
-            }
-        }
-
-        const errText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-        return {
-            fullResponse: errText || classified.userMessage,
-            success: false,
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
-            reasoningTokens: totalReasoningTokens,
-            cachedTokens: totalCachedTokens,
-            costUsd: totalCostUsd,
-        };
-    } finally {
-        // Clean up the checkpoint timer if still running
-        if (typeof checkpointIntervalId !== 'undefined') {
-            clearInterval(checkpointIntervalId);
-        }
-        // Clean up the abort listener to avoid leaks
-        abortController.signal.removeEventListener("abort", onUserAbort);
-        // Ensure SSE is always closed when we exit
-        if (!sseAbortController.signal.aborted) {
-            sseAbortController.abort();
-        }
+      } catch (err: any) {
+        logger.error(`${LP} Failed to save chat artifacts: ${err.message}`);
+      }
     }
+
+    // Send final response with all content
+    const finalContent = buildFinalResponse(
+      timeline,
+      filesEdited,
+      toolsActive,
+      diffStats,
+    );
+    logger.info(
+      `${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, "\\n")}"`,
+    );
+    sendChunk(event, req.chatId, chatMessages, finalContent);
+
+    logger.info(
+      `${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${(totalCostUsd as any).toFixed(6)}` : "unknown"}`,
+    );
+    return {
+      fullResponse: finalContent,
+      success: true,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      reasoningTokens: totalReasoningTokens,
+      cachedTokens: totalCachedTokens,
+      costUsd: totalCostUsd,
+    };
+  } catch (error: any) {
+    if (abortController.signal.aborted) {
+      logger.info(`${LP} Aborted for chat ${req.chatId}`);
+
+      let partialText = timeline
+        .filter((e) => e.type === "text")
+        .map((e) => (e as any).text)
+        .join("");
+
+      // Append files-changed summary even on abort
+      if (filesEdited.length > 0) {
+        const basenames = filesEdited.map((f) => path.basename(f));
+        const uniqueNames = [...new Set(basenames)];
+        partialText += `\n<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+</vibes-files-changed>\n`;
+      }
+
+      const thinkMatches =
+        partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+      const thinkChars = thinkMatches.reduce(
+        (acc: number, m: string) => acc + m.length,
+        0,
+      );
+      const standardChars = Math.max(0, partialText.length - thinkChars);
+      let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+      let estReasoning = Math.max(
+        totalReasoningTokens,
+        Math.ceil(thinkChars / 4),
+      );
+      let estInput = totalInputTokens;
+      if (estInput === 0) {
+        const inputString = chatMessages
+          .map((m: any) =>
+            typeof m.content === "string"
+              ? m.content
+              : JSON.stringify(m.content),
+          )
+          .join("\n");
+        estInput = Math.ceil(inputString.length / 4) + 1500;
+      }
+      return {
+        fullResponse: partialText || "Operación cancelada",
+        success: false,
+        inputTokens: estInput,
+        outputTokens: estOutput,
+        reasoningTokens: estReasoning,
+        cachedTokens: totalCachedTokens,
+        costUsd: totalCostUsd as number | null,
+      };
+    }
+
+    const classified = classifyError(error);
+    logger.error(`${LP} Stream error: ${classified.technicalDetail}`);
+
+    // Auto-recovery silencioso: intentar reparar antes de fallar (max 1 retry)
+    if (classified.autoFix && _retryCount === 0) {
+      logger.info(
+        `${LP} Auto-recovery: estrategia=${classified.autoFix} (intento ${_retryCount + 1})`,
+      );
+      try {
+        switch (classified.autoFix) {
+          case "restart_opencode":
+            await shutdownOpenCode();
+            return handleOpenCodeStream(
+              event,
+              req,
+              abortController,
+              options,
+              _retryCount + 1,
+            );
+
+          case "recreate_session":
+            chatSessionMap.delete(req.chatId);
+            return handleOpenCodeStream(
+              event,
+              req,
+              abortController,
+              options,
+              _retryCount + 1,
+            );
+
+          case "abort_and_retry": {
+            const sid = chatSessionMap.get(req.chatId);
+            if (sid) {
+              try {
+                await client.session.abort({
+                  path: { id: sid },
+                  query: { directory: projectDir },
+                });
+              } catch {
+                /* ignorar si ya no existe */
+              }
+            }
+            await new Promise((r) => setTimeout(r, 2000));
+            return handleOpenCodeStream(
+              event,
+              req,
+              abortController,
+              options,
+              _retryCount + 1,
+            );
+          }
+
+          case "retry_with_backoff":
+            await new Promise((r) => setTimeout(r, 5000));
+            return handleOpenCodeStream(
+              event,
+              req,
+              abortController,
+              options,
+              _retryCount + 1,
+            );
+        }
+      } catch (recoveryErr: any) {
+        logger.error(`${LP} Auto-recovery fallo: ${recoveryErr.message}`);
+        // Continuar con el error original
+      }
+    }
+
+    const errText = timeline
+      .filter((e) => e.type === "text")
+      .map((e) => (e as any).text)
+      .join("");
+    return {
+      fullResponse: errText || classified.userMessage,
+      success: false,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      reasoningTokens: totalReasoningTokens,
+      cachedTokens: totalCachedTokens,
+      costUsd: totalCostUsd,
+    };
+  } finally {
+    // Clean up the checkpoint timer if still running
+    if (typeof checkpointIntervalId !== "undefined") {
+      clearInterval(checkpointIntervalId);
+    }
+    // Clean up the abort listener to avoid leaks
+    abortController.signal.removeEventListener("abort", onUserAbort);
+    // Ensure SSE is always closed when we exit
+    if (!sseAbortController.signal.aborted) {
+      sseAbortController.abort();
+    }
+  }
 }
 
 // ============================================================================
 // SSE Event Processing
 // ============================================================================
 
-type TimelineEntry = { type: "tool"; tool: string; detail: string; error: boolean; output: string } | { type: "text"; text: string };
+type TimelineEntry =
+  | {
+      type: "tool";
+      tool: string;
+      detail: string;
+      error: boolean;
+      output: string;
+    }
+  | { type: "text"; text: string };
 
 async function processEvents(
-    stream: AsyncIterable<any>,
-    sessionId: string,
-    event: IpcMainInvokeEvent,
-    chatId: number,
-    chatMessages: any[],
-    callbacks: {
-        onTextDelta: (delta: string) => void;
-        onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => void;
-        onStepStart: () => void;
-        onStepTokens: (input: number, output: number, reasoning: number, cached: number) => void;
-        /** Called when OpenCode reports the real cost of the completed assistant message. */
-        onMessageCost: (costUsd: number) => void;
-        onFileEdited: (file: string) => void;
-        onDiffStats: (insertions: number, deletions: number) => void;
-        getTimeline: () => TimelineEntry[];
-        getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
-        getFilesEdited: () => string[];
-        getStepCount: () => number;
-    },
-    abortController: AbortController,
+  stream: AsyncIterable<any>,
+  sessionId: string,
+  event: IpcMainInvokeEvent,
+  chatId: number,
+  chatMessages: any[],
+  callbacks: {
+    onTextDelta: (delta: string) => void;
+    onToolUpdate: (
+      toolId: string,
+      tool: string,
+      status: string,
+      detail?: string,
+      output?: string,
+    ) => void;
+    onStepStart: () => void;
+    onStepTokens: (
+      input: number,
+      output: number,
+      reasoning: number,
+      cached: number,
+    ) => void;
+    /** Called when OpenCode reports the real cost of the completed assistant message. */
+    onMessageCost: (costUsd: number) => void;
+    onFileEdited: (file: string) => void;
+    onDiffStats: (insertions: number, deletions: number) => void;
+    getTimeline: () => TimelineEntry[];
+    getToolsActive: () => Map<
+      string,
+      { tool: string; status: string; detail?: string }
+    >;
+    getFilesEdited: () => string[];
+    getStepCount: () => number;
+  },
+  abortController: AbortController,
 ) {
-    const sendUpdate = () => {
-        const content = buildLiveContent(
-            callbacks.getTimeline(),
-            callbacks.getToolsActive(),
-            callbacks.getStepCount(),
-        );
-        sendChunk(event, chatId, chatMessages, content);
-    };
+  const sendUpdate = () => {
+    const content = buildLiveContent(
+      callbacks.getTimeline(),
+      callbacks.getToolsActive(),
+      callbacks.getStepCount(),
+    );
+    sendChunk(event, chatId, chatMessages, content);
+  };
 
-    // Expose text injection to the question reply handler
-    activeTextInjector = (text: string) => {
-        callbacks.onTextDelta(text);
-        sendUpdate();
-    };
+  // Expose text injection to the question reply handler
+  activeTextInjector = (text: string) => {
+    callbacks.onTextDelta(text);
+    sendUpdate();
+  };
 
-    let eventCount = 0;
-    let isCurrentlyReasoning = false;
-    let thinkNeedsReopen = false; // True when </think> was emitted for a tool but reasoning continues
-    let activePartType: string | null = null;
-    let assistantMessageId: string | null = null;
-    let reasoningCharCount = 0;
-    let reasoningBuffer = ""; // Buffer early reasoning chars
-    // Guard: file.edited events fired by the watcher BEFORE the agent's first step
-    // are ambient sync events (not real agent edits). Only collect them after step-start.
-    let agentHasStartedStep = false;
+  let eventCount = 0;
+  let isCurrentlyReasoning = false;
+  let thinkNeedsReopen = false; // True when </think> was emitted for a tool but reasoning continues
+  let activePartType: string | null = null;
+  let assistantMessageId: string | null = null;
+  let reasoningCharCount = 0;
+  let reasoningBuffer = ""; // Buffer early reasoning chars
+  // Guard: file.edited events fired by the watcher BEFORE the agent's first step
+  // are ambient sync events (not real agent edits). Only collect them after step-start.
+  let agentHasStartedStep = false;
 
-    try {
-        for await (const rawEvt of stream) {
-            if (abortController.signal.aborted) break;
-            eventCount++;
+  try {
+    for await (const rawEvt of stream) {
+      if (abortController.signal.aborted) break;
+      eventCount++;
 
-            const evt = rawEvt.payload || rawEvt;
-            const props = evt.properties || {};
+      const evt = rawEvt.payload || rawEvt;
+      const props = evt.properties || {};
 
-            // Log events at debug level to avoid console spam — meaningful events
-            // (tools, steps, think blocks) have their own info-level logs below.
-            logger.debug(`[OC:Event] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
+      // Log events at debug level to avoid console spam — meaningful events
+      // (tools, steps, think blocks) have their own info-level logs below.
+      logger.debug(
+        `[OC:Event] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`,
+      );
 
-            // Session filtering
-            const partProps = props.part || {};
-            if (partProps.sessionID && partProps.sessionID !== sessionId) continue;
-            if (props.sessionID && props.sessionID !== sessionId) continue;
+      // Session filtering
+      const partProps = props.part || {};
+      if (partProps.sessionID && partProps.sessionID !== sessionId) continue;
+      if (props.sessionID && props.sessionID !== sessionId) continue;
 
-            switch (evt.type) {
-                // Track which message is the assistant's response
-                case "message.updated": {
-                    const info = props.info;
-                    if (info && info.role === "assistant") {
-                        assistantMessageId = info.id;
-                        logger.info(`[OC:Event] 📬 Assistant message ID: ${assistantMessageId}`);
-                        // Capture the real cost reported by OpenCode.
-                        // The `usage.cost` field (in USD) is the ground truth — it matches
-                        // exactly what OpenCode shows in its own UI, and is more accurate
-                        // than multiplying token counts by OpenRouter price data.
-                        const realCost = info.usage?.cost;
-                        if (typeof realCost === "number" && realCost > 0) {
-                            callbacks.onMessageCost(realCost);
-                        }
-                    }
-                    break;
-                }
-
-                case "message.part.updated": {
-                    const part = props.part;
-                    if (!part) break;
-
-                    // Skip parts not belonging to the assistant message
-                    if (part.messageID && assistantMessageId && part.messageID !== assistantMessageId) {
-                        logger.debug(`[OC:Event] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
-                        break;
-                    }
-                    if (!assistantMessageId && (part.type === "text" || part.type === "reasoning")) {
-                        logger.debug(`[OC:Event] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
-                        break;
-                    }
-
-                    logger.debug(`[OC:Event] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
-
-                    switch (part.type) {
-                        case "reasoning": {
-                            // Mark active part type — subsequent deltas belong to reasoning
-                            // DON'T emit <think> yet — wait for the first delta to avoid empty blocks
-                            activePartType = "reasoning";
-                            break;
-                        }
-
-                        case "text": {
-                            // A text part started — close reasoning if open
-                            activePartType = "text";
-                            thinkNeedsReopen = false; // Cancel any pending reopen
-
-                            if (isCurrentlyReasoning) {
-                                isCurrentlyReasoning = false;
-                                reasoningCharCount = 0;
-                                reasoningBuffer = "";
-                                callbacks.onTextDelta(`\n</think>\n\n`);
-                                logger.info(`[OC:Event] 🧠 CLOSED </think> — text part started`);
-                                sendUpdate();
-                            } else if (reasoningBuffer.length > 0) {
-                                // If we were accumulating reasoning but never hit the threshold, discard buffer
-                                logger.info(`[OC:Event] ⏭️ Discarded tiny reasoning buffer (${reasoningBuffer.length}ch)`);
-                                reasoningBuffer = "";
-                                reasoningCharCount = 0;
-                            }
-                            break;
-                        }
-
-                        case "tool": {
-                            // If reasoning is open, close the think block before the tool
-                            // entry enters the timeline (otherwise the vibes tag would appear
-                            // inside the <think> block in the rendered output)
-                            if (isCurrentlyReasoning) {
-                                callbacks.onTextDelta(`\n</think>\n`);
-                                // Keep isCurrentlyReasoning = true so the NEXT reasoning
-                                // delta will seamlessly reopen <think> without creating a
-                                // new Pensamiento badge — we just need a fresh text entry.
-                                isCurrentlyReasoning = false;
-                                thinkNeedsReopen = true;
-                                logger.info(`[OC:Event] 🧠 PAUSED </think> — tool event`);
-                            }
-
-                            const toolState = part.state;
-                            const toolName = part.tool || "unknown";
-                            const status = toolState?.status || "unknown";
-                            const input = toolState?.input || part.input || {};
-                            const detail = input.file_path || input.path || input.filePath
-                                || input.query || input.pattern
-                                || input.command || input.cmd
-                                || input.directory || input.url
-                                || "";
-
-                            // Extract tool output/result for the expanded modal
-                            const rawOutput = toolState?.output || part.output || "";
-                            const rawStr = typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput);
-                            const output = extractToolContent(rawStr);
-
-                            callbacks.onToolUpdate(part.callID || part.id, toolName, status, detail, output);
-                            sendUpdate();
-                            break;
-                        }
-
-                        case "step-start":
-                            agentHasStartedStep = true;
-                            callbacks.onStepStart();
-                            logger.info(`[OC:Event] Step started`);
-                            sendUpdate();
-                            break;
-
-                        case "step-finish":
-                            // DON'T close </think> here — keep it open so consecutive
-                            // reasoning blocks merge into a single Pensamiento.
-                            // Think only closes when a "text" part starts (above).
-                            if (!isCurrentlyReasoning && reasoningBuffer.length > 0) {
-                                // Discard tiny reasoning if never opened
-                                logger.info(`[OC:Event] ⏭️ Discarded tiny reasoning buffer on step finish (${reasoningBuffer.length}ch)`);
-                                reasoningBuffer = "";
-                                reasoningCharCount = 0;
-                            }
-                            activePartType = null;
-                            {
-                                const stepIn = part.tokens?.input || 0;
-                                const stepOut = part.tokens?.output || 0;
-                                const stepReasoning = part.tokens?.reasoning || 0;
-                                const stepCacheRead = part.tokens?.cacheRead || part.tokens?.cache_read || 0;
-                                const stepCacheCreation = part.tokens?.cacheCreation || part.tokens?.cache_creation || 0;
-                                callbacks.onStepTokens(stepIn, stepOut, stepReasoning, stepCacheRead + stepCacheCreation);
-                                logger.info(`[OC:Event] Step finished (tokens: in=${stepIn}, out=${stepOut}, reasoning=${stepReasoning}, cacheRead=${stepCacheRead}, cacheCreation=${stepCacheCreation}, raw=${JSON.stringify(part.tokens)})`);
-                            }
-                            break;
-                    }
-                    break;
-                }
-
-                // Streaming text deltas — route based on activePartType
-                case "message.part.delta": {
-                    const delta = props.delta || "";
-                    if (!delta) break;
-
-                    const isReasoning = activePartType === "reasoning";
-
-                    if (isReasoning) {
-                        // Strip ALL HTML/XML-like tags from reasoning content.
-                        // The LLM generates <vibes-read>, <vibes-write>, etc. in its
-                        // thinking because it learned the format from context history.
-                        // Tags arrive split across deltas so we can't rely on matching
-                        // complete tag names — just strip everything between < >.
-                        const cleanDelta = delta.replace(/<[^>]*>/g, "");
-                        if (!cleanDelta) break; // delta was only tags, skip
-                        reasoningCharCount += cleanDelta.length;
-
-                        // If think was paused for a tool event, reopen it seamlessly
-                        if (thinkNeedsReopen) {
-                            thinkNeedsReopen = false;
-                            isCurrentlyReasoning = true;
-                            callbacks.onTextDelta(`\n<think>\n${cleanDelta}`);
-                            logger.info(`[OC:Event] 🧠 REOPENED <think> after tool`);
-                        } else if (!isCurrentlyReasoning) {
-                            // Buffer the reasoning until it's comfortably over 20 chars
-                            // This prevents emitting empty `<think>` tags for short 10-char blobs or "[REDACTED]"
-                            reasoningBuffer += cleanDelta;
-                            if (reasoningBuffer.length > 20) {
-                                isCurrentlyReasoning = true;
-                                callbacks.onTextDelta(`\n<think>\n${reasoningBuffer}`);
-                                logger.info(`[OC:Event] 🧠 OPENED <think> (buffered ${reasoningBuffer.length}ch)`);
-                                reasoningBuffer = "";
-                            }
-                        } else {
-                            callbacks.onTextDelta(cleanDelta);
-                        }
-                    } else {
-                        // Normal text delta
-                        callbacks.onTextDelta(delta);
-                    }
-                    sendUpdate();
-                    break;
-                }
-
-                case "file.edited": {
-                    if (!agentHasStartedStep) {
-                        // Watcher sync event — the agent hasn't started yet, ignore
-                        logger.info(`[OC:Event] 🚫 Skipping premature file.edited (watcher sync): ${props.file}`);
-                        break;
-                    }
-                    callbacks.onFileEdited(props.file);
-                    sendUpdate();
-                    break;
-                }
-
-                // File diffs — track edited files from session.diff events too
-                case "session.diff": {
-                    const diffs = props.diff;
-                    if (Array.isArray(diffs)) {
-                        for (const d of diffs) {
-                            if (d.file) {
-                                callbacks.onFileEdited(d.file);
-                            }
-                            if (typeof d.insertions === "number") callbacks.onDiffStats(d.insertions, 0);
-                            if (typeof d.deletions === "number") callbacks.onDiffStats(0, d.deletions);
-                        }
-                        sendUpdate();
-                    }
-                    break;
-                }
-
-                // OpenCode agent todo list updates — forward to renderer UI
-                case "todo.updated": {
-                    const todos = props.todos;
-                    if (Array.isArray(todos)) {
-                        const mapped = todos.map((t: any) => ({
-                            id: t.id || String(Math.random()),
-                            content: t.content || "",
-                            status: t.status === "completed" ? "completed"
-                                : t.status === "in_progress" ? "in_progress"
-                                : "pending",
-                        }));
-                        safeSend(event.sender, "agent-tool:todos-update", {
-                            chatId,
-                            todos: mapped,
-                        });
-                        logger.info(`[OC:Event] 📋 Todo update: ${mapped.length} items`);
-                    }
-                    break;
-                }
-
-                case "session.status": {
-                    const status = props.status;
-                    if (status?.type === "idle") {
-                        logger.info("[OC:Event] Session idle — response complete");
-                    } else if (status?.type === "busy") {
-                        logger.info("[OC:Event] Session busy...");
-                    }
-                    break;
-                }
-
-                case "session.idle": {
-                    // Close any lingering open think block before exiting
-                    if (isCurrentlyReasoning) {
-                        isCurrentlyReasoning = false;
-                        callbacks.onTextDelta(`\n</think>\n\n`);
-                        logger.info(`[OC:Event] 🧠 CLOSED </think> — session idle`);
-                    }
-                    logger.info(`[OC:Event] Session idle event received. Total events: ${eventCount}`);
-                    return;
-                }
-
-                // Session errors — log full details for debugging custom agents
-                case "session.error": {
-                    const errorMsg = extractReadableError(props.error || props.message || props);
-                    logger.error(`[OC:Event] SESSION ERROR: ${errorMsg}`);
-                    throw new Error(`Session Error: ${errorMsg}`);
-                }
-
-                // Known events we can safely ignore
-                case "server.connected":
-                case "session.updated":
-                case "file.watcher.updated":
-                    break;
-
-                case "permission.asked": {
-                    const reqId = props.id || props.requestID;
-                    if (!reqId) break;
-
-                    // OpenCode PermissionRequest schema:
-                    // { id, sessionID, permission: string, patterns: string[], metadata, always: string[], tool? }
-                    const permName = props.permission || props.type || "unknown";
-                    const patterns: string[] = Array.isArray(props.patterns) ? props.patterns : [];
-                    const alwaysPatterns: string[] = Array.isArray(props.always) ? props.always : [];
-                    const permInput = patterns.join(" ") || props.input || props.command || "";
-
-                    logger.info(`[OC:Event] 🛡️ permission.asked: tool=${permName} patterns=${JSON.stringify(patterns)} always=${JSON.stringify(alwaysPatterns)} id=${reqId}`);
-
-                    // Read user's configured permission for this tool
-                    const currentSettings = readSettings();
-                    const toolPermission = resolveToolPermission(
-                        permName,
-                        typeof permInput === "string" ? permInput : JSON.stringify(permInput),
-                        currentSettings.openCodePermissions2,
-                    );
-
-                    try {
-                        // Use the permission's own sessionID when available (guaranteed correct),
-                        // falling back to the closure's sessionId.
-                        const permSessionId = props.sessionID || sessionId;
-
-                        if (toolPermission === "allow") {
-                            // Auto-approve
-                            await replyToPermission(reqId, "always", permSessionId);
-                            logger.info(`[OC:Event] Auto-approved permission: always for ${permName}`);
-                        } else if (toolPermission === "deny") {
-                            // Auto-reject
-                            await replyToPermission(reqId, "reject", permSessionId);
-                            logger.info(`[OC:Event] Auto-rejected permission: deny for ${permName}`);
-                        } else {
-                            // "ask" — emit IPC event and wait for renderer response
-                            const inputStr = typeof permInput === "string" ? permInput : JSON.stringify(permInput);
-                            safeSend(event.sender, "opencode-permission:request", {
-                                requestId: reqId,
-                                sessionId: permSessionId,
-                                chatId,
-                                toolName: permName,
-                                toolInput: inputStr || null,
-                            });
-                            logger.info(`[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`);
-
-                            // Activate tray badge if the window is not focused
-                            try {
-                                const { BrowserWindow } = require("electron");
-                                const win = BrowserWindow.fromWebContents(event.sender);
-                                if (win && !win.isFocused()) {
-                                    setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
-                                }
-                            } catch (_) { /* tray badge not critical */ }
-
-                            const userResponse = await waitForPermissionResponse(reqId, 300_000);
-                            await replyToPermission(reqId, userResponse as "once" | "always" | "reject", permSessionId);
-                            logger.info(`[OC:Event] 🛡️ Permission resolved: ${userResponse} for ${permName}`);
-
-                            // Persist to user settings so the choice is remembered.
-                            // once   → no persist (config already says "ask", hot-update mid-operation would kill the tool)
-                            // always → persist "allow" (never ask again)
-                            // reject → persist "deny"  (block going forward)
-                            // For bash: adds a granular custom rule (not the global pill).
-                            // For other tools: sets the global pill.
-                            if (userResponse === "always" || userResponse === "reject") {
-                                const settingsValue = userResponse === "always" ? "allow" : "deny";
-                                logger.info(`[OC:Permission] 📝 About to persist: permName="${permName}" → settingsValue="${settingsValue}"`);
-                                persistPermissionToSettings(permName, settingsValue, alwaysPatterns, inputStr);
-                            } else {
-                                logger.info(`[OC:Permission] 📝 Skipping persist for "${userResponse}" (ephemeral)`);
-                            }
-                        }
-                    } catch (e: any) {
-                        logger.error(`[OC:Event] Error handling permission: ${e.message}`);
-                    }
-                    break;
-                }
-
-                case "question.asked": {
-                    // QuestionRequest: { id, sessionID, questions: QuestionInfo[] }
-                    // QuestionInfo: { question, header, options: QuestionOption[], multiple?, custom? }
-                    const questionRequestId = props.id;
-                    const questionSessionId = props.sessionID;
-                    if (!questionRequestId) {
-                        logger.warn(`[OC:Event] question.asked without ID, ignoring`);
-                        break;
-                    }
-                    // Filter by session
-                    if (questionSessionId && questionSessionId !== sessionId) break;
-
-                    const questions: any[] = props.questions || [];
-                    if (questions.length === 0) {
-                        logger.warn(`[OC:Event] question.asked with empty questions array`);
-                        break;
-                    }
-
-                    logger.info(`[OC:Event] ❓ Question asked: ${questions.length} question(s) (id=${questionRequestId})`);
-
-                    // Close any open think block before the question UI
-                    if (isCurrentlyReasoning) {
-                        callbacks.onTextDelta(`\n</think>\n`);
-                        isCurrentlyReasoning = false;
-                    }
-
-                    sendUpdate();
-
-                    // Initialize multi-question group tracker
-                    const totalQ = questions.length;
-                    pendingQuestionGroups.set(questionRequestId, {
-                        totalQuestions: totalQ,
-                        answers: new Map(),
-                    });
-
-                    // Set a 5-minute timeout to auto-reject if user doesn't respond
-                    const timeoutId = setTimeout(async () => {
-                        const group = pendingQuestionGroups.get(questionRequestId);
-                        if (!group) return; // Already answered
-                        pendingQuestionGroups.delete(questionRequestId);
-                        logger.warn(`[OC:Event] ⏱️ Question ${questionRequestId} timed out after ${QUESTION_TIMEOUT_MS / 1000}s — auto-rejecting`);
-                        try {
-                            const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
-                            const url = `${serverUrl}/question/${encodeURIComponent(questionRequestId)}/reject${dirParam}`;
-                            await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" } });
-                        } catch (e: any) {
-                            logger.error(`[OC:Event] Failed to reject timed-out question: ${e.message}`);
-                        }
-                        // Inject timeout notice into the live stream
-                        if (activeTextInjector) {
-                            activeTextInjector(`\n\n> ⏱️ _Pregunta expirada sin respuesta (${QUESTION_TIMEOUT_MS / 60000} min)_\n\n`);
-                        }
-                    }, QUESTION_TIMEOUT_MS);
-
-                    const groupEntry = pendingQuestionGroups.get(questionRequestId)!;
-                    groupEntry.timeoutId = timeoutId;
-
-                    // Emit ALL questions as separate PendingAskUser entries
-                    for (let i = 0; i < questions.length; i++) {
-                        const q = questions[i];
-                        const questionText = q.question || q.header || "";
-                        const questionOptions = Array.isArray(q.options)
-                            ? q.options.map((o: any) => o.label || String(o))
-                            : [];
-
-                        logger.info(`[OC:Event] ❓ Q[${i + 1}/${totalQ}]: "${questionText}" (options=${questionOptions.length}, multiple=${!!q.multiple})`);
-
-                        safeSend(event.sender, "agent-tool:ask-user-request", {
-                            requestId: questionRequestId,
-                            chatId,
-                            question: questionText,
-                            options: questionOptions.length > 0 ? questionOptions : null,
-                            context: null,
-                            multiple: !!q.multiple,
-                            questionIndex: i,
-                            totalQuestions: totalQ,
-                        });
-                    }
-
-                    // Native OS notification + tray badge for the first question
-                    try {
-                        const firstQ = questions[0];
-                        const firstText = firstQ.question || firstQ.header || "";
-                        const { Notification, BrowserWindow } = require("electron");
-                        const win = BrowserWindow.fromWebContents(event.sender);
-                        if (win && !win.isFocused()) {
-                            const body = totalQ > 1
-                                ? `${totalQ} preguntas del agente`
-                                : (firstText.length > 120 ? firstText.slice(0, 117) + "…" : firstText);
-                            const notif = new Notification({
-                                title: "El agente necesita tu respuesta",
-                                body,
-                                silent: false,
-                            });
-                            notif.on("click", () => {
-                                win.show();
-                                win.focus();
-                            });
-                            notif.show();
-
-                            const badgeText = firstText.length > 70 ? firstText.slice(0, 67) + "…" : firstText;
-                            setTrayBadge(`❓ ${badgeText}`, chatId);
-                        }
-                    } catch (_) { /* notification not critical */ }
-                    break;
-                }
-
-                default:
-                    if (eventCount <= 20) {
-                        logger.info(`[OC:Event] Unhandled event type: ${evt.type}`);
-                    }
-                    break;
+      switch (evt.type) {
+        // Track which message is the assistant's response
+        case "message.updated": {
+          const info = props.info;
+          if (info && info.role === "assistant") {
+            assistantMessageId = info.id;
+            logger.info(
+              `[OC:Event] 📬 Assistant message ID: ${assistantMessageId}`,
+            );
+            // Capture the real cost reported by OpenCode.
+            // The `usage.cost` field (in USD) is the ground truth — it matches
+            // exactly what OpenCode shows in its own UI, and is more accurate
+            // than multiplying token counts by OpenRouter price data.
+            const realCost = info.usage?.cost;
+            if (typeof realCost === "number" && realCost > 0) {
+              callbacks.onMessageCost(realCost);
             }
+          }
+          break;
         }
-    } catch (error: any) {
-        if (!abortController.signal.aborted) {
-            logger.error("[OC:Event] Event stream error:", error.message);
-            throw error; // Re-throw to fail the stream properly
+
+        case "message.part.updated": {
+          const part = props.part;
+          if (!part) break;
+
+          // Skip parts not belonging to the assistant message
+          if (
+            part.messageID &&
+            assistantMessageId &&
+            part.messageID !== assistantMessageId
+          ) {
+            logger.debug(
+              `[OC:Event] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`,
+            );
+            break;
+          }
+          if (
+            !assistantMessageId &&
+            (part.type === "text" || part.type === "reasoning")
+          ) {
+            logger.debug(
+              `[OC:Event] ⏭️ Skip early ${part.type} (no assistant ID yet)`,
+            );
+            break;
+          }
+
+          logger.debug(
+            `[OC:Event] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`,
+          );
+
+          switch (part.type) {
+            case "reasoning": {
+              // Mark active part type — subsequent deltas belong to reasoning
+              // DON'T emit <think> yet — wait for the first delta to avoid empty blocks
+              activePartType = "reasoning";
+              break;
+            }
+
+            case "text": {
+              // A text part started — close reasoning if open
+              activePartType = "text";
+              thinkNeedsReopen = false; // Cancel any pending reopen
+
+              if (isCurrentlyReasoning) {
+                isCurrentlyReasoning = false;
+                reasoningCharCount = 0;
+                reasoningBuffer = "";
+                callbacks.onTextDelta(`\n</think>\n\n`);
+                logger.info(
+                  `[OC:Event] 🧠 CLOSED </think> — text part started`,
+                );
+                sendUpdate();
+              } else if (reasoningBuffer.length > 0) {
+                // If we were accumulating reasoning but never hit the threshold, discard buffer
+                logger.info(
+                  `[OC:Event] ⏭️ Discarded tiny reasoning buffer (${reasoningBuffer.length}ch)`,
+                );
+                reasoningBuffer = "";
+                reasoningCharCount = 0;
+              }
+              break;
+            }
+
+            case "tool": {
+              // If reasoning is open, close the think block before the tool
+              // entry enters the timeline (otherwise the vibes tag would appear
+              // inside the <think> block in the rendered output)
+              if (isCurrentlyReasoning) {
+                callbacks.onTextDelta(`\n</think>\n`);
+                // Keep isCurrentlyReasoning = true so the NEXT reasoning
+                // delta will seamlessly reopen <think> without creating a
+                // new Pensamiento badge — we just need a fresh text entry.
+                isCurrentlyReasoning = false;
+                thinkNeedsReopen = true;
+                logger.info(`[OC:Event] 🧠 PAUSED </think> — tool event`);
+              }
+
+              const toolState = part.state;
+              const toolName = part.tool || "unknown";
+              const status = toolState?.status || "unknown";
+              const input = toolState?.input || part.input || {};
+              const detail =
+                input.file_path ||
+                input.path ||
+                input.filePath ||
+                input.query ||
+                input.pattern ||
+                input.command ||
+                input.cmd ||
+                input.directory ||
+                input.url ||
+                "";
+
+              // Extract tool output/result for the expanded modal
+              const rawOutput = toolState?.output || part.output || "";
+              const rawStr =
+                typeof rawOutput === "string"
+                  ? rawOutput
+                  : JSON.stringify(rawOutput);
+              const output = extractToolContent(rawStr);
+
+              callbacks.onToolUpdate(
+                part.callID || part.id,
+                toolName,
+                status,
+                detail,
+                output,
+              );
+              sendUpdate();
+              break;
+            }
+
+            case "step-start":
+              agentHasStartedStep = true;
+              callbacks.onStepStart();
+              logger.info(`[OC:Event] Step started`);
+              sendUpdate();
+              break;
+
+            case "step-finish":
+              // DON'T close </think> here — keep it open so consecutive
+              // reasoning blocks merge into a single Pensamiento.
+              // Think only closes when a "text" part starts (above).
+              if (!isCurrentlyReasoning && reasoningBuffer.length > 0) {
+                // Discard tiny reasoning if never opened
+                logger.info(
+                  `[OC:Event] ⏭️ Discarded tiny reasoning buffer on step finish (${reasoningBuffer.length}ch)`,
+                );
+                reasoningBuffer = "";
+                reasoningCharCount = 0;
+              }
+              activePartType = null;
+              {
+                const stepIn = part.tokens?.input || 0;
+                const stepOut = part.tokens?.output || 0;
+                const stepReasoning = part.tokens?.reasoning || 0;
+                const stepCacheRead =
+                  part.tokens?.cacheRead || part.tokens?.cache_read || 0;
+                const stepCacheCreation =
+                  part.tokens?.cacheCreation ||
+                  part.tokens?.cache_creation ||
+                  0;
+                callbacks.onStepTokens(
+                  stepIn,
+                  stepOut,
+                  stepReasoning,
+                  stepCacheRead + stepCacheCreation,
+                );
+                logger.info(
+                  `[OC:Event] Step finished (tokens: in=${stepIn}, out=${stepOut}, reasoning=${stepReasoning}, cacheRead=${stepCacheRead}, cacheCreation=${stepCacheCreation}, raw=${JSON.stringify(part.tokens)})`,
+                );
+              }
+              break;
+          }
+          break;
         }
-    }
 
-    // Safety: close any lingering open think block if stream ended unexpectedly
-    if (isCurrentlyReasoning) {
-        isCurrentlyReasoning = false;
-        callbacks.onTextDelta(`\n</think>\n\n`);
-        logger.info(`[OC:Event] 🧠 CLOSED </think> — stream ended`);
-    }
+        // Streaming text deltas — route based on activePartType
+        case "message.part.delta": {
+          const delta = props.delta || "";
+          if (!delta) break;
 
-    // Clear the text injector when the stream ends
-    activeTextInjector = null;
+          const isReasoning = activePartType === "reasoning";
 
-    // Clean up any pending question groups and their timeouts
-    for (const [reqId, group] of pendingQuestionGroups.entries()) {
-        if (group.timeoutId) clearTimeout(group.timeoutId);
-        pendingQuestionGroups.delete(reqId);
-        logger.info(`[OC:Event] 🧹 Cleaned up pending question group ${reqId} (stream ended)`);
+          if (isReasoning) {
+            // Strip ALL HTML/XML-like tags from reasoning content.
+            // The LLM generates <vibes-read>, <vibes-write>, etc. in its
+            // thinking because it learned the format from context history.
+            // Tags arrive split across deltas so we can't rely on matching
+            // complete tag names — just strip everything between < >.
+            const cleanDelta = delta.replace(/<[^>]*>/g, "");
+            if (!cleanDelta) break; // delta was only tags, skip
+            reasoningCharCount += cleanDelta.length;
+
+            // If think was paused for a tool event, reopen it seamlessly
+            if (thinkNeedsReopen) {
+              thinkNeedsReopen = false;
+              isCurrentlyReasoning = true;
+              callbacks.onTextDelta(`\n<think>\n${cleanDelta}`);
+              logger.info(`[OC:Event] 🧠 REOPENED <think> after tool`);
+            } else if (!isCurrentlyReasoning) {
+              // Buffer the reasoning until it's comfortably over 20 chars
+              // This prevents emitting empty `<think>` tags for short 10-char blobs or "[REDACTED]"
+              reasoningBuffer += cleanDelta;
+              if (reasoningBuffer.length > 20) {
+                isCurrentlyReasoning = true;
+                callbacks.onTextDelta(`\n<think>\n${reasoningBuffer}`);
+                logger.info(
+                  `[OC:Event] 🧠 OPENED <think> (buffered ${reasoningBuffer.length}ch)`,
+                );
+                reasoningBuffer = "";
+              }
+            } else {
+              callbacks.onTextDelta(cleanDelta);
+            }
+          } else {
+            // Normal text delta
+            callbacks.onTextDelta(delta);
+          }
+          sendUpdate();
+          break;
+        }
+
+        case "file.edited": {
+          if (!agentHasStartedStep) {
+            // Watcher sync event — the agent hasn't started yet, ignore
+            logger.info(
+              `[OC:Event] 🚫 Skipping premature file.edited (watcher sync): ${props.file}`,
+            );
+            break;
+          }
+          callbacks.onFileEdited(props.file);
+          sendUpdate();
+          break;
+        }
+
+        // File diffs — track edited files from session.diff events too
+        case "session.diff": {
+          const diffs = props.diff;
+          if (Array.isArray(diffs)) {
+            for (const d of diffs) {
+              if (d.file) {
+                callbacks.onFileEdited(d.file);
+              }
+              if (typeof d.insertions === "number")
+                callbacks.onDiffStats(d.insertions, 0);
+              if (typeof d.deletions === "number")
+                callbacks.onDiffStats(0, d.deletions);
+            }
+            sendUpdate();
+          }
+          break;
+        }
+
+        // OpenCode agent todo list updates — forward to renderer UI
+        case "todo.updated": {
+          const todos = props.todos;
+          if (Array.isArray(todos)) {
+            const mapped = todos.map((t: any) => ({
+              id: t.id || String(Math.random()),
+              content: t.content || "",
+              status:
+                t.status === "completed"
+                  ? "completed"
+                  : t.status === "in_progress"
+                    ? "in_progress"
+                    : "pending",
+            }));
+            safeSend(event.sender, "agent-tool:todos-update", {
+              chatId,
+              todos: mapped,
+            });
+            logger.info(`[OC:Event] 📋 Todo update: ${mapped.length} items`);
+          }
+          break;
+        }
+
+        case "session.status": {
+          const status = props.status;
+          if (status?.type === "idle") {
+            logger.info("[OC:Event] Session idle — response complete");
+          } else if (status?.type === "busy") {
+            logger.info("[OC:Event] Session busy...");
+          }
+          break;
+        }
+
+        case "session.idle": {
+          // Close any lingering open think block before exiting
+          if (isCurrentlyReasoning) {
+            isCurrentlyReasoning = false;
+            callbacks.onTextDelta(`\n</think>\n\n`);
+            logger.info(`[OC:Event] 🧠 CLOSED </think> — session idle`);
+          }
+          logger.info(
+            `[OC:Event] Session idle event received. Total events: ${eventCount}`,
+          );
+          return;
+        }
+
+        // Session errors — log full details for debugging custom agents
+        case "session.error": {
+          const errorMsg = extractReadableError(
+            props.error || props.message || props,
+          );
+          logger.error(`[OC:Event] SESSION ERROR: ${errorMsg}`);
+          throw new Error(`Session Error: ${errorMsg}`);
+        }
+
+        // Known events we can safely ignore
+        case "server.connected":
+        case "session.updated":
+        case "file.watcher.updated":
+          break;
+
+        case "permission.asked": {
+          const reqId = props.id || props.requestID;
+          if (!reqId) break;
+
+          // OpenCode PermissionRequest schema:
+          // { id, sessionID, permission: string, patterns: string[], metadata, always: string[], tool? }
+          const permName = props.permission || props.type || "unknown";
+          const patterns: string[] = Array.isArray(props.patterns)
+            ? props.patterns
+            : [];
+          const alwaysPatterns: string[] = Array.isArray(props.always)
+            ? props.always
+            : [];
+          const permInput =
+            patterns.join(" ") || props.input || props.command || "";
+
+          logger.info(
+            `[OC:Event] 🛡️ permission.asked: tool=${permName} patterns=${JSON.stringify(patterns)} always=${JSON.stringify(alwaysPatterns)} id=${reqId}`,
+          );
+
+          // Read user's configured permission for this tool
+          const currentSettings = readSettings();
+          const toolPermission = resolveToolPermission(
+            permName,
+            typeof permInput === "string"
+              ? permInput
+              : JSON.stringify(permInput),
+            currentSettings.openCodePermissions2,
+          );
+
+          try {
+            // Use the permission's own sessionID when available (guaranteed correct),
+            // falling back to the closure's sessionId.
+            const permSessionId = props.sessionID || sessionId;
+
+            if (toolPermission === "allow") {
+              // Auto-approve
+              await replyToPermission(reqId, "always", permSessionId);
+              logger.info(
+                `[OC:Event] Auto-approved permission: always for ${permName}`,
+              );
+            } else if (toolPermission === "deny") {
+              // Auto-reject
+              await replyToPermission(reqId, "reject", permSessionId);
+              logger.info(
+                `[OC:Event] Auto-rejected permission: deny for ${permName}`,
+              );
+            } else {
+              // "ask" — emit IPC event and wait for renderer response
+              const inputStr =
+                typeof permInput === "string"
+                  ? permInput
+                  : JSON.stringify(permInput);
+              safeSend(event.sender, "opencode-permission:request", {
+                requestId: reqId,
+                sessionId: permSessionId,
+                chatId,
+                toolName: permName,
+                toolInput: inputStr || null,
+              });
+              logger.info(
+                `[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`,
+              );
+
+              // Activate tray badge if the window is not focused
+              try {
+                const { BrowserWindow } = require("electron");
+                const win = BrowserWindow.fromWebContents(event.sender);
+                if (win && !win.isFocused()) {
+                  setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
+                }
+              } catch (_) {
+                /* tray badge not critical */
+              }
+
+              const userResponse = await waitForPermissionResponse(
+                reqId,
+                300_000,
+              );
+              await replyToPermission(
+                reqId,
+                userResponse as "once" | "always" | "reject",
+                permSessionId,
+              );
+              logger.info(
+                `[OC:Event] 🛡️ Permission resolved: ${userResponse} for ${permName}`,
+              );
+
+              // Persist to user settings so the choice is remembered.
+              // once   → no persist (config already says "ask", hot-update mid-operation would kill the tool)
+              // always → persist "allow" (never ask again)
+              // reject → persist "deny"  (block going forward)
+              // For bash: adds a granular custom rule (not the global pill).
+              // For other tools: sets the global pill.
+              if (userResponse === "always" || userResponse === "reject") {
+                const settingsValue =
+                  userResponse === "always" ? "allow" : "deny";
+                logger.info(
+                  `[OC:Permission] 📝 About to persist: permName="${permName}" → settingsValue="${settingsValue}"`,
+                );
+                persistPermissionToSettings(
+                  permName,
+                  settingsValue,
+                  alwaysPatterns,
+                  inputStr,
+                );
+              } else {
+                logger.info(
+                  `[OC:Permission] 📝 Skipping persist for "${userResponse}" (ephemeral)`,
+                );
+              }
+            }
+          } catch (e: any) {
+            logger.error(`[OC:Event] Error handling permission: ${e.message}`);
+          }
+          break;
+        }
+
+        case "question.asked": {
+          // QuestionRequest: { id, sessionID, questions: QuestionInfo[] }
+          // QuestionInfo: { question, header, options: QuestionOption[], multiple?, custom? }
+          const questionRequestId = props.id;
+          const questionSessionId = props.sessionID;
+          if (!questionRequestId) {
+            logger.warn(`[OC:Event] question.asked without ID, ignoring`);
+            break;
+          }
+          // Filter by session
+          if (questionSessionId && questionSessionId !== sessionId) break;
+
+          const questions: any[] = props.questions || [];
+          if (questions.length === 0) {
+            logger.warn(`[OC:Event] question.asked with empty questions array`);
+            break;
+          }
+
+          logger.info(
+            `[OC:Event] ❓ Question asked: ${questions.length} question(s) (id=${questionRequestId})`,
+          );
+
+          // Close any open think block before the question UI
+          if (isCurrentlyReasoning) {
+            callbacks.onTextDelta(`\n</think>\n`);
+            isCurrentlyReasoning = false;
+          }
+
+          sendUpdate();
+
+          // Initialize multi-question group tracker
+          const totalQ = questions.length;
+          pendingQuestionGroups.set(questionRequestId, {
+            totalQuestions: totalQ,
+            answers: new Map(),
+          });
+
+          // Set a 5-minute timeout to auto-reject if user doesn't respond
+          const timeoutId = setTimeout(async () => {
+            const group = pendingQuestionGroups.get(questionRequestId);
+            if (!group) return; // Already answered
+            pendingQuestionGroups.delete(questionRequestId);
+            logger.warn(
+              `[OC:Event] ⏱️ Question ${questionRequestId} timed out after ${QUESTION_TIMEOUT_MS / 1000}s — auto-rejecting`,
+            );
+            try {
+              const dirParam = lastProjectDir
+                ? `?directory=${encodeURIComponent(lastProjectDir)}`
+                : "";
+              const url = `${serverUrl}/question/${encodeURIComponent(questionRequestId)}/reject${dirParam}`;
+              await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+              });
+            } catch (e: any) {
+              logger.error(
+                `[OC:Event] Failed to reject timed-out question: ${e.message}`,
+              );
+            }
+            // Inject timeout notice into the live stream
+            if (activeTextInjector) {
+              activeTextInjector(
+                `\n\n> ⏱️ _Pregunta expirada sin respuesta (${QUESTION_TIMEOUT_MS / 60000} min)_\n\n`,
+              );
+            }
+          }, QUESTION_TIMEOUT_MS);
+
+          const groupEntry = pendingQuestionGroups.get(questionRequestId)!;
+          groupEntry.timeoutId = timeoutId;
+
+          // Emit ALL questions as separate PendingAskUser entries
+          for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            const questionText = q.question || q.header || "";
+            const questionOptions = Array.isArray(q.options)
+              ? q.options.map((o: any) => o.label || String(o))
+              : [];
+
+            logger.info(
+              `[OC:Event] ❓ Q[${i + 1}/${totalQ}]: "${questionText}" (options=${questionOptions.length}, multiple=${!!q.multiple})`,
+            );
+
+            safeSend(event.sender, "agent-tool:ask-user-request", {
+              requestId: questionRequestId,
+              chatId,
+              question: questionText,
+              options: questionOptions.length > 0 ? questionOptions : null,
+              context: null,
+              multiple: !!q.multiple,
+              questionIndex: i,
+              totalQuestions: totalQ,
+            });
+          }
+
+          // Native OS notification + tray badge for the first question
+          try {
+            const firstQ = questions[0];
+            const firstText = firstQ.question || firstQ.header || "";
+            const { Notification, BrowserWindow } = require("electron");
+            const win = BrowserWindow.fromWebContents(event.sender);
+            if (win && !win.isFocused()) {
+              const body =
+                totalQ > 1
+                  ? `${totalQ} preguntas del agente`
+                  : firstText.length > 120
+                    ? firstText.slice(0, 117) + "…"
+                    : firstText;
+              const notif = new Notification({
+                title: "El agente necesita tu respuesta",
+                body,
+                silent: false,
+              });
+              notif.on("click", () => {
+                win.show();
+                win.focus();
+              });
+              notif.show();
+
+              const badgeText =
+                firstText.length > 70
+                  ? firstText.slice(0, 67) + "…"
+                  : firstText;
+              setTrayBadge(`❓ ${badgeText}`, chatId);
+            }
+          } catch (_) {
+            /* notification not critical */
+          }
+          break;
+        }
+
+        default:
+          if (eventCount <= 20) {
+            logger.info(`[OC:Event] Unhandled event type: ${evt.type}`);
+          }
+          break;
+      }
     }
+  } catch (error: any) {
+    if (!abortController.signal.aborted) {
+      logger.error("[OC:Event] Event stream error:", error.message);
+      throw error; // Re-throw to fail the stream properly
+    }
+  }
+
+  // Safety: close any lingering open think block if stream ended unexpectedly
+  if (isCurrentlyReasoning) {
+    isCurrentlyReasoning = false;
+    callbacks.onTextDelta(`\n</think>\n\n`);
+    logger.info(`[OC:Event] 🧠 CLOSED </think> — stream ended`);
+  }
+
+  // Clear the text injector when the stream ends
+  activeTextInjector = null;
+
+  // Clean up any pending question groups and their timeouts
+  for (const [reqId, group] of pendingQuestionGroups.entries()) {
+    if (group.timeoutId) clearTimeout(group.timeoutId);
+    pendingQuestionGroups.delete(reqId);
+    logger.info(
+      `[OC:Event] 🧹 Cleaned up pending question group ${reqId} (stream ended)`,
+    );
+  }
 }
 
 /**
@@ -3818,54 +4757,54 @@ async function processEvents(
  * collapsible icon badges that the user expects.
  */
 function mapToolToVibesTag(tool: string): string {
-    const map: Record<string, string> = {
-        write: "vibes-write",
-        read: "vibes-read",
-        edit: "vibes-search-replace",
-        bash: "vibes-run-command",
-        glob: "vibes-list-files",
-        grep: "vibes-grep",
-        fetch: "vibes-web-crawl",
-        patch: "vibes-patch",
-        todowrite: "vibes-write",
-        todorewrite: "vibes-write",
-        codesearch: "vibes-code-search",
-        webfetch: "vibes-web-crawl",
-        websearch: "vibes-web-crawl",
-        lsp: "vibes-status",
-        question: "vibes-ask-user",
-    };
-    return map[tool] || "vibes-mcp-tool-call";
+  const map: Record<string, string> = {
+    write: "vibes-write",
+    read: "vibes-read",
+    edit: "vibes-search-replace",
+    bash: "vibes-run-command",
+    glob: "vibes-list-files",
+    grep: "vibes-grep",
+    fetch: "vibes-web-crawl",
+    patch: "vibes-patch",
+    todowrite: "vibes-write",
+    todorewrite: "vibes-write",
+    codesearch: "vibes-code-search",
+    webfetch: "vibes-web-crawl",
+    websearch: "vibes-web-crawl",
+    lsp: "vibes-status",
+    question: "vibes-ask-user",
+  };
+  return map[tool] || "vibes-mcp-tool-call";
 }
 
 function buildVibesTag(tool: string, detail: string, content: string): string {
-    const vibesTag = mapToolToVibesTag(tool);
+  const vibesTag = mapToolToVibesTag(tool);
 
-    switch (vibesTag) {
-        case "vibes-write":
-            return `<vibes-write path="${escapeAttr(detail)}" description="">${content}</vibes-write>`;
-        case "vibes-search-replace":
-            return `<vibes-search-replace path="${escapeAttr(detail)}" description="">${content}</vibes-search-replace>`;
-        case "vibes-read":
-            return `<vibes-read path="${escapeAttr(detail)}">${content}</vibes-read>`;
-        case "vibes-grep":
-            return `<vibes-grep query="${escapeAttr(detail)}">${content}</vibes-grep>`;
-        case "vibes-code-search":
-            return `<vibes-code-search query="${escapeAttr(detail)}">${content}</vibes-code-search>`;
-        case "vibes-run-command":
-            return `<vibes-run-command cmd="${escapeAttr(detail)}">${content}</vibes-run-command>`;
-        case "vibes-list-files":
-            return `<vibes-list-files directory="${escapeAttr(detail)}">${content}</vibes-list-files>`;
-        case "vibes-web-crawl":
-            return `<vibes-web-crawl url="${escapeAttr(detail)}">${content}</vibes-web-crawl>`;
-        case "vibes-patch":
-            return `<vibes-patch path="${escapeAttr(detail)}">${content}</vibes-patch>`;
-        case "vibes-status":
-            return `<vibes-status title="${escapeAttr(detail)}">${content}</vibes-status>`;
-        case "vibes-mcp-tool-call":
-        default:
-            return `<vibes-mcp-tool-call tool="${escapeAttr(tool)}">${content}</vibes-mcp-tool-call>`;
-    }
+  switch (vibesTag) {
+    case "vibes-write":
+      return `<vibes-write path="${escapeAttr(detail)}" description="">${content}</vibes-write>`;
+    case "vibes-search-replace":
+      return `<vibes-search-replace path="${escapeAttr(detail)}" description="">${content}</vibes-search-replace>`;
+    case "vibes-read":
+      return `<vibes-read path="${escapeAttr(detail)}">${content}</vibes-read>`;
+    case "vibes-grep":
+      return `<vibes-grep query="${escapeAttr(detail)}">${content}</vibes-grep>`;
+    case "vibes-code-search":
+      return `<vibes-code-search query="${escapeAttr(detail)}">${content}</vibes-code-search>`;
+    case "vibes-run-command":
+      return `<vibes-run-command cmd="${escapeAttr(detail)}">${content}</vibes-run-command>`;
+    case "vibes-list-files":
+      return `<vibes-list-files directory="${escapeAttr(detail)}">${content}</vibes-list-files>`;
+    case "vibes-web-crawl":
+      return `<vibes-web-crawl url="${escapeAttr(detail)}">${content}</vibes-web-crawl>`;
+    case "vibes-patch":
+      return `<vibes-patch path="${escapeAttr(detail)}">${content}</vibes-patch>`;
+    case "vibes-status":
+      return `<vibes-status title="${escapeAttr(detail)}">${content}</vibes-status>`;
+    case "vibes-mcp-tool-call":
+    default:
+      return `<vibes-mcp-tool-call tool="${escapeAttr(tool)}">${content}</vibes-mcp-tool-call>`;
+  }
 }
 
 /**
@@ -3874,24 +4813,26 @@ function buildVibesTag(tool: string, detail: string, content: string): string {
  * We extract just the <content> body and strip line number prefixes.
  */
 function extractToolContent(raw: string): string {
-    if (!raw) return "";
+  if (!raw) return "";
 
-    // Try to extract <content>...</content> block
-    const contentMatch = raw.match(/<content>([\s\S]*)<\/content>/i);
-    if (contentMatch) {
-        // Strip OpenCode's line number prefixes: "1: ", "23: ", "100: ", etc.
-        return contentMatch[1]
-            .replace(/^\d+: /gm, "")
-            .trim();
-    }
+  // Try to extract <content>...</content> block
+  const contentMatch = raw.match(/<content>([\s\S]*)<\/content>/i);
+  if (contentMatch) {
+    // Strip OpenCode's line number prefixes: "1: ", "23: ", "100: ", etc.
+    return contentMatch[1].replace(/^\d+: /gm, "").trim();
+  }
 
-    // No XML wrapper — return as-is
-    return raw.trim();
+  // No XML wrapper — return as-is
+  return raw.trim();
 }
 
 /** Escape XML/HTML attribute values */
 function escapeAttr(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /**
@@ -3899,34 +4840,39 @@ function escapeAttr(s: string): string {
  * Tools and text/thinking appear in the exact order they occurred.
  */
 function buildLiveContent(
-    timeline: TimelineEntry[],
-    toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
-    stepCount: number,
+  timeline: TimelineEntry[],
+  toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
+  stepCount: number,
 ): string {
-    let content = "";
+  let content = "";
 
-    // Render timeline entries in chronological order
-    for (const entry of timeline) {
-        if (entry.type === "tool") {
-            const tagContent = entry.error ? "[error]" : entry.output;
-            content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
-        } else {
-            content += cleanResponseText(entry.text);
-        }
+  // Render timeline entries in chronological order
+  for (const entry of timeline) {
+    if (entry.type === "tool") {
+      const tagContent = entry.error ? "[error]" : entry.output;
+      content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
+    } else {
+      content += cleanResponseText(entry.text);
     }
+  }
 
-    // Active tool indicator (pending tools shown as vibes tags with pending state)
-    const activeEdits = Array.from(toolsActive.values()).filter(
-        t => (t.status === "running" || t.status === "pending") &&
-            (t.tool === "edit" || t.tool === "write" || t.tool === "read" || t.tool === "webfetch" || t.tool === "websearch")
-    );
-    for (const t of activeEdits) {
-        const tag = mapToolToVibesTag(t.tool);
-        const attrName = tag === "vibes-web-crawl" ? "url" : "path";
-        content += `<${tag} ${attrName}="${escapeAttr(t.detail || "...")}">`;  // unclosed = pending
-    }
+  // Active tool indicator (pending tools shown as vibes tags with pending state)
+  const activeEdits = Array.from(toolsActive.values()).filter(
+    (t) =>
+      (t.status === "running" || t.status === "pending") &&
+      (t.tool === "edit" ||
+        t.tool === "write" ||
+        t.tool === "read" ||
+        t.tool === "webfetch" ||
+        t.tool === "websearch"),
+  );
+  for (const t of activeEdits) {
+    const tag = mapToolToVibesTag(t.tool);
+    const attrName = tag === "vibes-web-crawl" ? "url" : "path";
+    content += `<${tag} ${attrName}="${escapeAttr(t.detail || "...")}">`; // unclosed = pending
+  }
 
-    return content;
+  return content;
 }
 
 /**
@@ -3934,68 +4880,71 @@ function buildLiveContent(
  * Timeline preserves the exact order: tools and text/thinking are interleaved.
  */
 function buildFinalResponse(
-    timeline: TimelineEntry[],
-    filesEdited: string[],
-    toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
-    diffStats: { insertions: number; deletions: number },
+  timeline: TimelineEntry[],
+  filesEdited: string[],
+  toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
+  diffStats: { insertions: number; deletions: number },
 ): string {
-    let content = "";
+  let content = "";
 
-    // Render timeline in chronological order
-    for (const entry of timeline) {
-        if (entry.type === "tool") {
-            const tagContent = entry.error ? "[error]" : entry.output;
-            content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
-        } else {
-            const cleaned = cleanResponseText(entry.text);
-            content += cleaned;
-        }
+  // Render timeline in chronological order
+  for (const entry of timeline) {
+    if (entry.type === "tool") {
+      const tagContent = entry.error ? "[error]" : entry.output;
+      content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
+    } else {
+      const cleaned = cleanResponseText(entry.text);
+      content += cleaned;
     }
+  }
 
-    // Add file edits as vibes-write tags (for files tracked via file.edited events
-    // but not already covered by tool operations)
-    if (filesEdited.length > 0) {
-        const loggedPaths = new Set(
-            timeline
-                .filter((e): e is Extract<TimelineEntry, { type: "tool" }> => e.type === "tool")
-                .filter(e => e.tool === "write" || e.tool === "edit")
-                .map(e => path.basename(e.detail)),
-        );
+  // Add file edits as vibes-write tags (for files tracked via file.edited events
+  // but not already covered by tool operations)
+  if (filesEdited.length > 0) {
+    const loggedPaths = new Set(
+      timeline
+        .filter(
+          (e): e is Extract<TimelineEntry, { type: "tool" }> =>
+            e.type === "tool",
+        )
+        .filter((e) => e.tool === "write" || e.tool === "edit")
+        .map((e) => path.basename(e.detail)),
+    );
 
-        for (const file of filesEdited) {
-            const basename = path.basename(file);
-            if (!loggedPaths.has(basename)) {
-                content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
-            }
-        }
+    for (const file of filesEdited) {
+      const basename = path.basename(file);
+      if (!loggedPaths.has(basename)) {
+        content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
+      }
     }
+  }
 
-    // Append files-changed summary tag (persisted in message content for the UI widget)
-    if (filesEdited.length > 0) {
-        const basenames = filesEdited.map(f => path.basename(f));
-        const uniqueNames = [...new Set(basenames)];
-        content += `<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
+  // Append files-changed summary tag (persisted in message content for the UI widget)
+  if (filesEdited.length > 0) {
+    const basenames = filesEdited.map((f) => path.basename(f));
+    const uniqueNames = [...new Set(basenames)];
+    content += `<vibes-files-changed files="${uniqueNames.length}" insertions="${diffStats.insertions}" deletions="${diffStats.deletions}" paths="${escapeAttr(uniqueNames.join(","))}">
 </vibes-files-changed>\n`;
-    }
+  }
 
-    return content;
+  return content;
 }
 
 /** Human-readable tool name (for pending indicators) */
 function mapToolName(tool: string): string {
-    const map: Record<string, string> = {
-        write: "Escribir archivo",
-        read: "Leer archivo",
-        edit: "Editar archivo",
-        bash: "Ejecutar comando",
-        glob: "Buscar archivos",
-        grep: "Buscar en código",
-        fetch: "Obtener URL",
-        patch: "Aplicar parche",
-        todowrite: "Actualizar tareas",
-        todorewrite: "Reescribir tareas",
-    };
-    return map[tool] || tool;
+  const map: Record<string, string> = {
+    write: "Escribir archivo",
+    read: "Leer archivo",
+    edit: "Editar archivo",
+    bash: "Ejecutar comando",
+    glob: "Buscar archivos",
+    grep: "Buscar en código",
+    fetch: "Obtener URL",
+    patch: "Aplicar parche",
+    todowrite: "Actualizar tareas",
+    todorewrite: "Reescribir tareas",
+  };
+  return map[tool] || tool;
 }
 
 /**
@@ -4003,39 +4952,57 @@ function mapToolName(tool: string): string {
  * and raw tool-call XML tags from models that don't support native function calling.
  */
 function cleanResponseText(text: string): string {
-    // Remove [REDACTED] markers and surrounding whitespace
-    let cleaned = text.replace(/\[REDACTED\]/gi, "");
-    // Remove <thinking>...</thinking> blocks
-    cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
-    // Remove <redacted>...</redacted> blocks
-    cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
+  // Remove [REDACTED] markers and surrounding whitespace
+  let cleaned = text.replace(/\[REDACTED\]/gi, "");
+  // Remove <thinking>...</thinking> blocks
+  cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
+  // Remove <redacted>...</redacted> blocks
+  cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
 
-    // Strip Gemini-style/Llama-style assistant wrapper tags
-    cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
-    cleaned = cleaned.replace(/<\/?assistant>/gi, "");
-    cleaned = cleaned.replace(/<assistant_thought>([\s\S]*?)<\/assistant_thought>/gi, "<think>$1</think>");
+  // Strip Gemini-style/Llama-style assistant wrapper tags
+  cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
+  cleaned = cleaned.replace(/<\/?assistant>/gi, "");
+  cleaned = cleaned.replace(
+    /<assistant_thought>([\s\S]*?)<\/assistant_thought>/gi,
+    "<think>$1</think>",
+  );
 
-    // Strip ALL HTML/XML tags from inside <think> blocks and remove empty ones
-    cleaned = cleaned.replace(/<think>([\s\S]*?)<\/think>/gi, (_match, inner: string) => {
-        // Remove all XML/HTML tags from reasoning content
-        const stripped = inner.replace(/<[^>]*>/g, "").trim();
-        // If nothing meaningful remains, drop the entire think block
-        if (!stripped) return "";
-        return `<think>${stripped}</think>`;
-    });
+  // Strip ALL HTML/XML tags from inside <think> blocks and remove empty ones
+  cleaned = cleaned.replace(
+    /<think>([\s\S]*?)<\/think>/gi,
+    (_match, inner: string) => {
+      // Remove all XML/HTML tags from reasoning content
+      const stripped = inner.replace(/<[^>]*>/g, "").trim();
+      // If nothing meaningful remains, drop the entire think block
+      if (!stripped) return "";
+      return `<think>${stripped}</think>`;
+    },
+  );
 
-    // ── Strip raw tool-call XML from models (MiniMax, etc.) ──
-    // These are protocol artifacts that should never reach the UI.
-    // Matches: <invoke ...>...</invoke>, <minimax:tool_call>...</minimax:tool_call>,
-    // <parameter ...>...</parameter>, and similar namespaced tags.
-    cleaned = cleaned.replace(/<\/?invoke(?:\s[^>]*)?>[\s\S]*?(?:<\/invoke>)?/gi, "");
-    cleaned = cleaned.replace(/<\/?parameter(?:\s[^>]*)?>[\s\S]*?(?:<\/parameter>)?/gi, "");
-    cleaned = cleaned.replace(/<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi, "");
-    cleaned = cleaned.replace(/<\/?\w+:function_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:function_call>)?/gi, "");
+  // ── Strip raw tool-call XML from models (MiniMax, etc.) ──
+  // These are protocol artifacts that should never reach the UI.
+  // Matches: <invoke ...>...</invoke>, <minimax:tool_call>...</minimax:tool_call>,
+  // <parameter ...>...</parameter>, and similar namespaced tags.
+  cleaned = cleaned.replace(
+    /<\/?invoke(?:\s[^>]*)?>[\s\S]*?(?:<\/invoke>)?/gi,
+    "",
+  );
+  cleaned = cleaned.replace(
+    /<\/?parameter(?:\s[^>]*)?>[\s\S]*?(?:<\/parameter>)?/gi,
+    "",
+  );
+  cleaned = cleaned.replace(
+    /<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi,
+    "",
+  );
+  cleaned = cleaned.replace(
+    /<\/?\w+:function_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:function_call>)?/gi,
+    "",
+  );
 
-    // Clean up excessive blank lines
-    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-    return cleaned.trim();
+  // Clean up excessive blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  return cleaned.trim();
 }
 
 // ============================================================================
@@ -4043,33 +5010,37 @@ function cleanResponseText(text: string): string {
 // ============================================================================
 
 function sendChunk(
-    event: IpcMainInvokeEvent,
-    chatId: number,
-    chatMessages: any[],
-    content: string,
+  event: IpcMainInvokeEvent,
+  chatId: number,
+  chatMessages: any[],
+  content: string,
 ) {
-    const currentMessages = [...chatMessages];
-    if (currentMessages.length > 0) {
-        const lastMsg = currentMessages[currentMessages.length - 1];
-        if (lastMsg.role === "assistant") {
-            lastMsg.content = content;
-        }
+  const currentMessages = [...chatMessages];
+  if (currentMessages.length > 0) {
+    const lastMsg = currentMessages[currentMessages.length - 1];
+    if (lastMsg.role === "assistant") {
+      lastMsg.content = content;
     }
-    const lastAssistant = currentMessages.filter(m => m.role === "assistant").pop();
-    logger.debug(`[OC:sendChunk] chatId=${chatId} msgs=${currentMessages.length} lastAssistant.id=${lastAssistant?.id} content=${lastAssistant?.content?.length ?? 0}ch`);
-    safeSend(event.sender, "chat:response:chunk", {
-        chatId,
-        messages: currentMessages,
-    });
+  }
+  const lastAssistant = currentMessages
+    .filter((m) => m.role === "assistant")
+    .pop();
+  logger.debug(
+    `[OC:sendChunk] chatId=${chatId} msgs=${currentMessages.length} lastAssistant.id=${lastAssistant?.id} content=${lastAssistant?.content?.length ?? 0}ch`,
+  );
+  safeSend(event.sender, "chat:response:chunk", {
+    chatId,
+    messages: currentMessages,
+  });
 }
 
 function sendProgressUpdate(
-    event: IpcMainInvokeEvent,
-    chatId: number,
-    chatMessages: any[],
-    message: string,
+  event: IpcMainInvokeEvent,
+  chatId: number,
+  chatMessages: any[],
+  message: string,
 ) {
-    sendChunk(event, chatId, chatMessages, message);
+  sendChunk(event, chatId, chatMessages, message);
 }
 
 // ============================================================================
@@ -4080,151 +5051,164 @@ function sendProgressUpdate(
  * Health check for OpenCode
  */
 export async function openCodeHealthCheck(): Promise<{
-    installed: boolean;
-    version?: string;
-    binaryPath?: string;
-    sdkAvailable: boolean;
-    serverRunning: boolean;
-    serverUrl?: string;
-    apiKeysConfigured: string[];
-    errors: string[];
+  installed: boolean;
+  version?: string;
+  binaryPath?: string;
+  sdkAvailable: boolean;
+  serverRunning: boolean;
+  serverUrl?: string;
+  apiKeysConfigured: string[];
+  errors: string[];
 }> {
-    const errors: string[] = [];
-    const env = extractApiKeysForEnv();
-    const apiKeysConfigured = Object.keys(env);
+  const errors: string[] = [];
+  const env = extractApiKeysForEnv();
+  const apiKeysConfigured = Object.keys(env);
 
-    // The SDK is bundled at compile time — if this file loads, SDK is available
-    const sdkAvailable = typeof createOpencode === "function";
+  // The SDK is bundled at compile time — if this file loads, SDK is available
+  const sdkAvailable = typeof createOpencode === "function";
 
-    // Check if CLI is available by scanning NVM dirs directly
-    let installed = false;
-    let version: string | undefined;
-    let binaryPath: string | undefined;
+  // Check if CLI is available by scanning NVM dirs directly
+  let installed = false;
+  let version: string | undefined;
+  let binaryPath: string | undefined;
 
-    const HOME = process.env.HOME || "/home/" + process.env.USER;
-    const nvmDir = path.join(HOME, ".nvm/versions/node");
-    const fs = require("fs");
+  const HOME = process.env.HOME || "/home/" + process.env.USER;
+  const nvmDir = path.join(HOME, ".nvm/versions/node");
+  const fs = require("fs");
 
-    // Build candidate paths
-    const candidates: string[] = [
-        "/usr/local/bin/opencode",
-        "/usr/bin/opencode",
-        path.join(HOME, ".local/bin/opencode"),
-    ];
+  // Build candidate paths
+  const candidates: string[] = [
+    "/usr/local/bin/opencode",
+    "/usr/bin/opencode",
+    path.join(HOME, ".local/bin/opencode"),
+  ];
 
-    try {
-        if (fs.existsSync(nvmDir)) {
-            const versions = fs.readdirSync(nvmDir);
-            versions.sort((a: string, b: string) => {
-                const numA = a.replace('v', '').split('.').map(Number);
-                const numB = b.replace('v', '').split('.').map(Number);
-                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
-                    const partA = numA[i] || 0;
-                    const partB = numB[i] || 0;
-                    if (partA !== partB) return partB - partA; // Descending
-                }
-                return 0;
-            });
-            for (const v of versions) {
-                candidates.push(path.join(nvmDir, v, "bin/opencode"));
-            }
+  try {
+    if (fs.existsSync(nvmDir)) {
+      const versions = fs.readdirSync(nvmDir);
+      versions.sort((a: string, b: string) => {
+        const numA = a.replace("v", "").split(".").map(Number);
+        const numB = b.replace("v", "").split(".").map(Number);
+        for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+          const partA = numA[i] || 0;
+          const partB = numB[i] || 0;
+          if (partA !== partB) return partB - partA; // Descending
         }
-    } catch { /* ignore */ }
-
-    for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
-            binaryPath = candidate;
-            installed = true;
-            try {
-                const { execSync } = require("child_process");
-                version = execSync(`${candidate} --version 2>&1`, { encoding: "utf-8" }).trim();
-            } catch { /* ignore */ }
-            break;
-        }
+        return 0;
+      });
+      for (const v of versions) {
+        candidates.push(path.join(nvmDir, v, "bin/opencode"));
+      }
     }
+  } catch {
+    /* ignore */
+  }
 
-    if (!installed) {
-        errors.push("OpenCode CLI not found. Install with: npm install -g opencode-ai");
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      binaryPath = candidate;
+      installed = true;
+      try {
+        const { execSync } = require("child_process");
+        version = execSync(`${candidate} --version 2>&1`, {
+          encoding: "utf-8",
+        }).trim();
+      } catch {
+        /* ignore */
+      }
+      break;
     }
+  }
 
-    return {
-        installed,
-        version,
-        binaryPath,
-        sdkAvailable,
-        serverRunning: !!opencodeInstance,
-        serverUrl: serverUrl || undefined,
-        apiKeysConfigured,
-        errors,
-    };
+  if (!installed) {
+    errors.push(
+      "OpenCode CLI not found. Install with: npm install -g opencode-ai",
+    );
+  }
+
+  return {
+    installed,
+    version,
+    binaryPath,
+    sdkAvailable,
+    serverRunning: !!opencodeInstance,
+    serverUrl: serverUrl || undefined,
+    apiKeysConfigured,
+    errors,
+  };
 }
 
 /**
  * Test a simple prompt with OpenCode
  */
 export async function openCodeTestRun(appPath: string): Promise<{
-    success: boolean;
-    response?: string;
-    error?: string;
+  success: boolean;
+  response?: string;
+  error?: string;
 }> {
-    try {
-        const { client } = await getOpenCodeClient(appPath);
+  try {
+    const { client } = await getOpenCodeClient(appPath);
 
-        // Create a test session
-        const session = await client.session.create({
-            body: { title: "Test session" },
-        });
+    // Create a test session
+    const session = await client.session.create({
+      body: { title: "Test session" },
+    });
 
-        const sessionId = session.data!.id;
+    const sessionId = session.data!.id;
 
-        // Send a simple test prompt
-        const result = await client.session.prompt({
-            path: { id: sessionId },
-            body: {
-                parts: [{ type: "text", text: "Di solo la palabra 'funciona' para confirmar que estás operativo" }],
-            },
-        });
+    // Send a simple test prompt
+    const result = await client.session.prompt({
+      path: { id: sessionId },
+      body: {
+        parts: [
+          {
+            type: "text",
+            text: "Di solo la palabra 'funciona' para confirmar que estás operativo",
+          },
+        ],
+      },
+    });
 
-        // Get messages to extract the response
-        const messages = await client.session.messages({
-            path: { id: sessionId },
-        });
+    // Get messages to extract the response
+    const messages = await client.session.messages({
+      path: { id: sessionId },
+    });
 
-        let responseText = "";
-        if (messages.data) {
-            for (const msg of messages.data) {
-                if (msg.info.role === "assistant") {
-                    for (const part of msg.parts) {
-                        if (part.type === "text") {
-                            responseText += part.text;
-                        }
-                    }
-                }
+    let responseText = "";
+    if (messages.data) {
+      for (const msg of messages.data) {
+        if (msg.info.role === "assistant") {
+          for (const part of msg.parts) {
+            if (part.type === "text") {
+              responseText += part.text;
             }
+          }
         }
-
-        // Clean up test session
-        await client.session.delete({ path: { id: sessionId } });
-
-        return { success: true, response: responseText };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+      }
     }
+
+    // Clean up test session
+    await client.session.delete({ path: { id: sessionId } });
+
+    return { success: true, response: responseText };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
 
 /**
  * Shut down the OpenCode server
  */
 export async function shutdownOpenCode() {
-    if (opencodeInstance) {
-        logger.info("[OpenCode] Shutting down server...");
-        opencodeInstance.server.close();
-        opencodeInstance = null;
-        clientInstance = null;
-        serverUrl = null;
-        chatSessionMap.clear();
-        visualEditSessionMap.clear();
-    }
+  if (opencodeInstance) {
+    logger.info("[OpenCode] Shutting down server...");
+    opencodeInstance.server.close();
+    opencodeInstance = null;
+    clientInstance = null;
+    serverUrl = null;
+    chatSessionMap.clear();
+    visualEditSessionMap.clear();
+  }
 }
 
 // =============================================================================
@@ -4243,86 +5227,107 @@ import { agentContracts } from "../types/agent";
  * This handler forwards the answer to the OpenCode SDK via client.question.reply().
  */
 export function registerQuestionHandler() {
-    createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
-        const { requestId, response, questionIndex = 0 } = params;
+  createTypedHandler(
+    agentContracts.respondToAskUser,
+    async (_event, params) => {
+      const { requestId, response, questionIndex = 0 } = params;
 
-        if (!serverUrl) {
-            logger.error("[OC:AskUser] No OpenCode server URL — cannot reply to question");
-            return;
+      if (!serverUrl) {
+        logger.error(
+          "[OC:AskUser] No OpenCode server URL — cannot reply to question",
+        );
+        return;
+      }
+
+      // response can be a single string or an array of strings (multi-select)
+      const answerLabels = Array.isArray(response) ? response : [response];
+      logger.info(
+        `[OC:AskUser] Answer for question ${requestId}[${questionIndex}]: ${JSON.stringify(answerLabels).substring(0, 120)}`,
+      );
+
+      // Inject the user's answer as a blockquote into the live stream immediately
+      if (activeTextInjector) {
+        const answerDisplay = answerLabels.join(", ");
+        activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
+      }
+
+      // Check if this is part of a multi-question group
+      const group = pendingQuestionGroups.get(requestId);
+
+      if (!group || group.totalQuestions <= 1) {
+        // Single question (or legacy flow) — send immediately
+        pendingQuestionGroups.delete(requestId);
+        if (group?.timeoutId) clearTimeout(group.timeoutId);
+
+        try {
+          const dirParam = lastProjectDir
+            ? `?directory=${encodeURIComponent(lastProjectDir)}`
+            : "";
+          const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers: [answerLabels] }),
+          });
+
+          const text = await res.text();
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+          logger.info(
+            `[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`,
+          );
+        } catch (e: any) {
+          logger.error(
+            `[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`,
+          );
+          throw e;
+        }
+        return;
+      }
+
+      // Multi-question: accumulate this answer
+      group.answers.set(questionIndex, answerLabels);
+      logger.info(
+        `[OC:AskUser] Accumulated ${group.answers.size}/${group.totalQuestions} answers for ${requestId}`,
+      );
+
+      // Check if all questions have been answered
+      if (group.answers.size >= group.totalQuestions) {
+        // All answered — clear timeout and send the combined reply
+        if (group.timeoutId) clearTimeout(group.timeoutId);
+        pendingQuestionGroups.delete(requestId);
+
+        // Build answers array in order: [[q0_labels], [q1_labels], ...]
+        const orderedAnswers: string[][] = [];
+        for (let i = 0; i < group.totalQuestions; i++) {
+          orderedAnswers.push(group.answers.get(i) || ["(sin respuesta)"]);
         }
 
-        // response can be a single string or an array of strings (multi-select)
-        const answerLabels = Array.isArray(response) ? response : [response];
-        logger.info(`[OC:AskUser] Answer for question ${requestId}[${questionIndex}]: ${JSON.stringify(answerLabels).substring(0, 120)}`);
+        try {
+          const dirParam = lastProjectDir
+            ? `?directory=${encodeURIComponent(lastProjectDir)}`
+            : "";
+          const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers: orderedAnswers }),
+          });
 
-        // Inject the user's answer as a blockquote into the live stream immediately
-        if (activeTextInjector) {
-            const answerDisplay = answerLabels.join(", ");
-            activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
+          const text = await res.text();
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+          logger.info(
+            `[OC:AskUser] ✅ Multi-question reply sent (${group.totalQuestions} answers) for ${requestId}. Server: ${text}`,
+          );
+        } catch (e: any) {
+          logger.error(
+            `[OC:AskUser] ❌ Failed to reply to multi-question ${requestId}: ${e.message}`,
+          );
+          throw e;
         }
-
-        // Check if this is part of a multi-question group
-        const group = pendingQuestionGroups.get(requestId);
-
-        if (!group || group.totalQuestions <= 1) {
-            // Single question (or legacy flow) — send immediately
-            pendingQuestionGroups.delete(requestId);
-            if (group?.timeoutId) clearTimeout(group.timeoutId);
-
-            try {
-                const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
-                const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ answers: [answerLabels] }),
-                });
-
-                const text = await res.text();
-                if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-                logger.info(`[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`);
-            } catch (e: any) {
-                logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
-                throw e;
-            }
-            return;
-        }
-
-        // Multi-question: accumulate this answer
-        group.answers.set(questionIndex, answerLabels);
-        logger.info(`[OC:AskUser] Accumulated ${group.answers.size}/${group.totalQuestions} answers for ${requestId}`);
-
-        // Check if all questions have been answered
-        if (group.answers.size >= group.totalQuestions) {
-            // All answered — clear timeout and send the combined reply
-            if (group.timeoutId) clearTimeout(group.timeoutId);
-            pendingQuestionGroups.delete(requestId);
-
-            // Build answers array in order: [[q0_labels], [q1_labels], ...]
-            const orderedAnswers: string[][] = [];
-            for (let i = 0; i < group.totalQuestions; i++) {
-                orderedAnswers.push(group.answers.get(i) || ["(sin respuesta)"]);
-            }
-
-            try {
-                const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
-                const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ answers: orderedAnswers }),
-                });
-
-                const text = await res.text();
-                if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-                logger.info(`[OC:AskUser] ✅ Multi-question reply sent (${group.totalQuestions} answers) for ${requestId}. Server: ${text}`);
-            } catch (e: any) {
-                logger.error(`[OC:AskUser] ❌ Failed to reply to multi-question ${requestId}: ${e.message}`);
-                throw e;
-            }
-        }
-        // Otherwise, wait for remaining answers — UI will show next question
-    });
+      }
+      // Otherwise, wait for remaining answers — UI will show next question
+    },
+  );
 }
 
 /**
@@ -4334,15 +5339,22 @@ export function registerQuestionHandler() {
  * This handler resolves the pending Promise so processEvents can continue.
  */
 export function registerPermissionHandler() {
-    createTypedHandler(agentContracts.respondToPermission, async (_event, params) => {
-        const { requestId, response } = params;
-        logger.info(`[OC:Permission] Received UI response for ${requestId}: ${response}`);
+  createTypedHandler(
+    agentContracts.respondToPermission,
+    async (_event, params) => {
+      const { requestId, response } = params;
+      logger.info(
+        `[OC:Permission] Received UI response for ${requestId}: ${response}`,
+      );
 
-        const resolver = pendingPermissionResolvers.get(requestId);
-        if (resolver) {
-            resolver(response);
-        } else {
-            logger.warn(`[OC:Permission] No pending resolver for ${requestId} — already timed out?`);
-        }
-    });
+      const resolver = pendingPermissionResolvers.get(requestId);
+      if (resolver) {
+        resolver(response);
+      } else {
+        logger.warn(
+          `[OC:Permission] No pending resolver for ${requestId} — already timed out?`,
+        );
+      }
+    },
+  );
 }

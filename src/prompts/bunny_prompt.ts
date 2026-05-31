@@ -6,9 +6,7 @@ import type { BunnyConfig } from "@/ipc/types/bunny";
 
 export function getBunnyAvailableSystemPrompt(config: BunnyConfig): string {
   const dbSection =
-    config.databases.length > 0
-      ? buildDatabasePrompt(config.databases)
-      : "";
+    config.databases.length > 0 ? buildDatabasePrompt(config.databases) : "";
   const storageSection =
     config.storageZones.length > 0
       ? buildStoragePrompt(config.storageZones)
@@ -28,9 +26,7 @@ ${storageSection}
 // Database prompt (libSQL / @libsql/client)
 // ---------------------------------------------------------------------------
 
-function buildDatabasePrompt(
-  databases: BunnyConfig["databases"],
-): string {
+function buildDatabasePrompt(databases: BunnyConfig["databases"]): string {
   const dbEntries = databases
     .map(
       (db) => `
@@ -130,9 +126,7 @@ curl -s -X POST "$BUNNY_DB_URL" -H "Authorization: Bearer $BUNNY_DB_TOKEN" -H "C
 // Storage prompt (@bunny.net/storage-sdk)
 // ---------------------------------------------------------------------------
 
-function buildStoragePrompt(
-  storageZones: BunnyConfig["storageZones"],
-): string {
+function buildStoragePrompt(storageZones: BunnyConfig["storageZones"]): string {
   const szEntries = storageZones
     .map(
       (sz) => `

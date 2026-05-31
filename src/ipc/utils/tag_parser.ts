@@ -105,7 +105,8 @@ export function getChatSummaryTag(fullResponse: string): string | null {
   }
 
   // Try <set_chat_summary summary="...">...</set_chat_summary>
-  const setChatSummaryRegex = /<set_chat_summary\s+summary="([^"]+)"[^>]*>[\s\S]*?<\/set_chat_summary>/g;
+  const setChatSummaryRegex =
+    /<set_chat_summary\s+summary="([^"]+)"[^>]*>[\s\S]*?<\/set_chat_summary>/g;
   match = setChatSummaryRegex.exec(response);
   if (match && match[1]) {
     return unescapeXmlAttr(match[1]);

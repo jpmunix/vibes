@@ -9,7 +9,13 @@ import { showSuccess, showError } from "@/lib/toast";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
-function TogglePill({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+function TogglePill({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
       {([false, true] as const).map((value) => (
@@ -37,10 +43,7 @@ export function SupabaseIntegration() {
 
   const isConnected = isSupabaseConnected(settings);
 
-  const {
-    organizations,
-    deleteOrganization,
-  } = useSupabase();
+  const { organizations, deleteOrganization } = useSupabase();
 
   const handleDisconnectAllFromSupabase = async () => {
     setIsDisconnecting(true);
@@ -104,11 +107,15 @@ export function SupabaseIntegration() {
       {/* Header row - clickable to expand, matches SettingRow pattern */}
       <div
         className="flex items-center justify-between gap-8 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors cursor-pointer group"
-        onClick={() => setExpanded(e => !e)}
+        onClick={() => setExpanded((e) => !e)}
       >
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <img src={supabaseLogo} alt="Supabase" className="h-4 w-4 brightness-0 dark:invert opacity-70 shrink-0" />
+            <img
+              src={supabaseLogo}
+              alt="Supabase"
+              className="h-4 w-4 brightness-0 dark:invert opacity-70 shrink-0"
+            />
             Supabase
           </h3>
           <p className="typo-caption mt-1">
@@ -119,7 +126,10 @@ export function SupabaseIntegration() {
 
         <div className="flex items-center gap-2 shrink-0">
           <Button
-            onClick={(e) => { e.stopPropagation(); handleDisconnectAllFromSupabase(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDisconnectAllFromSupabase();
+            }}
             variant="ghost"
             size="sm"
             disabled={isDisconnecting}
@@ -167,7 +177,9 @@ export function SupabaseIntegration() {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg group-hover:opacity-100 opacity-40 transition-opacity cursor-pointer"
-                      onClick={() => handleDeleteOrganization(org.organizationSlug)}
+                      onClick={() =>
+                        handleDeleteOrganization(org.organizationSlug)
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -192,7 +204,8 @@ export function SupabaseIntegration() {
                   Escribir archivos de migración SQL
                 </h3>
                 <p className="typo-caption mt-1 leading-relaxed">
-                  Genera archivos de migración SQL al modificar el esquema de Supabase
+                  Genera archivos de migración SQL al modificar el esquema de
+                  Supabase
                 </p>
               </div>
               <div onClick={(e) => e.stopPropagation()}>
@@ -214,7 +227,8 @@ export function SupabaseIntegration() {
                   Mantener funciones de borde adicionales
                 </h3>
                 <p className="typo-caption mt-1 leading-relaxed">
-                  Evita que se eliminen funciones desplegadas no presentes localmente
+                  Evita que se eliminen funciones desplegadas no presentes
+                  localmente
                 </p>
               </div>
               <div onClick={(e) => e.stopPropagation()}>

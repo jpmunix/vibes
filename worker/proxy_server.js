@@ -395,15 +395,12 @@ const server = http.createServer((clientReq, clientRes) => {
       });
     });
 
-    const isGetOrHead = clientReq.method === "GET" || clientReq.method === "HEAD";
+    const isGetOrHead =
+      clientReq.method === "GET" || clientReq.method === "HEAD";
 
     upReq.on("error", (e) => {
       // If the connection was refused and it's a safe method (GET/HEAD), retry.
-      if (
-        e.code === "ECONNREFUSED" &&
-        retriesLeft > 0 &&
-        isGetOrHead
-      ) {
+      if (e.code === "ECONNREFUSED" && retriesLeft > 0 && isGetOrHead) {
         // Wait 250ms and try again
         setTimeout(() => attemptRequest(retriesLeft - 1), 250);
         return;
@@ -428,7 +425,7 @@ const server = http.createServer((clientReq, clientRes) => {
 
   clientReq.on("error", (e) => {
     console.error("[proxy-worker] Client request error:", e.message);
-    // There isn't a single upReq to destroy here if we are between retries, 
+    // There isn't a single upReq to destroy here if we are between retries,
     // but the closure mostly handles it or it will garbage collect.
   });
 
@@ -469,10 +466,10 @@ server.on("upgrade", (req, socket, _head) => {
   upReq.on("upgrade", (upRes, upSocket, upHead) => {
     socket.write(
       "HTTP/1.1 101 Switching Protocols\r\n" +
-      Object.entries(upRes.headers)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join("\r\n") +
-      "\r\n\r\n",
+        Object.entries(upRes.headers)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join("\r\n") +
+        "\r\n\r\n",
     );
     if (upHead && upHead.length) socket.write(upHead);
 

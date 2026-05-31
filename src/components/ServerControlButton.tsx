@@ -1,10 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ExternalLink, Play, RotateCcw, Square, Terminal } from "@/components/ui/icons";
+import {
+  ExternalLink,
+  Play,
+  RotateCcw,
+  Square,
+  Terminal,
+} from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ServerStatus = "running" | "stopped" | "error";
 
@@ -151,15 +161,17 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
               disabled={loading || isStarting}
               style={{ cursor: isStopped || isError ? "pointer" : "default" }}
             >
-              <Play
-                className={playIconClass}
-              />
+              <Play className={playIconClass} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            {isStopped ? "Iniciar servidor" :
-             isStarting ? "Iniciando…" :
-             isError ? "Error — clic para reiniciar" : ""}
+            {isStopped
+              ? "Iniciar servidor"
+              : isStarting
+                ? "Iniciando…"
+                : isError
+                  ? "Error — clic para reiniciar"
+                  : ""}
           </TooltipContent>
         </Tooltip>
       )}
@@ -178,7 +190,9 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
                 <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Reiniciar servidor</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Reiniciar servidor
+            </TooltipContent>
           </Tooltip>
 
           {/* Stop */}
@@ -192,33 +206,33 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
                 <Square className="h-3.5 w-3.5 text-red-500" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Detener servidor</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Detener servidor
+            </TooltipContent>
           </Tooltip>
 
           {/* Console */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                className={btnBase}
-                onClick={handleOpenConsole}
-              >
+              <button className={btnBase} onClick={handleOpenConsole}>
                 <Terminal className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Ver consola</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Ver consola
+            </TooltipContent>
           </Tooltip>
 
           {/* Open in browser */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                className={btnBase}
-                onClick={handleOpenInBrowser}
-              >
+              <button className={btnBase} onClick={handleOpenInBrowser}>
                 <ExternalLink className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Abrir en navegador</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Abrir en navegador
+            </TooltipContent>
           </Tooltip>
         </>
       )}

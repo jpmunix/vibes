@@ -83,7 +83,6 @@ export const ApplyTemplateResultSchema = z.object({
   success: z.boolean(),
 });
 
-
 /**
  * Schema for delete app params.
  */

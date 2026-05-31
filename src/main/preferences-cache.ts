@@ -183,11 +183,7 @@ class PreferencesCache {
    * Set multiple preferences at once.
    * Each key is updated in cache immediately, DB writes are batched async.
    */
-  setMany(
-    userId: string,
-    entries: Record<string, string>,
-    appId = 0,
-  ): void {
+  setMany(userId: string, entries: Record<string, string>, appId = 0): void {
     for (const [key, value] of Object.entries(entries)) {
       if (value == null) continue; // Skip null/undefined — DB column is NOT NULL
       const ck = this.cacheKey(userId, key, appId);
@@ -298,18 +294,18 @@ class PreferencesCache {
       const promises = batch
         .filter((key) => entries[key] != null) // Guard: skip null/undefined values (NOT NULL column)
         .map((key) =>
-        db
-          .insert(userPreferences)
-          .values({ userId, appId, key, value: entries[key], updatedAt: now })
-          .onConflictDoUpdate({
-            target: [
-              userPreferences.userId,
-              userPreferences.key,
-              userPreferences.appId,
-            ],
-            set: { value: entries[key], updatedAt: now },
-          }),
-      );
+          db
+            .insert(userPreferences)
+            .values({ userId, appId, key, value: entries[key], updatedAt: now })
+            .onConflictDoUpdate({
+              target: [
+                userPreferences.userId,
+                userPreferences.key,
+                userPreferences.appId,
+              ],
+              set: { value: entries[key], updatedAt: now },
+            }),
+        );
       await Promise.all(promises);
     }
   }

@@ -9,7 +9,9 @@ export interface PocketBasePromptConfig {
   adminPassword: string;
 }
 
-export function getPocketBaseAvailableSystemPrompt(config: PocketBasePromptConfig): string {
+export function getPocketBaseAvailableSystemPrompt(
+  config: PocketBasePromptConfig,
+): string {
   return `
 # PocketBase Integration Guidelines
 

@@ -77,13 +77,17 @@ function sanitizeFilePath(filePath: string, appPath: string): string {
   const projectIdx = segments.indexOf(appDirName);
   if (projectIdx !== -1 && projectIdx < segments.length - 1) {
     const relativePortion = segments.slice(projectIdx + 1).join(path.sep);
-    logger.warn(`[sanitizeFilePath] Converted absolute path "${filePath}" → "${relativePortion}"`);
+    logger.warn(
+      `[sanitizeFilePath] Converted absolute path "${filePath}" → "${relativePortion}"`,
+    );
     return relativePortion;
   }
 
   // Case 3: completely unrelated absolute path — use basename as last resort
   const fallback = path.basename(filePath);
-  logger.warn(`[sanitizeFilePath] Absolute path "${filePath}" fully escapes app dir — using basename "${fallback}"`);
+  logger.warn(
+    `[sanitizeFilePath] Absolute path "${filePath}" fully escapes app dir — using basename "${fallback}"`,
+  );
   return fallback;
 }
 
@@ -199,7 +203,7 @@ export async function processFullResponseActions(
       logger.error("Error creating Neon branch at current version:", error);
       throw new Error(
         "Could not create Neon branch; database versioning functionality is not working: " +
-        error,
+          error,
       );
     }
   }
@@ -227,12 +231,15 @@ export async function processFullResponseActions(
       : [];
 
     // Sanitize all file paths — OpenCode may produce absolute paths that escape the app directory
-    const writeTags = rawWriteTags.map(t => ({ ...t, path: sanitizeFilePath(t.path, appPath) }));
-    const renameTags = rawRenameTags.map(t => ({
+    const writeTags = rawWriteTags.map((t) => ({
+      ...t,
+      path: sanitizeFilePath(t.path, appPath),
+    }));
+    const renameTags = rawRenameTags.map((t) => ({
       from: sanitizeFilePath(t.from, appPath),
       to: sanitizeFilePath(t.to, appPath),
     }));
-    const deletePaths = rawDeletePaths.map(p => sanitizeFilePath(p, appPath));
+    const deletePaths = rawDeletePaths.map((p) => sanitizeFilePath(p, appPath));
 
     const message = await db.query.messages.findFirst({
       where: and(
@@ -432,7 +439,10 @@ export async function processFullResponseActions(
 
     // Process all search-replace edits
     const rawSearchReplaceTags = getSearchReplaceTags(fullResponse);
-    const searchReplaceTags = rawSearchReplaceTags.map(t => ({ ...t, path: sanitizeFilePath(t.path, appPath) }));
+    const searchReplaceTags = rawSearchReplaceTags.map((t) => ({
+      ...t,
+      path: sanitizeFilePath(t.path, appPath),
+    }));
     // Group tags by file path
     const srTagsByFile = new Map<
       string,
@@ -615,7 +625,9 @@ export async function processFullResponseActions(
           );
           // Use npm exclusively
           try {
-            logger.info(`Running npm install to update lockfiles in ${appPath}...`);
+            logger.info(
+              `Running npm install to update lockfiles in ${appPath}...`,
+            );
             await execPromise("npm install --legacy-peer-deps", {
               cwd: appPath,
               timeout: 300000,
@@ -676,7 +688,9 @@ export async function processFullResponseActions(
             `added ${addDependencyPackages.join(", ")} package(s)`,
           );
         if (executeSqlQueries.length > 0)
-          fallbackChanges.push(`executed ${executeSqlQueries.length} SQL queries`);
+          fallbackChanges.push(
+            `executed ${executeSqlQueries.length} SQL queries`,
+          );
 
         const fallbackMessage = chatSummary
           ? `[vibes] ${chatSummary}`
@@ -694,7 +708,9 @@ export async function processFullResponseActions(
           path: appPath,
           message,
         });
-        logger.log(`Successfully committed changes: ${fallbackChanges.join(", ")}`);
+        logger.log(
+          `Successfully committed changes: ${fallbackChanges.join(", ")}`,
+        );
 
         // Check for any uncommitted changes after the commit
         uncommittedFiles = await getGitUncommittedFiles({ path: appPath });
@@ -754,17 +770,17 @@ export async function processFullResponseActions(
   } finally {
     const appendedContent = `
     ${warnings
-        .map(
-          (warning) =>
-            `<vibes-output type="warning" message="${warning.message}">${warning.error}</vibes-output>`,
-        )
-        .join("\n")}
+      .map(
+        (warning) =>
+          `<vibes-output type="warning" message="${warning.message}">${warning.error}</vibes-output>`,
+      )
+      .join("\n")}
     ${errors
-        .map(
-          (error) =>
-            `<vibes-output type="error" message="${error.message}">${error.error}</vibes-output>`,
-        )
-        .join("\n")}
+      .map(
+        (error) =>
+          `<vibes-output type="error" message="${error.message}">${error.error}</vibes-output>`,
+      )
+      .join("\n")}
     `;
     if (appendedContent.length > 0) {
       await db

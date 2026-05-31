@@ -106,7 +106,8 @@ export class OpenCodeManager {
   }
 
   private getWorkspaceDir(userId: string): string {
-    const baseDir = process.env.VIBES_WORKSPACES_DIR || "/data/vibes/workspaces";
+    const baseDir =
+      process.env.VIBES_WORKSPACES_DIR || "/data/vibes/workspaces";
     return path.join(baseDir, userId);
   }
 }

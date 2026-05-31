@@ -68,512 +68,589 @@ async function restoreBranchForPreview({
 }
 
 export function registerVersionHandlers() {
-  createTypedHandler(versionContracts.listVersions, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { appId } = params;
-    const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
-    });
-
-    if (!app) {
-      // The app might have just been deleted, so we return an empty array.
-      return [];
-    }
-
-    const appPath = getVibesAppPath(app.path);
-
-    // Just return an empty array if the app is not a git repo.
-    if (!fs.existsSync(path.join(appPath, ".git"))) {
-      return [];
-    }
-
-    const commits = await gitLog({
-      path: appPath,
-      depth: 100_000, // KEEP UP TO DATE WITH ChatHeader.tsx
-    }).catch((err: Error) => {
-      // Repos with no commits have no HEAD — return empty list
-      if (err.message.includes("unknown revision") || err.message.includes("bad default revision")) {
-        return [] as GitCommit[];
-      }
-      throw err;
-    });
-
-    // Get all snapshots for this app to match with commits
-    const appSnapshots = await db.query.versions.findMany({
-      where: and(eq(remoteSchema.versions.appId, appId), eq(remoteSchema.versions.userId, context.userId)),
-    });
-
-    // Create a map of commitHash -> snapshot info for quick lookup
-    const snapshotMap = new Map<
-      string,
-      { neonDbTimestamp: string | null; createdAt: Date }
-    >();
-    for (const snapshot of appSnapshots) {
-      snapshotMap.set(snapshot.commitHash, {
-        neonDbTimestamp: snapshot.neonDbTimestamp,
-        createdAt: snapshot.createdAt,
-      });
-    }
-
-    return commits.map((commit: GitCommit) => {
-      const snapshotInfo = snapshotMap.get(commit.oid);
-      return {
-        oid: commit.oid,
-        message: commit.commit.message,
-        timestamp: commit.commit.author.timestamp,
-        dbTimestamp: snapshotInfo?.neonDbTimestamp,
-      };
-    });
-  });
-
-  createTypedHandler(versionContracts.getCurrentBranch, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { appId } = params;
-    const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
-    });
-
-    if (!app) {
-      // Transient: remote DB (Bunny Edge SQL) may lag during app switch.
-      // Log for monitoring, return empty — react-query will retry automatically.
-      logger.warn(`[getCurrentBranch] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
-      return { branch: "" };
-    }
-
-    const appPath = getVibesAppPath(app.path);
-
-    // Return appropriate result if the app is not a git repo
-    if (!fs.existsSync(path.join(appPath, ".git"))) {
-      throw new Error("Not a git repository");
-    }
-
-    try {
-      const currentBranch = await gitCurrentBranch({ path: appPath });
-
-      return {
-        branch: currentBranch || "<no-branch>",
-      };
-    } catch (error: any) {
-      logger.error(`Error getting current branch for app ${appId}:`, error);
-      throw new Error(`Failed to get current branch: ${error.message}`);
-    }
-  });
-
-  createTypedHandler(versionContracts.revertVersion, async (_, params, context) => {
-    const userId = context.userId;
-    if (!userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { appId, previousVersionId, currentChatMessageId } = params;
-    return withLock(appId, async () => {
-      let successMessage = "Restored version";
-      let warningMessage = "";
+  createTypedHandler(
+    versionContracts.listVersions,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { appId } = params;
       const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId),
+        ),
       });
 
       if (!app) {
-        throw new Error("App not found");
+        // The app might have just been deleted, so we return an empty array.
+        return [];
       }
 
       const appPath = getVibesAppPath(app.path);
-      const branchRef = (await gitCurrentBranch({ path: appPath })) || app.githubBranch || "main";
 
-      // Get the current commit hash before reverting
-      let currentCommitHash: string;
-      try {
-        currentCommitHash = await getCurrentCommitHash({
-          path: appPath,
-          ref: branchRef,
-        });
-      } catch {
-        // Repo has no commits yet — nothing to revert
-        return { successMessage: "No hay versiones para revertir en este repositorio." };
+      // Just return an empty array if the app is not a git repo.
+      if (!fs.existsSync(path.join(appPath, ".git"))) {
+        return [];
       }
 
-      if (previousVersionId && previousVersionId !== "NONE") {
-        await gitCheckout({
-          path: appPath,
-          ref: branchRef,
+      const commits = await gitLog({
+        path: appPath,
+        depth: 100_000, // KEEP UP TO DATE WITH ChatHeader.tsx
+      }).catch((err: Error) => {
+        // Repos with no commits have no HEAD — return empty list
+        if (
+          err.message.includes("unknown revision") ||
+          err.message.includes("bad default revision")
+        ) {
+          return [] as GitCommit[];
+        }
+        throw err;
+      });
+
+      // Get all snapshots for this app to match with commits
+      const appSnapshots = await db.query.versions.findMany({
+        where: and(
+          eq(remoteSchema.versions.appId, appId),
+          eq(remoteSchema.versions.userId, context.userId),
+        ),
+      });
+
+      // Create a map of commitHash -> snapshot info for quick lookup
+      const snapshotMap = new Map<
+        string,
+        { neonDbTimestamp: string | null; createdAt: Date }
+      >();
+      for (const snapshot of appSnapshots) {
+        snapshotMap.set(snapshot.commitHash, {
+          neonDbTimestamp: snapshot.neonDbTimestamp,
+          createdAt: snapshot.createdAt,
+        });
+      }
+
+      return commits.map((commit: GitCommit) => {
+        const snapshotInfo = snapshotMap.get(commit.oid);
+        return {
+          oid: commit.oid,
+          message: commit.commit.message,
+          timestamp: commit.commit.author.timestamp,
+          dbTimestamp: snapshotInfo?.neonDbTimestamp,
+        };
+      });
+    },
+  );
+
+  createTypedHandler(
+    versionContracts.getCurrentBranch,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { appId } = params;
+      const app = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, appId),
+          eq(remoteSchema.apps.userId, context.userId),
+        ),
+      });
+
+      if (!app) {
+        // Transient: remote DB (Bunny Edge SQL) may lag during app switch.
+        // Log for monitoring, return empty — react-query will retry automatically.
+        logger.warn(
+          `[getCurrentBranch] App not found (transient?): appId=${appId}, userId=${context.userId ?? "UNDEFINED"}`,
+        );
+        return { branch: "" };
+      }
+
+      const appPath = getVibesAppPath(app.path);
+
+      // Return appropriate result if the app is not a git repo
+      if (!fs.existsSync(path.join(appPath, ".git"))) {
+        throw new Error("Not a git repository");
+      }
+
+      try {
+        const currentBranch = await gitCurrentBranch({ path: appPath });
+
+        return {
+          branch: currentBranch || "<no-branch>",
+        };
+      } catch (error: any) {
+        logger.error(`Error getting current branch for app ${appId}:`, error);
+        throw new Error(`Failed to get current branch: ${error.message}`);
+      }
+    },
+  );
+
+  createTypedHandler(
+    versionContracts.revertVersion,
+    async (_, params, context) => {
+      const userId = context.userId;
+      if (!userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { appId, previousVersionId, currentChatMessageId } = params;
+      return withLock(appId, async () => {
+        let successMessage = "Restored version";
+        let warningMessage = "";
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, userId),
+          ),
         });
 
-        if (app.neonProjectId && app.neonDevelopmentBranchId) {
-          // We are going to add a new commit on top, so let's store
-          // the current timestamp at the current version.
-          await storeDbTimestampAtCurrentVersion({
-            appId,
-          });
+        if (!app) {
+          throw new Error("App not found");
         }
 
-        await gitStageToRevert({
-          path: appPath,
-          targetOid: previousVersionId,
-        });
-        const isClean = await isGitStatusClean({ path: appPath });
-        if (!isClean) {
-          // Ensure all changes are staged before committing
-          // This handles edge cases where gitStageToRevert may leave files unstaged
-          // (e.g., when isomorphic-git staging doesn't fully sync with native git)
-          await gitAddAll({ path: appPath });
-          try {
-            await gitCommit({
-              path: appPath,
-              message: `Reverted all changes back to version ${previousVersionId}`,
+        const appPath = getVibesAppPath(app.path);
+        const branchRef =
+          (await gitCurrentBranch({ path: appPath })) ||
+          app.githubBranch ||
+          "main";
+
+        // Get the current commit hash before reverting
+        let currentCommitHash: string;
+        try {
+          currentCommitHash = await getCurrentCommitHash({
+            path: appPath,
+            ref: branchRef,
+          });
+        } catch {
+          // Repo has no commits yet — nothing to revert
+          return {
+            successMessage:
+              "No hay versiones para revertir en este repositorio.",
+          };
+        }
+
+        if (previousVersionId && previousVersionId !== "NONE") {
+          await gitCheckout({
+            path: appPath,
+            ref: branchRef,
+          });
+
+          if (app.neonProjectId && app.neonDevelopmentBranchId) {
+            // We are going to add a new commit on top, so let's store
+            // the current timestamp at the current version.
+            await storeDbTimestampAtCurrentVersion({
+              appId,
             });
-          } catch (e: any) {
-            if (e.message && e.message.includes("nothing to commit")) {
-              logger.log(`Skipped commit during revert for app ${appId}: working tree clean.`);
-            } else {
-              throw e;
+          }
+
+          await gitStageToRevert({
+            path: appPath,
+            targetOid: previousVersionId,
+          });
+          const isClean = await isGitStatusClean({ path: appPath });
+          if (!isClean) {
+            // Ensure all changes are staged before committing
+            // This handles edge cases where gitStageToRevert may leave files unstaged
+            // (e.g., when isomorphic-git staging doesn't fully sync with native git)
+            await gitAddAll({ path: appPath });
+            try {
+              await gitCommit({
+                path: appPath,
+                message: `Reverted all changes back to version ${previousVersionId}`,
+              });
+            } catch (e: any) {
+              if (e.message && e.message.includes("nothing to commit")) {
+                logger.log(
+                  `Skipped commit during revert for app ${appId}: working tree clean.`,
+                );
+              } else {
+                throw e;
+              }
             }
           }
         }
-      }
 
-      // Delete messages based on currentChatMessageId if provided, otherwise use commit hash lookup
-      if (currentChatMessageId) {
-        // Delete all messages including and after the specified message
-        const { chatId, messageId } = currentChatMessageId;
+        // Delete messages based on currentChatMessageId if provided, otherwise use commit hash lookup
+        if (currentChatMessageId) {
+          // Delete all messages including and after the specified message
+          const { chatId, messageId } = currentChatMessageId;
 
-        const messagesToDelete = await db.query.messages.findMany({
-          where: and(
-            eq(remoteSchema.messages.chatId, chatId),
-            gte(remoteSchema.messages.id, messageId),
-            eq(remoteSchema.messages.userId, userId)
-          ),
-          orderBy: desc(remoteSchema.messages.id),
-        });
-
-        // Capture content of undone messages for context injection
-        const undoneUserMsg = messagesToDelete.find(m => m.role === "user");
-        const undoneAssistantMsg = messagesToDelete.find(m => m.role === "assistant");
-
-        logger.log(
-          `Deleting ${messagesToDelete.length} messages (id >= ${messageId}) from chat ${chatId}`,
-        );
-
-        if (messagesToDelete.length > 0) {
-          await db
-            .delete(remoteSchema.messages)
-            .where(
-              and(eq(remoteSchema.messages.chatId, chatId), gte(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, userId)),
-            );
-        }
-
-        // Inject a context note so the agent retains awareness of what was undone
-        if (undoneUserMsg || undoneAssistantMsg) {
-          // Build a concise summary of what was tried
-          let undoneUserPrompt = undoneUserMsg?.content || "";
-          // Clean up attachment/component markers from the prompt
-          for (const marker of ["\n\nAttachments:\n", "\n\nSelected components:\n", "\n\nFile to upload to codebase:"]) {
-            const idx = undoneUserPrompt.indexOf(marker);
-            if (idx !== -1) undoneUserPrompt = undoneUserPrompt.substring(0, idx);
-          }
-          // Truncate assistant response to keep context compact
-          let undoneAssistantSummary = "";
-          if (undoneAssistantMsg?.content) {
-            // Strip thinking blocks and XML tags for a cleaner summary
-            let cleaned = undoneAssistantMsg.content
-              .replace(/<think>[\s\S]*?<\/think>/g, "")
-              .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
-              .replace(/<set_chat_summary[^>]*>[\s\S]*?<\/set_chat_summary>/g, "")
-              .replace(/<vibes-token-usage[^>]*>[\s\S]*?<\/vibes-token-usage>/g, "")
-              .replace(/<vibes-typecheck-summary[^>]*>[\s\S]*?<\/vibes-typecheck-summary>/g, "")
-              .trim();
-            if (cleaned.length > 500) cleaned = cleaned.substring(0, 500) + "...";
-            undoneAssistantSummary = cleaned;
-          }
-
-          // Get the last valid message before the deleted ones
-          const lastValidMessage = await db.query.messages.findFirst({
-            where: and(
-              eq(remoteSchema.messages.chatId, chatId),
-              lt(remoteSchema.messages.id, messageId),
-              eq(remoteSchema.messages.userId, userId),
-              inArray(remoteSchema.messages.role, ["user", "assistant"])
-            ),
-            orderBy: desc(remoteSchema.messages.id),
-          });
-
-          let lastValidSummary = "";
-          if (lastValidMessage?.content) {
-            let cleaned = lastValidMessage.content
-              .replace(/<think>[\s\S]*?<\/think>/g, "")
-              .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
-              .trim();
-            if (cleaned.length > 300) cleaned = cleaned.substring(0, 300) + "...";
-            lastValidSummary = `El chat continuará desde este último estado válido: [Rol previo: ${lastValidMessage.role}] "${cleaned}"`;
-          }
-
-          const contextNote = [
-            `[CONTEXTO DEL SISTEMA INVISIBLE AL USUARIO: El usuario deshizo su último mensaje y los cambios de código fueron revertidos]`,
-            lastValidSummary,
-            undoneUserPrompt ? `Petición que fue deshecha (ignorala o tenla de advertencia): "${undoneUserPrompt.substring(0, 300)}${undoneUserPrompt.length > 300 ? "..." : ""}"` : "",
-            undoneAssistantSummary ? `Resumen de lo que habías respondido tú (ignoralo o úsalo para no repetir errores): ${undoneAssistantSummary}` : "",
-            `Los archivos fueron revertidos al estado previo. Ten en cuenta este contexto al generar tu siguiente respuesta.`,
-          ].filter(Boolean).join("\n\n");
-
-          await db
-            .insert(remoteSchema.messages)
-            .values({
-              userId,
-              chatId,
-              role: "system",
-              content: contextNote,
-              createdAt: new Date(),
-            });
-        }
-
-        // Destroy OpenCode session — jumping to arbitrary version, too complex to partial-revert
-        destroyOpenCodeSession(chatId);
-      } else {
-        // Find the chat and message associated with the commit hash
-        const messageWithCommit = await db.query.messages.findFirst({
-          where: and(eq(remoteSchema.messages.commitHash, previousVersionId), eq(remoteSchema.messages.userId, userId)),
-          with: {
-            chat: true,
-          },
-        });
-
-        // If we found a message with this commit hash, delete all subsequent messages (but keep this message)
-        if (messageWithCommit) {
-          const chatId = messageWithCommit.chatId;
-
-          // Find all messages in this chat with IDs > the one with our commit hash
           const messagesToDelete = await db.query.messages.findMany({
             where: and(
               eq(remoteSchema.messages.chatId, chatId),
-              gt(remoteSchema.messages.id, messageWithCommit.id),
-              eq(remoteSchema.messages.userId, userId)
+              gte(remoteSchema.messages.id, messageId),
+              eq(remoteSchema.messages.userId, userId),
             ),
             orderBy: desc(remoteSchema.messages.id),
           });
 
-          logger.log(
-            `Deleting ${messagesToDelete.length} messages after commit ${previousVersionId} from chat ${chatId}`,
+          // Capture content of undone messages for context injection
+          const undoneUserMsg = messagesToDelete.find((m) => m.role === "user");
+          const undoneAssistantMsg = messagesToDelete.find(
+            (m) => m.role === "assistant",
           );
 
-          // Delete the messages
+          logger.log(
+            `Deleting ${messagesToDelete.length} messages (id >= ${messageId}) from chat ${chatId}`,
+          );
+
           if (messagesToDelete.length > 0) {
             await db
               .delete(remoteSchema.messages)
               .where(
                 and(
                   eq(remoteSchema.messages.chatId, chatId),
-                  gt(remoteSchema.messages.id, messageWithCommit.id),
-                  eq(remoteSchema.messages.userId, userId)
+                  gte(remoteSchema.messages.id, messageId),
+                  eq(remoteSchema.messages.userId, userId),
                 ),
               );
           }
-          // Destroy OpenCode session — jumping to arbitrary version
+
+          // Inject a context note so the agent retains awareness of what was undone
+          if (undoneUserMsg || undoneAssistantMsg) {
+            // Build a concise summary of what was tried
+            let undoneUserPrompt = undoneUserMsg?.content || "";
+            // Clean up attachment/component markers from the prompt
+            for (const marker of [
+              "\n\nAttachments:\n",
+              "\n\nSelected components:\n",
+              "\n\nFile to upload to codebase:",
+            ]) {
+              const idx = undoneUserPrompt.indexOf(marker);
+              if (idx !== -1)
+                undoneUserPrompt = undoneUserPrompt.substring(0, idx);
+            }
+            // Truncate assistant response to keep context compact
+            let undoneAssistantSummary = "";
+            if (undoneAssistantMsg?.content) {
+              // Strip thinking blocks and XML tags for a cleaner summary
+              let cleaned = undoneAssistantMsg.content
+                .replace(/<think>[\s\S]*?<\/think>/g, "")
+                .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
+                .replace(
+                  /<set_chat_summary[^>]*>[\s\S]*?<\/set_chat_summary>/g,
+                  "",
+                )
+                .replace(
+                  /<vibes-token-usage[^>]*>[\s\S]*?<\/vibes-token-usage>/g,
+                  "",
+                )
+                .replace(
+                  /<vibes-typecheck-summary[^>]*>[\s\S]*?<\/vibes-typecheck-summary>/g,
+                  "",
+                )
+                .trim();
+              if (cleaned.length > 500)
+                cleaned = cleaned.substring(0, 500) + "...";
+              undoneAssistantSummary = cleaned;
+            }
+
+            // Get the last valid message before the deleted ones
+            const lastValidMessage = await db.query.messages.findFirst({
+              where: and(
+                eq(remoteSchema.messages.chatId, chatId),
+                lt(remoteSchema.messages.id, messageId),
+                eq(remoteSchema.messages.userId, userId),
+                inArray(remoteSchema.messages.role, ["user", "assistant"]),
+              ),
+              orderBy: desc(remoteSchema.messages.id),
+            });
+
+            let lastValidSummary = "";
+            if (lastValidMessage?.content) {
+              let cleaned = lastValidMessage.content
+                .replace(/<think>[\s\S]*?<\/think>/g, "")
+                .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
+                .trim();
+              if (cleaned.length > 300)
+                cleaned = cleaned.substring(0, 300) + "...";
+              lastValidSummary = `El chat continuará desde este último estado válido: [Rol previo: ${lastValidMessage.role}] "${cleaned}"`;
+            }
+
+            const contextNote = [
+              `[CONTEXTO DEL SISTEMA INVISIBLE AL USUARIO: El usuario deshizo su último mensaje y los cambios de código fueron revertidos]`,
+              lastValidSummary,
+              undoneUserPrompt
+                ? `Petición que fue deshecha (ignorala o tenla de advertencia): "${undoneUserPrompt.substring(0, 300)}${undoneUserPrompt.length > 300 ? "..." : ""}"`
+                : "",
+              undoneAssistantSummary
+                ? `Resumen de lo que habías respondido tú (ignoralo o úsalo para no repetir errores): ${undoneAssistantSummary}`
+                : "",
+              `Los archivos fueron revertidos al estado previo. Ten en cuenta este contexto al generar tu siguiente respuesta.`,
+            ]
+              .filter(Boolean)
+              .join("\n\n");
+
+            await db.insert(remoteSchema.messages).values({
+              userId,
+              chatId,
+              role: "system",
+              content: contextNote,
+              createdAt: new Date(),
+            });
+          }
+
+          // Destroy OpenCode session — jumping to arbitrary version, too complex to partial-revert
           destroyOpenCodeSession(chatId);
-        }
-      }
-
-      if (app.neonProjectId && app.neonDevelopmentBranchId) {
-        const version = await db.query.versions.findFirst({
-          where: and(
-            eq(remoteSchema.versions.appId, appId),
-            eq(remoteSchema.versions.commitHash, previousVersionId),
-            eq(remoteSchema.versions.userId, userId)
-          ),
-        });
-        if (version && version.neonDbTimestamp) {
-          try {
-            const preserveBranchName = `preserve_${currentCommitHash}-${Date.now()}`;
-            const neonClient = await getNeonClient();
-            const response = await retryOnLocked(
-              () =>
-                neonClient.restoreProjectBranch(
-                  app.neonProjectId!,
-                  app.neonDevelopmentBranchId!,
-                  {
-                    source_branch_id: app.neonDevelopmentBranchId!,
-                    source_timestamp: version.neonDbTimestamp!,
-                    preserve_under_name: preserveBranchName,
-                  },
-                ),
-              `Restore development branch ${app.neonDevelopmentBranchId} for app ${appId}`,
-            );
-            // Update all versions which have a newer DB timestamp than the version we're restoring to
-            // and remove their DB timestamp.
-            await db
-              .update(remoteSchema.versions)
-              .set({ neonDbTimestamp: null })
-              .where(
-                and(
-                  eq(remoteSchema.versions.appId, appId),
-                  gt(remoteSchema.versions.neonDbTimestamp, version.neonDbTimestamp),
-                  eq(remoteSchema.versions.userId, userId)
-                ),
-              );
-
-            const preserveBranchId = response.data.branch.parent_id;
-            if (!preserveBranchId) {
-              throw new Error("Preserve branch ID not found");
-            }
-            logger.info(
-              `Deleting preserve branch ${preserveBranchId} for app ${appId}`,
-            );
-            try {
-              // Intentionally do not await this because it's not
-              // critical for the restore operation, it's to clean up branches
-              // so the user doesn't hit the branch limit later.
-              retryOnLocked(
-                () =>
-                  neonClient.deleteProjectBranch(
-                    app.neonProjectId!,
-                    preserveBranchId,
-                  ),
-                `Delete preserve branch ${preserveBranchId} for app ${appId}`,
-                { retryBranchWithChildError: true },
-              );
-            } catch (error) {
-              const errorMessage = getNeonErrorMessage(error);
-              logger.error("Error in deleteProjectBranch:", errorMessage);
-            }
-          } catch (error) {
-            const errorMessage = getNeonErrorMessage(error);
-            logger.error("Error in restoreBranchForCheckout:", errorMessage);
-            warningMessage = `Could not restore database because of error: ${errorMessage}`;
-            // Do not throw, so we can finish switching the postgres branch
-            // It might throw because they picked a timestamp that's too old.
-          }
-          successMessage =
-            "Successfully restored to version (including database)";
-        }
-        await switchPostgresToDevelopmentBranch({
-          neonProjectId: app.neonProjectId,
-          neonDevelopmentBranchId: app.neonDevelopmentBranchId,
-          appPath: app.path,
-        });
-      }
-      // Re-deploy all Supabase edge functions after reverting
-      if (app.supabaseProjectId) {
-        try {
-          logger.info(
-            `Re-deploying all Supabase edge functions for app ${appId} after revert`,
-          );
-          const settings = readSettings();
-          const deployErrors = await deployAllSupabaseFunctions({
-            appPath,
-            supabaseProjectId: app.supabaseProjectId,
-            supabaseOrganizationSlug: app.supabaseOrganizationSlug ?? null,
-            skipPruneEdgeFunctions: settings.skipPruneEdgeFunctions ?? false,
+        } else {
+          // Find the chat and message associated with the commit hash
+          const messageWithCommit = await db.query.messages.findFirst({
+            where: and(
+              eq(remoteSchema.messages.commitHash, previousVersionId),
+              eq(remoteSchema.messages.userId, userId),
+            ),
+            with: {
+              chat: true,
+            },
           });
 
-          if (deployErrors.length > 0) {
-            warningMessage += `Some Supabase functions failed to deploy after revert: ${deployErrors.join(", ")}`;
-            logger.warn(warningMessage);
-            // Note: We don't fail the revert operation if function deployment fails
-            // The code has been successfully reverted, but functions may be out of sync
-          } else {
-            logger.info(
-              `Successfully re-deployed all Supabase edge functions for app ${appId}`,
+          // If we found a message with this commit hash, delete all subsequent messages (but keep this message)
+          if (messageWithCommit) {
+            const chatId = messageWithCommit.chatId;
+
+            // Find all messages in this chat with IDs > the one with our commit hash
+            const messagesToDelete = await db.query.messages.findMany({
+              where: and(
+                eq(remoteSchema.messages.chatId, chatId),
+                gt(remoteSchema.messages.id, messageWithCommit.id),
+                eq(remoteSchema.messages.userId, userId),
+              ),
+              orderBy: desc(remoteSchema.messages.id),
+            });
+
+            logger.log(
+              `Deleting ${messagesToDelete.length} messages after commit ${previousVersionId} from chat ${chatId}`,
             );
+
+            // Delete the messages
+            if (messagesToDelete.length > 0) {
+              await db
+                .delete(remoteSchema.messages)
+                .where(
+                  and(
+                    eq(remoteSchema.messages.chatId, chatId),
+                    gt(remoteSchema.messages.id, messageWithCommit.id),
+                    eq(remoteSchema.messages.userId, userId),
+                  ),
+                );
+            }
+            // Destroy OpenCode session — jumping to arbitrary version
+            destroyOpenCodeSession(chatId);
           }
-        } catch (error) {
-          warningMessage += `Error re-deploying Supabase edge functions after revert: ${error}`;
-          logger.warn(warningMessage);
-          // Continue with the revert operation even if function deployment fails
         }
-      }
-      if (warningMessage) {
-        return { warningMessage };
-      }
-      return { successMessage };
-    });
-  });
 
-  createTypedHandler(versionContracts.checkoutVersion, async (_, params, context) => {
-    const userId = context.userId;
-    if (!userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { appId, versionId: gitRef } = params;
-    return withLock(appId, async () => {
-      const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
-      });
+        if (app.neonProjectId && app.neonDevelopmentBranchId) {
+          const version = await db.query.versions.findFirst({
+            where: and(
+              eq(remoteSchema.versions.appId, appId),
+              eq(remoteSchema.versions.commitHash, previousVersionId),
+              eq(remoteSchema.versions.userId, userId),
+            ),
+          });
+          if (version && version.neonDbTimestamp) {
+            try {
+              const preserveBranchName = `preserve_${currentCommitHash}-${Date.now()}`;
+              const neonClient = await getNeonClient();
+              const response = await retryOnLocked(
+                () =>
+                  neonClient.restoreProjectBranch(
+                    app.neonProjectId!,
+                    app.neonDevelopmentBranchId!,
+                    {
+                      source_branch_id: app.neonDevelopmentBranchId!,
+                      source_timestamp: version.neonDbTimestamp!,
+                      preserve_under_name: preserveBranchName,
+                    },
+                  ),
+                `Restore development branch ${app.neonDevelopmentBranchId} for app ${appId}`,
+              );
+              // Update all versions which have a newer DB timestamp than the version we're restoring to
+              // and remove their DB timestamp.
+              await db
+                .update(remoteSchema.versions)
+                .set({ neonDbTimestamp: null })
+                .where(
+                  and(
+                    eq(remoteSchema.versions.appId, appId),
+                    gt(
+                      remoteSchema.versions.neonDbTimestamp,
+                      version.neonDbTimestamp,
+                    ),
+                    eq(remoteSchema.versions.userId, userId),
+                  ),
+                );
 
-      if (!app) {
-        throw new Error("App not found");
-      }
-
-      if (
-        app.neonProjectId &&
-        app.neonDevelopmentBranchId &&
-        app.neonPreviewBranchId
-      ) {
-        // Detect whether we're returning to the current branch tip (not a detached commit)
-        const fullAppPath = getVibesAppPath(app.path);
-        const currentBranch = await gitCurrentBranch({ path: fullAppPath });
-        const isReturningToCurrentBranch = gitRef === "main" || gitRef === "master" || gitRef === currentBranch;
-
-        if (isReturningToCurrentBranch) {
-          logger.info(
-            `Switching Postgres to development branch for app ${appId}`,
-          );
+              const preserveBranchId = response.data.branch.parent_id;
+              if (!preserveBranchId) {
+                throw new Error("Preserve branch ID not found");
+              }
+              logger.info(
+                `Deleting preserve branch ${preserveBranchId} for app ${appId}`,
+              );
+              try {
+                // Intentionally do not await this because it's not
+                // critical for the restore operation, it's to clean up branches
+                // so the user doesn't hit the branch limit later.
+                retryOnLocked(
+                  () =>
+                    neonClient.deleteProjectBranch(
+                      app.neonProjectId!,
+                      preserveBranchId,
+                    ),
+                  `Delete preserve branch ${preserveBranchId} for app ${appId}`,
+                  { retryBranchWithChildError: true },
+                );
+              } catch (error) {
+                const errorMessage = getNeonErrorMessage(error);
+                logger.error("Error in deleteProjectBranch:", errorMessage);
+              }
+            } catch (error) {
+              const errorMessage = getNeonErrorMessage(error);
+              logger.error("Error in restoreBranchForCheckout:", errorMessage);
+              warningMessage = `Could not restore database because of error: ${errorMessage}`;
+              // Do not throw, so we can finish switching the postgres branch
+              // It might throw because they picked a timestamp that's too old.
+            }
+            successMessage =
+              "Successfully restored to version (including database)";
+          }
           await switchPostgresToDevelopmentBranch({
             neonProjectId: app.neonProjectId,
             neonDevelopmentBranchId: app.neonDevelopmentBranchId,
             appPath: app.path,
           });
-        } else {
-          logger.info(`Switching Postgres to preview branch for app ${appId}`);
-
-          // Regardless of whether we have a timestamp or not, we want to disable DB push
-          // while we're checking out an earlier version
-          await updateDbPushEnvVar({
-            appPath: app.path,
-            disabled: true,
-          });
-
-          const version = await db.query.versions.findFirst({
-            where: and(
-              eq(remoteSchema.versions.appId, appId),
-              eq(remoteSchema.versions.commitHash, gitRef),
-              eq(remoteSchema.versions.userId, userId)
-            ),
-          });
-
-          if (version && version.neonDbTimestamp) {
-            // SWITCH the env var for POSTGRES_URL to the preview branch
-            const neonClient = await getNeonClient();
-            const connectionUri = await neonClient.getConnectionUri({
-              projectId: app.neonProjectId,
-              branch_id: app.neonPreviewBranchId,
-              // This is the default database name for Neon
-              database_name: "neondb",
-              // This is the default role name for Neon
-              role_name: "neondb_owner",
-            });
-
-            await restoreBranchForPreview({
-              appId,
-              dbTimestamp: version.neonDbTimestamp,
-              neonProjectId: app.neonProjectId,
-              previewBranchId: app.neonPreviewBranchId,
-              developmentBranchId: app.neonDevelopmentBranchId,
-            });
-
-            await updatePostgresUrlEnvVar({
-              appPath: app.path,
-              connectionUri: connectionUri.data.uri,
-            });
+        }
+        // Re-deploy all Supabase edge functions after reverting
+        if (app.supabaseProjectId) {
+          try {
             logger.info(
-              `Switched Postgres to preview branch for app ${appId} commit ${version.commitHash} dbTimestamp=${version.neonDbTimestamp}`,
+              `Re-deploying all Supabase edge functions for app ${appId} after revert`,
             );
+            const settings = readSettings();
+            const deployErrors = await deployAllSupabaseFunctions({
+              appPath,
+              supabaseProjectId: app.supabaseProjectId,
+              supabaseOrganizationSlug: app.supabaseOrganizationSlug ?? null,
+              skipPruneEdgeFunctions: settings.skipPruneEdgeFunctions ?? false,
+            });
+
+            if (deployErrors.length > 0) {
+              warningMessage += `Some Supabase functions failed to deploy after revert: ${deployErrors.join(", ")}`;
+              logger.warn(warningMessage);
+              // Note: We don't fail the revert operation if function deployment fails
+              // The code has been successfully reverted, but functions may be out of sync
+            } else {
+              logger.info(
+                `Successfully re-deployed all Supabase edge functions for app ${appId}`,
+              );
+            }
+          } catch (error) {
+            warningMessage += `Error re-deploying Supabase edge functions after revert: ${error}`;
+            logger.warn(warningMessage);
+            // Continue with the revert operation even if function deployment fails
           }
         }
-      }
-      const fullAppPath = getVibesAppPath(app.path);
-      await gitCheckout({
-        path: fullAppPath,
-        ref: gitRef,
+        if (warningMessage) {
+          return { warningMessage };
+        }
+        return { successMessage };
       });
-    });
-  });
+    },
+  );
+
+  createTypedHandler(
+    versionContracts.checkoutVersion,
+    async (_, params, context) => {
+      const userId = context.userId;
+      if (!userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { appId, versionId: gitRef } = params;
+      return withLock(appId, async () => {
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, userId),
+          ),
+        });
+
+        if (!app) {
+          throw new Error("App not found");
+        }
+
+        if (
+          app.neonProjectId &&
+          app.neonDevelopmentBranchId &&
+          app.neonPreviewBranchId
+        ) {
+          // Detect whether we're returning to the current branch tip (not a detached commit)
+          const fullAppPath = getVibesAppPath(app.path);
+          const currentBranch = await gitCurrentBranch({ path: fullAppPath });
+          const isReturningToCurrentBranch =
+            gitRef === "main" ||
+            gitRef === "master" ||
+            gitRef === currentBranch;
+
+          if (isReturningToCurrentBranch) {
+            logger.info(
+              `Switching Postgres to development branch for app ${appId}`,
+            );
+            await switchPostgresToDevelopmentBranch({
+              neonProjectId: app.neonProjectId,
+              neonDevelopmentBranchId: app.neonDevelopmentBranchId,
+              appPath: app.path,
+            });
+          } else {
+            logger.info(
+              `Switching Postgres to preview branch for app ${appId}`,
+            );
+
+            // Regardless of whether we have a timestamp or not, we want to disable DB push
+            // while we're checking out an earlier version
+            await updateDbPushEnvVar({
+              appPath: app.path,
+              disabled: true,
+            });
+
+            const version = await db.query.versions.findFirst({
+              where: and(
+                eq(remoteSchema.versions.appId, appId),
+                eq(remoteSchema.versions.commitHash, gitRef),
+                eq(remoteSchema.versions.userId, userId),
+              ),
+            });
+
+            if (version && version.neonDbTimestamp) {
+              // SWITCH the env var for POSTGRES_URL to the preview branch
+              const neonClient = await getNeonClient();
+              const connectionUri = await neonClient.getConnectionUri({
+                projectId: app.neonProjectId,
+                branch_id: app.neonPreviewBranchId,
+                // This is the default database name for Neon
+                database_name: "neondb",
+                // This is the default role name for Neon
+                role_name: "neondb_owner",
+              });
+
+              await restoreBranchForPreview({
+                appId,
+                dbTimestamp: version.neonDbTimestamp,
+                neonProjectId: app.neonProjectId,
+                previewBranchId: app.neonPreviewBranchId,
+                developmentBranchId: app.neonDevelopmentBranchId,
+              });
+
+              await updatePostgresUrlEnvVar({
+                appPath: app.path,
+                connectionUri: connectionUri.data.uri,
+              });
+              logger.info(
+                `Switched Postgres to preview branch for app ${appId} commit ${version.commitHash} dbTimestamp=${version.neonDbTimestamp}`,
+              );
+            }
+          }
+        }
+        const fullAppPath = getVibesAppPath(app.path);
+        await gitCheckout({
+          path: fullAppPath,
+          ref: gitRef,
+        });
+      });
+    },
+  );
 }
 
 async function switchPostgresToDevelopmentBranch({

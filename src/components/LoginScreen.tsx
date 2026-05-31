@@ -51,15 +51,16 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             alt="Vibes"
             className="w-12 h-12 mx-auto mb-4 rounded-lg"
           />
-          <h1 className="typo-section-title tracking-tight">
-            Vibes
-          </h1>
+          <h1 className="typo-section-title tracking-tight">Vibes</h1>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="typo-micro uppercase tracking-wider">
+            <label
+              htmlFor="email"
+              className="typo-micro uppercase tracking-wider"
+            >
               Email
             </label>
             <input
@@ -76,7 +77,10 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="typo-micro uppercase tracking-wider">
+            <label
+              htmlFor="password"
+              className="typo-micro uppercase tracking-wider"
+            >
               Contraseña
             </label>
             <input

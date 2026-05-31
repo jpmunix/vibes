@@ -31,7 +31,12 @@ export const setChatSummaryTool: ToolDefinition<
       await getRemoteDb()
         .update(remoteSchema.chats)
         .set({ title: args.summary })
-        .where(and(eq(remoteSchema.chats.id, ctx.chatId), isNull(remoteSchema.chats.title)));
+        .where(
+          and(
+            eq(remoteSchema.chats.id, ctx.chatId),
+            isNull(remoteSchema.chats.title),
+          ),
+        );
       ctx.chatSummary = args.summary;
     }
 

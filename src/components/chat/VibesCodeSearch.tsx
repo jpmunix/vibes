@@ -1,6 +1,11 @@
 import type React from "react";
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, FileCode, Loader } from "@/components/ui/icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  FileCode,
+  Loader,
+} from "@/components/ui/icons";
 import { CustomTagState } from "./stateTypes";
 import { useSettings } from "@/hooks/useSettings";
 import { t } from "@/lib/i18n";
@@ -24,8 +29,9 @@ export const VibesCodeSearch: React.FC<VibesCodeSearchProps> = ({
 
   return (
     <div
-      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-purple-500" : "border-border"
-        }`}
+      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
+        inProgress ? "border-purple-500" : "border-border"
+      }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
       aria-expanded={isExpanded}
