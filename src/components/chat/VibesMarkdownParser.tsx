@@ -604,47 +604,41 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     flushFlowThinkBuffer(isStreaming);
     flushBadgeGroup();
 
-    // Append per-message artifact buttons for any .vibes/ plan or walkthrough files mentioned (at most 1 of each)
+    // Append per-message artifact buttons for any .vibes/*.md files mentioned or written
     if (!isStreaming && !isGitMessage) {
-      const vibesMatches: string[] = [];
+      const vibesMatchSet = new Set<string>();
 
       for (const piece of contentPieces) {
         if (piece.type === "markdown") {
           if (piece.content) {
-            const matches = Array.from(piece.content.matchAll(/\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/g) || []).map(m => cleanVibesPath(m[0]));
-            vibesMatches.push(...matches);
+            // Match any .md file inside .vibes/ (not just plan/walkthrough)
+            const matches = Array.from(piece.content.matchAll(/\.?vibes\/[\w\-.]+\.md/g) || []).map(m => cleanVibesPath(m[0]));
+            for (const m of matches) vibesMatchSet.add(m);
           }
         } else if (piece.type === "custom-tag") {
           const tag = piece.tagInfo.tag;
           if (["vibes-write", "vibes-patch", "vibes-edit", "vibes-search-replace"].includes(tag)) {
             const pathAttr = piece.tagInfo.attributes.path;
-            if (pathAttr && /\.?vibes\/((?:plan|walkt)[\w\-.]*\.md)/.test(pathAttr)) {
-              vibesMatches.push(cleanVibesPath(pathAttr));
+            if (pathAttr && /\.?vibes\/[\w\-.]+\.md/.test(pathAttr)) {
+              vibesMatchSet.add(cleanVibesPath(pathAttr));
             }
           }
         }
       }
 
-      let lastPlanPath: string | null = null;
-      let lastWalkthroughPath: string | null = null;
-
-      for (const path of vibesMatches) {
-        if (path.includes("walkthrough-") || path.includes("walkt")) {
-          lastWalkthroughPath = path;
-        } else {
-          lastPlanPath = path;
-        }
-      }
-
-      const pathsToRender: string[] = [];
-      if (lastPlanPath) pathsToRender.push(lastPlanPath);
-      if (lastWalkthroughPath) pathsToRender.push(lastWalkthroughPath);
+      const pathsToRender = Array.from(vibesMatchSet);
 
       if (pathsToRender.length > 0) {
         elements.push(
           <div key="artifact-buttons" className="mt-3 pt-3 border-t border-border/20 flex flex-wrap gap-2">
             {pathsToRender.map((artifactPath) => {
-              const isWalkthrough = artifactPath.includes("walkthrough-") || artifactPath.includes("walkt");
+              // Derive a human-friendly label from the filename prefix
+              const basename = artifactPath.split("/").pop() || artifactPath;
+              let label = "Ver documento";
+              if (/^plan[-_]/i.test(basename)) label = "Ver plan";
+              else if (/^walk(?:through)?[-_]/i.test(basename)) label = "Ver cambios";
+              else if (/^summary[-_]/i.test(basename) || /^resumen[-_]/i.test(basename)) label = "Ver resumen";
+
               return (
                 <button
                   key={artifactPath}
@@ -657,7 +651,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                   }}
                 >
                   <FileText size={14} />
-                  {isWalkthrough ? "Ver cambios" : "Ver plan"}
+                  {label}
                 </button>
               );
             })}
