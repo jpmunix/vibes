@@ -55,7 +55,10 @@ export function AttachmentsList({
                 {attachment.type === "upload-to-codebase" ? (
                   <Upload size={12} className="text-blue-500 shrink-0" />
                 ) : (
-                  <FileText size={12} className="text-muted-foreground/60 shrink-0" />
+                  <FileText
+                    size={12}
+                    className="text-muted-foreground/60 shrink-0"
+                  />
                 )}
                 <span className="truncate max-w-[160px] text-muted-foreground/80">
                   {attachment.file.name}

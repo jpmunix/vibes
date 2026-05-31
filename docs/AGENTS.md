@@ -24,15 +24,15 @@ Usa el agente apropiado según la tarea:
 
 ## Stack tecnológico
 
-| Capa | Tecnología |
-|---|---|
-| Runtime | Electron |
-| Frontend | React + TanStack Router + TanStack Query |
-| Estado global | Jotai atoms |
-| Base de datos local | SQLite + Drizzle ORM |
-| Estilos | Vanilla CSS con variables de tema |
-| Build | Vite + Electron Forge |
-| Tests E2E | Playwright |
+| Capa                | Tecnología                               |
+| ------------------- | ---------------------------------------- |
+| Runtime             | Electron                                 |
+| Frontend            | React + TanStack Router + TanStack Query |
+| Estado global       | Jotai atoms                              |
+| Base de datos local | SQLite + Drizzle ORM                     |
+| Estilos             | Vanilla CSS con variables de tema        |
+| Build               | Vite + Electron Forge                    |
+| Tests E2E           | Playwright                               |
 
 ---
 
@@ -47,13 +47,13 @@ Esta es la frontera más importante del proyecto. Respétala siempre.
 
 ### Archivos de referencia rápida
 
-| Necesito... | Leo... |
-|---|---|
-| Estructura de la DB | `src/db/schema.ts` (local) o `src/db/remote-schema.ts` (Supabase) |
-| Añadir canal IPC | `src/ipc/ipc_client.ts` + `src/preload.ts` + `src/ipc/ipc_host.ts` |
-| Integración con el chat AI | `src/ipc/handlers/opencode_adapter.ts` |
-| Query keys de React Query | `src/lib/queryKeys.ts` |
-| Rutas de la app | `src/router.ts` |
+| Necesito...                | Leo...                                                             |
+| -------------------------- | ------------------------------------------------------------------ |
+| Estructura de la DB        | `src/db/schema.ts` (local) o `src/db/remote-schema.ts` (Supabase)  |
+| Añadir canal IPC           | `src/ipc/ipc_client.ts` + `src/preload.ts` + `src/ipc/ipc_host.ts` |
+| Integración con el chat AI | `src/ipc/handlers/opencode_adapter.ts`                             |
+| Query keys de React Query  | `src/lib/queryKeys.ts`                                             |
+| Rutas de la app            | `src/router.ts`                                                    |
 
 ---
 

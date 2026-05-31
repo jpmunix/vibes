@@ -1,17 +1,39 @@
 import { useAtom, useAtomValue } from "jotai";
-import { artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import {
+  artifactsSidebarOpenAtom,
+  selectedArtifactPathAtom,
+} from "@/atoms/uiAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { Panel, PanelResizeHandle } from "react-resizable-panels";
-import { X, GripVertical, Loader2, Share2, Pencil, Trash2, MessageSquare, ChevronDown, ChevronRight, ClipboardCopy, Check } from "@/components/ui/icons";
+import {
+  X,
+  GripVertical,
+  Loader2,
+  Share2,
+  Pencil,
+  Trash2,
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCopy,
+  Check,
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { VibesMarkdownParser } from "./VibesMarkdownParser";
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { showSuccess, showError } from "@/lib/toast";
-import { useArtifactComments, type ArtifactComment } from "@/hooks/useArtifactComments";
+import {
+  useArtifactComments,
+  type ArtifactComment,
+} from "@/hooks/useArtifactComments";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useSettings } from "@/hooks/useSettings";
@@ -48,7 +70,11 @@ const HIGHLIGHT_CLASS = "artifact-comment-highlight";
  * Walk all text nodes, concatenate them, find the needle in the full text,
  * then wrap the matching range across however many DOM nodes it spans.
  */
-function highlightText(root: HTMLElement, needle: string, commentId: number): void {
+function highlightText(
+  root: HTMLElement,
+  needle: string,
+  commentId: number,
+): void {
   if (!needle || needle.length < 3) return;
 
   // 1. Collect all text nodes with their offset in the concatenated string
@@ -71,11 +97,19 @@ function highlightText(root: HTMLElement, needle: string, commentId: number): vo
   if (normIdx === -1) return;
 
   // 3. Map normalized index → original index
-  let origStart = 0, origEnd = 0, normCount = 0;
+  let origStart = 0,
+    origEnd = 0,
+    normCount = 0;
   let foundStart = false;
   for (let i = 0; i < fullText.length; i++) {
-    if (!foundStart && normCount === normIdx) { origStart = i; foundStart = true; }
-    if (foundStart && normCount === normIdx + normNeedle.length) { origEnd = i; break; }
+    if (!foundStart && normCount === normIdx) {
+      origStart = i;
+      foundStart = true;
+    }
+    if (foundStart && normCount === normIdx + normNeedle.length) {
+      origEnd = i;
+      break;
+    }
     if (/\s/.test(fullText[i])) {
       if (i === 0 || !/\s/.test(fullText[i - 1])) normCount++;
     } else {
@@ -159,7 +193,7 @@ export function ArtifactSidebar() {
         updateSettings({ planSidebarSize: roundedSize }).catch(() => {});
       }, 500);
     },
-    [updateSettings, settings?.planSidebarSize]
+    [updateSettings, settings?.planSidebarSize],
   );
 
   useEffect(() => {
@@ -182,11 +216,15 @@ export function ArtifactSidebar() {
   const { artifacts, invalidateArtifacts } = useChatArtifacts(selectedChatId);
   const currentArtifact = useMemo(
     () => artifacts.find((a) => a.path === path),
-    [artifacts, path]
+    [artifacts, path],
   );
-  const isAccepted = !!(currentArtifact?.accepted);
+  const isAccepted = !!currentArtifact?.accepted;
 
-  const { data: content, isLoading, error } = useQuery({
+  const {
+    data: content,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["chatArtifactContent", appId, path],
     queryFn: async () => {
       if (!appId || !path) return null;
@@ -195,7 +233,7 @@ export function ArtifactSidebar() {
     enabled: isOpen && !!appId && !!path,
     // Poll every 5s ONLY when sidebar is open AND agent finished responding.
     // This detects file changes post-acceptance so the backend can reset accepted.
-    refetchInterval: (isOpen && !isStreaming) ? 5000 : false,
+    refetchInterval: isOpen && !isStreaming ? 5000 : false,
   });
 
   // ── Auto-register artifact if missing from DB ──────────────────────────
@@ -214,31 +252,42 @@ export function ArtifactSidebar() {
       autoRegisterAttempted.current !== `${appId}:${path}:${selectedChatId}`
     ) {
       autoRegisterAttempted.current = `${appId}:${path}:${selectedChatId}`;
-      ipc.chat.attachArtifactToChat({ appId, path, chatId: selectedChatId })
+      ipc.chat
+        .attachArtifactToChat({ appId, path, chatId: selectedChatId })
         .then(() => invalidateArtifacts())
         .catch(() => {}); // non-fatal
     }
-  }, [isOpen, currentArtifact, content, path, appId, selectedChatId, invalidateArtifacts]);
+  }, [
+    isOpen,
+    currentArtifact,
+    content,
+    path,
+    appId,
+    selectedChatId,
+    invalidateArtifacts,
+  ]);
 
   // ── Re-verify acceptance when content changes (post-agent modification) ─
   const prevContentRef2 = useRef<string | null>(null);
   useEffect(() => {
-    if (content && prevContentRef2.current !== null && content !== prevContentRef2.current) {
+    if (
+      content &&
+      prevContentRef2.current !== null &&
+      content !== prevContentRef2.current
+    ) {
       // Content changed on disk → force getChatArtifacts which checks mtime vs updatedAt
       invalidateArtifacts();
     }
     prevContentRef2.current = content ?? null;
   }, [content, invalidateArtifacts]);
 
-
   const { title, body } = useMemo(() => {
     if (!content) return { title: null, body: "" };
     return extractH1(content);
   }, [content]);
 
-  const { comments, addComment, updateComment, deleteComment } = useArtifactComments(
-    currentArtifact?.id ?? null
-  );
+  const { comments, addComment, updateComment, deleteComment } =
+    useArtifactComments(currentArtifact?.id ?? null);
 
   // ── Inline highlights ──────────────────────────────────────────────────
   const contentRef = useRef<HTMLDivElement>(null);
@@ -300,7 +349,7 @@ export function ArtifactSidebar() {
       });
       setEditingInlineId(null);
     },
-    [comments]
+    [comments],
   );
 
   // Editing inline
@@ -341,7 +390,8 @@ export function ArtifactSidebar() {
     if (isSharing || !content) return;
     setIsSharing(true);
     try {
-      const shareTitle = title || (path ? path.split("/").pop() : "Artefacto") || "Artefacto";
+      const shareTitle =
+        title || (path ? path.split("/").pop() : "Artefacto") || "Artefacto";
       const result = await ipc.markdownShare.uploadDocument({
         title: shareTitle,
         content: content,
@@ -373,7 +423,9 @@ export function ArtifactSidebar() {
       const reviewBlock = comments
         .map((c) => {
           const section = c.blockRef ? `**Sección:** ${c.blockRef}` : "";
-          const selected = c.selectedText ? `**Texto seleccionado:** "${c.selectedText}"` : "";
+          const selected = c.selectedText
+            ? `**Texto seleccionado:** "${c.selectedText}"`
+            : "";
           const comment = `**Comentario:** ${c.comment}`;
           return [section, selected, comment].filter(Boolean).join("\n");
         })
@@ -397,7 +449,17 @@ export function ArtifactSidebar() {
     setIsOpen(false);
     setIsReviewOpen(false);
     setReviewMessage("");
-  }, [selectedChatId, currentArtifact, isAccepted, comments, updateSettings, streamMessage, setIsOpen, invalidateArtifacts, reviewMessage]);
+  }, [
+    selectedChatId,
+    currentArtifact,
+    isAccepted,
+    comments,
+    updateSettings,
+    streamMessage,
+    setIsOpen,
+    invalidateArtifacts,
+    reviewMessage,
+  ]);
 
   const handleRefinePlan = useCallback(async () => {
     if (!selectedChatId || !currentArtifact || isAccepted) return;
@@ -407,7 +469,9 @@ export function ArtifactSidebar() {
       const reviewBlock = comments
         .map((c) => {
           const section = c.blockRef ? `**Sección:** ${c.blockRef}` : "";
-          const selected = c.selectedText ? `**Texto seleccionado:** "${c.selectedText}"` : "";
+          const selected = c.selectedText
+            ? `**Texto seleccionado:** "${c.selectedText}"`
+            : "";
           const comment = `**Comentario:** ${c.comment}`;
           return [section, selected, comment].filter(Boolean).join("\n");
         })
@@ -422,7 +486,8 @@ export function ArtifactSidebar() {
     }
 
     streamMessage({
-      prompt: reviewMessage.trim() || "Ajusta el plan con los comentarios indicados.",
+      prompt:
+        reviewMessage.trim() || "Ajusta el plan con los comentarios indicados.",
       chatId: selectedChatId,
       priorMessages,
       chatModeOverride: "plan",
@@ -430,7 +495,15 @@ export function ArtifactSidebar() {
     setIsOpen(false);
     setIsReviewOpen(false);
     setReviewMessage("");
-  }, [selectedChatId, currentArtifact, isAccepted, comments, streamMessage, setIsOpen, reviewMessage]);
+  }, [
+    selectedChatId,
+    currentArtifact,
+    isAccepted,
+    comments,
+    streamMessage,
+    setIsOpen,
+    reviewMessage,
+  ]);
 
   const [expandedReview, setExpandedReview] = useState(false);
 
@@ -469,10 +542,16 @@ export function ArtifactSidebar() {
   const handleAddComment = useCallback(() => {
     if (!commentInput.trim() || !selectionPopover) return;
 
-    const blockRef = body ? findNearestHeading(body, selectionPopover.text) : null;
+    const blockRef = body
+      ? findNearestHeading(body, selectionPopover.text)
+      : null;
 
     addComment.mutate(
-      { selectedText: selectionPopover.text, blockRef, comment: commentInput.trim() },
+      {
+        selectedText: selectionPopover.text,
+        blockRef,
+        comment: commentInput.trim(),
+      },
       {
         onSuccess: () => {
           setSelectionPopover(null);
@@ -480,7 +559,7 @@ export function ArtifactSidebar() {
           setShowCommentBox(false);
           window.getSelection()?.removeAllRanges();
         },
-      }
+      },
     );
   }, [commentInput, selectionPopover, body, addComment]);
 
@@ -500,7 +579,7 @@ export function ArtifactSidebar() {
   // Scroll to a highlight when clicking a comment in the list
   const scrollToHighlight = useCallback((commentId: number) => {
     const mark = proseRef.current?.querySelector(
-      `mark.${HIGHLIGHT_CLASS}[${HIGHLIGHT_ATTR}="${commentId}"]`
+      `mark.${HIGHLIGHT_CLASS}[${HIGHLIGHT_ATTR}="${commentId}"]`,
     );
     if (mark) {
       mark.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -585,19 +664,34 @@ export function ArtifactSidebar() {
                     variant="default"
                     size="sm"
                     className="h-7 text-xs gap-1.5 font-medium cursor-pointer"
-                    title={commentCount > 0 ? "Revisar y enviar comentarios" : "Aceptar o revisar plan"}
+                    title={
+                      commentCount > 0
+                        ? "Revisar y enviar comentarios"
+                        : "Aceptar o revisar plan"
+                    }
                   >
-                    {commentCount > 0 ? `Revisar • ${commentCount}` : "Revisar plan"}
-                    {commentCount > 0 ? <MessageSquare size={11} className="ml-0.5" /> : null}
+                    {commentCount > 0
+                      ? `Revisar • ${commentCount}`
+                      : "Revisar plan"}
+                    {commentCount > 0 ? (
+                      <MessageSquare size={11} className="ml-0.5" />
+                    ) : null}
                     <ChevronDown size={14} className="opacity-70" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[33rem] p-4 shadow-xl bg-popover border border-border rounded-xl" align="end" sideOffset={8}>
+                <PopoverContent
+                  className="w-[33rem] p-4 shadow-xl bg-popover border border-border rounded-xl"
+                  align="end"
+                  sideOffset={8}
+                >
                   <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                      <h4 className="text-sm font-semibold text-foreground">Revisar plan</h4>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Revisar plan
+                      </h4>
                       <p className="text-[11px] text-muted-foreground/75">
-                        Escribe comentarios generales o notas adicionales antes de enviar.
+                        Escribe comentarios generales o notas adicionales antes
+                        de enviar.
                       </p>
                     </div>
 
@@ -615,7 +709,9 @@ export function ArtifactSidebar() {
                         variant="outline"
                         size="sm"
                         className="h-8 text-xs px-3 cursor-pointer"
-                        disabled={comments.length === 0 && !reviewMessage.trim()}
+                        disabled={
+                          comments.length === 0 && !reviewMessage.trim()
+                        }
                         onClick={handleRefinePlan}
                         title="Seguir planificando con estos comentarios"
                       >
@@ -639,19 +735,29 @@ export function ArtifactSidebar() {
                           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2 cursor-pointer w-full text-left"
                           onClick={() => setExpandedReview(!expandedReview)}
                         >
-                          {expandedReview ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                          Ver {commentCount} comentario{commentCount !== 1 ? 's' : ''} en secciones
+                          {expandedReview ? (
+                            <ChevronDown size={12} />
+                          ) : (
+                            <ChevronRight size={12} />
+                          )}
+                          Ver {commentCount} comentario
+                          {commentCount !== 1 ? "s" : ""} en secciones
                         </button>
                         {expandedReview && (
                           <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
                             {comments.map((c) => (
-                              <div key={c.id} className="text-xs bg-muted/40 p-2 rounded border border-border/50">
+                              <div
+                                key={c.id}
+                                className="text-xs bg-muted/40 p-2 rounded border border-border/50"
+                              >
                                 {c.selectedText && (
                                   <div className="text-muted-foreground/80 italic mb-1 border-l-2 border-primary/30 pl-1.5 truncate">
                                     "{c.selectedText}"
                                   </div>
                                 )}
-                                <div className="text-foreground/90">{c.comment}</div>
+                                <div className="text-foreground/90">
+                                  {c.comment}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -690,7 +796,12 @@ export function ArtifactSidebar() {
                 <Share2 size={14} />
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setIsOpen(false)}
+            >
               <X size={14} />
             </Button>
           </div>
@@ -700,7 +811,10 @@ export function ArtifactSidebar() {
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
-              <Loader2 className="animate-spin text-muted-foreground" size={24} />
+              <Loader2
+                className="animate-spin text-muted-foreground"
+                size={24}
+              />
             </div>
           ) : error ? (
             <div className="text-destructive text-sm text-center mt-10">
@@ -714,7 +828,10 @@ export function ArtifactSidebar() {
               onClick={handleHighlightClick}
             >
               {/* Rendered markdown with inline highlights */}
-              <div className="prose prose-sm dark:prose-invert max-w-none" ref={proseRef}>
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                ref={proseRef}
+              >
                 <VibesMarkdownParser content={body} forceFullMode />
               </div>
 
@@ -809,7 +926,9 @@ export function ArtifactSidebar() {
                       </div>
                     )}
 
-                    {!isAccepted && !isWalkthrough && editingInlineId === activeComment.comment.id ? (
+                    {!isAccepted &&
+                    !isWalkthrough &&
+                    editingInlineId === activeComment.comment.id ? (
                       // Editing mode (only when not accepted)
                       <div>
                         <textarea
@@ -821,13 +940,16 @@ export function ArtifactSidebar() {
                               e.preventDefault();
                               if (editInlineText.trim()) {
                                 updateComment.mutate(
-                                  { commentId: activeComment.comment.id, comment: editInlineText.trim() },
+                                  {
+                                    commentId: activeComment.comment.id,
+                                    comment: editInlineText.trim(),
+                                  },
                                   {
                                     onSuccess: () => {
                                       setEditingInlineId(null);
                                       setActiveComment(null);
                                     },
-                                  }
+                                  },
                                 );
                               }
                             }
@@ -849,13 +971,16 @@ export function ArtifactSidebar() {
                             onClick={() => {
                               if (editInlineText.trim()) {
                                 updateComment.mutate(
-                                  { commentId: activeComment.comment.id, comment: editInlineText.trim() },
+                                  {
+                                    commentId: activeComment.comment.id,
+                                    comment: editInlineText.trim(),
+                                  },
                                   {
                                     onSuccess: () => {
                                       setEditingInlineId(null);
                                       setActiveComment(null);
                                     },
-                                  }
+                                  },
                                 );
                               }
                             }}
@@ -875,7 +1000,9 @@ export function ArtifactSidebar() {
                             <button
                               onClick={() => {
                                 setEditingInlineId(activeComment.comment.id);
-                                setEditInlineText(activeComment.comment.comment);
+                                setEditInlineText(
+                                  activeComment.comment.comment,
+                                );
                               }}
                               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                               title="Editar"
@@ -930,7 +1057,9 @@ export function ArtifactSidebar() {
                         "{c.selectedText}"
                       </div>
                     )}
-                    <p className="text-foreground/80 leading-snug text-xs">{c.comment}</p>
+                    <p className="text-foreground/80 leading-snug text-xs">
+                      {c.comment}
+                    </p>
                   </button>
                 ))}
               </div>

@@ -60,7 +60,9 @@ export function ProviderSwitchDialog({
 
       try {
         const normalizedUrl = provider.apiBaseUrl.replace(/\/+$/, "");
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
         if (provider.apiKey?.value) {
           headers["Authorization"] = `Bearer ${provider.apiKey.value}`;
         }
@@ -85,7 +87,9 @@ export function ProviderSwitchDialog({
             name: m.id,
             displayName: humanize(m.id),
           }))
-          .sort((a: FetchedModel, b: FetchedModel) => a.displayName.localeCompare(b.displayName));
+          .sort((a: FetchedModel, b: FetchedModel) =>
+            a.displayName.localeCompare(b.displayName),
+          );
 
         setModels(fetched);
 
@@ -122,9 +126,7 @@ export function ProviderSwitchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>
-            Configurar "{provider.name}"
-          </DialogTitle>
+          <DialogTitle>Configurar "{provider.name}"</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -151,7 +153,8 @@ export function ProviderSwitchDialog({
           <div className="flex flex-col items-center gap-3 py-10">
             <AlertCircle className="h-6 w-6 text-muted-foreground" />
             <p className="typo-caption text-center max-w-xs">
-              No se encontraron modelos en este endpoint. Asegúrate de que la URL y la key son correctas.
+              No se encontraron modelos en este endpoint. Asegúrate de que la
+              URL y la key son correctas.
             </p>
             <Button
               variant="outline"
@@ -165,7 +168,8 @@ export function ProviderSwitchDialog({
         ) : (
           <div className="space-y-5">
             <p className="typo-caption">
-              Se han detectado <strong>{models.length} modelos</strong>. Asigna un modelo a cada slot:
+              Se han detectado <strong>{models.length} modelos</strong>. Asigna
+              un modelo a cada slot:
             </p>
 
             <ModelSlot
@@ -258,7 +262,5 @@ function humanize(modelId: string): string {
   const slash = name.lastIndexOf("/");
   if (slash !== -1) name = name.substring(slash + 1);
   // Replace separators, title-case
-  return name
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

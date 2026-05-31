@@ -615,13 +615,11 @@ export async function deleteSupabaseFunction({
   functionName: string;
   organizationSlug: string | null;
 }): Promise<void> {
-
   const supabase = await getSupabaseClient({ organizationSlug });
   await retryWithRateLimit(
     () => supabase.deleteFunction(supabaseProjectId, functionName),
     `Delete function ${functionName}`,
   );
-
 }
 
 export async function listSupabaseFunctions({
@@ -684,7 +682,6 @@ export async function listSupabaseBranches({
     ];
   }
 
-
   const supabase = await getSupabaseClient({ organizationSlug });
 
   const response = await fetchWithRetry(
@@ -707,7 +704,6 @@ export async function listSupabaseBranches({
     throw await createResponseError(response, "list branches");
   }
 
-
   const jsonResponse: SupabaseProjectBranch[] = await response.json();
   return jsonResponse;
 }
@@ -729,8 +725,6 @@ export async function deploySupabaseFunction({
   bundleOnly?: boolean;
   organizationSlug: string | null;
 }): Promise<DeployedFunctionResponse> {
-
-
   const functionPath = path.join(
     appPath,
     "supabase",
@@ -816,8 +810,6 @@ export async function deploySupabaseFunction({
 
   const result = (await response.json()) as DeployedFunctionResponse;
 
-
-
   return result;
 }
 
@@ -830,8 +822,6 @@ export async function bulkUpdateFunctions({
   functions: DeployedFunctionResponse[];
   organizationSlug: string | null;
 }): Promise<void> {
-
-
   const supabase = await getSupabaseClient({ organizationSlug });
 
   const response = await fetchWithRetry(
@@ -850,8 +840,6 @@ export async function bulkUpdateFunctions({
   if (response.status !== 200) {
     throw await createResponseError(response, "bulk update functions");
   }
-
-
 }
 
 // ─────────────────────────────────────────────────────────────────────

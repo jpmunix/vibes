@@ -1,5 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from "electron";
-import { createTray, destroyTray, setTrayBadge, notifyStreamStarted, notifyStreamEnded } from "./main/tray";
+import {
+  createTray,
+  destroyTray,
+  setTrayBadge,
+  notifyStreamStarted,
+  notifyStreamEnded,
+} from "./main/tray";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
 import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
@@ -9,17 +15,13 @@ import dotenv from "dotenv";
 // @ts-ignore
 import started from "electron-squirrel-startup";
 import log from "electron-log";
-import {
-  readSettings,
-  writeSettings,
-} from "./main/settings";
+import { readSettings, writeSettings } from "./main/settings";
 import { readSession } from "./main/session";
 import { preferencesCache } from "./main/preferences-cache";
 import { initializeRemoteSchema } from "./db/remote";
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
 import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
-
 
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
@@ -53,9 +55,19 @@ import { serializePendingBuffers } from "./ipc/utils/memory_extractor";
     // Skip Chromium caches (~2GB, auto-regenerated) and auth/settings files
     // (encrypted with old app identity — user will re-login and sync from BunnyDB)
     const SKIP = new Set([
-      "Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "blob_storage",
-      "user-settings.json", "Cookies", "Cookies-journal",
-      "IndexedDB", "Local Storage", "Session Storage", "Preferences",
+      "Cache",
+      "Code Cache",
+      "GPUCache",
+      "DawnGraphiteCache",
+      "DawnWebGPUCache",
+      "blob_storage",
+      "user-settings.json",
+      "Cookies",
+      "Cookies-journal",
+      "IndexedDB",
+      "Local Storage",
+      "Session Storage",
+      "Preferences",
     ]);
     try {
       fs.cpSync(oldUserData, newUserData, {
@@ -67,8 +79,16 @@ import { serializePendingBuffers } from "./ipc/utils/memory_extractor";
       // Write flags for the next launch:
       // - .migration-optimize: triggers DB VACUUM during splash
       // - .migration-trust-remote: allows providerSettings from BunnyDB to overwrite empty local keys
-      fs.writeFileSync(path.join(newUserData, ".migration-optimize"), "", "utf-8");
-      fs.writeFileSync(path.join(newUserData, ".migration-trust-remote"), "", "utf-8");
+      fs.writeFileSync(
+        path.join(newUserData, ".migration-optimize"),
+        "",
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(newUserData, ".migration-trust-remote"),
+        "",
+        "utf-8",
+      );
       console.log(`[Migration] Migrated ${oldUserData} → ${newUserData}`);
       if (app.isPackaged) {
         console.log("[Migration] Relaunching...");
@@ -133,7 +153,6 @@ app.commandLine.appendSwitch("enable-smooth-scrolling");
 
 const logger = log.scope("main");
 
-
 import { getActiveFlavor } from "./flavors";
 
 // ─── Build Profile ───────────────────────────────────────────────────────
@@ -142,7 +161,10 @@ const activeFlavor = getActiveFlavor();
 
 // Always override userData BEFORE any settings/paths are accessed so the instances
 // get completely independent config directories and single-instance locks.
-const flavorUserData = path.join(app.getPath("appData"), activeFlavor.userDataFolder);
+const flavorUserData = path.join(
+  app.getPath("appData"),
+  activeFlavor.userDataFolder,
+);
 app.setPath("userData", flavorUserData);
 app.name = activeFlavor.productName;
 
@@ -169,14 +191,19 @@ try {
           if (!fs.existsSync(newSkillPath)) {
             fs.mkdirSync(newSkillPath, { recursive: true });
           }
-          fs.cpSync(oldSkillPath, newSkillPath, { recursive: true, force: true });
+          fs.cpSync(oldSkillPath, newSkillPath, {
+            recursive: true,
+            force: true,
+          });
           fs.rmSync(oldSkillPath, { recursive: true, force: true });
           migratedCount++;
         }
       }
     }
     if (migratedCount > 0) {
-      log.info(`[Migration] Migrated ${migratedCount} legacy global skills to ${newSkillsDir}`);
+      log.info(
+        `[Migration] Migrated ${migratedCount} legacy global skills to ${newSkillsDir}`,
+      );
     }
   }
 } catch (err: any) {
@@ -197,9 +224,12 @@ ipcMain.handle("tray:set-badge", (_e, text?: string, chatId?: number) => {
 ipcMain.handle("tray:stream-started", () => {
   notifyStreamStarted();
 });
-ipcMain.handle("tray:stream-ended", (_e, notification?: { text: string; chatId?: number }) => {
-  notifyStreamEnded(notification);
-});
+ipcMain.handle(
+  "tray:stream-ended",
+  (_e, notification?: { text: string; chatId?: number }) => {
+    notifyStreamEnded(notification);
+  },
+);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -227,13 +257,17 @@ if (process.defaultApp) {
     app.setAsDefaultProtocolClient("dyad", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
-    app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3", process.execPath, [
-      path.resolve(process.argv[1]),
-    ]);
+    app.setAsDefaultProtocolClient(
+      "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3",
+      process.execPath,
+      [path.resolve(process.argv[1])],
+    );
   }
 } else {
   app.setAsDefaultProtocolClient("dyad");
-  app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3");
+  app.setAsDefaultProtocolClient(
+    "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3",
+  );
 }
 
 function getRecentLogs(lines: number = 50): string {
@@ -274,7 +308,10 @@ export async function onReady() {
   await onFirstRunMaybe(settings);
 
   // ─── Post-migration optimization ──────────────────────────────────────
-  const migrationFlagPath = path.join(app.getPath("userData"), ".migration-optimize");
+  const migrationFlagPath = path.join(
+    app.getPath("userData"),
+    ".migration-optimize",
+  );
   const needsOptimization = fs.existsSync(migrationFlagPath);
 
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
@@ -283,7 +320,7 @@ export async function onReady() {
   const TOTAL_STEPS = needsOptimization ? 7 : 6;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await new Promise((resolve) => setTimeout(resolve, 50));
 
   // Step 1 (migration only): Optimize databases
   if (needsOptimization) {
@@ -293,16 +330,25 @@ export async function onReady() {
       const HOME = process.env.HOME || `/home/${process.env.USER}`;
 
       // VACUUM + WAL checkpoint on OpenCode DB
-      const openCodeDbPath = path.join(HOME, ".local/share/opencode/opencode.db");
+      const openCodeDbPath = path.join(
+        HOME,
+        ".local/share/opencode/opencode.db",
+      );
       if (fs.existsSync(openCodeDbPath)) {
-        execSync(`sqlite3 "${openCodeDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        execSync(
+          `sqlite3 "${openCodeDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`,
+          { timeout: 60000 },
+        );
         logger.info("[Migration] OpenCode DB optimized");
       }
 
       // VACUUM the app's local SQLite DB too
       const appDbPath = path.join(app.getPath("userData"), "sqlite.db");
       if (fs.existsSync(appDbPath)) {
-        execSync(`sqlite3 "${appDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`, { timeout: 60000 });
+        execSync(
+          `sqlite3 "${appDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`,
+          { timeout: 60000 },
+        );
         logger.info("[Migration] App DB optimized");
       }
 
@@ -310,12 +356,17 @@ export async function onReady() {
       fs.unlinkSync(migrationFlagPath);
       logger.info("[Migration] Post-migration optimization completed");
     } catch (err: any) {
-      logger.warn(`[Migration] Optimization failed (non-fatal): ${err.message}`);
+      logger.warn(
+        `[Migration] Optimization failed (non-fatal): ${err.message}`,
+      );
       // Remove flag anyway to avoid retrying on every launch
-      try { fs.unlinkSync(migrationFlagPath); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(migrationFlagPath);
+      } catch {
+        /* ignore */
+      }
     }
   }
-
 
   const stepOffset = needsOptimization ? 1 : 0;
 
@@ -334,7 +385,10 @@ export async function onReady() {
   // response (no flash of "install Node.js" banner).
   try {
     const { execSync } = require("child_process");
-    const ver = execSync("node --version", { timeout: 5000, encoding: "utf-8" }).trim();
+    const ver = execSync("node --version", {
+      timeout: 5000,
+      encoding: "utf-8",
+    }).trim();
     const { preCacheNodeStatus } = await import("./ipc/handlers/node_handlers");
     preCacheNodeStatus(ver);
   } catch (e) {
@@ -359,7 +413,6 @@ export async function onReady() {
   } else {
     logger.info("Splash: no session found, skipping preferences hydration");
   }
-
 
   // Step N+3: Create main window (now preferences are ready for the renderer)
   updateSplash(splash, stepOffset + 3, TOTAL_STEPS, "Preparando interfaz...");
@@ -393,14 +446,16 @@ export async function onReady() {
     // Warm up scaffold caches now that Node.js is guaranteed in PATH.
     // Previously in ipc_host.ts, moved here to avoid race condition.
     const { warmUpScaffoldCache } = await import("./ipc/utils/scaffold_cache");
-    warmUpScaffoldCache().catch(err =>
+    warmUpScaffoldCache().catch((err) =>
       logger.error("Scaffold cache warmup failed:", err),
     );
 
     // Check/install OpenCode binary in background (was blocking splash for ~2.2s)
     const openCodeResult = await ensureOpenCodeInstalled();
     if (!openCodeResult.ok) {
-      logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
+      logger.warn(
+        "OpenCode installation failed — agent mode will not work until manually installed",
+      );
     } else if (openCodeResult.updated) {
       logger.info(`OpenCode updated to v${openCodeResult.version}`);
     }
@@ -507,7 +562,8 @@ const createWindow = () => {
     x: validatedPosition.x,
     y: validatedPosition.y,
     width:
-      windowState?.width || (process.env.NODE_ENV === "development" ? 1280 : 960),
+      windowState?.width ||
+      (process.env.NODE_ENV === "development" ? 1280 : 960),
     minWidth: 800,
     height: windowState?.height || 700,
     minHeight: 500,
@@ -516,7 +572,9 @@ const createWindow = () => {
     backgroundColor: "#1e1e24", // Match dark theme to prevent white flash
     titleBarStyle: "hidden",
     titleBarOverlay: false,
-    ...(process.platform === "darwin" ? { trafficLightPosition: { x: 10, y: 8 } } : {}),
+    ...(process.platform === "darwin"
+      ? { trafficLightPosition: { x: 10, y: 8 } }
+      : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -529,7 +587,10 @@ const createWindow = () => {
       // Prevent Chromium from throttling timers/animations when window loses focus
       backgroundThrottling: false,
     },
-    icon: path.join(app.getAppPath(), `assets/${activeFlavor.iconFolder}/logo.png`),
+    icon: path.join(
+      app.getAppPath(),
+      `assets/${activeFlavor.iconFolder}/logo.png`,
+    ),
   });
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -541,13 +602,19 @@ const createWindow = () => {
 
   mainWindow.webContents.on("render-process-gone", (event, details) => {
     logger.error("Render process gone:", details);
-    if (details.reason === "crashed" || details.reason === "oom" || details.reason === "integrity-failure" || details.reason === "killed") {
+    if (
+      details.reason === "crashed" ||
+      details.reason === "oom" ||
+      details.reason === "integrity-failure" ||
+      details.reason === "killed"
+    ) {
       try {
         const choice = dialog.showMessageBoxSync({
           type: "error",
           title: "Vibes Renderer Crashed",
           message: `El proceso de renderizado ha finalizado inesperadamente (${details.reason}, exit code: ${details.exitCode}).`,
-          detail: "Vibes intentará recargar la ventana para recuperar su estado.",
+          detail:
+            "Vibes intentará recargar la ventana para recuperar su estado.",
           buttons: ["Recargar", "Salir"],
           defaultId: 0,
         });
@@ -687,21 +754,21 @@ const createApplicationMenu = () => {
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(isMac
       ? [
-        {
-          label: app.name,
-          submenu: [
-            { role: "about" as const },
-            { type: "separator" as const },
-            { role: "services" as const },
-            { type: "separator" as const },
-            { role: "hide" as const },
-            { role: "hideOthers" as const },
-            { role: "unhide" as const },
-            { type: "separator" as const },
-            { role: "quit" as const },
-          ],
-        },
-      ]
+          {
+            label: app.name,
+            submenu: [
+              { role: "about" as const },
+              { type: "separator" as const },
+              { role: "services" as const },
+              { type: "separator" as const },
+              { role: "hide" as const },
+              { role: "hideOthers" as const },
+              { role: "unhide" as const },
+              { type: "separator" as const },
+              { role: "quit" as const },
+            ],
+          },
+        ]
       : []),
     {
       label: "Edit",
@@ -740,11 +807,11 @@ const createApplicationMenu = () => {
         { role: "zoom" as const },
         ...(isMac
           ? [
-            { type: "separator" as const },
-            { role: "front" as const },
-            { type: "separator" as const },
-            { role: "window" as const },
-          ]
+              { type: "separator" as const },
+              { role: "front" as const },
+              { type: "separator" as const },
+              { role: "window" as const },
+            ]
           : [{ role: "close" as const }]),
       ],
     },
@@ -791,7 +858,11 @@ async function handleDeepLinkReturn(url: string) {
   );
 
   // Handle Google iOS-style redirect (e.g. com.googleusercontent.apps.xxx:/oauth2redirect)
-  if (parsed.protocol === "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3:" && parsed.pathname === "/oauth2redirect") {
+  if (
+    parsed.protocol ===
+      "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3:" &&
+    parsed.pathname === "/oauth2redirect"
+  ) {
     const code = parsed.searchParams.get("code");
     if (code) {
       await handleFirebaseOAuthReturn({ code });

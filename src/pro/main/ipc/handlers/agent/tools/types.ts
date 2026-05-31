@@ -61,8 +61,19 @@ export interface AgentContext {
   supabaseOrganizationSlug: string | null;
   firebaseProjectId: string | null;
   bunnyConfig: {
-    databases: { name: string; databaseUrl: string; fullAccessToken: string; readOnlyToken: string }[];
-    storageZones: { name: string; hostname: string; username: string; password: string; readonlyPassword: string }[];
+    databases: {
+      name: string;
+      databaseUrl: string;
+      fullAccessToken: string;
+      readOnlyToken: string;
+    }[];
+    storageZones: {
+      name: string;
+      hostname: string;
+      username: string;
+      password: string;
+      readonlyPassword: string;
+    }[];
   } | null;
   pocketbaseConfig: {
     url: string;
@@ -154,7 +165,10 @@ export class ToolError extends Error {
   readonly retryable: boolean;
   readonly hint?: string;
 
-  constructor(message: string, options: { retryable?: boolean; hint?: string } = {}) {
+  constructor(
+    message: string,
+    options: { retryable?: boolean; hint?: string } = {},
+  ) {
     super(message);
     this.name = "ToolError";
     this.retryable = options.retryable ?? true;

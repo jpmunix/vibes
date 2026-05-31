@@ -65,7 +65,12 @@ export function CreateAppDialog({
       }
       setSelectedAppId(result.app.id);
       // Open chat in a dedicated window
-      ipc.system.openChatWindow({ appId: result.app.id, chatId: result.chatId, theme, themeIntensity: intensity });
+      ipc.system.openChatWindow({
+        appId: result.app.id,
+        chatId: result.chatId,
+        theme,
+        themeIntensity: intensity,
+      });
       router.navigate({
         to: "/app-details",
         search: { appId: result.app.id },

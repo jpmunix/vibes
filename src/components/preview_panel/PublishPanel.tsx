@@ -9,7 +9,14 @@ import { PortalMigrate } from "@/components/PortalMigrate";
 import { ipc } from "@/ipc/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
-import { Triangle, Loader2, Server, Github, AlertTriangle, Flame } from "@/components/ui/icons";
+import {
+  Triangle,
+  Loader2,
+  Server,
+  Github,
+  AlertTriangle,
+  Flame,
+} from "@/components/ui/icons";
 
 export const PublishPanel = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -21,9 +28,7 @@ export const PublishPanel = () => {
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
           <Loader2 className="w-6 h-6 text-primary animate-spin" />
         </div>
-        <h2 className="typo-subsection-title">
-          Cargando...
-        </h2>
+        <h2 className="typo-subsection-title">Cargando...</h2>
       </div>
     );
   }
@@ -48,9 +53,7 @@ export const PublishPanel = () => {
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="p-4 space-y-4">
         <div>
-          <h1 className="typo-section-title mb-2">
-            Publicar aplicación
-          </h1>
+          <h1 className="typo-section-title mb-2">Publicar aplicación</h1>
         </div>
 
         {/* Portal Section - Show only if app has neon project */}

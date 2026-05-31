@@ -57,7 +57,15 @@ const CustomMenuItem = forwardRef<
   const isApp = item.data?.type === "app";
   const isSlash = item.data?.type === "slash-command";
   const isArtifact = item.data?.type === "artifact";
-  const label = isPrompt ? "Prompt" : isApp ? "App" : isSlash ? "Comando" : isArtifact ? "Plan/Artifact" : "Archivo";
+  const label = isPrompt
+    ? "Prompt"
+    : isApp
+      ? "App"
+      : isSlash
+        ? "Comando"
+        : isArtifact
+          ? "Plan/Artifact"
+          : "Archivo";
   const value = (item as any)?.value;
 
   return (
@@ -88,7 +96,9 @@ const CustomMenuItem = forwardRef<
             </span>
           )}
         </span>
-        <span className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}>
+        <span
+          className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}
+        >
           {isSlash ? `/${value}` : label}
         </span>
       </div>
@@ -301,10 +311,14 @@ function ExternalValueSyncPlugin({
 
       // Build nodes from internal value, turning @app:Name and @prompt:<id> into mention nodes
       let lastIndex = 0;
-      
+
       // Parse slash command at the very start if present
       const knownSlashCommands = [
-        "agent", "build", "plan", "ask", "explore",
+        "agent",
+        "build",
+        "plan",
+        "ask",
+        "explore",
         ...(customAgents || []).map((a) => a.slashCommand),
       ];
       for (const cmd of knownSlashCommands) {
@@ -419,11 +433,31 @@ export function LexicalChatInput({
     }));
 
     const nativeSlashCommands = [
-      { value: "agent", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
-      { value: "build", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
-      { value: "plan", type: "slash-command", description: "Planificador interactivo" },
-      { value: "ask", type: "slash-command", description: "Explorador de código (solo lectura)" },
-      { value: "explore", type: "slash-command", description: "Explorador de código (solo lectura)" },
+      {
+        value: "agent",
+        type: "slash-command",
+        description: "Agente de desarrollo estándar (Build)",
+      },
+      {
+        value: "build",
+        type: "slash-command",
+        description: "Agente de desarrollo estándar (Build)",
+      },
+      {
+        value: "plan",
+        type: "slash-command",
+        description: "Planificador interactivo",
+      },
+      {
+        value: "ask",
+        type: "slash-command",
+        description: "Explorador de código (solo lectura)",
+      },
+      {
+        value: "explore",
+        type: "slash-command",
+        description: "Explorador de código (solo lectura)",
+      },
     ];
 
     const customSlashCommands = (customAgents || []).map((agent) => ({
@@ -461,7 +495,11 @@ export function LexicalChatInput({
         // If the text starts with a slash command but is immediately followed by text (no space),
         // we inject a space so the backend can parse it correctly (e.g. "/plancuando" -> "/plan cuando").
         const knownSlashCommands = [
-          "agent", "build", "plan", "ask", "explore",
+          "agent",
+          "build",
+          "plan",
+          "ask",
+          "explore",
           ...(customAgents || []).map((a) => a.slashCommand),
         ];
         for (const cmd of knownSlashCommands) {
@@ -478,7 +516,10 @@ export function LexicalChatInput({
         // Check if user has selected or typed a custom agent command, and append its default prompt
         for (const agent of customAgents || []) {
           const cmd = `/${agent.slashCommand}`;
-          if ((textContent === cmd || textContent === `${cmd} `) && agent.prompt) {
+          if (
+            (textContent === cmd || textContent === `${cmd} `) &&
+            agent.prompt
+          ) {
             textContent = `${cmd} ${agent.prompt}`;
             break;
           }

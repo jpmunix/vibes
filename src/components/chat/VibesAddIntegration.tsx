@@ -142,9 +142,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
             </span>
           </div>
           <div className="text-sm text-green-900 dark:text-green-100">
-            <p>
-              Configurado: {parts.join(" y ")}
-            </p>
+            <p>Configurado: {parts.join(" y ")}</p>
           </div>
           <Button
             onClick={() => handleKeepGoingClick("Bunny.net")}
@@ -160,7 +158,12 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
   }
 
   // --- Default: not configured, show setup button ---
-  const providerLabel = provider === "bunny" ? "Bunny.net" : provider === "pocketbase" ? "PocketBase" : provider;
+  const providerLabel =
+    provider === "bunny"
+      ? "Bunny.net"
+      : provider === "pocketbase"
+        ? "PocketBase"
+        : provider;
 
   return (
     <div className="flex flex-col gap-2 my-2 p-3 border rounded-md bg-secondary/10 dark:bg-secondary/20">

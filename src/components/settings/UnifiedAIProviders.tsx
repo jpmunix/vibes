@@ -12,7 +12,11 @@ import { AddCustomProviderButton } from "./providers/AddCustomProviderButton";
  * Each provider can be individually enabled/disabled.
  * OpenRouter is always first and always on by default.
  */
-export function UnifiedAIProviders({ isHighlighted }: { isHighlighted?: boolean }) {
+export function UnifiedAIProviders({
+  isHighlighted,
+}: {
+  isHighlighted?: boolean;
+}) {
   const { settings } = useSettings();
   const customProviders = settings?.customProviders ?? [];
 
@@ -21,7 +25,9 @@ export function UnifiedAIProviders({ isHighlighted }: { isHighlighted?: boolean 
       id="models-connectivity"
       className={cn(
         "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
-        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : "",
+        isHighlighted
+          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+          : "",
       )}
     >
       <div className="mb-6">

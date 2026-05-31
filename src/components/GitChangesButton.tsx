@@ -50,10 +50,14 @@ export function GitChangesButton({ appId }: GitChangesButtonProps) {
   const gitTooltip = (() => {
     const parts: string[] = [];
     if (hasUncommittedFiles) {
-      parts.push(`${uncommittedFiles.length} cambio${uncommittedFiles.length !== 1 ? "s" : ""} sin confirmar`);
+      parts.push(
+        `${uncommittedFiles.length} cambio${uncommittedFiles.length !== 1 ? "s" : ""} sin confirmar`,
+      );
     }
     if ((gitState?.ahead ?? 0) > 0) {
-      parts.push(`${gitState!.ahead} commit${gitState!.ahead !== 1 ? "s" : ""} sin subir`);
+      parts.push(
+        `${gitState!.ahead} commit${gitState!.ahead !== 1 ? "s" : ""} sin subir`,
+      );
     }
     return parts.length > 0 ? parts.join(" · ") : "Abrir Git";
   })();

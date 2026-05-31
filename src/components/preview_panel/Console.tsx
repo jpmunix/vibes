@@ -1,4 +1,8 @@
-import { appConsoleEntriesAtom, currentAppAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
+import {
+  appConsoleEntriesAtom,
+  currentAppAtom,
+  selectedAppIdAtom,
+} from "@/atoms/appAtoms";
 import type { ConsoleEntry } from "@/ipc/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ipc } from "@/ipc/types";
@@ -151,16 +155,19 @@ export const Console = () => {
     let isMounted = true;
 
     // Fetch existing logs
-    ipc.misc.getConsoleLogs({ appId: selectedAppId }).then((logs) => {
-      if (isMounted) {
-        // Convert ConsoleEntry to match local AppOutput-like structure if needed
-        // The atom expects an array of log objects.
-        // ConsoleEntry has { type, level, message, timestamp, sourceName, appId }
-        // AppOutput has { type, message, appId, timestamp }
-        // They are compatible enough for display.
-        setConsoleEntries(logs);
-      }
-    }).catch(console.error);
+    ipc.misc
+      .getConsoleLogs({ appId: selectedAppId })
+      .then((logs) => {
+        if (isMounted) {
+          // Convert ConsoleEntry to match local AppOutput-like structure if needed
+          // The atom expects an array of log objects.
+          // ConsoleEntry has { type, level, message, timestamp, sourceName, appId }
+          // AppOutput has { type, message, appId, timestamp }
+          // They are compatible enough for display.
+          setConsoleEntries(logs);
+        }
+      })
+      .catch(console.error);
 
     // Subscribe to batched logs
     const unsubscribeBatch = ipc.events.misc.onAppLogsBatch((batch) => {
@@ -168,12 +175,18 @@ export const Console = () => {
         setConsoleEntries((prev) => {
           // Deduplicate logic could go here if needed, but timestamp should be unique enough?
           // Actually, simplest is just append.
-          return [...prev, ...batch.logs.map(log => ({
-            ...log,
-            level: log.type === "stderr" || log.type === "client-error" ? "error" as const : "info" as const,
-            type: "server" as const,
-            timestamp: log.timestamp ?? Date.now()
-          }))];
+          return [
+            ...prev,
+            ...batch.logs.map((log) => ({
+              ...log,
+              level:
+                log.type === "stderr" || log.type === "client-error"
+                  ? ("error" as const)
+                  : ("info" as const),
+              type: "server" as const,
+              timestamp: log.timestamp ?? Date.now(),
+            })),
+          ];
         });
       }
     });
@@ -296,7 +309,14 @@ export const Console = () => {
         />
       );
     },
-    [filteredEntries, expandedEntries, typeFilter, getEntryKey, toggleExpanded, selectedAppId],
+    [
+      filteredEntries,
+      expandedEntries,
+      typeFilter,
+      getEntryKey,
+      toggleExpanded,
+      selectedAppId,
+    ],
   );
 
   const listHeight = containerHeight - (showFilters ? 60 : 0);

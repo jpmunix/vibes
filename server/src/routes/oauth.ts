@@ -17,14 +17,15 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
     const { token, refreshToken, expiresIn } = request.query;
 
     if (!token || !refreshToken || !expiresIn) {
-      reply.code(400).send({ error: "Missing token, refreshToken, or expiresIn" });
+      reply
+        .code(400)
+        .send({ error: "Missing token, refreshToken, or expiresIn" });
       return;
     }
 
     try {
-      const { handleSupabaseOAuthReturn } = await import(
-        "../../../src/supabase_admin/supabase_return_handler.ts"
-      );
+      const { handleSupabaseOAuthReturn } =
+        await import("../../../src/supabase_admin/supabase_return_handler.ts");
       await handleSupabaseOAuthReturn({
         token,
         refreshToken,
@@ -33,7 +34,9 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
 
       const userId = (request as any).userId;
       if (userId) {
-        io.to(userId).emit("deep-link-received", { type: "supabase-oauth-return" });
+        io.to(userId).emit("deep-link-received", {
+          type: "supabase-oauth-return",
+        });
       }
 
       reply.redirect("/settings?oauth=supabase&status=success");
@@ -56,7 +59,11 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
 
     try {
       const { handleNeonOAuthReturn } = await import("../../../src/main.ts");
-      await handleNeonOAuthReturn({ token, refreshToken, expiresIn: Number(expiresIn) });
+      await handleNeonOAuthReturn({
+        token,
+        refreshToken,
+        expiresIn: Number(expiresIn),
+      });
 
       const userId = (request as any).userId;
       if (userId) {
@@ -82,12 +89,15 @@ export function registerOAuthRoutes(app: FastifyInstance, io: SocketIOServer) {
     }
 
     try {
-      const { handleFirebaseOAuthReturn } = await import("../../../src/main.ts");
+      const { handleFirebaseOAuthReturn } =
+        await import("../../../src/main.ts");
       await handleFirebaseOAuthReturn({ code });
 
       const userId = (request as any).userId;
       if (userId) {
-        io.to(userId).emit("deep-link-received", { type: "firebase-oauth-return" });
+        io.to(userId).emit("deep-link-received", {
+          type: "firebase-oauth-return",
+        });
       }
 
       reply.redirect("/settings?oauth=firebase&status=success");

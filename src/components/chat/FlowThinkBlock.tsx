@@ -17,7 +17,7 @@ interface FlowThinkBlockProps {
 
 /**
  * Self-contained collapsible block for think/thought tags in Flow mode.
- * Uses a hard toggle (no animations) to prevent scroll jumps and keep the 
+ * Uses a hard toggle (no animations) to prevent scroll jumps and keep the
  * user's viewport perfectly anchored.
  */
 export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
@@ -44,7 +44,9 @@ export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
       <div
         ref={contentRef}
         style={{
-          maxHeight: isCollapsed ? `${FLOW_THINK_COLLAPSE_HEIGHT}px` : undefined,
+          maxHeight: isCollapsed
+            ? `${FLOW_THINK_COLLAPSE_HEIGHT}px`
+            : undefined,
           overflow: isCollapsed ? "hidden" : undefined,
           WebkitMaskImage: isCollapsed
             ? "linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)"
@@ -58,7 +60,10 @@ export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
         }}
         className="text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[inherit]"
       >
-        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          components={markdownComponents}
+        >
           {content}
         </ReactMarkdown>
       </div>
@@ -68,7 +73,9 @@ export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
             // In a flex-col-reverse scroll container, expanding an element above the
             // anchor pushes the viewport up. We compensate by adjusting scrollTop
             // on the scroll container after React re-renders.
-            const scrollContainer = contentRef.current?.closest('[data-testid="messages-list"]') as HTMLElement | null;
+            const scrollContainer = contentRef.current?.closest(
+              '[data-testid="messages-list"]',
+            ) as HTMLElement | null;
             const prevScrollTop = scrollContainer?.scrollTop ?? 0;
             const prevScrollHeight = scrollContainer?.scrollHeight ?? 0;
 
@@ -86,13 +93,23 @@ export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
           }}
           className="flex items-center gap-1 mt-1 text-xs cursor-pointer transition-colors"
           style={{ color: "var(--accent-think-text)", opacity: 0.7 }}
-          onMouseEnter={(e) => { (e.currentTarget.style.opacity as any) = "1"; }}
-          onMouseLeave={(e) => { (e.currentTarget.style.opacity as any) = "0.7"; }}
+          onMouseEnter={(e) => {
+            (e.currentTarget.style.opacity as any) = "1";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget.style.opacity as any) = "0.7";
+          }}
         >
           {expanded ? (
-            <><ChevronUp size={12} /><span>Menos</span></>
+            <>
+              <ChevronUp size={12} />
+              <span>Menos</span>
+            </>
           ) : (
-            <><ChevronDown size={12} /><span>Más</span></>
+            <>
+              <ChevronDown size={12} />
+              <span>Más</span>
+            </>
           )}
         </button>
       )}

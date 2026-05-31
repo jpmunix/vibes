@@ -34,10 +34,16 @@ export const MODEL_PROVIDER_SEPARATOR = "::" as const;
  *   "ollama::qwen2.5-coder:7b"  → { provider: "ollama", name: "qwen2.5-coder:7b" }
  *   "google/gemini-2.5-flash-lite" → { provider: fallbackProvider, name: "google/gemini-2.5-flash-lite" }
  */
-export function parseModelString(raw: string, fallbackProvider: string): { provider: string; name: string } {
+export function parseModelString(
+  raw: string,
+  fallbackProvider: string,
+): { provider: string; name: string } {
   const sep = raw.indexOf(MODEL_PROVIDER_SEPARATOR);
   if (sep > 0) {
-    return { provider: raw.slice(0, sep), name: raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length) };
+    return {
+      provider: raw.slice(0, sep),
+      name: raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length),
+    };
   }
   return { provider: fallbackProvider, name: raw };
 }
@@ -46,7 +52,11 @@ export function parseModelString(raw: string, fallbackProvider: string): { provi
  * Compose a provider::model string.
  * If provider matches fallbackProvider, returns just the model name (backward compat).
  */
-export function composeModelString(provider: string, name: string, fallbackProvider?: string): string {
+export function composeModelString(
+  provider: string,
+  name: string,
+  fallbackProvider?: string,
+): string {
   if (fallbackProvider && provider === fallbackProvider) return name;
   return `${provider}${MODEL_PROVIDER_SEPARATOR}${name}`;
 }
@@ -68,11 +78,16 @@ export const ChatSummarySchema = z.object({
   isPlan: z.boolean().optional().default(false),
   isRead: z.boolean().optional().default(true),
   lastReadAt: z.date().nullable().optional(),
-  labels: z.array(z.object({
-    id: z.number(),
-    label: z.string(),
-    color: z.string()
-  })).optional().default([]),
+  labels: z
+    .array(
+      z.object({
+        id: z.number(),
+        label: z.string(),
+        color: z.string(),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 
 /**
@@ -96,11 +111,16 @@ export const ChatSearchResultSchema = z.object({
   matchedMessageContent: z.string().nullable(),
   isPlan: z.boolean().optional().default(false),
   isRead: z.boolean().optional().default(true),
-  labels: z.array(z.object({
-    id: z.number(),
-    label: z.string(),
-    color: z.string()
-  })).optional().default([]),
+  labels: z
+    .array(
+      z.object({
+        id: z.number(),
+        label: z.string(),
+        color: z.string(),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 
 /**
@@ -109,7 +129,6 @@ export const ChatSearchResultSchema = z.object({
 export type ChatSearchResult = z.infer<typeof ChatSearchResultSchema>;
 
 export const ChatSearchResultsSchema = z.array(ChatSearchResultSchema);
-
 
 // Zod schema for app search result objects returned by the search-app IPC
 export const AppSearchResultSchema = z.object({
@@ -192,15 +211,17 @@ export const OpenRouterProviderSettingSchema = z.object({
 
 // ── Custom AI Provider (OpenAI-compatible endpoints) ──
 export const CustomProviderConfigSchema = z.object({
-  id: z.string(),          // e.g. "custom::litellm-proxy"
-  name: z.string(),        // Display name: "Mi Proxy LiteLLM"
-  apiBaseUrl: z.string(),  // "https://my-proxy.example.com/v1"
+  id: z.string(), // e.g. "custom::litellm-proxy"
+  name: z.string(), // Display name: "Mi Proxy LiteLLM"
+  apiBaseUrl: z.string(), // "https://my-proxy.example.com/v1"
   apiKey: SecretSchema.optional(),
   // How to discover models:
-  modelsSource: z.enum([
-    "openai-compatible",  // GET /models (standard OpenAI endpoint)
-    "manual",             // User adds them manually
-  ]).optional(),          // default: "openai-compatible"
+  modelsSource: z
+    .enum([
+      "openai-compatible", // GET /models (standard OpenAI endpoint)
+      "manual", // User adds them manually
+    ])
+    .optional(), // default: "openai-compatible"
 });
 export type CustomProviderConfig = z.infer<typeof CustomProviderConfigSchema>;
 
@@ -228,8 +249,6 @@ export const ProviderSettingSchema = z.union([
   RegularProviderSettingSchema.passthrough(),
 ]);
 
-
-
 /**
  * Type derived from the ProviderSettingSchema
  */
@@ -248,7 +267,7 @@ export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
 export const ChatModeSchema = z.union([
   z.enum(["agent", "plan", "ask", "mockup"]),
-  z.string()
+  z.string(),
 ]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
@@ -410,7 +429,9 @@ export const OpenCodePermissionsConfigSchema = z.object({
   // Bash custom rules
   bashCustomRules: z.array(BashCustomRuleSchema).optional(),
 });
-export type OpenCodePermissionsConfig = z.infer<typeof OpenCodePermissionsConfigSchema>;
+export type OpenCodePermissionsConfig = z.infer<
+  typeof OpenCodePermissionsConfigSchema
+>;
 
 /**
  * Zod schema for user settings
@@ -448,8 +469,8 @@ export const UserSettingsSchema = z
     // ── Active unified model keys (v2: support provider::model format) ──
     // Format: "provider::model-name" (e.g. "ollama::qwen2.5-coder:7b")
     // Legacy plain strings (e.g. "google/gemini-2.5-flash-lite") default to activeProviderId.
-    strategistModel: z.string().optional(),   // reasoning agents (plan, explore, general)
-    executorModel: z.string().optional(),     // lightweight tasks (titles, summaries, compaction, mockup, commits)
+    strategistModel: z.string().optional(), // reasoning agents (plan, explore, general)
+    executorModel: z.string().optional(), // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
     openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
@@ -487,7 +508,9 @@ export const UserSettingsSchema = z
     // User-configured custom OpenAI-compatible providers
     customProviders: z.array(CustomProviderConfigSchema).optional(),
     // Per-provider model snapshots — restored when switching back to a provider
-    providerModelConfigs: z.record(z.string(), ProviderModelConfigSchema).optional(),
+    providerModelConfigs: z
+      .record(z.string(), ProviderModelConfigSchema)
+      .optional(),
 
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
@@ -514,21 +537,31 @@ export const UserSettingsSchema = z
     // Ripgrep ignore patterns — written as .ignore in project dirs before each session.
     // Synced via Bunny DB so the user gets the same config on all devices.
     openCodeIgnorePatterns: z.array(z.string()).optional(),
-    selectedChatMode: z.preprocess(
-    (val) => {
-        // Migrate all legacy mode values to "agent"
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart" || val === "mockup") return "agent";
-        return val;
-      },
-      ChatModeSchema.optional(),
-    ),
-    defaultChatMode: z.preprocess(
-      (val) => {
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart" || val === "mockup") return "agent";
-        return val;
-      },
-      ChatModeSchema.optional(),
-    ),
+    selectedChatMode: z.preprocess((val) => {
+      // Migrate all legacy mode values to "agent"
+      if (
+        val === "local-agent" ||
+        val === "crush-agent" ||
+        val === "build" ||
+        val === "legacy-agent" ||
+        val === "smart" ||
+        val === "mockup"
+      )
+        return "agent";
+      return val;
+    }, ChatModeSchema.optional()),
+    defaultChatMode: z.preprocess((val) => {
+      if (
+        val === "local-agent" ||
+        val === "crush-agent" ||
+        val === "build" ||
+        val === "legacy-agent" ||
+        val === "smart" ||
+        val === "mockup"
+      )
+        return "agent";
+      return val;
+    }, ChatModeSchema.optional()),
     acceptedCommunityCode: z.boolean().optional(),
     zoomLevel: ZoomLevelSchema.optional(),
     previewDeviceMode: DeviceModeSchema.optional(),
@@ -565,7 +598,9 @@ export const UserSettingsSchema = z
     themeFlavorLight: z.string().optional(),
     loaderStyle: z.string().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
-    aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
+    aiQueryLogRotationThreshold: z
+      .enum(["50", "100", "200", "500", "1000"])
+      .optional(),
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
@@ -604,18 +639,22 @@ export const UserSettingsSchema = z
     // Morph Patch Engine — overrides OpenCode's built-in edit/patch tools with
     // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
     enableMorphPatchTool: z.boolean().optional(),
-    morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
+    morphPatchModel: z
+      .enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"])
+      .optional(),
 
     // DEPRECATED — per-agent model overrides. Superseded by strategistModel + executorModel.
-    agentModels: z.object({
-      plan: z.string().optional(),
-      explore: z.string().optional(),
-      general: z.string().optional(),
-      compaction: z.string().optional(),
-      title: z.string().optional(),
-      summary: z.string().optional(),
-      mockup: z.string().optional(),
-    }).optional(),
+    agentModels: z
+      .object({
+        plan: z.string().optional(),
+        explore: z.string().optional(),
+        general: z.string().optional(),
+        compaction: z.string().optional(),
+        title: z.string().optional(),
+        summary: z.string().optional(),
+        mockup: z.string().optional(),
+      })
+      .optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),
@@ -631,18 +670,27 @@ export const UserSettingsSchema = z
       })
       .optional(),
     // Per-window-type saved bounds (each secondary window remembers its own position/size)
-    secondaryWindowStates: z.record(z.string(), z.object({
-      x: z.number().optional(),
-      y: z.number().optional(),
-      width: z.number().optional(),
-      height: z.number().optional(),
-      isMaximized: z.boolean().optional(),
-    })).optional(),
+    secondaryWindowStates: z
+      .record(
+        z.string(),
+        z.object({
+          x: z.number().optional(),
+          y: z.number().optional(),
+          width: z.number().optional(),
+          height: z.number().optional(),
+          isMaximized: z.boolean().optional(),
+        }),
+      )
+      .optional(),
     // Playground — saved model presets
-    playgroundModelSets: z.array(z.object({
-      name: z.string(),
-      models: z.array(z.string()),
-    })).optional(),
+    playgroundModelSets: z
+      .array(
+        z.object({
+          name: z.string(),
+          models: z.array(z.string()),
+        }),
+      )
+      .optional(),
     iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
     // Git commit panel: persisted vertical split size (percentage, 0-100)
     gitCommitPanelSize: z.number().optional(),
@@ -667,13 +715,9 @@ export type UserSettings = z.infer<typeof UserSettingsSchema>;
  * Gets the effective default chat mode.
  * The schema preprocessor already migrates legacy values, so this is straightforward.
  */
-export function getEffectiveDefaultChatMode(
-  settings: UserSettings,
-): ChatMode {
+export function getEffectiveDefaultChatMode(settings: UserSettings): ChatMode {
   return settings.defaultChatMode ?? "agent";
 }
-
-
 
 export function isSupabaseConnected(settings: UserSettings | null): boolean {
   if (!settings) {
@@ -685,11 +729,6 @@ export function isSupabaseConnected(settings: UserSettings | null): boolean {
       Object.keys(settings.supabase.organizations).length > 0),
   );
 }
-
-
-
-
-
 
 export interface FileChange {
   name: string;
@@ -719,7 +758,6 @@ export type SuggestedAction =
 export interface RestartAppAction {
   id: "restart-app";
 }
-
 
 export interface WriteCodeProperlyAction {
   id: "write-code-properly";

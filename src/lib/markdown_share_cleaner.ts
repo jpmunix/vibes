@@ -18,19 +18,21 @@
  * Same logic used by the app's "zen/flow" render mode and copy-to-clipboard.
  */
 export function cleanAssistantContent(raw: string): string {
-  return raw
-    // Normalize legacy dyad-* tags first
-    .replace(/<dyad-/g, "<vibes-")
-    .replace(/<\/dyad-/g, "</vibes-")
-    // Remove all vibes-* tool blocks + think/thought blocks (self-closing or paired)
-    .replace(/<(vibes-[\w-]+|think|thought)[^>]*>[\s\S]*?<\/\1>/g, "")
-    // Remove any remaining HTML/XML tags (stray openers/closers)
-    .replace(/<\/?[^>]+>/g, "")
-    // Normalize line whitespace
-    .replace(/[ \t]*\n[ \t]*/g, "\n")
-    // Collapse 3+ consecutive newlines into double
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return (
+    raw
+      // Normalize legacy dyad-* tags first
+      .replace(/<dyad-/g, "<vibes-")
+      .replace(/<\/dyad-/g, "</vibes-")
+      // Remove all vibes-* tool blocks + think/thought blocks (self-closing or paired)
+      .replace(/<(vibes-[\w-]+|think|thought)[^>]*>[\s\S]*?<\/\1>/g, "")
+      // Remove any remaining HTML/XML tags (stray openers/closers)
+      .replace(/<\/?[^>]+>/g, "")
+      // Normalize line whitespace
+      .replace(/[ \t]*\n[ \t]*/g, "\n")
+      // Collapse 3+ consecutive newlines into double
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 /**
@@ -76,7 +78,10 @@ export function extractImageUrls(aiMessagesJson: any): string[] {
     for (const part of msg.content) {
       if (part.type === "image" && part.image) {
         // Only include CDN URLs — skip base64 data (too large for markdown)
-        if (part.image.startsWith("http://") || part.image.startsWith("https://")) {
+        if (
+          part.image.startsWith("http://") ||
+          part.image.startsWith("https://")
+        ) {
           urls.push(part.image);
         }
       }
@@ -140,4 +145,3 @@ export function buildShareMarkdown(
 
   return lines.join("\n");
 }
-

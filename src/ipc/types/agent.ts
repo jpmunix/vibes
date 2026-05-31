@@ -5,7 +5,10 @@ import {
   createClient,
   createEventClient,
 } from "../contracts/core";
-import { AgentToolConsentSchema, OpenCodePermissionSchema } from "../../lib/schemas";
+import {
+  AgentToolConsentSchema,
+  OpenCodePermissionSchema,
+} from "../../lib/schemas";
 
 // =============================================================================
 // Agent Schemas
@@ -88,14 +91,18 @@ export const OpenCodePermissionRequestSchema = z.object({
   toolInput: z.string().nullable().optional(),
 });
 
-export type OpenCodePermissionRequestPayload = z.infer<typeof OpenCodePermissionRequestSchema>;
+export type OpenCodePermissionRequestPayload = z.infer<
+  typeof OpenCodePermissionRequestSchema
+>;
 
 export const OpenCodePermissionResponseSchema = z.object({
   requestId: z.string(),
   response: z.enum(["once", "always", "reject"]),
 });
 
-export type OpenCodePermissionResponseParams = z.infer<typeof OpenCodePermissionResponseSchema>;
+export type OpenCodePermissionResponseParams = z.infer<
+  typeof OpenCodePermissionResponseSchema
+>;
 
 /**
  * Schema for agent todo item.

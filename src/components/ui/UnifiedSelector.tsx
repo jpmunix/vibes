@@ -129,17 +129,22 @@ export interface UnifiedSelectorProps {
  * Trigger size presets
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const SIZE_CLASSES: Record<NonNullable<UnifiedSelectorProps["triggerSize"]>, string> = {
+const SIZE_CLASSES: Record<
+  NonNullable<UnifiedSelectorProps["triggerSize"]>,
+  string
+> = {
   xs: "h-auto w-fit px-1.5 py-0.5 typo-micro gap-0.5",
   sm: "h-auto w-fit px-2.5 py-1 typo-select gap-1",
   md: "h-auto w-fit px-3 py-1.5 typo-select gap-2",
 };
 
-const VARIANT_CLASSES: Record<NonNullable<UnifiedSelectorProps["triggerVariant"]>, string> = {
+const VARIANT_CLASSES: Record<
+  NonNullable<UnifiedSelectorProps["triggerVariant"]>,
+  string
+> = {
   default:
     "border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 rounded-md shadow-none transition-colors",
-  pill:
-    "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-all duration-200",
+  pill: "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-all duration-200",
   ghost:
     "border-0 bg-transparent hover:bg-muted/50 rounded-md transition-colors",
   minimal:
@@ -220,18 +225,16 @@ export function UnifiedSelector({
   const rightIcon =
     triggerRightIcon === null
       ? null
-      : triggerRightIcon ?? (
+      : (triggerRightIcon ?? (
           <ChevronDown
             size={triggerSize === "xs" ? 10 : 12}
             className="shrink-0 opacity-60"
           />
-        );
+        ));
 
   // Group items
   const hasGroups = groups && groups.length > 0;
-  const ungroupedItems = hasGroups
-    ? options.filter((o) => !o.group)
-    : options;
+  const ungroupedItems = hasGroups ? options.filter((o) => !o.group) : options;
   const groupedMap = new Map<string, SelectorOption[]>();
   if (hasGroups) {
     for (const opt of options) {
@@ -249,8 +252,11 @@ export function UnifiedSelector({
         <button
           className={cn(
             "flex items-center justify-between cursor-pointer",
-            isInline 
-              ? cn("px-1.5 py-0.5 gap-1", triggerSize === "xs" ? "typo-micro" : "typo-select") 
+            isInline
+              ? cn(
+                  "px-1.5 py-0.5 gap-1",
+                  triggerSize === "xs" ? "typo-micro" : "typo-select",
+                )
               : SIZE_CLASSES[triggerSize],
             VARIANT_CLASSES[triggerVariant],
             triggerClassName,
@@ -258,7 +264,9 @@ export function UnifiedSelector({
           data-testid={rest["data-testid"]}
         >
           {triggerLeftIcon && (
-            <span className="shrink-0 flex items-center">{triggerLeftIcon}</span>
+            <span className="shrink-0 flex items-center">
+              {triggerLeftIcon}
+            </span>
           )}
           {triggerLabel}
           {rightIcon && (
@@ -283,20 +291,23 @@ export function UnifiedSelector({
       >
         <Command
           filter={(value, search, keywords) => {
-            const haystack = [value, ...(keywords || [])].join(" ").toLowerCase();
+            const haystack = [value, ...(keywords || [])]
+              .join(" ")
+              .toLowerCase();
             return haystack.includes(search.toLowerCase()) ? 1 : 0;
           }}
         >
           {/* Optional header */}
           {header && (
-            <div className="px-3 py-2 border-b border-border/40">
-              {header}
-            </div>
+            <div className="px-3 py-2 border-b border-border/40">{header}</div>
           )}
 
           {/* Optional search bar */}
           {searchable && (
-            <CommandInput placeholder={searchPlaceholder} onValueChange={onSearchChange} />
+            <CommandInput
+              placeholder={searchPlaceholder}
+              onValueChange={onSearchChange}
+            />
           )}
 
           <CommandList className={popoverMaxHeight}>
@@ -393,7 +404,11 @@ function SelectorRow({
   return (
     <CommandItem
       value={option.value}
-      keywords={[option.label, ...(option.keywords || []), option.description || ""]}
+      keywords={[
+        option.label,
+        ...(option.keywords || []),
+        option.description || "",
+      ]}
       onSelect={onSelect}
       disabled={option.disabled}
       className={cn(
@@ -418,7 +433,12 @@ function SelectorRow({
       {renderItem ? (
         renderItem(option, isSelected)
       ) : itemLayout === "compact" ? (
-        <span className={cn("flex-1", !noTruncate ? "truncate" : "whitespace-nowrap")}>
+        <span
+          className={cn(
+            "flex-1",
+            !noTruncate ? "truncate" : "whitespace-nowrap",
+          )}
+        >
           {option.label}
         </span>
       ) : (
@@ -427,7 +447,12 @@ function SelectorRow({
             {option.label}
           </span>
           {option.description && (
-            <span className={cn("typo-caption leading-tight opacity-80", !noTruncate ? "truncate" : "whitespace-nowrap")}>
+            <span
+              className={cn(
+                "typo-caption leading-tight opacity-80",
+                !noTruncate ? "truncate" : "whitespace-nowrap",
+              )}
+            >
               {option.description}
             </span>
           )}

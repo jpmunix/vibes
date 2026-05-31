@@ -64,7 +64,12 @@ async function handleAbortMerge(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -84,7 +89,12 @@ async function handleFetchFromGithub(
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
@@ -123,7 +133,12 @@ async function handleCreateBranch(
   ) {
     throw new Error("Invalid branch name");
   }
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -141,7 +156,12 @@ async function handleDeleteBranch(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -158,7 +178,12 @@ async function handleSwitchBranch(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -195,9 +220,13 @@ async function handleSwitchBranch(
         remote: "origin",
         accessToken: accessToken || undefined,
       });
-      logger.info(`Auto-fetched from origin before switching to remote branch '${branch}'`);
+      logger.info(
+        `Auto-fetched from origin before switching to remote branch '${branch}'`,
+      );
     } catch (fetchErr: any) {
-      logger.warn(`Auto-fetch before branch switch failed (non-fatal): ${fetchErr.message}`);
+      logger.warn(
+        `Auto-fetch before branch switch failed (non-fatal): ${fetchErr.message}`,
+      );
       // Continue — the checkout below will fail with a clear error if the branch truly doesn't exist
     }
   }
@@ -218,7 +247,7 @@ async function handleSwitchBranch(
     ) {
       throw new Error(
         `Failed to switch branch: uncommitted changes detected. ` +
-        "Please commit or stash your changes manually and try again.",
+          "Please commit or stash your changes manually and try again.",
       );
     }
     throw checkoutError;
@@ -241,7 +270,12 @@ async function handleRenameBranch(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -283,7 +317,12 @@ async function handleMergeBranch(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -331,7 +370,7 @@ async function handleMergeBranch(
     ) {
       throw new Error(
         `Failed to merge branch: uncommitted changes detected. ` +
-        "Please commit or stash your changes manually and try again.",
+          "Please commit or stash your changes manually and try again.",
       );
     }
 
@@ -347,7 +386,12 @@ async function handleListLocalBranches(
 ): Promise<{ branches: string[]; current: string | null }> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -363,7 +407,12 @@ async function handleListRemoteBranches(
 ): Promise<string[]> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -378,9 +427,16 @@ async function handleGetUncommittedFiles(
 ): Promise<UncommittedFile[]> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) {
-    logger.warn(`[getUncommittedFiles] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+    logger.warn(
+      `[getUncommittedFiles] App not found (transient?): appId=${appId}, userId=${context.userId ?? "UNDEFINED"}`,
+    );
     return [];
   }
   const appPath = getVibesAppPath(app.path);
@@ -390,12 +446,21 @@ async function handleGetUncommittedFiles(
 
 async function handleCommitChanges(
   event: IpcMainInvokeEvent,
-  { appId, message, filesToStage }: { appId: number; message: string; filesToStage?: string[] },
+  {
+    appId,
+    message,
+    filesToStage,
+  }: { appId: number; message: string; filesToStage?: string[] },
   context: HandlerContext,
 ): Promise<string> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -430,15 +495,20 @@ async function handleCommitChanges(
     // Try to generate a better commit message with AI BEFORE staging
     // (gitDiffFile needs unstaged changes to produce a diff)
     let finalMessage = message;
-    const isGenericMessage = /^(Actualizar|Añadir|Eliminar|Renombrar)\s+\d+\s+archivo/i.test(message)
-      || message === "Actualizar archivos";
+    const isGenericMessage =
+      /^(Actualizar|Añadir|Eliminar|Renombrar)\s+\d+\s+archivo/i.test(
+        message,
+      ) || message === "Actualizar archivos";
     if (isGenericMessage) {
       try {
-        const { generateAutoCommitMessage } = await import("../utils/auto_commit_message");
-        const uncommittedFiles = await getGitUncommittedFilesWithStatus({ path: appPath });
+        const { generateAutoCommitMessage } =
+          await import("../utils/auto_commit_message");
+        const uncommittedFiles = await getGitUncommittedFilesWithStatus({
+          path: appPath,
+        });
         finalMessage = await generateAutoCommitMessage({
           appPath,
-          writtenFiles: uncommittedFiles.map(f => f.path),
+          writtenFiles: uncommittedFiles.map((f) => f.path),
           fallbackMessage: message,
         });
       } catch (e) {
@@ -458,11 +528,16 @@ async function handleCommitChanges(
 
     // Commit with the final message
     try {
-      const commitHash = await gitCommit({ path: appPath, message: finalMessage });
+      const commitHash = await gitCommit({
+        path: appPath,
+        message: finalMessage,
+      });
       return commitHash;
     } catch (e: any) {
       if (e.message && e.message.includes("nothing to commit")) {
-        logger.log(`Skipped commit creation for app ${appId}: working tree clean.`);
+        logger.log(
+          `Skipped commit creation for app ${appId}: working tree clean.`,
+        );
         return "";
       }
       throw e;
@@ -478,7 +553,12 @@ async function handleStageFile(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   await gitAdd({ path: appPath, filepath });
@@ -491,7 +571,12 @@ async function handleUnstageFile(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   await gitResetFile({ path: appPath, filepath });
@@ -504,7 +589,12 @@ async function handleStageAll(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   await gitAddAll({ path: appPath });
@@ -517,7 +607,12 @@ async function handleUnstageAll(
 ): Promise<void> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   await gitReset({ path: appPath });
@@ -530,7 +625,12 @@ async function handleGetFileDiff(
 ): Promise<{ additions: number; deletions: number; diff: string }> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   return gitDiffFile({ path: appPath, filepath });
@@ -543,7 +643,12 @@ async function handleGetFileContent(
 ): Promise<{ content: string }> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
   const fullPath = path.join(appPath, filepath);
@@ -566,7 +671,12 @@ async function handlePullFromGithub(
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
 
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
 
   const appPath = getVibesAppPath(app.path);
@@ -586,8 +696,13 @@ async function handlePullFromGithub(
     });
   } catch (pullError: any) {
     // If token is required but we don't have one, give a clear error
-    if (!accessToken && (pullError?.message || "").toLowerCase().includes("authentication")) {
-      throw new Error("Autenticación requerida. Conecta tu cuenta de GitHub en Ajustes.");
+    if (
+      !accessToken &&
+      (pullError?.message || "").toLowerCase().includes("authentication")
+    ) {
+      throw new Error(
+        "Autenticación requerida. Conecta tu cuenta de GitHub en Ajustes.",
+      );
     }
     // Check if it's a missing remote branch error
     const errorMessage = pullError?.message || "";
@@ -614,12 +729,22 @@ async function handlePullFromGithub(
 // --- Git Commit History Handlers ---
 async function handleGetCommitHistory(
   _event: IpcMainInvokeEvent,
-  { appId, limit = 50, offset = 0, branch }: { appId: number; limit?: number; offset?: number; branch?: string },
+  {
+    appId,
+    limit = 50,
+    offset = 0,
+    branch,
+  }: { appId: number; limit?: number; offset?: number; branch?: string },
   context: HandlerContext,
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -638,7 +763,12 @@ async function handleGetCommitDetail(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -654,7 +784,12 @@ async function handleGetConflictFiles(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -679,7 +814,12 @@ async function handleResolveMergeOurs(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -693,7 +833,12 @@ async function handleResolveMergeTheirs(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -707,7 +852,12 @@ async function handleAbortMergeFromGit(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -721,7 +871,12 @@ async function handleGetConflictFileDiff(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -735,7 +890,12 @@ async function handleResolveFileOurs(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -749,7 +909,12 @@ async function handleResolveFileTheirs(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -763,7 +928,12 @@ async function handleRemoveIndexLock(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -776,10 +946,13 @@ async function handleDiscardFileChanges(
   context: HandlerContext,
 ) {
   if (!context.userId) throw new Error("Unauthorized");
-  
+
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({
-    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId))
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
   });
 
   if (!app) throw new Error("App not found");
@@ -796,7 +969,12 @@ async function handleDiscardAllChanges(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -812,7 +990,12 @@ async function handleRevertCommit(
 ) {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
-  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  const app = await db.query.apps.findFirst({
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
+  });
   if (!app) throw new Error("App not found");
   const appPath = getVibesAppPath(app.path);
 
@@ -855,7 +1038,10 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.resolveMergeOurs, handleResolveMergeOurs);
   createTypedHandler(gitContracts.resolveMergeTheirs, handleResolveMergeTheirs);
   createTypedHandler(gitContracts.abortMerge, handleAbortMergeFromGit);
-  createTypedHandler(gitContracts.getConflictFileDiff, handleGetConflictFileDiff);
+  createTypedHandler(
+    gitContracts.getConflictFileDiff,
+    handleGetConflictFileDiff,
+  );
   createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
   createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
   createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
@@ -864,4 +1050,3 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.revertCommit, handleRevertCommit);
   createTypedHandler(gitContracts.getFileContent, handleGetFileContent);
 }
-

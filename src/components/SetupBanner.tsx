@@ -296,8 +296,6 @@ export function SetupBanner() {
           </AccordionItem>
         </Accordion>
       </div>
-
-
     </>
   );
 }
@@ -322,9 +320,7 @@ function VibesStartHeading() {
   return (
     <div className="flex flex-col items-center justify-center mb-10">
       <h1 className="relative text-6xl font-bold tracking-tight">
-        <span
-          className="relative z-10 text-foreground"
-        >
+        <span className="relative z-10 text-foreground">
           {text}
           <span
             className="inline-block ml-0.5 text-foreground"
@@ -342,7 +338,8 @@ function VibesStartHeading() {
         className="mt-3 text-sm font-medium tracking-wide"
         style={{
           color: "color-mix(in oklch, var(--foreground) 40%, transparent)",
-          animation: "vibes-subtitle-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards",
+          animation:
+            "vibes-subtitle-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards",
           opacity: 0,
         }}
       >

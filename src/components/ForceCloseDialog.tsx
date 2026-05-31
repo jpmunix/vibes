@@ -102,8 +102,8 @@ export function ForceCloseDialog({
         <AlertDialogDescription asChild>
           <div className="space-y-4 pt-2 overflow-y-auto flex-1 pr-2">
             <div className="typo-body">
-              La aplicación no se cerró correctamente la última vez. Esto
-              podría indicar un error o una terminación inesperada.
+              La aplicación no se cerró correctamente la última vez. Esto podría
+              indicar un error o una terminación inesperada.
             </div>
 
             {/* System Info */}
@@ -165,34 +165,34 @@ export function ForceCloseDialog({
                   {/* System Metrics */}
                   {(performanceData.systemMemoryUsageMB !== undefined ||
                     performanceData.systemCpuPercent !== undefined) && (
-                      <div className="space-y-2">
-                        <div className="typo-label text-foreground">
-                          Métricas del sistema
-                        </div>
-                        <div className="space-y-1">
-                          {performanceData.systemMemoryUsageMB !== undefined &&
-                            performanceData.systemMemoryTotalMB !== undefined && (
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Memoria:
-                                </span>
-                                <span className="font-mono">
-                                  {performanceData.systemMemoryUsageMB} /{" "}
-                                  {performanceData.systemMemoryTotalMB} MB
-                                </span>
-                              </div>
-                            )}
-                          {performanceData.systemCpuPercent !== undefined && (
+                    <div className="space-y-2">
+                      <div className="typo-label text-foreground">
+                        Métricas del sistema
+                      </div>
+                      <div className="space-y-1">
+                        {performanceData.systemMemoryUsageMB !== undefined &&
+                          performanceData.systemMemoryTotalMB !== undefined && (
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">CPU:</span>
+                              <span className="text-muted-foreground">
+                                Memoria:
+                              </span>
                               <span className="font-mono">
-                                {performanceData.systemCpuPercent}%
+                                {performanceData.systemMemoryUsageMB} /{" "}
+                                {performanceData.systemMemoryTotalMB} MB
                               </span>
                             </div>
                           )}
-                        </div>
+                        {performanceData.systemCpuPercent !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">CPU:</span>
+                            <span className="font-mono">
+                              {performanceData.systemCpuPercent}%
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -200,9 +200,7 @@ export function ForceCloseDialog({
             {/* Recent Logs */}
             {recentLogs && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-                <div className="typo-label text-foreground">
-                  Logs recientes
-                </div>
+                <div className="typo-label text-foreground">Logs recientes</div>
                 <pre className="typo-mono bg-background p-3 rounded overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words">
                   {recentLogs}
                 </pre>

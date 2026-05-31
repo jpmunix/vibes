@@ -17,16 +17,16 @@ const logger = log.scope("message_persistence");
  * Called at the start of a stream.
  */
 export function initMessageStatus(
-    messageId: number,
-    previousResponseId: number | null,
+  messageId: number,
+  previousResponseId: number | null,
 ): void {
-    void getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ previousResponseId, status: "incomplete" })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) =>
-            logger.error("Failed to set initial message status/context", err),
-        );
+  void getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ previousResponseId, status: "incomplete" })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) =>
+      logger.error("Failed to set initial message status/context", err),
+    );
 }
 
 /**
@@ -34,14 +34,14 @@ export function initMessageStatus(
  * Called frequently during streaming — errors are swallowed.
  */
 export async function updateMessageContent(
-    messageId: number,
-    content: string,
+  messageId: number,
+  content: string,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ content })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) => logger.error("Failed to update message content", err));
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ content })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to update message content", err));
 }
 
 /**
@@ -49,16 +49,14 @@ export async function updateMessageContent(
  * Called in onFinish when token stats are available.
  */
 export async function markCompleted(
-    messageId: number,
-    maxTokensUsed: number,
+  messageId: number,
+  maxTokensUsed: number,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ maxTokensUsed, status: "completed" })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) =>
-            logger.error("Failed to save token count/status", err),
-        );
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ maxTokensUsed, status: "completed" })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to save token count/status", err));
 }
 
 /**
@@ -66,69 +64,67 @@ export async function markCompleted(
  * Safety net called at the end of the stream.
  */
 export async function markApprovedAndCompleted(
-    messageId: number,
+  messageId: number,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ approvalState: "approved", status: "completed" })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) =>
-            logger.error("Failed to mark approved/completed", err),
-        );
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ approvalState: "approved", status: "completed" })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to mark approved/completed", err));
 }
 
 /**
  * Mark message as cancelled (incomplete) with partial content.
  */
 export async function markCancelled(
-    messageId: number,
-    partialContent: string,
+  messageId: number,
+  partialContent: string,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({
-            content: `${partialContent}\n\n[Response cancelled by user]`,
-            status: "incomplete",
-        })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) => logger.error("Failed to mark cancelled", err));
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({
+      content: `${partialContent}\n\n[Response cancelled by user]`,
+      status: "incomplete",
+    })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to mark cancelled", err));
 }
 
 /**
  * Mark message as failed.
  */
 export async function markFailed(messageId: number): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ status: "failed" } as any)
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) => logger.error("Failed to set failed status", err));
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ status: "failed" } as any)
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to set failed status", err));
 }
 
 /**
  * Save AI SDK messages JSON for multi-turn tool call preservation.
  */
 export async function saveAiMessagesJson(
-    messageId: number,
-    aiMessagesJson: AiMessagesJsonV6,
+  messageId: number,
+  aiMessagesJson: AiMessagesJsonV6,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ aiMessagesJson: JSON.stringify(aiMessagesJson) })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) => logger.error("Failed to save AI messages JSON", err));
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ aiMessagesJson: JSON.stringify(aiMessagesJson) })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to save AI messages JSON", err));
 }
 
 /**
  * Save commit hash on the message.
  */
 export async function saveCommitHash(
-    messageId: number,
-    commitHash: string,
+  messageId: number,
+  commitHash: string,
 ): Promise<void> {
-    await getRemoteDb()
-        .update(remoteSchema.messages)
-        .set({ commitHash })
-        .where(eq(remoteSchema.messages.id, messageId))
-        .catch((err) => logger.error("Failed to save commit hash", err));
+  await getRemoteDb()
+    .update(remoteSchema.messages)
+    .set({ commitHash })
+    .where(eq(remoteSchema.messages.id, messageId))
+    .catch((err) => logger.error("Failed to save commit hash", err));
 }

@@ -10,9 +10,12 @@ import { X, Bot, User, Terminal } from "@/components/ui/icons";
 export const QuotePreview = React.memo(function QuotePreview() {
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
 
-  const handleDismiss = useCallback((id: number) => {
-    setQuotedMessages((prev) => prev.filter((q) => q.id !== id));
-  }, [setQuotedMessages]);
+  const handleDismiss = useCallback(
+    (id: number) => {
+      setQuotedMessages((prev) => prev.filter((q) => q.id !== id));
+    },
+    [setQuotedMessages],
+  );
 
   if (quotedMessages.length === 0) return null;
 
@@ -22,9 +25,7 @@ export const QuotePreview = React.memo(function QuotePreview() {
         const isUser = q.role === "user";
         const isConsole = q.role === "console";
         const excerpt =
-          q.content.length > 160
-            ? q.content.slice(0, 160) + "…"
-            : q.content;
+          q.content.length > 160 ? q.content.slice(0, 160) + "…" : q.content;
 
         const roleLabel = isConsole
           ? "Log de consola"

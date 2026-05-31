@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { selectedChatIdAtom, isStreamingByIdAtom, pendingMessageQueueByIdAtom } from "@/atoms/chatAtoms";
+import {
+  selectedChatIdAtom,
+  isStreamingByIdAtom,
+  pendingMessageQueueByIdAtom,
+} from "@/atoms/chatAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   AlertTriangle,
@@ -211,7 +215,9 @@ export function _Problems() {
   const { streamMessage } = useStreamChat();
   const [selectedChatId] = useAtom(selectedChatIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
-  const isStreaming = selectedChatId ? (isStreamingById.get(selectedChatId) ?? false) : false;
+  const isStreaming = selectedChatId
+    ? (isStreamingById.get(selectedChatId) ?? false)
+    : false;
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
 
   // Whenever the problems pane is shown or the report updates, select all problems
@@ -271,7 +277,8 @@ export function _Problems() {
           No se han encontrado problemas
         </h3>
         <p className="typo-caption max-w-md mb-4">
-          Todo parece correcto. Ejecuta las comprobaciones de nuevo si has hecho cambios recientes.
+          Todo parece correcto. Ejecuta las comprobaciones de nuevo si has hecho
+          cambios recientes.
         </p>
         <RecheckButton
           appId={selectedAppId}
@@ -310,10 +317,13 @@ export function _Problems() {
             setPendingMessageQueue((prev) => {
               const next = new Map(prev);
               const existing = next.get(selectedChatId) ?? [];
-              next.set(selectedChatId, [...existing, {
-                id: `lint-fix-${Date.now()}`,
-                prompt: fixPrompt,
-              }]);
+              next.set(selectedChatId, [
+                ...existing,
+                {
+                  id: `lint-fix-${Date.now()}`,
+                  prompt: fixPrompt,
+                },
+              ]);
               return next;
             });
           } else {

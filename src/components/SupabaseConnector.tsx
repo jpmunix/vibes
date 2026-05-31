@@ -7,7 +7,11 @@ import { ipc, type SupabaseProject } from "@/ipc/types";
 import { toast } from "sonner";
 import { useSettings } from "@/hooks/useSettings";
 import { useSupabase } from "@/hooks/useSupabase";
-import { UnifiedSelector, type SelectorGroup, type SelectorOption } from "@/components/ui/UnifiedSelector";
+import {
+  UnifiedSelector,
+  type SelectorGroup,
+  type SelectorOption,
+} from "@/components/ui/UnifiedSelector";
 import {
   Card,
   CardContent,
@@ -16,7 +20,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { Database, Eye, EyeOff, Loader2, Save, SupabaseIcon } from "@/components/ui/icons";
+import {
+  Database,
+  Eye,
+  EyeOff,
+  Loader2,
+  Save,
+  SupabaseIcon,
+} from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
@@ -149,11 +160,24 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         title="Supabase"
         icon={<SupabaseIcon className="h-5 w-5" />}
         description={
-          <>Esta app está conectada al proyecto:{" "}<Badge variant="secondary" className="ml-2 text-base font-bold px-3 py-1">{app.supabaseProjectName}</Badge></>
+          <>
+            Esta app está conectada al proyecto:{" "}
+            <Badge
+              variant="secondary"
+              className="ml-2 text-base font-bold px-3 py-1"
+            >
+              {app.supabaseProjectName}
+            </Badge>
+          </>
         }
       >
         <div className="pt-2 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={handleUnsetProject} className="text-muted-foreground hover:text-destructive">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUnsetProject}
+            className="text-muted-foreground hover:text-destructive"
+          >
             <Trash2 className="h-3.5 w-3.5 mr-1" />
             Desconectar proyecto
           </Button>
@@ -255,8 +279,8 @@ export function SupabaseConnector({ appId }: { appId: number }) {
 
             {projects.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No se han encontrado proyectos en tus organizaciones de
-                Supabase conectadas.
+                No se han encontrado proyectos en tus organizaciones de Supabase
+                conectadas.
               </p>
             ) : (
               <div className="space-y-2">
@@ -264,10 +288,12 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                 <UnifiedSelector
                   value={currentProjectValue}
                   onChange={handleProjectSelect}
-                  groups={Object.entries(groupedProjects).map(([orgKey, { orgLabel }]) => ({
-                    id: orgKey,
-                    heading: orgLabel,
-                  }))}
+                  groups={Object.entries(groupedProjects).map(
+                    ([orgKey, { orgLabel }]) => ({
+                      id: orgKey,
+                      heading: orgLabel,
+                    }),
+                  )}
                   options={Object.entries(groupedProjects).flatMap(
                     ([orgKey, { projects: orgProjects }]) =>
                       orgProjects.map((project) => ({

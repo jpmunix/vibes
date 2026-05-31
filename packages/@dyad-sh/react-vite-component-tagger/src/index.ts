@@ -46,7 +46,8 @@ export default function dyadTagger(): Plugin {
               const alreadyTagged = node.attributes?.some(
                 (attr: any) =>
                   attr.type === "JSXAttribute" &&
-                  (attr.name?.name === "data-dyad-id" || attr.name?.name === "data-vibes-id"),
+                  (attr.name?.name === "data-dyad-id" ||
+                    attr.name?.name === "data-vibes-id"),
               );
               if (alreadyTagged) return;
 

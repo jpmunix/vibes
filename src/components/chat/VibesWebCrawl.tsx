@@ -19,8 +19,15 @@ export const VibesWebCrawl: React.FC<VibesWebCrawlProps> = ({
     <div className="bg-(--background-lightest) rounded-lg px-4 py-2 border my-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Globe size={16} className={isPending ? "text-blue-400 animate-pulse" : "text-blue-600"} />
-          <div className={`text-xs font-medium ${isPending ? "text-blue-400" : "text-blue-600"}`}>
+          <Globe
+            size={16}
+            className={
+              isPending ? "text-blue-400 animate-pulse" : "text-blue-600"
+            }
+          />
+          <div
+            className={`text-xs font-medium ${isPending ? "text-blue-400" : "text-blue-600"}`}
+          >
             {isPending ? "Buscando en la web..." : "Búsqueda Web"}
           </div>
         </div>

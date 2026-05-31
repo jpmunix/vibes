@@ -8,7 +8,9 @@ const ReactCompilerConfig = {};
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    "import.meta.env.VITE_APP_FLAVOR": JSON.stringify(process.env.VIBES_FLAVOR || "default"),
+    "import.meta.env.VITE_APP_FLAVOR": JSON.stringify(
+      process.env.VIBES_FLAVOR || "default",
+    ),
   },
   server: {
     // HMR enabled for faster development iteration.
@@ -39,11 +41,17 @@ export default defineConfig({
             [["shiki", "react-shiki"], "vendor-shiki"],
             [["framer-motion"], "vendor-motion"],
 
-            [["lexical", "@lexical/", "lexical-beautiful-mentions"], "vendor-lexical"],
+            [
+              ["lexical", "@lexical/", "lexical-beautiful-mentions"],
+              "vendor-lexical",
+            ],
             [["konva", "react-konva"], "vendor-konva"],
             [["firebase", "@firebase/"], "vendor-firebase"],
             [["react-markdown", "remark-gfm"], "vendor-markdown"],
-            [["@tanstack/react-query", "@tanstack/react-router"], "vendor-tanstack"],
+            [
+              ["@tanstack/react-query", "@tanstack/react-router"],
+              "vendor-tanstack",
+            ],
             [["@radix-ui/"], "vendor-radix"],
             [["ai/", "@ai-sdk/"], "vendor-ai"],
           ];

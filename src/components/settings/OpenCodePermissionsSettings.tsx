@@ -7,26 +7,78 @@ import { ChevronRight, Plus, X } from "@/components/ui/icons";
 // ── Tool definitions (no icons — follow existing pattern) ──
 interface ToolDef {
   key: string;
-  settingsKey: keyof NonNullable<import("@/lib/schemas").OpenCodePermissionsConfig>;
+  settingsKey: keyof NonNullable<
+    import("@/lib/schemas").OpenCodePermissionsConfig
+  >;
   label: string;
   description: string;
   defaultValue: OpenCodePermission;
 }
 
 const TOOLS: ToolDef[] = [
-  { key: "edit", settingsKey: "edit", label: "Editar archivos", description: "Crear, modificar y borrar archivos del proyecto", defaultValue: "ask" },
-  { key: "bash", settingsKey: "bash", label: "Terminal (bash)", description: "Ejecutar comandos en la terminal", defaultValue: "allow" },
-  { key: "webfetch", settingsKey: "webfetch", label: "Acceso web", description: "Acceder a URLs externas", defaultValue: "ask" },
-  { key: "websearch", settingsKey: "websearch", label: "Búsqueda web", description: "Buscar información en internet", defaultValue: "ask" },
-  { key: "lsp", settingsKey: "lsp", label: "Diagnósticos LSP", description: "Verificación de tipos por archivo", defaultValue: "allow" },
-  { key: "task", settingsKey: "task", label: "Subagentes", description: "Lanzar sub-agentes para tareas paralelas", defaultValue: "allow" },
-  { key: "skill", settingsKey: "skill", label: "Skills", description: "Ejecutar skills y prompts predefinidos", defaultValue: "allow" },
-  { key: "externalDirectory", settingsKey: "externalDirectory", label: "Directorios externos", description: "Acceder a archivos fuera del directorio del proyecto", defaultValue: "ask" },
+  {
+    key: "edit",
+    settingsKey: "edit",
+    label: "Editar archivos",
+    description: "Crear, modificar y borrar archivos del proyecto",
+    defaultValue: "ask",
+  },
+  {
+    key: "bash",
+    settingsKey: "bash",
+    label: "Terminal (bash)",
+    description: "Ejecutar comandos en la terminal",
+    defaultValue: "allow",
+  },
+  {
+    key: "webfetch",
+    settingsKey: "webfetch",
+    label: "Acceso web",
+    description: "Acceder a URLs externas",
+    defaultValue: "ask",
+  },
+  {
+    key: "websearch",
+    settingsKey: "websearch",
+    label: "Búsqueda web",
+    description: "Buscar información en internet",
+    defaultValue: "ask",
+  },
+  {
+    key: "lsp",
+    settingsKey: "lsp",
+    label: "Diagnósticos LSP",
+    description: "Verificación de tipos por archivo",
+    defaultValue: "allow",
+  },
+  {
+    key: "task",
+    settingsKey: "task",
+    label: "Subagentes",
+    description: "Lanzar sub-agentes para tareas paralelas",
+    defaultValue: "allow",
+  },
+  {
+    key: "skill",
+    settingsKey: "skill",
+    label: "Skills",
+    description: "Ejecutar skills y prompts predefinidos",
+    defaultValue: "allow",
+  },
+  {
+    key: "externalDirectory",
+    settingsKey: "externalDirectory",
+    label: "Directorios externos",
+    description: "Acceder a archivos fuera del directorio del proyecto",
+    defaultValue: "ask",
+  },
 ];
 
 // ── Bash sub-rules (only filesystem-level commands) ──
 interface SubRule {
-  settingsKey: keyof NonNullable<import("@/lib/schemas").OpenCodePermissionsConfig>;
+  settingsKey: keyof NonNullable<
+    import("@/lib/schemas").OpenCodePermissionsConfig
+  >;
   label: string;
   defaultValue: OpenCodePermission;
 }
@@ -44,31 +96,57 @@ interface GitRuleGroup {
 const GIT_REPO_GROUPS: GitRuleGroup[] = [
   {
     title: "Staging",
-    rules: [
-      { settingsKey: "gitAdd", label: "git add", defaultValue: "ask" },
-    ],
+    rules: [{ settingsKey: "gitAdd", label: "git add", defaultValue: "ask" }],
   },
   {
     title: "Local — destructivo",
     rules: [
       { settingsKey: "gitCommit", label: "git commit", defaultValue: "deny" },
       { settingsKey: "gitReset", label: "git reset", defaultValue: "ask" },
-      { settingsKey: "gitCheckout", label: "git checkout", defaultValue: "ask" },
+      {
+        settingsKey: "gitCheckout",
+        label: "git checkout",
+        defaultValue: "ask",
+      },
       { settingsKey: "gitRestore", label: "git restore", defaultValue: "ask" },
       { settingsKey: "gitClean", label: "git clean", defaultValue: "ask" },
       { settingsKey: "gitRebase", label: "git rebase", defaultValue: "ask" },
-      { settingsKey: "gitMergeAbort", label: "git merge --abort", defaultValue: "ask" },
-      { settingsKey: "gitStashDrop", label: "git stash drop", defaultValue: "ask" },
-      { settingsKey: "gitBranchDelete", label: "git branch -D", defaultValue: "ask" },
-      { settingsKey: "gitCherryPickAbort", label: "git cherry-pick --abort", defaultValue: "ask" },
+      {
+        settingsKey: "gitMergeAbort",
+        label: "git merge --abort",
+        defaultValue: "ask",
+      },
+      {
+        settingsKey: "gitStashDrop",
+        label: "git stash drop",
+        defaultValue: "ask",
+      },
+      {
+        settingsKey: "gitBranchDelete",
+        label: "git branch -D",
+        defaultValue: "ask",
+      },
+      {
+        settingsKey: "gitCherryPickAbort",
+        label: "git cherry-pick --abort",
+        defaultValue: "ask",
+      },
     ],
   },
   {
     title: "Remoto — destructivo",
     rules: [
       { settingsKey: "gitPush", label: "git push", defaultValue: "deny" },
-      { settingsKey: "gitPushForce", label: "git push --force", defaultValue: "deny" },
-      { settingsKey: "gitPushDelete", label: "git push --delete", defaultValue: "deny" },
+      {
+        settingsKey: "gitPushForce",
+        label: "git push --force",
+        defaultValue: "deny",
+      },
+      {
+        settingsKey: "gitPushDelete",
+        label: "git push --delete",
+        defaultValue: "deny",
+      },
     ],
   },
 ];
@@ -141,11 +219,15 @@ export function OpenCodePermissionsSettings() {
   const [bashExpanded, setBashExpanded] = useState(false);
   const [repoExpanded, setRepoExpanded] = useState(false);
   const [newRulePattern, setNewRulePattern] = useState("");
-  const [newRulePermission, setNewRulePermission] = useState<OpenCodePermission>("ask");
+  const [newRulePermission, setNewRulePermission] =
+    useState<OpenCodePermission>("ask");
 
   const getToolValue = (tool: ToolDef): OpenCodePermission => {
     if (!perms) return tool.defaultValue;
-    return (perms[tool.settingsKey] as OpenCodePermission | undefined) ?? tool.defaultValue;
+    return (
+      (perms[tool.settingsKey] as OpenCodePermission | undefined) ??
+      tool.defaultValue
+    );
   };
 
   const setToolValue = async (tool: ToolDef, value: OpenCodePermission) => {
@@ -159,7 +241,10 @@ export function OpenCodePermissionsSettings() {
 
   const getSubRuleValue = (rule: SubRule): OpenCodePermission => {
     if (!perms) return rule.defaultValue;
-    return (perms[rule.settingsKey] as OpenCodePermission | undefined) ?? rule.defaultValue;
+    return (
+      (perms[rule.settingsKey] as OpenCodePermission | undefined) ??
+      rule.defaultValue
+    );
   };
 
   const setSubRuleValue = async (rule: SubRule, value: OpenCodePermission) => {
@@ -200,7 +285,10 @@ export function OpenCodePermissionsSettings() {
     });
   };
 
-  const updateCustomRulePermission = async (ruleId: string, permission: OpenCodePermission) => {
+  const updateCustomRulePermission = async (
+    ruleId: string,
+    permission: OpenCodePermission,
+  ) => {
     await updateSettings({
       openCodePermissions2: {
         ...perms,
@@ -287,7 +375,9 @@ export function OpenCodePermissionsSettings() {
                           className="flex justify-between gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center"
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="typo-label font-mono">{rule.pattern}</span>
+                            <span className="typo-label font-mono">
+                              {rule.pattern}
+                            </span>
                             <button
                               onClick={() => removeCustomRule(rule.id)}
                               className="flex-shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer rounded-md hover:bg-destructive/10"
@@ -299,7 +389,9 @@ export function OpenCodePermissionsSettings() {
                           <div className="shrink-0">
                             <PermissionPill
                               value={rule.permission}
-                              onChange={(v) => updateCustomRulePermission(rule.id, v)}
+                              onChange={(v) =>
+                                updateCustomRulePermission(rule.id, v)
+                              }
                             />
                           </div>
                         </div>
@@ -326,7 +418,8 @@ export function OpenCodePermissionsSettings() {
                           disabled={!newRulePattern.trim()}
                           className={cn(
                             "px-4 py-1.5 typo-select rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-all duration-200 flex items-center gap-2",
-                            !newRulePattern.trim() && "opacity-30 pointer-events-none",
+                            !newRulePattern.trim() &&
+                              "opacity-30 pointer-events-none",
                           )}
                         >
                           <Plus className="h-3.5 w-3.5" />

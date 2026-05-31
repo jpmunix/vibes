@@ -151,6 +151,19 @@ export const languageModelContracts = {
     output: z.void(),
   }),
 
+  verifyCustomProvider: defineContract({
+    channel: "verify-custom-provider",
+    input: z.object({
+      apiBaseUrl: z.string(),
+      apiKey: z.string().optional(),
+    }),
+    output: z.object({
+      ok: z.boolean(),
+      count: z.number().optional(),
+      error: z.string().optional(),
+    }),
+  }),
+
   listOllamaModels: defineContract({
     channel: "local-models:list-ollama",
     input: z.void(),

@@ -10,7 +10,7 @@ export const libraryRoute = new Route({
   path: "/library",
   component: () => (
     <Suspense fallback={<PageLoader />}>
-    <LibraryPage />
+      <LibraryPage />
     </Suspense>
   ),
 });

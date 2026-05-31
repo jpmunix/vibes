@@ -24,16 +24,31 @@ export default function CommitMessageDialog({
   console.log("[DEBUG] CommitMessageDialog render, isOpen=", isOpen);
   if (!isOpen) return null;
 
-  console.log("[DEBUG] CommitMessageDialog IS OPEN, rendering card for:", filename);
+  console.log(
+    "[DEBUG] CommitMessageDialog IS OPEN, rendering card for:",
+    filename,
+  );
 
   // No portals — render inline. The parent must have position:relative.
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
       {/* Overlay */}
       <div
-        style={{ position: "fixed", inset: 0, zIndex: 9999, backgroundColor: "rgba(0,0,0,0.5)" }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          backgroundColor: "rgba(0,0,0,0.5)",
+        }}
         onClick={onCancel}
       />
 
@@ -52,9 +67,12 @@ export default function CommitMessageDialog({
           margin: "0 1rem",
         }}
       >
-        <h3 className="typo-subsection-title font-semibold mb-1">Mensaje de commit</h3>
+        <h3 className="typo-subsection-title font-semibold mb-1">
+          Mensaje de commit
+        </h3>
         <p className="typo-caption text-muted-foreground mb-4">
-          Archivo: <span className="text-foreground font-medium">{filename}</span>
+          Archivo:{" "}
+          <span className="text-foreground font-medium">{filename}</span>
         </p>
         <input
           autoFocus
@@ -68,13 +86,19 @@ export default function CommitMessageDialog({
           }}
         />
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
           <Button
             size="sm"
             disabled={!value.trim() || isCommitting}
             onClick={onConfirm}
           >
-            {isCommitting ? <Loader2 className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            {isCommitting ? (
+              <Loader2 className="animate-spin mr-2" size={14} />
+            ) : (
+              <Check className="mr-2" size={14} />
+            )}
             Commit
           </Button>
         </div>

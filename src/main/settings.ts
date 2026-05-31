@@ -11,13 +11,16 @@ import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 
-import {
-  FALLBACK_SELECTED_MODEL,
-} from "@/ipc/shared/language_model_constants";
+import { FALLBACK_SELECTED_MODEL } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 import { preferencesCache } from "./preferences-cache";
 import { readSession, writeSession, clearSession } from "./session";
-import { readRuntimeState, writeRuntimeState, clearRuntimeState, RuntimeState } from "./runtime";
+import {
+  readRuntimeState,
+  writeRuntimeState,
+  clearRuntimeState,
+  RuntimeState,
+} from "./runtime";
 import path from "node:path";
 import { getUserDataPath } from "../paths/paths";
 
@@ -137,7 +140,10 @@ export function readSettings(): UserSettings {
 
     if (session?.userId) combinedSettings.userId = session.userId;
     if (session?.sessionToken) {
-      combinedSettings.sessionToken = { value: session.sessionToken, encryptionType: "plaintext" };
+      combinedSettings.sessionToken = {
+        value: session.sessionToken,
+        encryptionType: "plaintext",
+      };
     }
 
     // Normalize deprecated enum values (migration)
@@ -157,7 +163,7 @@ export function writeSettings(settings: Partial<UserSettings>): void {
   try {
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
-    
+
     // Update local compose cache immediately
     cachedSettings = newSettings;
 
@@ -184,16 +190,23 @@ export function writeSettings(settings: Partial<UserSettings>): void {
     // 3. KV Store Updates (All other keys including secrets go to KV)
     const kvUpdates: Record<string, string> = {};
     for (const [key, value] of Object.entries(settings)) {
-      if (!RUNTIME_KEYS.has(key) && key !== "userId" && key !== "sessionToken") {
-        kvUpdates[key] = typeof value === "string" ? value : JSON.stringify(value);
+      if (
+        !RUNTIME_KEYS.has(key) &&
+        key !== "userId" &&
+        key !== "sessionToken"
+      ) {
+        kvUpdates[key] =
+          typeof value === "string" ? value : JSON.stringify(value);
       }
     }
 
-    const uid = settings.userId ?? preferencesCache.currentUserId ?? readSession()?.userId;
+    const uid =
+      settings.userId ??
+      preferencesCache.currentUserId ??
+      readSession()?.userId;
     if (uid && Object.keys(kvUpdates).length > 0) {
       preferencesCache.setMany(uid, kvUpdates, 0);
     }
-
   } catch (error) {
     logger.error("Error writing settings (Proxy):", error);
   }

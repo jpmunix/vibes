@@ -1,6 +1,9 @@
 import React from "react";
 import { useSettings } from "@/hooks/useSettings";
-import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
+import {
+  UnifiedSelector,
+  type SelectorOption,
+} from "@/components/ui/UnifiedSelector";
 import { ChevronDown } from "@/components/ui/icons";
 import type { ChatLanguage } from "@/lib/schemas";
 
@@ -10,12 +13,14 @@ const options: SelectorOption[] = [
   {
     value: "es",
     label: "Español",
-    description: "El agente priorizará este idioma en sus respuestas y explicaciones.",
+    description:
+      "El agente priorizará este idioma en sus respuestas y explicaciones.",
   },
   {
     value: "en",
     label: "English",
-    description: "The assistant will always respond in English in all conversations.",
+    description:
+      "The assistant will always respond in English in all conversations.",
   },
 ];
 

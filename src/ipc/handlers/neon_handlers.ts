@@ -1,6 +1,5 @@
 import log from "electron-log";
 
-
 import { createTestOnlyLoggedHandler } from "./safe_handle";
 
 import { handleNeonOAuthReturn } from "../../neon_admin/neon_return_handler";
@@ -23,86 +22,96 @@ const testOnlyHandle = createTestOnlyLoggedHandler(logger);
 
 export function registerNeonHandlers() {
   // Do not use log handler because there's sensitive data in the response
-  createTypedHandler(neonContracts.createProject, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { name, appId } = params;
-    const neonClient = await getNeonClient();
+  createTypedHandler(
+    neonContracts.createProject,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { name, appId } = params;
+      const neonClient = await getNeonClient();
 
-    logger.info(`Creating Neon project: ${name} for app ${appId}`);
+      logger.info(`Creating Neon project: ${name} for app ${appId}`);
 
-    try {
-      // Get the organization ID
-      const orgId = await getNeonOrganizationId();
+      try {
+        // Get the organization ID
+        const orgId = await getNeonOrganizationId();
 
-      // Create project with retry on locked errors
-      const response = await retryOnLocked(
-        () =>
-          neonClient.createProject({
-            project: {
-              name: name,
-              org_id: orgId,
-            },
-          }),
-        `Create project ${name} for app ${appId}`,
-      );
-
-      if (!response.data.project) {
-        throw new Error("Failed to create project: No project data returned.");
-      }
-
-      const project = response.data.project;
-      const developmentBranch = response.data.branch;
-
-      const previewBranchResponse = await retryOnLocked(
-        () =>
-          neonClient.createProjectBranch(project.id, {
-            endpoints: [{ type: EndpointType.ReadOnly }],
-            branch: {
-              name: "preview",
-              parent_id: developmentBranch.id,
-            },
-          }),
-        `Create preview branch for project ${project.id}`,
-      );
-
-      if (
-        !previewBranchResponse.data.branch ||
-        !previewBranchResponse.data.connection_uris
-      ) {
-        throw new Error(
-          "Failed to create preview branch: No branch data returned.",
+        // Create project with retry on locked errors
+        const response = await retryOnLocked(
+          () =>
+            neonClient.createProject({
+              project: {
+                name: name,
+                org_id: orgId,
+              },
+            }),
+          `Create project ${name} for app ${appId}`,
         );
+
+        if (!response.data.project) {
+          throw new Error(
+            "Failed to create project: No project data returned.",
+          );
+        }
+
+        const project = response.data.project;
+        const developmentBranch = response.data.branch;
+
+        const previewBranchResponse = await retryOnLocked(
+          () =>
+            neonClient.createProjectBranch(project.id, {
+              endpoints: [{ type: EndpointType.ReadOnly }],
+              branch: {
+                name: "preview",
+                parent_id: developmentBranch.id,
+              },
+            }),
+          `Create preview branch for project ${project.id}`,
+        );
+
+        if (
+          !previewBranchResponse.data.branch ||
+          !previewBranchResponse.data.connection_uris
+        ) {
+          throw new Error(
+            "Failed to create preview branch: No branch data returned.",
+          );
+        }
+
+        const previewBranch = previewBranchResponse.data.branch;
+
+        // Store project and branch info in the app's DB row
+        await db
+          .update(remoteSchema.apps)
+          .set({
+            neonProjectId: project.id,
+            neonDevelopmentBranchId: developmentBranch.id,
+            neonPreviewBranchId: previewBranch.id,
+          })
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId),
+            ),
+          );
+
+        logger.info(
+          `Successfully created Neon project: ${project.id} and development branch: ${developmentBranch.id} for app ${appId}`,
+        );
+        return {
+          id: project.id,
+          name: project.name,
+          connectionString: response.data.connection_uris[0].connection_uri,
+          branchId: developmentBranch.id,
+        };
+      } catch (error: any) {
+        const errorMessage = getNeonErrorMessage(error);
+        const message = `Failed to create Neon project for app ${appId}: ${errorMessage}`;
+        logger.error(message);
+        throw new Error(message);
       }
-
-      const previewBranch = previewBranchResponse.data.branch;
-
-      // Store project and branch info in the app's DB row
-      await db
-        .update(remoteSchema.apps)
-        .set({
-          neonProjectId: project.id,
-          neonDevelopmentBranchId: developmentBranch.id,
-          neonPreviewBranchId: previewBranch.id,
-        })
-        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
-
-      logger.info(
-        `Successfully created Neon project: ${project.id} and development branch: ${developmentBranch.id} for app ${appId}`,
-      );
-      return {
-        id: project.id,
-        name: project.name,
-        connectionString: response.data.connection_uris[0].connection_uri,
-        branchId: developmentBranch.id,
-      };
-    } catch (error: any) {
-      const errorMessage = getNeonErrorMessage(error);
-      const message = `Failed to create Neon project for app ${appId}: ${errorMessage}`;
-      logger.error(message);
-      throw new Error(message);
-    }
-  });
+    },
+  );
 
   createTypedHandler(neonContracts.getProject, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -115,7 +124,12 @@ export function registerNeonHandlers() {
       const app = await db
         .select()
         .from(remoteSchema.apps)
-        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+        .where(
+          and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
+        )
         .limit(1);
 
       if (app.length === 0) {

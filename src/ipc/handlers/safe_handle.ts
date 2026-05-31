@@ -8,7 +8,11 @@ import { HandlerContext } from "./base";
 export function createLoggedHandler(_logger: log.LogFunctions) {
   return (
     channel: string,
-    fn: (event: IpcMainInvokeEvent, input: any, context: HandlerContext) => Promise<any>,
+    fn: (
+      event: IpcMainInvokeEvent,
+      input: any,
+      context: HandlerContext,
+    ) => Promise<any>,
   ) => {
     ipcMain.handle(
       channel,
@@ -40,7 +44,7 @@ export function createLoggedHandler(_logger: log.LogFunctions) {
 export function createTestOnlyLoggedHandler(logger: log.LogFunctions) {
   if (!IS_TEST_BUILD) {
     // Returns a no-op function for non-e2e test builds.
-    return () => { };
+    return () => {};
   }
   return createLoggedHandler(logger);
 }

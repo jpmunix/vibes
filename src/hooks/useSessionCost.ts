@@ -7,14 +7,11 @@ import type { Message } from "@/ipc/types";
  * Regex to capture a single vibes-token-usage opening tag with all its attributes.
  * We only need the opening tag — the tag is always self-closing or empty.
  */
-const TOKEN_USAGE_TAG_RE =
-  /<vibes-token-usage([^>]*)>/g;
+const TOKEN_USAGE_TAG_RE = /<vibes-token-usage([^>]*)>/g;
 
 /** Extract a named attribute value from a tag attribute string. */
 function getAttr(attrs: string, name: string): string {
-  const m = attrs.match(
-    new RegExp(`${name}="([^"]*)"`)
-  );
+  const m = attrs.match(new RegExp(`${name}="([^"]*)"`));
   return m?.[1] ?? "";
 }
 
@@ -93,7 +90,9 @@ function extractMessageCost(content: string): {
  * It recalculates whenever messages change (i.e. stream ends) and whenever
  * the chatId changes.
  */
-export function useSessionCost(chatId: number | null | undefined): SessionCostResult {
+export function useSessionCost(
+  chatId: number | null | undefined,
+): SessionCostResult {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
 
   return useMemo<SessionCostResult>(() => {

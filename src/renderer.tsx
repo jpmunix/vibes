@@ -20,13 +20,21 @@ import {
   MutationCache,
 } from "@tanstack/react-query";
 import { showError } from "./lib/toast";
-import { ChatWindowSkeleton, MainWindowSkeleton, SecondaryWindowSkeleton } from "./components/skeletons";
+import {
+  ChatWindowSkeleton,
+  MainWindowSkeleton,
+  SecondaryWindowSkeleton,
+} from "./components/skeletons";
 import { AuthGate } from "./components/AuthGate";
 
 const AppRoot = lazy(() => import("./AppRoot"));
 
 // @ts-ignore
-console.log("Running in mode:", import.meta.env.MODE, isElectron ? "(Electron)" : "(Web)");
+console.log(
+  "Running in mode:",
+  import.meta.env.MODE,
+  isElectron ? "(Electron)" : "(Web)",
+);
 
 interface MyMeta extends Record<string, unknown> {
   showErrorToast: boolean;
@@ -65,7 +73,6 @@ const queryClient = new QueryClient({
   }),
 });
 
-
 // Skeleton components (ChatWindowSkeleton, MainWindowSkeleton, SecondaryWindowSkeleton)
 // are imported from ./components/skeletons.tsx — shared with AuthGate for visual continuity.
 
@@ -101,7 +108,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
@@ -109,18 +119,13 @@ if (windowType === "database" && appIdStr) {
   gitRoot.render(<SecondaryWindowSkeleton />);
 
   const commitHashParam = urlParams.get("commitHash") || undefined;
-  import("./components/git_window/GitWindowApp").then(
-    ({ GitWindowApp }) => {
-      gitRoot.render(
-        <StrictMode>
-          <GitWindowApp
-            appId={Number(appIdStr)}
-            commitHash={commitHashParam}
-          />
-        </StrictMode>,
-      );
-    },
-  );
+  import("./components/git_window/GitWindowApp").then(({ GitWindowApp }) => {
+    gitRoot.render(
+      <StrictMode>
+        <GitWindowApp appId={Number(appIdStr)} commitHash={commitHashParam} />
+      </StrictMode>,
+    );
+  });
 } else if (windowType === "chat" && appIdStr) {
   // P18 — Sync theme from parent window via URL params
   if (themeParam) {
@@ -129,16 +134,18 @@ if (windowType === "database" && appIdStr) {
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
     // Apply intensity immediately to CSS variable so it's ready for skeleton
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // P18 — Show skeleton loader immediately while JS loads
   const root = createRoot(document.getElementById("root")!);
   root.render(<ChatWindowSkeleton />);
 
-
-  import("./components/chat_window/ChatWindowApp").then(
-    ({ ChatWindowApp }) => {
+  import("./components/chat_window/ChatWindowApp")
+    .then(({ ChatWindowApp }) => {
       root.render(
         <StrictMode>
           <ChatWindowApp
@@ -149,49 +156,51 @@ if (windowType === "database" && appIdStr) {
           />
         </StrictMode>,
       );
-    },
-  ).catch((err) => {
-    console.error("Failed to load ChatWindowApp:", err);
-    // Replace skeleton with error UI so the animation stops consuming resources
-    root.render(
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        width: "100%",
-        background: "var(--background, #1a1a1a)",
-        color: "var(--foreground, #e5e5e5)",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        gap: "16px",
-        padding: "24px",
-        textAlign: "center",
-      }}>
-        <div style={{ fontSize: "24px" }}>⚠️</div>
-        <p style={{ fontSize: "14px", opacity: 0.8 }}>
-          Error al cargar la ventana de chat
-        </p>
-        <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "400px" }}>
-          {String(err?.message || err)}
-        </p>
-        <button
-          onClick={() => window.location.reload()}
+    })
+    .catch((err) => {
+      console.error("Failed to load ChatWindowApp:", err);
+      // Replace skeleton with error UI so the animation stops consuming resources
+      root.render(
+        <div
           style={{
-            padding: "8px 20px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.1)",
-            color: "inherit",
-            cursor: "pointer",
-            fontSize: "13px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            width: "100%",
+            background: "var(--background, #1a1a1a)",
+            color: "var(--foreground, #e5e5e5)",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            gap: "16px",
+            padding: "24px",
+            textAlign: "center",
           }}
         >
-          Reintentar
-        </button>
-      </div>,
-    );
-  });
+          <div style={{ fontSize: "24px" }}>⚠️</div>
+          <p style={{ fontSize: "14px", opacity: 0.8 }}>
+            Error al cargar la ventana de chat
+          </p>
+          <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "400px" }}>
+            {String(err?.message || err)}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.1)",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
+          >
+            Reintentar
+          </button>
+        </div>,
+      );
+    });
 } else if (windowType === "code" && appIdStr) {
   // Sync theme from parent window via URL params
   if (themeParam) {
@@ -199,22 +208,23 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
   const codeRoot = createRoot(document.getElementById("root")!);
   codeRoot.render(<SecondaryWindowSkeleton />);
 
-  import("./components/code_window/CodeWindowApp").then(
-    ({ CodeWindowApp }) => {
-      codeRoot.render(
-        <StrictMode>
-          <CodeWindowApp appId={Number(appIdStr)} />
-        </StrictMode>,
-      );
-    },
-  );
+  import("./components/code_window/CodeWindowApp").then(({ CodeWindowApp }) => {
+    codeRoot.render(
+      <StrictMode>
+        <CodeWindowApp appId={Number(appIdStr)} />
+      </StrictMode>,
+    );
+  });
 } else if (windowType === "console" && appIdStr) {
   // Sync theme from parent window via URL params
   if (themeParam) {
@@ -222,7 +232,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
@@ -245,7 +258,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
@@ -256,10 +272,10 @@ if (windowType === "database" && appIdStr) {
     ({ MessageWindowApp }) => {
       msgRoot.render(
         <StrictMode>
-          <MessageWindowApp 
-            appId={Number(appIdStr)} 
-            chatId={Number(chatIdStr)} 
-            messageId={Number(messageIdStr)} 
+          <MessageWindowApp
+            appId={Number(appIdStr)}
+            chatId={Number(chatIdStr)}
+            messageId={Number(messageIdStr)}
           />
         </StrictMode>,
       );
@@ -272,7 +288,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
@@ -295,7 +314,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
@@ -318,59 +340,73 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
   const adminRoot = createRoot(document.getElementById("root")!);
   adminRoot.render(<SecondaryWindowSkeleton />);
 
-  import("./components/admin_window/AdminWindowApp").then(
-    ({ AdminWindowApp }) => {
+  import("./components/admin_window/AdminWindowApp")
+    .then(({ AdminWindowApp }) => {
       adminRoot.render(
         <StrictMode>
           <AdminWindowApp />
         </StrictMode>,
       );
-    },
-  ).catch((err) => {
-    console.error("Failed to load AdminWindowApp:", err);
-    adminRoot.render(
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        background: "var(--background, #1a1a1a)",
-        color: "var(--foreground, #e5e5e5)",
-        fontFamily: "system-ui, sans-serif",
-        gap: "12px",
-        padding: "24px",
-        textAlign: "center",
-      }}>
-        <div style={{ fontSize: "24px" }}>⚠️</div>
-        <p style={{ fontSize: "14px", opacity: 0.8 }}>Error al cargar Admin</p>
-        <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "500px", wordBreak: "break-all" }}>
-          {String(err?.message || err)}
-        </p>
-        <button
-          onClick={() => window.location.reload()}
+    })
+    .catch((err) => {
+      console.error("Failed to load AdminWindowApp:", err);
+      adminRoot.render(
+        <div
           style={{
-            padding: "8px 20px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.1)",
-            color: "inherit",
-            cursor: "pointer",
-            fontSize: "13px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            background: "var(--background, #1a1a1a)",
+            color: "var(--foreground, #e5e5e5)",
+            fontFamily: "system-ui, sans-serif",
+            gap: "12px",
+            padding: "24px",
+            textAlign: "center",
           }}
         >
-          Reintentar
-        </button>
-      </div>,
-    );
-  });
+          <div style={{ fontSize: "24px" }}>⚠️</div>
+          <p style={{ fontSize: "14px", opacity: 0.8 }}>
+            Error al cargar Admin
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              opacity: 0.5,
+              maxWidth: "500px",
+              wordBreak: "break-all",
+            }}
+          >
+            {String(err?.message || err)}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.1)",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
+          >
+            Reintentar
+          </button>
+        </div>,
+      );
+    });
 } else if (windowType === "docs") {
   // Sync theme from parent window via URL params
   if (themeParam) {
@@ -378,22 +414,23 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads
   const docsRoot = createRoot(document.getElementById("root")!);
   docsRoot.render(<SecondaryWindowSkeleton />);
 
-  import("./components/docs_window/DocsWindowApp").then(
-    ({ DocsWindowApp }) => {
-      docsRoot.render(
-        <StrictMode>
-          <DocsWindowApp />
-        </StrictMode>,
-      );
-    },
-  );
+  import("./components/docs_window/DocsWindowApp").then(({ DocsWindowApp }) => {
+    docsRoot.render(
+      <StrictMode>
+        <DocsWindowApp />
+      </StrictMode>,
+    );
+  });
 } else if (windowType === "release-notes") {
   // Sync theme from parent window via URL params
   if (themeParam) {
@@ -401,7 +438,10 @@ if (windowType === "database" && appIdStr) {
   }
   if (intensityParam) {
     localStorage.setItem("theme-intensity", intensityParam);
-    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
   }
 
   // Show skeleton immediately while JS bundle loads

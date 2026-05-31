@@ -76,8 +76,8 @@ export function AutoRouterModelBadge({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div 
-            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto ${onClick ? 'cursor-pointer hover:text-foreground' : 'cursor-help'}`}
+          <div
+            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto ${onClick ? "cursor-pointer hover:text-foreground" : "cursor-help"}`}
             onClick={onClick}
           >
             <Bot className="h-4 w-4 flex-shrink-0" />

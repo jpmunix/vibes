@@ -1,12 +1,20 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
-import { forwardRef, useState, useCallback, useMemo, Suspense, useRef, useEffect } from "react";
+import {
+  forwardRef,
+  useState,
+  useCallback,
+  useMemo,
+  Suspense,
+  useRef,
+  useEffect,
+} from "react";
 import ChatMessage from "./ChatMessage";
 const SetupBanner = React.lazy(() =>
-  import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
+  import("../SetupBanner").then((m) => ({ default: m.SetupBanner })),
 );
 const OpenRouterSetupBanner = React.lazy(() =>
-  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner }))
+  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner })),
 );
 
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -60,11 +68,14 @@ interface FooterContext {
   onMarkTodoCompleted: () => void;
 }
 
-
 // Footer component - receives context via props (memoized to skip unnecessary renders)
 // IMPORTANT: This component must NOT use any hooks (useState, useEffect, etc.)
 // to avoid conditional hook calls when context is undefined.
-const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
+const FooterComponent = React.memo(function FooterComponent({
+  context,
+}: {
+  context?: FooterContext;
+}) {
   if (!context) return null;
 
   const {
@@ -90,7 +101,6 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
-
           {todoId && (
             <Button
               variant="outline"
@@ -123,12 +133,7 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
 export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
   function MessagesList(
-    {
-      messages,
-      messagesEndRef,
-      hasMoreMessages,
-      onLoadMore,
-    },
+    { messages, messagesEndRef, hasMoreMessages, onLoadMore },
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
@@ -179,14 +184,11 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId, appId]);
 
-
     // Only fetch token count when not streaming
     const { result: tokenCountResult } = useCountTokens(
       !isStreaming ? selectedChatId : null,
       "",
     );
-
-
 
     // Stabilize renderSetupBanner with proper dependencies
     const renderSetupBanner = useCallback(() => {
@@ -243,7 +245,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       observer.observe(sentinel);
       return () => observer.disconnect();
     }, [hasMoreMessages, onLoadMore]);
-
 
     // Stable callback for marking todo as completed
     const handleMarkTodoCompleted = useCallback(async () => {
@@ -346,7 +347,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                 {group.map((message) => {
                   const globalIndex = messages.indexOf(message);
                   const isLastMessage = globalIndex === messages.length - 1;
-                  const isLastUserMessage = message.role === "user" && isLastMessage;
+                  const isLastUserMessage =
+                    message.role === "user" && isLastMessage;
                   const hasAssistantResponseAfter =
                     isLastMessage &&
                     messages.length > globalIndex + 1 &&
@@ -363,7 +365,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                   return (
                     <div
                       key={message.id}
-                      className={message.role === "user" ? "sticky top-0 z-10" : ""}
+                      className={
+                        message.role === "user" ? "sticky top-0 z-10" : ""
+                      }
                     >
                       <div className={message.role === "user" ? "" : "px-4"}>
                         <MemoizedChatMessage

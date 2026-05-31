@@ -29,6 +29,7 @@
 Los errores del LLM se manejan como strings crudos con pattern matching frágil:
 
 **Backend** (`chat_stream_handlers.ts` línea 1481-1512):
+
 ```typescript
 onError: (error: any) => {
   let errorMessage = (error as any)?.error?.message;
@@ -46,6 +47,7 @@ onError: (error: any) => {
 ```
 
 **Frontend** (`ChatErrorBox.tsx` y handlers similares):
+
 ```typescript
 // Parsing ad-hoc de strings para detectar tipos de error
 if (error.includes("Resource has been exhausted")) { ... }
@@ -59,7 +61,12 @@ Definir una interfaz de error estructurada basada en Open Responses:
 ```typescript
 // src/ipc/types/errors.ts (nuevo archivo)
 interface StructuredError {
-  type: "server_error" | "invalid_request" | "model_error" | "too_many_requests" | "not_found";
+  type:
+    | "server_error"
+    | "invalid_request"
+    | "model_error"
+    | "too_many_requests"
+    | "not_found";
   code?: string; // e.g. "rate_limited", "model_not_found", "context_length_exceeded"
   message: string;
   param?: string; // El parámetro que causó el error
@@ -70,14 +77,14 @@ interface StructuredError {
 
 ### 1.3 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| `src/ipc/types/errors.ts` | **Nuevo:** Definir `StructuredError` interface y función `parseProviderError()` |
-| `src/ipc/types/chat.ts` | Cambiar tipo de `error` en `chat:response:error` de `string` a `StructuredError \| string` (backward compatible) |
-| `src/ipc/handlers/chat_stream_handlers.ts` | En `onError`: parsear error del provider a `StructuredError` antes de enviarlo |
-| `src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts` | Mismo cambio en sus `onError` handlers |
-| `src/components/ChatErrorBox.tsx` | Renderizar errores con switch sobre `error.type` en lugar de `error.includes()` |
-| `src/ipc/utils/fallback_ai_model.ts` | Usar `StructuredError.type` para decidir si hacer retry vs fallback |
+| Archivo                                                        | Cambio                                                                                                           |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/ipc/types/errors.ts`                                      | **Nuevo:** Definir `StructuredError` interface y función `parseProviderError()`                                  |
+| `src/ipc/types/chat.ts`                                        | Cambiar tipo de `error` en `chat:response:error` de `string` a `StructuredError \| string` (backward compatible) |
+| `src/ipc/handlers/chat_stream_handlers.ts`                     | En `onError`: parsear error del provider a `StructuredError` antes de enviarlo                                   |
+| `src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts` | Mismo cambio en sus `onError` handlers                                                                           |
+| `src/components/ChatErrorBox.tsx`                              | Renderizar errores con switch sobre `error.type` en lugar de `error.includes()`                                  |
+| `src/ipc/utils/fallback_ai_model.ts`                           | Usar `StructuredError.type` para decidir si hacer retry vs fallback                                              |
 
 ### 1.4 Ejemplo de Implementación
 
@@ -85,7 +92,8 @@ interface StructuredError {
 // parseProviderError.ts
 function parseProviderError(rawError: any): StructuredError {
   const statusCode = rawError?.statusCode || rawError?.error?.statusCode;
-  const message = rawError?.error?.message || rawError?.message || String(rawError);
+  const message =
+    rawError?.error?.message || rawError?.message || String(rawError);
 
   // Mapear status codes a tipos Open Responses
   if (statusCode === 429) {
@@ -99,10 +107,18 @@ function parseProviderError(rawError: any): StructuredError {
   }
   if (statusCode === 400) {
     // Detectar sub-tipos comunes
-    const code = message.includes("context_length") ? "context_length_exceeded"
-               : message.includes("invalid") ? "invalid_parameter"
-               : undefined;
-    return { type: "invalid_request", code, message, param: rawError?.param, retryable: false };
+    const code = message.includes("context_length")
+      ? "context_length_exceeded"
+      : message.includes("invalid")
+        ? "invalid_parameter"
+        : undefined;
+    return {
+      type: "invalid_request",
+      code,
+      message,
+      param: rawError?.param,
+      retryable: false,
+    };
   }
   if (statusCode >= 500) {
     return { type: "server_error", message, retryable: true };
@@ -122,8 +138,8 @@ function parseProviderError(rawError: any): StructuredError {
 ### 1.6 ¿Aprobado?
 
 - [ ] Sí, implementar como está descrito
-- [ ] Sí, con modificaciones: ___
-- [ ] No, razón: ___
+- [ ] Sí, con modificaciones: \_\_\_
+- [ ] No, razón: \_\_\_
 - [ ] Posponer
 
 ---
@@ -174,29 +190,30 @@ Step 10: previous_response_id: "resp_xyz" + [tool_result] → ~1K tokens input
 ### 2.3 Dependencia Crítica: Soporte de OpenRouter
 
 > ⚠️ **IMPORTANTE:** Antes de implementar esto, necesitamos verificar si OpenRouter soporta `previous_response_id`.
+>
 > - Si OpenRouter lo soporta nativamente → implementación directa.
 > - Si no → podemos implementar un cache server-side local como alternativa (menor ahorro pero sigue siendo beneficioso).
 > - Si solo algunos providers detrás de OpenRouter lo soportan → implementar con fallback.
 
 ### 2.4 Cambios Requeridos (si OpenRouter soporta)
 
-| Archivo | Cambio |
-|---|---|
-| **DB Schema** (`schema.ts`) | Añadir campo `responseId: text` a tabla `messages` |
-| **DB Migration** | Nueva migración para añadir columna `response_id` |
-| `local_agent_handler.ts` | Capturar `response_id` del primer step, enviar `previous_response_id` en steps siguientes |
-| `chat_stream_handlers.ts` | En continuation loops (vibes-write, auto-fix), usar `previous_response_id` en lugar de re-enviar todo |
-| Nuevo: `src/ipc/utils/response_id_cache.ts` | Cache en memoria de response_ids con TTL (por si el provider los expira) |
+| Archivo                                     | Cambio                                                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **DB Schema** (`schema.ts`)                 | Añadir campo `responseId: text` a tabla `messages`                                                    |
+| **DB Migration**                            | Nueva migración para añadir columna `response_id`                                                     |
+| `local_agent_handler.ts`                    | Capturar `response_id` del primer step, enviar `previous_response_id` en steps siguientes             |
+| `chat_stream_handlers.ts`                   | En continuation loops (vibes-write, auto-fix), usar `previous_response_id` en lugar de re-enviar todo |
+| Nuevo: `src/ipc/utils/response_id_cache.ts` | Cache en memoria de response_ids con TTL (por si el provider los expira)                              |
 
 ### 2.5 Cambios Requeridos (alternativa: cache local)
 
 Si OpenRouter no soporta `previous_response_id`:
 
-| Archivo | Cambio |
-|---|---|
-| Nuevo: `src/ipc/utils/context_cache.ts` | Cache local de contextos por `chatId`. Guarda el contexto enviado; en el siguiente step envía solo el diff |
-| `local_agent_handler.ts` | En vez de `previous_response_id`, implementar "delta messages" enviando solo mensajes nuevos + un resumen comprimido del historial |
-| `chat_stream_handlers.ts` | Misma estrategia para continuation loops |
+| Archivo                                 | Cambio                                                                                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Nuevo: `src/ipc/utils/context_cache.ts` | Cache local de contextos por `chatId`. Guarda el contexto enviado; en el siguiente step envía solo el diff                         |
+| `local_agent_handler.ts`                | En vez de `previous_response_id`, implementar "delta messages" enviando solo mensajes nuevos + un resumen comprimido del historial |
+| `chat_stream_handlers.ts`               | Misma estrategia para continuation loops                                                                                           |
 
 ### 2.6 Flujo del Agente con `previous_response_id`
 
@@ -225,7 +242,7 @@ Si OpenRouter no soporta `previous_response_id`:
 
 ### 2.7 Manejo de Errores / Edge Cases
 
-- **`response_id` expirado:** Fallback a enviar historial completo (como funciona hoy)  
+- **`response_id` expirado:** Fallback a enviar historial completo (como funciona hoy)
 - **Provider no soporta:** Detectar y caer en modo legacy automáticamente
 - **Undo/Redo:** El `response_id` se invalida; enviar contexto completo
 - **Cambio de modelo mid-chat:** El `response_id` es del modelo anterior; enviar contexto completo
@@ -241,8 +258,8 @@ Si OpenRouter no soporta `previous_response_id`:
 
 - [ ] Sí, implementar (verificar soporte OpenRouter primero)
 - [ ] Sí, pero solo la alternativa de cache local
-- [ ] Sí, con modificaciones: ___
-- [ ] No, razón: ___
+- [ ] Sí, con modificaciones: \_\_\_
+- [ ] No, razón: \_\_\_
 - [ ] Posponer hasta que OpenRouter confirme soporte
 
 ---
@@ -258,6 +275,7 @@ Si OpenRouter no soporta `previous_response_id`:
 En `chat_stream_handlers.ts`, los loops de auto-fix envían requests sin controlar qué tools el modelo puede usar:
 
 **Loop de search-replace fix** (líneas 1819-1830):
+
 ```typescript
 const { fullStream: fixSearchReplaceStream } = await simpleStreamText({
   chatMessages: [...chatMessages, ...previousAttempts, userPrompt],
@@ -269,6 +287,7 @@ const { fullStream: fixSearchReplaceStream } = await simpleStreamText({
 ```
 
 **Loop de problem fix** (líneas 1997-2022):
+
 ```typescript
 const { fullStream } = await simpleStreamText({
   modelClient: problemFixModelClient,
@@ -279,6 +298,7 @@ const { fullStream } = await simpleStreamText({
 ```
 
 Esto causa que a veces el modelo:
+
 - Responde con texto en lugar de generar code edits
 - Usa `vibes-write` cuando debería usar `vibes-search-replace` (o viceversa)
 - Ignora las herramientas y da una explicación textual
@@ -305,6 +325,7 @@ await simpleStreamText({
 ```
 
 Para el agente (línea 380-384 de `local_agent_handler.ts`):
+
 ```typescript
 // Primer step: forzar exploración antes de editar
 await streamText({
@@ -317,11 +338,11 @@ await streamText({
 
 ### 3.3 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| `src/ipc/handlers/chat_stream_handlers.ts` | En `simpleStreamText`: aceptar parámetro opcional `toolChoice` y `allowedTools`, pasarlos a `streamText` |
-| `src/ipc/handlers/chat_stream_handlers.ts` | En loops de auto-fix (search-replace y problem-fix): pasar `tool_choice: "required"` |
-| `src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts` | Opcional: pasar `allowed_tools` restrictivo en el primer step para forzar exploración |
+| Archivo                                                        | Cambio                                                                                                   |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/ipc/handlers/chat_stream_handlers.ts`                     | En `simpleStreamText`: aceptar parámetro opcional `toolChoice` y `allowedTools`, pasarlos a `streamText` |
+| `src/ipc/handlers/chat_stream_handlers.ts`                     | En loops de auto-fix (search-replace y problem-fix): pasar `tool_choice: "required"`                     |
+| `src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts` | Opcional: pasar `allowed_tools` restrictivo en el primer step para forzar exploración                    |
 
 ### 3.4 Consideraciones
 
@@ -333,8 +354,8 @@ await streamText({
 
 - [ ] Sí, implementar `tool_choice: "required"` en auto-fix loops
 - [ ] Sí, implementar también `allowed_tools` en el agente
-- [ ] Sí, con modificaciones: ___
-- [ ] No, razón: ___
+- [ ] Sí, con modificaciones: \_\_\_
+- [ ] No, razón: \_\_\_
 - [ ] Posponer
 
 ---
@@ -368,6 +389,7 @@ En el backend (`chat_stream_handlers.ts`), el `onError` de `streamText` (línea 
 Implementar recuperación en tres niveles:
 
 #### Nivel 1: Preservar respuesta parcial (backend)
+
 Ya tienes `partialResponses.set(req.chatId, fullResponse)` en `processResponseChunkUpdate`. El cambio es:
 
 ```typescript
@@ -375,10 +397,13 @@ onError: (error) => {
   const partialResponse = partialResponses.get(req.chatId);
   if (partialResponse && partialResponse.length > 100) {
     // Guardar la respuesta parcial en DB con marca de incompleta
-    await db.update(messages).set({
-      content: partialResponse + "\n\n[⚠️ Respuesta interrumpida por error]",
-      status: "incomplete", // Nuevo campo
-    }).where(eq(messages.id, placeholderAssistantMessage.id));
+    await db
+      .update(messages)
+      .set({
+        content: partialResponse + "\n\n[⚠️ Respuesta interrumpida por error]",
+        status: "incomplete", // Nuevo campo
+      })
+      .where(eq(messages.id, placeholderAssistantMessage.id));
   }
   // Enviar error estructurado con info de recuperación
   event.sender.send("chat:response:error", {
@@ -391,6 +416,7 @@ onError: (error) => {
 ```
 
 #### Nivel 2: Auto-retry en errores transitorios (backend)
+
 Para errores de red/timeout, reintentar automáticamente el stream:
 
 ```typescript
@@ -416,30 +442,37 @@ while (streamAttempt <= maxStreamRetries) {
 ```
 
 #### Nivel 3: "Continuar respuesta" en el frontend (frontend)
+
 En `ChatErrorBox`, si hay respuesta parcial + error retryable:
 
 ```tsx
-{error.canRetry && error.hasPartialResponse && (
-  <Button onClick={() => streamMessage({
-    prompt: "__continue__",  // Señal especial para el backend
-    chatId,
-  })}>
-    Continuar respuesta
-  </Button>
-)}
+{
+  error.canRetry && error.hasPartialResponse && (
+    <Button
+      onClick={() =>
+        streamMessage({
+          prompt: "__continue__", // Señal especial para el backend
+          chatId,
+        })
+      }
+    >
+      Continuar respuesta
+    </Button>
+  );
+}
 ```
 
 ### 4.3 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| **DB Schema** (`schema.ts`) | Añadir campo `status: text` a tabla `messages` (valores: `completed`, `incomplete`, `failed`) |
-| `src/ipc/handlers/chat_stream_handlers.ts` | En `onError`: guardar respuesta parcial en DB con status `incomplete` |
-| `src/ipc/handlers/chat_stream_handlers.ts` | En `simpleStreamText`: wrapper de retry para errores transitorios |
-| `src/ipc/types/chat.ts` | Expandir tipo de `chat:response:error` para incluir `hasPartialResponse`, `canRetry` |
-| `src/hooks/useStreamChat.ts` | En `onError`: manejar la info extra de recuperación |
-| `src/components/ChatErrorBox.tsx` | Mostrar botón "Continuar" si es posible |
-| `src/ipc/handlers/chat_stream_handlers.ts` | Manejar `prompt: "__continue__"` para reanudar desde respuesta parcial |
+| Archivo                                    | Cambio                                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| **DB Schema** (`schema.ts`)                | Añadir campo `status: text` a tabla `messages` (valores: `completed`, `incomplete`, `failed`) |
+| `src/ipc/handlers/chat_stream_handlers.ts` | En `onError`: guardar respuesta parcial en DB con status `incomplete`                         |
+| `src/ipc/handlers/chat_stream_handlers.ts` | En `simpleStreamText`: wrapper de retry para errores transitorios                             |
+| `src/ipc/types/chat.ts`                    | Expandir tipo de `chat:response:error` para incluir `hasPartialResponse`, `canRetry`          |
+| `src/hooks/useStreamChat.ts`               | En `onError`: manejar la info extra de recuperación                                           |
+| `src/components/ChatErrorBox.tsx`          | Mostrar botón "Continuar" si es posible                                                       |
+| `src/ipc/handlers/chat_stream_handlers.ts` | Manejar `prompt: "__continue__"` para reanudar desde respuesta parcial                        |
 
 ### 4.4 Edge Cases
 
@@ -452,8 +485,8 @@ En `ChatErrorBox`, si hay respuesta parcial + error retryable:
 - [ ] Sí, implementar los 3 niveles
 - [ ] Sí, solo Nivel 1 (preservar parcial) + Nivel 2 (auto-retry)
 - [ ] Sí, solo Nivel 1 (preservar parcial)
-- [ ] Sí, con modificaciones: ___
-- [ ] No, razón: ___
+- [ ] Sí, con modificaciones: \_\_\_
+- [ ] No, razón: \_\_\_
 - [ ] Posponer
 
 ---
@@ -467,6 +500,7 @@ En `ChatErrorBox`, si hay respuesta parcial + error retryable:
 ### 5.1 Problema Actual
 
 Todas las requests a OpenRouter tienen la misma prioridad:
+
 - Generación de título de chat → misma prioridad que edición de código
 - Summarize de chat → misma prioridad que respuesta del agente
 - Auto-fix de problemas → misma prioridad que interacción directa del usuario
@@ -475,23 +509,23 @@ Todas las requests a OpenRouter tienen la misma prioridad:
 
 Mapear cada tipo de request a un `service_tier` apropiado:
 
-| Tipo de Request | Archivo | `service_tier` |
-|---|---|---|
+| Tipo de Request                            | Archivo                                             | `service_tier`             |
+| ------------------------------------------ | --------------------------------------------------- | -------------------------- |
 | Chat directo del usuario (build/ask/agent) | `chat_stream_handlers.ts`, `local_agent_handler.ts` | `"default"` o `"priority"` |
-| Generación de título | `generateChatTitle` handler | `"batch"` |
-| Summarize chat | Cuando `isSummarizeIntent = true` | `"batch"` |
-| Auto-fix problems | Loops de auto-fix | `"default"` |
-| Help bot | `help_bot_handlers.ts` | `"batch"` |
-| Theme generation | `themes_handlers.ts` | `"batch"` |
+| Generación de título                       | `generateChatTitle` handler                         | `"batch"`                  |
+| Summarize chat                             | Cuando `isSummarizeIntent = true`                   | `"batch"`                  |
+| Auto-fix problems                          | Loops de auto-fix                                   | `"default"`                |
+| Help bot                                   | `help_bot_handlers.ts`                              | `"batch"`                  |
+| Theme generation                           | `themes_handlers.ts`                                | `"batch"`                  |
 
 ### 5.3 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| `src/ipc/handlers/chat_stream_handlers.ts` | En `simpleStreamText`: aceptar `serviceTier` param, pasarlo en `providerOptions` |
-| `src/ipc/handlers/chat_stream_handlers.ts` | Pasar `serviceTier: "batch"` para summarize, `"default"` para lo demás |
-| `src/ipc/handlers/help_bot_handlers.ts` | Pasar `serviceTier: "batch"` |
-| `src/pro/main/ipc/handlers/themes_handlers.ts` | Pasar `serviceTier: "batch"` |
+| Archivo                                        | Cambio                                                                           |
+| ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/ipc/handlers/chat_stream_handlers.ts`     | En `simpleStreamText`: aceptar `serviceTier` param, pasarlo en `providerOptions` |
+| `src/ipc/handlers/chat_stream_handlers.ts`     | Pasar `serviceTier: "batch"` para summarize, `"default"` para lo demás           |
+| `src/ipc/handlers/help_bot_handlers.ts`        | Pasar `serviceTier: "batch"`                                                     |
+| `src/pro/main/ipc/handlers/themes_handlers.ts` | Pasar `serviceTier: "batch"`                                                     |
 
 ### 5.4 Consideraciones
 
@@ -501,8 +535,8 @@ Mapear cada tipo de request a un `service_tier` apropiado:
 ### 5.5 ¿Aprobado?
 
 - [ ] Sí, implementar
-- [ ] Sí, con modificaciones: ___
-- [ ] No, razón: ___
+- [ ] Sí, con modificaciones: \_\_\_
+- [ ] No, razón: \_\_\_
 - [ ] Posponer
 
 ---
@@ -518,12 +552,19 @@ Mapear cada tipo de request a un `service_tier` apropiado:
 `chat_stream_handlers.ts` líneas 955-990: ~35 líneas de lógica manual para truncar el historial de chat:
 
 ```typescript
-const maxChatTurns = isDeepContextEnabled ? 51 : (settings.maxChatTurnsInContext || MAX_CHAT_TURNS_IN_CONTEXT) + 1;
+const maxChatTurns = isDeepContextEnabled
+  ? 51
+  : (settings.maxChatTurnsInContext || MAX_CHAT_TURNS_IN_CONTEXT) + 1;
 if (messageHistory.length > maxChatTurns * 2) {
-  let recentMessages = messageHistory.filter(msg => msg.role !== "system").slice(-maxChatTurns * 2);
+  let recentMessages = messageHistory
+    .filter((msg) => msg.role !== "system")
+    .slice(-maxChatTurns * 2);
   if (recentMessages.length > 0 && recentMessages[0].role !== "user") {
-    const firstUserIndex = recentMessages.findIndex(msg => msg.role === "user");
-    if (firstUserIndex > 0) recentMessages = recentMessages.slice(firstUserIndex);
+    const firstUserIndex = recentMessages.findIndex(
+      (msg) => msg.role === "user",
+    );
+    if (firstUserIndex > 0)
+      recentMessages = recentMessages.slice(firstUserIndex);
     else if (firstUserIndex === -1) recentMessages = [];
   }
   limitedMessageHistory = [...recentMessages];
@@ -553,10 +594,10 @@ const streamResult = streamText({
 
 ### 6.4 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| `src/ipc/handlers/chat_stream_handlers.ts` | Añadir `truncation: "auto"` a `streamText` calls |
-| `src/ipc/handlers/chat_stream_handlers.ts` | Simplificar (no eliminar) lógica de pre-filtro de historial |
+| Archivo                                    | Cambio                                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `src/ipc/handlers/chat_stream_handlers.ts` | Añadir `truncation: "auto"` a `streamText` calls                              |
+| `src/ipc/handlers/chat_stream_handlers.ts` | Simplificar (no eliminar) lógica de pre-filtro de historial                   |
 | `src/ipc/handlers/chat_stream_handlers.ts` | Eliminar o simplificar dynamic token capping si `truncation: "auto"` funciona |
 
 ### 6.5 Riesgos
@@ -584,11 +625,24 @@ const streamResult = streamText({
 `fallback_ai_model.ts` (377 líneas) implementa su propia clasificación de errores:
 
 ```typescript
-const RETRYABLE_STATUS_CODES = new Set([401, 403, 408, 409, 413, 429, 500, 502, 503, 504]);
+const RETRYABLE_STATUS_CODES = new Set([
+  401, 403, 408, 409, 413, 429, 500, 502, 503, 504,
+]);
 const RETRYABLE_ERROR_MESSAGES = [
-  "too many requests", "internal server error", "gateway timeout",
-  "rate_limit", "wrong-key", "unexpected", "capacity", "timeout",
-  "server_error", "econnrefused", "enotfound", "econnreset", "epipe", "etimedout"
+  "too many requests",
+  "internal server error",
+  "gateway timeout",
+  "rate_limit",
+  "wrong-key",
+  "unexpected",
+  "capacity",
+  "timeout",
+  "server_error",
+  "econnrefused",
+  "enotfound",
+  "econnreset",
+  "epipe",
+  "etimedout",
 ];
 
 function defaultShouldRetryThisError(error: any): boolean {
@@ -608,9 +662,11 @@ function shouldRetry(error: StructuredError): boolean {
 }
 
 function shouldSwitchModel(error: StructuredError): boolean {
-  return error.type === "model_error" 
-      || error.code === "model_not_found"
-      || error.code === "context_length_exceeded";
+  return (
+    error.type === "model_error" ||
+    error.code === "model_not_found" ||
+    error.code === "context_length_exceeded"
+  );
 }
 
 function getRetryDelay(error: StructuredError, attempt: number): number {
@@ -623,11 +679,11 @@ function getRetryDelay(error: StructuredError, attempt: number): number {
 
 ### 7.3 Cambios Requeridos
 
-| Archivo | Cambio |
-|---|---|
-| `src/ipc/utils/fallback_ai_model.ts` | Reemplazar clasificación de errores manual con `StructuredError` |
+| Archivo                               | Cambio                                                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/ipc/utils/fallback_ai_model.ts`  | Reemplazar clasificación de errores manual con `StructuredError`                                    |
 | `src/ipc/utils/retryWithRateLimit.ts` | Unificar con la lógica de retry de `fallback_ai_model.ts` o al menos compartir `parseProviderError` |
-| `src/ipc/utils/fallback_ai_model.ts` | Simplificar `createWrappedStream` usando la nueva clasificación |
+| `src/ipc/utils/fallback_ai_model.ts`  | Simplificar `createWrappedStream` usando la nueva clasificación                                     |
 
 ### 7.4 Dependencia
 
@@ -644,15 +700,15 @@ function getRetryDelay(error: StructuredError, attempt: number): number {
 
 ## Resumen de Prioridades
 
-| # | Mejora | Fase | Esfuerzo | Impacto | Dependencias |
-|---|---|---|---|---|---|
-| 1 | Errores Estructurados | 1 | 🟢 1d | 🔥🔥 | Ninguna |
-| 2 | `previous_response_id` | 2 | 🟡 3-4d | 🔥🔥🔥 | Verificar OpenRouter |
-| 3 | `tool_choice` / `allowed_tools` | 1 | 🟢 0.5d | 🔥🔥 | Ninguna |
-| 4 | Recuperación de Stream | 2 | 🟡 2-3d | 🔥🔥 | Punto 1 |
-| 5 | `service_tier` | 1 | 🟢 0.5d | 🔥 | Ninguna |
-| 6 | Truncation Declarativa | 3 | 🟢 0.5d | 🔥 | Ninguna |
-| 7 | Simplificar Fallback | 3 | 🟡 1-2d | 🔥 | Punto 1 |
+| #   | Mejora                          | Fase | Esfuerzo | Impacto | Dependencias         |
+| --- | ------------------------------- | ---- | -------- | ------- | -------------------- |
+| 1   | Errores Estructurados           | 1    | 🟢 1d    | 🔥🔥    | Ninguna              |
+| 2   | `previous_response_id`          | 2    | 🟡 3-4d  | 🔥🔥🔥  | Verificar OpenRouter |
+| 3   | `tool_choice` / `allowed_tools` | 1    | 🟢 0.5d  | 🔥🔥    | Ninguna              |
+| 4   | Recuperación de Stream          | 2    | 🟡 2-3d  | 🔥🔥    | Punto 1              |
+| 5   | `service_tier`                  | 1    | 🟢 0.5d  | 🔥      | Ninguna              |
+| 6   | Truncation Declarativa          | 3    | 🟢 0.5d  | 🔥      | Ninguna              |
+| 7   | Simplificar Fallback            | 3    | 🟡 1-2d  | 🔥      | Punto 1              |
 
 **Orden de implementación recomendado:**
 
@@ -677,15 +733,19 @@ La app usa el AI SDK de Vercel (`ai` package) con `streamText`. Algunos parámet
 ```typescript
 streamText({
   // Parámetros nativos del AI SDK
-  model, messages, tools, maxRetries, maxOutputTokens,
+  model,
+  messages,
+  tools,
+  maxRetries,
+  maxOutputTokens,
   // Parámetros extra via providerOptions
   providerOptions: {
     openrouter: {
       service_tier: "batch",
       truncation: "auto",
       previous_response_id: "resp_abc",
-    }
-  }
+    },
+  },
 });
 ```
 
@@ -694,6 +754,7 @@ Verificar la documentación del AI SDK para confirar qué parámetros pasan tran
 ### Testing
 
 Cada punto debería incluir:
+
 - Tests unitarios para `parseProviderError` (Punto 1)
 - Test de integración para retry con error simulado (Punto 4)
 - Test de carga comparativo pre/post para `previous_response_id` (Punto 2)

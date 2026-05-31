@@ -55,7 +55,6 @@ export { designContracts } from "./design";
 export { memoryContracts } from "./memory";
 export { markdownShareContracts } from "./markdown-share";
 
-
 export { authContracts } from "./auth";
 export { adminContracts } from "./admin";
 
@@ -284,9 +283,7 @@ export type {
   UpdateCustomAgentParams,
 } from "./custom_agents";
 
-export type {
-  Template,
-} from "./templates";
+export type { Template } from "./templates";
 
 // Proposal types
 export type { ProposalResult, ApproveProposalResult } from "./proposals";
@@ -299,7 +296,6 @@ export type { HelpChatStartParams } from "./help";
 
 // Context types
 export type { ContextPathResults, AppChatContext } from "./context";
-
 
 export type {
   VisualEditingChange,
@@ -314,13 +310,8 @@ export type { DesignItem } from "./design";
 // Markdown Share types
 export type { MarkdownShareDocument } from "./markdown-share";
 
-
 // Misc types
 export type { DeepLinkData, AppOutput, EnvVar } from "./misc";
-
-
-
-
 
 // Memory types
 export type {
@@ -332,8 +323,6 @@ export type {
   UpdateMemoryParams,
   ExtractMemoriesParams,
 } from "./memory";
-
-
 
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
@@ -372,7 +361,6 @@ import { appClient } from "./app";
 import { capacitorClient } from "./capacitor";
 import { chatClient, chatStreamClient } from "./chat";
 import { contextClient } from "./context";
-
 
 import { gitClient, githubClient, githubEventClient } from "./github";
 import { helpClient, helpStreamClient } from "./help";
@@ -427,12 +415,9 @@ export const ipc = {
   chat: chatClient,
   agent: agentClient,
 
-
   // Streaming clients
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
-
-
 
   // Integrations
   github: githubClient,
@@ -459,7 +444,6 @@ export const ipc = {
   context: contextClient,
   visualEditing: visualEditingClient,
   misc: miscClient,
-
 
   // Auth
   auth: authClient,

@@ -24,4 +24,3 @@ export function getExtraProviderOptions(
   // OpenRouter applies per-model reasoning defaults automatically.
   return {};
 }
-

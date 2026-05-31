@@ -36,7 +36,9 @@ ${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
 ${debugInfo.logs.slice(-500) || "No logs available"}
 `;
 
-      const subject = encodeURIComponent(`[bug] Error en Vibes: ${error?.name || "Unknown"}`);
+      const subject = encodeURIComponent(
+        `[bug] Error en Vibes: ${error?.name || "Unknown"}`,
+      );
       const body = encodeURIComponent(emailBody);
       const mailtoUrl = `mailto:pablo@minube.com?subject=${subject}&body=${body}`;
 
@@ -45,7 +47,10 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
     } catch (err) {
       console.error("Failed to prepare bug report:", err);
       // Fallback to opening a simple email
-      ipc.system.openExternalUrl("mailto:pablo@minube.com?subject=" + encodeURIComponent("[bug] Error en Vibes"));
+      ipc.system.openExternalUrl(
+        "mailto:pablo@minube.com?subject=" +
+          encodeURIComponent("[bug] Error en Vibes"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +63,9 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
           ¡Lo sentimos, eso no debería haber pasado!
         </h2>
 
-        <p className="typo-caption mb-3">Hubo un error al cargar la aplicación...</p>
+        <p className="typo-caption mb-3">
+          Hubo un error al cargar la aplicación...
+        </p>
 
         {error && (
           <div className="bg-muted p-4 rounded-md mb-6">
@@ -75,7 +82,11 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
           <Button onClick={() => window.location.reload()} variant="default">
             Recargar aplicación
           </Button>
-          <Button onClick={handleReportBug} disabled={isLoading} variant="outline">
+          <Button
+            onClick={handleReportBug}
+            disabled={isLoading}
+            variant="outline"
+          >
             {isLoading ? "Preparando informe..." : "Informar de un error"}
           </Button>
         </div>

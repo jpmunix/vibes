@@ -8,7 +8,8 @@
 
 @font-face {
   font-family: "Geist Mono";
-  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Regular.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Regular.ttf")
+    format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -16,7 +17,8 @@
 
 @font-face {
   font-family: "Geist Mono";
-  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Medium.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Medium.ttf")
+    format("truetype");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -24,7 +26,8 @@
 
 @font-face {
   font-family: "Geist Mono";
-  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Bold.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Bold.ttf")
+    format("truetype");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -32,7 +35,8 @@
 
 @font-face {
   font-family: "Geist";
-  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Regular.ttf")
+    format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -40,7 +44,8 @@
 
 @font-face {
   font-family: "Geist";
-  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Medium.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Medium.ttf")
+    format("truetype");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -48,7 +53,8 @@
 
 @font-face {
   font-family: "Geist";
-  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf") format("truetype");
+  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Bold.ttf")
+    format("truetype");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -110,8 +116,8 @@ body[data-scroll-locked] .app-region-drag {
   --background-lightest: oklch(clamp(0, 0.998 + var(--l-offset), 1) 0 0);
   --background-lighter: oklch(clamp(0, 0.985 + var(--l-offset), 1) 0 0);
   --background: oklch(clamp(0, 0.968 + var(--l-offset), 1) 0.002 250);
-  --background-darker: oklch(clamp(0, 0.940 + var(--l-offset), 1) 0.002 250);
-  --background-darkest: oklch(clamp(0, 0.910 + var(--l-offset), 1) 0.002 250);
+  --background-darker: oklch(clamp(0, 0.94 + var(--l-offset), 1) 0.002 250);
+  --background-darkest: oklch(clamp(0, 0.91 + var(--l-offset), 1) 0.002 250);
 
   /* Text — slightly darker than pure neutral for better readability */
   --foreground: oklch(clamp(0, 0.22 + var(--fg-l-offset), 1) 0.005 250);
@@ -125,14 +131,14 @@ body[data-scroll-locked] .app-region-drag {
   --secondary: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
   --secondary-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
   --muted: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
-  --muted-foreground: oklch(clamp(0, 0.50 + var(--fg-l-offset), 1) 0 0);
+  --muted-foreground: oklch(clamp(0, 0.5 + var(--fg-l-offset), 1) 0 0);
   --accent: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0.002 250);
   --accent-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
   /* Borders — visible but not heavy */
   --border: oklch(clamp(0, 0.895 + var(--l-offset), 1) 0.004 250);
-  --input: oklch(clamp(0, 0.900 + var(--l-offset), 1) 0.004 250);
+  --input: oklch(clamp(0, 0.9 + var(--l-offset), 1) 0.004 250);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -141,14 +147,16 @@ body[data-scroll-locked] .app-region-drag {
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
   /* Sidebar — slightly darker than content for separation */
-  --sidebar: oklch(clamp(0, 0.950 + var(--l-offset), 1) 0.003 250);
+  --sidebar: oklch(clamp(0, 0.95 + var(--l-offset), 1) 0.003 250);
   /* --sidebar: oklch(0.975 0.0188 292.61); */
   /* --sidebar: oklch(0.985 0 0); */
   --sidebar-foreground: oklch(clamp(0, 0.14 + var(--fg-l-offset), 1) 0.005 250);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(clamp(0, 0.875 + var(--l-offset), 1) 0.005 250);
-  --sidebar-accent-foreground: oklch(clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0);
+  --sidebar-accent-foreground: oklch(
+    clamp(0, 0.19 + var(--fg-l-offset), 1) 0 0
+  );
   --sidebar-border: oklch(clamp(0, 0.895 + var(--l-offset), 1) 0.005 250);
   --sidebar-ring: oklch(0.708 0 0);
 
@@ -169,7 +177,9 @@ body[data-scroll-locked] .app-region-drag {
   --accent-teal-option-bg: oklch(from var(--primary) 0.5 0.02 h / 0.05);
   --accent-teal-option-border: oklch(from var(--primary) 0.5 0.03 h / 0.15);
   --accent-teal-option-hover-bg: oklch(from var(--primary) 0.5 0.02 h / 0.1);
-  --accent-teal-option-hover-border: oklch(from var(--primary) 0.5 0.06 h / 0.2);
+  --accent-teal-option-hover-border: oklch(
+    from var(--primary) 0.5 0.06 h / 0.2
+  );
   --accent-teal-option-text: oklch(0.25 0.02 0);
   --accent-teal-selected-bg: oklch(from var(--primary) 0.92 0.06 h / 0.6);
   --accent-teal-selected-border: oklch(from var(--primary) 0.5 0.12 h / 0.5);
@@ -273,7 +283,9 @@ body[data-scroll-locked] .app-region-drag {
   --accent-teal-option-bg: oklch(from var(--primary) 0.5 0.02 h / 0.08);
   --accent-teal-option-border: oklch(from var(--primary) 0.5 0.03 h / 0.12);
   --accent-teal-option-hover-bg: oklch(from var(--primary) 0.5 0.02 h / 0.15);
-  --accent-teal-option-hover-border: oklch(from var(--primary) 0.5 0.06 h / 0.25);
+  --accent-teal-option-hover-border: oklch(
+    from var(--primary) 0.5 0.06 h / 0.25
+  );
   --accent-teal-option-text: oklch(0.75 0.02 0);
   --accent-teal-selected-bg: oklch(from var(--primary) 0.55 0.14 h / 0.15);
   --accent-teal-selected-border: oklch(from var(--primary) 0.6 0.14 h / 0.4);
@@ -470,8 +482,6 @@ body[data-scroll-locked] .app-region-drag {
   animation: marquee 2s linear infinite;
 }
 
-
-
 /* Hide scrollbar for toolbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -483,11 +493,11 @@ body[data-scroll-locked] .app-region-drag {
 }
 
 /* Tiptap Styles */
-.prose ul>li::marker {
+.prose ul > li::marker {
   color: var(--foreground);
 }
 
-.prose ol>li::marker {
+.prose ol > li::marker {
   color: var(--foreground);
 }
 
@@ -584,13 +594,13 @@ ul[data-type="taskList"] li {
   margin-bottom: 0.5rem;
 }
 
-ul[data-type="taskList"] li>label {
+ul[data-type="taskList"] li > label {
   flex: 0 0 auto;
   margin-right: 0.5rem;
   user-select: none;
 }
 
-ul[data-type="taskList"] li>div {
+ul[data-type="taskList"] li > div {
   flex: 1 1 auto;
 }
 
@@ -608,9 +618,15 @@ ul[data-type="taskList"] li>div {
 
 /* Light theme */
 .vibes-permission-banner {
-  background: linear-gradient(135deg, oklch(from var(--primary) 0.95 0.04 h / 0.85), oklch(from var(--primary) 0.93 0.02 h / 0.6));
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--primary) 0.95 0.04 h / 0.85),
+    oklch(from var(--primary) 0.93 0.02 h / 0.6)
+  );
   border: 1px solid oklch(from var(--primary) 0.55 0.12 h / 0.35);
-  box-shadow: 0 4px 20px oklch(from var(--primary) 0.4 0.1 h / 0.08), inset 0 1px 0 oklch(1 0 0 / 0.04);
+  box-shadow:
+    0 4px 20px oklch(from var(--primary) 0.4 0.1 h / 0.08),
+    inset 0 1px 0 oklch(1 0 0 / 0.04);
 }
 
 .vibes-permission-banner__header {
@@ -641,9 +657,15 @@ ul[data-type="taskList"] li>div {
 
 /* Dark theme */
 .dark .vibes-permission-banner {
-  background: linear-gradient(135deg, oklch(from var(--primary) 0.22 0.04 h / 0.55), oklch(from var(--primary) 0.18 0.02 h / 0.35));
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--primary) 0.22 0.04 h / 0.55),
+    oklch(from var(--primary) 0.18 0.02 h / 0.35)
+  );
   border: 1px solid oklch(from var(--primary) 0.6 0.12 h / 0.3);
-  box-shadow: 0 4px 20px oklch(from var(--primary) 0.3 0.1 h / 0.12), inset 0 1px 0 oklch(1 0 0 / 0.02);
+  box-shadow:
+    0 4px 20px oklch(from var(--primary) 0.3 0.1 h / 0.12),
+    inset 0 1px 0 oklch(1 0 0 / 0.02);
 }
 
 .dark .vibes-permission-banner__header {

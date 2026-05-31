@@ -129,11 +129,25 @@ export function transformContent(
                     if (cls.match(/^text-\[[\d.]+[a-z]+\]$/)) return true;
                     return false;
                   } else if (prefix === "text-align-") {
-                    return ["text-left", "text-center", "text-right", "text-justify"].includes(cls);
+                    return [
+                      "text-left",
+                      "text-center",
+                      "text-right",
+                      "text-justify",
+                    ].includes(cls);
                   } else if (prefix === "display-") {
-                    return ["flex", "grid", "block", "inline-flex", "inline", "hidden"].includes(cls);
+                    return [
+                      "flex",
+                      "grid",
+                      "block",
+                      "inline-flex",
+                      "inline",
+                      "hidden",
+                    ].includes(cls);
                   } else if (prefix === "flex-direction-") {
-                    return cls.startsWith("flex-row") || cls.startsWith("flex-col");
+                    return (
+                      cls.startsWith("flex-row") || cls.startsWith("flex-col")
+                    );
                   } else if (prefix === "my-" || prefix === "py-") {
                     const type = prefix[0];
                     return (
@@ -220,8 +234,7 @@ export function transformContent(
 
           // Determine if text content should be modified
           const shouldModifyText =
-            "textContent" in change &&
-            change.textContent !== undefined;
+            "textContent" in change && change.textContent !== undefined;
 
           if (shouldModifyText) {
             if (!hasNestedJSX) {
@@ -330,7 +343,12 @@ export function analyzeComponent(
     // Check if it's a Lucide icon
     if (lucideImports.has(tagName)) {
       const iconName = lucideImports.get(tagName)!;
-      return { isDynamic: false, hasStaticText: false, elementType: "image", iconName };
+      return {
+        isDynamic: false,
+        hasStaticText: false,
+        elementType: "image",
+        iconName,
+      };
     }
 
     // Collect attribute info for element type detection
@@ -421,9 +439,23 @@ export function analyzeComponent(
     const imageTags = ["img", "image", "avatar", "picture", "svg"];
     const buttonTags = ["button", "iconbutton"];
     const textTags = [
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "p", "span", "label", "strong", "em", "b", "i",
-      "small", "code", "pre", "blockquote",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "p",
+      "span",
+      "label",
+      "strong",
+      "em",
+      "b",
+      "i",
+      "small",
+      "code",
+      "pre",
+      "blockquote",
     ];
     const linkTags = ["a", "link", "navlink"];
 
@@ -431,7 +463,9 @@ export function analyzeComponent(
       elementType = "image";
     } else if (
       buttonTags.includes(tagNameLower) ||
-      (hasOnClick && !tagNameLower.includes("div") && !tagNameLower.includes("section"))
+      (hasOnClick &&
+        !tagNameLower.includes("div") &&
+        !tagNameLower.includes("section"))
     ) {
       elementType = "button";
     } else if (linkTags.includes(tagNameLower) || hasHref) {
@@ -517,8 +551,8 @@ export function replaceIconComponent(
       ImportDeclaration(path: any) {
         if (path.node.source.value === "lucide-react") {
           // Check if new icon is already imported
-          const existingSpecifier = path.node.specifiers.find((spec: any) =>
-            spec.imported.name === newIconName
+          const existingSpecifier = path.node.specifiers.find(
+            (spec: any) => spec.imported.name === newIconName,
           );
 
           if (!existingSpecifier) {
@@ -532,7 +566,7 @@ export function replaceIconComponent(
             path.node.specifiers.push(newSpecifier);
             // Sort specifiers for niceness (optional)
             path.node.specifiers.sort((a: any, b: any) =>
-              a.imported.name.localeCompare(b.imported.name)
+              a.imported.name.localeCompare(b.imported.name),
             );
           }
         }

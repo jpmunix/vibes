@@ -55,12 +55,13 @@ export const VibesWrite: React.FC<VibesWriteProps> = ({
 
   return (
     <div
-      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress
-        ? "border-amber-500"
-        : aborted
-          ? "border-red-500"
-          : "border-border"
-        }`}
+      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
+        inProgress
+          ? "border-amber-500"
+          : aborted
+            ? "border-red-500"
+            : "border-border"
+      }`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >
       <div className="flex items-center justify-between">

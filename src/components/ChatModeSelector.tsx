@@ -36,10 +36,15 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
   });
 
   // The active mode is resolved from the chat if active, otherwise from global settings
-  let selectedMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+  let selectedMode =
+    chatId && chat
+      ? chat.chatMode || "agent"
+      : settings?.selectedChatMode || "agent";
 
   // If the active mode is a base mode, check if we have a default custom replacement for it
-  const getUltimateBase = (mode: string): "build" | "plan" | "explore" | null => {
+  const getUltimateBase = (
+    mode: string,
+  ): "build" | "plan" | "explore" | null => {
     if (mode === "agent" || mode === "build") return "build";
     if (mode === "plan") return "plan";
     if (mode === "ask" || mode === "explore") return "explore";
@@ -49,7 +54,10 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
   const selectedModeUltBase = getUltimateBase(selectedMode);
   if (selectedModeUltBase) {
     const replacer = (customAgents || []).find(
-      (ca) => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === selectedModeUltBase
+      (ca) =>
+        ca.isDefaultBase === 1 &&
+        getUltimateBaseAgent(ca.baseAgent, customAgents) ===
+          selectedModeUltBase,
     );
     if (replacer) {
       selectedMode = `custom-agent::${replacer.id}`;
@@ -106,7 +114,9 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
     },
   ].map((baseOpt) => {
     const replacer = (customAgents || []).find(
-      (ca) => ca.isDefaultBase === 1 && getUltimateBaseAgent(ca.baseAgent, customAgents) === baseOpt.key
+      (ca) =>
+        ca.isDefaultBase === 1 &&
+        getUltimateBaseAgent(ca.baseAgent, customAgents) === baseOpt.key,
     );
     if (replacer) {
       return {
@@ -129,7 +139,6 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
     }));
 
   const options = [...baseOptions, ...customOptions];
-
 
   const isCustomMode = selectedMode.startsWith("custom-agent::");
 
@@ -165,9 +174,13 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
           ? "!border !border-input !bg-muted/80 text-foreground !shadow-none hover:!bg-muted"
           : isCustomMode
             ? "!bg-emerald-500/20 !text-emerald-600 dark:!text-emerald-400 !border-emerald-500/20 hover:!bg-emerald-500/30"
-            : "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30"
+            : "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30",
       )}
-      customTriggerLabel={<span className="font-semibold">{getModeDisplayName(selectedMode)}</span>}
+      customTriggerLabel={
+        <span className="font-semibold">
+          {getModeDisplayName(selectedMode)}
+        </span>
+      }
       popoverWidth="w-[300px]"
       data-testid="chat-mode-selector"
       side="top"

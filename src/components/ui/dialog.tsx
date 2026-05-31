@@ -105,7 +105,10 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("typo-subsection-title leading-none font-semibold", className)}
+      className={cn(
+        "typo-subsection-title leading-none font-semibold",
+        className,
+      )}
       {...props}
     />
   );

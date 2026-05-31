@@ -21,10 +21,7 @@ const ignore = (file: string): boolean => {
     file.startsWith("/scaffold-svelte") ||
     file.startsWith("/scaffold-tools")
   ) {
-    if (
-      file.includes("/node_modules") ||
-      file.includes("/.git")
-    ) {
+    if (file.includes("/node_modules") || file.includes("/.git")) {
       return true; // Ignorar: regenerable
     }
     return false; // Incluir: es parte de la plantilla
@@ -102,12 +99,7 @@ const ignore = (file: string): boolean => {
   }
 
   // ─── RUTAS RAÍZ PERMITIDAS ────────────────────────────────────────────
-  const allowedPaths = [
-    "/.vite",
-    "/worker",
-    "/assets",
-    "/package.json",
-  ];
+  const allowedPaths = ["/.vite", "/worker", "/assets", "/package.json"];
 
   if (allowedPaths.some((path) => file.startsWith(path))) {
     // Excluir fuentes .ts del worker (ya compilados en .vite/build)
@@ -144,15 +136,11 @@ const config: ForgeConfig = {
     icon: `./assets/${activeFlavor.iconFolder}/logo`,
     asar: {
       // styled-jsx y geist se desempaquetan para evitar problemas de Object.defineProperty en macOS ARM64
-      unpack:
-        "{**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
+      unpack: "{**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,
-    extraResource: [
-      "node_modules/dugite/git",
-      "node_modules/@vscode",
-    ],
+    extraResource: ["node_modules/dugite/git", "node_modules/@vscode"],
   },
   rebuildConfig: {
     onlyModules: [],

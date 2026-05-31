@@ -264,13 +264,13 @@ export function GithubBranchManager({
       } catch (switchError: any) {
         showError(
           switchError?.message ||
-          `Failed to switch branch after aborting ${operationType}. Please try again.`,
+            `Failed to switch branch after aborting ${operationType}. Please try again.`,
         );
       }
     } catch (abortError: any) {
       showError(
         abortError?.message ||
-        `Failed to abort ongoing ${operationType} before switching branches.`,
+          `Failed to abort ongoing ${operationType} before switching branches.`,
       );
     } finally {
       setIsSwitching(false);
@@ -351,7 +351,7 @@ export function GithubBranchManager({
           setConflicts([]);
           showError(
             fetchError.message ||
-            "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
+              "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
           );
         }
       } else {
@@ -476,7 +476,7 @@ export function GithubBranchManager({
                   onChange={(val) => setSourceBranch(String(val))}
                   options={[
                     { value: "HEAD", label: "HEAD (Current)" },
-                    ...branches.map((b) => ({ value: b, label: b }))
+                    ...branches.map((b) => ({ value: b, label: b })),
                   ]}
                   triggerVariant="outline"
                   triggerSize="md"
@@ -673,9 +673,10 @@ export function GithubBranchManager({
                   Aborting…
                 </span>
               ) : (
-                `Abort ${abortConfirmation?.operationType === "merge"
-                  ? "Merge"
-                  : "Rebase"
+                `Abort ${
+                  abortConfirmation?.operationType === "merge"
+                    ? "Merge"
+                    : "Rebase"
                 } & Switch`
               )}
             </AlertDialogAction>
@@ -716,16 +717,14 @@ export function GithubBranchManager({
           </div>
         </CardHeader>
         <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-            }`}
+          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
+            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
         >
           <CardContent className="space-y-4 pt-0">
             {/* Banner for native git requirement */}
             {!settings?.enableNativeGit && (
-              <Alert
-                variant="default"
-                className="border-border bg-accent"
-              >
+              <Alert variant="default" className="border-border bg-accent">
                 <AlertCircle className="h-4 w-4 text-muted-foreground" />
                 <AlertTitle className="text-foreground">
                   Native Git Required

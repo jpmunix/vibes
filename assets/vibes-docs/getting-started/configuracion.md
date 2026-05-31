@@ -24,10 +24,10 @@ Si no quieres gastar al principio, Vibes soporta todos los modelos gratuitos de 
 
 Vibes usa un sistema de **dos modelos** para optimizar coste y calidad:
 
-| Rol | Para qué se usa | Recomendación |
-|---|---|---|
+| Rol                  | Para qué se usa                     | Recomendación                   |
+| -------------------- | ----------------------------------- | ------------------------------- |
 | **Modelo principal** | Conversación, planificación, código | Claude Sonnet 4, Gemini 2.5 Pro |
-| **Modelo ejecutor** | Títulos, resúmenes, tareas ligeras | Gemini 2.5 Flash, GPT-4o mini |
+| **Modelo ejecutor**  | Títulos, resúmenes, tareas ligeras  | Gemini 2.5 Flash, GPT-4o mini   |
 
 Puedes cambiar ambos modelos desde **Ajustes → Agente**.
 
@@ -48,12 +48,12 @@ node --version
 
 Puedes conectar servicios externos desde **Ajustes → Integraciones**:
 
-| Servicio | Para qué |
-|---|---|
-| **GitHub** | Push/pull de repositorios, control de versiones remoto |
-| **Vercel** | Despliegue con un click a producción |
-| **Supabase** | Base de datos y autenticación serverless |
-| **Neon** | Base de datos PostgreSQL serverless |
+| Servicio     | Para qué                                               |
+| ------------ | ------------------------------------------------------ |
+| **GitHub**   | Push/pull de repositorios, control de versiones remoto |
+| **Vercel**   | Despliegue con un click a producción                   |
+| **Supabase** | Base de datos y autenticación serverless               |
+| **Neon**     | Base de datos PostgreSQL serverless                    |
 
 Cada integración se configura de forma independiente y es completamente opcional.
 

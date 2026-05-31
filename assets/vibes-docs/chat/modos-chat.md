@@ -45,6 +45,7 @@ Al igual que Plan, usa el modelo estratega y no ejecuta herramientas.
 Usa el **selector de modo** en la cabecera del chat. El cambio es inmediato y no afecta al historial de la conversación.
 
 ![Selector de modo](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del selector de modo (Agent/Plan/Ask)" -->
 
 <!-- @tip "Puedes configurar el modo por defecto que se usa al crear nuevas apps desde Ajustes → Flujo de trabajo → Modo de chat predeterminado." -->
@@ -53,10 +54,10 @@ Usa el **selector de modo** en la cabecera del chat. El cambio es inmediato y no
 
 Independientemente del modo, puedes elegir cómo se muestra la respuesta:
 
-| Vista | Qué muestra |
-|---|---|
-| **Completo** | Todo: herramientas, código, razonamiento |
-| **Flow** | Texto del agente con bloques de pensamiento colapsables |
-| **Zen** | Solo la prosa final, sin ruido técnico |
+| Vista        | Qué muestra                                             |
+| ------------ | ------------------------------------------------------- |
+| **Completo** | Todo: herramientas, código, razonamiento                |
+| **Flow**     | Texto del agente con bloques de pensamiento colapsables |
+| **Zen**      | Solo la prosa final, sin ruido técnico                  |
 
 Configúralo desde **Ajustes → Agente → Vista del chat**.

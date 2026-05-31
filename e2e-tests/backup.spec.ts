@@ -84,7 +84,9 @@ const testWithMultipleBackups = testWithConfig({
 
 const ensureAppIsRunning = async (po: PageObject) => {
   await po.page.waitForSelector("h1");
-  await expect(po.page.getByText("vibes.start()")).toBeVisible({ timeout: 5000 });
+  await expect(po.page.getByText("vibes.start()")).toBeVisible({
+    timeout: 5000,
+  });
 };
 
 test("backup is not created for first run", async ({ po }) => {

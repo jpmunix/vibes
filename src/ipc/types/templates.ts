@@ -18,8 +18,6 @@ export const TemplateSchema = z.object({
 
 export type Template = z.infer<typeof TemplateSchema>;
 
-
-
 // =============================================================================
 // Template/Theme Contracts
 // =============================================================================
@@ -30,8 +28,6 @@ export const templateContracts = {
     input: z.void(),
     output: z.array(TemplateSchema),
   }),
-
-
 } as const;
 
 // =============================================================================

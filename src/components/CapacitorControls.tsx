@@ -172,7 +172,9 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               )}
               <div className="text-left">
                 <div className="typo-label">{iosButtonText.main}</div>
-                <div className="typo-caption text-muted-foreground">{iosButtonText.sub}</div>
+                <div className="typo-caption text-muted-foreground">
+                  {iosButtonText.sub}
+                </div>
               </div>
             </Button>
 
@@ -189,9 +191,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
                 <TabletSmartphone className="h-4 w-4" />
               )}
               <div className="text-left">
-                <div className="typo-label">
-                  {androidButtonText.main}
-                </div>
+                <div className="typo-label">{androidButtonText.main}</div>
                 <div className="typo-caption text-muted-foreground">
                   {androidButtonText.sub}
                 </div>

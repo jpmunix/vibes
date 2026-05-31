@@ -58,8 +58,12 @@ export function createTray(
 
   // Pre-load all icon variants
   normalIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon.png"));
-  greenIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon-green.png"));
-  redIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon-badge.png"));
+  greenIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-green.png"),
+  );
+  redIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-badge.png"),
+  );
 
   tray = new Tray(normalIcon);
   tray.setToolTip(activeFlavor.productName);
@@ -141,7 +145,10 @@ export function notifyStreamStarted() {
  * When all streams are done, turns the icon red (go check results).
  * If the window is focused, goes directly to normal instead.
  */
-export function notifyStreamEnded(notification?: { text: string; chatId?: number }) {
+export function notifyStreamEnded(notification?: {
+  text: string;
+  chatId?: number;
+}) {
   activeStreamCount = Math.max(0, activeStreamCount - 1);
 
   if (notification) {
@@ -152,7 +159,11 @@ export function notifyStreamEnded(notification?: { text: string; chatId?: number
     activeStreamCount = 0;
 
     // If window is focused, user is already looking → no badge needed
-    if (mainWindowRef && !mainWindowRef.isDestroyed() && mainWindowRef.isFocused()) {
+    if (
+      mainWindowRef &&
+      !mainWindowRef.isDestroyed() &&
+      mainWindowRef.isFocused()
+    ) {
       setTrayState("normal");
       clearPendingNotifications();
     } else {

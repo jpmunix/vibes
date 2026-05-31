@@ -29,7 +29,12 @@ export const registerSessionHandlers = () => {
   createTypedHandler(systemContracts.getOpenRouterCredits, async () => {
     // Don't attempt API call if no key is configured — avoid spamming error logs
     if (!hasOpenRouterApiKey()) {
-      return { totalCredits: 0, totalUsage: 0, availableCredits: 0, label: "OpenRouter" };
+      return {
+        totalCredits: 0,
+        totalUsage: 0,
+        availableCredits: 0,
+        label: "OpenRouter",
+      };
     }
 
     const settings = readSettings();
@@ -46,8 +51,13 @@ export const registerSessionHandlers = () => {
       // Determine label
       const openRouterSettings = settings.providerSettings?.openrouter as any;
       let label = "OpenRouter";
-      if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
-        const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+      if (
+        openRouterSettings?.selectedKeyId &&
+        openRouterSettings?.keys?.length > 0
+      ) {
+        const selectedKey = openRouterSettings.keys.find(
+          (k: any) => k.id === openRouterSettings.selectedKeyId,
+        );
         if (selectedKey && selectedKey.alias) {
           label = selectedKey.alias;
         }

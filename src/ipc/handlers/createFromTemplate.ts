@@ -5,9 +5,15 @@ import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
-import { SCAFFOLD_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "../../shared/templates";
+import {
+  SCAFFOLD_TEMPLATE_IDS,
+  DEFAULT_TEMPLATE_ID,
+} from "../../shared/templates";
 import log from "electron-log";
-import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold_cache";
+import {
+  ensureScaffoldCached,
+  copyScaffoldNodeModules,
+} from "../utils/scaffold_cache";
 
 const logger = log.scope("createFromTemplate");
 
@@ -80,12 +86,16 @@ export async function createFromTemplate({
   forceDefaultScaffold?: boolean;
 }) {
   const settings = readSettings();
-  const templateId = forceDefaultScaffold ? DEFAULT_TEMPLATE_ID : settings.selectedTemplateId;
+  const templateId = forceDefaultScaffold
+    ? DEFAULT_TEMPLATE_ID
+    : settings.selectedTemplateId;
 
   // Check if this template has a local scaffold directory
   const scaffoldDirName = SCAFFOLD_TEMPLATE_IDS[templateId];
   if (scaffoldDirName) {
-    logger.info(`Using local scaffold "${scaffoldDirName}" for template "${templateId}"`);
+    logger.info(
+      `Using local scaffold "${scaffoldDirName}" for template "${templateId}"`,
+    );
     // Ensure node_modules are cached for this scaffold (on-demand, first time runs npm install)
     await ensureScaffoldCached(scaffoldDirName);
     await copyDirectoryRecursive(
@@ -128,7 +138,9 @@ async function replaceTemplateWildcards(
           content.replace(/\{\{APP_NAME\}\}/g, displayName),
           "utf-8",
         );
-        logger.info(`Replaced {{APP_NAME}} with "${displayName}" in ${fileName}`);
+        logger.info(
+          `Replaced {{APP_NAME}} with "${displayName}" in ${fileName}`,
+        );
       }
     } catch (error) {
       // File may not exist in some templates (e.g. Express has no index.html)

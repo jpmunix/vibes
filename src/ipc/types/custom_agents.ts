@@ -36,7 +36,9 @@ export const CreateCustomAgentParamsSchema = z.object({
   prompt: z.string().optional().nullable(),
 });
 
-export type CreateCustomAgentParams = z.infer<typeof CreateCustomAgentParamsSchema>;
+export type CreateCustomAgentParams = z.infer<
+  typeof CreateCustomAgentParamsSchema
+>;
 
 export const UpdateCustomAgentParamsSchema = z.object({
   id: z.number(),
@@ -52,7 +54,9 @@ export const UpdateCustomAgentParamsSchema = z.object({
   prompt: z.string().optional().nullable(),
 });
 
-export type UpdateCustomAgentParams = z.infer<typeof UpdateCustomAgentParamsSchema>;
+export type UpdateCustomAgentParams = z.infer<
+  typeof UpdateCustomAgentParamsSchema
+>;
 
 // =============================================================================
 // Custom Agent Contracts

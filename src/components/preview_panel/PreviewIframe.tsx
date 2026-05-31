@@ -97,7 +97,6 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
   const { isStreaming } = useStreamChat();
   if (!error) return null;
 
-
   const getTruncatedError = () => {
     const firstLine = error.message.split("\n")[0];
     const snippetLength = 250;
@@ -167,22 +166,30 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
           {/* Mensaje de consejo (solo para errores internos) */}
           {error.source === "vibes-app" && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 flex gap-3">
-              <Lightbulb size={18} className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <Lightbulb
+                size={18}
+                className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5"
+              />
               <div className="text-sm text-blue-900 dark:text-blue-200">
                 <span className="font-semibold">Consejo: </span>
-                Intenta reiniciar la aplicación Vibes o reiniciar tu computadora para ver si eso soluciona el error.
+                Intenta reiniciar la aplicación Vibes o reiniciar tu computadora
+                para ver si eso soluciona el error.
               </div>
             </div>
           )}
         </div>
 
         {/* Botones de acción o mensaje tranquilizador */}
-        {error.source === "preview-app" && (
-          isStreaming ? (
+        {error.source === "preview-app" &&
+          (isStreaming ? (
             <div className="flex items-center gap-3 p-4 border-t border-border bg-amber-50 dark:bg-amber-950/30 rounded-b-lg">
-              <Loader2 size={18} className="flex-shrink-0 text-amber-600 dark:text-amber-400 animate-spin" />
+              <Loader2
+                size={18}
+                className="flex-shrink-0 text-amber-600 dark:text-amber-400 animate-spin"
+              />
               <p className="text-sm text-amber-900 dark:text-amber-200">
-                Es normal que mientras el agente modifica archivos existan fallos temporales. Espera a que termine de trabajar.
+                Es normal que mientras el agente modifica archivos existan
+                fallos temporales. Espera a que termine de trabajar.
               </p>
             </div>
           ) : (
@@ -196,8 +203,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
                 <span>Arreglar con IA</span>
               </button>
             </div>
-          )
-        )}
+          ))}
       </div>
     </>
   );
@@ -206,7 +212,11 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
 // Expand/Collapse Preview Button
 // position="left" → renders only when preview is on the left (chat right)
 // position="right" → renders only when preview is on the right (chat left)
-export const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
+export const ExpandPreviewButton = ({
+  position,
+}: {
+  position: "left" | "right";
+}) => {
   const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
   const chatPosition = useAtomValue(chatPositionAtom);
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
@@ -239,9 +249,7 @@ export const ExpandPreviewButton = ({ position }: { position: "left" | "right" }
             onClick={handleToggle}
             className={cn(
               "p-1 rounded transition-colors duration-200 text-foreground",
-              isExpanded
-                ? "bg-accent"
-                : "hover:bg-accent",
+              isExpanded ? "bg-accent" : "hover:bg-accent",
             )}
             data-testid="preview-expand-button"
             aria-label={isExpanded ? "Contraer vista" : "Expandir vista"}
@@ -356,7 +364,9 @@ export const DeviceModeButton = () => {
                     <Monitor size={16} />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent><p>Desktop</p></TooltipContent>
+                <TooltipContent>
+                  <p>Desktop</p>
+                </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
             <ToggleGroupItem value="tablet" aria-label="Vista de tableta">
@@ -366,7 +376,9 @@ export const DeviceModeButton = () => {
                     <Tablet size={16} className="scale-x-130" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent><p>Tablet</p></TooltipContent>
+                <TooltipContent>
+                  <p>Tablet</p>
+                </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
             <ToggleGroupItem value="mobile" aria-label="Vista móvil">
@@ -376,7 +388,9 @@ export const DeviceModeButton = () => {
                     <Smartphone size={16} />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent><p>Mobile</p></TooltipContent>
+                <TooltipContent>
+                  <p>Mobile</p>
+                </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
           </ToggleGroup>
@@ -454,12 +468,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const setNaturalEditingPanelOpen = useSetAtom(naturalEditingPanelOpenAtom);
 
   // AST Analysis State (atoms for cross-component access)
-  const [isDynamicComponent, setIsDynamicComponent] = useAtom(isDynamicComponentAtom);
+  const [isDynamicComponent, setIsDynamicComponent] = useAtom(
+    isDynamicComponentAtom,
+  );
   const [hasStaticText, setHasStaticText] = useAtom(hasStaticTextAtom);
   const setCurrentIconName = useSetAtom(currentIconNameAtom);
   const setIconLine = useSetAtom(iconLineAtom);
   const setComponentTextContent = useSetAtom(componentTextContentAtom);
-
 
   // Device mode — still read for iframe sizing
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
@@ -475,7 +490,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     try {
       const currentUrl = navigationHistory[currentHistoryPosition];
       if (currentUrl) return new URL(currentUrl).pathname;
-    } catch { }
+    } catch {}
     return "/";
   }, [navigationHistory, currentHistoryPosition]);
 
@@ -684,22 +699,30 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   useEffect(() => {
     const MAX_FAILURES = 2;
 
-    if (loadFailureCount >= MAX_FAILURES && !isAutoRestarting && selectedAppId) {
-      console.warn(`[PreviewIframe] Detected ${loadFailureCount} consecutive load failures. Auto-restarting server...`);
+    if (
+      loadFailureCount >= MAX_FAILURES &&
+      !isAutoRestarting &&
+      selectedAppId
+    ) {
+      console.warn(
+        `[PreviewIframe] Detected ${loadFailureCount} consecutive load failures. Auto-restarting server...`,
+      );
       setIsAutoRestarting(true);
 
       // Immediately reset failure count to prevent multiple restart attempts
       setLoadFailureCount(0);
 
       // Force a complete server restart
-      restartApp({ removeNodeModules: false }).then(() => {
-        console.log('[PreviewIframe] Server restarted successfully');
-        setIsAutoRestarting(false);
-      }).catch((err) => {
-        console.error('[PreviewIframe] Failed to restart server:', err);
-        setIsAutoRestarting(false);
-        // Don't increment failure count here to avoid infinite loop
-      });
+      restartApp({ removeNodeModules: false })
+        .then(() => {
+          console.log("[PreviewIframe] Server restarted successfully");
+          setIsAutoRestarting(false);
+        })
+        .catch((err) => {
+          console.error("[PreviewIframe] Failed to restart server:", err);
+          setIsAutoRestarting(false);
+          // Don't increment failure count here to avoid infinite loop
+        });
     }
   }, [loadFailureCount, isAutoRestarting, selectedAppId, restartApp]);
 
@@ -957,19 +980,20 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
         // Calculate absolute coordinates relative to the window
         // We need to account for the fact that Electron's capturePage matches the window's content area
-        const captureRect = (rect && rect.width && rect.height)
-          ? {
-            x: Math.round(iframeRect.left + rect.left),
-            y: Math.round(iframeRect.top + rect.top),
-            width: Math.round(rect.width),
-            height: Math.round(rect.height),
-          }
-          : {
-            x: Math.round(iframeRect.left),
-            y: Math.round(iframeRect.top),
-            width: Math.round(iframeRect.width),
-            height: Math.round(iframeRect.height),
-          };
+        const captureRect =
+          rect && rect.width && rect.height
+            ? {
+                x: Math.round(iframeRect.left + rect.left),
+                y: Math.round(iframeRect.top + rect.top),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+              }
+            : {
+                x: Math.round(iframeRect.left),
+                y: Math.round(iframeRect.top),
+                width: Math.round(iframeRect.width),
+                height: Math.round(iframeRect.height),
+              };
 
         ipc.system
           .takeScreenshot({ rect: captureRect })
@@ -1013,7 +1037,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             fetch(event.data.dataUrl)
               .then((res) => res.blob())
               .then((blob) => {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const timestamp = new Date()
+                  .toISOString()
+                  .replace(/[:.]/g, "-");
                 const file = new File([blob], `screenshot-${timestamp}.png`, {
                   type: "image/png",
                 });
@@ -1032,12 +1058,12 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       const { type, payload } = event.data as {
         type:
-        | "window-error"
-        | "unhandled-rejection"
-        | "iframe-sourcemapped-error"
-        | "build-error-report"
-        | "pushState"
-        | "replaceState";
+          | "window-error"
+          | "unhandled-rejection"
+          | "iframe-sourcemapped-error"
+          | "build-error-report"
+          | "pushState"
+          | "replaceState";
         payload?: {
           message?: string;
           stack?: string;
@@ -1507,7 +1533,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
     // Set new timeout
     loadTimeoutRef.current = setTimeout(() => {
-      console.warn('[PreviewIframe] Iframe load timeout - no response after 30 seconds');
+      console.warn(
+        "[PreviewIframe] Iframe load timeout - no response after 30 seconds",
+      );
 
       // Increment failure count
       setLoadFailureCount((prev) => {
@@ -1517,8 +1545,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       });
 
       setErrorMessage({
-        message: 'Timeout: El servidor local no responde. Intentando reiniciar automáticamente...',
-        source: 'preview-app'
+        message:
+          "Timeout: El servidor local no responde. Intentando reiniciar automáticamente...",
+        source: "preview-app",
       });
     }, 30000); // 30 seconds
 
@@ -1536,11 +1565,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     return (
       <div className="flex flex-col h-full relative">
         <VibesInitLoader
-          subtitle={
-            isAutoRestarting
-              ? "Reiniciando servidor..."
-              : undefined
-          }
+          subtitle={isAutoRestarting ? "Reiniciando servidor..." : undefined}
         />
       </div>
     );
@@ -1559,7 +1584,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     restartApp();
   };
 
-
   return (
     <div className="flex flex-col h-full">
       {/* Browser-style header - hide when annotator is active */}
@@ -1567,17 +1591,15 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         <div className="flex items-center p-2 border-b space-x-2">
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
-
             <button
               onClick={handleActivateComponentSelector}
-              className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
-                ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
-                : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
+              className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isPicking
+                  ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
+                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
+              }`}
               disabled={
-                loading ||
-                !selectedAppId ||
-                !isComponentSelectorInitialized
+                loading || !selectedAppId || !isComponentSelectorInitialized
               }
               data-testid="preview-pick-element-button"
             >
@@ -1654,7 +1676,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   }}
                   onBlur={(e) => {
                     // Don't close if clicking inside the suggestions dropdown
-                    if (e.relatedTarget?.closest("[data-address-suggestions]")) return;
+                    if (e.relatedTarget?.closest("[data-address-suggestions]"))
+                      return;
                     setIsEditingUrl(false);
                   }}
                   className="w-full px-3 py-1 bg-muted rounded text-sm text-foreground outline-none ring-2 ring-primary/50"
@@ -1746,7 +1769,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   {getCurrentPath()}
                 </span>
                 {(availableRoutes.length > 0 || appHistory.length > 0) && (
-                  <ChevronDown size={14} className="flex-shrink-0 text-muted-foreground" />
+                  <ChevronDown
+                    size={14}
+                    className="flex-shrink-0 text-muted-foreground"
+                  />
                 )}
               </div>
             )}
@@ -1810,13 +1836,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   setIsAutoRestarting(false);
                   setIsIframeLoading(false);
 
-                  console.log('[PreviewIframe] Successfully loaded iframe');
+                  console.log("[PreviewIframe] Successfully loaded iframe");
                   setIsComponentSelectorInitialized(true);
                   // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
                   // This prevents re-renders from accidentally changing the iframe src
                 }}
                 onError={(e) => {
-                  console.error('[PreviewIframe] iframe load error:', e);
+                  console.error("[PreviewIframe] iframe load error:", e);
 
                   // Clear any pending load timeout
                   if (loadTimeoutRef.current) {
@@ -1833,8 +1859,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   });
 
                   setErrorMessage({
-                    message: 'Error de conexión con el servidor local (127.0.0.1). Intentando reiniciar automáticamente...',
-                    source: 'preview-app'
+                    message:
+                      "Error de conexión con el servidor local (127.0.0.1). Intentando reiniciar automáticamente...",
+                    source: "preview-app",
                   });
                 }}
                 ref={(el) => {
@@ -1867,10 +1894,7 @@ function parseComponentSelection(data: any): ComponentSelection | null {
   }
 
   const component = data.component;
-  if (
-    !component ||
-    typeof component.id !== "string"
-  ) {
+  if (!component || typeof component.id !== "string") {
     return null;
   }
 

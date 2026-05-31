@@ -131,7 +131,9 @@ export const InsertUserMessagesParamsSchema = z.object({
   ),
 });
 
-export type InsertUserMessagesParams = z.infer<typeof InsertUserMessagesParamsSchema>;
+export type InsertUserMessagesParams = z.infer<
+  typeof InsertUserMessagesParamsSchema
+>;
 
 /**
  * Schema for chat response chunk event.
@@ -155,12 +157,16 @@ export const ChatResponseEndSchema = z.object({
   /** When a cancel happens before content is generated, the user's prompt is sent back */
   restoredPrompt: z.string().optional(),
   /** Memories selected by the Router and injected into agent context */
-  selectedMemories: z.array(z.object({
-    id: z.number(),
-    type: z.string(),
-    key: z.string().nullable(),
-    content: z.string(),
-  })).optional(),
+  selectedMemories: z
+    .array(
+      z.object({
+        id: z.number(),
+        type: z.string(),
+        key: z.string().nullable(),
+        content: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;
@@ -255,11 +261,16 @@ export const chatContracts = {
         isPlan: z.boolean().optional().default(false),
         isRead: z.boolean().optional().default(true),
         lastReadAt: z.date().nullable().optional(),
-        labels: z.array(z.object({
-          id: z.number(),
-          label: z.string(),
-          color: z.string()
-        })).optional().default([]),
+        labels: z
+          .array(
+            z.object({
+              id: z.number(),
+              label: z.string(),
+              color: z.string(),
+            }),
+          )
+          .optional()
+          .default([]),
       }),
     ),
   }),
@@ -282,7 +293,6 @@ export const chatContracts = {
     output: z.void(),
   }),
 
-
   searchChats: defineContract({
     channel: "search-chats",
     input: z.object({
@@ -298,11 +308,16 @@ export const chatContracts = {
         matchedMessageContent: z.string().nullable(),
         isPlan: z.boolean().optional().default(false),
         isRead: z.boolean().optional().default(true),
-        labels: z.array(z.object({
-          id: z.number(),
-          label: z.string(),
-          color: z.string()
-        })).optional().default([]),
+        labels: z
+          .array(
+            z.object({
+              id: z.number(),
+              label: z.string(),
+              color: z.string(),
+            }),
+          )
+          .optional()
+          .default([]),
       }),
     ),
   }),
@@ -333,7 +348,6 @@ export const chatContracts = {
     }),
     output: z.void(),
   }),
-
 
   savePlanData: defineContract({
     channel: "save-plan-data",
@@ -393,11 +407,16 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         firstPrompt: z.string().nullable().optional(),
-        labels: z.array(z.object({
-          id: z.number(),
-          label: z.string(),
-          color: z.string()
-        })).optional().default([]),
+        labels: z
+          .array(
+            z.object({
+              id: z.number(),
+              label: z.string(),
+              color: z.string(),
+            }),
+          )
+          .optional()
+          .default([]),
       }),
     ),
   }),
@@ -436,11 +455,16 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         isRead: z.boolean().optional().default(true),
-        labels: z.array(z.object({
-          id: z.number(),
-          label: z.string(),
-          color: z.string()
-        })).optional().default([]),
+        labels: z
+          .array(
+            z.object({
+              id: z.number(),
+              label: z.string(),
+              color: z.string(),
+            }),
+          )
+          .optional()
+          .default([]),
       }),
     ),
   }),
@@ -465,7 +489,7 @@ export const chatContracts = {
         accepted: z.number().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
-      })
+      }),
     ),
   }),
 
@@ -496,14 +520,14 @@ export const chatContracts = {
     input: z.number(), // appId
     output: z.array(
       z.object({
-        id: z.number().nullable(),        // null = orphaned (on disk only)
+        id: z.number().nullable(), // null = orphaned (on disk only)
         path: z.string(),
         title: z.string().nullable(),
-        chatId: z.number().nullable(),     // which chat owns it (null = unattached)
-        chatTitle: z.string().nullable(),  // for display
+        chatId: z.number().nullable(), // which chat owns it (null = unattached)
+        chatTitle: z.string().nullable(), // for display
         accepted: z.number().nullable(),
         createdAt: z.date().nullable(),
-      })
+      }),
     ),
   }),
 
@@ -512,8 +536,8 @@ export const chatContracts = {
     channel: "attach-artifact-to-chat",
     input: z.object({
       appId: z.number(),
-      path: z.string(),      // .vibes/plan-xxx.md
-      chatId: z.number(),     // target chat
+      path: z.string(), // .vibes/plan-xxx.md
+      chatId: z.number(), // target chat
     }),
     output: z.boolean(),
   }),
@@ -549,7 +573,7 @@ export const chatContracts = {
         blockRef: z.string().nullable(),
         comment: z.string(),
         createdAt: z.date(),
-      })
+      }),
     ),
   }),
 
@@ -593,11 +617,13 @@ export const chatContracts = {
   getGlobalLabels: defineContract({
     channel: "get-global-labels",
     input: z.void(),
-    output: z.array(z.object({
-      id: z.number(),
-      name: z.string(),
-      color: z.string(),
-    })),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        color: z.string(),
+      }),
+    ),
   }),
 
   createGlobalLabel: defineContract({
@@ -637,18 +663,22 @@ export const chatContracts = {
     channel: "set-chat-labels",
     input: z.object({
       chatId: z.number(),
-      labels: z.array(z.object({
-        id: z.number().optional(),
-        name: z.string(),
-        color: z.string().optional(),
-      })),
+      labels: z.array(
+        z.object({
+          id: z.number().optional(),
+          name: z.string(),
+          color: z.string().optional(),
+        }),
+      ),
     }),
-    output: z.array(z.object({
-      id: z.number(),
-      labelId: z.number().nullable(),
-      label: z.string(),
-      color: z.string(),
-    })),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        labelId: z.number().nullable(),
+        label: z.string(),
+        color: z.string(),
+      }),
+    ),
   }),
 
   // ── Stream Tasks ──────────────────────────────────────────────────────────
@@ -657,17 +687,19 @@ export const chatContracts = {
   getStreamTask: defineContract({
     channel: "get-stream-task",
     input: z.number(), // chatId
-    output: z.object({
-      id: z.number(),
-      chatId: z.number(),
-      messageId: z.number(),
-      status: z.string(),
-      startedAt: z.union([z.date(), z.string()]),
-      completedAt: z.union([z.date(), z.string()]).nullable(),
-      model: z.string().nullable(),
-      agentId: z.string().nullable(),
-      error: z.string().nullable(),
-    }).nullable(),
+    output: z
+      .object({
+        id: z.number(),
+        chatId: z.number(),
+        messageId: z.number(),
+        status: z.string(),
+        startedAt: z.union([z.date(), z.string()]),
+        completedAt: z.union([z.date(), z.string()]).nullable(),
+        model: z.string().nullable(),
+        agentId: z.string().nullable(),
+        error: z.string().nullable(),
+      })
+      .nullable(),
   }),
 } as const;
 

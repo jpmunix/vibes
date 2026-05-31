@@ -10,7 +10,7 @@ export const hubRoute = new Route({
   path: "/hub",
   component: () => (
     <Suspense fallback={<PageLoader />}>
-    <HubPage />
+      <HubPage />
     </Suspense>
   ),
 });

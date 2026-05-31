@@ -23,8 +23,6 @@ import { chatContracts, chatStreamContract } from "../types/chat";
 import { firebaseContracts } from "../types/firebase";
 import { contextContracts } from "../types/context";
 
-
-
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
 import { helpContracts, helpStreamContract } from "../types/help";
 import { importContracts } from "../types/import";
@@ -44,13 +42,11 @@ import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 import { customAgentsContracts } from "../types/custom_agents";
 
-
 import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
 import { memoryContracts } from "../types/memory";
 import { adminContracts } from "../types/admin";
 import { markdownShareContracts } from "../types/markdown-share";
-
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -58,8 +54,6 @@ import { markdownShareContracts } from "../types/markdown-share";
 
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
-
-
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
 const TEST_INVOKE_CHANNELS = [
@@ -86,12 +80,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   ...getInvokeChannels(agentContracts),
 
-
   // Stream invoke channels
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
-
-
 
   // Integrations
   ...getInvokeChannels(githubContracts),
@@ -130,7 +121,6 @@ export const VALID_INVOKE_CHANNELS = [
 
   ...getInvokeChannels(markdownShareContracts),
 
-
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,
 
@@ -162,15 +152,12 @@ export const VALID_RECEIVE_CHANNELS = [
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
 
-
-
   // Event channels
   ...getReceiveChannels(agentEvents),
   ...getReceiveChannels(githubEvents),
   ...getReceiveChannels(mcpEvents),
   ...getReceiveChannels(systemEvents),
   ...getReceiveChannels(miscEvents),
-
 
   // Additional chat events
   "chat:model:selected",

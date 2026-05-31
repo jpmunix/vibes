@@ -8,7 +8,12 @@ interface SimpleAvatarProps {
   className?: string;
 }
 
-export function SimpleAvatar({ src, alt, fallbackText, className }: SimpleAvatarProps) {
+export function SimpleAvatar({
+  src,
+  alt,
+  fallbackText,
+  className,
+}: SimpleAvatarProps) {
   const [hasError, setHasError] = useState(false);
 
   // Reset error state when src changes so new images can be attempted
@@ -19,10 +24,12 @@ export function SimpleAvatar({ src, alt, fallbackText, className }: SimpleAvatar
   const showImage = src && !hasError;
 
   return (
-    <div className={cn(
-      "flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium text-foreground select-none",
-      className
-    )}>
+    <div
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium text-foreground select-none",
+        className,
+      )}
+    >
       {showImage ? (
         <img
           src={src}

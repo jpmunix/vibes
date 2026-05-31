@@ -18,9 +18,9 @@ Puedes adjuntar imágenes y archivos al mensaje para dar contexto al agente:
 
 Los adjuntos se pueden enviar de dos formas:
 
-| Tipo | Qué hace |
-|---|---|
-| **Contexto del chat** | El agente ve el archivo pero no lo sube al proyecto |
+| Tipo                  | Qué hace                                                   |
+| --------------------- | ---------------------------------------------------------- |
+| **Contexto del chat** | El agente ve el archivo pero no lo sube al proyecto        |
 | **Subir al proyecto** | El archivo se copia directamente a la carpeta del proyecto |
 
 ## Mensajes largos
@@ -35,11 +35,11 @@ Cuando envías un mensaje de texto muy extenso, la burbuja se **colapsa automát
 
 Al pasar el cursor por un mensaje del agente, aparecen iconos de acción en la parte inferior:
 
-| Acción | Qué hace |
-|---|---|
-| **Copiar** | Copia el contenido al portapapeles |
-| **Citar** | Referencia este mensaje en una respuesta |
-| **Compartir** | Genera un enlace público al mensaje |
+| Acción        | Qué hace                                 |
+| ------------- | ---------------------------------------- |
+| **Copiar**    | Copia el contenido al portapapeles       |
+| **Citar**     | Referencia este mensaje en una respuesta |
+| **Compartir** | Genera un enlace público al mensaje      |
 
 ## Bloques de pensamiento
 

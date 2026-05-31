@@ -5,7 +5,6 @@ import { CustomErrorToast } from "../components/CustomErrorToast";
 import { InputRequestToast } from "../components/InputRequestToast";
 import { McpConsentToast } from "../components/McpConsentToast";
 
-
 /**
  * Toast utility functions for consistent notifications across the app
  */
@@ -163,8 +162,6 @@ export const showExtraFilesToast = ({
     );
   }
 };
-
-
 
 // Re-export for direct use
 export { toast };

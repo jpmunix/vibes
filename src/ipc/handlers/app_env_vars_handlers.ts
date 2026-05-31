@@ -21,39 +21,45 @@ const logger = log.scope("app_env_vars_handlers");
 
 export function registerAppEnvVarsHandlers() {
   // Handler to get app environment variables
-  createTypedHandler(miscContracts.getAppEnvVars, async (_, { appId }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    try {
-      const db = getRemoteDb();
-      const app = await db.query.apps.findFirst({
-        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
-      });
-
-      if (!app) {
-        throw new Error("App not found");
-      }
-
-      const appPath = getVibesAppPath(app.path);
-      const envFilePath = path.join(appPath, ENV_FILE_NAME);
-
-      // If .env.local doesn't exist, return empty array
+  createTypedHandler(
+    miscContracts.getAppEnvVars,
+    async (_, { appId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
       try {
-        await fs.promises.access(envFilePath);
-      } catch {
-        return [];
+        const db = getRemoteDb();
+        const app = await db.query.apps.findFirst({
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
+        });
+
+        if (!app) {
+          throw new Error("App not found");
+        }
+
+        const appPath = getVibesAppPath(app.path);
+        const envFilePath = path.join(appPath, ENV_FILE_NAME);
+
+        // If .env.local doesn't exist, return empty array
+        try {
+          await fs.promises.access(envFilePath);
+        } catch {
+          return [];
+        }
+
+        const content = await fs.promises.readFile(envFilePath, "utf8");
+        const envVars = parseEnvFile(content);
+
+        return envVars;
+      } catch (error) {
+        logger.error("Error getting app environment variables:", error);
+        throw new Error(
+          `Failed to get environment variables: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
-
-      const content = await fs.promises.readFile(envFilePath, "utf8");
-      const envVars = parseEnvFile(content);
-
-      return envVars;
-    } catch (error) {
-      logger.error("Error getting app environment variables:", error);
-      throw new Error(
-        `Failed to get environment variables: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  });
+    },
+  );
 
   // Handler to set app environment variables
   createTypedHandler(
@@ -63,7 +69,10 @@ export function registerAppEnvVarsHandlers() {
       try {
         const db = getRemoteDb();
         const app = await db.query.apps.findFirst({
-          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
         });
 
         if (!app) {

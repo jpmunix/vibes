@@ -18,10 +18,18 @@ export default function ChatPage() {
     if (selectedAppId && chatId) {
       // Open in dedicated chat window and go to app-details
       ipc.system.openChatWindow({ appId: selectedAppId, chatId });
-      navigate({ to: "/app-details", search: { appId: selectedAppId }, replace: true });
+      navigate({
+        to: "/app-details",
+        search: { appId: selectedAppId },
+        replace: true,
+      });
     } else if (selectedAppId) {
       // No chatId, just go to app-details
-      navigate({ to: "/app-details", search: { appId: selectedAppId }, replace: true });
+      navigate({
+        to: "/app-details",
+        search: { appId: selectedAppId },
+        replace: true,
+      });
     } else {
       // No app selected, go home
       navigate({ to: "/", replace: true });

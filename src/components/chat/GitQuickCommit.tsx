@@ -22,7 +22,11 @@ interface GitQuickCommitProps {
   onDismiss: () => void;
 }
 
-export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuickCommitProps) {
+export function GitQuickCommit({
+  appId,
+  chatId,
+  onDismiss: _onDismiss,
+}: GitQuickCommitProps) {
   const queryClient = useQueryClient();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -53,34 +57,39 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
   }
 
   const injectSyntheticCommitMessage = (action: "commit" | "commit-push") => {
-    const filesList = uncommittedFiles.map(f => f.path).join(",");
+    const filesList = uncommittedFiles.map((f) => f.path).join(",");
     const tag = `<vibes-git-commit action="${action}" files="${filesList}">${commitMessage}</vibes-git-commit>`;
 
     // Insert into DB
-    ipc.chat.addSyntheticMessage({ 
-      chatId, 
+    ipc.chat.addSyntheticMessage({
+      chatId,
       content: tag,
-      model: "vibes/git-assistant"
+      model: "vibes/git-assistant",
     } as any);
-    
+
     // Inject instantly into UI
     setMessagesById((prev) => {
       const next = new Map(prev);
       const msgs = next.get(chatId) || [];
-      next.set(chatId, [...msgs, {
-        id: Date.now(),
-        chatId,
-        role: "assistant",
-        content: tag,
-        model: "vibes/git-assistant",
-        createdAt: new Date().toISOString(),
-        aiMessagesJson: null
-      } as any]);
+      next.set(chatId, [
+        ...msgs,
+        {
+          id: Date.now(),
+          chatId,
+          role: "assistant",
+          content: tag,
+          model: "vibes/git-assistant",
+          createdAt: new Date().toISOString(),
+          aiMessagesJson: null,
+        } as any,
+      ]);
       return next;
     });
-    
+
     queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-    queryClient.invalidateQueries({ queryKey: queryKeys.chats.list({ appId }) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.chats.list({ appId }),
+    });
   };
 
   const handleCommit = async () => {
@@ -107,7 +116,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
   return (
     <div className="flex flex-col border-b border-border bg-muted/30 backdrop-blur-md animate-in slide-in-from-top duration-200">
       {/* Header / Collapsed Banner (Clickable to Expand/Collapse) */}
-      <div 
+      <div
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between p-2 px-3 cursor-pointer hover:bg-muted-foreground/5 transition-colors select-none"
       >
@@ -150,7 +159,7 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
                 }
               }}
             />
-            
+
             <div className="flex items-center justify-between p-2 bg-muted/20 border-t border-border/40">
               <div className="flex items-center">
                 <button
@@ -161,7 +170,10 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
                 >
                   {isGeneratingMessage ? (
                     <>
-                      <Loader2 size={13} className="animate-spin text-primary" />
+                      <Loader2
+                        size={13}
+                        className="animate-spin text-primary"
+                      />
                       <span className="text-primary">Analizando...</span>
                     </>
                   ) : (
@@ -178,7 +190,12 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
                   size="sm"
                   variant="ghost"
                   onClick={handleCommit}
-                  disabled={!commitMessage.trim() || isGeneratingMessage || isCommitting || isPushing}
+                  disabled={
+                    !commitMessage.trim() ||
+                    isGeneratingMessage ||
+                    isCommitting ||
+                    isPushing
+                  }
                   className="h-7 text-xs px-3 bg-muted/50 hover:bg-muted font-medium text-muted-foreground hover:text-foreground"
                 >
                   {isCommitting ? (
@@ -190,7 +207,12 @@ export function GitQuickCommit({ appId, chatId, onDismiss: _onDismiss }: GitQuic
                 <Button
                   size="sm"
                   onClick={handleCommitAndPush}
-                  disabled={!commitMessage.trim() || isGeneratingMessage || isCommitting || isPushing}
+                  disabled={
+                    !commitMessage.trim() ||
+                    isGeneratingMessage ||
+                    isCommitting ||
+                    isPushing
+                  }
                   className="h-7 text-xs px-3.5 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
                 >
                   {isPushing ? (

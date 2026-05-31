@@ -56,26 +56,36 @@ interface LogItemProps {
   appId: number;
 }
 
-const LogItem = memo(({ index, entry, expandedEntries, typeFilter, getEntryKey, toggleExpanded, appId }: LogItemProps) => {
-  if (!entry) return <div />;
-  const entryKey = getEntryKey(entry, index);
-  const isExpanded = expandedEntries.has(entryKey);
-  return (
-    <div>
-      <ConsoleEntryComponent
-        type={entry.type}
-        level={entry.level}
-        timestamp={entry.timestamp}
-        message={entry.message}
-        sourceName={entry.sourceName}
-        typeFilter={typeFilter}
-        isExpanded={isExpanded}
-        onToggleExpand={() => toggleExpanded(entryKey, index)}
-        appId={appId}
-      />
-    </div>
-  );
-});
+const LogItem = memo(
+  ({
+    index,
+    entry,
+    expandedEntries,
+    typeFilter,
+    getEntryKey,
+    toggleExpanded,
+    appId,
+  }: LogItemProps) => {
+    if (!entry) return <div />;
+    const entryKey = getEntryKey(entry, index);
+    const isExpanded = expandedEntries.has(entryKey);
+    return (
+      <div>
+        <ConsoleEntryComponent
+          type={entry.type}
+          level={entry.level}
+          timestamp={entry.timestamp}
+          message={entry.message}
+          sourceName={entry.sourceName}
+          typeFilter={typeFilter}
+          isExpanded={isExpanded}
+          onToggleExpand={() => toggleExpanded(entryKey, index)}
+          appId={appId}
+        />
+      </div>
+    );
+  },
+);
 LogItem.displayName = "LogItem";
 
 // ─── Logs Panel (self-contained, no useSettings dependency) ────────────────────
@@ -85,11 +95,17 @@ function LogsPanel({ appId }: { appId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Filters
-  const [levelFilter, setLevelFilter] = useState<"all" | "info" | "warn" | "error">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "server" | "client" | "edge-function" | "network-requests">("all");
+  const [levelFilter, setLevelFilter] = useState<
+    "all" | "info" | "warn" | "error"
+  >("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "server" | "client" | "edge-function" | "network-requests"
+  >("all");
   const [sourceFilter, setSourceFilter] = useState<string>("");
   const [isNearBottom, setIsNearBottom] = useState(true);
 
@@ -104,7 +120,9 @@ function LogsPanel({ appId }: { appId: number }) {
       await ipc.misc.clearLogs({ appId });
       setEntries([]);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Failed to clear logs");
+      showError(
+        error instanceof Error ? error.message : "Failed to clear logs",
+      );
     }
   }, [appId]);
 
@@ -113,9 +131,12 @@ function LogsPanel({ appId }: { appId: number }) {
     if (!appId) return;
     let isMounted = true;
 
-    ipc.misc.getConsoleLogs({ appId }).then((logs) => {
-      if (isMounted) setEntries(logs);
-    }).catch(console.error);
+    ipc.misc
+      .getConsoleLogs({ appId })
+      .then((logs) => {
+        if (isMounted) setEntries(logs);
+      })
+      .catch(console.error);
 
     const unsubscribeBatch = ipc.events.misc.onAppLogsBatch((batch) => {
       if (batch.appId === appId) {
@@ -123,7 +144,9 @@ function LogsPanel({ appId }: { appId: number }) {
           ...prev,
           ...batch.logs.map((log) => ({
             ...log,
-            level: (log.type === "stderr" || log.type === "client-error" ? "error" : "info") as "error" | "info",
+            level: (log.type === "stderr" || log.type === "client-error"
+              ? "error"
+              : "info") as "error" | "info",
             type: "server" as const,
             timestamp: log.timestamp ?? Date.now(),
           })),
@@ -161,19 +184,25 @@ function LogsPanel({ appId }: { appId: number }) {
   // Source names for filter dropdown
   const uniqueSources = useMemo(() => {
     const sources = new Set<string>();
-    entries.forEach((e) => { if (e.sourceName) sources.add(e.sourceName); });
+    entries.forEach((e) => {
+      if (e.sourceName) sources.add(e.sourceName);
+    });
     return Array.from(sources).sort();
   }, [entries]);
 
-  const getEntryKey = useCallback((entry: ConsoleEntry | undefined, index: number) => {
-    if (!entry) return `empty-${index}`;
-    return `${entry.type}-${entry.timestamp}-${index}`;
-  }, []);
+  const getEntryKey = useCallback(
+    (entry: ConsoleEntry | undefined, index: number) => {
+      if (!entry) return `empty-${index}`;
+      return `${entry.type}-${entry.timestamp}-${index}`;
+    },
+    [],
+  );
 
   const toggleExpanded = useCallback((key: string, _index: number) => {
     setExpandedEntries((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }, []);
@@ -182,17 +211,22 @@ function LogsPanel({ appId }: { appId: number }) {
   useEffect(() => {
     if (isNearBottom && virtuosoRef.current && filteredEntries.length > 0) {
       const t = setTimeout(() => {
-        virtuosoRef.current?.scrollToIndex({ index: filteredEntries.length - 1, behavior: "smooth" });
+        virtuosoRef.current?.scrollToIndex({
+          index: filteredEntries.length - 1,
+          behavior: "smooth",
+        });
       }, 50);
       return () => clearTimeout(t);
     }
   }, [filteredEntries.length, isNearBottom]);
 
   const handleExportLogs = useCallback(() => {
-    const text = entries.map((e) => {
-      const ts = new Date(e.timestamp).toLocaleTimeString();
-      return `${ts} [${e.level}] [${e.type}] ${e.sourceName ? `(${e.sourceName}) ` : ""}${e.message}`;
-    }).join("\n");
+    const text = entries
+      .map((e) => {
+        const ts = new Date(e.timestamp).toLocaleTimeString();
+        return `${ts} [${e.level}] [${e.type}] ${e.sourceName ? `(${e.sourceName}) ` : ""}${e.message}`;
+      })
+      .join("\n");
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -203,7 +237,10 @@ function LogsPanel({ appId }: { appId: number }) {
   }, [entries, appId]);
 
   return (
-    <div ref={containerRef} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div
+      ref={containerRef}
+      className="flex flex-col flex-1 min-h-0 overflow-hidden"
+    >
       {/* Filters bar */}
       {showFilters && (
         <ConsoleFilters
@@ -236,7 +273,10 @@ function LogsPanel({ appId }: { appId: number }) {
             initialTopMostItemIndex={Math.max(0, filteredEntries.length - 1)}
             atBottomStateChange={setIsNearBottom}
             components={{ ScrollSeekPlaceholder }}
-            scrollSeekConfiguration={{ enter: (v) => Math.abs(v) > 600, exit: (v) => Math.abs(v) < 100 }}
+            scrollSeekConfiguration={{
+              enter: (v) => Math.abs(v) > 600,
+              exit: (v) => Math.abs(v) < 100,
+            }}
             itemContent={(index, entry) => (
               <LogItem
                 index={index}
@@ -268,9 +308,12 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
 
   // Set window title
   useEffect(() => {
-    ipc.app.getApp(appId).then((app) => {
-      if (app?.name) document.title = `${app.name} \u2013 Consola`;
-    }).catch(() => {});
+    ipc.app
+      .getApp(appId)
+      .then((app) => {
+        if (app?.name) document.title = `${app.name} \u2013 Consola`;
+      })
+      .catch(() => {});
   }, [appId]);
 
   return (
@@ -290,7 +333,7 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
               "px-2.5 py-0.5 typo-tab rounded-md transition-colors",
               consoleView === "logs"
                 ? "bg-sidebar-accent text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent",
             )}
           >
             Logs
@@ -301,14 +344,17 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
               "px-2.5 py-0.5 typo-tab rounded-md transition-colors",
               consoleView === "terminal"
                 ? "bg-sidebar-accent text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent",
             )}
           >
             Console
           </button>
         </div>
 
-        <WindowsControls className="ml-auto pr-0 pointer-events-auto no-app-region-drag" buttonClassName="h-9" />
+        <WindowsControls
+          className="ml-auto pr-0 pointer-events-auto no-app-region-drag"
+          buttonClassName="h-9"
+        />
       </div>
 
       {/* Content area */}

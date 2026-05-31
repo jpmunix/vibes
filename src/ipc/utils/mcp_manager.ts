@@ -36,24 +36,28 @@ class McpClientWrapper {
       where: eq(remoteSchema.mcpServers.id, this.serverId),
     });
 
-    if (!server) throw new Error(`MCP Server with ID ${this.serverId} not found`);
+    if (!server)
+      throw new Error(`MCP Server with ID ${this.serverId} not found`);
 
     let transport;
     if (server.transport === "stdio") {
-      if (!server.command) throw new Error("Command is required for stdio transport");
+      if (!server.command)
+        throw new Error("Command is required for stdio transport");
       const parsedArgs: string[] = safeParseJsonField(server.args) ?? [];
-      
+
       const envVars: Record<string, string> = {};
       for (const [k, v] of Object.entries(process.env)) {
         if (v !== undefined) envVars[k] = v;
       }
-      const customEnv = safeParseJsonField<Record<string, string>>(server.envJson);
+      const customEnv = safeParseJsonField<Record<string, string>>(
+        server.envJson,
+      );
       if (customEnv) {
         for (const [k, v] of Object.entries(customEnv)) {
           if (v !== undefined) envVars[k] = v;
         }
       }
-      
+
       transport = new StdioClientTransport({
         command: server.command,
         args: parsedArgs,
@@ -61,18 +65,22 @@ class McpClientWrapper {
       });
     } else if (server.transport === "http" || server.transport === "sse") {
       if (!server.url) throw new Error("URL is required for remote transport");
-      
+
       let customHeaders: Record<string, string> = {};
-      const parsedHeaders = safeParseJsonField<Record<string, string>>(server.headersJson);
+      const parsedHeaders = safeParseJsonField<Record<string, string>>(
+        server.headersJson,
+      );
       if (parsedHeaders) customHeaders = parsedHeaders;
-      const parsedEnvForHeaders = safeParseJsonField<Record<string, string>>(server.envJson);
-      if (parsedEnvForHeaders) customHeaders = { ...customHeaders, ...parsedEnvForHeaders };
-      
+      const parsedEnvForHeaders = safeParseJsonField<Record<string, string>>(
+        server.envJson,
+      );
+      if (parsedEnvForHeaders)
+        customHeaders = { ...customHeaders, ...parsedEnvForHeaders };
+
       const serverUrl = new URL(server.url);
-      const requestInit: RequestInit = Object.keys(customHeaders).length > 0 
-          ? { headers: customHeaders } 
-          : {};
-      
+      const requestInit: RequestInit =
+        Object.keys(customHeaders).length > 0 ? { headers: customHeaders } : {};
+
       transport = new StreamableHTTPClientTransport(serverUrl, { requestInit });
     } else {
       throw new Error(`Unsupported transport: ${server.transport}`);
@@ -80,22 +88,29 @@ class McpClientWrapper {
 
     const client = new Client(
       { name: "minube-vibes-mcp-agent-client", version: "1.0.0" },
-      { capabilities: {} }
+      { capabilities: {} },
     );
 
     try {
       await client.connect(transport);
     } catch (err: any) {
       if (server.transport === "http" || server.transport === "sse") {
-        logger.info(`StreamableHTTP connection failed, trying SSE fallback: ${err.message}`);
+        logger.info(
+          `StreamableHTTP connection failed, trying SSE fallback: ${err.message}`,
+        );
         let customHeaders: Record<string, string> = {};
-        const fbHeaders = safeParseJsonField<Record<string, string>>(server.headersJson);
+        const fbHeaders = safeParseJsonField<Record<string, string>>(
+          server.headersJson,
+        );
         if (fbHeaders) customHeaders = fbHeaders;
-        const fbEnv = safeParseJsonField<Record<string, string>>(server.envJson);
+        const fbEnv = safeParseJsonField<Record<string, string>>(
+          server.envJson,
+        );
         if (fbEnv) customHeaders = { ...customHeaders, ...fbEnv };
-        
+
         const sseUrl = new URL(server.url!);
-        const requestInit: RequestInit = Object.keys(customHeaders).length > 0 
+        const requestInit: RequestInit =
+          Object.keys(customHeaders).length > 0
             ? { headers: customHeaders }
             : {};
         transport = new SSEClientTransport(sseUrl, { requestInit });
@@ -110,10 +125,19 @@ class McpClientWrapper {
     return client;
   }
 
-  async tools(): Promise<Record<string, { description?: string; inputSchema: any; execute: (args: any, execCtx: any) => Promise<any> }>> {
+  async tools(): Promise<
+    Record<
+      string,
+      {
+        description?: string;
+        inputSchema: any;
+        execute: (args: any, execCtx: any) => Promise<any>;
+      }
+    >
+  > {
     const client = await this.connect();
     const response = await client.listTools();
-    
+
     const toolSet: Record<string, any> = {};
     for (const t of response.tools) {
       toolSet[t.name] = {
@@ -126,7 +150,7 @@ class McpClientWrapper {
             arguments: args,
           });
           return result;
-        }
+        },
       };
     }
     return toolSet;

@@ -13,7 +13,7 @@ export function acquireLock(lockId: number | string): {
   release: () => void;
   promise: Promise<void>;
 } {
-  let release: () => void = () => { };
+  let release: () => void = () => {};
 
   const promise = new Promise<void>((resolve) => {
     release = () => {

@@ -10,22 +10,29 @@ export function registerShellHandlers() {
     if (!url) {
       throw new Error("No URL provided.");
     }
-    if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("mailto:")) {
+    if (
+      !url.startsWith("http://") &&
+      !url.startsWith("https://") &&
+      !url.startsWith("mailto:")
+    ) {
       throw new Error("Attempted to open invalid or non-http URL: " + url);
     }
     await shell.openExternal(url);
     logger.debug("Opened external URL:", url);
   });
 
-  createTypedHandler(systemContracts.showItemInFolder, async (_event, fullPath) => {
-    // Validate that a path was provided
-    if (!fullPath) {
-      throw new Error("No file path provided.");
-    }
+  createTypedHandler(
+    systemContracts.showItemInFolder,
+    async (_event, fullPath) => {
+      // Validate that a path was provided
+      if (!fullPath) {
+        throw new Error("No file path provided.");
+      }
 
-    shell.showItemInFolder(fullPath);
-    logger.debug("Showed item in folder:", fullPath);
-  });
+      shell.showItemInFolder(fullPath);
+      logger.debug("Showed item in folder:", fullPath);
+    },
+  );
 
   createTypedHandler(systemContracts.openFilePath, async (_event, fullPath) => {
     if (!fullPath) {

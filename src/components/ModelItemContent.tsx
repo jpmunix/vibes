@@ -19,6 +19,7 @@ interface ModelItemContentProps {
     onSetAlias?: (model: LanguageModel, alias: string) => void;
     /** Callback to remove the alias */
     onRemoveAlias?: (model: LanguageModel) => void;
+    providerLabel?: string;
 }
 
 /**
@@ -83,6 +84,7 @@ export function ModelItemContent({
     alias,
     onSetAlias,
     onRemoveAlias,
+    providerLabel,
 }: ModelItemContentProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState("");
@@ -173,22 +175,40 @@ export function ModelItemContent({
                     )}
                     {showAutoRouterBadge && <AutoRouterBadge />}
                 </div>
-                <span className="typo-caption truncate leading-tight inline-flex items-center gap-1">
+                <div className="flex items-center justify-between w-full min-w-0 typo-caption leading-tight mt-0.5">
                     {isAutoRouter ? (
-                        "Gestión automática"
+                        <span className="truncate">Gestión automática</span>
                     ) : (
                         <>
-                            {model.inputModalities?.includes("image") && (
-                                <Image
-                                    className="shrink-0 text-primary/70"
-                                    style={{ width: 10, height: 10 }}
-                                    title="Soporta imágenes"
-                                />
-                            )}
-                            <span>{formatTokens(model.contextWindow)} context</span>
+                            <div className="flex items-center gap-1 min-w-0 truncate">
+                                {model.inputModalities?.includes("image") && (
+                                    <Image
+                                        className="shrink-0 text-primary/70"
+                                        style={{ width: 10, height: 10 }}
+                                        title="Soporta imágenes"
+                                    />
+                                )}
+                                {model.contextWindow && model.contextWindow > 0 ? (
+                                    <span className="text-foreground/80 truncate">
+                                        {formatTokens(model.contextWindow)} context
+                                    </span>
+                                ) : null}
+
+                                {!(model.contextWindow && model.contextWindow > 0) ? (
+                                    <span className="text-muted-foreground/50 italic truncate">
+                                        Sin información
+                                    </span>
+                                ) : null}
+                            </div>
+                            
+                            {providerLabel ? (
+                                <span className={`text-primary/70 font-medium shrink-0 text-[9px] ml-2 ${isHovered ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+                                    {providerLabel}
+                                </span>
+                            ) : null}
                         </>
                     )}
-                </span>
+                </div>
             </div>
 
             {isHovered && (onRemoveClick || !isAutoRouter || onSetAlias) && !isEditing && (

@@ -18,7 +18,8 @@ export const addIntegrationTool: ToolDefinition<
   inputSchema: addIntegrationSchema,
   defaultConsent: "always",
   modifiesState: true,
-  isEnabled: (ctx) => !ctx.supabaseProjectId || !ctx.bunnyConfig || !ctx.pocketbaseConfig,
+  isEnabled: (ctx) =>
+    !ctx.supabaseProjectId || !ctx.bunnyConfig || !ctx.pocketbaseConfig,
 
   getConsentPreview: (args) => `Add ${args.provider} integration`,
 

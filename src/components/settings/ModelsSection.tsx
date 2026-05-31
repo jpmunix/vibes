@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { AlertTriangle, PlusIcon, TrashIcon, Pencil } from "@/components/ui/icons";
+import {
+  AlertTriangle,
+  PlusIcon,
+  TrashIcon,
+  Pencil,
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,7 +103,9 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   // Only show enabled models + always show custom models
   const enabledModels = useMemo(() => {
     if (!models) return [];
-    return models.filter((m) => m.type === "custom" || enabledModelIds.includes(m.apiName));
+    return models.filter(
+      (m) => m.type === "custom" || enabledModelIds.includes(m.apiName),
+    );
   }, [models, enabledModelIds]);
 
   const handleDeleteClick = (modelApiName: string) => {
@@ -134,7 +141,6 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
 
   return (
     <div>
-
       {modelsLoading && (
         <div className="space-y-3 mt-4">
           <Skeleton className="h-24 w-full rounded-lg" />
@@ -166,9 +172,15 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               <div className="flex items-center gap-2 typo-caption mt-1 opacity-70">
                 {model.contextWindow || model.maxOutputTokens ? (
                   <>
-                    {model.contextWindow ? <span>Contexto: {formatTokens(model.contextWindow)}</span> : null}
-                    {model.contextWindow && model.maxOutputTokens ? <span className="opacity-40">·</span> : null}
-                    {model.maxOutputTokens ? <span>Salida: {formatTokens(model.maxOutputTokens)}</span> : null}
+                    {model.contextWindow ? (
+                      <span>Contexto: {formatTokens(model.contextWindow)}</span>
+                    ) : null}
+                    {model.contextWindow && model.maxOutputTokens ? (
+                      <span className="opacity-40">·</span>
+                    ) : null}
+                    {model.maxOutputTokens ? (
+                      <span>Salida: {formatTokens(model.maxOutputTokens)}</span>
+                    ) : null}
                   </>
                 ) : model.type === "custom" ? (
                   <span>Personalizado</span>
@@ -178,13 +190,17 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               {/* Line 3: Pricing */}
               <div className="flex items-center justify-between mt-auto pt-1.5">
                 <div className="flex items-center gap-2">
-                  {(model.pricingInput || model.pricingOutput) ? (
+                  {model.pricingInput || model.pricingOutput ? (
                     <div className="flex items-center gap-2 typo-caption opacity-50">
                       <span>In</span>
-                      <span className="tabular-nums">{formatPricePerMillion(model.pricingInput)}</span>
+                      <span className="tabular-nums">
+                        {formatPricePerMillion(model.pricingInput)}
+                      </span>
                       <span className="opacity-40">·</span>
                       <span>Out</span>
-                      <span className="tabular-nums">{formatPricePerMillion(model.pricingOutput)}</span>
+                      <span className="tabular-nums">
+                        {formatPricePerMillion(model.pricingOutput)}
+                      </span>
                     </div>
                   ) : null}
                 </div>
@@ -201,42 +217,43 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             </div>
           ))}
         </div>
-      )
-      }
-      {
-        !modelsLoading &&
-        !modelsError &&
-        enabledModels.length === 0 && (
-          <p className="text-muted-foreground mt-4">
-            No hay modelos habilitados. Usa "Añadir más modelos" para
-            activar algunos.
-          </p>
-        )
-      }
-
-
+      )}
+      {!modelsLoading && !modelsError && enabledModels.length === 0 && (
+        <p className="text-muted-foreground mt-4">
+          No hay modelos habilitados. Usa "Añadir más modelos" para activar
+          algunos.
+        </p>
+      )}
 
       {/* Model Info Dialog */}
-      {
-        infoModel && (
-          <ModelInfoDialog
-            open={!!infoModel}
-            onOpenChange={(open) => !open && setInfoModel(null)}
-            model={infoModel}
-            alias={aliases[infoModel.apiName]}
-            onSetAlias={(newAlias) => setAlias({ modelId: infoModel.apiName, alias: newAlias })}
-            onRemoveAlias={() => removeAlias(infoModel.apiName)}
-            onEditCustomModel={infoModel.type === "custom" ? (m) => {
-              setInfoModel(null);
-              handleEditClick(m);
-            } : undefined}
-            onDeleteCustomModel={infoModel.type === "custom" ? (apiName) => {
-              setInfoModel(null);
-              handleDeleteClick(apiName);
-            } : undefined}
-          />
-        )
-      }
+      {infoModel && (
+        <ModelInfoDialog
+          open={!!infoModel}
+          onOpenChange={(open) => !open && setInfoModel(null)}
+          model={infoModel}
+          alias={aliases[infoModel.apiName]}
+          onSetAlias={(newAlias) =>
+            setAlias({ modelId: infoModel.apiName, alias: newAlias })
+          }
+          onRemoveAlias={() => removeAlias(infoModel.apiName)}
+          onEditCustomModel={
+            infoModel.type === "custom"
+              ? (m) => {
+                  setInfoModel(null);
+                  handleEditClick(m);
+                }
+              : undefined
+          }
+          onDeleteCustomModel={
+            infoModel.type === "custom"
+              ? (apiName) => {
+                  setInfoModel(null);
+                  handleDeleteClick(apiName);
+                }
+              : undefined
+          }
+        />
+      )}
 
       {/* Add Model Dialog (search OpenRouter models) */}
       <AddModelDialog
@@ -279,7 +296,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
-                  ?.displayName || modelToDelete
+                    ?.displayName || modelToDelete
                 : ""}
               " (API Name: {modelToDelete}).
             </AlertDialogDescription>
@@ -297,6 +314,6 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div >
+    </div>
   );
 }

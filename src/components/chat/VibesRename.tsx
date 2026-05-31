@@ -42,8 +42,7 @@ export const VibesRename: React.FC<VibesRenameProps> = ({
         <div className="flex flex-col text-xs text-muted-foreground font-medium mb-1">
           {from && (
             <div>
-              <span className="text-muted-foreground">From:</span>{" "}
-              {from}
+              <span className="text-muted-foreground">From:</span> {from}
             </div>
           )}
           {to && (

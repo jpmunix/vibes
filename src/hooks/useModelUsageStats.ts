@@ -28,15 +28,16 @@ export function useModelUsageStats() {
 
   const { mutate: incrementUsage } = useMutation({
     mutationFn: async (modelId: string) => {
-      const currentStats = queryClient.getQueryData<ModelStats>(["model_usage_stats"]) || {};
+      const currentStats =
+        queryClient.getQueryData<ModelStats>(["model_usage_stats"]) || {};
       const newStats = {
         ...currentStats,
         [modelId]: Date.now(),
       };
-      
+
       // Update cache optimistically
       queryClient.setQueryData(["model_usage_stats"], newStats);
-      
+
       await ipc.misc.setPreference({
         key: PREF_KEY,
         value: JSON.stringify(newStats),
@@ -47,12 +48,13 @@ export function useModelUsageStats() {
 
   const { mutate: removeUsage } = useMutation({
     mutationFn: async (modelId: string) => {
-      const currentStats = queryClient.getQueryData<ModelStats>(["model_usage_stats"]) || {};
+      const currentStats =
+        queryClient.getQueryData<ModelStats>(["model_usage_stats"]) || {};
       const newStats = { ...currentStats };
       delete newStats[modelId];
-      
+
       queryClient.setQueryData(["model_usage_stats"], newStats);
-      
+
       await ipc.misc.setPreference({
         key: PREF_KEY,
         value: JSON.stringify(newStats),

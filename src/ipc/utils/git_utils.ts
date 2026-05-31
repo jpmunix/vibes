@@ -455,7 +455,7 @@ export async function gitReset({ path }: GitBaseParams): Promise<void> {
     // If needed, users can manually reset via command line or enable native git
     throw new Error(
       "gitReset: Resetting the staging area is not fully supported when native git is disabled. " +
-      "Please enable native git or manually unstage files using 'git reset HEAD'.",
+        "Please enable native git or manually unstage files using 'git reset HEAD'.",
     );
   }
 }
@@ -479,7 +479,7 @@ export async function gitResetFile({
   } else {
     throw new Error(
       "gitResetFile: Unstaging individual files is not supported when native git is disabled. " +
-      "Please enable native git.",
+        "Please enable native git.",
     );
   }
 }
@@ -834,9 +834,9 @@ export async function gitClone({
       url: cleanUrl,
       onAuth: accessToken
         ? () => ({
-          username: accessToken,
-          password: "x-oauth-basic",
-        })
+            username: accessToken,
+            password: "x-oauth-basic",
+          })
         : undefined,
       singleBranch,
       depth: depth ?? undefined,
@@ -855,7 +855,11 @@ export async function gitHasRemote({ path }: GitBaseParams): Promise<boolean> {
       const result = await execGit(["remote", "get-url", "origin"], path);
       return result.exitCode === 0 && !!result.stdout.trim();
     } else {
-      const url = await git.getConfig({ fs, dir: path, path: "remote.origin.url" });
+      const url = await git.getConfig({
+        fs,
+        dir: path,
+        path: "remote.origin.url",
+      });
       return !!url;
     }
   } catch {
@@ -876,8 +880,18 @@ export async function gitRemoveRemote({ path }: GitBaseParams): Promise<void> {
   } else {
     // isomorphic-git: delete remote config entries
     try {
-      await git.setConfig({ fs, dir: path, path: "remote.origin.url", value: undefined });
-      await git.setConfig({ fs, dir: path, path: "remote.origin.fetch", value: undefined });
+      await git.setConfig({
+        fs,
+        dir: path,
+        path: "remote.origin.url",
+        value: undefined,
+      });
+      await git.setConfig({
+        fs,
+        dir: path,
+        path: "remote.origin.fetch",
+        value: undefined,
+      });
     } catch {
       // Ignore errors if config keys don't exist
     }
@@ -976,11 +990,11 @@ export async function gitPush({
   if (forceWithLease) {
     logger.warn(
       "gitPush: 'forceWithLease' requested but not supported when native git is disabled. " +
-      "Rejecting push to prevent unsafe force operation.",
+        "Rejecting push to prevent unsafe force operation.",
     );
     throw new Error(
       "gitPush: 'forceWithLease' is not supported when native git is disabled. " +
-      "Falling back to plain force could overwrite remote commits. Enable native git.",
+        "Falling back to plain force could overwrite remote commits. Enable native git.",
     );
   }
   await git.push({
@@ -992,9 +1006,9 @@ export async function gitPush({
     remoteRef: targetBranch,
     onAuth: accessToken
       ? () => ({
-        username: accessToken,
-        password: "x-oauth-basic",
-      })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
       : undefined,
     force: !!force,
   });
@@ -1086,10 +1100,7 @@ export async function gitResolveMergeOurs({
   }
 
   // Checkout --ours for all conflicting files
-  const checkoutResult = await execGit(
-    ["checkout", "--ours", "."],
-    path,
-  );
+  const checkoutResult = await execGit(["checkout", "--ours", "."], path);
   if (checkoutResult.exitCode !== 0) {
     throw new Error(`Failed to resolve with --ours: ${checkoutResult.stderr}`);
   }
@@ -1123,12 +1134,11 @@ export async function gitResolveMergeTheirs({
   }
 
   // Checkout --theirs for all conflicting files
-  const checkoutResult = await execGit(
-    ["checkout", "--theirs", "."],
-    path,
-  );
+  const checkoutResult = await execGit(["checkout", "--theirs", "."], path);
   if (checkoutResult.exitCode !== 0) {
-    throw new Error(`Failed to resolve with --theirs: ${checkoutResult.stderr}`);
+    throw new Error(
+      `Failed to resolve with --theirs: ${checkoutResult.stderr}`,
+    );
   }
 
   // Stage all resolved files
@@ -1139,7 +1149,6 @@ export async function gitResolveMergeTheirs({
     message: "Conflictos resueltos aceptando los cambios entrantes.",
   };
 }
-
 
 export async function gitCurrentBranch({
   path,
@@ -1324,9 +1333,9 @@ export async function gitFetch({
       remote,
       onAuth: accessToken
         ? () => ({
-          username: accessToken,
-          password: "x-oauth-basic",
-        })
+            username: accessToken,
+            password: "x-oauth-basic",
+          })
         : undefined,
     });
   }
@@ -1398,9 +1407,9 @@ export async function gitPull({
       author: author || (await getGitAuthor()),
       onAuth: accessToken
         ? () => ({
-          username: accessToken,
-          password: "x-oauth-basic",
-        })
+            username: accessToken,
+            password: "x-oauth-basic",
+          })
         : undefined,
     });
     // Check for conflicts even if pull succeeded (isomorphic-git may not throw on conflicts)
@@ -1487,7 +1496,7 @@ export async function gitCreateBranch({
   if (from !== "HEAD") {
     throw new Error(
       `gitCreateBranch: 'from' is not supported when native git is disabled (from=${from}). ` +
-      `Branches would be created from HEAD instead.`,
+        `Branches would be created from HEAD instead.`,
     );
   }
   await git.branch({
@@ -1631,13 +1640,23 @@ export async function gitDiff({
 /**
  * Get diff with stats for a specific file
  */
-export async function gitDiffFile({ path, filepath, cached = false }: GitFileParams & { cached?: boolean }): Promise<{
+export async function gitDiffFile({
+  path,
+  filepath,
+  cached = false,
+}: GitFileParams & { cached?: boolean }): Promise<{
   additions: number;
   deletions: number;
   diff: string;
 }> {
   // Get numstat for additions/deletions
-  const numstatArgs = ["diff", ...(cached ? ["--cached"] : []), "--numstat", "--", filepath];
+  const numstatArgs = [
+    "diff",
+    ...(cached ? ["--cached"] : []),
+    "--numstat",
+    "--",
+    filepath,
+  ];
   const numstatResult = await execGit(numstatArgs, path);
 
   let additions = 0;
@@ -1743,7 +1762,10 @@ export async function gitLogDetailed({
     filesChanged: number;
     insertions: number;
     deletions: number;
-    files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+    files: Array<{
+      path: string;
+      status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+    }>;
   }>;
   total: number;
   hasMore: boolean;
@@ -1753,16 +1775,17 @@ export async function gitLogDetailed({
     ["rev-list", "--count", branch || "HEAD"],
     path,
   );
-  const total = countResult.exitCode === 0
-    ? parseInt(countResult.stdout.trim(), 10)
-    : 0;
+  const total =
+    countResult.exitCode === 0 ? parseInt(countResult.stdout.trim(), 10) : 0;
 
   // Get commits with full details using a custom format
   // %H=hash, %h=short hash, %s=subject, %an=author, %ae=email, %aI=ISO date, %at=timestamp
   const logArgs = [
     "log",
-    "--max-count", String(limit),
-    "--skip", String(offset),
+    "--max-count",
+    String(limit),
+    "--skip",
+    String(offset),
     "--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at%x00---END-COMMIT---",
     "--numstat",
     branch || "HEAD",
@@ -1791,7 +1814,10 @@ export async function gitLogDetailed({
     filesChanged: number;
     insertions: number;
     deletions: number;
-    files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+    files: Array<{
+      path: string;
+      status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+    }>;
   }> = [];
 
   // After split on END-COMMIT marker, chunk N+1's parts[0] contains:
@@ -1841,7 +1867,8 @@ export async function gitLogDetailed({
           prevCommit.insertions += ins;
           prevCommit.deletions += del;
 
-          let status: "added" | "modified" | "deleted" | "renamed" | "unknown" = "modified";
+          let status: "added" | "modified" | "deleted" | "renamed" | "unknown" =
+            "modified";
           if (filePath.includes(" => ") || filePath.includes("{")) {
             status = "renamed";
           } else if (del === 0 && ins > 0) {
@@ -1868,7 +1895,10 @@ export async function gitLogDetailed({
     const timestamp = parseInt(tsLines[0], 10);
 
     // Parse numstat lines (insertions\tdeletions\tfilepath)
-    const files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }> = [];
+    const files: Array<{
+      path: string;
+      status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+    }> = [];
     let totalInsertions = 0;
     let totalDeletions = 0;
 
@@ -1885,7 +1915,8 @@ export async function gitLogDetailed({
         totalDeletions += del;
 
         // Determine status based on insertions/deletions
-        let status: "added" | "modified" | "deleted" | "renamed" | "unknown" = "modified";
+        let status: "added" | "modified" | "deleted" | "renamed" | "unknown" =
+          "modified";
         if (filePath.includes(" => ") || filePath.includes("{")) {
           status = "renamed";
         } else if (del === 0 && ins > 0) {
@@ -1921,8 +1952,10 @@ export async function gitLogDetailed({
   try {
     const statusArgs = [
       "log",
-      "--max-count", String(limit),
-      "--skip", String(offset),
+      "--max-count",
+      String(limit),
+      "--skip",
+      String(offset),
       "--format=%H",
       "--name-status",
       branch || "HEAD",
@@ -1932,7 +1965,10 @@ export async function gitLogDetailed({
       const statusOutput = statusResult.stdout.toString().trim();
       const statusLines = statusOutput.split("\n");
       let currentHash = "";
-      const fileStatusMap = new Map<string, Map<string, "added" | "modified" | "deleted" | "renamed" | "unknown">>();
+      const fileStatusMap = new Map<
+        string,
+        Map<string, "added" | "modified" | "deleted" | "renamed" | "unknown">
+      >();
 
       for (const line of statusLines) {
         const trimmed = line.trim();
@@ -1952,17 +1988,33 @@ export async function gitLogDetailed({
           const statusParts = trimmed.split("\t");
           if (statusParts.length >= 2) {
             const rawStatus = statusParts[0].charAt(0);
-            const filePath = statusParts.length > 2
-              ? statusParts.slice(1).join("\t")
-              : statusParts[1];
+            const filePath =
+              statusParts.length > 2
+                ? statusParts.slice(1).join("\t")
+                : statusParts[1];
 
-            let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+            let status:
+              | "added"
+              | "modified"
+              | "deleted"
+              | "renamed"
+              | "unknown";
             switch (rawStatus) {
-              case "A": status = "added"; break;
-              case "M": status = "modified"; break;
-              case "D": status = "deleted"; break;
-              case "R": status = "renamed"; break;
-              default: status = "unknown"; break;
+              case "A":
+                status = "added";
+                break;
+              case "M":
+                status = "modified";
+                break;
+              case "D":
+                status = "deleted";
+                break;
+              case "R":
+                status = "renamed";
+                break;
+              default:
+                status = "unknown";
+                break;
             }
 
             fileStatusMap.get(currentHash)?.set(filePath, status);
@@ -2014,12 +2066,20 @@ export async function gitShowCommitDetail({
   filesChanged: number;
   insertions: number;
   deletions: number;
-  files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+  files: Array<{
+    path: string;
+    status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+  }>;
   diff: string;
 }> {
   // Get commit metadata (separate from file list to avoid mixing issues)
   const showMeta = await execGit(
-    ["show", "--no-patch", `--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at`, commitHash],
+    [
+      "show",
+      "--no-patch",
+      `--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at`,
+      commitHash,
+    ],
     path,
   );
   if (showMeta.exitCode !== 0) {
@@ -2046,7 +2106,10 @@ export async function gitShowCommitDetail({
     ["diff-tree", "-r", "--no-commit-id", "--name-status", commitHash],
     path,
   );
-  const files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }> = [];
+  const files: Array<{
+    path: string;
+    status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+  }> = [];
 
   if (showFiles.exitCode === 0) {
     for (const line of showFiles.stdout.toString().split("\n")) {
@@ -2058,11 +2121,21 @@ export async function gitShowCommitDetail({
         const filePath = tabParts.slice(1).join("\t");
         let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
         switch (rawStatus) {
-          case "A": status = "added"; break;
-          case "M": status = "modified"; break;
-          case "D": status = "deleted"; break;
-          case "R": status = "renamed"; break;
-          default: status = "unknown"; break;
+          case "A":
+            status = "added";
+            break;
+          case "M":
+            status = "modified";
+            break;
+          case "D":
+            status = "deleted";
+            break;
+          case "R":
+            status = "renamed";
+            break;
+          default:
+            status = "unknown";
+            break;
         }
         files.push({ path: filePath, status });
       }
@@ -2081,7 +2154,8 @@ export async function gitShowCommitDetail({
       ["show", "--format=", "--no-color", commitHash],
       path,
     );
-    if (firstCommitDiff.exitCode === 0) diff = firstCommitDiff.stdout.toString();
+    if (firstCommitDiff.exitCode === 0)
+      diff = firstCommitDiff.stdout.toString();
   }
 
   // Count insertions/deletions from the diff
@@ -2137,7 +2211,8 @@ export async function gitGetConflictFileDiff({
   try {
     if (fs.existsSync(fullPath)) {
       const content = fs.readFileSync(fullPath, "utf-8");
-      hasConflictMarkers = content.includes("<<<<<<<") && content.includes(">>>>>>>");
+      hasConflictMarkers =
+        content.includes("<<<<<<<") && content.includes(">>>>>>>");
     }
   } catch {
     // Ignore read errors
@@ -2170,7 +2245,9 @@ export async function gitResolveFileOurs({
     path,
   );
   if (checkoutResult.exitCode !== 0) {
-    throw new Error(`Failed to resolve '${filepath}' with --ours: ${checkoutResult.stderr}`);
+    throw new Error(
+      `Failed to resolve '${filepath}' with --ours: ${checkoutResult.stderr}`,
+    );
   }
 
   await execOrThrow(
@@ -2209,7 +2286,9 @@ export async function gitResolveFileTheirs({
     path,
   );
   if (checkoutResult.exitCode !== 0) {
-    throw new Error(`Failed to resolve '${filepath}' with --theirs: ${checkoutResult.stderr}`);
+    throw new Error(
+      `Failed to resolve '${filepath}' with --theirs: ${checkoutResult.stderr}`,
+    );
   }
 
   await execOrThrow(
@@ -2228,15 +2307,19 @@ export async function gitResolveFileTheirs({
  * Remove stale .git/index.lock file that prevents git operations.
  * This typically happens when a git process crashes or is killed.
  */
-export function gitRemoveIndexLock({
-  path,
-}: GitBaseParams): { removed: boolean; message: string } {
+export function gitRemoveIndexLock({ path }: GitBaseParams): {
+  removed: boolean;
+  message: string;
+} {
   const lockFile = pathModule.join(path, ".git", "index.lock");
   if (fs.existsSync(lockFile)) {
     try {
       fs.unlinkSync(lockFile);
       logger.info(`Removed stale index.lock at ${lockFile}`);
-      return { removed: true, message: "Archivo index.lock eliminado correctamente." };
+      return {
+        removed: true,
+        message: "Archivo index.lock eliminado correctamente.",
+      };
     } catch (err: any) {
       throw new Error(`No se pudo eliminar el lock file: ${err.message}`);
     }
@@ -2410,18 +2493,17 @@ export async function gitDiscardAllChanges({
     );
   } else {
     // No commits yet: unstage any staged files
-    const rmResult = await execGit(["rm", "-r", "--cached", "--ignore-unmatch", "."], path);
+    const rmResult = await execGit(
+      ["rm", "-r", "--cached", "--ignore-unmatch", "."],
+      path,
+    );
     if (rmResult.exitCode !== 0) {
       logger.warn(`git rm --cached failed (may be empty): ${rmResult.stderr}`);
     }
   }
 
   // Clean untracked files and directories (works with or without commits)
-  await execOrThrow(
-    ["clean", "-fd"],
-    path,
-    "Failed to clean untracked files",
-  );
+  await execOrThrow(["clean", "-fd"], path, "Failed to clean untracked files");
 
   return { message: "Todos los cambios descartados correctamente." };
 }
@@ -2443,10 +2525,7 @@ export async function gitRevertCommit({
     throw new Error("Invalid commit hash format");
   }
 
-  const result = await execGit(
-    ["revert", "--no-edit", commitHash],
-    path,
-  );
+  const result = await execGit(["revert", "--no-edit", commitHash], path);
 
   if (result.exitCode !== 0) {
     const stderr = result.stderr.toString();
@@ -2456,7 +2535,8 @@ export async function gitRevertCommit({
       await execGit(["revert", "--abort"], path);
       return {
         success: false,
-        message: "No se pudo revertir: el commit tiene conflictos. Resuélvelos manualmente.",
+        message:
+          "No se pudo revertir: el commit tiene conflictos. Resuélvelos manualmente.",
       };
     }
     throw new Error(`Error al revertir commit: ${stderr}`);
@@ -2467,4 +2547,3 @@ export async function gitRevertCommit({
     message: `Commit ${commitHash.slice(0, 7)} revertido correctamente.`,
   };
 }
-

@@ -123,9 +123,7 @@ export const ToolbarColorPicker = ({
                   cursor: "pointer",
                   padding: 0,
                   outline:
-                    color === c
-                      ? "2px solid rgba(59,130,246,0.3)"
-                      : "none",
+                    color === c ? "2px solid rgba(59,130,246,0.3)" : "none",
                   outlineOffset: 1,
                   transition: "transform 0.15s ease",
                 }}

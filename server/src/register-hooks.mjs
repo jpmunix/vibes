@@ -13,7 +13,7 @@ const Module = require("node:module");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const CJS_SHIM_MAP = {
-  "electron": path.resolve(__dirname, "shims/electron.cjs"),
+  electron: path.resolve(__dirname, "shims/electron.cjs"),
   "electron-log": path.resolve(__dirname, "shims/electron-log.cjs"),
   "@opencode-ai/sdk": path.resolve(__dirname, "shims/opencode-sdk.cjs"),
 };
@@ -22,12 +22,16 @@ const origResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   // Skip shimming when the shim itself is doing the import (avoid circular)
   const parentFile = parent?.filename || "";
-  if (parentFile.includes("opencode-sdk.cjs") && (request === "@opencode-ai/sdk" || request.startsWith("@opencode-ai/sdk/"))) {
+  if (
+    parentFile.includes("opencode-sdk.cjs") &&
+    (request === "@opencode-ai/sdk" || request.startsWith("@opencode-ai/sdk/"))
+  ) {
     return origResolve.call(this, request, parent, isMain, options);
   }
   // Exact match
   if (CJS_SHIM_MAP[request]) return CJS_SHIM_MAP[request];
   // Sub-path match for @opencode-ai/sdk/*
-  if (request.startsWith("@opencode-ai/sdk/")) return CJS_SHIM_MAP["@opencode-ai/sdk"];
+  if (request.startsWith("@opencode-ai/sdk/"))
+    return CJS_SHIM_MAP["@opencode-ai/sdk"];
   return origResolve.call(this, request, parent, isMain, options);
 };

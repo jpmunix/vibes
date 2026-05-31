@@ -36,9 +36,7 @@ export function VibesInitLoader({ subtitle }: VibesInitLoaderProps) {
         <span aria-hidden className="vibes-init-glow" />
       </h1>
 
-      {subtitle && (
-        <p className="vibes-init-subtitle">{subtitle}</p>
-      )}
+      {subtitle && <p className="vibes-init-subtitle">{subtitle}</p>}
 
       <style>{`
         .vibes-init-loader {

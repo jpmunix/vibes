@@ -47,7 +47,10 @@ export function OpenRouterCreditsButton() {
               className="text-muted-foreground hover:text-foreground disabled:opacity-50 p-0.5 rounded transition-colors cursor-pointer"
               title="Actualizar saldo"
             >
-              <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
+              <RefreshCw
+                size={12}
+                className={isFetching ? "animate-spin" : ""}
+              />
             </button>
           </div>
           <div className="flex items-baseline justify-between gap-2">

@@ -14,7 +14,10 @@ import { registerDependencyHandlers } from "./handlers/dependency_handlers";
 import { registerMcpHandlers } from "./handlers/mcp_handlers";
 
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
-import { registerGithubHandlers, registerCommitMessageStreamHandler } from "./handlers/github_handlers";
+import {
+  registerGithubHandlers,
+  registerCommitMessageStreamHandler,
+} from "./handlers/github_handlers";
 import { registerImportHandlers } from "./handlers/import_handlers";
 import { registerLanguageModelHandlers } from "./handlers/language_model_handlers";
 import { registerLocalModelHandlers } from "./handlers/local_model_handlers";
@@ -47,7 +50,10 @@ import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnost
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
-import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
+import {
+  registerQuestionHandler,
+  registerPermissionHandler,
+} from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";
 import log from "electron-log";

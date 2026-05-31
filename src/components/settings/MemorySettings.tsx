@@ -88,11 +88,17 @@ export function MemorySettings() {
       <SettingRow
         label="Directrices del proyecto"
         description="El agente utiliza tus directrices para personalizar sus respuestas"
-        onClick={() => updateSettings({ memoriesEnabled: !(settings?.memoriesEnabled !== false) })}
+        onClick={() =>
+          updateSettings({
+            memoriesEnabled: !(settings?.memoriesEnabled !== false),
+          })
+        }
         control={
           <TogglePill
             checked={settings?.memoriesEnabled !== false}
-            onCheckedChange={(checked) => updateSettings({ memoriesEnabled: checked })}
+            onCheckedChange={(checked) =>
+              updateSettings({ memoriesEnabled: checked })
+            }
           />
         }
       />
@@ -111,7 +117,9 @@ export function MemorySettings() {
         control={
           <UnifiedSelector
             value={String(settings?.memoriesMaxSelection || 5)}
-            onChange={(v) => updateSettings({ memoriesMaxSelection: Number(v) })}
+            onChange={(v) =>
+              updateSettings({ memoriesMaxSelection: Number(v) })
+            }
             options={[
               { value: "1", label: "1" },
               { value: "2", label: "2" },

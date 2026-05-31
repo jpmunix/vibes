@@ -26,8 +26,11 @@ export function useChatModeToggle() {
     const currentMode = settings.selectedChatMode;
     // Only cycle through active modes
     const visibleModes = ["agent", "plan", "ask"] as const;
-    const currentIndex = visibleModes.indexOf(currentMode as typeof visibleModes[number]);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % visibleModes.length;
+    const currentIndex = visibleModes.indexOf(
+      currentMode as (typeof visibleModes)[number],
+    );
+    const nextIndex =
+      currentIndex === -1 ? 0 : (currentIndex + 1) % visibleModes.length;
     const newMode = visibleModes[nextIndex];
 
     updateSettings({ selectedChatMode: newMode });

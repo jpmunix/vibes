@@ -26,9 +26,7 @@ export function NeonIntegration() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <DatabaseZap className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h3 className="text-base font-semibold text-foreground">
-            Neon
-          </h3>
+          <h3 className="text-base font-semibold text-foreground">Neon</h3>
         </div>
         <p className="typo-caption mt-1">
           Tu cuenta está conectada a Neon Database

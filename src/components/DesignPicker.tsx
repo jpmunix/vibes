@@ -20,12 +20,7 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import {
-  Palette,
-  XSquare,
-  Check,
-  ChevronDown,
-} from "@/components/ui/icons";
+import { Palette, XSquare, Check, ChevronDown } from "@/components/ui/icons";
 import * as Lucide from "lucide-react";
 
 const Upload = Lucide.Upload;
@@ -106,9 +101,7 @@ const PasteModal: React.FC<{
       {/* Footer */}
       <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border/40">
         <span className="typo-micro text-muted-foreground mr-auto">
-          {content.length > 0
-            ? `${content.length} caracteres`
-            : "Vacío"}
+          {content.length > 0 ? `${content.length} caracteres` : "Vacío"}
         </span>
         <button
           type="button"
@@ -153,20 +146,23 @@ const ScreenshotModal: React.FC<{
   };
 
   // Handle paste on the focused container
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    if (loading) return;
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-        e.stopPropagation();
-        const file = item.getAsFile();
-        if (file) readFileAsDataUrl(file);
-        return;
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (loading) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          e.stopPropagation();
+          const file = item.getAsFile();
+          if (file) readFileAsDataUrl(file);
+          return;
+        }
       }
-    }
-  }, [loading]);
+    },
+    [loading],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -220,7 +216,10 @@ const ScreenshotModal: React.FC<{
             </span>
             <button
               type="button"
-              onClick={() => { onClearError(); setPreview(null); }}
+              onClick={() => {
+                onClearError();
+                setPreview(null);
+              }}
               className="mt-1 px-3 py-1 rounded-md typo-select font-medium bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
             >
               Intentar de nuevo
@@ -231,7 +230,8 @@ const ScreenshotModal: React.FC<{
             <Loader2 size={28} className="text-primary animate-spin" />
             <span className="typo-select font-medium">Analizando captura…</span>
             <span className="typo-micro text-muted-foreground max-w-[260px]">
-              La IA está extrayendo colores, tipografía, componentes y generando tu DESIGN.md
+              La IA está extrayendo colores, tipografía, componentes y generando
+              tu DESIGN.md
             </span>
           </div>
         ) : preview ? (
@@ -260,7 +260,9 @@ const ScreenshotModal: React.FC<{
             )}
           >
             <Camera size={24} className="text-muted-foreground" />
-            <span className="typo-select text-muted-foreground">Sube o pega una captura</span>
+            <span className="typo-select text-muted-foreground">
+              Sube o pega una captura
+            </span>
             <span className="typo-micro text-muted-foreground/60">
               Haz clic para seleccionar o pega con Ctrl+V
             </span>
@@ -391,7 +393,9 @@ export const DesignPicker: React.FC = () => {
       setScreenshotLoading(true);
       try {
         const modelName = settings?.selectedModel?.name ?? "";
-        console.log(`[DesignPicker] Generando diseño desde captura con modelo: ${modelName}`);
+        console.log(
+          `[DesignPicker] Generando diseño desde captura con modelo: ${modelName}`,
+        );
         const result = await ipc.design.generateFromScreenshot({
           imageDataUrl: dataUrl,
           model: modelName,
@@ -488,7 +492,12 @@ export const DesignPicker: React.FC = () => {
               open={screenshotOpen}
               loading={screenshotLoading}
               error={screenshotError}
-              onClose={() => { if (!screenshotLoading) { setScreenshotOpen(false); setScreenshotError(null); } }}
+              onClose={() => {
+                if (!screenshotLoading) {
+                  setScreenshotOpen(false);
+                  setScreenshotError(null);
+                }
+              }}
               onSubmit={handleScreenshotSubmit}
               onClearError={() => setScreenshotError(null)}
             />
@@ -520,7 +529,8 @@ export const DesignPicker: React.FC = () => {
                       onSelect={() => handleSelect("__none__")}
                       className={cn(
                         "cursor-pointer typo-dropdown",
-                        currentValue === "__none__" && "bg-primary/8 !font-bold",
+                        currentValue === "__none__" &&
+                          "bg-primary/8 !font-bold",
                       )}
                     >
                       <span className="w-4 shrink-0 flex items-center justify-center">
@@ -555,7 +565,10 @@ export const DesignPicker: React.FC = () => {
                         <div className="flex flex-col gap-0 flex-1 min-w-0">
                           <span className="truncate">Diseño personalizado</span>
                           <span className="typo-caption leading-tight opacity-70 truncate">
-                            {(selected.customContent?.length ?? 0).toLocaleString()} caracteres cargados
+                            {(
+                              selected.customContent?.length ?? 0
+                            ).toLocaleString()}{" "}
+                            caracteres cargados
                           </span>
                         </div>
                       </CommandItem>
@@ -634,7 +647,9 @@ export const DesignPicker: React.FC = () => {
                 >
                   <Upload size={14} className="shrink-0 mt-0.5 text-primary" />
                   <div className="flex flex-col gap-0 min-w-0">
-                    <span className="typo-select font-medium">Subir archivo</span>
+                    <span className="typo-select font-medium">
+                      Subir archivo
+                    </span>
                     <span className="typo-micro text-muted-foreground leading-tight">
                       Selecciona un .md de tu equipo
                     </span>
@@ -655,7 +670,9 @@ export const DesignPicker: React.FC = () => {
                     className="shrink-0 mt-0.5 text-primary"
                   />
                   <div className="flex flex-col gap-0 min-w-0">
-                    <span className="typo-select font-medium">Pegar contenido</span>
+                    <span className="typo-select font-medium">
+                      Pegar contenido
+                    </span>
                     <span className="typo-micro text-muted-foreground leading-tight">
                       Pega el markdown directamente
                     </span>
@@ -677,7 +694,9 @@ export const DesignPicker: React.FC = () => {
                       className="shrink-0 mt-0.5 text-primary"
                     />
                     <div className="flex flex-col gap-0 min-w-0">
-                      <span className="typo-select font-medium">Desde captura</span>
+                      <span className="typo-select font-medium">
+                        Desde captura
+                      </span>
                       <span className="typo-micro text-muted-foreground leading-tight">
                         Genera diseño con IA
                       </span>
@@ -695,7 +714,9 @@ export const DesignPicker: React.FC = () => {
                       className="shrink-0 mt-0.5 text-muted-foreground"
                     />
                     <div className="flex flex-col gap-0 min-w-0">
-                      <span className="typo-select font-medium text-muted-foreground">Desde captura</span>
+                      <span className="typo-select font-medium text-muted-foreground">
+                        Desde captura
+                      </span>
                       <span className="typo-micro text-muted-foreground/80 leading-tight">
                         El modelo actual no soporta imágenes
                       </span>

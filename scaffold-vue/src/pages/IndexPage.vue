@@ -1,5 +1,7 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100">
+  <div
+    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100"
+  >
     <div class="text-center space-y-6 p-8">
       <h1 class="text-4xl font-bold text-emerald-900">
         ¡Bienvenido a tu app Vue!

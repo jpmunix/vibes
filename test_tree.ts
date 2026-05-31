@@ -11,5 +11,8 @@ function parseSectionDirectives(body: string) {
   return directives;
 }
 
-const content = fs.readFileSync("/home/munix/Desarrollo/GitRepo/minube-vibes/assets/release-notes/index.md", "utf-8");
+const content = fs.readFileSync(
+  "/home/munix/Desarrollo/GitRepo/minube-vibes/assets/release-notes/index.md",
+  "utf-8",
+);
 console.log(parseSectionDirectives(content));
