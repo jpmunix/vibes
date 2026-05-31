@@ -36,14 +36,25 @@ export function useAttachments() {
 
   const handleFileSelect = useCallback(
     (fileList: FileList, type: "chat-context" | "upload-to-codebase") => {
-      const files = Array.from(fileList);
+      let files = Array.from(fileList);
+
+      // Reject images if the model doesn't support them
+      if (!supportsImages) {
+        const hasImages = files.some((f) => f.type.startsWith("image/"));
+        if (hasImages) {
+          showWarning("El modelo actual no soporta imágenes");
+          files = files.filter((f) => !f.type.startsWith("image/"));
+          if (files.length === 0) return;
+        }
+      }
+
       const fileAttachments: FileAttachment[] = files.map((file) => ({
         file,
         type,
       }));
       setAttachments((attachments) => [...attachments, ...fileAttachments]);
     },
-    [setAttachments],
+    [setAttachments, supportsImages],
   );
 
   const removeAttachment = useCallback(
