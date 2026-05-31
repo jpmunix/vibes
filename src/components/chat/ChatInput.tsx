@@ -931,18 +931,6 @@ export function ChatInput({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              {/* Maximize / Minimize toggle — top-right corner */}
-              <button
-                onClick={() => setIsExpanded((v) => !v)}
-                className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                title={isExpanded ? "Reducir editor" : "Expandir editor"}
-              >
-                {isExpanded ? (
-                  <Minimize2 size={13} />
-                ) : (
-                  <Maximize2 size={13} />
-                )}
-              </button>
               {/* Show todo list if there are todos for this chat */}
               {chatTodos.length > 0 && (
                 <TodoList todos={chatTodos} isStreaming={isStreaming} />
@@ -1056,17 +1044,31 @@ export function ChatInput({
               {/* Use the DragDropOverlay component */}
               <DragDropOverlay isDraggingOver={isDraggingOver} />
 
-              <LexicalChatInput
-                value={inputValue}
-                onChange={setInputValue}
-                onSubmit={handleSubmit}
-                onPaste={handlePaste}
-                placeholder="Pídele a vibes que haga..."
-                excludeCurrentApp={true}
-                disableSendButton={disableSendButton}
-                compact={workspaceMode}
-                expanded={isExpanded}
-              />
+              {/* Textarea area with expand toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsExpanded((v) => !v)}
+                  className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  title={isExpanded ? "Reducir editor" : "Expandir editor"}
+                >
+                  {isExpanded ? (
+                    <Minimize2 size={13} />
+                  ) : (
+                    <Maximize2 size={13} />
+                  )}
+                </button>
+                <LexicalChatInput
+                  value={inputValue}
+                  onChange={setInputValue}
+                  onSubmit={handleSubmit}
+                  onPaste={handlePaste}
+                  placeholder="Pídele a vibes que haga..."
+                  excludeCurrentApp={true}
+                  disableSendButton={disableSendButton}
+                  compact={workspaceMode}
+                  expanded={isExpanded}
+                />
+              </div>
 
               {/* Bottom controls bar */}
               <div className="px-3 py-5 flex items-center border-t border-border/50">
