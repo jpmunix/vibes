@@ -2401,6 +2401,25 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           Vista previa del chat archivado
                         </span>
                       </div>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer shrink-0"
+                        onClick={async () => {
+                          await handleUnarchive(previewChatId);
+                          setPreviewChatId(null);
+                          setPreviewChatMessages([]);
+                          setPreviewChatTitle(null);
+                        }}
+                        disabled={unarchivingId === previewChatId}
+                        title="Restaurar chat"
+                      >
+                        {unarchivingId === previewChatId ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ArchiveRestore size={14} />
+                        )}
+                        Restaurar
+                      </button>
                     </div>
                     {/* Preview content */}
                     <div className="flex-1 min-h-0">
