@@ -18,6 +18,8 @@ import {
   SendHorizontalIcon,
   Lock,
   Undo,
+  Maximize2,
+  Minimize2,
 } from "@/components/ui/icons";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -165,6 +167,7 @@ export function ChatInput({
   const [isUndoLoading, setIsUndoLoading] = useState(false);
   const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
   const [isUndoDialogOpen, setIsUndoDialogOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
@@ -534,6 +537,9 @@ export function ChatInput({
     if ((!inputValue.trim() && attachments.length === 0) || !chatId) {
       return;
     }
+
+    // Exit expanded mode on send
+    setIsExpanded(false);
 
     // If currently streaming, enqueue the message instead of dropping it
     if (isStreaming) {
@@ -910,7 +916,7 @@ export function ChatInput({
       )}
 
       <div className="p-4" data-testid="chat-input-container">
-        <div className="max-w-3xl mx-auto relative">
+        <div className={`mx-auto relative transition-all duration-300 ease-in-out ${isExpanded ? "max-w-[60rem]" : "max-w-3xl"}`}>
           <div
             className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{
@@ -925,6 +931,18 @@ export function ChatInput({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
+              {/* Maximize / Minimize toggle — top-right corner */}
+              <button
+                onClick={() => setIsExpanded((v) => !v)}
+                className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                title={isExpanded ? "Reducir editor" : "Expandir editor"}
+              >
+                {isExpanded ? (
+                  <Minimize2 size={13} />
+                ) : (
+                  <Maximize2 size={13} />
+                )}
+              </button>
               {/* Show todo list if there are todos for this chat */}
               {chatTodos.length > 0 && (
                 <TodoList todos={chatTodos} isStreaming={isStreaming} />
@@ -1047,6 +1065,7 @@ export function ChatInput({
                 excludeCurrentApp={true}
                 disableSendButton={disableSendButton}
                 compact={workspaceMode}
+                expanded={isExpanded}
               />
 
               {/* Bottom controls bar */}
@@ -1116,6 +1135,7 @@ export function ChatInput({
                         </Tooltip>
                       </TooltipProvider>
                     )}
+
                   <UndoConfirmDialog
                     isOpen={isUndoDialogOpen}
                     onOpenChange={setIsUndoDialogOpen}

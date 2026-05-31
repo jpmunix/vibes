@@ -149,9 +149,11 @@ function getLeafNodes(node: LexicalNode): LexicalNode[] {
 function KeyboardHandlersPlugin({
   onSubmit,
   disableSendButton,
+  expanded,
 }: {
   onSubmit: () => void;
   disableSendButton: boolean;
+  expanded?: boolean;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -173,6 +175,13 @@ function KeyboardHandlersPlugin({
 
         // Support Ctrl+Enter (or Cmd+Enter) for line break
         if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
+          return true;
+        }
+
+        // In expanded mode, Enter always inserts a line break (never sends)
+        if (expanded) {
           event.preventDefault();
           editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
           return true;
@@ -229,7 +238,9 @@ function KeyboardHandlersPlugin({
           }
         });
 
-        if (isLastLine) {
+        // In expanded mode, ArrowDown on last line does NOT create a new line
+        // (standard cursor behaviour)
+        if (isLastLine && !expanded) {
           event.preventDefault();
           editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
           return true;
@@ -243,7 +254,7 @@ function KeyboardHandlersPlugin({
       unregisterEnter();
       unregisterArrowDown();
     };
-  }, [editor, onSubmit, disableSendButton]);
+  }, [editor, onSubmit, disableSendButton, expanded]);
 
   return null;
 }
@@ -383,6 +394,8 @@ interface LexicalChatInputProps {
   disableSendButton: boolean;
   /** When true, start with 1-line height (max 8 lines) for a more compact appearance */
   compact?: boolean;
+  /** When true, the input is in expanded/maximized mode (15 visible lines, Enter inserts newline) */
+  expanded?: boolean;
 }
 
 function onError(error: Error) {
@@ -399,6 +412,7 @@ export function LexicalChatInput({
   disabled = false,
   disableSendButton,
   compact = false,
+  expanded = false,
 }: LexicalChatInputProps) {
   const { prompts } = usePrompts();
   const [shouldClear, setShouldClear] = useState(false);
@@ -575,10 +589,12 @@ export function LexicalChatInput({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none cursor-text ${
-                compact
-                  ? "min-h-[38px] max-h-[192px]"
-                  : "min-h-[96px] max-h-[216px]"
+              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none cursor-text transition-[max-height] duration-300 ease-in-out ${
+                expanded
+                  ? "min-h-[313px] max-h-[313px]"
+                  : compact
+                    ? "min-h-[38px] max-h-[192px]"
+                    : "min-h-[96px] max-h-[216px]"
               }`}
               aria-placeholder={placeholder}
               placeholder={
@@ -605,6 +621,7 @@ export function LexicalChatInput({
         <KeyboardHandlersPlugin
           onSubmit={handleSubmit}
           disableSendButton={disableSendButton}
+          expanded={expanded}
         />
         <ExternalValueSyncPlugin
           value={value}
