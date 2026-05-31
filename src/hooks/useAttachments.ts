@@ -72,6 +72,31 @@ export function useAttachments() {
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         let files = Array.from(e.dataTransfer.files);
 
+        // Filter: only allow images and plain text file types
+        const allowedExtensions = new Set([
+          ".md", ".txt", ".html", ".htm", ".csv", ".json", ".xml",
+          ".yaml", ".yml", ".log", ".ini", ".cfg", ".conf", ".toml",
+          ".env", ".gitignore",
+          ".ts", ".tsx", ".js", ".jsx", ".py", ".css", ".scss",
+          ".sh", ".bash", ".zsh",
+          ".sql", ".graphql", ".gql",
+          ".rs", ".go", ".java", ".kt", ".swift", ".c", ".cpp", ".h",
+          ".rb", ".php", ".lua", ".r", ".m",
+        ]);
+
+        const isAllowed = (f: File) => {
+          if (f.type.startsWith("image/")) return true;
+          const ext = f.name.includes(".") ? "." + f.name.split(".").pop()!.toLowerCase() : "";
+          return allowedExtensions.has(ext);
+        };
+
+        const rejected = files.filter((f) => !isAllowed(f));
+        if (rejected.length > 0) {
+          showWarning("Solo se permiten imágenes y archivos de texto plano");
+        }
+        files = files.filter(isAllowed);
+        if (files.length === 0) return;
+
         if (!supportsImages) {
           const hasImages = files.some((f) => f.type.startsWith("image/"));
           if (hasImages) {
