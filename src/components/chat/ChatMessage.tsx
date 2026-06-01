@@ -29,6 +29,7 @@ import {
   Quote,
   Share2,
   Image as ImageIcon,
+  ArrowUp,
   type LucideIcon,
 } from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
@@ -249,6 +250,56 @@ const ChatMessage = ({
     return extractImagesFromAiMessages(message.aiMessagesJson).length;
   }, [isUser, message.aiMessagesJson]);
 
+  // --- Sticky stuck state tracking for user messages ---
+  const [isStuck, setIsStuck] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isUser) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const scrollContainer = el.closest('[data-testid="messages-list"]');
+    if (!scrollContainer) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStuck(entry.intersectionRatio < 1);
+      },
+      {
+        root: scrollContainer,
+        threshold: [1],
+        rootMargin: "-1px 0px 0px 0px",
+      }
+    );
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, [isUser]);
+
+  const handleScrollToNaturalTop = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const scrollContainer = el.closest('[data-testid="messages-list"]');
+    if (!scrollContainer) return;
+
+    let offset = 0;
+    let current: HTMLElement | null = el;
+    while (current && scrollContainer.contains(current) && current !== scrollContainer) {
+      offset += current.offsetTop;
+      current = current.offsetParent as HTMLElement | null;
+    }
+
+    const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+    const targetScrollTop = -maxScroll + offset;
+    scrollContainer.scrollTo({
+      top: targetScrollTop,
+      behavior: "smooth",
+    });
+  }, []);
+
   // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
   const resolvedMemories = useMemo(() => {
     if (message.model === "vibes/git-assistant") {
@@ -272,10 +323,6 @@ const ChatMessage = ({
   }, [isLastMessage, selectedMemories, message]);
 
   const activeUser = user || userAtomValue;
-
-  // System messages are completely hidden from the user interface
-  // They only exist in the DB to provide context to the LLM
-  if (isSystem) return null;
 
   // Detect persisted errors (content starts with $$VIBES_ERROR$$)
   const persistedError =
@@ -647,8 +694,12 @@ const ChatMessage = ({
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
 
+  // System messages are completely hidden from the user interface
+  // They only exist in the DB to provide context to the LLM
+  if (isSystem) return null;
+
   return (
-    <div className="flex justify-center">
+    <div ref={containerRef} className="flex justify-center">
       <div
         className="mt-4 mb-4 w-full mx-auto group"
         style={{ maxWidth: "var(--bubble-width, 65%)" }}
@@ -698,7 +749,17 @@ const ChatMessage = ({
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
               {isUser && !isSelectingModel && message.content && (
-                <div className="absolute -left-28 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
+                <div className="absolute right-full mr-3 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
+                  {isStuck && (
+                    <button
+                      onClick={handleScrollToNaturalTop}
+                      title="Ir al inicio del mensaje"
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      aria-label="Ir al inicio del mensaje"
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                  )}
                   <button
                     onClick={handleQuote}
                     title="Citar"
