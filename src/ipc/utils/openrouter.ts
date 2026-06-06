@@ -99,6 +99,7 @@ export async function openRouterRequest(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "X-OpenRouter-Cache": "true",
       ...extraHeaders,
     },
   });
@@ -246,6 +247,7 @@ export async function* openRouterStreamCompletion(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-OpenRouter-Cache": "true",
         ...(options.title && { "X-Title": options.title }),
         "Content-Length": Buffer.byteLength(body),
       },

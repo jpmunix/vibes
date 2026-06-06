@@ -275,6 +275,9 @@ function getRegularModelClient(
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
         apiKey,
+        headers: {
+          "X-OpenRouter-Cache": "true",
+        },
         // Inject OpenRouter server tools (e.g. web_search) into the request body.
         // The SDK builds the standard `tools` array from AI SDK tool definitions;
         // we merge our server tools alongside them so both coexist in one request.
