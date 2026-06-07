@@ -43,7 +43,7 @@ export function OpenRouterProviderSection() {
   const providerId = "openrouter";
   const { theme, intensity } = useTheme();
 
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [showAddKeyForm, setShowAddKeyForm] = useState(false);
   const [newKeyInput, setNewKeyInput] = useState("");
   const [newKeyAlias, setNewKeyAlias] = useState("");
