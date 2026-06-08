@@ -15,6 +15,9 @@ import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
 import type { ChatLanguage } from "@/lib/schemas";
 import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
 import { TextVerbositySelector } from "../TextVerbositySelector";
+import { AgentModelSelector } from "./AgentModelSelector";
+import type { AgentId } from "./AgentModelSelector";
+import { ChevronRight } from "@/components/ui/icons";
 
 // ─── Chat turns options ───
 const turnsOptions = [
@@ -56,6 +59,57 @@ function SettingRow({
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
         {control}
       </div>
+    </div>
+  );
+}
+
+// ─── Agent model definitions for the collapsible section ───
+const AGENT_MODEL_ENTRIES: { id: AgentId; label: string; description: string }[] = [
+  { id: "plan",       label: "Plan",        description: "Análisis y planificación" },
+  { id: "explore",    label: "Explore",     description: "Exploración del codebase (solo lectura)" },
+  { id: "general",    label: "General",     description: "Subagente multipropósito para tareas en paralelo" },
+  { id: "compaction", label: "Compaction",  description: "Compactación automática de contexto largo" },
+  { id: "title",      label: "Title",       description: "Generación de títulos de sesión" },
+  { id: "summary",    label: "Summary",     description: "Resúmenes automáticos de sesión" },
+  { id: "mockup",     label: "Mockup",      description: "Mockups y ediciones visuales rápidas (sin terminal)" },
+];
+
+// ─── Collapsible agent models section ───
+function AgentModelsSection() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <div className="flex-1">
+          <h3 className="typo-label">Modelos por agente</h3>
+          <p className="typo-caption mt-1">
+            Asigna un modelo distinto a cada agente de OpenCode para optimizar coste y rendimiento
+          </p>
+        </div>
+        <ChevronRight
+          className={cn(
+            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+            expanded && "rotate-90",
+          )}
+        />
+      </div>
+
+      {expanded && (
+        <div className="pl-4 space-y-0">
+          {AGENT_MODEL_ENTRIES.map((entry) => (
+            <SettingRow
+              key={entry.id}
+              label={entry.label}
+              description={entry.description}
+              control={<AgentModelSelector agentId={entry.id} />}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -198,6 +252,10 @@ export function AIBehaviorSettings({
           {/* Turnos de contexto — hidden: OpenCode manages context internally */}
 
           {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
+
+          {/* ── Modelos por agente — collapsible section ── */}
+          <AgentModelsSection />
+
 
           {/* ── Modelo Estratega ── */}
           <SettingRow

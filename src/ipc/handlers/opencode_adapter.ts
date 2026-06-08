@@ -137,6 +137,25 @@ export function resolveModelForAgent(
   const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
   const activeProvider = settings.selectedModel?.provider || "openrouter";
 
+  // Check if there is an explicit override for this specific agent in agentModels
+  const agentOverride = settings.agentModels?.[agentId];
+  if (agentOverride) {
+    const { provider, name } = parseModelString(agentOverride, activeProvider);
+    const model = { provider, name };
+    const result = {
+      model,
+      providerID: mapProviderForOpenCode(model),
+      modelID: composeModelWithVariant(
+        sanitizeModelName(name),
+        settings.selectedModelVariant ?? "",
+      ),
+    };
+    logger.info(
+      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (agentModels override)`,
+    );
+    return result;
+  }
+
   if (PRIMARY_AGENTS.has(agentId)) {
     let model = settings.selectedModel;
 
@@ -1325,9 +1344,14 @@ export async function updateOpenCodeConfig(changes: {
       ] as const;
       for (const id of agentIds) {
         if (changes.agentModels[id]) {
+          const { provider, name } = parseModelString(
+            changes.agentModels[id],
+            activeProviderID
+          );
+          const pID = mapProviderForOpenCode({ provider, name });
           agentConfig[id] = {
             ...agentConfig[id],
-            model: `openrouter/${changes.agentModels[id]}`,
+            model: `${pID}/${sanitizeModelName(name)}`,
           };
         }
       }
@@ -2267,15 +2291,33 @@ async function getOpenCodeClient(appPath: string) {
         },
         // All primary agents use selectedModel (same as global `model` above)
         plan: {
-          // model inherited from global `model` — no override needed
+          ...(settings.agentModels?.plan ? { model: (() => {
+            const { provider, name } = parseModelString(settings.agentModels.plan, activeProvider);
+            return `${mapProviderForOpenCode({provider, name})}/${sanitizeModelName(name)}`;
+          })() } : {}),
           permission: {
             edit: "allow",
             bash: { "*": "deny" }, // Evitamos comandos peligrosos en planificación
           },
         },
-        // explore and general inherit the global model automatically
+        ...(settings.agentModels?.explore ? { explore: { model: (() => {
+            const { provider, name } = parseModelString(settings.agentModels.explore, activeProvider);
+            return `${mapProviderForOpenCode({provider, name})}/${sanitizeModelName(name)}`;
+          })() } } : {}),
+        ...(settings.agentModels?.general ? { general: { model: (() => {
+            const { provider, name } = parseModelString(settings.agentModels.general, activeProvider);
+            return `${mapProviderForOpenCode({provider, name})}/${sanitizeModelName(name)}`;
+          })() } } : {}),
         // Background/auxiliary tasks use strategistModel
         ...(() => {
+          const getAgentModel = (id: string, defaultStrat: string) => {
+             if (settings.agentModels?.[id]) {
+                const { provider, name } = parseModelString(settings.agentModels[id], activeProvider);
+                return `${mapProviderForOpenCode({provider, name})}/${sanitizeModelName(name)}`;
+             }
+             return defaultStrat;
+          };
+
           const rawStrat = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
           const { provider: sProv, name: sName } = parseModelString(
             rawStrat,
@@ -2287,9 +2329,9 @@ async function getOpenCodeClient(appPath: string) {
           });
           const sModelFull = `${sProvID}/${sanitizeModelName(sName)}`;
           return {
-            compaction: { model: sModelFull },
-            title: { model: sModelFull },
-            summary: { model: sModelFull },
+            compaction: { model: getAgentModel("compaction", sModelFull) },
+            title: { model: getAgentModel("title", sModelFull) },
+            summary: { model: getAgentModel("summary", sModelFull) },
           };
         })(),
         // Hidden subagent for quick visual edits from the NaturalEditingPanel.
