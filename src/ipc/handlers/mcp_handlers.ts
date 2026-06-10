@@ -424,10 +424,7 @@ async function triggerOpenCodeMcpSync(userId: string) {
     await ensureDefaultServers(userId, db);
 
     const servers = await db.query.mcpServers.findMany({
-      where: and(
-        eq(remoteSchema.mcpServers.userId, userId),
-        eq(remoteSchema.mcpServers.enabled, 1),
-      ),
+      where: eq(remoteSchema.mcpServers.userId, userId),
     });
 
     // Make sure returning map matches McpServer type defined in mcp.ts

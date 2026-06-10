@@ -139,9 +139,9 @@ function McpServerCard({
           >
             {server.name === "context7" ? (
               <Switch
-                checked={true}
-                disabled={true}
-                title="Context7 es un servicio integrado obligatorio"
+                checked={server.enabled}
+                onCheckedChange={(c) => onUpdate(server.id, c)}
+                title="Context7 — desactívalo si no lo necesitas"
               />
             ) : (
               <Switch
@@ -379,11 +379,11 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
           {isContext7 ? (
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl mb-2 text-sm text-muted-foreground">
               <p>
-                <strong>Context7</strong> es un servicio integrado obligatorio.
-                Sus parámetros de conexión (URL, API Key) están gestionados por
-                Vibes de manera interna. Puedes personalizar las instrucciones
-                de inyección del agente para guiar su interacción con las
-                herramientas de Context7.
+                <strong>Context7</strong> es un servicio integrado que puedes
+                activar o desactivar. No se puede eliminar, pero puedes
+                desactivarlo desde el interruptor de la lista. Aquí puedes
+                personalizar las instrucciones de inyección del agente para
+                guiar su interacción con las herramientas de Context7.
               </p>
             </div>
           ) : (

@@ -1585,7 +1585,7 @@ function buildMcpConfig(servers: McpServer[], appPath?: string) {
           {
             type: "local" as const,
             command: [s.command!, ...resolvedArgs],
-            enabled: true,
+            enabled: s.enabled !== false && s.enabled !== 0,
             environment: {
               ...s.envJson,
               // Generic env var — any MCP server can read it
@@ -1601,7 +1601,7 @@ function buildMcpConfig(servers: McpServer[], appPath?: string) {
         {
           type: "remote" as const,
           url: s.url!,
-          enabled: true,
+          enabled: s.enabled !== false && s.enabled !== 0,
           headers: { ...s.headersJson, ...s.envJson },
         },
       ];
@@ -2107,10 +2107,7 @@ async function getOpenCodeClient(appPath: string) {
     let enabledServers: any[] = [];
     if (settingsRecord?.userId) {
       enabledServers = await db.query.mcpServers.findMany({
-        where: and(
-          eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
-          eq(remoteSchema.mcpServers.enabled, 1),
-        ),
+        where: eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
       });
       // Parse arguments — handle double/triple encoding from Turso DB
       const safeParseField = (raw: any): any => {
@@ -2426,18 +2423,9 @@ async function getOpenCodeClient(appPath: string) {
           "*.log",
         ],
       },
-      // Context7 is a mandatory built-in MCP server — always present
-      // regardless of user configuration. Used for dynamic scaffold
-      // generation and up-to-date documentation lookup.
+      // MCP servers are loaded from the DB (including Context7 via ensureDefaultServers).
+      // buildMcpConfig passes through each server's real enabled/disabled state.
       mcp: {
-        context7: {
-          type: "remote" as const,
-          url: "https://mcp.context7.com/mcp",
-          enabled: true,
-          headers: {
-            CONTEXT7_API_KEY: "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e",
-          },
-        },
         ...buildMcpConfig(enabledServers, appPath),
       },
     };
@@ -2959,10 +2947,7 @@ export async function handleOpenCodeStream(
     const settingsRecord = await db.query.userSettings.findFirst();
     if (settingsRecord?.userId) {
       const enabledServers = await db.query.mcpServers.findMany({
-        where: and(
-          eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
-          eq(remoteSchema.mcpServers.enabled, 1),
-        ),
+        where: eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
       });
       const safeParseField = (raw: any): any => {
         if (raw == null) return null;
