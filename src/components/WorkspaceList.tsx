@@ -53,6 +53,7 @@ import {
   Pin,
   PinOff,
   Square,
+  Terminal,
   Database,
   MessageSquare,
   Code,
@@ -2194,6 +2195,32 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         Directrices
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                      onClick={() => {
+                        closeMenu();
+                        ipc.app
+                          .openAppFile({ appId: app.id, filePath: "." })
+                          .catch(showError);
+                      }}
+                    >
+                      <FolderOpen size={14} className="opacity-60 shrink-0" />
+                      Abrir directorio
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                      onClick={() => {
+                        closeMenu();
+                        ipc.app
+                          .openTerminal({ appId: app.id })
+                          .catch(showError);
+                      }}
+                    >
+                      <Terminal size={14} className="opacity-60 shrink-0" />
+                      Abrir en terminal
+                    </button>
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
                       <button

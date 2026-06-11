@@ -568,6 +568,12 @@ export const appContracts = {
     input: z.void(),
     output: z.array(ListedAppSchema),
   }),
+
+  openTerminal: defineContract({
+    channel: "open-terminal",
+    input: AppIdParamsSchema,
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================

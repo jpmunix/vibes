@@ -645,6 +645,42 @@ export function registerAppHandlers() {
     }
   });
 
+  createTypedHandler(appContracts.openTerminal, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId } = params;
+    const appRecord = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId!),
+      ),
+    });
+
+    if (!appRecord) throw new Error("App not found");
+
+    const dirPath = getVibesAppPath(appRecord.path);
+    if (!fs.existsSync(dirPath)) throw new Error("App directory not found");
+
+    if (process.platform === "win32") {
+      spawn("cmd", ["/c", "start", "cmd.exe", "/k", `cd /d ${dirPath}`], { detached: true, stdio: "ignore" }).unref();
+    } else if (process.platform === "darwin") {
+      spawn("open", ["-a", "Terminal", dirPath], { detached: true, stdio: "ignore" }).unref();
+    } else {
+      const terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "xterm"];
+      for (const term of terminals) {
+        try {
+          const child = spawn(term, ["--working-directory", dirPath], { detached: true, stdio: "ignore" });
+          child.on("error", () => {});
+          child.unref();
+          return;
+        } catch {
+          continue;
+        }
+      }
+    }
+  });
+
   // Do NOT use typed handler for this, it contains sensitive information.
   ipcMain.handle("get-env-vars", async () => {
     const envVars: Record<string, string | undefined> = {};
