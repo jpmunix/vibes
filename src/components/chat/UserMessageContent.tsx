@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
-import { X, Wrench, Paperclip } from "@/components/ui/icons";
+import { X, Wrench, Paperclip, Copy, ExternalLink } from "@/components/ui/icons";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,94 @@ interface UserMessageContentProps {
   aiMessagesJson?: any;
   /** When true, image thumbnails are hidden (parent renders a compact badge instead) */
   hideImages?: boolean;
+}
+
+interface ImageContextMenuState {
+  x: number;
+  y: number;
+  src: string;
+}
+
+function ImageContextMenu({
+  menu,
+  onClose,
+}: {
+  menu: ImageContextMenuState;
+  onClose: () => void;
+}) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [onClose]);
+
+  const handleCopyImage = async () => {
+    try {
+      const response = await fetch(menu.src);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
+      toast.success("Imagen copiada al portapapeles");
+    } catch (err) {
+      console.error("Error al copiar imagen:", err);
+      toast.error("Error al copiar la imagen");
+    }
+    onClose();
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(menu.src);
+      toast.success("URL copiada al portapapeles");
+    } catch (err) {
+      console.error("Error al copiar URL:", err);
+      toast.error("Error al copiar la URL");
+    }
+    onClose();
+  };
+
+  const isUrl = menu.src.startsWith("http://") || menu.src.startsWith("https://");
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed z-[9999] min-w-[180px] rounded-md border bg-popover shadow-lg p-1 animate-in fade-in-0 zoom-in-95"
+      style={{ top: menu.y, left: menu.x }}
+    >
+      <button
+        onClick={handleCopyImage}
+        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+      >
+        <Copy size={14} /> Copiar imagen
+      </button>
+      {isUrl && (
+        <button
+          onClick={handleCopyUrl}
+          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2"
+        >
+          <ExternalLink size={14} /> Copiar URL
+        </button>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -226,6 +315,17 @@ export const UserMessageContent = React.memo(function UserMessageContent({
     setExpandedImage(null);
   }, []);
 
+  const [contextMenu, setContextMenu] = useState<ImageContextMenuState | null>(null);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, src: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, src });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   return (
     <>
       {/* Render content: compact badge for fix-error, normal markdown otherwise */}
@@ -303,6 +403,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
               <button
                 key={index}
                 onClick={() => handleImageClick(img.src)}
+                onContextMenu={(e) => handleContextMenu(e, img.src)}
                 className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
                 style={{ width: 120, height: 120, flexShrink: 0 }}
               >
@@ -351,9 +452,18 @@ export const UserMessageContent = React.memo(function UserMessageContent({
               alt="Captura ampliada"
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => {
+                e.stopPropagation();
+                handleContextMenu(e, expandedImage);
+              }}
             />
           </div>
         </div>
+      )}
+
+      {/* Render the Context Menu if open */}
+      {contextMenu && (
+        <ImageContextMenu menu={contextMenu} onClose={closeContextMenu} />
       )}
     </>
   );
