@@ -59,12 +59,34 @@ function ImageContextMenu({
 
   const handleCopyImage = async () => {
     try {
-      const response = await fetch(menu.src);
-      const blob = await response.blob();
+      // Load the image into an HTMLImageElement (works for both data: URLs and http URLs)
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      const loaded = new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+      });
+      img.src = menu.src;
+      await loaded;
+
+      // Draw to an offscreen canvas and export as PNG blob
+      // (ClipboardItem only supports image/png reliably)
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context unavailable");
+      ctx.drawImage(img, 0, 0);
+
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error("toBlob failed"));
+        }, "image/png");
+      });
+
       await navigator.clipboard.write([
-        new ClipboardItem({
-          [blob.type]: blob,
-        }),
+        new ClipboardItem({ "image/png": pngBlob }),
       ]);
       toast.success("Imagen copiada al portapapeles");
     } catch (err) {
