@@ -4729,6 +4729,10 @@ async function processEvents(
               notif.on("click", () => {
                 win.show();
                 win.focus();
+                win.webContents.send("navigate-to-route", {
+                  route: "/",
+                  search: { chatId },
+                });
               });
               notif.show();
 

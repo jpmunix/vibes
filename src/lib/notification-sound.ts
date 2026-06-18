@@ -105,6 +105,10 @@ interface NotificationParams {
     UserSettings,
     "enableChatCompletionNotifications" | "enableNotificationSound"
   > | null;
+  /** Optional chatId for click-to-navigate */
+  chatId?: number;
+  /** Optional appId for click-to-navigate */
+  appId?: number;
 }
 
 /**
@@ -118,6 +122,8 @@ export function sendAppNotification({
   title,
   body,
   settings,
+  chatId,
+  appId,
 }: NotificationParams): void {
   const notificationsEnabled =
     settings?.enableChatCompletionNotifications === true;
@@ -127,7 +133,19 @@ export function sendAppNotification({
   if (notificationsEnabled) {
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, { body, silent: true });
+        const notif = new Notification(title, { body, silent: true });
+        if (chatId != null) {
+          notif.onclick = () => {
+            try {
+              (window as any).electron?.ipcRenderer?.invoke(
+                "window:navigate-main",
+                { route: "/", search: { appId, chatId } },
+              );
+            } catch {
+              // Navigation not critical
+            }
+          };
+        }
       }
     } catch {
       // Native notifications unavailable (e.g. unsigned macOS app) — not critical
@@ -146,6 +164,7 @@ export function sendAppNotification({
       (window as any).electron?.ipcRenderer?.invoke(
         "tray:set-badge",
         `📬 ${body}`,
+        chatId,
       );
     } catch {
       // Not critical — tray badge is a nice-to-have

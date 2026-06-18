@@ -249,6 +249,12 @@ function rebuildContextMenu() {
         click: () => {
           if (mainWindowRef && !mainWindowRef.isDestroyed()) {
             showWindow(mainWindowRef);
+            if (notif.chatId) {
+              mainWindowRef.webContents.send("navigate-to-route", {
+                route: "/",
+                search: { chatId: notif.chatId },
+              });
+            }
           }
         },
       });

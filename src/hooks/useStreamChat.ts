@@ -476,7 +476,7 @@ export function useStreamChat({
                     ? rawTitle.slice(0, 80) + "…"
                     : rawTitle
                   : "Respuesta completada";
-                sendAppNotification({ title: appName, body, settings });
+                sendAppNotification({ title: appName, body, settings, chatId, appId: selectedAppId ?? undefined });
               }
 
               // Immediately mark streaming as done (urgent — affects UI controls)

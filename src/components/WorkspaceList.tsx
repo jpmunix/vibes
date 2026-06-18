@@ -72,6 +72,7 @@ import {
   BunnyIcon,
   SupabaseIcon,
   PocketBaseIcon,
+  MessageCircleQuestion,
 } from "@/components/ui/icons";
 import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { ChatPreviewThread } from "@/components/chat/ChatPreviewThread";
@@ -82,6 +83,9 @@ import {
   selectedChatIdAtom,
   recentStreamChatIdsAtom,
   isStreamingByIdAtom,
+  pendingAskUsersAtom,
+  pendingAgentConsentsAtom,
+  pendingOpenCodePermissionsAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import type { Message } from "@/ipc/types";
@@ -995,6 +999,18 @@ const AppChats = memo(function AppChats({
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
 
+  // Pending interactions (ask_user, consent, permission) — show question icon
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const pendingConsents = useAtomValue(pendingAgentConsentsAtom);
+  const pendingPermissions = useAtomValue(pendingOpenCodePermissionsAtom);
+  const pendingInteractionChatIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const a of pendingAskUsers) ids.add(a.chatId);
+    for (const c of pendingConsents) ids.add(c.chatId);
+    for (const p of pendingPermissions) ids.add(p.chatId);
+    return ids;
+  }, [pendingAskUsers, pendingConsents, pendingPermissions]);
+
   // A chat is "unread" if it was recently streamed to and user hasn't viewed it
   const isChatUnread = useCallback(
     (chatId: number) => {
@@ -1133,6 +1149,7 @@ const AppChats = memo(function AppChats({
             {sortedChats.map((chat) => {
               const unread = isChatUnread(chat.id);
               const streaming = isStreamingById.get(chat.id) ?? false;
+              const hasPendingInteraction = pendingInteractionChatIds.has(chat.id);
               const isMenuOpen = openMenuId === chat.id;
               const isRenaming = renamingId === chat.id;
               return (
@@ -1182,9 +1199,14 @@ const AppChats = memo(function AppChats({
                         handleChatClickAndMarkRead(appId, chat.id);
                       }}
                     >
-                      {(streaming || unread) && (
+                      {(hasPendingInteraction || streaming || unread) && (
                         <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
-                          {streaming ? (
+                          {hasPendingInteraction ? (
+                            <MessageCircleQuestion
+                              size={13}
+                              className="text-primary animate-pulse"
+                            />
+                          ) : streaming ? (
                             <Loader2
                               size={12}
                               className="animate-spin text-primary"
@@ -2918,6 +2940,18 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { theme, intensity } = useTheme();
 
+  // Pending interactions (ask_user, consent, permission) — show question icon in pinned chats
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const pendingConsents = useAtomValue(pendingAgentConsentsAtom);
+  const pendingPermissions = useAtomValue(pendingOpenCodePermissionsAtom);
+  const pendingInteractionChatIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const a of pendingAskUsers) ids.add(a.chatId);
+    for (const c of pendingConsents) ids.add(c.chatId);
+    for (const p of pendingPermissions) ids.add(p.chatId);
+    return ids;
+  }, [pendingAskUsers, pendingConsents, pendingPermissions]);
+
   const handleOpenGit = useCallback(
     (appId: number) => {
       ipc.system.openGitWindow({ appId, theme, themeIntensity: intensity });
@@ -3817,6 +3851,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   {pinnedChats.map((pinned) => {
                     const isActive = selectedChatId === pinned.id;
                     const streaming = isStreamingById.get(pinned.id) ?? false;
+                    const hasPendingInteraction = pendingInteractionChatIds.has(pinned.id);
                     const isRenaming = pinnedRenamingId === pinned.id;
                     const isMenuOpen = pinnedMenuId === pinned.id;
                     const isPinnedUnread = isActive
@@ -3894,9 +3929,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               });
                             }}
                           >
-                            {(streaming || isPinnedUnread) && (
+                            {(hasPendingInteraction || streaming || isPinnedUnread) && (
                               <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
-                                {streaming ? (
+                                {hasPendingInteraction ? (
+                                  <MessageCircleQuestion
+                                    size={13}
+                                    className="text-primary animate-pulse"
+                                  />
+                                ) : streaming ? (
                                   <Loader2
                                     size={12}
                                     className="animate-spin text-primary"

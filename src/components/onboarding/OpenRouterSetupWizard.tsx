@@ -36,12 +36,6 @@ export function OpenRouterSetupWizard() {
     error?: string;
   } | null>(null);
 
-  // Don't show the wizard while settings/providers are loading
-  if (settingsLoading || providersLoading) return null;
-
-  // If OpenRouter is already set up, don't show the wizard
-  if (isProviderSetup("openrouter")) return null;
-
   const handleVerify = useCallback(async () => {
     if (!apiKey.trim()) {
       showError("Introduce tu API key de OpenRouter");
@@ -87,6 +81,12 @@ export function OpenRouterSetupWizard() {
       setIsVerifying(false);
     }
   }, [apiKey, settings, updateSettings]);
+
+  // Don't show the wizard while settings/providers are loading
+  if (settingsLoading || providersLoading) return null;
+
+  // If OpenRouter is already set up, don't show the wizard
+  if (isProviderSetup("openrouter")) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-md">
