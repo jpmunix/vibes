@@ -278,8 +278,9 @@ function extractMaxOutputTokens(model: RawModel): number | undefined {
  * Maps known tags to user-friendly labels.
  */
 function deriveTag(model: RawModel): { tag?: string; tagColor?: string } {
-  const tags = model.tags || model.capabilities || [];
-  const tagSet = new Set(tags.map((t) => t.toLowerCase()));
+  const rawTags = model.tags || model.capabilities;
+  const tags = Array.isArray(rawTags) ? rawTags : [];
+  const tagSet = new Set(tags.map((t) => String(t).toLowerCase()));
 
   // Priority order: most distinctive tag first
   if (tagSet.has("reasoning")) return { tag: "Reasoning", tagColor: "purple" };
@@ -329,10 +330,10 @@ function transformModel(model: RawModel): ModelOption {
     ...(contextWindow ? { contextWindow } : {}),
     ...(maxOutputTokens ? { maxOutputTokens } : {}),
     ...(tagInfo.tag ? { tag: tagInfo.tag, tagColor: tagInfo.tagColor } : {}),
-    ...(model.input_modalities
+    ...(Array.isArray(model.input_modalities)
       ? { inputModalities: model.input_modalities }
       : {}),
-    ...(model.output_modalities
+    ...(Array.isArray(model.output_modalities)
       ? { outputModalities: model.output_modalities }
       : {}),
   };

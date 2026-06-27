@@ -11,7 +11,7 @@ import { ipc } from "@/ipc/types";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
-import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
+
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import { matchesModelSearch } from "@/lib/modelSearch";
@@ -39,7 +39,7 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
 
-  const { stats, incrementUsage, removeUsage } = useModelUsageStats();
+  const { stats, incrementUsage } = useModelUsageStats();
   const { aliases, setAlias, removeAlias } = useModelAliases();
   const [search, setSearch] = useState("");
 
@@ -176,23 +176,11 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
     });
   }
 
-  // OpenRouter models (filtered by enabled + usage)
+  // OpenRouter models (all models, skip disabled provider)
   if (!isProviderDisabled("openrouter") && modelsByProviders?.["openrouter"]) {
-    const enabledModels =
-      settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
     modelsByProviders["openrouter"].forEach((model) => {
-      const isCustom = model.type === "custom";
-      const isEnabled = enabledModels.includes(model.apiName);
-      const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
-
-      if (searchLower) {
-        if (doesModelMatchSearch(model)) {
-          allAvailableModels.push({ provider: "openrouter", model });
-        }
-      } else {
-        if (isCustom || isEnabled || isUsed) {
-          allAvailableModels.push({ provider: "openrouter", model });
-        }
+      if (!searchLower || doesModelMatchSearch(model)) {
+        allAvailableModels.push({ provider: "openrouter", model });
       }
     });
   }
@@ -334,16 +322,9 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
           </div>
         }
         renderModelItem={({ provider, model }, _isSelected) => {
-          const isEnabled =
-            provider === "openrouter" &&
-            (
-              settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS
-            ).includes(model.apiName);
           const isSelectedReal =
             selectedModel.provider === provider &&
             selectedModel.name === model.apiName;
-          const isRemovable =
-            provider === "openrouter" && !isEnabled && !isSelectedReal;
 
           const showProviderLabel =
             provider !== "openrouter" && provider !== "auto-router";
@@ -358,11 +339,7 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
                   model={model}
                   showAutoRouterBadge={provider === "auto-router"}
                   isAutoRouter={provider === "auto-router"}
-                  onRemoveClick={
-                    isRemovable
-                      ? (m) => removeUsage(`${provider}:${m.apiName}`)
-                      : undefined
-                  }
+                  onRemoveClick={undefined}
                   alias={aliases[model.apiName]}
                   onSetAlias={(m, newAlias) =>
                     setAlias({ modelId: m.apiName, alias: newAlias })
