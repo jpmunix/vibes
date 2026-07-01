@@ -137,6 +137,44 @@ export function resolveModelForAgent(
   const PRIMARY_AGENTS = new Set(["build", "plan", "explore", "general"]);
   const activeProvider = settings.selectedModel?.provider || "openrouter";
 
+  // If this is a custom agent with explicit model routing, it takes absolute priority
+  if (customAgentModelSource === "static" && customAgentModel) {
+    const { provider, name } = parseModelString(
+      customAgentModel,
+      activeProvider,
+    );
+    const model = { provider, name };
+    const result = {
+      model,
+      providerID: mapProviderForOpenCode(model),
+      modelID: composeModelWithVariant(
+        sanitizeModelName(name),
+        settings.selectedModelVariant ?? "",
+      ),
+    };
+    logger.info(
+      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (custom agent static model)`,
+    );
+    return result;
+  }
+
+  if (customAgentModelSource === "chat") {
+    // Custom agent wants to force the chat model, bypassing any base agent overrides
+    const model = settings.selectedModel;
+    const result = {
+      model,
+      providerID: mapProviderForOpenCode(model),
+      modelID: composeModelWithVariant(
+        sanitizeModelName(model.name),
+        settings.selectedModelVariant ?? "",
+      ),
+    };
+    logger.info(
+      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (custom agent chat model)`,
+    );
+    return result;
+  }
+
   // Check if there is an explicit override for this specific agent in agentModels
   const agentOverride = settings.agentModels?.[agentId];
   if (agentOverride) {
@@ -157,16 +195,7 @@ export function resolveModelForAgent(
   }
 
   if (PRIMARY_AGENTS.has(agentId)) {
-    let model = settings.selectedModel;
-
-    if (customAgentModelSource === "static" && customAgentModel) {
-      const { provider, name } = parseModelString(
-        customAgentModel,
-        activeProvider,
-      );
-      model = { provider, name };
-    }
-
+    const model = settings.selectedModel;
     const result = {
       model,
       providerID: mapProviderForOpenCode(model),
@@ -176,7 +205,7 @@ export function resolveModelForAgent(
       ),
     };
     logger.info(
-      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (${customAgentModelSource === "static" ? "static agent model" : "selectedModel"})`,
+      `[AgentModel] ${agentId.toUpperCase()} → ${result.providerID}/${result.modelID} (selectedModel)`,
     );
     return result;
   }

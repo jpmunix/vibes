@@ -47,7 +47,12 @@ const MAX_PENDING_NOTIFICATIONS = 5;
 export function createTray(
   mainWindow: BrowserWindow,
   activeFlavor: FlavorConfig,
-): Tray {
+): Tray | null {
+  if (!app.isPackaged) {
+    logger.info("Tray disabled in development mode to allow clean restart");
+    return null;
+  }
+  
   mainWindowRef = mainWindow;
   flavorRef = activeFlavor;
 
