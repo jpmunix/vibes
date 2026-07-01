@@ -127,6 +127,12 @@ export function SettingsModelSelector({
     return map;
   }, [models]);
 
+  // Count unique providers to decide if badges are needed
+  const uniqueProviders = useMemo(() => {
+    const providers = new Set(filteredModels.map((m) => getSourceProvider(m)));
+    return providers.size;
+  }, [filteredModels]);
+
   // Build options for UnifiedSelector — special first, then models
   // When showProviderBadge is on, group models by provider
   const { options, groups } = useMemo(() => {
@@ -137,7 +143,7 @@ export function SettingsModelSelector({
       group: "special",
     }));
 
-    if (showProviderBadge) {
+    if (showProviderBadge && uniqueProviders > 1) {
       // Group by sourceProvider (from MultiProviderModel)
       const buckets = new Map<
         string,
@@ -214,7 +220,7 @@ export function SettingsModelSelector({
         : undefined;
 
     return { options: allOpts, groups: grps };
-  }, [specialOptions, filteredModels, aliases, showProviderBadge]);
+  }, [specialOptions, filteredModels, aliases, showProviderBadge, uniqueProviders]);
 
   // Resolve display name for the trigger
   const getDisplayName = () => {
@@ -250,7 +256,7 @@ export function SettingsModelSelector({
 
           if (model) {
             const provider = getSourceProvider(model);
-            const badge = showProviderBadge
+            const badge = showProviderBadge && uniqueProviders > 1
               ? getBadgeForProvider(provider, getSourceProviderLabel(model))
               : null;
             return (

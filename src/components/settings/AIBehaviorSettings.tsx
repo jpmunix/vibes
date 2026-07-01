@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { StrategistModelSelector } from "./StrategistModelSelector";
 import { ExecutorModelSelector } from "./ExecutorModelSelector";
+import { VisionModelSelector } from "./VisionModelSelector";
 import { AgentToolsSettings } from "./AgentToolsSettings";
 import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
+import { Switch } from "@/components/ui/switch";
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
@@ -270,6 +272,47 @@ export function AIBehaviorSettings({
             description="Títulos de chats/apps, mensajes de commit en Git y agente rápido de mockups"
             control={<ExecutorModelSelector />}
           />
+
+          {/* ── Preprocesador de Visión ── */}
+          <SettingRow
+            label="Preprocesador de Visión"
+            description="Traduce imágenes a texto de forma transparente cuando usas un modelo sin capacidades de visión"
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {(
+                  [
+                    { value: false, label: "Desactivado" },
+                    { value: true, label: "Activado" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={String(option.value)}
+                    onClick={() =>
+                      updateSettings({
+                        visionPreprocessorEnabled: option.value,
+                      })
+                    }
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.visionPreprocessorEnabled ?? true) ===
+                        option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+          {settings?.visionPreprocessorEnabled !== false && (
+            <SettingRow
+              label="Modelo de Visión"
+              description="El modelo encargado de analizar y describir las imágenes"
+              control={<VisionModelSelector />}
+            />
+          )}
 
           {/* Morph Patch Engine — admin only */}
           {isAdminUser && (

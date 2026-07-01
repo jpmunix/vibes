@@ -472,6 +472,9 @@ export const UserSettingsSchema = z
     strategistModel: z.string().optional(), // reasoning agents (plan, explore, general)
     executorModel: z.string().optional(), // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
+    visionPreprocessorEnabled: z.boolean().optional(),
+    visionPreprocessorModel: z.string().optional(),
+    visionPreprocessorPrompt: z.string().optional(),
     // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
     openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
     openCodePermissions2: OpenCodePermissionsConfigSchema.optional(),

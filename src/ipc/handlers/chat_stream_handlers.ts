@@ -47,6 +47,11 @@ import { processFullResponseActions } from "../processors/response_processor";
 import { streamTestResponse } from "./testing_chat_handlers";
 import { getTestResponse } from "./testing_chat_handlers";
 import { getModelClient, ModelClient } from "../utils/get_model_client";
+import {
+  preprocessImages,
+  messagesHaveImages,
+  modelSupportsVision,
+} from "../utils/vision_preprocessor";
 import log from "electron-log";
 import { sendTelemetryEvent } from "../utils/telemetry";
 import {
@@ -1488,6 +1493,25 @@ This conversation includes one or more image attachments. When the user uploads 
               return m;
             });
 
+          let finalMessages = framedMessages;
+          let visionThought = "";
+
+          if (
+            !modelSupportsVision(selectedModel.name) &&
+            messagesHaveImages(finalMessages)
+          ) {
+            const result = await preprocessImages(
+              finalMessages,
+              context.userId,
+              settings,
+            );
+            finalMessages = result.messages;
+            if (result.visionDescription) {
+              const shortName = result.visionModelUsed?.split("::").pop() || result.visionModelUsed;
+              visionThought = `<think>\n🖼️ [Visión automática con ${shortName}]\n${result.visionDescription}\n</think>\n\n`;
+            }
+          }
+
           const streamResult = streamText({
             headers: getAiHeaders({
               builtinProviderId: modelClient.builtinProviderId,
@@ -1503,7 +1527,7 @@ This conversation includes one or more image attachments. When the user uploads 
             system: systemPromptOverride,
             toolChoice,
             tools,
-            messages: framedMessages,
+            messages: finalMessages,
             onFinish: async (response: any) => {
               // Use totalUsage (accumulated across ALL steps) rather than usage (last step only)
               const accumulated = response.totalUsage;
@@ -1606,14 +1630,16 @@ This conversation includes one or more image attachments. When the user uploads 
         }: {
           fullResponse: string;
         }) => {
+          const finalResponseWithThought = visionThought ? visionThought + fullResponse : fullResponse;
+
           // Store the current partial response
-          partialResponses.set(req.chatId, fullResponse);
+          partialResponses.set(req.chatId, finalResponseWithThought);
           // Save to DB (in case user is switching chats during the stream)
           const now = Date.now();
           if (now - lastDbSaveAt >= 150) {
             await db
               .update(remoteSchema.messages)
-              .set({ content: fullResponse })
+              .set({ content: finalResponseWithThought })
               .where(
                 eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
               );
@@ -1627,7 +1653,7 @@ This conversation includes one or more image attachments. When the user uploads 
             currentMessages.length > 0 &&
             currentMessages[currentMessages.length - 1].role === "assistant"
           ) {
-            currentMessages[currentMessages.length - 1].content = fullResponse;
+            currentMessages[currentMessages.length - 1].content = finalResponseWithThought;
           }
 
           // Update the assistant message in the database
@@ -1635,7 +1661,7 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             messages: currentMessages,
           });
-          return fullResponse;
+          return finalResponseWithThought;
         };
 
         // ── Unified OpenCode pipeline for all modes ─────────────────────

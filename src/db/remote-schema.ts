@@ -446,6 +446,20 @@ export const memoryDebugLogs = sqliteTable("memory_debug_logs", {
 });
 
 // =============================================================================
+// VISION PREPROCESSOR CACHE (hash -> textual description)
+// =============================================================================
+
+export const visionCache = sqliteTable("vision_cache", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  hash: text("hash").notNull(),
+  description: text("description").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // CUSTOM LANGUAGE MODELS (user-defined models, presets, arbitrary IDs)
 // =============================================================================
 

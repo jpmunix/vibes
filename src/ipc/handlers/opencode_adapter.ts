@@ -41,6 +41,7 @@ import {
 import { McpServer } from "../types/mcp";
 import { app } from "electron";
 import * as fs from "node:fs";
+import { modelSupportsVision } from "../utils/vision_preprocessor";
 
 const logger = log.scope("opencode_adapter");
 
@@ -3575,21 +3576,44 @@ export async function handleOpenCodeStream(
     const promptParts: any[] = [{ type: "text", text: promptText }];
 
     // Add image attachments as file parts (OpenCode supports multimodal input)
+    // If the model doesn't support vision and the preprocessor is enabled,
+    // convert images to text descriptions via the vision sidecar model.
     if (options.attachments && options.attachmentPaths) {
+      const hasImages = options.attachments.some((a: any) =>
+        a.type.startsWith("image/"),
+      );
+      const needsPreprocessing =
+        hasImages &&
+        !modelSupportsVision(modelID) &&
+        settings.visionPreprocessorEnabled !== false;
+
+      // Collect image data URLs for preprocessing
+      const imageDataUrls: { name: string; dataUrl: string; mime: string }[] =
+        [];
+
       for (let i = 0; i < options.attachments.length; i++) {
         const att = options.attachments[i];
         const attPath = options.attachmentPaths[i];
         if (!attPath) continue;
 
-        // Images → send as data URL file parts for vision models
         if (att.type.startsWith("image/")) {
-          promptParts.push({
-            type: "file",
-            mime: att.type,
-            filename: att.name,
-            url: att.data, // already a data URL
-          });
-          logger.info(`${LP} Attached image: ${att.name}`);
+          if (needsPreprocessing) {
+            // Collect for batch preprocessing below
+            imageDataUrls.push({
+              name: att.name,
+              dataUrl: att.data,
+              mime: att.type,
+            });
+          } else {
+            // Model supports vision → send as file parts directly
+            promptParts.push({
+              type: "file",
+              mime: att.type,
+              filename: att.name,
+              url: att.data,
+            });
+            logger.info(`${LP} Attached image: ${att.name}`);
+          }
         }
         // upload-to-codebase → copy to project and mention in prompt
         else if (att.attachmentType === "upload-to-codebase") {
@@ -3612,6 +3636,76 @@ export async function handleOpenCodeStream(
             logger.info(`${LP} Inlined text attachment: ${att.name}`);
           } catch {
             promptParts[0].text += `\n\nAdjunto: ${att.name} (${att.type})`;
+          }
+        }
+      }
+
+      // Run vision preprocessor for collected images
+      if (needsPreprocessing && imageDataUrls.length > 0) {
+        logger.info(
+          `${LP} 🖼️ Vision preprocessor: converting ${imageDataUrls.length} image(s) to text`,
+        );
+        try {
+          const { preprocessImages } = await import(
+            "../utils/vision_preprocessor"
+          );
+          const imageParts = imageDataUrls.map((img) => ({
+            type: "image" as const,
+            image: img.dataUrl,
+          }));
+          const result = await preprocessImages(
+            [
+              {
+                role: "user" as const,
+                content: [
+                  { type: "text" as const, text: promptText },
+                  ...imageParts,
+                ],
+              },
+            ],
+            (settings as any).userId || "anonymous",
+            settings,
+          );
+
+          if (result.visionDescription) {
+            const shortName =
+              result.visionModelUsed?.split("::").pop() ||
+              result.visionModelUsed;
+            promptParts[0].text += `\n\n🖼️ [Imagen analizada por ${shortName}]:\n---\n${result.visionDescription}\n---`;
+            
+            // Push to timeline so the UI renders it as a thought block
+            timeline.push({
+              type: "text",
+              text: `<think>🖼️ Procesador visual (${shortName}):\n${result.visionDescription}</think>\n\n`,
+            });
+            
+            logger.info(
+              `${LP} 🖼️ Vision preprocessor: injected ${result.visionDescription.length}ch description and pushed to UI as <think> block`,
+            );
+          } else {
+            logger.warn(
+              `${LP} 🖼️ Vision preprocessor returned no description, falling back to raw images`,
+            );
+            for (const img of imageDataUrls) {
+              promptParts.push({
+                type: "file",
+                mime: img.mime,
+                filename: img.name,
+                url: img.dataUrl,
+              });
+            }
+          }
+        } catch (err: any) {
+          logger.error(
+            `${LP} 🖼️ Vision preprocessor failed, falling back to raw images: ${err.message}`,
+          );
+          for (const img of imageDataUrls) {
+            promptParts.push({
+              type: "file",
+              mime: img.mime,
+              filename: img.name,
+              url: img.dataUrl,
+            });
           }
         }
       }

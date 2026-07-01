@@ -741,7 +741,9 @@ const createWindow = () => {
     clearTimeout(saveTimeout);
     saveWindowState();
 
-    if (process.platform !== "darwin" && !(app as any)._forceQuit) {
+    // Only hide-to-tray in the packaged app (where the tray exists).
+    // In development mode, let the window close normally so `rs` restarts cleanly.
+    if (app.isPackaged && process.platform !== "darwin" && !(app as any)._forceQuit) {
       e.preventDefault();
       mainWindow?.hide();
     }
@@ -1005,9 +1007,12 @@ async function handleDeepLinkReturn(url: string) {
 }
 
 app.on("window-all-closed", () => {
-  // On macOS the app stays in the dock; on Linux we keep it alive
-  // in the system tray, so we only quit if _forceQuit was requested.
-  if (process.platform !== "darwin" && (app as any)._forceQuit) {
+  // On macOS the app stays in the dock.
+  // In the packaged app on Linux, keep it alive in the system tray
+  // and only quit if _forceQuit was requested (from the tray "Salir" menu).
+  // In development mode, always quit so `rs` restarts cleanly.
+  if (process.platform === "darwin") return;
+  if (!app.isPackaged || (app as any)._forceQuit) {
     app.quit();
   }
 });

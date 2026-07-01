@@ -51,6 +51,7 @@ import { McpServersSettings } from "@/components/settings/McpServersSettings";
 import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
+import { VisionPromptGroup } from "@/components/settings/VisionPromptGroup";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -1135,6 +1136,9 @@ export default function SettingsPage() {
               directrices.
             </p>
             <PromptsSection />
+
+            {/* ── Procesamiento de Imágenes ── */}
+            <VisionPromptGroup />
           </div>
 
           <div

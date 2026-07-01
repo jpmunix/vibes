@@ -29,6 +29,10 @@ export function useSelectedModelSupportsImages(): boolean {
   return useMemo(() => {
     if (!settings || !modelsByProviders) return true;
 
+    // If the vision preprocessor is enabled, always allow images
+    // (they will be converted to text by the sidecar model)
+    if (settings.visionPreprocessorEnabled !== false) return true;
+
     // 1. Resolve which model is active (dynamic selectedModel vs static custom agent model)
     let activeProvider = settings.selectedModel?.provider || "openrouter";
     let activeModelName = settings.selectedModel?.name;
@@ -95,6 +99,7 @@ export function useSelectedModelSupportsImages(): boolean {
     return true;
   }, [
     settings?.selectedModel,
+    settings?.visionPreprocessorEnabled,
     modelsByProviders,
     chatId,
     chat?.chatMode,
