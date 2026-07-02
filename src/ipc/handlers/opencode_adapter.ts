@@ -249,6 +249,7 @@ let activeTextInjector: ((text: string) => void) | null = null;
 interface PendingQuestionGroup {
   totalQuestions: number;
   answers: Map<number, string[]>; // questionIndex → answer labels
+  questions: string[]; // Store original question text
   timeoutId?: ReturnType<typeof setTimeout>;
 }
 const pendingQuestionGroups = new Map<string, PendingQuestionGroup>();
@@ -4775,6 +4776,7 @@ async function processEvents(
           pendingQuestionGroups.set(questionRequestId, {
             totalQuestions: totalQ,
             answers: new Map(),
+            questions: questions.map((q: any) => q.question || q.header || ""),
           });
 
           // Set a 5-minute timeout to auto-reject if user doesn't respond
@@ -5402,14 +5404,19 @@ export function registerQuestionHandler() {
         `[OC:AskUser] Answer for question ${requestId}[${questionIndex}]: ${JSON.stringify(answerLabels).substring(0, 120)}`,
       );
 
+      // Check if this is part of a multi-question group
+      const group = pendingQuestionGroups.get(requestId);
+      const questionText = group?.questions?.[questionIndex];
+
       // Inject the user's answer as a blockquote into the live stream immediately
       if (activeTextInjector) {
         const answerDisplay = answerLabels.join(", ");
-        activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
+        if (questionText) {
+          activeTextInjector(`\n\n> **${questionText.replace(/\n/g, "\n> ")}**\n> \n> \u200B${answerDisplay}\n\n`);
+        } else {
+          activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
+        }
       }
-
-      // Check if this is part of a multi-question group
-      const group = pendingQuestionGroups.get(requestId);
 
       if (!group || group.totalQuestions <= 1) {
         // Single question (or legacy flow) — send immediately
