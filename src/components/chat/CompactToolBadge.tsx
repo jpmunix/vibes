@@ -312,8 +312,14 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
   },
   "vibes-token-usage": {
     icon: Coins,
-    label: "Tokens",
-    color: "text-amber-600 dark:text-yellow-500",
+    label: "Uso de Tokens",
+    color: "text-amber-500",
+  },
+  "vibes-vision": {
+    icon: Eye,
+    label: "Visión",
+    pendingLabel: "Analizando la imagen",
+    color: "text-indigo-400",
   },
 };
 

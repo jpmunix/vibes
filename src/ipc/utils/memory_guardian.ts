@@ -107,6 +107,8 @@ const VIBES_TOOL_TAG_NAMES = [
   "vibes-typecheck-summary",
   "vibes-token-usage",
   "vibes-cancelled",
+  "vibes-files-changed",
+  "vibes-vision",
 ];
 
 const VIBES_TOOL_TAG_GROUP = VIBES_TOOL_TAG_NAMES.join("|");

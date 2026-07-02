@@ -54,6 +54,7 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-token-usage",
   "vibes-cancelled",
   "vibes-files-changed",
+  "vibes-vision",
 ];
 
 /**

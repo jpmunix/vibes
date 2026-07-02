@@ -513,8 +513,8 @@ const ChatMessage = ({
       "vibes-stop-process",
       "vibes-list-processes",
       "vibes-wait-http",
-      "vibes-typecheck-summary",
       "vibes-token-usage",
+      "vibes-vision",
     ];
 
     let lastOpenTag: string | null = null;

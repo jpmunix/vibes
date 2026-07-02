@@ -3645,6 +3645,9 @@ export async function handleOpenCodeStream(
         logger.info(
           `${LP} 🖼️ Vision preprocessor: converting ${imageDataUrls.length} image(s) to text`,
         );
+        // Emit unclosed tag so the frontend shows "Analizando la imagen..."
+        sendChunk(event, req.chatId, chatMessages, "<vibes-vision>");
+        
         try {
           const { preprocessImages } = await import(
             "../utils/vision_preprocessor"

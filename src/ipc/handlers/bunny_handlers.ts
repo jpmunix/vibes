@@ -11,10 +11,10 @@ import * as crypto from "crypto";
 const logger = log.scope("bunny_handlers");
 
 // Bunny Storage Credentials
-const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
-const BUNNY_STORAGE_BASE = "https://storage.bunnycdn.com/minube-vibes";
+const BUNNY_STORAGE_API_KEY = "8444812f-404c-4d3f-a1d0aa5fba51-0f3a-490b";
+const BUNNY_STORAGE_BASE = "https://storage.bunnycdn.com/vibes-ai";
 const BUNNY_STORAGE_URL = `${BUNNY_STORAGE_BASE}/avatars/`;
-const CDN_BASE = "https://minube-vibes.b-cdn.net";
+const CDN_BASE = "https://vibes-cdn.b-cdn.net";
 const CDN_BASE_URL = `${CDN_BASE}/avatars/`;
 
 /**
