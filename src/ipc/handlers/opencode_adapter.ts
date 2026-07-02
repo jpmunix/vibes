@@ -3675,12 +3675,12 @@ export async function handleOpenCodeStream(
             const shortName =
               result.visionModelUsed?.split("::").pop() ||
               result.visionModelUsed;
-            promptParts[0].text += `\n\n🖼️ [Imagen analizada por ${shortName}]:\n---\n${result.visionDescription}\n---`;
+            promptParts[0].text += `\n\n[Imagen analizada por ${shortName}]:\n---\n${result.visionDescription}\n---`;
             
             // Push to timeline so the UI renders it as a thought block
             timeline.push({
               type: "text",
-              text: `<think>🖼️ Procesador visual (${shortName}):\n${result.visionDescription}</think>\n\n`,
+              text: `<think>Procesador visual (${shortName}):\n${result.visionDescription}</think>\n\n`,
             });
             
             logger.info(
@@ -4687,15 +4687,29 @@ async function processEvents(
                 `[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`,
               );
 
-              // Activate tray badge if the window is not focused
+              // Activate tray badge and OS notification if the window is not focused
               try {
-                const { BrowserWindow } = require("electron");
+                const { Notification, BrowserWindow } = require("electron");
                 const win = BrowserWindow.fromWebContents(event.sender);
                 if (win && !win.isFocused()) {
+                  const notif = new Notification({
+                    title: "El agente necesita permisos",
+                    body: `Se requiere permiso para: ${permName}`,
+                    silent: false,
+                  });
+                  notif.on("click", () => {
+                    win.show();
+                    win.focus();
+                    win.webContents.send("navigate-to-route", {
+                      route: "/",
+                      search: { chatId },
+                    });
+                  });
+                  notif.show();
                   setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
                 }
               } catch (_) {
-                /* tray badge not critical */
+                /* notification not critical */
               }
 
               const userResponse = await waitForPermissionResponse(
