@@ -326,6 +326,7 @@ function registerChatStreamHandlers() {
     }
     const db = getRemoteDb();
     let streamChatTitle: string | undefined;
+    let streamDidError = false;
 
     try {
       const fileUploadsState = FileUploadsState.getInstance();
@@ -2524,16 +2525,20 @@ This conversation includes one or more image attachments. When the user uploads 
           );
       }
 
+      streamDidError = true;
       return "error";
     } finally {
       // Clean up the abort controller
       activeStreams.delete(req.chatId);
 
-      // Notify tray: stream ended → red icon (if last stream)
+      // Notify tray: stream ended → green or red icon (if last stream)
       try {
         notifyStreamEnded({
-          text: streamChatTitle || "Tarea completada",
+          text: streamDidError
+            ? `❌ Error en: ${streamChatTitle || "tarea"}`
+            : streamChatTitle || "Tarea completada",
           chatId: req.chatId,
+          isError: streamDidError,
         });
       } catch (err) {
         logger.error("Tray notifyStreamEnded error:", err);

@@ -12,13 +12,28 @@ let currentMenu: Electron.Menu | null = null;
 
 // Icon variants
 let normalIcon: Electron.NativeImage | null = null;
+let amberIcon: Electron.NativeImage | null = null;
 let greenIcon: Electron.NativeImage | null = null;
-let redIcon: Electron.NativeImage | null = null;
+let questionIcon: Electron.NativeImage | null = null;
+let permissionIcon: Electron.NativeImage | null = null;
+let errorIcon: Electron.NativeImage | null = null;
+let pausedIcon: Electron.NativeImage | null = null;
 
 // State tracking
-type TrayState = "normal" | "green" | "red";
+type TrayState = "normal" | "amber" | "green" | "question" | "permission" | "error" | "paused";
 let currentState: TrayState = "normal";
 let activeStreamCount = 0;
+
+// Priority: higher number = more important. The tray shows the highest-priority state.
+const STATE_PRIORITY: Record<TrayState, number> = {
+  normal: 0,
+  green: 1,      // completed — go check results
+  paused: 2,
+  amber: 3,      // working
+  question: 4,   // agent needs your answer
+  permission: 5, // agent needs permission
+  error: 6,      // something broke
+};
 
 // Pending notification messages shown in the context menu
 interface PendingNotification {
@@ -40,18 +55,23 @@ const MAX_PENDING_NOTIFICATIONS = 5;
  * - "Salir" to fully quit
  *
  * State colors:
- * - Normal: default icon (no activity)
- * - Green: at least one chat stream is running
- * - Red: all streams finished — go check the results
+ * - Normal:     default icon (no activity)
+ * - Amber:      at least one stream is running
+ * - Green:      all streams finished — go check the results
+ * - Question:   agent asked the user a question (blue)
+ * - Permission: agent needs user permission (purple)
+ * - Error:      a stream/task failed (red)
+ * - Paused:     tasks paused (grey)
  */
 export function createTray(
   mainWindow: BrowserWindow,
   activeFlavor: FlavorConfig,
 ): Tray | null {
-  if (!app.isPackaged) {
-    logger.info("Tray disabled in development mode to allow clean restart");
-    return null;
-  }
+  // We want the tray in dev mode so we can test the new states.
+  // if (!app.isPackaged) {
+  //   logger.info("Tray disabled in development mode to allow clean restart");
+  //   return null;
+  // }
   
   mainWindowRef = mainWindow;
   flavorRef = activeFlavor;
@@ -63,11 +83,23 @@ export function createTray(
 
   // Pre-load all icon variants
   normalIcon = nativeImage.createFromPath(path.join(iconBase, "tray-icon.png"));
+  amberIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-amber.png"),
+  );
   greenIcon = nativeImage.createFromPath(
     path.join(iconBase, "tray-icon-green.png"),
   );
-  redIcon = nativeImage.createFromPath(
-    path.join(iconBase, "tray-icon-badge.png"),
+  questionIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-question.png"),
+  );
+  permissionIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-permission.png"),
+  );
+  errorIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-error.png"),
+  );
+  pausedIcon = nativeImage.createFromPath(
+    path.join(iconBase, "tray-icon-paused.png"),
   );
 
   tray = new Tray(normalIcon);
@@ -80,11 +112,13 @@ export function createTray(
     showWindow(mainWindow);
   });
 
-  // When the window gains focus, clear the red badge and notifications
+  // When the window gains focus, clear the badge and notifications
   mainWindow.on("focus", () => {
     clearPendingNotifications();
-    // If no streams running, go back to normal
-    if (activeStreamCount <= 0) {
+    // If streams are still running, show amber; otherwise normal
+    if (activeStreamCount > 0) {
+      setTrayState("amber");
+    } else {
       setTrayState("normal");
     }
   });
@@ -107,14 +141,40 @@ function showWindow(mainWindow: BrowserWindow) {
 
 // ── State Management ────────────────────────────────────────────────────────
 
+const TOOLTIP_MAP: Record<TrayState, string> = {
+  normal: "",
+  amber: "Trabajando...",
+  green: "¡Tarea completada!",
+  question: "Pregunta pendiente",
+  permission: "Permiso requerido",
+  error: "¡Se ha producido un error!",
+  paused: "Pausado",
+};
+
 function setTrayState(state: TrayState) {
   if (!tray || tray.isDestroyed()) return;
   if (currentState === state) return;
 
+  // Only upgrade to a higher-priority state; lower-priority requests are ignored
+  // UNLESS the caller explicitly wants to downgrade (e.g. going back to "normal").
+  // We allow downgrades when the new state is "normal" or "amber" or "green"
+  // (these represent baseline states after clearing a higher-priority condition).
+  const baselineStates: TrayState[] = ["normal", "amber", "green"];
+  if (
+    !baselineStates.includes(state) &&
+    STATE_PRIORITY[state] < STATE_PRIORITY[currentState]
+  ) {
+    return; // Don't downgrade from a higher-priority alert
+  }
+
   const iconMap: Record<TrayState, Electron.NativeImage | null> = {
     normal: normalIcon,
+    amber: amberIcon,
     green: greenIcon,
-    red: redIcon,
+    question: questionIcon,
+    permission: permissionIcon,
+    error: errorIcon,
+    paused: pausedIcon,
   };
 
   const icon = iconMap[state];
@@ -123,36 +183,39 @@ function setTrayState(state: TrayState) {
   tray.setImage(icon);
   currentState = state;
 
-  const tooltipMap: Record<TrayState, string> = {
-    normal: flavorRef?.productName || "Vibes",
-    green: `${flavorRef?.productName || "Vibes"} — Trabajando...`,
-    red: `${flavorRef?.productName || "Vibes"} — ¡Tarea completada!`,
-  };
-  tray.setToolTip(tooltipMap[state]);
+  const productName = flavorRef?.productName || "Vibes";
+  const suffix = TOOLTIP_MAP[state];
+  tray.setToolTip(suffix ? `${productName} — ${suffix}` : productName);
+  rebuildContextMenu();
 
   logger.info(`Tray state: ${state} (streams: ${activeStreamCount})`);
 }
+
+
 
 // ── Stream Lifecycle (called from chat_stream_handlers) ─────────────────────
 
 /**
  * Notify the tray that a new stream has started.
- * Turns the icon green.
+ * Turns the icon amber.
  */
 export function notifyStreamStarted() {
   activeStreamCount++;
-  setTrayState("green");
+  setTrayState("amber");
   rebuildContextMenu();
 }
 
 /**
  * Notify the tray that a stream has ended (success or error).
- * When all streams are done, turns the icon red (go check results).
+ * When all streams are done:
+ * - On error → red icon
+ * - On success → green icon (go check results)
  * If the window is focused, goes directly to normal instead.
  */
 export function notifyStreamEnded(notification?: {
   text: string;
   chatId?: number;
+  isError?: boolean;
 }) {
   activeStreamCount = Math.max(0, activeStreamCount - 1);
 
@@ -172,11 +235,11 @@ export function notifyStreamEnded(notification?: {
       setTrayState("normal");
       clearPendingNotifications();
     } else {
-      // All streams done — red badge to invite the user to check
-      setTrayState("red");
+      // Show error (red) or completed (green) depending on outcome
+      setTrayState(notification?.isError ? "error" : "green");
     }
   }
-  // else: still running streams → stay green
+  // else: still running streams → stay amber
 
   rebuildContextMenu();
 }
@@ -209,18 +272,36 @@ function clearPendingNotifications() {
 }
 
 /**
- * Add a notification from outside (e.g. question.asked, permission.asked)
- * and set the tray to red.
+ * Badge kinds map to tray icon states so the user sees the right color.
  */
-export function setTrayBadge(notificationText?: string, chatId?: number) {
+export type BadgeKind = "question" | "permission" | "error" | "info";
+
+/**
+ * Add a notification and set the tray to the appropriate state.
+ *
+ * kind controls the icon color:
+ * - "question"   → blue  (agent needs an answer)
+ * - "permission" → purple (agent needs permission)
+ * - "error"      → red   (something broke)
+ * - "info"       → green (generic completed notification)
+ */
+export function setTrayBadge(
+  notificationText?: string,
+  chatId?: number,
+  kind: BadgeKind = "info",
+) {
   if (notificationText) {
     addPendingNotification(notificationText, chatId);
   }
-  // Only set red if no streams are active (green takes priority)
-  if (activeStreamCount <= 0) {
-    setTrayState("red");
-  }
-  // If streams are running, the badge will turn red when they finish
+
+  const stateForKind: Record<BadgeKind, TrayState> = {
+    question: "question",
+    permission: "permission",
+    error: "error",
+    info: "green",
+  };
+
+  setTrayState(stateForKind[kind]);
 }
 
 /**
@@ -272,7 +353,7 @@ function rebuildContextMenu() {
   if (activeStreamCount > 0) {
     const plural = activeStreamCount === 1 ? "tarea" : "tareas";
     template.push({
-      label: `🟢 ${activeStreamCount} ${plural} en ejecución`,
+      label: `🟠 ${activeStreamCount} ${plural} en ejecución`,
       enabled: false,
     });
     template.push({ type: "separator" });
@@ -316,8 +397,12 @@ export function destroyTray() {
   mainWindowRef = null;
   flavorRef = null;
   normalIcon = null;
+  amberIcon = null;
   greenIcon = null;
-  redIcon = null;
+  questionIcon = null;
+  permissionIcon = null;
+  errorIcon = null;
+  pausedIcon = null;
   currentMenu = null;
   currentState = "normal";
   activeStreamCount = 0;

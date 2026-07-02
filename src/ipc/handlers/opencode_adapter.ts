@@ -4706,7 +4706,7 @@ async function processEvents(
                     });
                   });
                   notif.show();
-                  setTrayBadge(`🛡️ Permiso: ${permName}`, chatId);
+                  setTrayBadge(`🛡️ Permiso: ${permName}`, chatId, "permission");
                 }
               } catch (_) {
                 /* notification not critical */
@@ -4882,7 +4882,7 @@ async function processEvents(
                 firstText.length > 70
                   ? firstText.slice(0, 67) + "…"
                   : firstText;
-              setTrayBadge(`❓ ${badgeText}`, chatId);
+              setTrayBadge(`❓ ${badgeText}`, chatId, "question");
             }
           } catch (_) {
             /* notification not critical */

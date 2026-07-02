@@ -231,6 +231,13 @@ ipcMain.handle(
   },
 );
 
+
+
+if (!app.isPackaged) {
+  process.on("SIGTERM", () => app.quit());
+  process.on("SIGINT", () => app.quit());
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
@@ -1016,6 +1023,12 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+if (!app.isPackaged) {
+  process.on("SIGTERM", () => app.quit());
+  process.on("SIGINT", () => app.quit());
+  process.on("SIGUSR2", () => app.quit());
+}
 
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");

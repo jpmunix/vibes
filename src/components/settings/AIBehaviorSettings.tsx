@@ -215,7 +215,7 @@ export function AIBehaviorSettings({
             control={<TextVerbositySelector variant="settings" />}
           />
 
-          {/* Vista del chat: Completo / Flow / Zen */}
+          {/* Vista del chat: Max / Flow / Zen */}
           <SettingRow
             label="Vista del chat"
             description={
@@ -228,7 +228,7 @@ export function AIBehaviorSettings({
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                 {[
-                  { value: "full" as const, label: "Completo" },
+                  { value: "full" as const, label: "Max" },
                   { value: "flow" as const, label: "Flow" },
                   { value: "zen" as const, label: "Zen" },
                 ].map((option) => (
