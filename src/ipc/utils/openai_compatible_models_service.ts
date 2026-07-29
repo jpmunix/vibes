@@ -3,6 +3,7 @@ import { app } from "electron";
 import * as path from "path";
 import * as fs from "fs/promises";
 import type { ModelOption } from "../shared/language_model_constants";
+import { resolveDisplayNames } from "./model_id_humanizer";
 
 const logger = log.scope("openai-compatible-models");
 
@@ -67,7 +68,7 @@ interface CachedModelsFile {
   cacheVersion: number;
 }
 
-const CACHE_VERSION = 2; // Bumped: richer transform
+const CACHE_VERSION = 3; // Bumped: collision-aware displayName resolution
 const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 
 // In-memory cache per provider
@@ -126,63 +127,6 @@ export function clearCompatibleModelsCache(providerId: string): void {
 // =============================================================================
 // Smart model transform — auto-detects enriched fields
 // =============================================================================
-
-/**
- * Humanize a model ID into a readable display name.
- * Smarter than just replace-and-title-case:
- *  - Preserves version dots (claude-4.5 → Claude 4.5, not Claude 4 5)
- *  - Keeps well-known acronyms uppercase (GPT, GLM, etc.)
- *  - Strips provider prefixes (anthropic/claude-... → claude-...)
- */
-function humanizeModelId(id: string): string {
-  let name = id;
-
-  // Strip provider prefix (e.g. "anthropic/claude-sonnet-4-5" → "claude-sonnet-4-5")
-  const slashIdx = name.lastIndexOf("/");
-  if (slashIdx !== -1) {
-    name = name.substring(slashIdx + 1);
-  }
-
-  // Replace hyphens/underscores with spaces, BUT preserve number sequences
-  // "claude-4-5-sonnet" → "claude 4.5 sonnet" (detect adjacent numbers)
-  name = name.replace(/[-_]/g, " ");
-
-  // Merge adjacent single-digit numbers into version format: "4 5" → "4.5"
-  name = name.replace(/(\d)\s+(\d)/g, "$1.$2");
-
-  // Title-case each word, with acronym awareness
-  const ACRONYMS = new Set([
-    "gpt",
-    "glm",
-    "llm",
-    "ai",
-    "api",
-    "llama",
-    "yi",
-    "qwen",
-    "rwkv",
-    "xl",
-    "xxl",
-    "xs",
-    "fp16",
-    "fp8",
-    "int8",
-    "int4",
-  ]);
-  const UPPERCASE_ALWAYS = new Set(["gpt", "glm", "llm", "ai", "api", "rwkv"]);
-
-  name = name
-    .split(" ")
-    .map((word) => {
-      const lower = word.toLowerCase();
-      if (UPPERCASE_ALWAYS.has(lower)) return word.toUpperCase();
-      // Normal title-case
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    })
-    .join(" ");
-
-  return name;
-}
 
 /**
  * Extract pricing info from various formats, normalizing to per-million-token strings.
@@ -298,8 +242,7 @@ function deriveTag(model: RawModel): { tag?: string; tagColor?: string } {
  * Transform a raw model response into a rich ModelOption.
  * Auto-detects whether the response contains enriched fields and maps them.
  */
-function transformModel(model: RawModel): ModelOption {
-  const displayName = humanizeModelId(model.id);
+function transformModel(model: RawModel, displayName: string): ModelOption {
   const pricing = extractPricing(model);
   const tagInfo = deriveTag(model);
   const contextWindow = extractContextWindow(model);
@@ -443,9 +386,15 @@ async function refreshFromAPI(
 
     logger.info(`Received ${data.data.length} models from ${providerId}`);
 
+    // Resolve display names for the full batch (collision-aware)
+    const ids = data.data.map((m) => m.id);
+    const displayNames = resolveDisplayNames(ids);
+
     // Transform all models — no filtering for custom providers (they usually
     // have a curated/small set that's entirely relevant)
-    const transformed = data.data.map(transformModel);
+    const transformed = data.data.map((m) =>
+      transformModel(m, displayNames.get(m.id) ?? m.id),
+    );
 
     // Sort alphabetically by displayName
     transformed.sort((a, b) => a.displayName.localeCompare(b.displayName));

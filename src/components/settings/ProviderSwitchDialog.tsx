@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { resolveDisplayNames } from "@/ipc/utils/model_id_humanizer";
 
 interface FetchedModel {
   id: string;
@@ -81,11 +82,14 @@ export function ProviderSwitchDialog({
           throw new Error("Formato de respuesta inválido");
         }
 
+        const ids = data.data.map((m: any) => m.id as string);
+        const displayNames = resolveDisplayNames(ids);
+
         const fetched: FetchedModel[] = data.data
           .map((m: any) => ({
             id: m.id,
             name: m.id,
-            displayName: humanize(m.id),
+            displayName: displayNames.get(m.id) ?? m.id,
           }))
           .sort((a: FetchedModel, b: FetchedModel) =>
             a.displayName.localeCompare(b.displayName),
@@ -251,16 +255,4 @@ function ModelSlot({
       </Select>
     </div>
   );
-}
-
-// ─── Utils ───
-
-/** Convert model ID to human-readable name */
-function humanize(modelId: string): string {
-  let name = modelId;
-  // Strip provider prefix
-  const slash = name.lastIndexOf("/");
-  if (slash !== -1) name = name.substring(slash + 1);
-  // Replace separators, title-case
-  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
