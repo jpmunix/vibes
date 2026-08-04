@@ -19,11 +19,39 @@ export const AdminUserSchema = z.object({
 
 export type AdminUser = z.infer<typeof AdminUserSchema>;
 
+/**
+ * Which database the admin panel operates on.
+ * - "current": the production vibes database (default, always used by the
+ *   rest of the application).
+ * - "legacy": the old minube-vibes database, only reachable through admin
+ *   handlers (isolated connector).
+ */
+export const AdminDbTargetSchema = z.enum(["current", "legacy"]);
+export type AdminDbTarget = z.infer<typeof AdminDbTargetSchema>;
+
 // =============================================================================
 // Contracts
 // =============================================================================
 
 export const adminContracts = {
+  /**
+   * Set which database the admin panel operates on.
+   * Only persisted in the main-process handler state; the renderer keeps its
+   * own copy in localStorage.
+   */
+  setActiveDb: defineContract({
+    channel: "admin:set-active-db",
+    input: z.object({ target: AdminDbTargetSchema }),
+    output: z.object({ success: z.boolean() }),
+  }),
+
+  /** Get the currently active admin database target. */
+  getActiveDb: defineContract({
+    channel: "admin:get-active-db",
+    input: z.object({}),
+    output: z.object({ target: AdminDbTargetSchema }),
+  }),
+
   listUsers: defineContract({
     channel: "admin:list-users",
     input: z.object({}),

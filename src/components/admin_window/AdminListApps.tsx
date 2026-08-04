@@ -168,6 +168,8 @@ interface AdminMessage {
   createdAt?: string | null;
   durationMs?: number | null;
   totalTokens?: number | null;
+  /** Raw AI SDK message JSON — contains embedded image URLs (Bunny CDN). */
+  aiMessagesJson?: string | null;
 }
 
 function ChatModal({
@@ -345,7 +347,7 @@ function AdminMessageRow({
                 {isUser ? (
                   <UserMessageContent
                     content={message.content}
-                    aiMessagesJson={null}
+                    aiMessagesJson={message.aiMessagesJson ?? null}
                   />
                 ) : isZen ? (
                   <VanillaMarkdownParser content={zenContent!} />

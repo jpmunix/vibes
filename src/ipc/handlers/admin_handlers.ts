@@ -7,13 +7,69 @@ import bcrypt from "bcryptjs";
 import { eq, sql, max } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { adminContracts } from "../types/admin";
-import type { AdminUser } from "../types/admin";
+import type { AdminUser, AdminDbTarget } from "../types/admin";
 import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
+import { getLegacyAdminDb } from "../../db/admin-legacy-remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { isAdmin } from "../../lib/admin";
 
 const logger = log.scope("admin-handlers");
 const SALT_ROUNDS = 10;
+
+/**
+ * Source of the active DB connection. Always "current" unless the admin
+ * explicitly switches targets.
+ */
+let activeAdminDb: AdminDbTarget = "current";
+
+/**
+ * Resolve the Drizzle instance the admin panel should use.
+ * - "current": normal path (schema guards + production DB).
+ * - "legacy": isolated legacy connector — no schema initialization, no DDL.
+ */
+async function adminDb() {
+  if (activeAdminDb === "legacy") {
+    return { db: getLegacyAdminDb(), legacy: true };
+  }
+  await initializeRemoteSchema();
+  return { db: getRemoteDb(), legacy: false };
+}
+
+/**
+ * Convert a Drizzle timestamp (which may be a Date, a number in seconds, a
+ * number in milliseconds, or a numeric string) to a JavaScript milliseconds
+ * number.
+ *
+ * The legacy minube-vibes DB stores timestamps inconsistently: some rows in
+ * unix-seconds (expected by Drizzle mode:"timestamp") and others in
+ * milliseconds. When Drizzle reads an ms value as seconds it produces a Date
+ * in the year ~56,000; we detect any year > 3000 and reverse the multiplier.
+ * Numeric strings (e.g. from libsql `max()` aggregations) are parsed too.
+ */
+export function toLegacyMillis(value: unknown): number {
+  if (value instanceof Date) {
+    return value.getFullYear() > 3000 ? value.getTime() / 1000 : value.getTime();
+  }
+  if (typeof value === "number") {
+    // < 2e10 -> seconds; >= 2e10 -> milliseconds (mcode parity)
+    return value > 0 && value < 20_000_000_000 ? value * 1000 : value;
+  }
+  if (typeof value === "string") {
+    const n = Number(value);
+    if (!Number.isNaN(n)) {
+      return n > 0 && n < 20_000_000_000 ? n * 1000 : n;
+    }
+    return new Date(value).getTime();
+  }
+  return Number(value);
+}
+
+/**
+ * Same as `toLegacyMillis` but returns an ISO string instead of a number.
+ */
+export function toLegacyIso(value: unknown): string {
+  return new Date(toLegacyMillis(value)).toISOString();
+}
 
 /**
  * Throw if the current session user is not the admin.
@@ -26,38 +82,65 @@ function assertAdmin(context: { userId?: string }): void {
 
 /**
  * Convert a DB user row to the AdminUser DTO.
+ * When `legacy` is true, timestamps stored as ms-interpreted-as-seconds
+ * (year > 3000) are reconstructed back to the correct ms value.
  */
-function toAdminUser(row: typeof remoteSchema.users.$inferSelect): AdminUser {
+function toAdminUser(
+  row: typeof remoteSchema.users.$inferSelect,
+  legacy: boolean = false,
+): AdminUser {
   return {
     id: row.id,
     email: row.email,
     displayName: row.displayName,
     photoUrl: row.photoUrl ?? null,
-    createdAt:
-      row.createdAt instanceof Date
+    createdAt: legacy
+      ? toLegacyMillis(row.createdAt)
+      : row.createdAt instanceof Date
         ? row.createdAt.getTime()
         : Number(row.createdAt),
-    lastLoginAt: row.lastLoginAt
-      ? row.lastLoginAt instanceof Date
-        ? row.lastLoginAt.getTime()
-        : Number(row.lastLoginAt)
-      : null,
+    lastLoginAt:
+      row.lastLoginAt == null
+        ? null
+        : legacy
+          ? toLegacyMillis(row.lastLoginAt)
+          : row.lastLoginAt instanceof Date
+            ? row.lastLoginAt.getTime()
+            : Number(row.lastLoginAt),
   };
 }
 
 export function registerAdminHandlers(): void {
   logger.info("Registering admin handlers...");
 
+  // ─── ACTIVE DB TARGET ──────────────────────────────────────────────
+  createTypedHandler(
+    adminContracts.setActiveDb,
+    async (_event, input, context) => {
+      assertAdmin(context);
+      activeAdminDb = input.target;
+      logger.info(`Admin active DB target set to: ${activeAdminDb}`);
+      return { success: true };
+    },
+  );
+
+  createTypedHandler(
+    adminContracts.getActiveDb,
+    async (_event, _input, context) => {
+      assertAdmin(context);
+      return { target: activeAdminDb };
+    },
+  );
+
   // ─── LIST USERS ─────────────────────────────────────────────────────
   createTypedHandler(
     adminContracts.listUsers,
     async (_event, _input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db, legacy } = await adminDb();
 
       const rows = await db.select().from(remoteSchema.users);
-      return { users: rows.map(toAdminUser) };
+      return { users: rows.map((r) => toAdminUser(r, legacy)) };
     },
   );
 
@@ -66,8 +149,7 @@ export function registerAdminHandlers(): void {
     adminContracts.createUser,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       // Check if email already exists
       const existing = await db
@@ -114,8 +196,7 @@ export function registerAdminHandlers(): void {
     adminContracts.updateUser,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const updates: Partial<typeof remoteSchema.users.$inferInsert> = {};
       if (input.email !== undefined)
@@ -156,7 +237,7 @@ export function registerAdminHandlers(): void {
       }
 
       logger.info(`Admin updated user: ${input.userId}`);
-      return toAdminUser(rows[0]);
+      return toAdminUser(rows[0], legacy);
     },
   );
 
@@ -165,8 +246,7 @@ export function registerAdminHandlers(): void {
     adminContracts.resetPassword,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const rows = await db
         .select()
@@ -194,8 +274,7 @@ export function registerAdminHandlers(): void {
     adminContracts.listApps,
     async (_event, _input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db, legacy } = await adminDb();
 
       const [appRows, userRows] = await Promise.all([
         db
@@ -233,10 +312,7 @@ export function registerAdminHandlers(): void {
       const lastMsgMap = new Map<number, number>();
       for (const row of lastMsgRows) {
         if (row.appId != null && row.lastMessageAt != null) {
-          const ts =
-            row.lastMessageAt instanceof Date
-              ? row.lastMessageAt.getTime()
-              : Number(row.lastMessageAt);
+          const ts = toLegacyMillis(row.lastMessageAt);
           if (!isNaN(ts)) lastMsgMap.set(row.appId, ts);
         }
       }
@@ -246,14 +322,8 @@ export function registerAdminHandlers(): void {
         userId: a.userId,
         name: a.name,
         path: a.path,
-        createdAt:
-          a.createdAt instanceof Date
-            ? a.createdAt.getTime()
-            : Number(a.createdAt),
-        updatedAt:
-          a.updatedAt instanceof Date
-            ? a.updatedAt.getTime()
-            : Number(a.updatedAt),
+        createdAt: toLegacyMillis(a.createdAt),
+        updatedAt: toLegacyMillis(a.updatedAt),
         primaryLanguage: a.primaryLanguage ?? null,
         projectType: a.projectType ?? null,
         githubOrg: a.githubOrg ?? null,
@@ -261,7 +331,7 @@ export function registerAdminHandlers(): void {
         lastMessageAt: lastMsgMap.get(a.id) ?? null,
       }));
 
-      return { apps, users: userRows.map(toAdminUser) };
+      return { apps, users: userRows.map((r) => toAdminUser(r, legacy)) };
     },
   );
 
@@ -270,8 +340,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getUserSettings,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const rows = await db
         .select({ settingsJson: remoteSchema.userSettings.settingsJson })
@@ -298,8 +367,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAllUsersSettings,
     async (_event, _input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const [userRows, settingsRows] = await Promise.all([
         db.select().from(remoteSchema.users),
@@ -338,8 +406,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAdminMemoryStats,
     async (_event, _input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const [userRows, appRows, memoryRows] = await Promise.all([
         db.select().from(remoteSchema.users),
@@ -418,8 +485,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAdminAnalyzerData,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { eq, and, desc } = await import("drizzle-orm");
 
       const { userId, appId } = input;
@@ -492,9 +558,7 @@ export function registerAdminHandlers(): void {
         reason: r.reason,
         extractedKeys: r.extractedKeys,
         createdAt:
-          r.createdAt instanceof Date
-            ? r.createdAt.toISOString()
-            : String(r.createdAt),
+          toLegacyIso(r.createdAt),
       }));
 
       // Pipeline logs (last 50)
@@ -526,10 +590,7 @@ export function registerAdminHandlers(): void {
         durationMs: r.durationMs,
         success: r.success,
         error: r.error,
-        createdAt:
-          r.createdAt instanceof Date
-            ? r.createdAt.toISOString()
-            : String(r.createdAt),
+        createdAt: toLegacyIso(r.createdAt),
       }));
 
       return { apps, stats, recent, pipelineLogs };
@@ -541,8 +602,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAppChats,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { eq, desc, count } = await import("drizzle-orm");
 
       // Get chats with message count using standard Drizzle aggregation
@@ -565,10 +625,7 @@ export function registerAdminHandlers(): void {
       return chats.map((c) => ({
         id: c.id,
         title: c.title,
-        createdAt:
-          c.createdAt instanceof Date
-            ? c.createdAt.toISOString()
-            : String(c.createdAt),
+        createdAt: toLegacyIso(c.createdAt),
         messageCount: Number(c.messageCount) || 0,
       }));
     },
@@ -579,8 +636,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAdminChat,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { eq, asc } = await import("drizzle-orm");
 
       const chat = await db.query.chats.findFirst({
@@ -603,23 +659,19 @@ export function registerAdminHandlers(): void {
       return {
         id: chat.id,
         title: chat.title ?? "",
-        createdAt:
-          chat.createdAt instanceof Date
-            ? chat.createdAt.toISOString()
-            : String(chat.createdAt),
+        createdAt: toLegacyIso(chat.createdAt),
         messages: chat.messages.map((m: any) => ({
           id: m.id,
           role: m.role as "user" | "assistant",
           content: m.content ? normalizeLegacyTags(m.content) : "",
           model: m.model ?? null,
-          createdAt:
-            m.createdAt instanceof Date
-              ? m.createdAt.toISOString()
-              : m.createdAt
-                ? String(m.createdAt)
-                : null,
+          createdAt: m.createdAt ? toLegacyIso(m.createdAt) : null,
           durationMs: m.durationMs ?? null,
           totalTokens: m.totalTokens ?? null,
+          // Image/attachment URLs (Bunny CDN) embedded in the AI SDK message
+          // history. Both `vibes-cdn.b-cdn.net` and `minube-vibes.b-cdn.net`
+          // are publicly readable, so no per-profile credentials are needed.
+          aiMessagesJson: m.aiMessagesJson ?? null,
         })),
       };
     },
@@ -630,8 +682,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getAdminDebugLogs,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { eq, and, desc } = await import("drizzle-orm");
 
       const conditions = [
@@ -664,10 +715,7 @@ export function registerAdminHandlers(): void {
         appName: r.appName,
         filename: r.filename,
         contentMd: r.contentMd,
-        createdAt:
-          r.createdAt instanceof Date
-            ? r.createdAt.toISOString()
-            : String(r.createdAt),
+        createdAt: toLegacyIso(r.createdAt),
       }));
     },
   );
@@ -677,8 +725,7 @@ export function registerAdminHandlers(): void {
     adminContracts.getUserPreferences,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
 
       const rows = await db
         .select({
@@ -692,12 +739,7 @@ export function registerAdminHandlers(): void {
       const preferences = rows.map((r) => ({
         key: r.key,
         value: r.value,
-        updatedAt:
-          r.updatedAt instanceof Date
-            ? r.updatedAt.toISOString()
-            : r.updatedAt
-              ? String(r.updatedAt)
-              : null,
+        updatedAt: r.updatedAt ? toLegacyIso(r.updatedAt) : null,
       }));
 
       // Fetch prompts
@@ -723,12 +765,7 @@ export function registerAdminHandlers(): void {
         preferences.push({
           key: "prompt:" + pr.systemId,
           value: pr.content || "",
-          updatedAt:
-            pr.updatedAt instanceof Date
-              ? pr.updatedAt.toISOString()
-              : pr.updatedAt
-                ? String(pr.updatedAt)
-                : null,
+          updatedAt: pr.updatedAt ? toLegacyIso(pr.updatedAt) : null,
           displayCategory: pr.categoryName || "Prompts y Contexto",
           displayName: pr.title || pr.systemId,
         });
@@ -743,8 +780,7 @@ export function registerAdminHandlers(): void {
     adminContracts.setUserPreference,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const now = new Date();
 
       if (input.key.startsWith("prompt:")) {
@@ -794,8 +830,7 @@ export function registerAdminHandlers(): void {
     adminContracts.deleteUserPreference,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { and } = await import("drizzle-orm");
 
       await db
@@ -819,8 +854,7 @@ export function registerAdminHandlers(): void {
     adminContracts.copyPreferencesToUsers,
     async (_event, input, context) => {
       assertAdmin(context);
-      await initializeRemoteSchema();
-      const db = getRemoteDb();
+      const { db } = await adminDb();
       const { and, inArray } = await import("drizzle-orm");
 
       const { sourceUserId, targetUserIds, keys, mode } = input;

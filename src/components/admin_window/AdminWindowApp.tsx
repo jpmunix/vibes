@@ -18,6 +18,8 @@ import { AdminListApps } from "@/components/admin_window/AdminListApps";
 import { AdminApiKeys } from "@/components/admin_window/AdminApiKeys";
 import { AdminKnowledgeBase } from "@/components/admin_window/AdminKnowledgeBase";
 import { AdminOpenCode } from "@/components/admin_window/AdminOpenCode";
+import { AdminDbSelector } from "@/components/admin_window/AdminDbSelector";
+import type { AdminDbTarget } from "@/ipc/types/admin";
 
 import "@/styles/globals.css";
 
@@ -49,6 +51,15 @@ const NAV_ITEMS: NavItem[] = [
 
 function AdminPanel() {
   const [activeItem, setActiveItem] = useState<string>(NAV_ITEMS[0].id);
+  const [dbTarget, setDbTarget] = useState<AdminDbTarget>(() => {
+    try {
+      const raw = localStorage.getItem("vibes_admin_db_target");
+      if (raw === "current" || raw === "legacy") return raw;
+    } catch {
+      /* ignore */
+    }
+    return "current";
+  });
 
   // ── Resizable sidebar ──
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -84,6 +95,7 @@ function AdminPanel() {
         className="flex flex-col shrink-0 bg-(--sidebar) border-r border-border overflow-hidden"
         style={{ width: sidebarWidth }}
       >
+        <AdminDbSelector value={dbTarget} onChange={setDbTarget} />
         <div className="flex-1 overflow-y-auto space-y-1 p-4">
           {NAV_ITEMS.map((item) => (
             <button
@@ -114,7 +126,7 @@ function AdminPanel() {
 
       {/* ── Content area ── */}
       <div className="flex-1 min-w-0 overflow-y-auto bg-background">
-        <AdminContent activeItem={activeItem} />
+        <AdminContent key={dbTarget} activeItem={activeItem} />
       </div>
     </div>
   );
