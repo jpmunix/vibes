@@ -1155,15 +1155,33 @@ export function registerAppHandlers() {
       // Clear logs for this app to prevent memory leak
       clearLogs(appId);
 
-      // Clean up OpenCode sessions before DB cascade deletes the chats
-      // (FK cascade would lose the opencodeSessionId references)
+      // B6 swap (Slice 2.1.3): cleanupOpenCodeSessionsForApp was a thin wrapper
+      // over the OpenCode client's session.delete loop. The runtime bridge
+      // exposes deleteRuntimeSessionBySessionId(sessionId) for finished
+      // sessions; for active ones, deleteRuntimeSession(chatId) is the
+      // short path. We iterate the app's chats once and pick the right
+      // call per chat.
       try {
-        const { cleanupOpenCodeSessionsForApp } =
-          await import("./opencode_adapter");
-        await cleanupOpenCodeSessionsForApp(appId);
+        const db = getRemoteDb();
+        const chatsForApp = await db.query.chats.findMany({
+          where: eq(remoteSchema.chats.appId, appId),
+          columns: { id: true, opencodeSessionId: true },
+        });
+        const {
+          deleteRuntimeSession,
+          deleteRuntimeSessionBySessionId,
+        } = await import("../runtime/runtime_bridge");
+        for (const chat of chatsForApp) {
+          // Always delete the persisted record by id (idempotent).
+          if (chat.opencodeSessionId) {
+            await deleteRuntimeSessionBySessionId(chat.opencodeSessionId);
+          }
+          // If the chat has an active runtime handle, cancel it too.
+          await deleteRuntimeSession(chat.id);
+        }
       } catch (e: any) {
         logger.warn(
-          `Failed to cleanup OpenCode sessions for app ${appId}: ${e.message}`,
+          `Failed to cleanup runtime sessions for app ${appId}: ${e.message}`,
         );
       }
 
@@ -1639,16 +1657,33 @@ export function registerAppHandlers() {
     }
     logger.log("all running apps stopped.");
 
-    // Purge all OpenCode sessions (everything is being wiped)
+    // B6 swap (Slice 2.1.3): purgeAllOrphanedOpenCodeSessions iterated the
+    // OpenCode server's sessions and deleted any that didn't match a Vibes
+    // chat. With the runtime, sessions live in the local SQLite
+    // (runtime-sessions.db), so the equivalent is to wipe all runtime
+    // sessions belonging to this user. We iterate the user's chats to get
+    // the sessionIds (chats.opencodeSessionId) and delete each via the
+    // bridge. The user's own sessionIds in storage without a matching chat
+    // row will be reaped by a future GC pass (post-MVP).
     try {
-      const { purgeAllOrphanedOpenCodeSessions } =
-        await import("./opencode_adapter");
-      // Not dry-run: delete everything since all apps are being removed
-      await purgeAllOrphanedOpenCodeSessions(false);
-      logger.log("OpenCode sessions purged.");
+      const db = getRemoteDb();
+      const userChats = await db.query.chats.findMany({
+        columns: { id: true, opencodeSessionId: true },
+      });
+      const {
+        deleteRuntimeSession,
+        deleteRuntimeSessionBySessionId,
+      } = await import("../runtime/runtime_bridge");
+      for (const chat of userChats) {
+        if (chat.opencodeSessionId) {
+          await deleteRuntimeSessionBySessionId(chat.opencodeSessionId);
+        }
+        await deleteRuntimeSession(chat.id);
+      }
+      logger.log("Runtime sessions purged.");
     } catch (e: any) {
       logger.warn(
-        `Failed to purge OpenCode sessions during reset: ${e.message}`,
+        `Failed to purge runtime sessions during reset: ${e.message}`,
       );
     }
 
@@ -1692,15 +1727,19 @@ export function registerAppHandlers() {
     const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
-    // Use the in-memory cache populated at startup by ensureOpenCodeInstalled()
-    // instead of spawning a subprocess (which was blocking for ~2-5s).
-    const { getCachedOpenCodeVersion } =
-      await import("../../main/ensure_opencode");
-    const opencodeVersion = getCachedOpenCodeVersion();
-
+    // B6 swap (Slice 2.1.5): opencode version is gone (no OpenCode binary
+    // anymore). The runtime lives in vibes-core; expose its package
+    // version instead. The contract keeps the same field names so the
+    // UI can fall back gracefully if it doesn't read the new one.
+    const runtimePkg = JSON.parse(
+      fs.readFileSync(
+        path.resolve(__dirname, "..", "..", "..", "vibes-core", "packages", "runtime-impl", "package.json"),
+        "utf-8",
+      ),
+    );
     return {
       vibes: packageJson.version,
-      opencode: opencodeVersion,
+      runtime: runtimePkg.version,
       node: process.versions.node,
       electron: process.versions.electron || "?",
       platform: process.platform,

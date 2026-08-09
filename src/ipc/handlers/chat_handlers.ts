@@ -211,9 +211,11 @@ export function registerChatHandlers() {
         }
       }
       if (chat.opencodeSessionId) {
-        const { deleteOpenCodeSessionById } =
-          await import("./opencode_adapter");
-        deleteOpenCodeSessionById(chat.opencodeSessionId);
+        // B6 swap (Slice 2.1.3): the runtime deletes the persisted session
+        // by id directly; the opencode_adapter is gone.
+        const { deleteRuntimeSessionBySessionId } =
+          await import("../runtime/runtime_bridge");
+        await deleteRuntimeSessionBySessionId(chat.opencodeSessionId);
       }
     }
 
@@ -571,8 +573,8 @@ export function registerChatHandlers() {
         columns: { id: true, appId: true, opencodeSessionId: true },
       });
       if (chatsToDelete.length > 0) {
-        const { deleteOpenCodeSessionById } =
-          await import("./opencode_adapter");
+        const { deleteRuntimeSessionBySessionId } =
+          await import("../runtime/runtime_bridge");
         const { forceCondenseChatSession } =
           await import("../utils/memory_extractor");
 
@@ -596,8 +598,9 @@ export function registerChatHandlers() {
               e,
             );
           }
-          if (c.opencodeSessionId)
-            deleteOpenCodeSessionById(c.opencodeSessionId);
+          if (c.opencodeSessionId) {
+            await deleteRuntimeSessionBySessionId(c.opencodeSessionId);
+          }
         }
       }
 

@@ -3,6 +3,20 @@
 > **Precondición:** el MVP está vivo en producción. El runtime sustituye a OpenCode.
 > A partir de aquí, todo es mejora incremental. Nada bloquea.
 
+## Deuda del swap B6 (Slice 2.1.4 — pendiente migración)
+
+**Estado:** código comentado, no borrado. Funcionalidad degradada hasta que se migre al runtime.
+
+| Feature | Dónde vivía | Por qué se comenta | Cuándo migrar |
+|---|---|---|---|
+| **Visual edit subagent** (`handleVisualQuickEdit`) | `src/pro/main/ipc/handlers/visual_editing_handlers.ts:269` — comentario + throw "Visual edit no migrado al runtime todavía" | El runtime no soporta sub-agentes aún (Fase 2 los introduce). Visual edit es un sub-agente especializado de OpenCode que no tiene equivalente en vibes-core v1. | Fase 5 (SDKs) — cuando el runtime exponga un mecanismo de sub-agentes reutilizable. |
+| **Question tool** (`registerQuestionHandler`) | `src/ipc/ipc_host.ts:56,120` — imports + llamada comentados | DP-3 (todos/question tool) está programado para Fase 2 original. El runtime no soporta `ask_user` todavía. | Fase 2 (AGENTES) — alineado con DP-3. |
+
+**Cómo se reactiva:**
+1. Implementar el equivalente en vibes-core (visual-edit como tool/sub-agent, ask_user como tool con su `PermissionGate` paralelo).
+2. Restaurar las llamadas en los archivos listados, sustituyendo el `throw` por el `await` correspondiente.
+3. Borrar las definiciones de `opencode_adapter.ts` (Slice 2.1.7 — siguiente paso).
+
 ---
 
 ## FASE 2: AGENTES — El runtime se vuelve inteligente

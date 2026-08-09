@@ -113,13 +113,13 @@ log.transports.console.level = "info"; // Keep info logs in console/stdout
 
 // Silence noisy scopes — they flood the console during normal operation
 const SILENCED_SCOPES = new Set<string>([
-  //"opencode_adapter",
+  // "opencode_adapter" removed (B6 swap Slice 2.1.7) — file deleted.
   "design_handlers",
   "start_proxy_server",
   "scaffold-cache",
   "auth-handlers",
   "token_count_handlers",
-  "opencode_diagnostic",
+  // "opencode_diagnostic" removed (B6 swap Slice 2.1.2.c) — handler deleted
   "morph_patcher",
   "proposal_handlers",
   "window-handlers",

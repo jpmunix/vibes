@@ -46,15 +46,18 @@ import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler
 import { registerAuthHandlers } from "./handlers/auth_handlers";
 import { registerAdminHandlers } from "./handlers/admin_handlers";
 
-import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
+// registerOpenCodeDiagnosticHandlers removed (B6 swap Slice 2.1.2.c) —
+// the opencode_diagnostic_handlers.ts file was deleted; diagnostic
+// features are now handled by the runtime bridge.
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerPermissionHandler } from "./runtime/permission_handler";
-// registerQuestionHandler still lives in opencode_adapter.ts until the runtime
-// supports ask_user. The adapter's version degrades gracefully (logs + returns)
-// when there is no OpenCode server running.
-import { registerQuestionHandler } from "./handlers/opencode_adapter";
+// TODO(mvp-cleanup, fase 5+): registerQuestionHandler todavía vive en
+// opencode_adapter. El runtime no soporta ask_user todavía (DP-3). Dejamos
+// el código comentado para no perder la feature; replicar en runtime cuando
+// proceda. Ver: docs/plans/post-mvp-roadmap.md §"Deuda del swap B6"
+// import { registerQuestionHandler } from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";
 import log from "electron-log";
@@ -110,11 +113,11 @@ export function registerIpcHandlers() {
 
   registerPreferencesHandlers();
 
-  // OpenCode AI integration — diagnostic & test handlers
-  registerOpenCodeDiagnosticHandlers();
+  // OpenCode AI integration — diagnostic & test handlers removed (B6 swap).
 
-  // OpenCode question tool — bridges VibesAskUser UI to SDK question.reply()
-  registerQuestionHandler();
+  // TODO(mvp-cleanup, fase 5+): see comment above. The function call is
+  // commented out along with its import.
+  // registerQuestionHandler();
 
   // OpenCode permission tool — bridges VibesPermissionBanner UI to SDK permission response
   registerPermissionHandler();

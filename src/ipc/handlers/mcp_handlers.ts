@@ -8,7 +8,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { updateOpenCodeMcpConfig } from "./opencode_adapter";
+// Note: updateOpenCodeMcpConfig was removed (B6 swap). The runtime does not
+// consume OpenCode MCP config; MCP gateway is a post-MVP feature (Fase 3
+// in docs/plans/post-mvp-roadmap.md). For now MCP servers are managed
+// here in the host layer (mcpHandlers) and not pushed to the runtime.
 
 const logger = log.scope("mcp_handlers");
 
@@ -114,8 +117,7 @@ export function registerMcpHandlers() {
         .returning();
       const s = result[0];
 
-      // Trigger OpenCode configuration re-sync
-      await triggerOpenCodeMcpSync(context.userId);
+      
 
       return {
         id: s.id,
@@ -183,8 +185,7 @@ export function registerMcpHandlers() {
       if (result.length === 0) throw new Error("Server not found");
       const s = result[0];
 
-      // Trigger OpenCode configuration re-sync
-      await triggerOpenCodeMcpSync(context.userId);
+      
 
       return {
         id: s.id,
@@ -220,8 +221,7 @@ export function registerMcpHandlers() {
         )
         .returning({ deletedId: remoteSchema.mcpServers.id });
 
-      // Trigger OpenCode configuration re-sync
-      await triggerOpenCodeMcpSync(context.userId);
+      
 
       return { success: result.length > 0 };
     },
@@ -418,35 +418,11 @@ export function registerMcpHandlers() {
 }
 
 // Helper to hot-reload OpenCode MCP config
-async function triggerOpenCodeMcpSync(userId: string) {
-  try {
-    const db = getRemoteDb();
-    await ensureDefaultServers(userId, db);
-
-    const servers = await db.query.mcpServers.findMany({
-      where: eq(remoteSchema.mcpServers.userId, userId),
-    });
-
-    // Make sure returning map matches McpServer type defined in mcp.ts
-    const mappedServers = servers.map((s) => ({
-      id: s.id,
-      name: s.name,
-      transport: s.transport as "stdio" | "sse" | "http",
-      command: s.command,
-      args: safeParseJsonField(s.args),
-      envJson: safeParseJsonField(s.envJson),
-      headersJson: safeParseJsonField(s.headersJson),
-      url: s.url,
-      enabled: s.enabled === 1,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-    }));
-
-    await updateOpenCodeMcpConfig(mappedServers);
-  } catch (e: any) {
-    logger.warn(`Failed to trigger OpenCode MCP sync: ${e.message}`);
-  }
-}
+// Note: triggerOpenCodeMcpSync was removed (B6 swap). MCP server changes
+// are persisted to the DB directly; the runtime does not consume OpenCode
+// MCP config (the runtime has no MCP integration in v1 — see
+// docs/plans/post-mvp-roadmap.md Fase 3 "MCP Gateway"). When the gateway
+// ships, this hook becomes the place to notify the runtime.
 
 async function ensureDefaultServers(userId: string, db: any) {
   try {

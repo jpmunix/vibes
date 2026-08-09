@@ -37,13 +37,13 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
-## Tests Unitarios / Integration (Vitest) — 12 archivos
+## Tests Unitarios / Integration (Vitest) — 13 archivos
 
 ### Runtime swap (B6) — Frontera Vibes ↔ vibes-core
 
 | Archivo | Líneas | Qué cubre |
 |---|---|---|
-| [runtime_bridge.contract.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.contract.test.ts) | 565 | ★ **Contract test golden del swap B6.** Mock fetch SSE + in-memory storage. Verifica return shape (7 fields: `cachedTokens`, `costUsd`, `fullResponse`, `inputTokens`, `outputTokens`, `reasoningTokens`, `success`). IPC `chat:response:chunk` con `chatId` correcto. Tags `<vibes-write>`, `<vibes-files-changed>`, `<vibes-token-usage>`, `<vibes-cancelled>`. Hidratación DP-4: history se inyecta una vez, sin duplicar prompt, scrubbing de tags previos. Permisos denegados (fail-closed). Cancelación: abort produce markers de cancel. Multi-turn: segunda request hidrata el primer exchange. |
+| [runtime_bridge.contract.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.contract.test.ts) | 707 | ★ **Contract test golden del swap B6.** Mock fetch SSE + in-memory storage. Verifica return shape (7 fields: `cachedTokens`, `costUsd`, `fullResponse`, `inputTokens`, `outputTokens`, `reasoningTokens`, `success`). IPC `chat:response:chunk` con `chatId` correcto. Tags `<vibes-write>`, `<vibes-files-changed>`, `<vibes-token-usage>`, `<vibes-cancelled>`. Hidratación DP-4: history se inyecta una vez, sin duplicar prompt, scrubbing de tags previos. Permisos denegados (fail-closed). Cancelación: abort produce markers de cancel. Multi-turn: segunda request hidrata el primer exchange. **B6 hardening (Slice 2.3):** rate-limit 429 del provider → `success=false` sin crashear (timeout 30s por los 3 retries con backoff); provider timeout via AbortSignal → cancelled marker; hidratación con mensajes malformados (`null`, `undefined`, system role, content no-string, vacíos, tags sucios) → salta los garbage y completa el turno. |
 | [event_mapper.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/event_mapper.test.ts) | — | Parity con OpenCode adapter: mapeo toolId → `<vibes-*>` tag, escape de atributos, extracción de detail/content, `<vibes-files-changed>`, `<vibes-token-usage>`, `<vibes-cancelled>`, `cleanResponseText` (REDACTED/thinking/think/assistant_response). |
 | [model_resolver.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/model_resolver.test.ts) | — | Precedencia de providers: customProviders > ollama > lmstudio > openrouter nativo. Gateway prefix `provider/model`. Multi-key OpenRouter. Fallback env var. Custom agent static model. |
 | [permission_state.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_state.test.ts) | — | Fail-closed permission gate: respond, abort, timeout, unknown vocabulary → reject. Session UI context registry. |

@@ -562,3 +562,144 @@ describe("handleRuntimeStream contract — second turn continues the chat", () =
     expect(newTurns.length).toBe(1);
   });
 });
+
+// ============================================================================
+// Contract: error paths from the provider (Slice 2.3)
+// ============================================================================
+
+/** Fetch that returns HTTP 429 (rate-limit) on every request. */
+function rateLimitedFetch(): typeof fetch {
+  return async (input: RequestInfo | URL): Promise<Response> => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (!url.endsWith("/chat/completions")) {
+      return new Response("not found", { status: 404 });
+    }
+    return new Response(
+      JSON.stringify({ error: { message: "rate limited", type: "rate_limit_error" } }),
+      { status: 429, headers: { "content-type": "application/json" } },
+    );
+  };
+}
+
+/** Fetch that delays past the abort signal — simulates a slow provider. */
+function slowFetch(delayMs: number): typeof fetch {
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (!url.endsWith("/chat/completions")) {
+      return new Response("not found", { status: 404 });
+    }
+    return new Promise<Response>((resolve, reject) => {
+      const signal = init?.signal;
+      if (signal) {
+        if (signal.aborted) {
+          reject(new Error("aborted"));
+          return;
+        }
+        signal.addEventListener(
+          "abort",
+          () => reject(new Error("aborted")),
+          { once: true },
+        );
+      }
+      setTimeout(() => {
+        const sse = `data: ${JSON.stringify(MOCK_RESPONSES.noTool)}\n\ndata: [DONE]\n\n`;
+        resolve(
+          new Response(sse, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+        );
+      }, delayMs);
+    });
+  };
+}
+
+describe("handleRuntimeStream contract — provider error 429 (rate-limit)", () => {
+  // The openai-compatible provider retries 429s with exponential backoff
+  // (1s + 2s + 4s + 8s cap). We give the test 30s to complete all
+  // retries and surface finishReason='error' to the bridge.
+  it("returns success=false and does not throw when the provider 429s", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, rateLimitedFetch());
+    const { calls, sender } = makeFakeSender();
+    const abortController = new AbortController();
+
+    // The runtime treats 429 like any other provider error after retries
+    // are exhausted: the loop finishes with finishReason='error'. The
+    // bridge must surface this as success=false WITHOUT crashing the IPC.
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 7, prompt: "will be rate-limited" },
+      abortController,
+      makeOptions(),
+    );
+
+    expect(result.success).toBe(false);
+    // No crash → at least the final chunk must have been sent so the
+    // renderer gets a chance to display the error.
+    const finalChunk = calls.find(
+      (c) => c.channel === "chat:response:chunk",
+    );
+    expect(finalChunk).toBeDefined();
+    expect(getActiveRuntimeSession(7)).toBeUndefined();
+  }, 30_000);
+});
+
+describe("handleRuntimeStream contract — provider timeout (AbortSignal mid-stream)", () => {
+  it("aborts the request via the AbortController and returns success=false", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, slowFetch(30_000));
+    const { calls, sender } = makeFakeSender();
+    const abortController = new AbortController();
+
+    const runPromise = handleRuntimeStream(
+      { sender } as any,
+      { chatId: 8, prompt: "very slow" },
+      abortController,
+      makeOptions(),
+    );
+
+    // Simulate the timeout firing before the slow provider responds.
+    await new Promise((r) => setTimeout(r, 50));
+    abortController.abort();
+
+    const result = await runPromise;
+    expect(result.success).toBe(false);
+    const hasCancelMarker =
+      result.fullResponse.includes("<vibes-cancelled") ||
+      result.fullResponse.includes("Operación cancelada");
+    expect(hasCancelMarker).toBe(true);
+    expect(getActiveRuntimeSession(8)).toBeUndefined();
+  });
+});
+
+describe("handleRuntimeStream contract — malformed history hydration", () => {
+  it("skips garbage messages instead of throwing on hydration", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    // Mix of valid + garbage messages. The hydration code in
+    // convertHistoryToRuntimeMessages must skip anything that isn't a
+    // user/assistant text turn without throwing.
+    const garbageMessages: any[] = [
+      null,
+      undefined,
+      { id: 1 }, // no role/content
+      { id: 2, role: "system" }, // not user/assistant — skipped
+      { id: 3, role: "user", content: 42 }, // non-string content — scrubbed
+      { id: 4, role: "user", content: "real prior turn" },
+      { id: 5, role: "assistant", content: "" }, // empty — scrubbed
+      { id: 6, role: "user", content: "<vibes-write path='a'/>garbage in tag</vibes-write>more" },
+    ];
+
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 9, prompt: "current prompt" },
+      new AbortController(),
+      makeOptions({ chatMessages: garbageMessages }),
+    );
+
+    // The turn completes successfully — garbage did NOT propagate.
+    expect(result.success).toBe(true);
+    expect(result.fullResponse).toContain("Hello from mock model.");
+    expect(getActiveRuntimeSession(9)).toBeUndefined();
+  });
+});

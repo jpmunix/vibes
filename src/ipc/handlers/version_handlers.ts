@@ -9,7 +9,12 @@ import { withLock } from "../utils/lock_utils";
 import log from "electron-log";
 import { createTypedHandler } from "./base";
 import { versionContracts } from "../types/version";
-import { destroyOpenCodeSession } from "./opencode_adapter";
+// B6 swap (Slice 2.1.3): destroyOpenCodeSession was a thin wrapper around the
+// OpenCode client's session.delete + a Map cleanup. The runtime bridge
+// (runtime_bridge.ts) owns the activeSessionByChat map; deleting a session
+// is now done via the Runtime's deleteSession (which also cancels any
+// in-flight loop and removes the persisted record).
+import { deleteRuntimeSession } from "../runtime/runtime_bridge";
 
 import { deployAllSupabaseFunctions } from "../../supabase_admin/supabase_utils";
 import { readSettings } from "../../main/settings";
@@ -384,8 +389,8 @@ export function registerVersionHandlers() {
             });
           }
 
-          // Destroy OpenCode session — jumping to arbitrary version, too complex to partial-revert
-          destroyOpenCodeSession(chatId);
+          // Destroy runtime session — jumping to arbitrary version, too complex to partial-revert
+          await deleteRuntimeSession(chatId);
         } else {
           // Find the chat and message associated with the commit hash
           const messageWithCommit = await db.query.messages.findFirst({
@@ -428,8 +433,8 @@ export function registerVersionHandlers() {
                   ),
                 );
             }
-            // Destroy OpenCode session — jumping to arbitrary version
-            destroyOpenCodeSession(chatId);
+            // Destroy runtime session — jumping to arbitrary version
+            await deleteRuntimeSession(chatId);
           }
         }
 

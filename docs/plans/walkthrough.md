@@ -90,12 +90,18 @@ munix pidió cortar OpenCode de raíz para tener certeza absoluta de que lo que 
 - [NEW permission_handler.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_handler.ts): handler del canal `opencode-permission:respond` sin la rama OpenCode.
 - [ipc_host.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/ipc_host.ts): import cambiado al nuevo módulo.
 
-### Estado de OpenCode ahora
+### Estado de OpenCode ahora (post-Slice 2.1.7 — Fase 2 alternativa)
 - ❌ No se instala (sin `ensureOpenCodeInstalled`)
 - ❌ No arranca (sin `getOpenCodeClient`)
 - ❌ No procesa streams (sin `handleOpenCodeStream`)
 - ❌ No se apaga (sin `shutdownOpenCode`)
-- ⚠️ El archivo `opencode_adapter.ts` (5531 líneas) sigue físicamente en el repo — pero **ningún camino de ejecución lo invoca para streaming**. `registerQuestionHandler` sigue importándose (degrada a no-op sin servidor). Las capas 3-6 (borrado físico, deps, UI, DB) pendientes.
+- ❌ El archivo `opencode_adapter.ts` **BORRADO** del repo (Slice 2.1.7, 201 KB / 5531 líneas). También `ensure_opencode.ts` y `opencode_diagnostic_handlers.ts`.
+- ❌ Dependencia `@opencode-ai/sdk` quitada de `package.json`.
+- ⚠️ `registerQuestionHandler` y `handleVisualQuickEdit` quedaron **comentados** (no borrados) como deuda explícita — ver `post-mvp-roadmap.md §"Deuda del swap B6"`. Migración en Fase 2 (ask_user) y Fase 5 (visual-edit subagent) respectivamente.
+- ✅ 4 archivos de handlers migrados a `deleteRuntimeSession` / `deleteRuntimeSessionBySessionId`.
+- ✅ `getVersionInfo` ahora devuelve `runtime` en vez de `opencode`.
+
+**Slice 2.1 — CERRADA en verde. El swap OpenCode → vibes-core está REALMENTE hecho.**
 
 ### Verificación
 - **246 tests verdes**, typecheck **84 = baseline exacta**, cero errores en archivos tocados.

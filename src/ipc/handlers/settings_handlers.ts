@@ -204,74 +204,12 @@ export function registerSettingsHandlers() {
         writeSettings(settings);
       }
 
-      // Hot-update OpenCode server config if model, variant, reasoning effort, verbosity, or unified model keys changed
-      if (
-        settings.selectedModel ||
-        settings.selectedModelVariant !== undefined ||
-        settings.strategistModel ||
-        settings.executorModel ||
-        settings.reasoningEffort ||
-        settings.textVerbosity ||
-        settings.inferenceTemperature !== undefined ||
-        settings.inferenceTopP !== undefined ||
-        settings.inferenceRepetitionPenalty !== undefined
-      ) {
-        try {
-          const { updateOpenCodeConfig } = await import("./opencode_adapter");
-          await updateOpenCodeConfig({
-            // If only variant changed (no model change), pass current model so the config gets rebuilt
-            selectedModel:
-              settings.selectedModel ??
-              (settings.selectedModelVariant !== undefined
-                ? readSettings().selectedModel
-                : undefined),
-            selectedModelVariant: settings.selectedModelVariant,
-            strategistModel: settings.strategistModel,
-            executorModel: settings.executorModel,
-            reasoningEffort: settings.reasoningEffort,
-            textVerbosity: settings.textVerbosity,
-            inferenceTemperature: settings.inferenceTemperature,
-            inferenceTopP: settings.inferenceTopP,
-            inferenceRepetitionPenalty: settings.inferenceRepetitionPenalty,
-          });
-        } catch (e: any) {
-          logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);
-        }
-      }
-
-      // Hot-update OpenCode permissions when the user changes permission pills
-      if (settings.openCodePermissions2) {
-        try {
-          const { updateOpenCodePermissions } =
-            await import("./opencode_adapter");
-          const currentSettings =
-            context.userId && preferencesCache.isHydrated
-              ? composeSettingsFromCache(context.userId)
-              : readSettings();
-          await updateOpenCodePermissions(currentSettings as any);
-        } catch (e: any) {
-          logger.warn(
-            `Failed to hot-update OpenCode permissions: ${e.message}`,
-          );
-        }
-      }
-
-      // If provider settings (API keys) or active provider changed, shutdown OpenCode daemon
-      // so it restarts with the correct baseURL/apiKey configuration.
-      if (
-        settings.providerSettings ||
-        settings.activeProviderId !== undefined
-      ) {
-        try {
-          const { shutdownOpenCode } = await import("./opencode_adapter");
-          await shutdownOpenCode();
-          logger.info("Shutdown OpenCode daemon to apply provider change");
-        } catch (e: any) {
-          logger.warn(
-            `Failed to shutdown OpenCode for provider change: ${e.message}`,
-          );
-        }
-      }
+      // Note: settings.selectedModel / openCodePermissions2 used to be hot-pushed
+      // to the OpenCode server via dynamic imports of opencode_adapter. That
+      // adapter was removed (B6 swap); the runtime bridge now reads settings
+      // per-session via readSettings(), so we no longer need to push. The
+      // permission gate's requestPermission call already pulls the current
+      // pills from readSettings() each time. See runtime_host.ts:createVibesPermissionGate.
 
       // Build the full updated settings to return to the renderer
       const updated =

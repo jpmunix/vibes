@@ -266,7 +266,16 @@ export function registerVisualEditingHandlers() {
         const { getVibesAppPath } = await import("../../../../paths/paths");
         const appPath = getVibesAppPath(app.path);
 
-        // Delegate to the OpenCode visual-edit subagent
+        // Delegate to the runtime visual-edit subagent
+        // TODO(mvp-cleanup, fase 5+): handleVisualQuickEdit todavía vive
+        // en opencode_adapter. El runtime no soporta visual-edit subagent
+        // todavía. Dejamos el código comentado para no perder la feature;
+        // replicar en runtime cuando proceda.
+        // Ver: docs/plans/post-mvp-roadmap.md §"Deuda del swap B6"
+        throw new Error(
+          "Visual edit no migrado al runtime todavía — ver TODO(mvp-cleanup)",
+        );
+        /*
         const { handleVisualQuickEdit } =
           await import("../../../../ipc/handlers/opencode_adapter");
         const result = await handleVisualQuickEdit({
@@ -278,6 +287,7 @@ export function registerVisualEditingHandlers() {
         });
 
         return result;
+        */
       } catch (error) {
         logger.error("Failed to process quick edit:", error);
         return {

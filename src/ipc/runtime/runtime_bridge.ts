@@ -411,3 +411,25 @@ export async function deleteRuntimeSession(chatId: number): Promise<void> {
     throw err;
   }
 }
+
+/**
+ * v2.7 (B6 hardening): delete the runtime session when you know the
+ * sessionId (typically loaded from chats.opencodeSessionId at delete
+ * time, where the session has already finished and is not in the
+ * active map).
+ *
+ * Idempotent. Logs and re-throws on storage failure.
+ */
+export async function deleteRuntimeSessionBySessionId(
+  sessionId: string,
+): Promise<void> {
+  try {
+    await getRuntime().deleteSession(sessionId);
+    logger.info(`[RuntimeBridge] Deleted runtime session ${sessionId} by id`);
+  } catch (err) {
+    logger.warn(
+      `[RuntimeBridge] deleteSession failed for ${sessionId}: ${(err as Error).message}`,
+    );
+    throw err;
+  }
+}

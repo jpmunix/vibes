@@ -1105,13 +1105,57 @@ export function registerWindowHandlers() {
     },
   );
 
-  // Purge orphaned OpenCode sessions (admin diagnostic tool)
+  // B6 swap (Slice 2.1.3): purgeAllOrphanedOpenCodeSessions iterated the
+  // OpenCode server. With the runtime, sessions live in the local SQLite.
+  // The diagnostic tool now lists runtime session ids from chats and
+  // deletes them. Dry-run returns the same shape (a report) without
+  // mutating.
   createTypedHandler(
     systemContracts.purgeOpenCodeSessions,
     async (_event, { dryRun }) => {
-      const { purgeAllOrphanedOpenCodeSessions } =
-        await import("./opencode_adapter");
-      return await purgeAllOrphanedOpenCodeSessions(dryRun);
+      const db = getRemoteDb();
+      const userChats = await db.query.chats.findMany({
+        columns: { id: true, opencodeSessionId: true },
+      });
+      const targets = userChats
+        .map((c) => ({ chatId: c.id, sessionId: c.opencodeSessionId }))
+        .filter((t) => !!t.sessionId);
+      if (dryRun) {
+        return {
+          dryRun: true,
+          scanned: userChats.length,
+          candidates: targets.length,
+          deleted: 0,
+          orphans: 0,
+          report:
+            `Would delete ${targets.length} runtime session(s) ` +
+            `across ${userChats.length} chat(s).`,
+        };
+      }
+      const {
+        deleteRuntimeSession,
+        deleteRuntimeSessionBySessionId,
+      } = await import("../runtime/runtime_bridge");
+      let deleted = 0;
+      for (const t of targets) {
+        try {
+          await deleteRuntimeSessionBySessionId(t.sessionId!);
+          await deleteRuntimeSession(t.chatId);
+          deleted += 1;
+        } catch (e: any) {
+          logger.warn(
+            `[window_handlers] purge failed for session ${t.sessionId}: ${e.message}`,
+          );
+        }
+      }
+      return {
+        dryRun: false,
+        scanned: userChats.length,
+        candidates: targets.length,
+        deleted,
+        orphans: 0,
+        report: `Deleted ${deleted}/${targets.length} runtime session(s).`,
+      };
     },
   );
 
