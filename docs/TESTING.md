@@ -49,6 +49,7 @@ npm run e2e:shard   # playwright test --shard
 | [permission_state.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_state.test.ts) | — | Fail-closed permission gate: respond, abort, timeout, unknown vocabulary → reject. Session UI context registry. |
 | [prompt_attach.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/prompt_attach.test.ts) | — | System prompt composer: contexto + custom prompt con separador `---`. |
 | [runtime_host.gate.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_host.gate.test.ts) | — | `createVibesPermissionGate`: read-only fast path (read_file/glob/grep), pills allow/deny/ask, fail-closed sin UI, ask round-trip emitiendo `opencode-permission:request`. |
+| [runtime_bridge.delete.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.delete.test.ts) | — | **B6 hardening (Slice 2.1.1).** `deleteRuntimeSession`: no-op cuando el chatId no tiene sesión activa, no lanza excepciones, deja el map de sesiones activas vacío tras la llamada. El camino "sesión activa → deleteSession" se cubre indirectamente vía contract test cuando los callers (version_handlers, chat_handlers, app_handlers) se migren en Slice 2.1.3. |
 
 **Cuándo usarlos:** Si se toca la capa `src/ipc/runtime/` (el bridge entre Vibes y vibes-core). El contract test golden es **el guard del swap B6**: cualquier cambio en el output que cruza la frontera requiere actualizar este test.
 

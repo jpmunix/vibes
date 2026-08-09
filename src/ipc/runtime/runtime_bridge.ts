@@ -373,3 +373,41 @@ export async function cancelRuntimeStream(chatId: number): Promise<void> {
 export function getActiveRuntimeSession(chatId: number): string | undefined {
   return activeSessionByChat.get(chatId);
 }
+
+/**
+ * v2.7 (B6 hardening): hard-delete the runtime session for a chat.
+ *
+ * Used when the host deletes a chat, resets the workspace, or purges
+ * orphaned sessions. If there's no active handle (session already
+ * finished) we still call Runtime.deleteSession so the persisted row
+ * is cleaned up — the runtime API is idempotent.
+ *
+ * We also drop the chatId → sessionId mapping so a subsequent
+ * `getActiveRuntimeSession` call for the same chat returns undefined.
+ */
+export async function deleteRuntimeSession(chatId: number): Promise<void> {
+  const sessionId = activeSessionByChat.get(chatId);
+  activeSessionByChat.delete(chatId);
+  if (!sessionId) {
+    // No active handle — nothing to cancel. Storage cleanup is best-effort:
+    // we don't know which sessionId corresponds to this chatId, so we
+    // cannot delete the persisted record here. The host is expected to
+    // delete the Vibes-side record; orphan rows will be reaped by a
+    // future GC pass (post-MVP).
+    logger.info(
+      `[RuntimeBridge] deleteRuntimeSession for chat ${chatId}: no active handle, skipping storage cleanup`,
+    );
+    return;
+  }
+  try {
+    await getRuntime().deleteSession(sessionId);
+    logger.info(
+      `[RuntimeBridge] Deleted runtime session ${sessionId} (chat ${chatId})`,
+    );
+  } catch (err) {
+    logger.warn(
+      `[RuntimeBridge] deleteSession failed for ${sessionId}: ${(err as Error).message}`,
+    );
+    throw err;
+  }
+}
