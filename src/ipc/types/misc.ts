@@ -301,6 +301,19 @@ export const miscEvents = {
     payload: z.object({ chatId: z.number() }),
   }),
 
+  /** Slice 3.8.2: fired when "Permitir siempre" persists to BunnyDB fail.
+   *  The cache update already happened — this event tells the renderer to
+   *  show a toast so the user knows the rule won't survive a restart. */
+  permissionPersistFailed: defineEvent({
+    channel: "permission:persist-failed",
+    payload: z.object({
+      requestId: z.string(),
+      toolId: z.string(),
+      pillKey: z.string(),
+      message: z.string(),
+    }),
+  }),
+
   /** Fired when the boot-time model validator replaces stale model references */
   modelsMigrated: defineEvent({
     channel: "models:migrated",

@@ -218,21 +218,64 @@ Una línea, dentro del handler existente `will-quit`. Cubre quit normal, `Cmd+Q`
 
 **Slices 3.9 + 3.10 + 3.11 — TODAS CERRADAS EN VERDE.**
 
-**Caveats resueltos del análisis:**
+---
+
+## Slice 3.8 — Resiliencia ante fallo de BunnyDB en "Permitir siempre"
+
+**Problema:** `writeSettings` era fire-and-forget. Si BunnyDB fallaba al persistir `permissions.tools.shell = "allow"`, el usuario pulsaba "Permitir siempre", creía que estaba guardado, y al reiniciar Vibes la pill no existía. Silencioso.
+
+**Fix por capas:**
+
+### Slice 3.8.1 — `writeSettings` retorna `Promise<{ok, error?}>`
+
+[`preferences-cache.ts:186-220`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/main/preferences-cache.ts#L186-L220): `setMany` ahora devuelve `Promise<{ok: boolean, error?: string}>`. El cache update sigue siendo síncrono (UX no cambia), pero el Promise captura el resultado del DB write.
+
+[`settings.ts:164-221`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/main/settings.ts#L164-L221): `writeSettings` retorna el outcome de `setMany`. Para writes runtime-only (`isRunning` y similares) retorna `{ok: true}` sin tocar la DB. Backward-compatible: callers que no hacen `await` siguen funcionando.
+
+### Slice 3.8.2 — `permission_handler.ts` await + emite evento
+
+[`permission_handler.ts:58-110`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_handler.ts#L58-L110): cuando `response === "always"`, ahora `await writeSettings(...)`. Si retorna `ok=false` o lanza, emite `permission:persist-failed` a todas las ventanas con `{requestId, toolId, pillKey, message}`.
+
+[`misc.ts:305-313`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/misc.ts#L305-L313): nuevo contrato `permissionPersistFailed` en `miscEvents`.
+
+### Slice 3.8.3 — Renderer toast
+
+[`AppRoot.tsx:224-230`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/AppRoot.tsx#L224-L230) y [`ChatWindowApp.tsx:565-571`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat_window/ChatWindowApp.tsx#L565-L571): listeners `onPermissionPersistFailed` que llaman `showError()` con el mensaje. **Mensaje específico:** "No se pudo guardar tu preferencia en el servidor. La regla se aplica en esta sesión, pero no se recordará al reiniciar." → el usuario sabe que la pill está activa ahora pero no persistirá.
+
+### Slice 3.8.4 — Tests + docs
+
+[`permission_persist.test.ts`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_persist.test.ts): 7 tests —
+- 3 verifican el contrato IPC (channel + payload Zod parse + Zod fail-closed)
+- 4 verifican `writeSettings` retorna el outcome correcto: ok=true en DB success, ok=false con error en DB failure, ok=true sin DB call sin userId, ok=true en runtime-only updates (isRunning).
+
+### Verificación
+
+| Suite | Resultado |
+|---|---|
+| `Vibes` tsc --noEmit | 0 errores ✅ |
+| `Vibes` vitest run | **311/311 verde** (17 archivos, +7 Slice 3.8) |
+
+**Slice 3.8 — CERRADA EN VERDE.** BunnyDB failure ahora es visible, no silencioso.
+
+---
+
+**Caveats resueltos del análisis (4 de 6):**
 - ✅ **#1** Memory leak en `activeSessionByChat` → Slice 3.9
 - ✅ **#2** UI ghost state al borrar chat → Slice 3.10
+- ✅ **#3** Race en "Permitir siempre" con red flaky → Slice 3.8 (BunnyDB resilience)
 - ✅ **#5** Pending resolvers zombis al shutdown → Slice 3.11
-- ⏸️ **#3** Race en "Permitir siempre" con red flaky → anotada (Slice 3.8 BunnyDB resilience)
 - ❌ **#4** Descartado (sí se limpia)
 - ❌ **#6** Descartado (UUID por session)
 
 ---
 
-### Verificación
-- **295 tests verdes**, typecheck **0 errores**.
+### Verificación final
+- **311 tests verdes**, typecheck **0 errores**.
 
 - ✅ 4 archivos de handlers migrados a `deleteRuntimeSession` / `deleteRuntimeSessionBySessionId`.
 - ✅ `getVersionInfo` ahora devuelve `runtime` en vez de `opencode`.
+- ✅ Slices 3.8 + 3.9 + 3.10 + 3.11 — todas cerradas en verde con tests.
+- ✅ BunnyDB persist failure ahora visible (Slice 3.8), no silencioso.
 
 **Slice 2.1 — CERRADA en verde. El swap OpenCode → vibes-core está REALMENTE hecho.**
 

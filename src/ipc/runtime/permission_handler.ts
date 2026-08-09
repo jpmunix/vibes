@@ -55,16 +55,18 @@ export function registerPermissionHandler() {
         `[Permission] Received UI response for ${requestId}: ${response}`,
       );
 
-      // Slice 3.6: persist "always" before resolving, so the next request
-      // for the same tool will short-circuit via the resolver.
+      // Slice 3.8.2: persist "always" BEFORE resolving, so the next request
+      // for the same tool will short-circuit via the resolver. Await the DB
+      // outcome so we can surface failures to the renderer.
       if (response === "always") {
         const toolId = getPendingRuntimePermissionToolId(requestId);
         if (toolId) {
           const pillKey = toolIdToPillKey(toolId);
           if (pillKey) {
+            let persistOk = true;
             try {
               const prev = readSettings();
-              writeSettings({
+              const result = await writeSettings({
                 ...prev,
                 permissions: {
                   ...(prev.permissions ?? {}),
@@ -74,13 +76,47 @@ export function registerPermissionHandler() {
                   },
                 },
               });
-              logger.info(
-                `[Permission] Persisted "always" → permissions.tools.${pillKey} = "allow" (from ${toolId})`,
-              );
+              if (result.ok) {
+                logger.info(
+                  `[Permission] Persisted "always" → permissions.tools.${pillKey} = "allow" (from ${toolId})`,
+                );
+              } else {
+                persistOk = false;
+                logger.error(
+                  `[Permission] DB persist failed for ${toolId}: ${result.error}`,
+                );
+              }
             } catch (err) {
+              persistOk = false;
               logger.error(
                 `[Permission] Failed to persist "always" for ${toolId}: ${String(err)}`,
               );
+            }
+
+            // Slice 3.8.3: tell the renderer so it can show a toast. The
+            // in-memory cache update already happened (fire-and-forget from
+            // the renderer's POV), so the user's pill IS active for this
+            // session — they just need to know it won't survive a restart.
+            if (!persistOk) {
+              try {
+                // Lazy-import electron to avoid breaking renderer imports
+                // if this module is imported from a context without it.
+                const { BrowserWindow } = await import("electron");
+                const { safeSend } = await import("../utils/safe_sender");
+                for (const win of BrowserWindow.getAllWindows()) {
+                  safeSend(win.webContents, "permission:persist-failed", {
+                    requestId,
+                    toolId,
+                    pillKey,
+                    message:
+                      "No se pudo guardar tu preferencia en el servidor. La regla se aplica en esta sesión, pero no se recordará al reiniciar.",
+                  });
+                }
+              } catch (sendErr) {
+                logger.warn(
+                  `[Permission] Could not emit persist-failed event: ${String(sendErr)}`,
+                );
+              }
             }
           } else {
             logger.warn(

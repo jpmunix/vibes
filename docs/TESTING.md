@@ -37,7 +37,7 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
-## Tests Unitarios / Integration (Vitest) — 15 archivos
+## Tests Unitarios / Integration (Vitest) — 17 archivos
 
 ### Runtime swap (B6) — Frontera Vibes ↔ vibes-core
 
@@ -51,6 +51,7 @@ npm run e2e:shard   # playwright test --shard
 | [formatToolInput.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/lib/formatToolInput.test.ts) | 13 | **Slice 3.5 — UI formatter.** Shell-style tools (`shell`, `bash`, `sh`, `exec`) → `$ ${command}`. File-style → path (+ content si existe). Pattern-style → pattern. Fallback a JSON.stringify. Null/undefined/non-object → string defensivo. |
 | [runtime_host.gate.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_host.gate.test.ts) | 14 | **`createVibesPermissionGate`:** Slice 3.4 = delega en `permissionResolver`. Defaults Vibes (read → allow, mutación → ask). Pill global `permissions.tools.{toolId}` con allow/deny. Sub-pill `rm: deny` gana a default shell ask. Custom rule `ls: allow` por prefijo. Pill `ask` → UI round-trip. Fail-closed sin session UI. |
 | [runtime_bridge.delete.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.delete.test.ts) | — | **B6 hardening (Slice 2.1.1).** `deleteRuntimeSession`: no-op cuando el chatId no tiene sesión activa, no lanza excepciones, deja el map de sesiones activas vacío tras la llamada. |
+| [permission_persist.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_persist.test.ts) | 7 | **Slice 3.8** — Resiliencia ante fallo de BunnyDB. Contrato IPC `permission:persist-failed` (channel + payload Zod). `writeSettings` retorna `Promise<{ok, error?}>` — 4 tests cubren ok=true (DB success), ok=false con error (DB failure), ok=true sin DB call cuando no hay userId, ok=true para runtime-only updates (isRunning). |
 | [prompt_attach.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/prompt_attach.test.ts) | — | System prompt composer: contexto + custom prompt con separador `---`. |
 
 

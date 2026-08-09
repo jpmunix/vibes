@@ -182,8 +182,21 @@ class PreferencesCache {
   /**
    * Set multiple preferences at once.
    * Each key is updated in cache immediately, DB writes are batched async.
+   *
+   * Slice 3.8.1: returns a Promise that resolves AFTER the DB write attempt.
+   * Resolves to `{ ok: true }` on success, `{ ok: false, error }` on failure
+   * (the cache still holds the new value for the current session — the user
+   * sees the change immediately, but the persistence is best-effort).
+   *
+   * Backward-compatible: callers that don't await this still get the cache
+   * update synchronously (the old fire-and-forget behavior), but the
+   * Promise captures the DB outcome for callers that care.
    */
-  setMany(userId: string, entries: Record<string, string>, appId = 0): void {
+  setMany(
+    userId: string,
+    entries: Record<string, string>,
+    appId = 0,
+  ): Promise<{ ok: boolean; error?: string }> {
     for (const [key, value] of Object.entries(entries)) {
       if (value == null) continue; // Skip null/undefined — DB column is NOT NULL
       const ck = this.cacheKey(userId, key, appId);
@@ -191,12 +204,8 @@ class PreferencesCache {
     }
     resetSettingsCache();
 
-    // Async batch write
-    this.writeManyToDb(userId, entries, appId).catch((err) => {
-      logger.error("Failed to persist batch preferences:", err);
-    });
-
-    // Notify listeners for each key
+    // Notify listeners for each key (synchronous, before DB write — callers
+    // that care about DB outcome await the returned Promise).
     for (const [key, value] of Object.entries(entries)) {
       for (const listener of this.listeners) {
         try {
@@ -206,6 +215,17 @@ class PreferencesCache {
         }
       }
     }
+
+    // Async batch write — resolve with outcome so callers can react.
+    return this.writeManyToDb(userId, entries, appId)
+      .then(() => ({ ok: true as const }))
+      .catch((err) => {
+        logger.error("Failed to persist batch preferences:", err);
+        return {
+          ok: false as const,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      });
   }
 
   // ── Listeners ──────────────────────────────────────────────────────────

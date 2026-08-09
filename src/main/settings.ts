@@ -159,7 +159,18 @@ export function readSettings(): UserSettings {
   }
 }
 
-export function writeSettings(settings: Partial<UserSettings>): void {
+/**
+ * Slice 3.8.1: returns the DB write outcome from `preferencesCache.setMany`.
+ * When there's no userId or no KV updates, returns `{ ok: true }` (the
+ * in-memory cache update is synchronous and unconditional — DB persistence
+ * only matters for KV-store keys).
+ *
+ * Backward-compatible: callers that don't await still get the cache update
+ * (synchronous), but the Promise captures DB persistence outcome.
+ */
+export function writeSettings(
+  settings: Partial<UserSettings>,
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
@@ -205,10 +216,16 @@ export function writeSettings(settings: Partial<UserSettings>): void {
       preferencesCache.currentUserId ??
       readSession()?.userId;
     if (uid && Object.keys(kvUpdates).length > 0) {
-      preferencesCache.setMany(uid, kvUpdates, 0);
+      // Slice 3.8.1: capture the DB write outcome
+      return preferencesCache.setMany(uid, kvUpdates, 0);
     }
+    return Promise.resolve({ ok: true });
   } catch (error) {
     logger.error("Error writing settings (Proxy):", error);
+    return Promise.resolve({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

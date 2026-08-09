@@ -221,6 +221,18 @@ export default function AppRoot() {
     queryClient,
   ]);
 
+  // Slice 3.8.3: "Permitir siempre" persist failed → toast the user so they
+  // know the rule won't survive a restart (cache update DID happen, so the
+  // current session works as expected).
+  useEffect(() => {
+    const unsubscribe = ipc.events.misc.onPermissionPersistFailed(
+      ({ toolId, message }) => {
+        showError(message ?? `No se pudo guardar el permiso para ${toolId}`);
+      },
+    );
+    return () => unsubscribe();
+  }, []);
+
   // Slice 3.10: chat deleted → prune atoms for that chatId
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onChatDeleted(({ chatId }) => {

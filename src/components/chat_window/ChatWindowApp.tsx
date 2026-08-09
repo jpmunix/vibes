@@ -562,6 +562,16 @@ function ChatWindowContent({
     setIsPreviewOpen,
   ]);
 
+  // Slice 3.8.3: "Permitir siempre" persist failed → toast
+  useEffect(() => {
+    const unsubscribe = ipc.events.misc.onPermissionPersistFailed(
+      ({ toolId, message }) => {
+        showError(message ?? `No se pudo guardar el permiso para ${toolId}`);
+      },
+    );
+    return () => unsubscribe();
+  }, []);
+
   // Slice 3.10: chat deleted → prune atoms for that chatId
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onChatDeleted(({ chatId }) => {
