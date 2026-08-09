@@ -30,6 +30,22 @@ const pendingRuntimePermissionResolvers = new Map<
   (response: RuntimePermissionResponse) => void
 >();
 
+// Slice 3.6: track the toolId per requestId so the permission handler can
+// persist "always" decisions to the corresponding pill in settings.
+const pendingRuntimePermissionToolIds = new Map<string, string>();
+
+/** Get the toolId associated with a pending requestId, or undefined. */
+export function getPendingRuntimePermissionToolId(
+  requestId: string,
+): string | undefined {
+  return pendingRuntimePermissionToolIds.get(requestId);
+}
+
+/** Clear the toolId for a requestId (after the request resolves). */
+function clearPendingRuntimePermissionToolId(requestId: string): void {
+  pendingRuntimePermissionToolIds.delete(requestId);
+}
+
 /**
  * Resolves a pending runtime permission request when the renderer answers.
  * Returns true if a resolver was found (i.e. the requestId belongs to the
@@ -59,19 +75,26 @@ export function respondRuntimePermission(
  * Waits for the renderer's answer to a permission request. Times out after
  * `timeoutMs` and resolves to "reject" (fail-closed). An aborted signal also
  * short-circuits to reject immediately.
+ *
+ * The `toolId` is recorded alongside the requestId so the IPC handler can
+ * later look it up when persisting "always" decisions to settings.
  */
 export function waitForRuntimePermissionResponse(
   requestId: string,
+  toolId: string,
   signal: AbortSignal,
   timeoutMs: number = RUNTIME_PERMISSION_TIMEOUT_MS,
 ): Promise<RuntimePermissionResponse> {
+  pendingRuntimePermissionToolIds.set(requestId, toolId);
   return new Promise((resolve) => {
     if (signal.aborted) {
+      clearPendingRuntimePermissionToolId(requestId);
       resolve("reject");
       return;
     }
     const timer = setTimeout(() => {
       pendingRuntimePermissionResolvers.delete(requestId);
+      clearPendingRuntimePermissionToolId(requestId);
       logger.warn(
         `[RuntimePermission] Timeout for ${requestId} — auto-rejecting`,
       );
@@ -81,6 +104,7 @@ export function waitForRuntimePermissionResponse(
     const onAbort = () => {
       clearTimeout(timer);
       pendingRuntimePermissionResolvers.delete(requestId);
+      clearPendingRuntimePermissionToolId(requestId);
       resolve("reject");
     };
     signal.addEventListener("abort", onAbort, { once: true });
@@ -89,6 +113,7 @@ export function waitForRuntimePermissionResponse(
       clearTimeout(timer);
       signal.removeEventListener("abort", onAbort);
       pendingRuntimePermissionResolvers.delete(requestId);
+      clearPendingRuntimePermissionToolId(requestId);
       resolve(response);
     });
   });

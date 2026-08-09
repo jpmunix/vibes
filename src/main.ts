@@ -37,6 +37,9 @@ import {
 } from "./utils/performance_monitor";
 // B1: vibes-core runtime shutdown on quit.
 import { shutdownRuntime } from "./ipc/runtime/runtime_host";
+// Slice 3.11: pull pending permission resolvers so the 5-minute timers don't
+// outlive the process and try to deleteSession on torn-down runtime handles.
+import { rejectAllPendingRuntimePermissions } from "./ipc/runtime/permission_state";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
@@ -973,6 +976,9 @@ app.on("will-quit", () => {
   stopAllRunningApps();
   // B1: graceful runtime shutdown (no-op if the bridge was never used).
   void shutdownRuntime();
+  // Slice 3.11: kill any pending permission resolvers so their 5-min timers
+  // don't outlive the runtime and try to deleteSession on torn-down handles.
+  rejectAllPendingRuntimePermissions();
   stopPerformanceMonitoring();
   // Persist any pending memory buffers so they're processed on next startup
   try {

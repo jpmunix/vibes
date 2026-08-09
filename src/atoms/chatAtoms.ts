@@ -115,7 +115,9 @@ export interface PendingOpenCodePermission {
   sessionId: string;
   chatId: number;
   toolName: string;
-  toolInput?: string | null;
+  // Slice 3.5: was string | null. Now unknown — the renderer formats by
+  // toolId via formatToolInput. UI receives the raw args object.
+  toolInput?: unknown;
 }
 
 export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>(

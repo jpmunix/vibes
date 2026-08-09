@@ -81,11 +81,19 @@ flowchart TB
 | `Runtime`, `RuntimeEvent`, `MessageContentPart` | vibes-core | Contratos públicos del runtime. |
 | `SessionHandle`, `createSession`, `deleteSession` | vibes-core | Lifecycle de sesión (host-driven). |
 | `StorageProvider` (SQLite en `runtime-sessions.db`) | vibes-core | El runtime es dueño de sus datos. Vibes no toca esta DB directamente. |
-| `PermissionGate` interface | vibes-core | Contrato. |
-| `createVibesPermissionGate` impl | Vibes | Una de N implementaciones posibles del contrato. |
-| `opencode-permission:request` IPC channel | Vibes | Es un canal IPC de Vibes, no un evento runtime. |
+| `PermissionGate` interface | vibes-core | Contrato. Solo expone `requestPermission(req, signal) → 'allow'|'deny'`. |
+| `createVibesPermissionGate` impl | Vibes | Una de N implementaciones posibles del contrato. Slice 3.4: delega en `permissionResolver()`. |
+| Defaults de permisos (`VIBES_PERMISSION_DEFAULTS`) | Vibes | Slice 3.3. Tabla exportada en `permission_defaults.ts`. Read_* → allow, mutación → ask, web → ask. |
+| Sub-pills (`shellSubPills`) | Vibes | Slice 3.3. Granularidad por prefijo (rm, gitReset, gitPushForce, ...). Si están unset, cae a la pill global. |
+| Custom rules (`customRules`) | Vibes | Slice 3.3. Prefijo match. El usuario declara `pattern` + `permission`. Gana sobre todo. |
+| Cascada de prioridad (resolver) | Vibes | Slice 3.3. Custom rule > sub-pill > pill global > default. Función pura en `permission_resolver.ts`. |
+| `permissions.tools.{toolId}` schema | Vibes | Slice 3.2. Renombrado de `openCodePermissions2` (sin migración). Las keys son toolIds. |
+| `VibesPermissionBanner` UI | Vibes | Slice 3.5. Renderiza el banner con `formatToolInput(toolId, args)` — no JSON.stringify crudo. |
+| `formatToolInput` | Vibes | Slice 3.5. Función pura: shell-style → `$ ${command}`, file-style → path + content, pattern-style → pattern. |
+| `opencode-permission:request` IPC channel | Vibes | Es un canal IPC de Vibes, no un evento runtime. Acepta `toolInput: unknown` (Slice 3.5). |
+| "Permitir siempre" persiste en pill | Vibes | Slice 3.6. Cuando el usuario responde "always", `permission_handler.ts` escribe `permissions.tools[toolId] = "allow"`. |
 | `<vibes-*>` tags (write, edit, files-changed, token-usage, cancelled) | Vibes (event_mapper.ts) | El renderer solo entiende tags de Vibes. |
-| `readSettings()`, `openCodePermissions2` pills | Vibes | Config de UI, no del runtime. |
+| `readSettings()`, `permissions` schema | Vibes | Config de UI, no del runtime. Slice 3.2: se lee de `permissions`, no `openCodePermissions2`. |
 | Hydration de historial (DP-4) | Vibes (runtime_bridge.ts) | El runtime no sabe de la DB de chats. |
 | `attachToSystemPrompt` (context instructions) | Vibes (runtime/prompt_attach.ts) | El runtime recibe el system prompt ya compuesto. |
 | Sub-agentes, sub-tasks | vibes-core (Fase 2+) | Cuando llegue, vivirá en vibes-core como tool del loop. |
@@ -173,6 +181,23 @@ cualquier cambio de schema rompe la app. El runtime expone queries vía la
 interfaz `StorageProvider`.
 
 **Cómo detectarlo:** buscar paths a `runtime-sessions.db` fuera de `runtime_host.ts`.
+
+### ❌ Anti-patrón 6: Runtime hardcodea `requiresConsent` en las tools
+
+```ts
+// MAL — en cualquier archivo de packages/tools/src/built-in/
+export const writeFileTool: Tool = {
+  id: "write_file",
+  requiresConsent: true,  // ❌ el runtime decide qué es peligroso
+  ...
+};
+```
+
+**Por qué:** Slice 3.1 lo prohíbe. El runtime no debería saber qué es "seguro" o "no seguro" — eso es política de la carcasa. En enterprise, hasta `read_file` puede ser sensible (archivos comprometidos); en otro contexto, `shell` puede ser de confianza. La etiqueta `requiresConsent` forzaba la postura del autor.
+
+**Solución:** el runtime expone `requestPermission(toolId, args)` siempre. Vibes aplica defaults, sub-pills, custom rules. El runtime es policy-agnostic.
+
+**Cómo detectarlo:** `grep -rn "requiresConsent" packages/runtime/ packages/runtime-impl/ packages/tools/` debe devolver 0. Si vuelve a aparecer, revertir.
 
 ---
 

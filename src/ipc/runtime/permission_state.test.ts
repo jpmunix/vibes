@@ -23,7 +23,7 @@ afterEach(() => {
 describe("respondRuntimePermission", () => {
   it("resolves a pending request and returns true", async () => {
     const ac = new AbortController();
-    const pending = waitForRuntimePermissionResponse("req-1", ac.signal, 60_000);
+    const pending = waitForRuntimePermissionResponse("req-1", "shell", ac.signal, 60_000);
     expect(pendingRuntimePermissionCount()).toBe(1);
 
     expect(respondRuntimePermission("req-1", "once")).toBe(true);
@@ -37,14 +37,14 @@ describe("respondRuntimePermission", () => {
 
   it("normalizes unknown vocabulary to reject (fail-closed)", async () => {
     const ac = new AbortController();
-    const pending = waitForRuntimePermissionResponse("req-2", ac.signal, 60_000);
+    const pending = waitForRuntimePermissionResponse("req-2", "write_file", ac.signal, 60_000);
     respondRuntimePermission("req-2", "yolo");
     await expect(pending).resolves.toBe("reject");
   });
 
   it("accepts always", async () => {
     const ac = new AbortController();
-    const pending = waitForRuntimePermissionResponse("req-3", ac.signal, 60_000);
+    const pending = waitForRuntimePermissionResponse("req-3", "shell", ac.signal, 60_000);
     respondRuntimePermission("req-3", "always");
     await expect(pending).resolves.toBe("always");
   });
@@ -54,7 +54,7 @@ describe("waitForRuntimePermissionResponse", () => {
   it("resolves reject when already aborted before waiting", async () => {
     const ac = new AbortController();
     ac.abort();
-    await expect(waitForRuntimePermissionResponse("req-4", ac.signal)).resolves.toBe(
+    await expect(waitForRuntimePermissionResponse("req-4", "shell", ac.signal)).resolves.toBe(
       "reject",
     );
     expect(pendingRuntimePermissionCount()).toBe(0);
@@ -62,7 +62,7 @@ describe("waitForRuntimePermissionResponse", () => {
 
   it("resolves reject when the signal aborts while waiting", async () => {
     const ac = new AbortController();
-    const pending = waitForRuntimePermissionResponse("req-5", ac.signal, 60_000);
+    const pending = waitForRuntimePermissionResponse("req-5", "shell", ac.signal, 60_000);
     ac.abort();
     await expect(pending).resolves.toBe("reject");
     expect(pendingRuntimePermissionCount()).toBe(0);
@@ -72,7 +72,7 @@ describe("waitForRuntimePermissionResponse", () => {
     vi.useFakeTimers();
     try {
       const ac = new AbortController();
-      const pending = waitForRuntimePermissionResponse("req-6", ac.signal, 1_000);
+      const pending = waitForRuntimePermissionResponse("req-6", "shell", ac.signal, 1_000);
       vi.advanceTimersByTime(1_001);
       await expect(pending).resolves.toBe("reject");
       expect(pendingRuntimePermissionCount()).toBe(0);
@@ -89,8 +89,8 @@ describe("waitForRuntimePermissionResponse", () => {
 describe("rejectAllPendingRuntimePermissions", () => {
   it("rejects every pending request (quit/cancel)", async () => {
     const ac = new AbortController();
-    const p1 = waitForRuntimePermissionResponse("req-a", ac.signal, 60_000);
-    const p2 = waitForRuntimePermissionResponse("req-b", ac.signal, 60_000);
+    const p1 = waitForRuntimePermissionResponse("req-a", "shell", ac.signal, 60_000);
+    const p2 = waitForRuntimePermissionResponse("req-b", "shell", ac.signal, 60_000);
     expect(pendingRuntimePermissionCount()).toBe(2);
 
     rejectAllPendingRuntimePermissions();

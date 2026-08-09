@@ -88,7 +88,10 @@ export const OpenCodePermissionRequestSchema = z.object({
   sessionId: z.string(),
   chatId: z.number(),
   toolName: z.string(),
-  toolInput: z.string().nullable().optional(),
+  // Slice 3.5: was z.string().nullable().optional() (JSON.stringify'd).
+  // Now z.unknown() — the renderer parses+formats per toolId via
+  // formatToolInput. Cleaner UX, no JSON.stringify round-trip.
+  toolInput: z.unknown().optional(),
 });
 
 export type OpenCodePermissionRequestPayload = z.infer<

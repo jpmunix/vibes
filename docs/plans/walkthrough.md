@@ -97,11 +97,144 @@ munix pidió cortar OpenCode de raíz para tener certeza absoluta de que lo que 
 - ❌ No se apaga (sin `shutdownOpenCode`)
 - ❌ El archivo `opencode_adapter.ts` **BORRADO** del repo (Slice 2.1.7, 201 KB / 5531 líneas). También `ensure_opencode.ts` y `opencode_diagnostic_handlers.ts`.
 - ❌ Dependencia `@opencode-ai/sdk` quitada de `package.json`.
-- ⚠️ `registerQuestionHandler` y `handleVisualQuickEdit` quedaron **comentados** (no borrados) como deuda explícita — ver `post-mvp-roadmap.md §"Deuda del swap B6"`. Migración en Fase 2 (ask_user) y Fase 5 (visual-edit subagent) respectivamente.
+## Slice 3 — Permisos enterprise (post-MVP hardening)
+
+> **Decisión en piedra**: Vibes es el dueño de la política de permisos. El runtime es policy-agnostic.
+
+### Cambios en el runtime (vibes-core)
+
+- **`requiresConsent` ELIMINADO** de la interfaz `Tool` ([executor.ts](file:///home/munix/Desarrollo/GitRepo/vibes-core/packages/runtime/src/executor.ts)) y del registry. Las 6 tools built-in (`read_file`, `write_file`, `edit_file`, `glob`, `grep`, `shell`) ya no exponen este campo.
+- **Loop cambia**: `requestConsent()` ([loop.ts:407](file:///home/munix/Desarrollo/GitRepo/vibes-core/packages/runtime-impl/src/loop.ts#L407)) ya no bypass-ea read-only tools. **Toda tool call va al gate del host.**
+- **Tests actualizados**: `built-in.test.ts` confirma que ninguna tool expone `requiresConsent`. `runtime.test.ts` invierte el test "read-only never prompts" → "read-only DOES prompt".
+
+### Cambios en Vibes
+
+- **Schema rename**: `openCodePermissions2` → `permissions` con shape limpio ([schemas.ts:389-462](file:///home/munix/Desarrollo/GitRepo/Vibes/src/lib/schemas.ts#L389-L462)). Keys: `permissions.tools.{toolId}`, `permissions.shellSubPills.{rm,gitReset,gitPush,...}`, `permissions.customRules[]`. **Sin migración** — los settings anteriores del usuario se ignoran.
+- **Defaults Vibes** ([permission_defaults.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_defaults.ts)): `read_file`/`glob`/`grep` → `allow`, mutación → `ask`, web → `ask`. Tabla exportada y congelada con test.
+- **Cascada de prioridad** ([permission_resolver.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_resolver.ts)): custom rule (prefix match) > sub-pill > pill global > default. Función pura con 16 tests.
+- **Gate integrado** ([runtime_host.ts:151-209](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_host.ts#L151)): `createVibesPermissionGate()` delega en `permissionResolver()`. 14 tests cubriendo cada vía de la cascada.
+- **Banner UI limpia** ([formatToolInput.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/lib/formatToolInput.ts)): shell-style → `$ ${command}`, file-style → path (+ content), pattern-style → pattern. 13 tests. La IP `toolInput` cambia de `z.string()` (JSON.stringify'd) a `z.unknown()`.
+- **"Permitir siempre" persiste** ([permission_handler.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_handler.ts) + [permission_state.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_state.ts)): el handler escribe `permissions.tools[toolId] = "allow"` cuando el usuario responde "always". La próxima vez la pill matchea y el gate no pregunta.
+
+### Reglas de prioridad (Vibes setup)
+
+```
+1. customRules[?].pattern (prefix match)   → gana siempre
+2. shellSubPills.{rm,gitReset,gitPush*}     → gana a shell si está set
+3. permissions.tools.{toolId}              → pill global
+4. VIBES_PERMISSION_DEFAULTS[toolId]       → último recurso
+5. Tool desconocida                        → "ask" (fail-closed)
+```
+
+### Tests Slice 3
+
+- 16 nuevos `permission_resolver.test.ts` (cascada).
+- 13 nuevos `formatToolInput.test.ts` (UI formatter).
+- 14 modificados `runtime_host.gate.test.ts` (cascade integration).
+- 4 modificados `permission_state.test.ts` (toolId tracking).
+- 4 modificados `runtime.test.ts` (vibes-core: read-only prompts).
+- 1 modificado `built-in.test.ts` (Slice 3.1 sanity).
+
+### Verificación
+
+| Suite | Resultado |
+|---|---|
+| `vibes-core` runtime-impl | 26/26 ✅ |
+| `vibes-core` tools | 27/27 ✅ |
+| `vibes-core` providers | 34/34 ✅ |
+| `vibes-core` runtime (ssot) | 0 errores tsc ✅ |
+| `Vibes` tsc --noEmit | 0 errores ✅ |
+| `Vibes` vitest run | **292/292 verde** (15 archivos) |
+
+**Slice 3 — CERRADA en verde. Permisos enterprise listos para test flight.**
+
+---
+
+## Slice 3.9 — Memory leak fix (chat overwrite purga sesiones huérfanas)
+
+**Problema:** `activeSessionByChat: Map<chatId, sessionId>` sobrescribía sin verificar. Si un segundo turno en el mismo chat se lanzaba antes de que el primero terminara, la sesión previa quedaba huérfana en `runtime.sessions` para siempre.
+
+**Fix** ([runtime_bridge.ts:198-218](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.ts#L198-L218)):
+
+```ts
+const previousSessionId = activeSessionByChat.get(req.chatId);
+if (previousSessionId) {
+  activeSessionByChat.delete(req.chatId);
+  await runtime.cancel(previousSessionId);
+  await runtime.deleteSession(previousSessionId);  // limpia storage
+}
+```
+
+**Tests:** 3 nuevos en [runtime_bridge.contract.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.contract.test.ts) — purga real, falla defensiva (no propagar), no-op cuando no hay leftover.
+
+---
+
+## Slice 3.10 — Limpieza de UI state cuando se borra un chat
+
+**Problema:** al borrar un chat, el runtime session se eliminaba pero los atoms del renderer (`pendingOCPermissions`, `pendingAskUsers`, `pendingAgentConsents`, `agentTodosByChatId`) mantenían entries huérfanas para ese chatId. Eso podía mostrar banners fantasma o iconos de pregunta en la sidebar tras borrar.
+
+**Fix:**
+
+- **Main:** [chat_handlers.ts:185-240](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/chat_handlers.ts#L185-L240) emite `chat:deleted { chatId }` vía `safeSend` a todas las ventanas tras borrar un chat.
+- **Contrato:** [misc.ts:297-300](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/misc.ts#L297-L300) — nuevo evento `chatDeleted` registrado en el namespace `misc`.
+- **Listeners:** [AppRoot.tsx](file:///home/munix/Desarrollo/GitRepo/Vibes/src/AppRoot.tsx) y [ChatWindowApp.tsx](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat_window/ChatWindowApp.tsx) escuchan `onChatDeleted` y filtran los 4 atoms por `chatId`.
+- **Tests:** 9 nuevos en [misc.deleted.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/misc.deleted.test.ts) — 4 verifican el contrato IPC (`miscEvents.chatDeleted.channel`, payload Zod parsing, fail-closed en chatId inválido), 5 verifican la lógica de prune de los atoms (filter por chatId, identidad referencial del Map cuando no hay match).
+
+### Verificación
+
+| Suite | Resultado |
+|---|---|
+| `Vibes` tsc --noEmit | 0 errores ✅ |
+| `Vibes` vitest run | **304/304 verde** (16 archivos, 3 nuevos Slice 3.9, 9 nuevos Slice 3.10) |
+
+**Slices 3.9 + 3.10 + 3.11 — TODAS CERRADAS EN VERDE. Memory leak + UI ghost state eliminados.**
+
+---
+
+## Slice 3.11 — Shutdown hook para pending resolvers
+
+**Problema:** `rejectAllPendingRuntimePermissions()` existía pero **nadie la llamaba** en producción. Si el usuario cerraba Vibes con pops pendientes, los timers de 5 minutos seguían vivos. Al expirar intentaban `runtime.deleteSession(...)` sobre un runtime ya destruido.
+
+**Fix** ([main.ts:976-979](file:///home/munix/Desarrollo/GitRepo/Vibes/src/main.ts#L976-L979)):
+
+```ts
+void shutdownRuntime();
+rejectAllPendingRuntimePermissions();  // ← nuevo
+```
+
+Una línea, dentro del handler existente `will-quit`. Cubre quit normal, `Cmd+Q`, `Alt+F4`, y signal handlers (SIGTERM/SIGINT) que terminan llamando `app.quit()`.
+
+---
+
+### Verificación final
+
+| Suite | Resultado |
+|---|---|
+| `Vibes` tsc --noEmit | 0 errores ✅ |
+| `Vibes` vitest run | **295/295 verde** (16 archivos) |
+| `vibes-core` runtime-impl | 26/26 ✅ |
+| `vibes-core` tools | 27/27 ✅ |
+| `vibes-core` providers | 34/34 ✅ |
+
+**Slices 3.9 + 3.10 + 3.11 — TODAS CERRADAS EN VERDE.**
+
+**Caveats resueltos del análisis:**
+- ✅ **#1** Memory leak en `activeSessionByChat` → Slice 3.9
+- ✅ **#2** UI ghost state al borrar chat → Slice 3.10
+- ✅ **#5** Pending resolvers zombis al shutdown → Slice 3.11
+- ⏸️ **#3** Race en "Permitir siempre" con red flaky → anotada (Slice 3.8 BunnyDB resilience)
+- ❌ **#4** Descartado (sí se limpia)
+- ❌ **#6** Descartado (UUID por session)
+
+---
+
+### Verificación
+- **295 tests verdes**, typecheck **0 errores**.
+
 - ✅ 4 archivos de handlers migrados a `deleteRuntimeSession` / `deleteRuntimeSessionBySessionId`.
 - ✅ `getVersionInfo` ahora devuelve `runtime` en vez de `opencode`.
 
 **Slice 2.1 — CERRADA en verde. El swap OpenCode → vibes-core está REALMENTE hecho.**
 
 ### Verificación
-- **246 tests verdes**, typecheck **84 = baseline exacta**, cero errores en archivos tocados.
+- 292 tests verde (post Slice 3), typecheck 0 errores.

@@ -57,20 +57,37 @@ afterEach(() => {
   clearSessionUIContext("sess-1");
 });
 
-describe("createVibesPermissionGate — read-only fast path", () => {
-  it.each(["read_file", "glob", "grep"])("auto-allows %s", async (toolId) => {
-    await expect(gate.requestPermission(request(toolId), signal)).resolves.toBe("allow");
-  });
+describe("createVibesPermissionGate — Slice 3.3 cascade", () => {
+  // Defaults: read_* → allow. Vibes owns the policy.
+  it.each(["read_file", "glob", "grep"])(
+    "auto-allows %s via Vibes default (not a runtime bypass)",
+    async (toolId) => {
+      await expect(gate.requestPermission(request(toolId), signal)).resolves.toBe("allow");
+    },
+  );
+
+  // Mutating defaults → ask (no pill set). Without a session UI context,
+  // the gate fails closed with "deny" (not "ask"). To verify the "ask"
+  // path actually reaches the UI, the round-trip test below sets up the
+  // session UI context.
+  it.each(["write_file", "edit_file", "shell"])(
+    "denies %s via Vibes default + fail-closed when no UI context",
+    async (toolId) => {
+      await expect(gate.requestPermission(request(toolId), signal)).resolves.toBe("deny");
+    },
+  );
 });
 
-describe("createVibesPermissionGate — settings pills", () => {
+describe("createVibesPermissionGate — settings pills (Slice 3.2 keys)", () => {
   beforeEach(() => {
     const { sender } = senderSpy();
     setSessionUIContext("sess-1", { chatId: 1, sender });
   });
 
-  it('pill "allow" resolves immediately without asking the UI', async () => {
-    vi.mocked(readSettings).mockReturnValueOnce({ openCodePermissions2: { bash: "allow" } } as any);
+  it('pill "allow" (permissions.tools.shell) resolves immediately without asking the UI', async () => {
+    vi.mocked(readSettings).mockReturnValueOnce({
+      permissions: { tools: { shell: "allow" } },
+    } as any);
     const { calls, sender } = senderSpy();
     setSessionUIContext("sess-1", { chatId: 1, sender });
 
@@ -78,9 +95,37 @@ describe("createVibesPermissionGate — settings pills", () => {
     expect(calls).toHaveLength(0); // never asked the renderer
   });
 
-  it('pill "deny" rejects immediately', async () => {
-    vi.mocked(readSettings).mockReturnValueOnce({ openCodePermissions2: { edit: "deny" } } as any);
+  it('pill "deny" (permissions.tools.write_file) rejects immediately', async () => {
+    vi.mocked(readSettings).mockReturnValueOnce({
+      permissions: { tools: { write_file: "deny" } },
+    } as any);
     await expect(gate.requestPermission(request("write_file"), signal)).resolves.toBe("deny");
+  });
+
+  // Slice 3.3: sub-pill takes priority over default pill.
+  it('shell sub-pill "rm: deny" wins over default shell ask', async () => {
+    vi.mocked(readSettings).mockReturnValueOnce({
+      permissions: { shellSubPills: { rm: "deny" } },
+    } as any);
+    const rmReq = {
+      ...request("shell"),
+      args: { command: "rm -rf /tmp/foo" },
+    };
+    await expect(gate.requestPermission(rmReq, signal)).resolves.toBe("deny");
+  });
+
+  // Slice 3.3: custom rule wins over default.
+  it('custom rule "ls: allow" matches by prefix', async () => {
+    vi.mocked(readSettings).mockReturnValueOnce({
+      permissions: {
+        customRules: [{ id: "r1", pattern: "ls", permission: "allow" }],
+      },
+    } as any);
+    const lsReq = {
+      ...request("shell"),
+      args: { command: "ls -la /tmp" },
+    };
+    await expect(gate.requestPermission(lsReq, signal)).resolves.toBe("allow");
   });
 });
 
@@ -93,7 +138,9 @@ describe("createVibesPermissionGate — fail-closed without UI", () => {
 
 describe("createVibesPermissionGate — ask round-trip", () => {
   it("sends opencode-permission:request and maps once/always → allow", async () => {
-    vi.mocked(readSettings).mockReturnValueOnce({ openCodePermissions2: { bash: "ask" } } as any);
+    vi.mocked(readSettings).mockReturnValueOnce({
+      permissions: { tools: { shell: "ask" } },
+    } as any);
     const { calls, sender } = senderSpy();
     setSessionUIContext("sess-1", { chatId: 42, sender });
 

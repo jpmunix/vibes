@@ -77,6 +77,7 @@ vi.mock("./runtime_host", () => ({
 import {
   handleRuntimeStream,
   getActiveRuntimeSession,
+  __activeSessionByChat,
   type RuntimeStreamOptions,
 } from "./runtime_bridge";
 import { resolveRuntimeModelTarget } from "./model_resolver";
@@ -174,6 +175,11 @@ function createInMemoryStorage(): StorageProvider & {
     },
     async listSessions() {
       return [...records.values()];
+    },
+    // Slice 3.9: required by Runtime.deleteSession (which the leftover-purge
+    // path calls when a chat overwrites an active session). Idempotent.
+    async deleteSession(id: string) {
+      records.delete(id);
     },
   };
 }
@@ -701,5 +707,80 @@ describe("handleRuntimeStream contract — malformed history hydration", () => {
     expect(result.success).toBe(true);
     expect(result.fullResponse).toContain("Hello from mock model.");
     expect(getActiveRuntimeSession(9)).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// Slice 3.9 — activeSessionByChat leftover purge on overwrite
+// ============================================================================
+
+describe("handleRuntimeStream contract — Slice 3.9 leftover purge", () => {
+  it("purges a real leftover session before starting a new turn on the same chat", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const event = { sender } as any;
+
+    // Create a real session via the runtime API and plant it in the map
+    // (simulates a run() finally block that didn't execute — main process
+    // crashed mid-stream, or a fast double-tap race).
+    const leftover = await hoisted.runtime.createSession({
+      prompt: "leftover",
+      messages: [],
+      workspaceRoot: hoisted.testRoot,
+    });
+    __activeSessionByChat.set(1, leftover.id);
+    expect(storage.records.has(leftover.id)).toBe(true);
+
+    // Second turn on the same chat — should purge leftover BEFORE
+    // creating the new session.
+    await handleRuntimeStream(
+      event,
+      { chatId: 1, prompt: "second" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    // Leftover gone from storage AND map is clean at the end of run().
+    expect(storage.records.has(leftover.id)).toBe(false);
+    expect(getActiveRuntimeSession(1)).toBeUndefined();
+  });
+
+  it("continues even if purge fails (defensive — network blip, storage race)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const event = { sender } as any;
+
+    // Plant a fake sessionId that doesn't exist in storage. cancel() and
+    // deleteSession() will throw, but the handler must NOT propagate the
+    // error — it logs and continues.
+    __activeSessionByChat.set(2, "definitely-not-in-runtime");
+
+    await expect(
+      handleRuntimeStream(
+        event,
+        { chatId: 2, prompt: "second" },
+        new AbortController(),
+        makeOptions(),
+      ),
+    ).resolves.toBeDefined();
+
+    // After the second turn, the map is clean again.
+    expect(getActiveRuntimeSession(2)).toBeUndefined();
+  });
+
+  it("no purge on a brand-new chat (the common case)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const event = { sender } as any;
+
+    const result = await handleRuntimeStream(
+      event,
+      { chatId: 99, prompt: "hello" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(result.success).toBe(true);
+    expect(getActiveRuntimeSession(99)).toBeUndefined();
   });
 });

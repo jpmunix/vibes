@@ -17,6 +17,8 @@ import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import log from "electron-log";
 import { getVibesAppPath } from "../../paths/paths";
 import { getCurrentCommitHash } from "../utils/git_utils";
+import { safeSend } from "../utils/safe_sender";
+import { BrowserWindow } from "electron";
 import { createTypedHandler, HandlerContext } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
@@ -182,6 +184,14 @@ export function registerChatHandlers() {
     })) as unknown as ChatSummary[];
   });
 
+/** Slice 3.10: broadcast to every window that a chat was deleted so the
+ *  renderer can prune stale atoms (pendingOCPermissions, etc.). */
+function broadcastChatDeleted(chatId: number): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    safeSend(win.webContents, "chat:deleted", { chatId });
+  }
+}
+
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
@@ -227,6 +237,10 @@ export function registerChatHandlers() {
           eq(remoteSchema.chats.userId, context.userId!),
         ),
       );
+
+    // Slice 3.10: tell every renderer to drop any pending entries
+    // (permissions, asks, consents, todos) for this chat.
+    broadcastChatDeleted(chatId);
   });
 
   createTypedHandler(chatContracts.updateChat, async (_, params, context) => {

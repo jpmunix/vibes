@@ -382,53 +382,101 @@ export type AgentToolConsent = z.infer<typeof AgentToolConsentSchema>;
 export const ChatRenderModeSchema = z.enum(["full", "flow", "zen"]);
 export type ChatRenderMode = z.infer<typeof ChatRenderModeSchema>;
 
-// ── OpenCode native permission schemas ──
-export const OpenCodePermissionSchema = z.enum(["allow", "ask", "deny"]);
-export type OpenCodePermission = z.infer<typeof OpenCodePermissionSchema>;
+// ── Slice 3.2: Permissions config (clean shape, no OpenCode baggage) ──
+//
+// Renamed from `openCodePermissions2` to `permissions`. Vibes-owned policy.
+// No migration from the old key — users start fresh. The old key remains
+// in the schema as a deprecated optional so existing on-disk data doesn't
+// crash the boot, but the code never reads it.
 
-export const BashCustomRuleSchema = z.object({
+export const PermissionDecisionSchema = z.enum(["allow", "ask", "deny"]);
+export type PermissionDecision = z.infer<typeof PermissionDecisionSchema>;
+
+export const PermissionCustomRuleSchema = z.object({
   id: z.string(),
   pattern: z.string(),
-  permission: OpenCodePermissionSchema,
+  permission: PermissionDecisionSchema,
 });
-export type BashCustomRule = z.infer<typeof BashCustomRuleSchema>;
+export type PermissionCustomRule = z.infer<
+  typeof PermissionCustomRuleSchema
+>;
 
-export const OpenCodePermissionsConfigSchema = z.object({
-  // Per-tool global pill
-  edit: OpenCodePermissionSchema.optional(),
-  bash: OpenCodePermissionSchema.optional(),
-  read: OpenCodePermissionSchema.optional(),
-  webfetch: OpenCodePermissionSchema.optional(),
-  websearch: OpenCodePermissionSchema.optional(),
-  lsp: OpenCodePermissionSchema.optional(),
-  // Agent capabilities
-  task: OpenCodePermissionSchema.optional(),
-  skill: OpenCodePermissionSchema.optional(),
-  externalDirectory: OpenCodePermissionSchema.optional(),
-  // Bash granular sub-rules — filesystem
-  bashRm: OpenCodePermissionSchema.optional(),
-  // Git — repo-local destructive
-  gitAdd: OpenCodePermissionSchema.optional(),
-  gitCommit: OpenCodePermissionSchema.optional(),
-  gitReset: OpenCodePermissionSchema.optional(),
-  gitCheckout: OpenCodePermissionSchema.optional(),
-  gitRestore: OpenCodePermissionSchema.optional(),
-  gitClean: OpenCodePermissionSchema.optional(),
-  gitRebase: OpenCodePermissionSchema.optional(),
-  gitMergeAbort: OpenCodePermissionSchema.optional(),
-  gitStashDrop: OpenCodePermissionSchema.optional(),
-  gitBranchDelete: OpenCodePermissionSchema.optional(),
-  gitCherryPickAbort: OpenCodePermissionSchema.optional(),
-  // Git — remote destructive
-  gitPush: OpenCodePermissionSchema.optional(),
-  gitPushForce: OpenCodePermissionSchema.optional(),
-  gitPushDelete: OpenCodePermissionSchema.optional(),
-  // DEPRECATED — old keys from v1 (bashGitCommit, bashGitPush)
-  bashGitCommit: OpenCodePermissionSchema.optional(),
-  bashGitPush: OpenCodePermissionSchema.optional(),
-  // Bash custom rules
-  bashCustomRules: z.array(BashCustomRuleSchema).optional(),
+// Per-tool global pill (the 10 known tools).
+export const PermissionsToolsSchema = z
+  .object({
+    read_file: PermissionDecisionSchema.optional(),
+    write_file: PermissionDecisionSchema.optional(),
+    edit_file: PermissionDecisionSchema.optional(),
+    glob: PermissionDecisionSchema.optional(),
+    grep: PermissionDecisionSchema.optional(),
+    shell: PermissionDecisionSchema.optional(),
+    webfetch: PermissionDecisionSchema.optional(),
+    websearch: PermissionDecisionSchema.optional(),
+    task: PermissionDecisionSchema.optional(),
+    skill: PermissionDecisionSchema.optional(),
+  })
+  .optional();
+
+// Shell sub-pills (granular rules for shell commands).
+export const PermissionsShellSubPillsSchema = z
+  .object({
+    rm: PermissionDecisionSchema.optional(),
+    gitReset: PermissionDecisionSchema.optional(),
+    gitPush: PermissionDecisionSchema.optional(),
+    gitPushForce: PermissionDecisionSchema.optional(),
+    gitPushDelete: PermissionDecisionSchema.optional(),
+  })
+  .optional();
+
+// Custom rules (prefix-match patterns for shell commands).
+export const PermissionsCustomRulesSchema = z
+  .array(PermissionCustomRuleSchema)
+  .optional();
+
+export const PermissionsConfigSchema = z.object({
+  tools: PermissionsToolsSchema,
+  shellSubPills: PermissionsShellSubPillsSchema,
+  customRules: PermissionsCustomRulesSchema,
 });
+export type PermissionsConfig = z.infer<typeof PermissionsConfigSchema>;
+
+// Re-export for backwards compatibility with code that still uses the old
+// names. The old schema is preserved as-is so existing data doesn't crash.
+export const BashCustomRuleSchema = PermissionCustomRuleSchema;
+export type BashCustomRule = PermissionCustomRule;
+export const OpenCodePermissionSchema = PermissionDecisionSchema;
+export type OpenCodePermission = PermissionDecision;
+export const OpenCodePermissionsConfigSchema = z
+  .object({
+    edit: PermissionDecisionSchema.optional(),
+    bash: PermissionDecisionSchema.optional(),
+    read: PermissionDecisionSchema.optional(),
+    webfetch: PermissionDecisionSchema.optional(),
+    websearch: PermissionDecisionSchema.optional(),
+    lsp: PermissionDecisionSchema.optional(),
+    task: PermissionDecisionSchema.optional(),
+    skill: PermissionDecisionSchema.optional(),
+    externalDirectory: PermissionDecisionSchema.optional(),
+    bashRm: PermissionDecisionSchema.optional(),
+    gitAdd: PermissionDecisionSchema.optional(),
+    gitCommit: PermissionDecisionSchema.optional(),
+    gitReset: PermissionDecisionSchema.optional(),
+    gitCheckout: PermissionDecisionSchema.optional(),
+    gitRestore: PermissionDecisionSchema.optional(),
+    gitClean: PermissionDecisionSchema.optional(),
+    gitRebase: PermissionDecisionSchema.optional(),
+    gitMergeAbort: PermissionDecisionSchema.optional(),
+    gitStashDrop: PermissionDecisionSchema.optional(),
+    gitBranchDelete: PermissionDecisionSchema.optional(),
+    gitCherryPickAbort: PermissionDecisionSchema.optional(),
+    gitPush: PermissionDecisionSchema.optional(),
+    gitPushForce: PermissionDecisionSchema.optional(),
+    gitPushDelete: PermissionDecisionSchema.optional(),
+    bashGitCommit: PermissionDecisionSchema.optional(),
+    bashGitPush: PermissionDecisionSchema.optional(),
+    bashCustomRules: z.array(BashCustomRuleSchema).optional(),
+  })
+  .optional();
 export type OpenCodePermissionsConfig = z.infer<
   typeof OpenCodePermissionsConfigSchema
 >;

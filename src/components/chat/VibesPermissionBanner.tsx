@@ -1,5 +1,6 @@
 import React from "react";
 import { ShieldCheck, Check, Ban, Info } from "@/components/ui/icons";
+import { formatToolInput } from "@/lib/formatToolInput";
 import type { PendingOpenCodePermission } from "@/atoms/chatAtoms";
 import {
   Tooltip,
@@ -132,8 +133,8 @@ export function VibesPermissionBanner({
 
       {/* Body */}
       <div className="px-5 py-4">
-        {/* Input preview */}
-        {toolInput && (
+        {/* Input preview — Slice 3.5: formatted by toolId via formatToolInput */}
+        {toolInput !== undefined && toolInput !== null && (
           <div className="mb-4">
             <div
               ref={inputRef}
@@ -143,7 +144,7 @@ export function VibesPermissionBanner({
                 overflow: isInputExpanded ? "auto" : "hidden",
               }}
             >
-              {toolInput}
+              {formatToolInput(toolName, toolInput)}
             </div>
             {inputHasOverflow && (
               <button

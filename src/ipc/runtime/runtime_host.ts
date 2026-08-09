@@ -28,6 +28,8 @@ import type {
   PermissionGate,
   Runtime,
 } from "@vibes/runtime";
+import { permissionResolver } from "./permission_resolver";
+import type { PermissionsConfig } from "../../lib/schemas";
 import { createRuntimeBuilder } from "@vibes/runtime-impl";
 import {
   openAiCompatibleFactory,
@@ -137,31 +139,45 @@ const delegatingModelProvider: ModelProvider = {
 };
 
 // ============================================================================
-// Permission gate (B3)
+// Permission gate (B3 + Slice 3)
 // ============================================================================
 
 /**
- * Bridges runtime permission requests to Vibes' existing banner:
- *   - resolves the user's pill for the tool (read family → allow direct);
- *   - on "ask", sends `opencode-permission:request` (same payload as the
- *     OpenCode adapter, so the UI needs zero changes) and waits;
+ * Bridges runtime permission requests to Vibes' policy:
+ *   - delegates the decision to `permissionResolver` (which implements the
+ *     cascade: custom rules > sub-pills > global pill > Vibes default).
+ *   - on "ask", sends `opencode-permission:request` to the renderer and waits.
  *   - timeout/abort → deny (fail-closed).
+ *
+ * Slice 3.1: the runtime no longer bypasses read-only tools. Every tool call
+ * goes through the resolver. Ves defaults take care of read_* → allow.
+ *
+ * Slice 3.3: the resolver holds the policy. This gate is just a transport.
  */
 /** Exported for tests — see runtime_host.gate.test.ts. */
 export function createVibesPermissionGate(): PermissionGate {
   return {
     async requestPermission(request, signal) {
-      // Runtime tool id → settings pill key. Read-only tools never prompt
-      // (they are already filtered upstream by requiresConsent, but this is
-      // a second line of defense with the adapter's same posture).
-      if (
-        request.toolId === "read_file" ||
-        request.toolId === "glob" ||
-        request.toolId === "grep"
-      ) {
-        return "allow";
+      // 1. Resolve the decision via the cascade (custom rules > sub-pills >
+      //    global pill > Vibes default).
+      const settings = readSettings() as {
+        permissions?: PermissionsConfig;
+      };
+      const result = permissionResolver({
+        toolId: request.toolId,
+        args: request.args,
+        settings: settings.permissions,
+      });
+
+      // 2. Decision is already allow/deny → return it directly.
+      if (result.decision !== "ask") {
+        logger.info(
+          `[RuntimeHost] Permission ${result.decision} (source=${result.source}) for ${request.toolId} [${request.requestId}]`,
+        );
+        return result.decision;
       }
 
+      // 3. Decision is "ask" — send to the renderer and wait.
       const ctx = getSessionUIContext(request.sessionId);
       if (!ctx?.sender) {
         // No window to ask → fail closed.
@@ -171,32 +187,20 @@ export function createVibesPermissionGate(): PermissionGate {
         return "deny";
       }
 
-      const settings = readSettings();
-      const pillKey =
-        request.toolId === "shell"
-          ? "bash"
-          : request.toolId === "write_file" || request.toolId === "edit_file"
-            ? "edit"
-            : "edit";
-      const pill = settings.openCodePermissions2?.[pillKey];
-
-      if (pill === "allow") return "allow";
-      if (pill === "deny") return "deny";
-
-      // "ask" (or unset) → send to the renderer and wait.
       safeSend(ctx.sender, "opencode-permission:request", {
         requestId: request.requestId,
         sessionId: request.sessionId,
         chatId: ctx.chatId,
         toolName: request.toolId,
-        toolInput: JSON.stringify(request.args ?? {}),
+        toolInput: request.args ?? null,
       });
       logger.info(
-        `[RuntimeHost] Permission ask sent to UI: ${request.toolId} [${request.requestId}]`,
+        `[RuntimeHost] Permission ask sent to UI: ${request.toolId} [${request.requestId}] (source=${result.source})`,
       );
 
       const response = await waitForRuntimePermissionResponse(
         request.requestId,
+        request.toolId,
         signal,
         RUNTIME_PERMISSION_TIMEOUT_MS,
       );

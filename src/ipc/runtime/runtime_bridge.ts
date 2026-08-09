@@ -62,8 +62,12 @@ const HYDRATION_LIMIT = 20;
  * ChatId → currently RUNNING runtime session. Needed by chat:cancel so the
  * abort reaches the right session. Sessions are per-turn, so this is set at
  * turn start and cleared at turn end.
+ *
+ * Slice 3.9: also exported as `__activeSessionByChat` for the contract test
+ * that exercises the leftover-purge path. Not part of the public surface.
  */
 const activeSessionByChat = new Map<number, string>();
+export const __activeSessionByChat = activeSessionByChat;
 
 export type RuntimeStreamOptions = {
   placeholderMessageId: number;
@@ -195,6 +199,28 @@ export async function handleRuntimeStream(
   const workspaceRoot = getVibesAppPath(appPath);
 
   // ── 1. Fresh hydrated session for this turn (DP-4) ─────────────────────
+  // Slice 3.9: if a previous session for this chat is still in the active
+  // map (it shouldn't be — the run() finally block deletes it — but a fast
+  // double-tap can race), purge it before creating the new one. Without
+  // this, every extra turn leaks a session into runtime.sessions because
+  // the map key collides.
+  const previousSessionId = activeSessionByChat.get(req.chatId);
+  if (previousSessionId) {
+    logger.warn(
+      `[RuntimeBridge] Found leftover session ${previousSessionId} for chat ${req.chatId} before new turn — purging`,
+    );
+    activeSessionByChat.delete(req.chatId);
+    try {
+      const runtime = getRuntime();
+      await runtime.cancel(previousSessionId);
+      await runtime.deleteSession(previousSessionId);
+    } catch (err) {
+      logger.warn(
+        `[RuntimeBridge] Purge of leftover session ${previousSessionId} failed: ${(err as Error).message} — continuing`,
+      );
+    }
+  }
+
   const session = await runtime.createSession({
     prompt: req.prompt,
     agent: {

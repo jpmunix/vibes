@@ -562,6 +562,31 @@ function ChatWindowContent({
     setIsPreviewOpen,
   ]);
 
+  // Slice 3.10: chat deleted → prune atoms for that chatId
+  useEffect(() => {
+    const unsubscribe = ipc.events.misc.onChatDeleted(({ chatId }) => {
+      setPendingAgentConsents((prev) =>
+        prev.filter((consent) => consent.chatId !== chatId),
+      );
+      setPendingAskUsers((prev) => prev.filter((ask) => ask.chatId !== chatId));
+      setPendingOCPermissions((prev) =>
+        prev.filter((p) => p.chatId !== chatId),
+      );
+      setAgentTodosByChatId((prev) => {
+        if (!prev.has(chatId)) return prev;
+        const next = new Map(prev);
+        next.delete(chatId);
+        return next;
+      });
+    });
+    return () => unsubscribe();
+  }, [
+    setPendingAgentConsents,
+    setPendingAskUsers,
+    setPendingOCPermissions,
+    setAgentTodosByChatId,
+  ]);
+
   const chatPanelNode = (
     <Panel
       collapsible

@@ -294,6 +294,13 @@ export const miscEvents = {
     payload: z.object({ chatId: z.number() }),
   }),
 
+  /** Slice 3.10: fired when a chat is deleted so renderer atoms (pending
+   *  permissions, asks, consents, todos) can be pruned. */
+  chatDeleted: defineEvent({
+    channel: "chat:deleted",
+    payload: z.object({ chatId: z.number() }),
+  }),
+
   /** Fired when the boot-time model validator replaces stale model references */
   modelsMigrated: defineEvent({
     channel: "models:migrated",
