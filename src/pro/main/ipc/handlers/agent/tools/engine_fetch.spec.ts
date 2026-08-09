@@ -7,15 +7,22 @@ vi.mock("@/main/settings", () => ({
       name: "google/gemini-3-flash-preview",
       provider: "openrouter",
     },
+    // engine_fetch.ts reads settings.proModeModel (FALLBACK_PRO_MODEL only
+    // when absent) — declare it so the assertion exercises real routing.
+    proModeModel: "openai/gpt-5.1-codex-mini",
     providerSettings: {
       openrouter: {
         apiKey: {
           value: "test-openrouter-key",
+          // openrouter.ts requires this field (c4967917) — without it the
+          // mock key goes through decrypt() and the test fails.
+          encryptionType: "plaintext",
         },
       },
       auto: {
         apiKey: {
           value: "vibes-api-key",
+          encryptionType: "plaintext",
         },
       },
     },

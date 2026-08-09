@@ -37,6 +37,8 @@ import {
   stopPerformanceMonitoring,
 } from "./utils/performance_monitor";
 import { shutdownOpenCode } from "./ipc/handlers/opencode_adapter";
+// B1: vibes-core runtime shutdown on quit.
+import { shutdownRuntime } from "./ipc/runtime/runtime_host";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
@@ -1037,6 +1039,8 @@ app.on("will-quit", () => {
   // Kill all dev servers started from Vibes to prevent orphan processes
   stopAllRunningApps();
   shutdownOpenCode();
+  // B1: graceful runtime shutdown (no-op if the bridge was never used).
+  void shutdownRuntime();
   stopPerformanceMonitoring();
   // Persist any pending memory buffers so they're processed on next startup
   try {

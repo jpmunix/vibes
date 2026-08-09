@@ -59,6 +59,12 @@ import {
   getSupabaseClientCode,
 } from "../../supabase_admin/supabase_context";
 
+// B5: vibes-core runtime bridge (feature-flagged alternative to OpenCode).
+import {
+  handleRuntimeStream,
+  cancelRuntimeStream,
+} from "../runtime/runtime_bridge";
+
 import fs from "node:fs";
 import * as path from "path";
 import * as os from "os";
@@ -2064,8 +2070,12 @@ This conversation includes one or more image attachments. When the user uploads 
             /* ignore — if we can't read it, we skip the optimization */
           }
 
+          // B5: single switch — vibes-core runtime bridge vs OpenCode.
+          const useRuntimeBridge =
+            readSettings().runtimeBridgeEnabled === true;
+
           logger.info(
-            `[ChatStream] Invoking handleOpenCodeStream. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`,
+            `[ChatStream] Invoking ${useRuntimeBridge ? "handleRuntimeStream (vibes-core)" : "handleOpenCodeStream"}. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`,
           );
 
           const {
@@ -2076,25 +2086,37 @@ This conversation includes one or more image attachments. When the user uploads 
             reasoningTokens: ocReasoningTokens,
             cachedTokens: ocCachedTokens,
             costUsd: ocCostUsd,
-          } = await handleOpenCodeStream(event, req, abortController, {
-            placeholderMessageId: placeholderAssistantMessage.id,
-            appPath: updatedChat.app.path,
-            chatMessages: updatedChat.messages,
-            agentId,
-            contextInstructions,
-            attachmentPaths:
-              attachmentPaths.length > 0 ? attachmentPaths : undefined,
-            attachments: req.attachments as any,
-            integrationEnvVars:
-              Object.keys(integrationEnvVars).length > 0
-                ? integrationEnvVars
-                : undefined,
-            priorMessages: req.priorMessages as any,
-            customSystemPrompt,
-            customPromptMode,
-            customAgentModelSource,
-            customAgentModel,
-          });
+          } = useRuntimeBridge
+            ? await handleRuntimeStream(event, req, abortController, {
+                placeholderMessageId: placeholderAssistantMessage.id,
+                appPath: updatedChat.app.path,
+                chatMessages: updatedChat.messages,
+                agentId,
+                contextInstructions,
+                customSystemPrompt,
+                customPromptMode,
+                customAgentModelSource,
+                customAgentModel,
+              })
+            : await handleOpenCodeStream(event, req, abortController, {
+                placeholderMessageId: placeholderAssistantMessage.id,
+                appPath: updatedChat.app.path,
+                chatMessages: updatedChat.messages,
+                agentId,
+                contextInstructions,
+                attachmentPaths:
+                  attachmentPaths.length > 0 ? attachmentPaths : undefined,
+                attachments: req.attachments as any,
+                integrationEnvVars:
+                  Object.keys(integrationEnvVars).length > 0
+                    ? integrationEnvVars
+                    : undefined,
+                priorMessages: req.priorMessages as any,
+                customSystemPrompt,
+                customPromptMode,
+                customAgentModelSource,
+                customAgentModel,
+              });
 
           // ── Handle cancellation gracefully ──────────────────────────────
           if (abortController.signal.aborted) {
@@ -2583,6 +2605,10 @@ This conversation includes one or more image attachments. When the user uploads 
       abortController.abort();
       activeStreams.delete(chatId);
       logger.log(`Aborted stream for chat ${chatId}`);
+      // B5: also ask the runtime to cancel its session (idempotent — the
+      // AbortController signal already interrupts run(), this is the safety
+      // net that guarantees the upstream HTTP stream is cut).
+      void cancelRuntimeStream(chatId);
     } else {
       logger.warn(`No active stream found for chat ${chatId}`);
       // No active stream — send end event directly since nobody else will

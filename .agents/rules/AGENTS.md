@@ -1,0 +1,172 @@
+# AGENTS.md — Reglas del proyecto Vibes / mCode
+
+> Contrato de trabajo entre **munix** (product owner) y el agente.
+> Las reglas aquí son **en piedra** salvo que munix diga lo contrario explícitamente.
+
+---
+
+## 1. Decisiones en piedra (no negociables)
+
+### 1.1 Tests por slice — **INNEGOCIABLE**
+
+Cada slice vertical (Track B de Fase 1 o cualquier tarea futura) **se entrega con sus tests**:
+
+1. **Unit tests** atómicos por archivo modificado (vibes-core ya los tiene con Vitest).
+2. **Contract test golden** contra OpenCode para todo output que cruza la frontera Vibes ↔ runtime (fixtures JSON grabadas del comportamiento actual, comparadas en CI).
+3. Si la slice toca la UI, **smoke test manual** documentado en el PR.
+
+**Reglas duras:**
+- No se da por terminada una slice sin sus tests verdes en CI.
+- No se fusiona un PR sin contract tests actualizados si la slice cambia output visible.
+- "Es trivial, no necesita tests" **no es una respuesta aceptable**. Toda tool, todo handler, todo evento nuevo lleva test.
+- Si un test requiere mock complejo, se documenta el porqué en el comentario del test.
+- Los contract tests se graban UNA vez con OpenCode y son **gold-master**: cambiar una fixture requiere discusión explícita.
+
+> **Por qué:** Vibes está en producción con [opencode_adapter.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/opencode_adapter.ts) (5500 líneas, debugueado durante meses). El swap a vibes-core **no puede introducir regresiones detectables solo por queja de usuario**. Enterprise first significa que cada release con el flag on pasa los mismos contract tests que pasaba con el flag off.
+
+---
+
+### 1.2 Documentos vivos vs en piedra
+
+| Tipo | Qué son | Cómo se tratan |
+|---|---|---|
+| **En piedra** | Decisiones arquitectónicas del Roadmap, contratos del workspace (`@vibes/*`), políticas de seguridad, schema de eventos `RuntimeEvent`, frontera runtime ↔ carcasa (P1) | No se tocan sin discusión explícita. Cambios requieren actualizar el documento padre + comentario en el PR. |
+| **Vivos** | `phase1-tasks.md`, `post-mvp-roadmap.md`, prioridades de cada fase | Se actualizan libremente como parte del trabajo. Cualquier cambio se documenta en el archivo. |
+| **Roadmap** | `implementation_plan.md` (el documento guía) | El agente lo lee pero no lo modifica salvo petición explícita. Es la constitución del proyecto. |
+
+> [!IMPORTANT]
+> Si una tarea pide tocar algo "en piedra" sin que munix lo haya pedido, **preguntar antes**. No asumir.
+
+---
+
+### 1.3 Trabajo en slices verticales
+
+La Fase 1 y todo el trabajo futuro se organiza en **slices verticales** (cada uno toca ambos repos de extremo a extremo). No se entrega código sin un slice testeable de extremo a extremo.
+
+Cada slice tiene:
+- **Scope claro** (archivos a tocar).
+- **Criterio de aceptación verificable** (test o demo).
+- **Contract test golden asociado** (si toca output visible).
+- **Checkpoint demo-able**: munix puede probarlo manualmente y dar feedback.
+
+---
+
+### 1.4 Bases de datos — el agente propone, munix ejecuta
+
+- El agente **nunca** ejecuta queries de DB directamente contra bases de producción/desarrollo de munix.
+- El agente entrega las queries exactas (DDL/DML) en el documento de la tarea.
+- munix las ejecuta, valida, y reporta.
+- Para tests del agente (vibes-core), las migraciones a SQLite de tests sí las gestiona el agente, pero documenta el schema esperado.
+
+---
+
+### 1.5 Repositorio y builds
+
+- **Nunca** `commit`, `push`, ni crear PR sin que munix lo pida.
+- **Nunca** `build` ni reiniciar procesos del proyecto sin que munix lo pida.
+- El agente modifica archivos libremente; el control de versiones lo decide munix.
+- Cuando el agente propone un comando `pnpm test`, `pnpm build`, etc., lo etiqueta como **"ejecutar cuando munix lo autorice"**.
+
+---
+
+### 1.6 Frontera runtime ↔ carcasa (P1 del Roadmap)
+
+- **Runtime** (vibes-core): provider-agnóstico, no conoce UI, no conoce Vibes, no conoce OpenCode. Solo sabe de `RuntimeEvent`, `MessageContentPart`, `ToolResult`, `Workspace`.
+- **Carcasa** (Vibes/mCode): traduce `RuntimeEvent` a tags `<vibes-*>` para la UI. Decide prompts, contextos, pills de permisos, visionador sintético. El runtime nunca hace preprocessing de visión.
+- Si una feature pide meter algo del runtime en Vibes o viceversa → **preguntar antes**, probablemente viola P1.
+
+---
+
+### 1.7 Lenguaje y tono
+
+- Español de España siempre.
+- Tono: amable, empático, profesional. Algo de humor y tacos están bien; mala educación nunca.
+- En documentos: github markdown con links `file://`. Nunca mensajes de commit, push, ni PR automáticos.
+- Respetar las reglas globales del usuario (`/home/munix/.gemini/config/rules/`), en particular Context7 para docs de librerías.
+
+---
+
+## 2. Cosas que se hablan al post-MVP
+
+Estas se mencionan pero no se deciden todavía. Si salen en conversación, el agente anota pero no actúa:
+
+- **DP-2 (attachments/vision)**: soporte multimodal en `MessageContentPart` → Fase 3. mCode implementa visionador sintético.
+- **DP-3 (todos/question tool)**: Fase 2.
+- **Retry/fallback** del loop con `error_classifier` → Fase 4 (G9).
+- **Publicación de paquetes `@vibes/*`** en registry → Fase 5.
+- **Compactación A+B** → Fase 4.
+- **MCP Gateway** → Fase 3.
+- **SDKs** (Runtime SDK + Extensions SDK) → Fase 5.
+- **Tests E2E con Playwright contra Electron real** → Fase 5 (no MVP).
+- **Permisos DSL** (más allá de pills allow/deny/ask) → Fase 5.
+
+---
+
+## 3. Cómo trabaja el agente
+
+### 3.1 Antes de escribir código
+
+1. Lee los documentos relevantes: Roadmap, fase actual, AGENTS.md.
+2. Inspecciona el código real con tools (grep_search, view_file, run_command). Nunca asume.
+3. Identifica el punto exacto de cambio con `view_file` con `StartLine`/`EndLine` si el archivo es grande.
+4. Verifica logs antes de diagnosticar errores. Si un test falla, leer el log entero.
+5. Si la tarea es ambigua o de scope grande → preguntar antes, no inventar.
+
+### 3.2 Al escribir código
+
+1. Un archivo por scope atómico. Si tocas dos cosas no relacionadas, son dos ediciones.
+2. Cita los archivos exactos con links `file://` en el documento de la tarea.
+3. Justifica cada cambio con referencia al código fuente (línea, función, contrato).
+4. No introduces regresiones → cada cambio preserva el comportamiento previo (tests verdes).
+5. No muta estado global sin control de concurrencia explícito.
+6. Mantén comentarios existentes, docstrings, y la documentación a menos que la tarea pida lo contrario.
+
+### 3.3 Al cerrar una tarea
+
+1. Actualiza el documento de la slice con: archivos tocados, criterios de aceptación logrados/no logrados, tests añadidos.
+2. Reporta a munix con resumen corto (no parafrasea el doc, apunta al doc).
+3. No declara éxito sin haber visto tests verdes en output real (no basta "debería funcionar").
+
+### 3.4 Errores y excepciones
+
+- Nunca swallow exceptions con `catch {}` silencioso.
+- Nunca devuelvas fallback vacío cuando un API retorna null (investiga el upstream).
+- Nunca comentes tests que fallan para "arreglarlos". Investiga por qué fallan.
+- Si un comando falla, explícalo a munix con el log. No lo escondas.
+- Si un comando es peligroso (`rm`, `drop`, `kill`), avisa antes y pide confirmación.
+
+---
+
+## 4. Decisión temporal sobre modelos y providers
+
+- El agente puede sugerir cambios de modelo en `settings.json` de Vibes, pero no los ejecuta.
+- Si el provider por defecto (OpenAI-compatible) no soporta visión, mCode implementa fallback con visionador sintético.
+- El runtime no sabe nada de providers específicos.
+
+---
+
+## 5. Postura ante decisiones en documentos
+
+| Si munix dice... | El agente... |
+|---|---|
+| "Anota esto en el Roadmap" | Lo añade al documento correspondiente con referencia clara. |
+| "Decisión en piedra: X" | La refleja aquí en AGENTS.md como regla §1, y en el doc técnico correspondiente. |
+| "Esto va a post-MVP" | Lo anota en §2 de AGENTS.md y en el doc de la fase correspondiente. |
+| "Cámbialo" sobre algo en piedra | Pregunta para confirmar antes de cambiar. |
+| "Cámbialo" sobre algo vivo | Procede libremente, documenta el cambio. |
+
+---
+
+## 6. Anti-patrones explícitos
+
+- "Es trivial, no necesita test" → siempre necesita test.
+- "Lo arreglo después" → no se arregla después, se arregla ahora o se documenta como deuda explícita.
+- "Esto ya estaba así" → el estado actual no es sagrado si contradice el Roadmap.
+- Refactors especulativos ("ya que estamos aquí, mejor reescribo X") → scope creep. Si se ve la necesidad, se propone como tarea aparte.
+- "Funciona en mi cabeza" → si no hay test verde, no funciona.
+- Mezclar mcode (producto/carcasa) con opencode (motor deprecado) en explicaciones. mCode es la carcasa, vibes-core es el runtime, OpenCode es lo que estamos sustituyendo.
+
+---
+
+**Última actualización:** 2026-08-08 (sesión nocturna).
+**Mantenedor:** munix.

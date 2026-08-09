@@ -28,6 +28,13 @@ import { getVibesAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
 import { extractReadableError, classifyError } from "../utils/error_classifier";
 import type { ChatStreamParams } from "@/ipc/types";
+// B3/B5: runtime bridge permission fallback (shared resolver for the
+// `opencode-permission:respond` IPC channel).
+import { respondRuntimePermission } from "../runtime/permission_state";
+// B6: pure prompt-composition helper moved out of this adapter so the runtime
+// bridge can reuse it. Imported here because the adapter still uses it
+// internally; re-exported below to keep the public surface unchanged.
+import { attachToSystemPrompt } from "../runtime/prompt_attach";
 import * as path from "node:path";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -2791,29 +2798,10 @@ function registerExtraProvider(
  *
  * ============================================================================
  */
-export function attachToSystemPrompt(
-  contextInstructions?: string[],
-  customSystemPrompt?: string,
-): string | undefined {
-  const parts: string[] = [];
-
-  // 1. Inyectar primero la ristra de instrucciones estáticas del pipeline
-  // (Idioma, esquemas DB, MCPs, artefactos, etc.)
-  if (contextInstructions && contextInstructions.length > 0) {
-    parts.push(contextInstructions.join("\n\n"));
-  }
-
-  // 2. Inyectar el system prompt de agente personalizado (si existe)
-  if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
-    parts.push(customSystemPrompt);
-  }
-
-  if (parts.length === 0) {
-    return undefined;
-  }
-
-  return parts.join("\n\n---\n\n");
-}
+// B6: attachToSystemPrompt lives in a pure module so the runtime bridge can
+// reuse it without importing this adapter. Re-exported to keep the public
+// surface unchanged.
+export { attachToSystemPrompt };
 
 /**
  * Handle a chat stream using OpenCode AI SDK.
@@ -5528,11 +5516,15 @@ export function registerPermissionHandler() {
       const resolver = pendingPermissionResolvers.get(requestId);
       if (resolver) {
         resolver(response);
-      } else {
-        logger.warn(
-          `[OC:Permission] No pending resolver for ${requestId} — already timed out?`,
-        );
+        return;
       }
+
+      // B3/B5: the request may belong to the vibes-core runtime bridge.
+      if (respondRuntimePermission(requestId, response)) return;
+
+      logger.warn(
+        `[OC:Permission] No pending resolver for ${requestId} — already timed out?`,
+      );
     },
   );
 }

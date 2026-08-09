@@ -473,6 +473,10 @@ export const UserSettingsSchema = z
     executorModel: z.string().optional(), // lightweight tasks (titles, summaries, compaction, mockup, commits)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     visionPreprocessorEnabled: z.boolean().optional(),
+    // B5: routes chat streams through the vibes-core runtime instead of
+    // OpenCode when true. Default false — OpenCode remains the engine until
+    // the runtime bridge is validated (see phase1-tasks.md).
+    runtimeBridgeEnabled: z.boolean().optional(),
     visionPreprocessorModel: z.string().optional(),
     visionPreprocessorPrompt: z.string().optional(),
     // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.

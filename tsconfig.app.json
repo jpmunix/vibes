@@ -3,7 +3,10 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // B6: lib ES2022 (types only, emission stays ES2020) because the
+    // @vibes/* path aliases pull vibes-core sources into this graph and they
+    // use Error.cause / class field semantics that require the ES2022 lib.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -24,7 +27,18 @@
     // import
     "paths": {
       "*": ["./*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // W1 (Fase 1): resolución de @vibes/* contra el fuente TypeScript de
+      // vibes-core. Paridad con los aliases de vite.main.config.mts.
+      "@vibes/runtime-impl": ["../vibes-core/packages/runtime-impl/src/index.ts"],
+      "@vibes/runtime": ["../vibes-core/packages/runtime/src/index.ts"],
+      "@vibes/shared": ["../vibes-core/packages/shared/src/index.ts"],
+      "@vibes/tools": ["../vibes-core/packages/tools/src/index.ts"],
+      "@vibes/workspace": ["../vibes-core/packages/workspace/src/index.ts"],
+      "@vibes/bridge": ["../vibes-core/packages/bridge/src/index.ts"],
+      "@vibes/providers/sqlite": ["../vibes-core/packages/providers/src/sqlite/index.ts"],
+      "@vibes/providers/openai-compatible": ["../vibes-core/packages/providers/src/openai-compatible/index.ts"],
+      "@vibes/providers/openrouter": ["../vibes-core/packages/providers/src/openrouter/index.ts"]
     }
   },
   "include": ["src", "e2e-tests", "shared"],
