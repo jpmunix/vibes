@@ -8,7 +8,6 @@ import {
 } from "./main/tray";
 import * as path from "node:path";
 import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
-import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
 import { ensureNodeRuntime } from "./main/node_runtime";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
@@ -36,7 +35,6 @@ import {
   startPerformanceMonitoring,
   stopPerformanceMonitoring,
 } from "./utils/performance_monitor";
-import { shutdownOpenCode } from "./ipc/handlers/opencode_adapter";
 // B1: vibes-core runtime shutdown on quit.
 import { shutdownRuntime } from "./ipc/runtime/runtime_host";
 import fs from "fs";
@@ -170,48 +168,6 @@ const flavorUserData = path.join(
 app.setPath("userData", flavorUserData);
 app.name = activeFlavor.productName;
 
-// ─── Global Skills Migration: ~/.config/opencode/skills → userData/opencode-config/skills ───
-// Legacy global skills were stored in ~/.config/opencode/skills.
-// We migrate (move) them to the new isolated userData/opencode-config/skills directory,
-// deleting the old ones to prevent OpenCode from loading them as ghost skills in the background.
-try {
-  const os = require("node:os");
-  const oldSkillsDir = path.join(os.homedir(), ".config", "opencode", "skills");
-  const newSkillsDir = path.join(flavorUserData, "opencode-config", "skills");
-
-  if (fs.existsSync(oldSkillsDir)) {
-    const entries = fs.readdirSync(oldSkillsDir, { withFileTypes: true });
-    let migratedCount = 0;
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const oldSkillPath = path.join(oldSkillsDir, entry.name);
-        const newSkillPath = path.join(newSkillsDir, entry.name);
-        const oldSkillFile = path.join(oldSkillPath, "SKILL.md");
-        const oldDisabledFile = path.join(oldSkillPath, "SKILL.disabled");
-
-        if (fs.existsSync(oldSkillFile) || fs.existsSync(oldDisabledFile)) {
-          if (!fs.existsSync(newSkillPath)) {
-            fs.mkdirSync(newSkillPath, { recursive: true });
-          }
-          fs.cpSync(oldSkillPath, newSkillPath, {
-            recursive: true,
-            force: true,
-          });
-          fs.rmSync(oldSkillPath, { recursive: true, force: true });
-          migratedCount++;
-        }
-      }
-    }
-    if (migratedCount > 0) {
-      log.info(
-        `[Migration] Migrated ${migratedCount} legacy global skills to ${newSkillsDir}`,
-      );
-    }
-  }
-} catch (err: any) {
-  log.warn(`[Migration] Global skills migration failed: ${err.message}`);
-}
-
 // Load environment variables from .env file
 dotenv.config();
 
@@ -338,19 +294,6 @@ export async function onReady() {
       const { execSync } = require("child_process");
       const HOME = process.env.HOME || `/home/${process.env.USER}`;
 
-      // VACUUM + WAL checkpoint on OpenCode DB
-      const openCodeDbPath = path.join(
-        HOME,
-        ".local/share/opencode/opencode.db",
-      );
-      if (fs.existsSync(openCodeDbPath)) {
-        execSync(
-          `sqlite3 "${openCodeDbPath}" "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;"`,
-          { timeout: 60000 },
-        );
-        logger.info("[Migration] OpenCode DB optimized");
-      }
-
       // VACUUM the app's local SQLite DB too
       const appDbPath = path.join(app.getPath("userData"), "sqlite.db");
       if (fs.existsSync(appDbPath)) {
@@ -458,16 +401,6 @@ export async function onReady() {
     warmUpScaffoldCache().catch((err) =>
       logger.error("Scaffold cache warmup failed:", err),
     );
-
-    // Check/install OpenCode binary in background (was blocking splash for ~2.2s)
-    const openCodeResult = await ensureOpenCodeInstalled();
-    if (!openCodeResult.ok) {
-      logger.warn(
-        "OpenCode installation failed — agent mode will not work until manually installed",
-      );
-    } else if (openCodeResult.updated) {
-      logger.info(`OpenCode updated to v${openCodeResult.version}`);
-    }
 
     // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
@@ -1038,7 +971,6 @@ app.on("will-quit", () => {
   destroyTray();
   // Kill all dev servers started from Vibes to prevent orphan processes
   stopAllRunningApps();
-  shutdownOpenCode();
   // B1: graceful runtime shutdown (no-op if the bridge was never used).
   void shutdownRuntime();
   stopPerformanceMonitoring();

@@ -125,11 +125,6 @@ import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
-import {
-  handleOpenCodeStream,
-  revertLastOpenCodeMessage,
-  destroyOpenCodeSession,
-} from "./opencode_adapter";
 import { uploadChatAttachment } from "./bunny_handlers";
 import { bufferChatRound } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
@@ -475,8 +470,10 @@ function registerChatStreamHandlers() {
 
       // Handle redo option: remove the most recent messages if needed
       if (req.redo || req.undoRedo) {
-        // Clear the OpenCode session — git was reverted, agent must forget old work
-        revertLastOpenCodeMessage(req.chatId);
+        // undo/redo: the runtime creates a fresh session per turn (DP-4), so
+        // there is no OpenCode session to revert. The DB messages are handled
+        // below.
+        // revertLastOpenCodeMessage(req.chatId);  // — deprecated (OpenCode removed)
         // Get the most recent messages
         const chatMessages = [...chat.messages];
 
@@ -594,8 +591,9 @@ function registerChatStreamHandlers() {
 
         // If it was just an undoRedo (without a new prompt), we stop here
         if (req.undoRedo && !req.prompt) {
-          // Kill the OpenCode session so the agent forgets the reverted work
-          revertLastOpenCodeMessage(req.chatId);
+          // undoRedo without prompt: the runtime creates a fresh session per
+          // turn (DP-4), so there is nothing to revert.
+          // revertLastOpenCodeMessage(req.chatId);  // — deprecated (OpenCode removed)
 
           // Notify that the stream/operation ended (since we just undid)
           safeSend(event.sender, "chat:response:end", {
@@ -2070,14 +2068,7 @@ This conversation includes one or more image attachments. When the user uploads 
             /* ignore — if we can't read it, we skip the optimization */
           }
 
-          // B5: single switch — vibes-core runtime bridge vs OpenCode.
-          const useRuntimeBridge =
-            readSettings().runtimeBridgeEnabled === true;
-
-          logger.info(
-            `[ChatStream] Invoking ${useRuntimeBridge ? "handleRuntimeStream (vibes-core)" : "handleOpenCodeStream"}. Mode: ${currentChatMode}, agentId: ${agentId}, customSystemPrompt length: ${customSystemPrompt?.length || 0}, customPromptMode: ${customPromptMode}`,
-          );
-
+          // vibes-core runtime bridge — the only streaming path (OpenCode removed).
           const {
             fullResponse: openCodeResponse,
             success,
@@ -2086,37 +2077,17 @@ This conversation includes one or more image attachments. When the user uploads 
             reasoningTokens: ocReasoningTokens,
             cachedTokens: ocCachedTokens,
             costUsd: ocCostUsd,
-          } = useRuntimeBridge
-            ? await handleRuntimeStream(event, req, abortController, {
-                placeholderMessageId: placeholderAssistantMessage.id,
-                appPath: updatedChat.app.path,
-                chatMessages: updatedChat.messages,
-                agentId,
-                contextInstructions,
-                customSystemPrompt,
-                customPromptMode,
-                customAgentModelSource,
-                customAgentModel,
-              })
-            : await handleOpenCodeStream(event, req, abortController, {
-                placeholderMessageId: placeholderAssistantMessage.id,
-                appPath: updatedChat.app.path,
-                chatMessages: updatedChat.messages,
-                agentId,
-                contextInstructions,
-                attachmentPaths:
-                  attachmentPaths.length > 0 ? attachmentPaths : undefined,
-                attachments: req.attachments as any,
-                integrationEnvVars:
-                  Object.keys(integrationEnvVars).length > 0
-                    ? integrationEnvVars
-                    : undefined,
-                priorMessages: req.priorMessages as any,
-                customSystemPrompt,
-                customPromptMode,
-                customAgentModelSource,
-                customAgentModel,
-              });
+          } = await handleRuntimeStream(event, req, abortController, {
+            placeholderMessageId: placeholderAssistantMessage.id,
+            appPath: updatedChat.app.path,
+            chatMessages: updatedChat.messages,
+            agentId,
+            contextInstructions,
+            customSystemPrompt,
+            customPromptMode,
+            customAgentModelSource,
+            customAgentModel,
+          });
 
           // ── Handle cancellation gracefully ──────────────────────────────
           if (abortController.signal.aborted) {

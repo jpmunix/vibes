@@ -50,10 +50,11 @@ import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnost
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
-import {
-  registerQuestionHandler,
-  registerPermissionHandler,
-} from "./handlers/opencode_adapter";
+import { registerPermissionHandler } from "./runtime/permission_handler";
+// registerQuestionHandler still lives in opencode_adapter.ts until the runtime
+// supports ask_user. The adapter's version degrades gracefully (logs + returns)
+// when there is no OpenCode server running.
+import { registerQuestionHandler } from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";
 import log from "electron-log";

@@ -70,7 +70,6 @@ import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
-import { shutdownOpenCode } from "./opencode_adapter";
 import { detectProjectLanguage } from "../utils/detect_language";
 
 const logger = log.scope("app_handlers");
@@ -81,11 +80,10 @@ export function registerAppHandlers() {
     app.quit();
   });
 
+  // OpenCode server restart — deprecated, now a no-op. The vibes-core runtime
+  // resolves model/provider on each request and needs no server restart.
   createTypedHandler(systemContracts.restartOpenCodeServer, async () => {
-    await shutdownOpenCode();
-    logger.info(
-      "[OpenCode] Server shutdown by user (config change). Will reinit on next chat.",
-    );
+    logger.info("[Runtime] restartOpenCodeServer is a no-op (OpenCode removed).");
   });
 
   createTypedHandler(appContracts.createApp, async (_, params, context) => {

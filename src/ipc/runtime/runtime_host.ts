@@ -46,6 +46,37 @@ import { readSettings } from "../../main/settings";
 
 const logger = log.scope("runtime_host");
 
+// ============================================================================
+// Logger adapter: vibes-core Logger → electron-log
+// ============================================================================
+
+/**
+ * Adapts the vibes-core `Logger` interface to electron-log.
+ * The runtime emits structured diagnostics (llm.request, tool.dispatch,
+ * permission.*) at debug level — set VIBES_RUNTIME_LOG_LEVEL=debug to see them.
+ */
+const runtimeLogScope = log.scope("vibes-runtime");
+const runtimeLogLevel = (process.env.VIBES_RUNTIME_LOG_LEVEL ??
+  (app.isPackaged ? "info" : "debug")) as string;
+const runtimeDebugEnabled = runtimeLogLevel === "debug";
+
+const vibesRuntimeLogger = {
+  debug(msg: string, ctx?: Record<string, unknown>): void {
+    if (runtimeDebugEnabled) {
+      runtimeLogScope.info(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+    }
+  },
+  info(msg: string, ctx?: Record<string, unknown>): void {
+    runtimeLogScope.info(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+  },
+  warn(msg: string, ctx?: Record<string, unknown>): void {
+    runtimeLogScope.warn(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+  },
+  error(msg: string, ctx?: Record<string, unknown>): void {
+    runtimeLogScope.error(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+  },
+};
+
 /** OpenRouter requires these headers on every request. */
 const OPENROUTER_HEADERS: Record<string, string> = {
   "HTTP-Referer": "https://vibes.app",
@@ -196,6 +227,7 @@ export function getRuntime(): Runtime {
     .registerProtocol(OPENAI_COMPATIBLE_PROTOCOL, openAiCompatibleFactory())
     .tools(createBuiltInRegistry())
     .permissionGate(createVibesPermissionGate())
+    .logger(vibesRuntimeLogger)
     .build();
 
   logger.info(`[RuntimeHost] Runtime ready (storage: ${storagePath})`);

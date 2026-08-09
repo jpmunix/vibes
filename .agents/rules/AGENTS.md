@@ -86,6 +86,21 @@ Cada slice tiene:
 
 ---
 
+### 1.8 Inventario de tests y mantenimiento — **VITAL**
+
+El inventario completo y detallado de todos los tests del repo vive en [`docs/TESTING.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/TESTING.md). Es un **documento vivo** y la fuente de verdad de qué tests existen, qué cubren, cuándo usarlos y dónde están.
+
+**Reglas:**
+- Si se **añade** un test nuevo → se añade su entrada en `docs/TESTING.md` en el mismo cambio.
+- Si se **modifica** un test existente → se actualiza su descripción en `docs/TESTING.md`.
+- Si se **elimina** un test → se elimina su entrada y se documenta por qué en el PR.
+- Antes de tocar cualquier test, **consultar `docs/TESTING.md`** para entender qué cubre y qué contratos (B6 swap, golden fixtures, E2E snapshots) depende de él.
+- El **contract test golden del swap B6** ([`runtime_bridge.contract.test.ts`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.contract.test.ts)) es gold-master: cambiar fixtures requiere discusión explícita (§1.1).
+- Los **E2E snapshots** (254 archivos en `e2e-tests/snapshots/`) son golden: si cambian, investigar antes de aceptar. No `--update-snapshots` a lo bruto.
+- Documentación cruzada con vibes-core: [`../vibes-core/docs/TESTING.md`](file:///home/munix/Desarrollo/GitRepo/vibes-core/docs/TESTING.md).
+
+> **Por qué:** Vibes está en producción. Sin un inventario actualizado, es imposible saber qué coverage existe antes de tocar algo. Un test que no está documentado es un test que se rompe sin que nadie se entere.
+
 ## 2. Cosas que se hablan al post-MVP
 
 Estas se mencionan pero no se deciden todavía. Si salen en conversación, el agente anota pero no actúa:
@@ -168,5 +183,5 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 
 ---
 
-**Última actualización:** 2026-08-08 (sesión nocturna).
+**Última actualización:** 2026-08-09 (inventario de tests + §1.8).
 **Mantenedor:** munix.
