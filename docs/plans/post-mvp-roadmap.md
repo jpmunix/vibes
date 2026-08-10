@@ -81,6 +81,7 @@
 | 5.5 | **SLOs y rendimiento** | D10 | Latencia, tokens/seg, sesiones concurrentes. Validar worker thread vs proceso. |
 | 5.6 | **Permission DSL** | P10 | Reglas con patrones (`shell: git *` allow, `shell: *rm*` ask). |
 | 5.7 | **Browser Controller** | — | Si no se hizo en Fase 3. |
+| 5.8 | **Catálogo de modelos multi-proveedor** | G8 | Integrar **models.dev** como fuente complementaria de metadatos (`models.json` → metadatos ricos por ID `provider/model`; `api.json` → precios de proveedor directo). Rellena description/context/output/modalities/capabilities cuando el `/models` de un proveedor custom devuelve datos pobres. Vive en la carcasa (no toca el runtime → respeta P1). Detalle: [`implementation_plan.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/../.gemini/antigravity/brain/53ad0389-55ce-4b45-9efe-daa2c1d4fd9a/implementation_plan.md). |
 
 **Criterio de salida:** un Private Edition puede arrancar con su propio manifest, sin modificar el core.
 

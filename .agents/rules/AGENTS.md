@@ -101,6 +101,24 @@ El inventario completo y detallado de todos los tests del repo vive en [`docs/TE
 
 > **Por qué:** Vibes está en producción. Sin un inventario actualizado, es imposible saber qué coverage existe antes de tocar algo. Un test que no está documentado es un test que se rompe sin que nadie se entere.
 
+---
+
+### 1.9 Inventario de features listas para probar — **VITAL**
+
+Cada feature cerrada en verde se anota en el artifact [`brain/feature_inventory.md`](file:///home/munix/.gemini/antigravity/brain/4a8ac19e-2d71-470d-8f53-f0c0dd1c7614/feature_inventory.md) con bullets cortos (qué probar, qué validar, resultado esperado). Es la **lista viva** de qué se puede testear a fondo antes de fusionar / deployar.
+
+**Reglas:**
+- Cada vez que se cierra una feature (slice / fix / refactor) → añadir bullets al artifact en el mismo cambio.
+- Formato: **bullets cortos**, una línea por bullet. Sin prosa larga, sin párrafos descriptivos.
+- Cada bullet = **una acción verificable** ("pulsar X", "verificar Y", "esperar Z").
+- Si la feature se subdivide en sub-slices (Slice 3.8 → 3.8.1/3.8.2/3.8.3/3.8.4) → agrupar visualmente con el mismo nivel de indentación.
+- Si un bullet cambia de comportamiento (regresión, fix) → actualizar el bullet en lugar de añadir uno nuevo con "(fix)".
+- El artifact incluye una sección final **"Próximo test flight"** con los 5-10 bullets más críticos para probar primero.
+
+> **Por qué:** munix necesita tener siempre a la vista qué se puede probar y qué cubre cada feature, sin releer el walkthrough entero. Si el artifact no se actualiza con cada slice, perdemos el rastro de qué testear primero.
+
+---
+
 ## 2. Cosas que se hablan al post-MVP
 
 Estas se mencionan pero no se deciden todavía. Si salen en conversación, el agente anota pero no actúa:
@@ -114,6 +132,7 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 - **SDKs** (Runtime SDK + Extensions SDK) → Fase 5.
 - **Tests E2E con Playwright contra Electron real** → Fase 5 (no MVP).
 - **Permisos DSL** (más allá de pills allow/deny/ask) → Fase 5.
+- **Catálogo de modelos multi-proveedor (models.dev)** → Fase 5 (5.8 del post-MVP). Integrar models.dev como fuente complementaria de metadatos (description/context/output/modalities/capabilities/precios de proveedor directo) cuando un proveedor custom devuelve datos pobres en su `/models`. Vive en la carcasa (respeta P1).
 
 ---
 
