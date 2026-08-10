@@ -60,12 +60,29 @@ Cada slice tiene:
 
 ---
 
-### 1.5 Repositorio y builds
+### 1.5 Repositorio y builds — **rutina del agente**
 
-- **Nunca** `commit`, `push`, ni crear PR sin que munix lo pida.
-- **Nunca** `build` ni reiniciar procesos del proyecto sin que munix lo pida.
-- El agente modifica archivos libremente; el control de versiones lo decide munix.
-- Cuando el agente propone un comando `pnpm test`, `pnpm build`, etc., lo etiqueta como **"ejecutar cuando munix lo autorice"**.
+**Lo que el agente ejecuta por su cuenta (verificación pasiva, sin side-effects fuera del árbol):**
+- `pnpm test` / `vitest` (correr la suite).
+- `pnpm typecheck` / `tsc --noEmit`.
+- `pnpm lint` / `eslint`.
+- Comandos puramente lectores (`ls`, `cat`, `grep`, `find`, `wc`, `git status`, `git diff`, `git log`).
+
+Estos son **parte del trabajo del agente** y se ejecutan sin pedir permiso. El agente los lanza para verificar sus propios cambios (regla §3.3) y para diagnosticar (regla §3.1). No necesitan OK de munix.
+
+**Lo que el agente nunca ejecuta sin OK explícito:**
+- `pnpm build` (ni `tsc -b`, ni `vite build`, ni `electron-builder`, ni equivalentes).
+- Reiniciar procesos del proyecto (`pm2 restart`, `kill` de pids del proyecto, `pnpm dev` en background, levantar/parar la app Electron).
+- Acciones de repo: `git commit`, `git push`, `gh pr create`, `git tag`, `git checkout -b`.
+- Acciones destructivas: `rm -rf`, `git reset --hard`, drop de DB.
+- Cualquier comando que mute estado fuera del árbol de trabajo del agente (instalaciones globales, `npm i -g`, tocar `/etc`, etc.).
+
+**Cómo lo pide el agente cuando lo necesita:**
+> *"¿Ejecuto `pnpm build` / `pm2 restart` / `git commit -am '...'`?"*
+
+Y espera el OK antes de tocar.
+
+**Resumen de una línea:** el agente verifica (tests/typecheck/lint) por su cuenta; el resto lo decide munix.
 
 ---
 
@@ -116,6 +133,87 @@ Cada feature cerrada en verde se anota en el artifact [`brain/feature_inventory.
 - El artifact incluye una sección final **"Próximo test flight"** con los 5-10 bullets más críticos para probar primero.
 
 > **Por qué:** munix necesita tener siempre a la vista qué se puede probar y qué cubre cada feature, sin releer el walkthrough entero. Si el artifact no se actualiza con cada slice, perdemos el rastro de qué testear primero.
+
+---
+
+### 1.10 Board de Trello — LA FUENTE DE VERDAD — **INNEGOCIABLE**
+
+El board de Trello ([board](https://trello.com/b/YFE2Kkjv)) es **la única fuente de verdad** del estado del proyecto. munix no es el orquestador ni la memoria del agente: **el agente se auto-gestiona sobre el board**. munix mira el board, dice "esto", y el agente hace el resto (coger, trabajar, documentar, mover, bloquear, cerrar). munix revisa **código final + pruebas manuales**, no el proceso.
+
+El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md). Este §1.10 es el resumen ejecutivo **en piedra**; el workflow es la guía operativa (documento vivo).
+
+**Los scripts** viven en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/) (Node nativo, sin deps, idempotentes): `list-cards.mjs` (leer), `create-card.mjs` (crear), `update-card.mjs` (mover/actualizar/comentar), `bootstrap-board.mjs` (montar/renormalizar). Credenciales en `.env.trello` (raíz).
+
+#### 1.10.1 Las listas (canónicas, no renombrar sin OK)
+
+| Lista | Qué es | Quién la mueve |
+|---|---|---|
+| **Backlog** | Deudas + roadmap post-MVP (fases 2-5) | El agente propone, munix decide |
+| **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
+| **Doing** | En curso (máx 1-2) | El agente |
+| **Blocked** | Atascada (falta munix/decisión/dep) | El agente con motivo |
+| **Review** | Terminada, esperando OK de munix | El agente al terminar |
+| **Done** | Cerrada y verificada | El agente tras OK explícito de munix |
+
+#### 1.10.2 El flujo obligatorio (cada card que se trabaja)
+
+1. **Leer el board** (`list-cards --json`) antes de trabajar. Priorizar: Blocked desbloqueable → To-do → Backlog propuesto.
+2. **Coger la card**: `update-card --move Doing --comment "🔄 [Doing] Plan: ..."` — el comentario de inicio documenta el plan (1-2 líneas).
+3. **Trabajar** siguiendo AGENTS.md (slices verticales, tests, contract golden). Marcar checklist con `--check-item` conforme se cumplen criterios (no a lo bruto).
+4. **Atasco** → `--move Blocked --comment "🚧 [Blocked] Falta: ..."` — **nunca silencio**. El comentario dice qué falta y qué se necesita para desbloquear.
+5. **Terminar** → `--move Review --comment "✅ [Review] Tests: N verdes (cmd). Archivos: ..."` — con evidencia de verificación.
+6. **Cerrar** → `--move Done` **SOLO con OK explícito de munix** + comentario de cierre `🏁 [Done]` + bitácora si hubo decisiones.
+
+#### 1.10.3 Reglas duras del board
+
+- ❌ **NUNCA** mover a `Done` sin OK explícito de munix + evidencia (tests verdes / verificación manual).
+- ❌ **NUNCA** trabajar en más de 1-2 cards a la vez (si estás en Doing, no coges otra).
+- ❌ **NUNCA** crear cards duplicadas (los scripts son idempotentes; mirar antes con list-cards).
+- ❌ **NUNCA** archivar/borrar cards sin decírselo a munix (archivar = perder evidencia).
+- ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra).
+- ❌ **NUNCA** marcar checklist sin haber verificado el criterio.
+- ✅ **SIEMPRE** documentar con comentarios (inicio, atasco, review, cierre).
+- ✅ **SIEMPRE** proponer (comentar) antes de mover cosas de Backlog — el backlog es prioridad de munix.
+
+#### 1.10.4 Comentarios-bitácora (lo que separa el oro de la mierda)
+
+> **Por qué:** dentro de 6 meses, un agente (o munix) debe leer una card de Done y entender TODO sin hablar con nadie. La memoria del proyecto vive en los comentarios del board, no en las conversaciones.
+
+**Formato (prefijos escaneables):**
+
+| Prefijo | Uso | Ejemplo |
+|---|---|---|
+| `🔄 [Doing]` | Inicio (plan) | `🔄 [Doing] Plan: migrar X a Y, tests A/B` |
+| `🚧 [Blocked]` | Atasco (qué falta) | `🚧 [Blocked] Falta decisión munix: ¿SQLite o Postgres?` |
+| `✅ [Review]` | Listo (evidencia) | `✅ [Review] Tests: 12 verdes (pnpm test). Archivos: 3` |
+| `🏁 [Done]` | Cierre con OK | `🏁 [Done] OK munix. Cerrada.` |
+| `🧠 Contexto` | Decisión/porqué técnico | `🧠 Contexto: elegimos X sobre Y porque ...` |
+| `📌 Para el agente` | Nota para el futuro | `📌 Para el agente: si tocas esto, ojo con Z` |
+| `♻️ Deuda` | Deuda detectada | `♻️ Deuda: al hacer X, Y quedó sin testear → card nueva` |
+
+**Qué escribir:** decisiones y su porqué, alternativas descartadas, referencias a archivos clave, bugs cazados y cómo, cosas no obvias que el código no dice.
+**Qué NO escribir:** "he hecho la card", repetir la descripción, detalles que ya están en el código/commits.
+
+> [!TIP]
+> Regla del pulgar: **si un agente futuro leyera SOLO los comentarios de la card, ¿podría retomar el trabajo sin hablar con nadie?** Si no, falta contexto.
+
+#### 1.10.5 Detección de deuda (el agente como detector)
+
+Mientras trabaja, si encuentra un bug que no arregla (fuera de scope), una feature que se rompe, o un refactor necesario → **crea card nueva** en Backlog con label `deuda` y checklist de criterios. **No lo arregla en caliente** (scope creep, §6). La card ES la documentación de la deuda.
+
+```bash
+node scripts/trello/create-card.mjs --title "Deuda: ..." --desc "**Qué:** ...\n**Por qué importa:** ...\n**Checklist:** ..." --list "Backlog" --labels "deuda" --checklist "Criterio 1|Criterio 2"
+```
+
+#### 1.10.6 Cierre de card (checklist de verificación)
+
+Antes de mover a Done, el agente verifica TODOS:
+1. ¿OK explícito de munix? (verbal o moviendo él la card)
+2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
+3. ¿Checklist completo? (si la card tiene)
+4. ¿Comentario-bitácora si hubo decisiones no obvias?
+
+Si falta algo → la card se queda en Review.
 
 ---
 
@@ -202,5 +300,23 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 
 ---
 
-**Última actualización:** 2026-08-09 (inventario de tests + §1.8).
+### 1.12 Nombrado de artifacts por card de Trello
+
+Cuando un plan o walkthrough está atado a una card del board de Trello, el
+artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
+`idShort` que Trello expone (el número mostrado por el power-up como `#VIBES-92`
+→ `92`).
+
+- Tipo `plan` → para plans (`implementation_plan.md`).
+- Tipo `walkthrough` → para walkthroughs (`walkthrough.md`).
+- Ejemplos: `plan-vibes-92.md`, `walkthrough-vibes-92.md`.
+- Si la card no tiene número claro, **preguntar antes** de crear el artifact. Si
+  munix dice que no hay card, se crea un artifact normal sin sufijo.
+
+El `cardNumber` se obtiene de `node scripts/trello/list-cards.mjs --json | jq '.idShort'`
+o con `resolveCard` desde `scripts/trello/lib.mjs`.
+
+---
+
+**Última actualización:** 2026-08-10 (rutina del agente en §1.5: tests/typecheck/lint por cuenta propia, build/restart/repo con OK explícito).
 **Mantenedor:** munix.

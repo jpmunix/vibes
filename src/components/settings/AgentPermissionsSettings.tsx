@@ -1,157 +1,112 @@
 import React, { useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
-import type { OpenCodePermission, BashCustomRule } from "@/lib/schemas";
+import type {
+  PermissionDecision,
+  PermissionsConfig,
+  PermissionCustomRule,
+} from "@/lib/schemas";
 import { ChevronRight, Plus, X } from "@/components/ui/icons";
 
-// ── Tool definitions (no icons — follow existing pattern) ──
+// ── Tool definitions — maps vibes-core toolIds to UI labels ──
+// The runtime permission gate reads settings.permissions.tools[toolId].
+// `pending: true` = tool declared in the schema but NOT registered in the
+// vibes-core runtime yet. The pill is shown disabled so the user knows it
+// doesn't do anything today.
 interface ToolDef {
-  key: string;
-  settingsKey: keyof NonNullable<
-    import("@/lib/schemas").OpenCodePermissionsConfig
-  >;
+  toolId: string;
   label: string;
   description: string;
-  defaultValue: OpenCodePermission;
+  defaultValue: PermissionDecision;
+  pending?: boolean;
 }
 
 const TOOLS: ToolDef[] = [
   {
-    key: "edit",
-    settingsKey: "edit",
-    label: "Editar archivos",
-    description: "Crear, modificar y borrar archivos del proyecto",
-    defaultValue: "ask",
-  },
-  {
-    key: "bash",
-    settingsKey: "bash",
-    label: "Terminal (bash)",
-    description: "Ejecutar comandos en la terminal",
+    toolId: "read_file",
+    label: "Leer archivos",
+    description: "Leer el contenido de archivos del proyecto",
     defaultValue: "allow",
   },
   {
-    key: "webfetch",
-    settingsKey: "webfetch",
+    toolId: "write_file",
+    label: "Escribir archivos",
+    description: "Crear y sobrescribir archivos del proyecto",
+    defaultValue: "ask",
+  },
+  {
+    toolId: "edit_file",
+    label: "Editar archivos",
+    description: "Modificar archivos existentes del proyecto",
+    defaultValue: "ask",
+  },
+  {
+    toolId: "glob",
+    label: "Buscar archivos por patrón",
+    description: "Encontrar archivos por nombre o patrón (glob)",
+    defaultValue: "allow",
+  },
+  {
+    toolId: "grep",
+    label: "Buscar contenido",
+    description: "Buscar texto dentro de los archivos del proyecto",
+    defaultValue: "allow",
+  },
+  {
+    toolId: "shell",
+    label: "Terminal (bash)",
+    description: "Ejecutar comandos en la terminal del proyecto",
+    defaultValue: "ask",
+  },
+  // ── PENDING: declaradas en el schema pero sin tool registrada en
+  // vibes-core todavía. El pill se muestra deshabilitado (no hace nada).
+  {
+    toolId: "webfetch",
     label: "Acceso web",
     description: "Acceder a URLs externas",
     defaultValue: "ask",
+    pending: true,
   },
   {
-    key: "websearch",
-    settingsKey: "websearch",
+    toolId: "websearch",
     label: "Búsqueda web",
     description: "Buscar información en internet",
     defaultValue: "ask",
+    pending: true,
   },
   {
-    key: "lsp",
-    settingsKey: "lsp",
-    label: "Diagnósticos LSP",
-    description: "Verificación de tipos por archivo",
-    defaultValue: "allow",
-  },
-  {
-    key: "task",
-    settingsKey: "task",
+    toolId: "task",
     label: "Subagentes",
     description: "Lanzar sub-agentes para tareas paralelas",
-    defaultValue: "allow",
+    defaultValue: "ask",
+    pending: true,
   },
   {
-    key: "skill",
-    settingsKey: "skill",
+    toolId: "skill",
     label: "Skills",
     description: "Ejecutar skills y prompts predefinidos",
-    defaultValue: "allow",
-  },
-  {
-    key: "externalDirectory",
-    settingsKey: "externalDirectory",
-    label: "Directorios externos",
-    description: "Acceder a archivos fuera del directorio del proyecto",
     defaultValue: "ask",
+    pending: true,
   },
 ];
 
-// ── Bash sub-rules (only filesystem-level commands) ──
-interface SubRule {
-  settingsKey: keyof NonNullable<
-    import("@/lib/schemas").OpenCodePermissionsConfig
-  >;
+// ── Shell sub-pills — granular rules for shell commands ──
+// Mirrors PermissionsConfig.shellSubPills in the schema.
+interface SubPillDef {
+  subPillKey: keyof NonNullable<PermissionsConfig["shellSubPills"]>;
   label: string;
-  defaultValue: OpenCodePermission;
+  defaultValue: PermissionDecision;
 }
 
-const BASH_SUB_RULES: SubRule[] = [
-  { settingsKey: "bashRm", label: "rm (borrar)", defaultValue: "ask" },
+const SHELL_SUB_PILLS: SubPillDef[] = [
+  { subPillKey: "rm", label: "rm (borrar)", defaultValue: "ask" },
+  { subPillKey: "gitReset", label: "git reset", defaultValue: "ask" },
+  { subPillKey: "gitPush", label: "git push", defaultValue: "ask" },
+  { subPillKey: "gitPushForce", label: "git push --force", defaultValue: "deny" },
+  { subPillKey: "gitPushDelete", label: "git push --delete", defaultValue: "deny" },
 ];
 
-// ── Git repo rules — grouped by risk level ──
-interface GitRuleGroup {
-  title: string;
-  rules: SubRule[];
-}
-
-const GIT_REPO_GROUPS: GitRuleGroup[] = [
-  {
-    title: "Staging",
-    rules: [{ settingsKey: "gitAdd", label: "git add", defaultValue: "ask" }],
-  },
-  {
-    title: "Local — destructivo",
-    rules: [
-      { settingsKey: "gitCommit", label: "git commit", defaultValue: "deny" },
-      { settingsKey: "gitReset", label: "git reset", defaultValue: "ask" },
-      {
-        settingsKey: "gitCheckout",
-        label: "git checkout",
-        defaultValue: "ask",
-      },
-      { settingsKey: "gitRestore", label: "git restore", defaultValue: "ask" },
-      { settingsKey: "gitClean", label: "git clean", defaultValue: "ask" },
-      { settingsKey: "gitRebase", label: "git rebase", defaultValue: "ask" },
-      {
-        settingsKey: "gitMergeAbort",
-        label: "git merge --abort",
-        defaultValue: "ask",
-      },
-      {
-        settingsKey: "gitStashDrop",
-        label: "git stash drop",
-        defaultValue: "ask",
-      },
-      {
-        settingsKey: "gitBranchDelete",
-        label: "git branch -D",
-        defaultValue: "ask",
-      },
-      {
-        settingsKey: "gitCherryPickAbort",
-        label: "git cherry-pick --abort",
-        defaultValue: "ask",
-      },
-    ],
-  },
-  {
-    title: "Remoto — destructivo",
-    rules: [
-      { settingsKey: "gitPush", label: "git push", defaultValue: "deny" },
-      {
-        settingsKey: "gitPushForce",
-        label: "git push --force",
-        defaultValue: "deny",
-      },
-      {
-        settingsKey: "gitPushDelete",
-        label: "git push --delete",
-        defaultValue: "deny",
-      },
-    ],
-  },
-];
-
-const PERMISSION_OPTIONS: { value: OpenCodePermission; label: string }[] = [
+const PERMISSION_OPTIONS: { value: PermissionDecision; label: string }[] = [
   { value: "allow", label: "Siempre" },
   { value: "ask", label: "Preguntar" },
   { value: "deny", label: "Nunca" },
@@ -161,12 +116,19 @@ const PERMISSION_OPTIONS: { value: OpenCodePermission; label: string }[] = [
 function PermissionPill({
   value,
   onChange,
+  disabled,
 }: {
-  value: OpenCodePermission;
-  onChange: (v: OpenCodePermission) => void;
+  value: PermissionDecision;
+  onChange: (v: PermissionDecision) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+    <div
+      className={cn(
+        "relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border",
+        disabled && "opacity-40 pointer-events-none select-none",
+      )}
+    >
       {PERMISSION_OPTIONS.map((opt) => (
         <button
           key={opt.value}
@@ -185,22 +147,42 @@ function PermissionPill({
   );
 }
 
+// ── Badge "pendiente" — visible de lejos, que se note que no está activo ──
+function PendingBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wider">
+      ⏳ Sin soporte runtime
+    </span>
+  );
+}
+
 // ── Reusable SettingRow matching AIBehaviorSettings.SettingRow ──
 function PermissionRow({
   label,
   description,
   control,
+  pending,
 }: {
   label: string;
   description?: string;
   control: React.ReactNode;
+  pending?: boolean;
 }) {
   return (
     <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
       <div className="flex-1 min-w-0">
-        <h3 className="typo-label">{label}</h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="typo-label">{label}</h3>
+          {pending && <PendingBadge />}
+        </div>
         {description && (
           <p className="typo-caption mt-1 leading-relaxed">{description}</p>
+        )}
+        {pending && (
+          <p className="typo-caption mt-0.5 text-amber-600/80 dark:text-amber-400/80 leading-relaxed">
+            Esta herramienta aún no está activa en el runtime. El permiso se
+            guardará pero no tendrá efecto hasta que se implemente.
+          </p>
         )}
       </div>
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -211,65 +193,68 @@ function PermissionRow({
 }
 
 // ── Main component (collapsible, following Modelos pattern) ──
-export function OpenCodePermissionsSettings() {
+export function AgentPermissionsSettings() {
   const { settings, updateSettings } = useSettings();
-  const perms = settings?.openCodePermissions2;
+  // ACTIVE policy — read from settings.permissions (Slice 3.2 schema).
+  const perms: PermissionsConfig | undefined = settings?.permissions;
 
   const [expanded, setExpanded] = useState(false);
   const [bashExpanded, setBashExpanded] = useState(false);
-  const [repoExpanded, setRepoExpanded] = useState(false);
   const [newRulePattern, setNewRulePattern] = useState("");
   const [newRulePermission, setNewRulePermission] =
-    useState<OpenCodePermission>("ask");
+    useState<PermissionDecision>("ask");
 
-  const getToolValue = (tool: ToolDef): OpenCodePermission => {
-    if (!perms) return tool.defaultValue;
-    return (
-      (perms[tool.settingsKey] as OpenCodePermission | undefined) ??
-      tool.defaultValue
-    );
+  // ── tools ──
+  const getToolValue = (tool: ToolDef): PermissionDecision => {
+    const v = perms?.tools?.[tool.toolId as keyof NonNullable<PermissionsConfig["tools"]>];
+    return v ?? tool.defaultValue;
   };
 
-  const setToolValue = async (tool: ToolDef, value: OpenCodePermission) => {
+  const setToolValue = async (tool: ToolDef, value: PermissionDecision) => {
     await updateSettings({
-      openCodePermissions2: {
+      permissions: {
         ...perms,
-        [tool.settingsKey]: value,
+        tools: {
+          ...perms?.tools,
+          [tool.toolId]: value,
+        },
       },
     });
   };
 
-  const getSubRuleValue = (rule: SubRule): OpenCodePermission => {
-    if (!perms) return rule.defaultValue;
-    return (
-      (perms[rule.settingsKey] as OpenCodePermission | undefined) ??
-      rule.defaultValue
-    );
+  // ── shell sub-pills ──
+  const getSubPillValue = (sub: SubPillDef): PermissionDecision => {
+    const v = perms?.shellSubPills?.[sub.subPillKey];
+    return v ?? sub.defaultValue;
   };
 
-  const setSubRuleValue = async (rule: SubRule, value: OpenCodePermission) => {
+  const setSubPillValue = async (sub: SubPillDef, value: PermissionDecision) => {
     await updateSettings({
-      openCodePermissions2: {
+      permissions: {
         ...perms,
-        [rule.settingsKey]: value,
+        shellSubPills: {
+          ...perms?.shellSubPills,
+          [sub.subPillKey]: value,
+        },
       },
     });
   };
 
-  const customRules: BashCustomRule[] = perms?.bashCustomRules ?? [];
+  // ── custom rules ──
+  const customRules: PermissionCustomRule[] = perms?.customRules ?? [];
 
   const addCustomRule = async () => {
     const pattern = newRulePattern.trim();
     if (!pattern) return;
-    const rule: BashCustomRule = {
+    const rule: PermissionCustomRule = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       pattern,
       permission: newRulePermission,
     };
     await updateSettings({
-      openCodePermissions2: {
+      permissions: {
         ...perms,
-        bashCustomRules: [...customRules, rule],
+        customRules: [...customRules, rule],
       },
     });
     setNewRulePattern("");
@@ -278,21 +263,21 @@ export function OpenCodePermissionsSettings() {
 
   const removeCustomRule = async (ruleId: string) => {
     await updateSettings({
-      openCodePermissions2: {
+      permissions: {
         ...perms,
-        bashCustomRules: customRules.filter((r) => r.id !== ruleId),
+        customRules: customRules.filter((r) => r.id !== ruleId),
       },
     });
   };
 
   const updateCustomRulePermission = async (
     ruleId: string,
-    permission: OpenCodePermission,
+    permission: PermissionDecision,
   ) => {
     await updateSettings({
-      openCodePermissions2: {
+      permissions: {
         ...perms,
-        bashCustomRules: customRules.map((r) =>
+        customRules: customRules.map((r) =>
           r.id === ruleId ? { ...r, permission } : r,
         ),
       },
@@ -324,20 +309,22 @@ export function OpenCodePermissionsSettings() {
       {expanded && (
         <div className="pl-4 space-y-0">
           {TOOLS.map((tool) => (
-            <React.Fragment key={tool.key}>
+            <React.Fragment key={tool.toolId}>
               <PermissionRow
                 label={tool.label}
                 description={tool.description}
+                pending={tool.pending}
                 control={
                   <PermissionPill
                     value={getToolValue(tool)}
                     onChange={(v) => setToolValue(tool, v)}
+                    disabled={tool.pending}
                   />
                 }
               />
 
-              {/* Bash sub-rules (nested collapsible) */}
-              {tool.key === "bash" && (
+              {/* Shell sub-rules (nested collapsible) */}
+              {tool.toolId === "shell" && (
                 <div className="ml-4">
                   <button
                     onClick={() => setBashExpanded(!bashExpanded)}
@@ -354,15 +341,15 @@ export function OpenCodePermissionsSettings() {
 
                   {bashExpanded && (
                     <div className="ml-4 space-y-0 border-l-2 border-border/40 pl-4">
-                      {/* Predefined sub-rules */}
-                      {BASH_SUB_RULES.map((rule) => (
+                      {/* Predefined sub-pills */}
+                      {SHELL_SUB_PILLS.map((sub) => (
                         <PermissionRow
-                          key={rule.settingsKey}
-                          label={rule.label}
+                          key={sub.subPillKey}
+                          label={sub.label}
                           control={
                             <PermissionPill
-                              value={getSubRuleValue(rule)}
-                              onChange={(v) => setSubRuleValue(rule, v)}
+                              value={getSubPillValue(sub)}
+                              onChange={(v) => setSubPillValue(sub, v)}
                             />
                           }
                         />
@@ -432,48 +419,6 @@ export function OpenCodePermissionsSettings() {
               )}
             </React.Fragment>
           ))}
-
-          {/* ── Repositorio (Git) — separate collapsible section ── */}
-          <div className="mt-2">
-            <button
-              onClick={() => setRepoExpanded(!repoExpanded)}
-              className="flex items-center gap-1.5 px-4 py-3 typo-label text-muted-foreground hover:text-foreground transition-colors cursor-pointer group w-full"
-            >
-              <ChevronRight
-                className={cn(
-                  "size-3.5 transition-transform duration-200",
-                  repoExpanded && "rotate-90",
-                )}
-              />
-              Repositorio (git)
-            </button>
-
-            {repoExpanded && (
-              <div className="ml-4 space-y-0 border-l-2 border-border/40 pl-4">
-                {GIT_REPO_GROUPS.map((group) => (
-                  <div key={group.title}>
-                    <div className="px-4 pt-4 pb-1">
-                      <span className="typo-caption text-muted-foreground/70 uppercase tracking-wider text-[10px] font-semibold">
-                        {group.title}
-                      </span>
-                    </div>
-                    {group.rules.map((rule) => (
-                      <PermissionRow
-                        key={rule.settingsKey}
-                        label={rule.label}
-                        control={
-                          <PermissionPill
-                            value={getSubRuleValue(rule)}
-                            onChange={(v) => setSubRuleValue(rule, v)}
-                          />
-                        }
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

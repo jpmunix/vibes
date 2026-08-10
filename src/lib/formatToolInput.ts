@@ -26,7 +26,12 @@ export function formatToolInput(toolId: string, args: unknown): string {
 
   const a = args as Record<string, unknown>;
 
-  // Shell-style: args.command is the convention.
+  // Shell-style: args.cmd is the convention (vibes-core shell tool).
+  if (SHELL_STYLE.has(toolId) && typeof a.cmd === "string") {
+    return `$ ${a.cmd}${Array.isArray(a.args) && a.args.length > 0 ? " " + a.args.join(" ") : ""}`;
+  }
+
+  // Shell-style legacy: args.command (OpenCode-era shape).
   if (SHELL_STYLE.has(toolId) && typeof a.command === "string") {
     return `$ ${a.command}`;
   }

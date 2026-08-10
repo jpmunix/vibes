@@ -209,7 +209,8 @@ export function registerSettingsHandlers() {
       // adapter was removed (B6 swap); the runtime bridge now reads settings
       // per-session via readSettings(), so we no longer need to push. The
       // permission gate's requestPermission call already pulls the current
-      // pills from readSettings() each time. See runtime_host.ts:createVibesPermissionGate.
+      // pills from readSettings().permissions (Slice 3.2 schema) each time.
+      // See runtime_host.ts:createVibesPermissionGate.
 
       // Build the full updated settings to return to the renderer
       const updated =

@@ -527,9 +527,15 @@ export const UserSettingsSchema = z
     runtimeBridgeEnabled: z.boolean().optional(),
     visionPreprocessorModel: z.string().optional(),
     visionPreprocessorPrompt: z.string().optional(),
-    // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
+    // DEPRECATED — openCodePermissions (v1 defaults). Superseded by `permissions`.
     openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
+    // DEPRECATED — openCodePermissions2 (v2 OpenCode-era). Superseded by `permissions`.
+    // Kept so existing on-disk data doesn't crash the boot. The code never reads it.
     openCodePermissions2: OpenCodePermissionsConfigSchema.optional(),
+    // ACTIVE — Vibes-owned permission policy (Slice 3.2). Read by the runtime
+    // permission gate (runtime_host.ts → permissionResolver). Written by the
+    // Settings UI (AgentPermissionsSettings.tsx).
+    permissions: PermissionsConfigSchema.optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
     vercelAccessToken: SecretSchema.optional(),

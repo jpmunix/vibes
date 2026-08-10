@@ -4,9 +4,9 @@ import { formatToolInput } from "./formatToolInput";
 describe("formatToolInput", () => {
   describe("shell-style tools", () => {
     it.each(["shell", "bash", "sh", "exec"])(
-      "%s: '$ {command}' for shell args",
+      "%s: '$ {cmd}' for shell args (vibes-core shape)",
       (toolId) => {
-        expect(formatToolInput(toolId, { command: "ls -la" })).toBe(
+        expect(formatToolInput(toolId, { cmd: "ls", args: ["-la"] })).toBe(
           "$ ls -la",
         );
       },
@@ -14,12 +14,18 @@ describe("formatToolInput", () => {
 
     it("shell: complex command with args", () => {
       expect(
-        formatToolInput("shell", { command: "rm -rf /tmp/foo bar" }),
+        formatToolInput("shell", { cmd: "rm", args: ["-rf", "/tmp/foo bar"] }),
       ).toBe("$ rm -rf /tmp/foo bar");
     });
 
+    it("shell: legacy args.command still works", () => {
+      expect(formatToolInput("shell", { command: "ls -la" })).toBe(
+        "$ ls -la",
+      );
+    });
+
     it("shell: handles missing command gracefully", () => {
-      // Without args.command, falls through to the JSON fallback.
+      // Without args.cmd/args.command, falls through to the JSON fallback.
       expect(formatToolInput("shell", { other: "x" })).toBe(
         JSON.stringify({ other: "x" }, null, 2),
       );
@@ -80,13 +86,13 @@ describe("formatToolInput", () => {
 
   describe("real-world scenarios", () => {
     it("ls -la /tmp via shell", () => {
-      expect(formatToolInput("shell", { command: "ls -la /tmp" })).toBe(
+      expect(formatToolInput("shell", { cmd: "ls", args: ["-la", "/tmp"] })).toBe(
         "$ ls -la /tmp",
       );
     });
 
     it("rm -rf /etc via shell", () => {
-      expect(formatToolInput("shell", { command: "rm -rf /etc" })).toBe(
+      expect(formatToolInput("shell", { cmd: "rm", args: ["-rf", "/etc"] })).toBe(
         "$ rm -rf /etc",
       );
     });

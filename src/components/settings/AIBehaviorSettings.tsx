@@ -9,7 +9,7 @@ import { StrategistModelSelector } from "./StrategistModelSelector";
 import { ExecutorModelSelector } from "./ExecutorModelSelector";
 import { VisionModelSelector } from "./VisionModelSelector";
 import { AgentToolsSettings } from "./AgentToolsSettings";
-import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
+import { AgentPermissionsSettings } from "./AgentPermissionsSettings";
 import { Switch } from "@/components/ui/switch";
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -354,7 +354,7 @@ export function AIBehaviorSettings({
 
           {/* Permisos del agente — collapsible inside Agente */}
           <div id="agent-permissions">
-            <OpenCodePermissionsSettings />
+            <AgentPermissionsSettings />
           </div>
         </div>
       </div>

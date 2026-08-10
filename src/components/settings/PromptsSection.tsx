@@ -61,6 +61,7 @@ function PromptEditor({
   const [localScope, setLocalScope] = useState<string>(prompt.scope || "all");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasUnsavedChanges =
@@ -150,6 +151,23 @@ function PromptEditor({
     }
   };
 
+  const handleRestoreDefault = async () => {
+    if (!prompt.systemId) return;
+    setIsRestoring(true);
+    try {
+      await ipc.prompt.restoreDefault({
+        id: prompt.id,
+        systemId: prompt.systemId,
+      });
+      toast.success("Prompt restaurado al valor de fábrica");
+      onUpdate();
+    } catch {
+      toast.error("Error al restaurar el prompt");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   return (
     <>
       <div
@@ -183,12 +201,40 @@ function PromptEditor({
                   DESACTIVADO
                 </span>
               )}
+              {prompt.hasDefault && prompt.isModified && (
+                <span
+                  className="typo-micro px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                  title="Este prompt ha sido modificado respecto al valor de fábrica."
+                >
+                  MODIFICADO · bajo tu criterio
+                </span>
+              )}
             </h3>
             <p className="typo-caption mt-1 text-xs text-muted-foreground">
               {prompt.description}
             </p>
           </div>
         </div>
+        {prompt.hasDefault && prompt.isModified && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-lg h-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRestoreDefault();
+            }}
+            disabled={isRestoring}
+            title="Restaurar el contenido al valor de fábrica"
+          >
+            {isRestoring ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Restaurar defaults
+          </Button>
+        )}
         <ChevronRight className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-colors shrink-0" />
       </div>
 
@@ -324,26 +370,35 @@ function PromptEditor({
           </div>
 
           <DialogFooter className="pt-4 border-t border-border/50 flex flex-row justify-between sm:justify-between items-center gap-2 w-full">
-            <DeleteConfirmationDialog
-              itemName={prompt.title || "prompt"}
-              itemType="prompt"
-              onDelete={async () => {
-                await handleDelete();
-                setIsOpen(false);
-              }}
-              isDeleting={isDeleting}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg h-9"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Eliminar
-                </Button>
-              }
-            />
+            {prompt.hasDefault ? (
+              <div className="flex items-center gap-2 typo-caption text-muted-foreground">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
+                  ⚙ SISTEMA
+                </span>
+                No se puede eliminar. Edita o restáuralo.
+              </div>
+            ) : (
+              <DeleteConfirmationDialog
+                itemName={prompt.title || "prompt"}
+                itemType="prompt"
+                onDelete={async () => {
+                  await handleDelete();
+                  setIsOpen(false);
+                }}
+                isDeleting={isDeleting}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg h-9"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Eliminar
+                  </Button>
+                }
+              />
+            )}
 
             <div className="flex gap-2">
               <Button
@@ -455,7 +510,12 @@ function PromptGroup({
   return (
     <>
       <div
-        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4 bg-muted/20"
+        className={cn(
+          "flex items-center justify-between cursor-pointer group p-4 rounded-xl border transition-colors gap-4 bg-muted/20",
+          category?.isSystem
+            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+            : "border-border hover:bg-muted/50",
+        )}
         onClick={() => !isEditingCategory && setExpanded((e) => !e)}
       >
         <div className="flex-1">
@@ -494,6 +554,11 @@ function PromptGroup({
             <>
               <h3 className="typo-label flex items-center gap-2">
                 {category ? category.name : "Sin Categoría"}
+                {category?.isSystem && (
+                  <span className="typo-micro px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary text-primary-foreground border border-primary/40 shadow-sm">
+                    ⚙ SISTEMA
+                  </span>
+                )}
                 <span className="text-muted-foreground typo-caption">
                   ({prompts.length})
                 </span>
@@ -520,20 +585,22 @@ function PromptGroup({
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>
                 <div onClick={(e) => e.stopPropagation()}>
-                  <DeleteConfirmationDialog
-                    itemName={category.name}
-                    itemType="categoría"
-                    onDelete={handleDeleteCategory}
-                    trigger={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    }
-                  />
+                  {category.isSystem ? null : (
+                    <DeleteConfirmationDialog
+                      itemName={category.name}
+                      itemType="categoría"
+                      onDelete={handleDeleteCategory}
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      }
+                    />
+                  )}
                 </div>
               </>
             )}
@@ -602,13 +669,10 @@ function PromptGroup({
   );
 }
 
-export function PromptsSection() {
+export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
   const [categories, setCategories] = useState<PromptCategoryDto[]>([]);
   const [prompts, setPrompts] = useState<PromptDto[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
 
   const fetchData = useCallback(async (isInitial = false) => {
     try {
@@ -630,20 +694,11 @@ export function PromptsSection() {
     fetchData(true);
   }, [fetchData]);
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    try {
-      await ipc.prompt.createCategory({
-        name: newCategoryName,
-        description: "",
-      });
-      setNewCategoryName("");
-      setIsCreatingCategory(false);
-      fetchData();
-    } catch {
-      toast.error("Error al crear categoría");
-    }
-  };
+  // refreshKey prop: bump this from the parent to force a reload (e.g. after
+  // the parent creates a category from the header button).
+  useEffect(() => {
+    if (refreshKey && refreshKey > 0) fetchData();
+  }, [refreshKey, fetchData]);
 
   if (loading) {
     return (
@@ -655,42 +710,17 @@ export function PromptsSection() {
 
   const uncategorizedPrompts = prompts.filter((p) => !p.categoryId);
 
+  // "Prompts del sistema" (isSystem) always first, then the rest by id
+  const sortedCategories = [...categories].sort((a, b) => {
+    if (a.isSystem && !b.isSystem) return -1;
+    if (!a.isSystem && b.isSystem) return 1;
+    return a.id - b.id;
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-sm font-semibold">Prompts del Sistema</h2>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setIsCreatingCategory(true)}
-          className="gap-2"
-        >
-          <Plus className="h-3.5 w-3.5" /> Nueva Categoría
-        </Button>
-      </div>
-
-      {isCreatingCategory && (
-        <div className="flex gap-2 p-3 bg-muted/20 rounded-xl border border-border">
-          <Input
-            autoFocus
-            placeholder="Nombre de la nueva categoría..."
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateCategory();
-              if (e.key === "Escape") setIsCreatingCategory(false);
-            }}
-            className="h-9"
-          />
-          <Button onClick={handleCreateCategory}>Crear</Button>
-          <Button variant="ghost" onClick={() => setIsCreatingCategory(false)}>
-            Cancelar
-          </Button>
-        </div>
-      )}
-
       <div className="space-y-3">
-        {categories.map((cat) => (
+        {sortedCategories.map((cat) => (
           <PromptGroup
             key={cat.id}
             category={cat}

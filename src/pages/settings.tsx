@@ -34,7 +34,7 @@ import {
   RotateCcw,
   Volume2,
 } from "@/components/ui/icons";
-import { ChevronRight } from "@/components/ui/icons";
+import { ChevronRight, Plus } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -651,6 +651,27 @@ export default function SettingsPage() {
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] =
     useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // Prompts — creación de categoría (botón en el header, form inline)
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [promptsRefreshKey, setPromptsRefreshKey] = useState(0);
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      await ipc.prompt.createCategory({
+        name: newCategoryName,
+        description: "",
+      });
+      setNewCategoryName("");
+      setIsCreatingCategory(false);
+      setPromptsRefreshKey((k) => k + 1); // fuerza reload de PromptsSection
+    } catch {
+      showError("Error al crear categoría");
+    }
+  };
+
   const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
@@ -1129,13 +1150,47 @@ export default function SettingsPage() {
                 : ""
             }`}
           >
-            <h2 className="typo-section-title mb-2">Prompts</h2>
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="typo-section-title">Prompts</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCreatingCategory(true)}
+                className="gap-2"
+              >
+                <Plus className="h-3.5 w-3.5" /> Nueva Categoría
+              </Button>
+            </div>
             <p className="typo-caption mb-8">
               Personaliza las instrucciones que reciben los modelos AI para
               tareas internas, generación de nombres y el sistema de
               directrices.
             </p>
-            <PromptsSection />
+
+            {isCreatingCategory && (
+              <div className="flex gap-2 p-3 bg-muted/20 rounded-xl border border-border mb-4">
+                <Input
+                  autoFocus
+                  placeholder="Nombre de la nueva categoría..."
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreateCategory();
+                    if (e.key === "Escape") setIsCreatingCategory(false);
+                  }}
+                  className="h-9"
+                />
+                <Button onClick={handleCreateCategory}>Crear</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsCreatingCategory(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            )}
+
+            <PromptsSection refreshKey={promptsRefreshKey} />
 
             {/* ── Procesamiento de Imágenes ── */}
             <VisionPromptGroup />

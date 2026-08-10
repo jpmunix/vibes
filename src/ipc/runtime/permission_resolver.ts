@@ -78,6 +78,8 @@ function matchCustomRule(
 function getCommandString(args: unknown): string | null {
   if (!args || typeof args !== "object") return null;
   const a = args as Record<string, unknown>;
+  // vibes-core shell tool uses args.cmd; legacy OpenCode used args.command.
+  if (typeof a.cmd === "string") return a.cmd;
   if (typeof a.command === "string") return a.command;
   return null;
 }

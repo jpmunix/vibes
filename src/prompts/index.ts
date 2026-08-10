@@ -15,7 +15,9 @@ export type PromptId =
   | "ctx_efficiency_triage"
   | "ctx_task_management"
   | "ctx_plan_mode"
-  | "ctx_build_walkthrough";
+  | "ctx_build_walkthrough"
+  // Runtime base agent prompt (migrado de vibes-core context-engine.ts)
+  | "runtime_agent_base";
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
   chat_title: "Títulos de Chat",
@@ -33,6 +35,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
 
   ctx_plan_mode: "Planificación interactiva",
   ctx_build_walkthrough: "Resumen de cambios",
+  runtime_agent_base: "Prompt base del agente runtime",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -62,4 +65,6 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
   ctx_build_walkthrough:
     "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
+  runtime_agent_base:
+    "Prompt base del agente runtime: reglas de uso de herramientas que el modelo recibe en cada sesión. La carcasa lo compone; el runtime lo ejecuta.",
 };

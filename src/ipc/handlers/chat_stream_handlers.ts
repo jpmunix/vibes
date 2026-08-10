@@ -1761,8 +1761,13 @@ This conversation includes one or more image attachments. When the user uploads 
               continue;
             }
 
-            // Include custom prompts (no systemId) or chat pipeline prompts (ctx_*)
-            if (!prompt.systemId || prompt.systemId.startsWith("ctx_")) {
+            // Include custom prompts (no systemId), chat pipeline prompts (ctx_*),
+            // or the runtime base agent prompt (runtime_agent_base)
+            if (
+              !prompt.systemId ||
+              prompt.systemId.startsWith("ctx_") ||
+              prompt.systemId === "runtime_agent_base"
+            ) {
               const scope = (prompt as any).scope || "all";
               if (scope !== "all") {
                 const allowedScopes = scope
@@ -1804,6 +1809,24 @@ This conversation includes one or more image attachments. When the user uploads 
             const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
             if (defaultWalkthrough) {
               contextInstructions.push(defaultWalkthrough);
+            }
+          }
+
+          // Fallback: runtime base agent prompt. If the user has not created
+          // (or disabled) the runtime_agent_base prompt, inject the default so
+          // the runtime never silently falls back to its hardcoded prompt.
+          // (P1: la carcasa compone el prompt; el runtime solo lo ejecuta.)
+          const hasRuntimeBaseInDb = activePromptsRows.some(
+            (p) => p.systemId === "runtime_agent_base",
+          );
+          if (
+            !hasRuntimeBaseInDb &&
+            customPromptMode !== "replace" &&
+            agentId !== "ask"
+          ) {
+            const defaultBase = DEFAULT_PROMPTS.runtime_agent_base;
+            if (defaultBase) {
+              contextInstructions.push(defaultBase);
             }
           }
 

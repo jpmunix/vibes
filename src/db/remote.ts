@@ -318,6 +318,110 @@ export async function initializeRemoteSchema(): Promise<void> {
       )
       .catch(() => {});
 
+    // ── Prompts del sistema: asegurar tablas + columna is_system ──────────
+    // Auto-create prompts_categories and prompts if missing (fresh installs)
+    await client
+      .execute(`
+        CREATE TABLE IF NOT EXISTS prompts_categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL REFERENCES users(id),
+          name TEXT NOT NULL,
+          description TEXT,
+          is_system INTEGER NOT NULL DEFAULT 0
+        )
+      `)
+      .catch(() => {});
+    await client
+      .execute(`
+        CREATE TABLE IF NOT EXISTS prompts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL REFERENCES users(id),
+          category_id INTEGER REFERENCES prompts_categories(id),
+          system_id TEXT,
+          title TEXT NOT NULL,
+          description TEXT,
+          content TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          scope TEXT NOT NULL DEFAULT 'all',
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `)
+      .catch(() => {});
+    // Add is_system column to prompts_categories if missing (v8.8)
+    await client
+      .execute(
+        `ALTER TABLE prompts_categories ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0`,
+      )
+      .catch(() => {});
+    // Auto-create prompt_defaults if missing (v8.8) — fuente de verdad de fábrica
+    await client
+      .execute(`
+        CREATE TABLE IF NOT EXISTS prompt_defaults (
+          system_id TEXT PRIMARY KEY NOT NULL,
+          content TEXT NOT NULL,
+          version INTEGER NOT NULL DEFAULT 1,
+          updated_at INTEGER NOT NULL
+        )
+      `)
+      .catch(() => {});
+    // Add title/description columns to prompt_defaults (v8.9) — info inmutable
+    // del producto (solo cambia con nueva versión). Lo que el usuario edita vive en `prompts`.
+    await client
+      .execute(
+        `ALTER TABLE prompt_defaults ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
+      )
+      .catch(() => {});
+    await client
+      .execute(
+        `ALTER TABLE prompt_defaults ADD COLUMN description TEXT NOT NULL DEFAULT ''`,
+      )
+      .catch(() => {});
+    // Make title nullable on prompts (v8.9) — now read from prompt_defaults
+    // SQLite can't easily ALTER NULLABLE, so we use a recreate trick ONLY if
+    // the column is still NOT NULL. Check via pragma_table_info.
+    try {
+      const cols = await client.execute(
+        `SELECT "notnull" FROM pragma_table_info('prompts') WHERE name = 'title'`,
+      );
+      const notNull = (cols.rows[0] as any)?.notnull as number;
+      if (notNull === 1) {
+        await client.execute(`
+          ALTER TABLE prompts RENAME TO _prompts_old_notnull
+        `);
+        await client.execute(`
+          CREATE TABLE prompts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            category_id INTEGER REFERENCES prompts_categories(id),
+            system_id TEXT,
+            title TEXT,
+            description TEXT,
+            content TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            scope TEXT NOT NULL DEFAULT 'all',
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        `);
+        await client.execute(`
+          INSERT INTO prompts (id, user_id, category_id, system_id, title, description, content, enabled, scope, created_at, updated_at)
+          SELECT id, user_id, category_id, system_id, NULL, NULL, content, enabled, scope, created_at, updated_at FROM _prompts_old_notnull
+        `);
+        await client.execute(`DROP TABLE _prompts_old_notnull`);
+      }
+    } catch (err) {
+      logger.warn("prompts NULL title migration skipped:", err);
+    }
+
+    // Mark the "Prompts del sistema" category as system (is_system=1) by name.
+    // This handles installs where the category was seeded before is_system existed.
+    await client
+      .execute(
+        `UPDATE prompts_categories SET is_system = 1 WHERE name = 'Prompts del sistema' AND is_system = 0`,
+      )
+      .catch(() => {});
+
     // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
     // Bug: some records had created_at stored as Date.now() (millis) instead of
     // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.

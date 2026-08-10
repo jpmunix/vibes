@@ -14,6 +14,9 @@ export const PromptDtoSchema = z.object({
   content: z.string(),
   enabled: z.boolean(),
   scope: z.string().default("all"),
+  // Restore-defaults: si hay un default de fábrica y difiere del actual
+  hasDefault: z.boolean().optional(),
+  isModified: z.boolean().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -22,6 +25,7 @@ export const PromptCategoryDtoSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
+  isSystem: z.boolean().optional(),
 });
 
 export type PromptCategoryDto = z.infer<typeof PromptCategoryDtoSchema>;
@@ -110,6 +114,16 @@ export const promptContracts = {
   deleteCategory: defineContract({
     channel: "prompts:categories:delete",
     input: z.number(), // id
+    output: z.void(),
+  }),
+
+  // Restore default de fábrica de un prompt del sistema
+  restoreDefault: defineContract({
+    channel: "prompts:restoreDefault",
+    input: z.object({
+      id: z.number(), // id del prompt del usuario
+      systemId: z.string(),
+    }),
     output: z.void(),
   }),
 } as const;

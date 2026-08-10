@@ -166,6 +166,7 @@ const JSON_KEYS = new Set([
   "firebase",
   "openCodePermissions",
   "openCodePermissions2",
+  "permissions",
   "agentToolConsents",
   "customPrompts",
   "windowState",

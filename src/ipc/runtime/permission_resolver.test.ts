@@ -195,4 +195,75 @@ describe("permissionResolver", () => {
       expect(r.decision).toBe("ask");
     });
   });
+
+  describe("vibes-core shell args (args.cmd, hotfix 2026-08-10)", () => {
+    it("custom rule matches args.cmd (vibes-core shell tool shape)", () => {
+      const settings: PermissionsConfig = {
+        customRules: [
+          { id: "r1", pattern: "ls", permission: "allow" },
+        ],
+      };
+      const r = permissionResolver({
+        toolId: "shell",
+        // vibes-core shell tool sends { cmd: "ls", args: ["-la"] }
+        args: { cmd: "ls", args: ["-la"] },
+        settings,
+      });
+      expect(r.decision).toBe("allow");
+      expect(r.source).toBe("custom-rule");
+    });
+
+    it("sub-pill matches args.cmd (rm)", () => {
+      const settings: PermissionsConfig = {
+        shellSubPills: { rm: "deny" },
+      };
+      const r = permissionResolver({
+        toolId: "shell",
+        args: { cmd: "rm", args: ["-rf", "node_modules"] },
+        settings,
+      });
+      expect(r.decision).toBe("deny");
+      expect(r.source).toBe("sub-pill");
+    });
+
+    it("falls back to args.command when cmd absent (legacy)", () => {
+      const settings: PermissionsConfig = {
+        customRules: [{ id: "r1", pattern: "ls", permission: "allow" }],
+      };
+      const r = permissionResolver({
+        toolId: "shell",
+        args: { command: "ls -la" },
+        settings,
+      });
+      expect(r.decision).toBe("allow");
+    });
+  });
+
+  describe("global pill from settings.permissions.tools (hotfix 2026-08-10)", () => {
+    it("allow pill for edit_file overrides ask default", () => {
+      const settings: PermissionsConfig = {
+        tools: { edit_file: "allow" },
+      };
+      const r = permissionResolver({
+        toolId: "edit_file",
+        args: { path: "/x", oldText: "a", newText: "b" },
+        settings,
+      });
+      expect(r.decision).toBe("allow");
+      expect(r.source).toBe("pill");
+    });
+
+    it("deny pill for read_file overrides allow default", () => {
+      const settings: PermissionsConfig = {
+        tools: { read_file: "deny" },
+      };
+      const r = permissionResolver({
+        toolId: "read_file",
+        args: { path: "/x" },
+        settings,
+      });
+      expect(r.decision).toBe("deny");
+      expect(r.source).toBe("pill");
+    });
+  });
 });

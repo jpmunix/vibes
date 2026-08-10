@@ -257,6 +257,7 @@ export const promptsCategories = sqliteTable("prompts_categories", {
     .references(() => users.id),
   name: text("name").notNull(),
   description: text("description"),
+  isSystem: integer("is_system").notNull().default(0),
 });
 
 export const prompts = sqliteTable("prompts", {
@@ -265,13 +266,29 @@ export const prompts = sqliteTable("prompts", {
     .notNull()
     .references(() => users.id),
   categoryId: integer("category_id").references(() => promptsCategories.id),
+  // systemId is a logical reference to prompt_defaults.system_id (not a DB FK
+  // because prompt_defaults is global and not per-user).
   systemId: text("system_id"),
-  title: text("title").notNull(),
+  // title/description come from prompt_defaults — not stored here, they're
+  // immutable per version. The list handler joins to read them.
+  title: text("title"),
   description: text("description"),
   content: text("content").notNull(),
   enabled: integer("enabled").notNull().default(1),
   scope: text("scope").notNull().default("all"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// Defaults de fábrica de los prompts del sistema (global, no per-user).
+// Fuente de verdad inmutable (por versión) para título/descripción/contenido.
+// Tabla mutable `prompts` (per-user) solo guarda `content` editado + flags.
+export const promptDefaults = sqliteTable("prompt_defaults", {
+  systemId: text("system_id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  content: text("content").notNull(),
+  version: integer("version").notNull().default(1),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 

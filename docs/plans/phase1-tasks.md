@@ -353,6 +353,32 @@ A5 Bridge pkg ──────────────────────
 
 ---
 
+### B7. Prompts del sistema — la carcasa manda (fin del hardcode) ✅ CERRADA (2026-08-10)
+
+**Objetivo:** todos los prompts del modelo (base del runtime, modos ASK/PLAN, integraciones, one-shot) pasan a ser prompts editables en Settings → Prompts, con default de fábrica restaurable. El runtime ya no compone el prompt de producto: la carcasa lo manda siempre (P1).
+
+**Decisiones (munix):**
+- **A1**: migrar TODO el hardcode (no trocitos).
+- **A2**: categoría "Prompts del sistema" no-borrable, editable, con botón "Restaurar defaults" + badge "bajo tu criterio".
+- **A3**: los one-shot (chat_title, commit, memoria) también pasan por el pipeline.
+
+**Archivos tocados:**
+- [scripts/seed-prompt-defaults.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/seed-prompt-defaults.mjs) — seed one-shot (20 defaults + categoría + prompts usuario). Ejecutado ✅.
+- [remote-schema.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/db/remote-schema.ts) — tabla `promptDefaults` + `isSystem` en categorías.
+- [remote.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/db/remote.ts) — auto-heal idempotente (CREATE IF NOT EXISTS prompts/prompts_categories/prompt_defaults + ALTER is_system + marcar categoría por nombre).
+- [prompts.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/prompts.ts) — DTOs con `hasDefault`/`isModified`/`isSystem` + contrato `prompts:restoreDefault`.
+- [prompt_handlers.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/prompt_handlers.ts) — list con defaults, restoreDefault, protección deleteCategory is_system, función pura `computePromptDefaultStatus`.
+- [PromptsSection.tsx](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/settings/PromptsSection.tsx) — badge SISTEMA, badge MODIFICADO, botón Restaurar, categoría primero, delete protegido.
+- [index.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/prompts/index.ts) + [defaults.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/prompts/defaults.ts) — PromptId `runtime_agent_base` + default.
+- [chat_stream_handlers.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/chat_stream_handlers.ts) — inyección siempre de `runtime_agent_base` (fallback a DEFAULT_PROMPTS si no está en DB).
+- vibes-core [context-engine.ts](file:///home/munix/Desarrollo/GitRepo/vibes-core/packages/runtime-impl/src/context-engine.ts) — prompt hardcoded reducido a mínimo neutral (fallback standalone).
+
+**Tests añadidos:** [prompt_handlers.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/prompt_handlers.test.ts) (5, `computePromptDefaultStatus`). Suite completa: 322 Vibes + 86 vibes-core verdes.
+
+**Pendiente:** verificación manual en app (Settings → Prompts).
+
+---
+
 ## 4. ORDEN DE EJECUCIÓN (6 semanas del MVP)
 
 | Semana | Tareas | Hito |
