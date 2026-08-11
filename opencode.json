@@ -15,5 +15,8 @@
         }
       }
     }
-  }
+  },
+  "instructions": [
+    "docs/vibes-rules.md"
+  ]
 }

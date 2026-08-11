@@ -52,11 +52,13 @@ if (seed.board_desc && !DRY_RUN) {
 // • Done: trabajo cerrado y verificado (MVP + hardening)
 // • To-do: pendiente inmediato (ops)
 // • Backlog: deudas y roadmap post-MVP (fases 2-5)
+// • Ideas: ideas sueltas NO planificadas (fuera del flujo; no se priorizan)
 // • Doing / Blocked / Review: flujo del agente
-const LIST_ORDER = ['Backlog', 'To-do', 'Doing', 'Blocked', 'Review', 'Done'];
+const LIST_ORDER = ['Backlog', 'Ideas', 'To-do', 'Doing', 'Blocked', 'Review', 'Done'];
 const LIST_ALIAS = {
   'backlog': 'Backlog',
-  'ideas': 'Backlog',
+  // 'ideas' ya NO se mapea a Backlog: es una lista canónica propia (decisión munix 2026-08-11)
+  'ideas': 'Ideas',
   'todo': 'To-do',
   'to-do': 'To-do',
   'doing': 'Doing',

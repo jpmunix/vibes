@@ -34,6 +34,7 @@ técnico, decisiones, referencias a archivos — para el agente dentro de 6 mese
 | Lista | Significado | Quién la usa |
 |---|---|---|
 | **Backlog** | Deudas + roadmap post-MVP (fases 2-5) | El agente la lee para priorizar |
+| **Ideas** | Ideas sueltas, NO planificadas (fuera del flujo, no se priorizan) | munix las apunta; el agente no las toca |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
 | **Doing** | En curso ahora mismo | El agente (1-2 cards máximo) |
 | **Blocked** | Atascada (falta munix, falta decisión, falta dep) | El agente la mueve con motivo |
@@ -101,6 +102,11 @@ Esto da el estado completo. El agente **prioriza así**:
 1. Cards en `Blocked` que él pueda **desbloquear** (decidir algo, hacer algo)
 2. Cards en `To-do` que munix haya dejado
 3. La card más antigua de `Backlog` con mayor valor (labels `deuda` primero, luego fases)
+
+> [!NOTE]
+> La lista **`Ideas` queda FUERA del flujo**: son notas de munix sin planificar.
+> El agente **no** las prioriza, no las mueve a `To-do`/`Doing`, ni las trabaja —
+> solo las lee si munix se lo pide. No es backlog.
 
 > [!NOTE]
 > Si no hay nada en `To-do`, el agente **propone** sacar algo de `Backlog` a `To-do`
@@ -276,7 +282,7 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 - ❌ **NO** trabajar en más de 1-2 cards a la vez.
 - ❌ **NO** crear cards duplicadas (los scripts son idempotentes, pero el agente debe mirar antes).
 - ❌ **NO** borrar/archivar cards sin decirle a munix (archivar = perder evidencia).
-- ❌ **NO** renombrar listas ni cambiar la estructura del board sin OK (es en piedra).
+- ❌ **NO** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11): solo munix la llena; el agente no la toca.
 - ❌ **NO** marcar checklist items sin haber verificado.
 - ✅ **SÍ** documentar SIEMPRE con comentarios (inicio, atasco, review, cierre).
 - ✅ **SÍ** proponer (comentar) antes de mover cosas de Backlog.

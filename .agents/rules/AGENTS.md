@@ -149,6 +149,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 | Lista | Qué es | Quién la mueve |
 |---|---|---|
 | **Backlog** | Deudas + roadmap post-MVP (fases 2-5) | El agente propone, munix decide |
+| **Ideas** | Ideas sueltas NO planificadas (fuera del flujo) | Solo munix |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
 | **Doing** | En curso (máx 1-2) | El agente |
 | **Blocked** | Atascada (falta munix/decisión/dep) | El agente con motivo |
@@ -170,7 +171,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 - ❌ **NUNCA** trabajar en más de 1-2 cards a la vez (si estás en Doing, no coges otra).
 - ❌ **NUNCA** crear cards duplicadas (los scripts son idempotentes; mirar antes con list-cards).
 - ❌ **NUNCA** archivar/borrar cards sin decírselo a munix (archivar = perder evidencia).
-- ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra).
+- ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida la lista `Ideas` (2026-08-11): es solo de munix, el agente no la mueve ni la trabaja.
 - ❌ **NUNCA** marcar checklist sin haber verificado el criterio.
 - ✅ **SIEMPRE** documentar con comentarios (inicio, atasco, review, cierre).
 - ✅ **SIEMPRE** proponer (comentar) antes de mover cosas de Backlog — el backlog es prioridad de munix.
@@ -214,6 +215,18 @@ Antes de mover a Done, el agente verifica TODOS:
 4. ¿Comentario-bitácora si hubo decisiones no obvias?
 
 Si falta algo → la card se queda en Review.
+
+#### 1.10.7 Roadmap, tareas y planes — Trello es la fuente de verdad — **INNEGOCIABLE**
+
+Cuando munix pregunte por el estado del roadmap, las tareas pendientes, los planes de trabajo o el progreso general, **siempre nos referimos al board de Trello** como la única fuente de verdad. No se contestan preguntas de roadmap mirando documentos estáticos, artifacts, ni la memoria de la conversación.
+
+- **Consultar el board** (`node scripts/trello/list-cards.mjs --json`) es el primer paso antes de responder cualquier pregunta sobre qué hay pendiente, qué está en curso, o qué se planea.
+- **Los artifacts temporales** (plans, walkthroughs, análisis) son **borradores de trabajo** que ayudan a planificar, pero **siempre acaban reflejados en Trello** como card, comentario o actualización de checklist.
+- Si existe un artifact de plan que no tiene card equivalente en Trello → **crear la card** o preguntar a munix si debe existir.
+- **Nunca** mantener un "roadmap paralelo" en documentos, artifacts o conversaciones que no esté sincronizado con Trello.
+
+> [!IMPORTANT]
+> **Por qué:** Si la fuente de verdad vive en dos sitios (Trello + un documento), acaba divergiendo y perdemos la trazabilidad. Un plan en un artifact sin card en Trello es un plan que no existe. Los artifacts son el borrador; Trello es el contrato.
 
 ---
 
@@ -318,5 +331,5 @@ o con `resolveCard` desde `scripts/trello/lib.mjs`.
 
 ---
 
-**Última actualización:** 2026-08-10 (rutina del agente en §1.5: tests/typecheck/lint por cuenta propia, build/restart/repo con OK explícito).
+**Última actualización:** 2026-08-11 (§1.10.7: Trello como fuente de verdad para roadmap/tareas/planes).
 **Mantenedor:** munix.

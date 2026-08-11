@@ -1,5 +1,5 @@
 {
-  "board_desc": "VIBES — Board de trabajo del proyecto (fuente de verdad)\n\nEstructura:\n• Done: trabajo cerrado y verificado (MVP + hardening)\n• To-do: pendiente inmediato (ops)\n• Ideas: backlog post-MVP (deudas y fases 2-5)\n• Doing / Blocked / Review: flujo del agente\n\nLabels:\n• mvp · permisos · resiliencia: trabajo hecho\n• deuda: features degradadas o rotas por el swap\n• fase-2 · fase-3 · fase-4 · fase-5: roadmap post-MVP\n• ops: operaciones y pendientes de munix\n\nCada card tiene: descripción ejecutiva (qué/por qué/cómo) + comentarios-bitácora con el contexto técnico completo.",
+  "board_desc": "VIBES — Board de trabajo del proyecto (fuente de verdad)\n\nEstructura:\n• Done: trabajo cerrado y verificado (MVP + hardening)\n• To-do: pendiente inmediato (ops)\n• Backlog: deudas y roadmap post-MVP (fases 2-5)\n• Ideas: ideas sueltas de munix, NO planificadas (fuera del flujo)\n• Doing / Blocked / Review: flujo del agente\n\nLabels:\n• mvp · permisos · resiliencia: trabajo hecho\n• deuda: features degradadas o rotas por el swap\n• fase-2 · fase-3 · fase-4 · fase-5: roadmap post-MVP\n• ops: operaciones y pendientes de munix\n\nCada card tiene: descripción ejecutiva (qué/por qué/cómo) + comentarios-bitácora con el contexto técnico completo.",
   "cards": [
     {
       "title": "MVP: Swap OpenCode → vibes-core CERRADO",
