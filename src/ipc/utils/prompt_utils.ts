@@ -2,34 +2,42 @@ import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import log from "electron-log";
+import { DEFAULT_PROMPTS } from "@/prompts/defaults";
+import type { PromptId } from "@/prompts/index";
 
 const logger = log.scope("prompt_utils");
 
 /**
- * Fetch a system prompt by its systemId for a specific user from the remote database.
- * The prompt must be enabled (enabled === 1).
- * La DB es la ÚNICA fuente de verdad: si el prompt no existe o está deshabilitado,
- * devuelve cadena vacía (no hay fallback a defaults de código).
+ * Fetch a system prompt by its systemId for a specific user.
+ * Prioridad: override del usuario en DB > default del código (DEFAULT_PROMPTS).
+ * - Override habilitado con contenido → contenido del override.
+ * - Override deshabilitado (enabled=0) → cadena vacía (el usuario lo apagó;
+ *   consistente con el sync a customPrompts que guarda "" al desactivar).
+ * - Sin override → default hardcoded del código.
  */
 export async function getSystemPrompt(
   systemId: string,
   userId?: string,
 ): Promise<string> {
+  const codeDefault = DEFAULT_PROMPTS[systemId as PromptId] ?? "";
+
   if (!userId) {
     logger.warn(`No userId provided when fetching system prompt: ${systemId}`);
-    return "";
+    return codeDefault;
   }
 
   try {
     const db = getRemoteDb();
     const promptRow = await db.query.prompts.findFirst({
       where: (p, { eq, and }) =>
-        and(eq(p.userId, userId), eq(p.systemId, systemId), eq(p.enabled, 1)),
+        and(eq(p.userId, userId), eq(p.systemId, systemId)),
     });
 
-    return promptRow?.content || "";
+    if (!promptRow) return codeDefault;
+    if (promptRow.enabled !== 1) return ""; // deshabilitado explícitamente
+    return promptRow.content || codeDefault;
   } catch (error) {
     logger.error(`Error fetching system prompt ${systemId}:`, error);
-    return "";
+    return codeDefault;
   }
 }

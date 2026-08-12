@@ -21,6 +21,7 @@ import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
 import { constructSystemPrompt } from "../../prompts/system_prompt";
+import { DEFAULT_PROMPTS } from "../../prompts/defaults";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -1726,17 +1727,16 @@ This conversation includes one or more image attachments. When the user uploads 
           // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
-          // 1. Fetch active prompts from database (Single Source of Truth).
-          // IMPORTANTE: la DB es la ÚNICA fuente de verdad. Si un systemId no
-          // aparece aquí, no se inyecta (los prompts del sistema que el usuario
-          // nunca tocó deben existir como filas sembradas en la DB).
-          const activePromptsRows = await db.query.prompts.findMany({
-            where: and(
-              eq(remoteSchema.prompts.userId, currentUserId as string),
-              eq(remoteSchema.prompts.enabled, 1),
-            ),
+          // 1. Fetch prompts del usuario. La DB guarda SOLO overrides (lo que el
+          // usuario editó o desactivó); los defaults de fábrica viven en el código
+          // (DEFAULT_PROMPTS). Sin override → se usa el default del código.
+          const userPromptsRowsAll = await db.query.prompts.findMany({
+            where: eq(remoteSchema.prompts.userId, currentUserId as string),
             orderBy: (p: any, { asc }: any) => [asc(p.id)],
           });
+          const activePromptsRows = userPromptsRowsAll.filter(
+            (p) => p.enabled === 1,
+          );
 
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = {
@@ -1745,8 +1745,9 @@ This conversation includes one or more image attachments. When the user uploads 
           };
           const langName = langMap[chatLang] || chatLang;
 
-          // System prompt IDs que el runtime espera recibir. Para cada uno,
-          // se lee el override de la DB (si no existe fila, no se inyecta).
+          // System prompt IDs que el runtime espera recibir. Para cada uno se
+          // usa el override del usuario en DB, o el default del código si no hay
+          // override. Un override deshabilitado (enabled=0) desactiva el prompt.
           const SYSTEM_PROMPT_IDS = [
             "ctx_language",
             "ctx_no_run_locally",
@@ -1758,9 +1759,12 @@ This conversation includes one or more image attachments. When the user uploads 
             "runtime_agent_base",
           ] as const;
 
-          const userPromptsBySid = new Map<string, (typeof activePromptsRows)[number]>();
-          for (const p of activePromptsRows) {
-            if (p.systemId) userPromptsBySid.set(p.systemId, p);
+          const userPromptsBySid = new Map<string, (typeof userPromptsRowsAll)[number]>();
+          const disabledSystemIds = new Set<string>();
+          for (const p of userPromptsRowsAll) {
+            if (!p.systemId) continue;
+            if (p.enabled === 1) userPromptsBySid.set(p.systemId, p);
+            else disabledSystemIds.add(p.systemId);
           }
 
           for (const sysId of SYSTEM_PROMPT_IDS) {
@@ -1772,8 +1776,11 @@ This conversation includes one or more image attachments. When the user uploads 
               continue;
             }
             // runtime_agent_base: si el custom agent está en replace, ya se
-            // filtró arriba. Para los demás modos se inyecta siempre si existe
-            // fila en DB (override o sembrada).
+            // filtró arriba. Para los demás modos se inyecta siempre (override
+            // de la DB o default del código).
+
+            // Override deshabilitado explícitamente → no se inyecta el prompt.
+            if (disabledSystemIds.has(sysId)) continue;
 
             const userPrompt = userPromptsBySid.get(sysId);
             let content: string;
@@ -1783,8 +1790,8 @@ This conversation includes one or more image attachments. When the user uploads 
               content = userPrompt.content;
               scope = (userPrompt as any).scope || "all";
             } else {
-              // DB es la única fuente de verdad: sin fila no hay prompt.
-              content = "";
+              // Sin override en DB: default del código (fuente de fábrica).
+              content = DEFAULT_PROMPTS[sysId] ?? "";
               scope = "all";
             }
             if (!content) continue;

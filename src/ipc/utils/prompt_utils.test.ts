@@ -11,14 +11,10 @@ vi.mock("@/db/remote", () => ({
   getRemoteDb: () => ({
     query: {
       prompts: {
-        // Replica el filtro real: findFirst con where enabled === 1.
-        // Si la fila está deshabilitada, el query real no la devuelve (null).
-        findFirst: async ({ where }: any) => {
+        // Replica el query real: findFirst por (userId, systemId) SIN filtrar
+        // enabled — la decisión habilitado/deshabilitado vive en getSystemPrompt.
+        findFirst: async () => {
           if (!hoisted.promptRow) return null;
-          // El where real es una función que recibe { eq, and } — aplicamos el
-          // criterio enabled === 1 de forma equivalente.
-          const enabled = hoisted.promptRow.enabled;
-          if (enabled === 0) return null;
           return hoisted.promptRow;
         },
       },
@@ -28,37 +24,52 @@ vi.mock("@/db/remote", () => ({
 
 import { getSystemPrompt } from "./prompt_utils";
 
-describe("getSystemPrompt — DB única fuente de verdad (sin fallback a código)", () => {
+describe("getSystemPrompt — override de la DB > default del código", () => {
   beforeEach(() => {
     hoisted.promptRow = null;
   });
 
-  it("devuelve cadena vacía si no hay userId", async () => {
-    await expect(getSystemPrompt("ctx_language")).resolves.toBe("");
+  const DEFAULT_CTX_LANGUAGE = DEFAULT_PROMPTS.ctx_language;
+
+  it("devuelve el default del código si no hay userId", async () => {
+    await expect(getSystemPrompt("ctx_language")).resolves.toBe(
+      DEFAULT_CTX_LANGUAGE,
+    );
   });
 
-  it("devuelve cadena vacía si el prompt no existe en DB (sin fallback)", async () => {
+  it("devuelve el default del código si no hay override en DB", async () => {
     hoisted.promptRow = null;
-    await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe("");
+    await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe(
+      DEFAULT_CTX_LANGUAGE,
+    );
   });
 
-  it("devuelve el contenido de la DB si la fila existe", async () => {
+  it("devuelve el override de la DB si la fila existe y está habilitada", async () => {
     hoisted.promptRow = { content: "responde en español", enabled: 1 };
     await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe(
       "responde en español",
     );
   });
 
-  it("devuelve cadena vacía si la fila existe pero está deshabilitada", async () => {
+  it("devuelve cadena vacía si la fila existe pero está deshabilitada (el usuario lo apagó)", async () => {
     hoisted.promptRow = { content: "responde en español", enabled: 0 };
-    await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe("");
+    await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe(
+      "",
+    );
+  });
+
+  it("devuelve cadena vacía si el systemId no existe ni en DB ni en el código", async () => {
+    hoisted.promptRow = null;
+    await expect(getSystemPrompt("prompt_inexistente", "user-1")).resolves.toBe(
+      "",
+    );
   });
 });
 
-describe("DEFAULT_PROMPTS — semilla que debe cubrir los systemIds del runtime", () => {
+describe("DEFAULT_PROMPTS — semilla de fábrica que debe cubrir los systemIds del runtime", () => {
   // systemIds que chat_stream_handlers.ts espera inyectar en el system prompt.
-  // Si uno de estos NO está en DEFAULT_PROMPTS (semilla) → la DB no puede
-  // sembrarlo y el runtime se quedaría sin prompt. Este test lo detecta.
+  // Si uno de estos NO está en DEFAULT_PROMPTS → el pipeline del chat se
+  // quedaría sin prompt cuando no hay override en la DB. Este test lo detecta.
   const RUNTIME_SYSTEM_PROMPT_IDS = [
     "ctx_language",
     "ctx_no_run_locally",

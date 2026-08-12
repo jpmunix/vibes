@@ -37,7 +37,7 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
-## Tests Unitarios / Integration (Vitest) — 17 archivos
+## Tests Unitarios / Integration (Vitest) — 19 archivos
 
 ### Runtime swap (B6) — Frontera Vibes ↔ vibes-core
 
@@ -54,6 +54,8 @@ npm run e2e:shard   # playwright test --shard
 | [permission_persist.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/permission_persist.test.ts) | 7 | **Slice 3.8** — Resiliencia ante fallo de BunnyDB. Contrato IPC `permission:persist-failed` (channel + payload Zod). `writeSettings` retorna `Promise<{ok, error?}>` — 4 tests cubren ok=true (DB success), ok=false con error (DB failure), ok=true sin DB call cuando no hay userId, ok=true para runtime-only updates (isRunning). |
 | [prompt_attach.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/prompt_attach.test.ts) | — | System prompt composer: contexto + custom prompt con separador `---`. |
 | [prompt_handlers.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/prompt_handlers.test.ts) | 5 | Función pura `computePromptDefaultStatus`: `hasDefault`/`isModified` (prompt sin systemId, systemId sin default, content == default, content != default, varios en el mismo map). Soporta el botón "Restaurar defaults" de Settings → Prompts. |
+| [prompt_utils.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/utils/prompt_utils.test.ts) | 7 | `getSystemPrompt`: override del usuario en DB > default del código (`DEFAULT_PROMPTS`). Sin userId / sin override / fila deshabilitada → default del código; override habilitado → contenido de la DB; systemId inexistente en ambos → `""`. Invariantes: `DEFAULT_PROMPTS` cubre los 8 systemIds que el runtime inyecta (`ctx_*` + `runtime_agent_base`) y ninguna entrada está vacía. **Contrato post-rollback card #92:** los defaults viven en el código; la tabla `prompts` solo guarda overrides. |
+| [misc.deleted.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/misc.deleted.test.ts) | 9 | **Slice 3.10 — contract `chat:deleted`.** Channel name coincide con el `safeSend` de chat_handlers.ts; payload `{ chatId: number }` parseable por Zod; lógica de prune del renderer descarta permissions/asks/consents/todos pendientes del chatId borrado. |
 
 
 **Cuándo usarlos:** Si se toca la capa `src/ipc/runtime/` (el bridge entre Vibes y vibes-core). El contract test golden es **el guard del swap B6**: cualquier cambio en el output que cruza la frontera requiere actualizar este test.

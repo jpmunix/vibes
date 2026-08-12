@@ -4,6 +4,8 @@ import * as remoteSchema from "@/db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { promptContracts } from "../types/prompts";
+import { DEFAULT_PROMPTS } from "@/prompts/defaults";
+import { PROMPT_LABELS, PROMPT_DESCRIPTIONS } from "@/prompts/index";
 
 const _logger = log.scope("prompt_handlers");
 
@@ -12,13 +14,12 @@ export function registerPromptHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    // Modelo: prompt_defaults (global) es la fuente del contenido base.
+    // Modelo: los defaults de fábrica viven en el código (DEFAULT_PROMPTS).
     // La tabla `prompts` del usuario SOLO guarda overrides (filas con
     // systemId y content/enabled/scope distintos del default). Si el usuario
     // no ha tocado un prompt del sistema, NO existe fila — el handler
     // sintetiza la entrada con id:null para que la UI la muestre sin escribirla.
-    const [defaultRows, userRows, categoryRows] = await Promise.all([
-      db.select().from(remoteSchema.promptDefaults),
+    const [userRows, categoryRows] = await Promise.all([
       db
         .select()
         .from(remoteSchema.prompts)
@@ -29,36 +30,57 @@ export function registerPromptHandlers() {
         .where(eq(remoteSchema.promptsCategories.userId, context.userId)),
     ]);
 
-    const defaultsBySystemId = new Map(
-      defaultRows.map((d) => [d.systemId, d]),
-    );
     const overridesBySystemId = new Map<string, (typeof userRows)[number]>();
     const customRows: (typeof userRows)[number][] = [];
     for (const r of userRows) {
-      if (r.systemId && defaultsBySystemId.has(r.systemId)) {
+      if (r.systemId && r.systemId in DEFAULT_PROMPTS) {
         overridesBySystemId.set(r.systemId, r);
       } else if (!r.systemId) {
         customRows.push(r);
       }
-      // Filas con systemId huérfano (no existe en prompt_defaults) se ignoran
-      // en la vista de sistema; si hay que recuperarlas, el diagnóstico las lista.
+      // Filas con systemId huérfano (no existe en DEFAULT_PROMPTS) se ignoran
+      // en la vista de sistema.
     }
 
-    // Categoría "Prompts del sistema" del usuario (cat 19 en seed).
-    // Si no existe (caso raro de usuario sin seed), se cae a null y la UI
-    // mostrará el prompt sin categoría — pero nunca debería pasar.
-    const systemCategoryId =
-      categoryRows.find((c) => c.name === "Prompts del sistema")?.id ?? null;
-    // Categoría "revisar" — prompts que NO llegan a vibes-core (se usan en
-    // otros handlers o son huérfanos históricos). Se crean al vuelo desde
-    // prompt_defaults sintetizados; los overrides del usuario se mueven aquí
-    // vía migrate-prompt-revisar.ts.
-    const revisarCategoryId =
-      categoryRows.find((c) => c.name === "revisar")?.id ?? null;
+    // Auto-heal idempotente: las dos categorías del sistema siempre deben
+    // existir para el usuario. Si no están (instalación nueva, o un DROP de
+    // la tabla prompts_categories), se crean aquí al vuelo. Esto evita tener
+    // que re-ejecutar scripts de seed manualmente.
+    const findOrCreateCategory = async (
+      name: string,
+      description: string,
+      isSystem: boolean,
+    ) => {
+      const existing = categoryRows.find((c) => c.name === name);
+      if (existing) return existing.id;
+      const [created] = await db
+        .insert(remoteSchema.promptsCategories)
+        .values({
+          userId: context.userId as string,
+          name,
+          description,
+          isSystem: isSystem ? 1 : 0,
+        })
+        .returning();
+      return created?.id ?? null;
+    };
+
+    const systemCategoryId = await findOrCreateCategory(
+      "Prompts del sistema",
+      "Prompts de fábrica del sistema. Editables bajo tu criterio.",
+      true,
+    );
+    // Categoría "revisar" — prompts que NO llegan a vibes-core (los leen
+    // otros handlers: títulos de chat, commits, memoria, etc.).
+    const revisarCategoryId = await findOrCreateCategory(
+      "revisar",
+      "Prompts que NO llegan a vibes-core. Los usan otros handlers (títulos de chat, commits, memoria, etc.).",
+      false,
+    );
 
     // Regla de clasificación (P1: solo ctx_* + runtime_agent_base llegan a
-    // vibes-core como agent.systemPrompt; el resto se quedó en prompt_defaults
-    // pero lo leen otros handlers vía getSystemPrompt o es histórico muerto).
+    // vibes-core como agent.systemPrompt; el resto se queda en DEFAULT_PROMPTS
+    // pero lo leen otros handlers vía getSystemPrompt).
     const isRuntimeSystemId = (systemId: string): boolean =>
       systemId.startsWith("ctx_") || systemId === "runtime_agent_base";
 
@@ -77,30 +99,31 @@ export function registerPromptHandlers() {
       updatedAt: Date | null;
     }> = [];
 
-    // 1) Para cada prompt_default, sintetizar una entrada (con o sin override).
-    for (const def of defaultRows) {
-      const override = overridesBySystemId.get(def.systemId);
+    // 1) Para cada default del código, sintetizar una entrada (con o sin override).
+    for (const [systemId, defaultContent] of Object.entries(DEFAULT_PROMPTS)) {
+      const override = overridesBySystemId.get(systemId);
       if (override) {
         // Override del usuario: content/enabled/scope pueden diferir del default.
         result.push({
           id: Number(override.id),
           categoryId:
             override.categoryId !== null ? Number(override.categoryId) : null,
-          systemId: def.systemId,
-          title: def.title, // título viene siempre del default (inmutable por versión)
-          description: def.description,
+          systemId,
+          title: PROMPT_LABELS[systemId as keyof typeof PROMPT_LABELS] ?? systemId,
+          description:
+            PROMPT_DESCRIPTIONS[systemId as keyof typeof PROMPT_DESCRIPTIONS] ?? null,
           content: override.content,
           enabled: override.enabled === 1,
           scope: override.scope ?? "all",
           hasDefault: true,
-          isModified: true,
+          isModified: override.content !== defaultContent,
           createdAt: override.createdAt,
           updatedAt: override.updatedAt,
         });
       } else {
-        // Sin override: leer del default directamente. id:null porque NO hay fila.
+        // Sin override: leer del default del código directamente. id:null porque NO hay fila.
         // La categoría depende de si el prompt llega a vibes-core o no.
-        const targetCategoryId = isRuntimeSystemId(def.systemId)
+        const targetCategoryId = isRuntimeSystemId(systemId)
           ? systemCategoryId
           : revisarCategoryId;
         result.push({
@@ -108,16 +131,17 @@ export function registerPromptHandlers() {
           categoryId: targetCategoryId
             ? Number(targetCategoryId)
             : null,
-          systemId: def.systemId,
-          title: def.title,
-          description: def.description,
-          content: def.content,
+          systemId,
+          title: PROMPT_LABELS[systemId as keyof typeof PROMPT_LABELS] ?? systemId,
+          description:
+            PROMPT_DESCRIPTIONS[systemId as keyof typeof PROMPT_DESCRIPTIONS] ?? null,
+          content: defaultContent,
           enabled: true,
           scope: "all",
           hasDefault: true,
           isModified: false,
-          createdAt: def.updatedAt,
-          updatedAt: def.updatedAt,
+          createdAt: null,
+          updatedAt: null,
         });
       }
     }
@@ -361,8 +385,9 @@ export function registerPromptHandlers() {
   });
 
   // Restore default de fábrica de un prompt del sistema.
-  // BORRA la fila override: el handler `list` sintetiza la entrada desde
-  // prompt_defaults y la DB es la única fuente de verdad (sin fallback a código).
+  // El default vive en el código (DEFAULT_PROMPTS). BORRA la fila override
+  // del usuario: tras borrarla, el handler `list` sintetiza la entrada desde
+  // DEFAULT_PROMPTS y el prompt vuelve a su valor de fábrica.
   createTypedHandler(
     promptContracts.restoreDefault,
     async (_, params, context) => {
@@ -371,11 +396,9 @@ export function registerPromptHandlers() {
       const { id, systemId } = params;
       if (!id || !systemId) throw new Error("id and systemId are required");
 
-      const [defaultRow] = await db
-        .select()
-        .from(remoteSchema.promptDefaults)
-        .where(eq(remoteSchema.promptDefaults.systemId, systemId));
-      if (!defaultRow) throw new Error(`No default for systemId: ${systemId}`);
+      if (!(systemId in DEFAULT_PROMPTS)) {
+        throw new Error(`No default for systemId: ${systemId}`);
+      }
 
       await db
         .delete(remoteSchema.prompts)
@@ -533,6 +556,7 @@ export function registerPromptHandlers() {
 /**
  * Pure helper: compute whether a prompt has a factory default and whether its
  * content differs from it. Extracted for unit testing (no Electron/DB deps).
+ * Los defaults viven en DEFAULT_PROMPTS (código); el map es el override del usuario.
  */
 export function computePromptDefaultStatus(
   content: string,
