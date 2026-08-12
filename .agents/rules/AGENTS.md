@@ -90,6 +90,12 @@ Y espera el OK antes de tocar.
 
 **Resumen de una línea:** el agente verifica (tests/typecheck/lint) por su cuenta; el resto lo decide munix.
 
+**Cuando munix pide un commit explícito** (dice "haz el commit" o similar), el agente ejecuta directamente **sin volver a pedir OK** (el pedido ya es autorización) y con estas reglas:
+- **Coge SOLO los archivos trabajados** en la tarea/card actual (`git add` selectivo). No commitea cambios ajenos que estén en el working tree (p. ej. de otra tarea).
+- **Genera un mensaje de commit estándar**: tipo convencional (`feat`/`fix`/`refactor`/`chore`/`docs`/`test`...), resumen en línea, y cuerpo con el contexto si aplica.
+- **Referencia la card en formato `#VIBES-XX`** en el asunto del commit (o cuerpo si el asunto es largo), donde `XX` es el `idShort` de la card de Trello en la que se trabajó.
+- Tras el commit, reporta el hash y el alcance (archivos). El `git push` sigue requiriendo OK explícito aparte.
+
 ---
 
 ### 1.6 Frontera runtime ↔ carcasa (P1 del Roadmap)
@@ -246,6 +252,23 @@ node scripts/trello/attach-file.mjs --card "Título de la card" --file "<ruta-de
 - **Card correspondiente:** la card en la que se está trabajando (la de Doing). Si un artifact no tiene card propia, se adjunta a la card de la tarea.
 - **Límite:** 10 MB por fichero (API de Trello). Si un artifact lo excede, se avisa en el comentario (nunca se omite en silencio).
 - **Código fuente:** no se sube al board (vive en el repo); solo se adjunta si es evidencia relevante (p. ej. el script entregable).
+
+---
+
+### 1.11 Repos de referencia "los arneses" — sitio de consulta — **INNEGOCIABLE**
+
+El directorio [`arneses/`](file:///home/munix/Desarrollo/GitRepo/arneses) contiene espejos de los proyectos grandes del sector (aider, continue, opencode, pi, plandex) como **sitio de consulta**. Esos proyectos ya han pasado por mil retos que nosotros recién nos planteamos.
+
+**Cuando munix diga "mira como lo hacen los otros"** (o "mira cómo lo hace opencode/pi/continue/aider/plandex", o cualquier consulta sobre cómo resolver un problema que estos proyectos ya hayan resuelto), el agente **busca ahí primero** antes de inventar una solución propia.
+
+**Reglas:**
+- `arneses/` es **solo lectura como referencia**: no se modifica nunca (son espejos de terceros).
+- Consultar sus `AGENTS.md`, `CONTEXT.md`, `CONTRIBUTING.md`, `docs/`, `packages/` y el código real para aprender patrones, arquitectura, edge-cases y decisiones que ya tomaron.
+- **No copiar código literal** sin adaptarlo a nuestra arquitectura (P1 runtime ↔ carcasa) y sin citar la fuente.
+- Si un patrón de `arneses/` inspira una decisión propia → documentarlo en la card/PR con referencia al archivo consultado.
+- La referencia es **código de terceros con su propia licencia**: respetarla si se reutiliza algo.
+
+> **Por qué:** no reinventar la rueda. Estos proyectos llevan años resolviendo los problemas que estamos empezando a plantearnos (tooling de agentes, loops, prompts, permisos, UI). Su código es una fuente de conocimiento de primera mano.
 
 ---
 
