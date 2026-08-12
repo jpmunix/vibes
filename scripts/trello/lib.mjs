@@ -108,8 +108,19 @@ export async function getBoard() {
   return api(`/1/boards/${CONFIG.boardId}`, { fields: 'id,name,desc,url' });
 }
 
-export async function createCard({ name, desc = '', idList, labels = [] }) {
-  const card = await api('/1/cards', { idList, name, desc }, 'POST');
+/**
+ * Crea una card nueva.
+ * @param {object} opts
+ * @param {string} opts.name
+ * @param {string} [opts.desc]
+ * @param {string} opts.idList
+ * @param {string[]} [opts.labels]
+ * @param {('top'|'bottom'|number)} [opts.pos='top']  Posición dentro de la lista.
+ *   Por defecto 'top' para que las cards nuevas siempre aparezcan arriba (consistencia
+ *   con `update-card.mjs` y la política "lo nuevo y movido, arriba por defecto").
+ */
+export async function createCard({ name, desc = '', idList, labels = [], pos = 'top' }) {
+  const card = await api('/1/cards', { idList, name, desc, pos }, 'POST');
   for (const labelId of labels) {
     await api(`/1/cards/${card.id}/idLabels`, { value: labelId }, 'POST');
   }

@@ -8,10 +8,14 @@
  *     --desc "Descripción" \
  *     [--list "To Do"] \
  *     [--labels fase-2,deuda] \
- *     [--checklist "Criterio 1|Criterio 2|..."]
+ *     [--checklist "Criterio 1|Criterio 2|..."] \
+ *     [--pos top]                # posición en la lista: top (default) | bottom | número
  *
  * Si ya existe una card con el mismo título, la lista en vez de duplicar
  * y avisa por stdout para que el agente decida.
+ *
+ * Política de posición: por defecto 'top' — toda card nueva va arriba del todo
+ * de la lista destino (consistente con update-card.mjs, que también va al top).
  */
 import { findListByName, resolveCard, createCard, resolveLabelIds, createChecklist, addCheckItem, moveCard, getLists } from './lib.mjs';
 
@@ -26,6 +30,20 @@ const desc = getArg('desc') || '';
 const listName = getArg('list') || 'To Do';
 const labels = (getArg('labels') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const checklist = (getArg('checklist') || '').split('|').map((s) => s.trim()).filter(Boolean);
+// Posición al crear: 'top' (default, primera), 'bottom' o número (1 = primera).
+const posRaw = getArg('pos') ?? 'top';
+let posNorm;
+if (typeof posRaw === 'string') {
+  const lc = posRaw.toLowerCase();
+  if (lc === 'top' || lc === 'bottom') {
+    posNorm = lc;
+  } else if (/^-?\d+(\.\d+)?$/.test(posRaw)) {
+    posNorm = Number(posRaw);
+  } else {
+    console.error(`❌ --pos "${posRaw}" no válido. Usa "top", "bottom" o un número.`);
+    process.exit(1);
+  }
+}
 
 if (!title) {
   console.error('❌ Falta --title');
@@ -50,8 +68,9 @@ if (!list) {
 const unescape = (s) => (s || '').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 
 const labelIds = await resolveLabelIds(labels);
-const card = await createCard({ name: title, desc: unescape(desc), idList: list.id, labels: labelIds });
-console.log(`✅ Card creada: "${title}" → ${card.url}`);
+const card = await createCard({ name: title, desc: unescape(desc), idList: list.id, labels: labelIds, pos: posNorm });
+const posLabel = posNorm === 'top' ? ' (primera)' : posNorm === 'bottom' ? ' (última)' : ` (pos=${posNorm})`;
+console.log(`✅ Card creada: "${title}" → ${card.url}${posLabel}`);
 
 if (checklist.length) {
   const cl = await createChecklist(card.id, 'Criterios de aceptación');
