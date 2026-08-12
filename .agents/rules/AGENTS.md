@@ -253,6 +253,25 @@ node scripts/trello/attach-file.mjs --card "Título de la card" --file "<ruta-de
 - **Límite:** 10 MB por fichero (API de Trello). Si un artifact lo excede, se avisa en el comentario (nunca se omite en silencio).
 - **Código fuente:** no se sube al board (vive en el repo); solo se adjunta si es evidencia relevante (p. ej. el script entregable).
 
+#### 1.10.9 Labels del board — toda card lleva labels coherentes — **INNEGOCIABLE**
+
+Toda card que cree el agente (o munix, como convención compartida) lleva **al menos un label** que refleje su naturaleza, y opcionalmente los complementarios (fase/dimensión). Una card sin labels (o con labels incoherentes con su contenido) es una card mal clasificada: rompe el filtrado y las agrupaciones del board.
+
+**Reglas:**
+- Si la card es de **deuda** (revisión, bug no arreglado, refactor pendiente) → label `deuda` siempre.
+- Si toca una **dimensión** reconocible (tools, prompts, runtime, ui, sdk, permisos, mcp, db, modelos, workspace, compactacion, resiliencia, subagentes, attachments, migracion, arneses, research, etc.) → añadir ese label, aunque sea transversal.
+- Si pertenece a una **fase** (fase-2, fase-3, fase-4, fase-5) → añadir el de fase.
+- No abusar: 1-3 labels por card, los que la describen de verdad. No etiquetar por etiquetar.
+
+**Vocabulario canónico de labels** (no inventar nuevos sin motivo — crear label nuevo solo si ninguno existente encaja y merece la pena):
+- Dimensiones: `tools`, `prompts`, `runtime`, `ui`, `sdk`, `permisos`, `mcp`, `db`, `modelos`, `workspace`, `compactacion`, `resiliencia`, `subagentes`, `attachments`, `migracion`, `arneses`, `research`
+- Fases: `fase-2`, `fase-3`, `fase-4`, `fase-5`, `mvp`
+- Transversales: `deuda`, `ops`, `idea`
+
+**Cuándo:** al **crear** la card (junto al `🔄 [Doing]`), no en un paso posterior. Si se hereda una card sin labels o con labels rotos → corregirlos al cogerla.
+
+> **Por qué:** el board es la única fuente de verdad (§1.10.7). Sin labels coherentes, el filtrado por dimensión (p. ej. "qué deuda de tools tenemos") es imposible y el board pierde su valor como instrumento de gestión.
+
 ---
 
 ### 1.11 Repos de referencia "los arneses" — sitio de consulta — **INNEGOCIABLE**
@@ -385,7 +404,54 @@ artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
 El `cardNumber` se obtiene de `node scripts/trello/list-cards.mjs --json | jq '.idShort'`
 o con `resolveCard` desde `scripts/trello/lib.mjs`.
 
+
+### 1.13 Consulta de conversaciones de Antigravity (script `ag-chats.mjs`) — **INNEGOCIABLE**
+
+Para revisar los chats del proyecto (incluido el estado **archivado**) y el contenido de cada conversación **sin abrir Antigravity** — p. ej. cuando munix se va al móvil y el agente debe consultar datos de conversaciones pasadas — usar el script [`scripts/ag-chats.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/ag-chats.mjs).
+
+**Qué hace:** replica la lectura del tracker del proxy de Antigravity ([antigravity-tracker.ts](file:///home/munix/Desarrollo/GitRepo/antigravity-proxy/proxy/src/antigravity-tracker.ts)) sobre `~/.gemini/antigravity/` (los `.db` de conversaciones, el índice `.pb` para el estado archivado, y el `transcript.jsonl` para el contenido). Es **solo lectura**: no borra ni modifica nada de Antigravity.
+
+**Uso (salida en JSON):**
+
+```bash
+# Por defecto lista los workspaces activos del repo Vibes:
+#   Vibes (corpus jpmunix/vibes), arneses (sin corpus, detectado por workspaceUri) y vibes-core.
+node scripts/ag-chats.mjs list
+
+# Todos los proyectos del workspace
+node scripts/ag-chats.mjs list --all
+
+# Otro proyecto concreto (uno o varios separados por coma)
+node scripts/ag-chats.mjs list --project <nombre>
+node scripts/ag-chats.mjs list --project cinco-villas,totem-admin
+
+# Filtrar por estado
+node scripts/ag-chats.mjs list --archived
+node scripts/ag-chats.mjs list --active
+
+# Leer el transcript de una conversación concreta (cascadeId = campo `cascadeId` del list)
+node scripts/ag-chats.mjs show <cascadeId>
+
+# Solo mensajes de usuario de una conversación
+node scripts/ag-chats.mjs show <cascadeId> --type USER_INPUT
+
+# Incluir también pasos de sistema/herramientas
+node scripts/ag-chats.mjs show <cascadeId> --steps
+```
+
+> [!NOTE]
+> El proyecto actual de trabajo se referencia como **Vibes** (corpus `jpmunix/vibes` / workspace `/Vibes`).
+> **Ojo con `arneses`:** no tiene `corpusName` (campo vacío); se detecta por `workspaceUri` que termine en `/arneses`.
+> Por defecto `list` devuelve los 3 workspaces activos del repo: Vibes, arneses y vibes-core.
+> Para revisarlos, `list` es el primer paso (devuelve `cascadeId`, título, última actividad y `archived`), y `show` lee el contenido de una sola.
+> El script depende de la CLI `sqlite3` del sistema (no usa `better-sqlite3`, que en Vibes está compilada para Electron).
+
+> [!IMPORTANT]
+> El campo `title` de cada conversación es el **resumen autogenerado por Antigravity** (el nombre que se ve en el panel izquierdo, p. ej. "Workspace Conversation Access"), leído del índice `agyhub_summaries_proto.pb`. No es un truncado del primer prompt.
+> Si una conversación no tiene summary en el `.pb`, el script cae al primer `USER_INPUT` del transcript y, en última instancia, al `step_payload`.
+
+
 ---
 
-**Última actualización:** 2026-08-12 (§1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten).
+**Última actualización:** 2026-08-12 (§1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.10.9: toda card creada lleva labels coherentes con su naturaleza — vocabulario canónico consolidado; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten; §1.13: script `ag-chats.mjs` para consultar las conversaciones de Antigravity desde CLI).
 **Mantenedor:** munix.

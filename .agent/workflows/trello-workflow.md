@@ -125,6 +125,8 @@ node scripts/trello/update-card.mjs \
 
 El comentario de inicio documenta **el plan** (1-2 líneas) para que cualquiera sepa qué se va a hacer.
 
+> **Labels:** si la card que coges no tiene labels, o los tiene incoherentes con su contenido, corrígelos al cogerla (regla AGENTS.md §1.10.9). Toda card lleva labels de su naturaleza: `deuda` si es deuda, la dimensión (tools, prompts, runtime, ui...) y/o la fase (fase-2..5).
+
 ### 3️⃣ Trabajar la card
 
 El agente hace el trabajo (código, tests, docs) **siguiendo AGENTS.md**:
@@ -333,6 +335,7 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 5. AL TERMINAR → Review con evidencia (tests, archivos)
 6. CON OK de munix → Done con comentario de cierre + bitácora si hay decisiones
 7. DEUDA nueva → create-card en Backlog (no la arregles en caliente)
+8. LABELS: toda card que creas/coges lleva labels coherentes (deuda/dimensión/fase) — vocabulario en AGENTS.md §1.10.9
 ```
 
 > [!IMPORTANT]
