@@ -97,5 +97,5 @@ FASE 4 (Robustez):████████████████████�
 FASE 5 (Ecosist.):████████████████ 35%                           ← SDKs + Private Editions
 ```
 
-> 📄 Documento padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md)
-> 📄 Fase 1: [MVP](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/phase1-mvp.md)
+> 📄 Documento padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md)
+> 📄 Fase 1: [MVP](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/phase1-mvp.md)

@@ -271,7 +271,7 @@ export function registerVisualEditingHandlers() {
         // en opencode_adapter. El runtime no soporta visual-edit subagent
         // todavía. Dejamos el código comentado para no perder la feature;
         // replicar en runtime cuando proceda.
-        // Ver: docs/plans/post-mvp-roadmap.md §"Deuda del swap B6"
+        // Ver: docs/archive/post-mvp-roadmap.md §"Deuda del swap B6"
         throw new Error(
           "Visual edit no migrado al runtime todavía — ver TODO(mvp-cleanup)",
         );

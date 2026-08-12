@@ -20,7 +20,6 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
-import { DEFAULT_PROMPTS } from "../../prompts/defaults";
 import { constructSystemPrompt } from "../../prompts/system_prompt";
 import {
   getSupabaseAvailableSystemPrompt,
@@ -1727,7 +1726,10 @@ This conversation includes one or more image attachments. When the user uploads 
           // handles all project knowledge natively. Vibes context goes via noReply.
           const contextInstructions: string[] = [];
 
-          // 1. Fetch active prompts from database (Single Source of Truth)
+          // 1. Fetch active prompts from database (Single Source of Truth).
+          // IMPORTANTE: la DB es la ÚNICA fuente de verdad. Si un systemId no
+          // aparece aquí, no se inyecta (los prompts del sistema que el usuario
+          // nunca tocó deben existir como filas sembradas en la DB).
           const activePromptsRows = await db.query.prompts.findMany({
             where: and(
               eq(remoteSchema.prompts.userId, currentUserId as string),
@@ -1736,14 +1738,6 @@ This conversation includes one or more image attachments. When the user uploads 
             orderBy: (p: any, { asc }: any) => [asc(p.id)],
           });
 
-          const walkthroughDbPrompt = await db.query.prompts.findFirst({
-            where: and(
-              eq(remoteSchema.prompts.userId, currentUserId as string),
-              eq(remoteSchema.prompts.systemId, "ctx_build_walkthrough"),
-            ),
-          });
-          const hasWalkthroughInDb = !!walkthroughDbPrompt;
-
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = {
             es: "español",
@@ -1751,83 +1745,85 @@ This conversation includes one or more image attachments. When the user uploads 
           };
           const langName = langMap[chatLang] || chatLang;
 
-          for (const prompt of activePromptsRows) {
-            // If it's a custom agent in replace mode, we only keep the language rule from system prompts (ctx_*)
+          // System prompt IDs que el runtime espera recibir. Para cada uno,
+          // se lee el override de la DB (si no existe fila, no se inyecta).
+          const SYSTEM_PROMPT_IDS = [
+            "ctx_language",
+            "ctx_no_run_locally",
+            "ctx_context7_docs",
+            "ctx_efficiency_triage",
+            "ctx_task_management",
+            "ctx_plan_mode",
+            "ctx_build_walkthrough",
+            "runtime_agent_base",
+          ] as const;
+
+          const userPromptsBySid = new Map<string, (typeof activePromptsRows)[number]>();
+          for (const p of activePromptsRows) {
+            if (p.systemId) userPromptsBySid.set(p.systemId, p);
+          }
+
+          for (const sysId of SYSTEM_PROMPT_IDS) {
+            // Si el custom agent está en modo replace, solo conservamos ctx_language.
             if (
               customPromptMode === "replace" &&
-              prompt.systemId &&
-              prompt.systemId !== "ctx_language"
+              sysId !== "ctx_language"
             ) {
               continue;
             }
+            // runtime_agent_base: si el custom agent está en replace, ya se
+            // filtró arriba. Para los demás modos se inyecta siempre si existe
+            // fila en DB (override o sembrada).
 
-            // Include custom prompts (no systemId), chat pipeline prompts (ctx_*),
-            // or the runtime base agent prompt (runtime_agent_base)
-            if (
-              !prompt.systemId ||
-              prompt.systemId.startsWith("ctx_") ||
-              prompt.systemId === "runtime_agent_base"
-            ) {
-              const scope = (prompt as any).scope || "all";
-              if (scope !== "all") {
-                const allowedScopes = scope
-                  .split(",")
-                  .map((s: string) => s.trim());
-                let shouldInclude = false;
-                if (agentId === "build" && allowedScopes.includes("agent")) {
-                  shouldInclude = true;
-                } else if (
-                  agentId === "plan" &&
-                  allowedScopes.includes("plan")
-                ) {
-                  shouldInclude = true;
-                } else if (
-                  agentId === "explore" &&
-                  allowedScopes.includes("ask")
-                ) {
-                  shouldInclude = true;
-                }
-                if (!shouldInclude) {
-                  continue;
-                }
-              }
+            const userPrompt = userPromptsBySid.get(sysId);
+            let content: string;
+            let scope: string;
 
-              let content = prompt.content;
-              if (prompt.systemId === "ctx_language") {
-                content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
-              }
-              contextInstructions.push(content);
+            if (userPrompt) {
+              content = userPrompt.content;
+              scope = (userPrompt as any).scope || "all";
+            } else {
+              // DB es la única fuente de verdad: sin fila no hay prompt.
+              content = "";
+              scope = "all";
             }
+            if (!content) continue;
+
+            // Scope: si no es "all", filtramos por agentId.
+            if (scope !== "all") {
+              const allowedScopes = scope
+                .split(",")
+                .map((s: string) => s.trim());
+              const shouldInclude =
+                (agentId === "build" && allowedScopes.includes("agent")) ||
+                (agentId === "plan" && allowedScopes.includes("plan")) ||
+                (agentId === "explore" && allowedScopes.includes("ask"));
+              if (!shouldInclude) continue;
+            }
+
+            if (sysId === "ctx_language") {
+              content = content.replace(/\{\{LANGUAGE\}\}/g, langName);
+            }
+            contextInstructions.push(content);
           }
 
-          // Fallback: if not in DB and build mode active, inject default
-          if (
-            !hasWalkthroughInDb &&
-            agentId === "build" &&
-            customPromptMode !== "replace"
-          ) {
-            const defaultWalkthrough = DEFAULT_PROMPTS.ctx_build_walkthrough;
-            if (defaultWalkthrough) {
-              contextInstructions.push(defaultWalkthrough);
+          // Prompts custom del usuario (sin systemId). No tienen default —
+          // si el usuario los desactivó, simplemente no se inyectan.
+          for (const prompt of activePromptsRows) {
+            if (prompt.systemId) continue; // ya gestionados arriba
+            if (prompt.enabled !== 1) continue;
+            const scope = (prompt as any).scope || "all";
+            if (scope !== "all") {
+              const allowedScopes = scope
+                .split(",")
+                .map((s: string) => s.trim());
+              const shouldInclude =
+                (agentId === "build" && allowedScopes.includes("agent")) ||
+                (agentId === "plan" && allowedScopes.includes("plan")) ||
+                (agentId === "explore" && allowedScopes.includes("ask"));
+              if (!shouldInclude) continue;
             }
-          }
-
-          // Fallback: runtime base agent prompt. If the user has not created
-          // (or disabled) the runtime_agent_base prompt, inject the default so
-          // the runtime never silently falls back to its hardcoded prompt.
-          // (P1: la carcasa compone el prompt; el runtime solo lo ejecuta.)
-          const hasRuntimeBaseInDb = activePromptsRows.some(
-            (p) => p.systemId === "runtime_agent_base",
-          );
-          if (
-            !hasRuntimeBaseInDb &&
-            customPromptMode !== "replace" &&
-            agentId !== "ask"
-          ) {
-            const defaultBase = DEFAULT_PROMPTS.runtime_agent_base;
-            if (defaultBase) {
-              contextInstructions.push(defaultBase);
-            }
+            contextInstructions.push(prompt.content);
           }
 
           // MCP Server instructions

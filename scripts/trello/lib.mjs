@@ -10,8 +10,8 @@
  * (portabilidad entre ordenadores). El repositorio es privado.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -120,8 +120,18 @@ export async function updateCard(id, fields) {
   return api(`/1/cards/${id}`, fields, 'PUT');
 }
 
-export async function moveCard(id, idList) {
-  return updateCard(id, { idList });
+/**
+ * Mueve una card a una lista.
+ * @param {string} id       Id de la card.
+ * @param {string} idList   Id de la lista destino.
+ * @param {('top'|'bottom'|number|string)} [pos]  Posición dentro de la lista:
+ *   'top' (primera), 'bottom' (última) o un número concreto. Si no se pasa,
+ *   Trello la coloca al final por defecto.
+ */
+export async function moveCard(id, idList, pos) {
+  const fields = { idList };
+  if (pos !== undefined && pos !== null) fields.pos = pos;
+  return updateCard(id, fields);
 }
 
 export async function addComment(id, text) {
@@ -160,6 +170,58 @@ export async function addCheckItem(checklistId, name) {
 export async function updateCheckItem(cardId, checkItemId, state) {
   // state: 'complete' | 'incomplete'
   return api(`/1/cards/${cardId}/checkItem/${checkItemId}`, { state }, 'PUT');
+}
+
+/** Límite de fichero para adjuntos de la API de Trello (10 MB). */
+const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Adjunta un fichero local a una card (multipart/form-data, Node nativo).
+ * @param {string} cardId  Id de la card destino.
+ * @param {string} filePath  Ruta al fichero local.
+ * @param {string} [name]  Nombre visible del adjunto (por defecto, el basename).
+ * @returns {Promise<object>} Adjunto creado ({ id, name, url, bytes, ... }).
+ */
+export async function attachFile(cardId, filePath, name) {
+  requireAuth();
+  if (!existsSync(filePath)) {
+    throw new Error(`El fichero no existe: ${filePath}`);
+  }
+  const size = statSync(filePath).size;
+  if (size > ATTACHMENT_MAX_BYTES) {
+    throw new Error(
+      `El fichero pesa ${(size / 1024 / 1024).toFixed(1)} MB (> 10 MB, límite de la API de Trello): ${filePath}`,
+    );
+  }
+
+  const url = new URL(`https://api.trello.com/1/cards/${cardId}/attachments`);
+  url.searchParams.set('key', CONFIG.apiKey);
+  url.searchParams.set('token', CONFIG.token);
+
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // El FormData se reconstruye en cada intento para que el body multipart
+    // quede fresco si hay que reintentar por rate limit. fetch calcula el
+    // Content-Type con boundary solo: NO fijamos headers manualmente.
+    const form = new FormData();
+    form.append('file', new Blob([readFileSync(filePath)]), name || basename(filePath));
+
+    const res = await fetch(url, { method: 'POST', body: form });
+
+    if (res.status === 429 && attempt < maxAttempts) {
+      const retryAfter = Number(res.headers.get('Retry-After')) || 2 ** attempt;
+      console.warn(`⚠️ Rate limit (429). Reintentando en ${retryAfter}s (intento ${attempt}/${maxAttempts})...`);
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
+      continue;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Trello API POST /1/cards/${cardId}/attachments → ${res.status}: ${text.slice(0, 500)}`);
+    }
+    return res.json();
+  }
+  throw new Error(`Rate limit persistente en /1/cards/${cardId}/attachments`);
 }
 
 /** Busca una lista por nombre (case-insensitive). Devuelve la lista o undefined. */

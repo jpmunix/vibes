@@ -116,7 +116,7 @@ export async function deleteRuntimeSession(chatId: number): Promise<void> {
   // TODO(mvp-cleanup, fase 5+): visual edit todavía depende de opencode.
   // El runtime no soporta visual-edit subagent todavía. Dejamos el código
   // comentado para no perder la feature; replicar en runtime cuando proceda.
-  // Ver: docs/plans/post-mvp-roadmap.md §"Deuda del swap B6"
+  // Ver: docs/archive/post-mvp-roadmap.md §"Deuda del swap B6"
   /*
   const { handleVisualQuickEdit } = await import("../../../../ipc/handlers/opencode_adapter");
   const result = await handleVisualQuickEdit({ appPath, componentFile: relativePath, ...
@@ -135,10 +135,10 @@ export async function deleteRuntimeSession(chatId: number): Promise<void> {
   ```
 
 **Documentación:**
-- Añadir entrada en [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/post-mvp-roadmap.md) §"Deuda del swap B6" listando:
+- Añadir entrada en [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/post-mvp-roadmap.md) §"Deuda del swap B6" listando:
   - `handleVisualQuickEdit` (visual edit subagent)
   - `registerQuestionHandler` (ask_user tool, pendiente DP-3)
-  - DP-3 (todos/question tool) se programa para Fase 2 original según [post-mvp-roadmap.md#L29](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/post-mvp-roadmap.md#L29) — esto encaja.
+  - DP-3 (todos/question tool) se programa para Fase 2 original según [post-mvp-roadmap.md#L29](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/post-mvp-roadmap.md#L29) — esto encaja.
 
 **Criterio de aceptación:**
 - Código comentado, no borrado.
@@ -195,7 +195,7 @@ export async function deleteRuntimeSession(chatId: number): Promise<void> {
 ### 2.1.8 — Actualizar walkthrough.md
 
 **Acciones:**
-- [`docs/plans/walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/walkthrough.md) — añadir entrada "Slice 2.1 (B6 real)" describiendo lo que se hizo vs lo que decía el doc original.
+- [`docs/archive/walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/walkthrough.md) — añadir entrada "Slice 2.1 (B6 real)" describiendo lo que se hizo vs lo que decía el doc original.
 
 ---
 

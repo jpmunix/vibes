@@ -40,13 +40,13 @@
 
 **Análisis:** Dos features que **no migraron** durante el swap. Visual edit y question tool siguen dependiendo de opencode. ¿Se eliminan en esta fase o se documentan como deuda explícita?
 
-**Recomendación:** NO eliminarlas en Slice 2.1. Crear issue separado. El swap está vivo y funcional; romper visual_editing y question en pro-build sería peor que dejar el shim. Documentar como deuda en [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/post-mvp-roadmap.md).
+**Recomendación:** NO eliminarlas en Slice 2.1. Crear issue separado. El swap está vivo y funcional; romper visual_editing y question en pro-build sería peor que dejar el shim. Documentar como deuda en [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/post-mvp-roadmap.md).
 
 ### A3. Funciones candidatas a "borrar sin más"
 
 | Llamada | Archivo:Línea | Decisión |
 |---|---|---|
-| `updateOpenCodeConfig` | [settings_handlers.ts:220](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/settings_handlers.ts#L220) | Esta función REESCRIBÍA el archivo de config de opencode. El runtime resuelve modelo/provider por request (ver [walkthrough.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/walkthrough.md)). **Borrar bloque try/catch entero** si no hace falta. |
+| `updateOpenCodeConfig` | [settings_handlers.ts:220](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/settings_handlers.ts#L220) | Esta función REESCRIBÍA el archivo de config de opencode. El runtime resuelve modelo/provider por request (ver [walkthrough.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/walkthrough.md)). **Borrar bloque try/catch entero** si no hace falta. |
 | `shutdownOpenCode` | [settings_handlers.ts:266](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/settings_handlers.ts#L266) | El walkthrough.md dice que `shutdownRuntime()` está en will-quit. Esta llamada es para reinicio al cambiar provider. **Migrar a `shutdownRuntime()`** o **borrar** si la lógica de "restart on provider change" ya no aplica. |
 | `updateOpenCodeMcpConfig` | [mcp_handlers.ts:11](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/mcp_handlers.ts#L11) | Reescribe config MCP de opencode. Vibes ahora gestiona MCP por su cuenta (verificar). **Borrar si MCP está en runtime.** |
 | `openCodeHealthCheck`, `openCodeTestRun` | [opencode_diagnostic_handlers.ts:22](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/opencode_diagnostic_handlers.ts#L22) | Diagnóstico de opencode. Sin opencode, **borrar archivo entero + `registerOpenCodeDiagnosticHandlers()` en ipc_host.ts:114**. |
@@ -103,7 +103,7 @@ La columna `sessions.opencode_session_id` (y similares) en [remote-schema.ts](fi
 | **2.1.4** | Limpiar `main.ts` (ensureOpenCodeInstalled, getCachedOpenCodeVersion, skills migration, VACUUM) | Bajo | Sí |
 | **2.1.5** | Eliminar `@opencode-ai/sdk` de package.json + lockfile | Bajo | Sí |
 | **2.1.6** | Borrar [`opencode_adapter.ts`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/opencode_adapter.ts) (201 KB) + [`opencode_diagnostic_handlers.ts`](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/opencode_diagnostic_handlers.ts) | Medio (último paso, debe ser tras 2.1.1-2.1.5 verde) | Sí |
-| **2.1.7** | Actualizar [`walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/walkthrough.md) para que deje de mentir sobre B6 | — | — |
+| **2.1.7** | Actualizar [`walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/walkthrough.md) para que deje de mentir sobre B6 | — | — |
 
 **Cada sub-slice termina con `pnpm build` + smoke test manual (cuando munix autorice).**
 

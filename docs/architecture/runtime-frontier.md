@@ -224,12 +224,12 @@ un OK explícito de munix.
 
 ## 6. Referencias cruzadas
 
-- [Roadmap principal](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md) — decisión original P1.
+- [Roadmap principal](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md) — decisión original P1.
 - [AGENTS.md](file:///home/munix/Desarrollo/GitRepo/Vibes/.agents/rules/AGENTS.md) — reglas del proyecto Vibes (§1.6 = frontera runtime ↔ carcasa).
 - [AGENTS.md de vibes-core](file:///home/munix/Desarrollo/GitRepo/vibes-core/.agents/rules/AGENTS.md) — reglas del runtime (§1.6 = naturaleza del runtime).
-- [phase2-hardening.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/phase2-hardening.md) — plan que dio origen a este doc.
-- [post-mvp-roadmap.md §"Deuda del swap B6"](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/post-mvp-roadmap.md) — features que cruzan la frontera y están pendientes.
-- [walkthrough.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/walkthrough.md) — cómo quedó la frontera tras el swap B6.
+- [phase2-hardening.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/phase2-hardening.md) — plan que dio origen a este doc.
+- [post-mvp-roadmap.md §"Deuda del swap B6"](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/post-mvp-roadmap.md) — features que cruzan la frontera y están pendientes.
+- [walkthrough.md](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/walkthrough.md) — cómo quedó la frontera tras el swap B6.
 
 ---
 

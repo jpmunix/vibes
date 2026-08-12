@@ -101,4 +101,4 @@ Semana 5-6: SWAP
 
 ---
 
-> 📄 Documento padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md)
+> 📄 Documento padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md)

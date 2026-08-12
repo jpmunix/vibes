@@ -56,7 +56,7 @@ import { registerPermissionHandler } from "./runtime/permission_handler";
 // TODO(mvp-cleanup, fase 5+): registerQuestionHandler todavía vive en
 // opencode_adapter. El runtime no soporta ask_user todavía (DP-3). Dejamos
 // el código comentado para no perder la feature; replicar en runtime cuando
-// proceda. Ver: docs/plans/post-mvp-roadmap.md §"Deuda del swap B6"
+// proceda. Ver: docs/archive/post-mvp-roadmap.md §"Deuda del swap B6"
 // import { registerQuestionHandler } from "./handlers/opencode_adapter";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";

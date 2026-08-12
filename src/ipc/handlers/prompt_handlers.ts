@@ -11,44 +11,136 @@ export function registerPromptHandlers() {
   createTypedHandler(promptContracts.list, async (_, __, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
-    const rows = await db
-      .select()
-      .from(remoteSchema.prompts)
-      .where(eq(remoteSchema.prompts.userId, context.userId));
 
-    // Fetch all factory defaults once — source of truth for title/description/content
-    const defaultRows = await db.select().from(remoteSchema.promptDefaults);
+    // Modelo: prompt_defaults (global) es la fuente del contenido base.
+    // La tabla `prompts` del usuario SOLO guarda overrides (filas con
+    // systemId y content/enabled/scope distintos del default). Si el usuario
+    // no ha tocado un prompt del sistema, NO existe fila — el handler
+    // sintetiza la entrada con id:null para que la UI la muestre sin escribirla.
+    const [defaultRows, userRows, categoryRows] = await Promise.all([
+      db.select().from(remoteSchema.promptDefaults),
+      db
+        .select()
+        .from(remoteSchema.prompts)
+        .where(eq(remoteSchema.prompts.userId, context.userId)),
+      db
+        .select()
+        .from(remoteSchema.promptsCategories)
+        .where(eq(remoteSchema.promptsCategories.userId, context.userId)),
+    ]);
+
     const defaultsBySystemId = new Map(
       defaultRows.map((d) => [d.systemId, d]),
     );
+    const overridesBySystemId = new Map<string, (typeof userRows)[number]>();
+    const customRows: (typeof userRows)[number][] = [];
+    for (const r of userRows) {
+      if (r.systemId && defaultsBySystemId.has(r.systemId)) {
+        overridesBySystemId.set(r.systemId, r);
+      } else if (!r.systemId) {
+        customRows.push(r);
+      }
+      // Filas con systemId huérfano (no existe en prompt_defaults) se ignoran
+      // en la vista de sistema; si hay que recuperarlas, el diagnóstico las lista.
+    }
 
-    return rows.map((r) => {
-      const def = r.systemId ? defaultsBySystemId.get(r.systemId) : undefined;
-      // title/description come from the factory default (immutable per version).
-      // For prompts without a systemId (user-created), fall back to whatever
-      // is stored in the row (legacy data and free-form user prompts).
-      const title = def?.title ?? r.title ?? "";
-      const description = def?.description ?? r.description ?? null;
-      const { hasDefault, isModified } = computePromptDefaultStatus(
-        r.content,
-        r.systemId,
-        defaultsBySystemId,
-      );
-      return {
+    // Categoría "Prompts del sistema" del usuario (cat 19 en seed).
+    // Si no existe (caso raro de usuario sin seed), se cae a null y la UI
+    // mostrará el prompt sin categoría — pero nunca debería pasar.
+    const systemCategoryId =
+      categoryRows.find((c) => c.name === "Prompts del sistema")?.id ?? null;
+    // Categoría "revisar" — prompts que NO llegan a vibes-core (se usan en
+    // otros handlers o son huérfanos históricos). Se crean al vuelo desde
+    // prompt_defaults sintetizados; los overrides del usuario se mueven aquí
+    // vía migrate-prompt-revisar.ts.
+    const revisarCategoryId =
+      categoryRows.find((c) => c.name === "revisar")?.id ?? null;
+
+    // Regla de clasificación (P1: solo ctx_* + runtime_agent_base llegan a
+    // vibes-core como agent.systemPrompt; el resto se quedó en prompt_defaults
+    // pero lo leen otros handlers vía getSystemPrompt o es histórico muerto).
+    const isRuntimeSystemId = (systemId: string): boolean =>
+      systemId.startsWith("ctx_") || systemId === "runtime_agent_base";
+
+    const result: Array<{
+      id: number | null;
+      categoryId: number | null | undefined;
+      systemId: string | null;
+      title: string;
+      description: string | null;
+      content: string;
+      enabled: boolean;
+      scope: string;
+      hasDefault: boolean;
+      isModified: boolean;
+      createdAt: Date | null;
+      updatedAt: Date | null;
+    }> = [];
+
+    // 1) Para cada prompt_default, sintetizar una entrada (con o sin override).
+    for (const def of defaultRows) {
+      const override = overridesBySystemId.get(def.systemId);
+      if (override) {
+        // Override del usuario: content/enabled/scope pueden diferir del default.
+        result.push({
+          id: Number(override.id),
+          categoryId:
+            override.categoryId !== null ? Number(override.categoryId) : null,
+          systemId: def.systemId,
+          title: def.title, // título viene siempre del default (inmutable por versión)
+          description: def.description,
+          content: override.content,
+          enabled: override.enabled === 1,
+          scope: override.scope ?? "all",
+          hasDefault: true,
+          isModified: true,
+          createdAt: override.createdAt,
+          updatedAt: override.updatedAt,
+        });
+      } else {
+        // Sin override: leer del default directamente. id:null porque NO hay fila.
+        // La categoría depende de si el prompt llega a vibes-core o no.
+        const targetCategoryId = isRuntimeSystemId(def.systemId)
+          ? systemCategoryId
+          : revisarCategoryId;
+        result.push({
+          id: null,
+          categoryId: targetCategoryId
+            ? Number(targetCategoryId)
+            : null,
+          systemId: def.systemId,
+          title: def.title,
+          description: def.description,
+          content: def.content,
+          enabled: true,
+          scope: "all",
+          hasDefault: true,
+          isModified: false,
+          createdAt: def.updatedAt,
+          updatedAt: def.updatedAt,
+        });
+      }
+    }
+
+    // 2) Prompts custom del usuario (sin systemId). No tienen default.
+    for (const r of customRows) {
+      result.push({
         id: Number(r.id),
         categoryId: r.categoryId !== null ? Number(r.categoryId) : null,
-        systemId: r.systemId,
-        title,
-        description,
+        systemId: null,
+        title: r.title ?? "",
+        description: r.description ?? null,
         content: r.content,
         enabled: r.enabled === 1,
         scope: r.scope ?? "all",
-        hasDefault,
-        isModified,
+        hasDefault: false,
+        isModified: false,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
-      };
-    });
+      });
+    }
+
+    return result;
   });
 
   createTypedHandler(promptContracts.create, async (_, params, context) => {
@@ -66,21 +158,60 @@ export function registerPromptHandlers() {
     if (!title || !content) {
       throw new Error("Title and content are required");
     }
-    const [row] = await db
-      .insert(remoteSchema.prompts)
-      .values({
-        userId: context.userId,
-        categoryId: categoryId ?? null,
-        systemId: systemId ?? null,
-        title,
-        description,
-        content,
-        enabled: enabled === false ? 0 : 1,
-        scope: scope ?? "all",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+
+    // Upsert por (userId, systemId) cuando viene systemId: evita filas
+    // duplicadas cuando la UI hace doble toggle rápido y aún no ha refrescado.
+    // Sin systemId (prompt custom) sigue siendo un INSERT normal.
+    let row:
+      | (typeof remoteSchema.prompts.$inferSelect)
+      | undefined;
+
+    if (systemId) {
+      const existing = await db
+        .select()
+        .from(remoteSchema.prompts)
+        .where(
+          and(
+            eq(remoteSchema.prompts.userId, context.userId),
+            eq(remoteSchema.prompts.systemId, systemId),
+          ),
+        );
+      if (existing.length > 0) {
+        const updated = await db
+          .update(remoteSchema.prompts)
+          .set({
+            categoryId: categoryId ?? null,
+            title,
+            description,
+            content,
+            enabled: enabled === false ? 0 : 1,
+            scope: scope ?? "all",
+            updatedAt: new Date(),
+          })
+          .where(eq(remoteSchema.prompts.id, existing[0].id))
+          .returning();
+        row = updated[0];
+      }
+    }
+
+    if (!row) {
+      const inserted = await db
+        .insert(remoteSchema.prompts)
+        .values({
+          userId: context.userId,
+          categoryId: categoryId ?? null,
+          systemId: systemId ?? null,
+          title,
+          description,
+          content,
+          enabled: enabled === false ? 0 : 1,
+          scope: scope ?? "all",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      row = inserted[0];
+    }
 
     if (!row) throw new Error("Failed to create prompt");
 
@@ -118,7 +249,7 @@ export function registerPromptHandlers() {
       id: Number(row.id),
       categoryId: row.categoryId !== null ? Number(row.categoryId) : null,
       systemId: row.systemId,
-      title: row.title,
+      title: row.title ?? "",
       description: row.description ?? null,
       content: row.content,
       enabled: row.enabled === 1,
@@ -229,7 +360,9 @@ export function registerPromptHandlers() {
       );
   });
 
-  // Restore default de fábrica de un prompt del sistema
+  // Restore default de fábrica de un prompt del sistema.
+  // BORRA la fila override: el handler `list` sintetiza la entrada desde
+  // prompt_defaults y la DB es la única fuente de verdad (sin fallback a código).
   createTypedHandler(
     promptContracts.restoreDefault,
     async (_, params, context) => {
@@ -245,8 +378,7 @@ export function registerPromptHandlers() {
       if (!defaultRow) throw new Error(`No default for systemId: ${systemId}`);
 
       await db
-        .update(remoteSchema.prompts)
-        .set({ content: defaultRow.content, updatedAt: new Date() })
+        .delete(remoteSchema.prompts)
         .where(
           and(
             eq(remoteSchema.prompts.id, id),
@@ -254,6 +386,39 @@ export function registerPromptHandlers() {
             eq(remoteSchema.prompts.systemId, systemId),
           ),
         );
+
+      // Limpiar el override en userSettings.customPrompts (fire & forget).
+      const capturedUserId = context.userId;
+      const capturedSystemId = systemId;
+      setImmediate(async () => {
+        try {
+          const asyncDb = getRemoteDb();
+          const [userSettingRow] = await asyncDb
+            .select()
+            .from(remoteSchema.userSettings)
+            .where(eq(remoteSchema.userSettings.userId, capturedUserId));
+          if (userSettingRow) {
+            const currentSettings = JSON.parse(userSettingRow.settingsJson);
+            if (
+              currentSettings.customPrompts &&
+              currentSettings.customPrompts[capturedSystemId] !== undefined
+            ) {
+              delete currentSettings.customPrompts[capturedSystemId];
+              await asyncDb
+                .update(remoteSchema.userSettings)
+                .set({
+                  settingsJson: JSON.stringify(currentSettings),
+                  updatedAt: new Date(),
+                })
+                .where(
+                  eq(remoteSchema.userSettings.userId, capturedUserId),
+                );
+            }
+          }
+        } catch (err) {
+          _logger.error("Error syncing restored prompt to user settings:", err);
+        }
+      });
     },
   );
 

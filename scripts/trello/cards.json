@@ -8,7 +8,7 @@
       "labels": ["mvp"],
       "comments": [
         "🧠 Contexto (2026-08-10): OpenCode extirpado de raíz — adapter 201KB/5531 líneas BORRADO, @opencode-ai/sdk fuera, 0 imports en src/. Sin flag de fallback: solo vibes-core respira. Decisión en piedra de munix: certeza absoluta, no toggle.",
-        "📌 Para el agente: ver docs/plans/implementation_plan.md (constitución) + resumen ejecutivo en artifact del brain. El contract test golden (runtime_bridge.contract.test.ts, 16 tests) es el guard del swap: cambiar fixtures requiere discusión explícita."
+        "📌 Para el agente: ver docs/archive/implementation_plan.md (constitución) + resumen ejecutivo en artifact del brain. El contract test golden (runtime_bridge.contract.test.ts, 16 tests) es el guard del swap: cambiar fixtures requiere discusión explícita."
       ]
     },
     {
@@ -392,7 +392,7 @@
       "labels": ["fase-4"],
       "checklist": ["Estimator.ts", "Summarizer.ts", "Tests"],
       "comments": [
-        "📌 Diseño: docs/plans/compact_blueprint.md (blueprint completo, no implementado). Modo A = supervivencia por presupuesto."
+        "📌 Diseño: docs/archive/compact_blueprint.md (blueprint completo, no implementado). Modo A = supervivencia por presupuesto."
       ]
     },
     {
@@ -409,7 +409,7 @@
       "labels": ["fase-4"],
       "checklist": ["Savings config", "Tool-collapser.ts", "Tests"],
       "comments": [
-        "📌 Blueprint: docs/plans/compact_blueprint.md. Modo B colapsa rondas banales, recorta tools largas, retiene lo nutritivo. Recomendación del blueprint: recorte mecánico por defecto + opción LLM si la carcasa lo quiere."
+        "📌 Blueprint: docs/archive/compact_blueprint.md. Modo B colapsa rondas banales, recorta tools largas, retiene lo nutritivo. Recomendación del blueprint: recorte mecánico por defecto + opción LLM si la carcasa lo quiere."
       ]
     },
     {

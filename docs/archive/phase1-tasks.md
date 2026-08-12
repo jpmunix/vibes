@@ -2,7 +2,7 @@
 
 > **Fuente:** análisis línea por línea de `vibes-core` y `Vibes` (08 ago, 20:30).
 > Nada de lo que sigue es especulación: cada scope referencia código que existe hoy.
-> 📄 Documentos padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md) · [Fase 1 MVP](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/phase1-mvp.md)
+> 📄 Documentos padre: [Roadmap](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md) · [Fase 1 MVP](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/phase1-mvp.md)
 
 ---
 

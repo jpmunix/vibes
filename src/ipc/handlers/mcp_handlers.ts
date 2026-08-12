@@ -10,7 +10,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 // Note: updateOpenCodeMcpConfig was removed (B6 swap). The runtime does not
 // consume OpenCode MCP config; MCP gateway is a post-MVP feature (Fase 3
-// in docs/plans/post-mvp-roadmap.md). For now MCP servers are managed
+// in docs/archive/post-mvp-roadmap.md). For now MCP servers are managed
 // here in the host layer (mcpHandlers) and not pushed to the runtime.
 
 const logger = log.scope("mcp_handlers");
@@ -421,7 +421,7 @@ export function registerMcpHandlers() {
 // Note: triggerOpenCodeMcpSync was removed (B6 swap). MCP server changes
 // are persisted to the DB directly; the runtime does not consume OpenCode
 // MCP config (the runtime has no MCP integration in v1 — see
-// docs/plans/post-mvp-roadmap.md Fase 3 "MCP Gateway"). When the gateway
+// docs/archive/post-mvp-roadmap.md Fase 3 "MCP Gateway"). When the gateway
 // ships, this hook becomes the place to notify the runtime.
 
 async function ensureDefaultServers(userId: string, db: any) {

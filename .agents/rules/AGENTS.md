@@ -2,6 +2,13 @@
 
 > Contrato de trabajo entre **munix** (product owner) y el agente.
 > Las reglas aquí son **en piedra** salvo que munix diga lo contrario explícitamente.
+>
+> **Hermano gemelo de** `.agents/rules/AGENTS.md` en vibes-core (el runtime).
+> **Siempre hacemos espejo (no copia literal):** las reglas compartidas (tests, docs,
+> Trello, inventarios, naming de artifacts, §5/§6) se reflejan en ambos ficheros,
+> **adaptadas a cada repo**. El detalle específico de un repo NO se duplica: se
+> referencia con "Gemelo de §X en ...". Cualquier cambio en una regla compartida se
+> replica (adaptado) en el otro fichero — y viceversa.
 
 ---
 
@@ -31,8 +38,8 @@ Cada slice vertical (Track B de Fase 1 o cualquier tarea futura) **se entrega co
 | Tipo | Qué son | Cómo se tratan |
 |---|---|---|
 | **En piedra** | Decisiones arquitectónicas del Roadmap, contratos del workspace (`@vibes/*`), políticas de seguridad, schema de eventos `RuntimeEvent`, frontera runtime ↔ carcasa (P1) | No se tocan sin discusión explícita. Cambios requieren actualizar el documento padre + comentario en el PR. |
-| **Vivos** | [`phase1-tasks.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/phase1-tasks.md), [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/post-mvp-roadmap.md), [`phase1-mvp.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/phase1-mvp.md), prioridades de cada fase | Se actualizan libremente como parte del trabajo. Cualquier cambio se documenta en el archivo. |
-| **Roadmap** | [`implementation_plan.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md) (el documento guía, la constitución del proyecto) | El agente lo lee pero no lo modifica salvo petición explícita. Es la constitución del proyecto. |
+| **Vivos** | [`phase1-tasks.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/phase1-tasks.md), [`post-mvp-roadmap.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/post-mvp-roadmap.md), [`phase1-mvp.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/phase1-mvp.md), prioridades de cada fase | Se actualizan libremente como parte del trabajo. Cualquier cambio se documenta en el archivo. |
+| **Roadmap** | [`implementation_plan.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md) (el documento guía, la constitución del proyecto) | El agente lo lee pero no lo modifica salvo petición explícita. Es la constitución del proyecto. |
 
 > [!IMPORTANT]
 > Si una tarea pide tocar algo "en piedra" sin que munix lo haya pedido, **preguntar antes**. No asumir.
@@ -51,11 +58,10 @@ Cada slice tiene:
 
 ---
 
-### 1.4 Bases de datos — el agente propone, munix ejecuta
+### 1.4 Bases de datos — estructura en features: el agente propone, munix ejecuta · scripts pedidos: ejecuta el agente
 
-- El agente **nunca** ejecuta queries de DB directamente contra bases de producción/desarrollo de munix.
-- El agente entrega las queries exactas (DDL/DML) en el documento de la tarea.
-- munix las ejecuta, valida, y reporta.
+- **Cambiar una tabla o crear tablas nuevas durante una feature (DDL/schema)** → el agente **propone**, munix **ejecuta**: el agente entrega las queries exactas (DDL/DML) en el documento de la tarea; munix las ejecuta, valida y reporta. El agente nunca lanza cambios de schema por libre.
+- **Scripts y consultas que munix pide explícitamente** (scripts de consulta/inventario, migraciones, siembras, one-shots, dumps) → el agente los **ejecuta directamente**, sin handoff ni pedir permiso: si munix ha pedido el script, ya está autorizado el acceso.
 - Para tests del agente (vibes-core), las migraciones a SQLite de tests sí las gestiona el agente, pero documenta el schema esperado.
 
 ---
@@ -142,7 +148,7 @@ El board de Trello ([board](https://trello.com/b/YFE2Kkjv)) es **la única fuent
 
 El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md). Este §1.10 es el resumen ejecutivo **en piedra**; el workflow es la guía operativa (documento vivo).
 
-**Los scripts** viven en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/) (Node nativo, sin deps, idempotentes): `list-cards.mjs` (leer), `create-card.mjs` (crear), `update-card.mjs` (mover/actualizar/comentar), `bootstrap-board.mjs` (montar/renormalizar). Credenciales en `.env.trello` (raíz).
+**Los scripts** viven en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/) (Node nativo, sin deps, idempotentes): `list-cards.mjs` (leer), `create-card.mjs` (crear), `update-card.mjs` (mover/actualizar/comentar), `attach-file.mjs` (adjuntar ficheros locales a una card), `bootstrap-board.mjs` (montar/renormalizar). Credenciales en `.env.trello` (raíz).
 
 #### 1.10.1 Las listas (canónicas, no renombrar sin OK)
 
@@ -221,12 +227,25 @@ Si falta algo → la card se queda en Review.
 Cuando munix pregunte por el estado del roadmap, las tareas pendientes, los planes de trabajo o el progreso general, **siempre nos referimos al board de Trello** como la única fuente de verdad. No se contestan preguntas de roadmap mirando documentos estáticos, artifacts, ni la memoria de la conversación.
 
 - **Consultar el board** (`node scripts/trello/list-cards.mjs --json`) es el primer paso antes de responder cualquier pregunta sobre qué hay pendiente, qué está en curso, o qué se planea.
-- **Los artifacts temporales** (plans, walkthroughs, análisis) son **borradores de trabajo** que ayudan a planificar, pero **siempre acaban reflejados en Trello** como card, comentario o actualización de checklist.
+- **Los artifacts temporales** (plans, walkthroughs, análisis) son **borradores de trabajo** que el agente crea mientras pelotea una tarea (como artifact, no como documento del repo). **Siempre acaban reflejados en Trello** como card, comentario, adjunto o actualización de checklist. Al terminar la tarea, el plan se **sube a la card y se elimina** del working tree (ver §1.12).
 - Si existe un artifact de plan que no tiene card equivalente en Trello → **crear la card** o preguntar a munix si debe existir.
 - **Nunca** mantener un "roadmap paralelo" en documentos, artifacts o conversaciones que no esté sincronizado con Trello.
 
 > [!IMPORTANT]
 > **Por qué:** Si la fuente de verdad vive en dos sitios (Trello + un documento), acaba divergiendo y perdemos la trazabilidad. Un plan en un artifact sin card en Trello es un plan que no existe. Los artifacts son el borrador; Trello es el contrato.
+
+#### 1.10.8 Artifacts de una tarea → se suben SOLOS a la card — **INNEGOCIABLE**
+
+Todo artifact que se genere durante el trabajo de una card (plan, walkthrough, análisis, informe de tests, captura, fixture, documento de apoyo) se sube **automáticamente** como adjunto a la card correspondiente, **sin intervención del usuario**: el agente no espera a que munix lo pida ni pregunta "¿subo esto?". Si se generó durante la tarea, se adjunta.
+
+```bash
+node scripts/trello/attach-file.mjs --card "Título de la card" --file "<ruta-del-artifact>/plan-vibes-NN.md,./captura.png"
+```
+
+- **Cuándo:** al terminar el trabajo (junto con el `✅ [Review]`), o antes si el artifact es grande o muestra progreso.
+- **Card correspondiente:** la card en la que se está trabajando (la de Doing). Si un artifact no tiene card propia, se adjunta a la card de la tarea.
+- **Límite:** 10 MB por fichero (API de Trello). Si un artifact lo excede, se avisa en el comentario (nunca se omite en silencio).
+- **Código fuente:** no se sube al board (vive en el repo); solo se adjunta si es evidencia relevante (p. ej. el script entregable).
 
 ---
 
@@ -326,10 +345,24 @@ artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
 - Si la card no tiene número claro, **preguntar antes** de crear el artifact. Si
   munix dice que no hay card, se crea un artifact normal sin sufijo.
 
+> [!IMPORTANT]
+> **Ciclo de vida del artifact de plan (convención):**
+> 1. **Mientras se pelotea la tarea**, el agente crea el plan como **artifact**
+>    (`<tipo>-vibes-<cardNumber>.md`), NO como documento del repo. Vive en el
+>    directorio de artifacts del agente (p. ej. `brain/<conversation-id>/`), fuera
+>    del working tree. Es un borrador de trabajo que puede iterarse con munix.
+> 2. **Al terminar la tarea** (al mover la card a `Review`), el artifact se
+>    **sube como adjunto a la card** (`node scripts/trello/attach-file.mjs --card
+>    "Título" --file "<ruta-del-artifact>/plan-vibes-NN.md"`).
+> 3. **Tras subirlo, se elimina** del working tree. El plan ya no vive en el
+>    repo: su destino final es Trello (la fuente de verdad).
+> 4. El board de Trello es el **único** lugar donde persisten los planes. No se
+>    acumulan artifacts de planes terminados en el repo.
+
 El `cardNumber` se obtiene de `node scripts/trello/list-cards.mjs --json | jq '.idShort'`
 o con `resolveCard` desde `scripts/trello/lib.mjs`.
 
 ---
 
-**Última actualización:** 2026-08-11 (§1.10.7: Trello como fuente de verdad para roadmap/tareas/planes).
+**Última actualización:** 2026-08-12 (§1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten).
 **Mantenedor:** munix.

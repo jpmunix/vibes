@@ -11,7 +11,7 @@
 
 ## ⚠️ Hallazgo crítico al planificar (validado 10:29)
 
-El documento [`walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/walkthrough.md) describe el swap como si B6 (eliminación de opencode_adapter) estuviera hecho. **No lo está.** Verificación directa:
+El documento [`walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/walkthrough.md) describe el swap como si B6 (eliminación de opencode_adapter) estuviera hecho. **No lo está.** Verificación directa:
 
 | Archivo | Estado real | Lo que dice walkthrough.md |
 |---|---|---|
@@ -130,7 +130,7 @@ El documento [`walkthrough.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs
    - Si necesita UI → empieza en Vibes.
    - Si necesita ejecución → empieza en Runtime.
    - Si cruza → definir contrato en `RuntimeEvent` o en IPC, **no meter el uno en el otro**.
-6. **Referencias cruzadas**: links a [`implementation_plan.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/plans/implementation_plan.md) §Frontera, [AGENTS.md §1.6](file:///home/munix/Desarrollo/GitRepo/Vibes/.agents/rules/AGENTS.md), [vibes-core AGENTS.md §1.6](file:///home/munix/Desarrollo/GitRepo/vibes-core/.agents/rules/AGENTS.md).
+6. **Referencias cruzadas**: links a [`implementation_plan.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/archive/implementation_plan.md) §Frontera, [AGENTS.md §1.6](file:///home/munix/Desarrollo/GitRepo/Vibes/.agents/rules/AGENTS.md), [vibes-core AGENTS.md §1.6](file:///home/munix/Desarrollo/GitRepo/vibes-core/.agents/rules/AGENTS.md).
 
 **Criterio de aceptación:**
 - Documento existe, revisado por munix.

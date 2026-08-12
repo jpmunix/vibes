@@ -24,6 +24,9 @@ const getArg = (name) => {
 const cardName = getArg('card');
 const newDesc = getArg('desc');
 const moveTo = getArg('move');
+// Posición al mover: 'top' (default, primera), 'bottom', o número (1 = primera).
+// Si la card ya estaba en la lista destino, igualmente se reordena al top.
+const movePos = getArg('pos') ?? 'top';
 const labelAdd = (getArg('label-add') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const labelRemove = (getArg('label-remove') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const checkItem = getArg('check-item');
@@ -61,8 +64,22 @@ if (moveTo) {
     console.error(`❌ Lista "${moveTo}" no encontrada. Listas: ${lists.map((l) => l.name).join(', ')}`);
     process.exit(1);
   }
-  await moveCard(card.id, list.id);
-  console.log(`➡️  Movida a "${list.name}"`);
+  // Normaliza el valor de --pos: 'top', 'bottom' o número. Cualquier otra cosa falla.
+  let posNorm;
+  if (typeof movePos === 'string') {
+    const lc = movePos.toLowerCase();
+    if (lc === 'top' || lc === 'bottom') {
+      posNorm = lc;
+    } else if (/^-?\d+(\.\d+)?$/.test(movePos)) {
+      posNorm = Number(movePos);
+    } else {
+      console.error(`❌ --pos "${movePos}" no válido. Usa "top", "bottom" o un número.`);
+      process.exit(1);
+    }
+  }
+  await moveCard(card.id, list.id, posNorm);
+  const posLabel = posNorm === 'top' ? ' (primera)' : posNorm === 'bottom' ? ' (última)' : ` (pos=${posNorm})`;
+  console.log(`➡️  Movida a "${list.name}"${posLabel}`);
 }
 
 if (labelAdd.length) {

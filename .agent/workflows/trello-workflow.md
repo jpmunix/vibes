@@ -55,6 +55,7 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 | [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards (filtro por lista/label, salida JSON) | `node scripts/trello/list-cards.mjs --list "To-do" --json` |
 | [create-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/create-card.mjs) | Crear card idempotente (no duplica por título) | `node scripts/trello/create-card.mjs --title "X" --desc "Y" --list "To-do" --labels "deuda"` |
 | [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (desc, mover, labels, checklist, comentario) | `node scripts/trello/update-card.mjs --card "X" --move "Done" --comment "..."` |
+| [attach-file.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/attach-file.mjs) | Adjuntar ficheros locales a una card (multipart, máx 10 MB por fichero) | `node scripts/trello/attach-file.mjs --card "X" --file "./captura.png,./plan.pdf"` |
 | [bootstrap-board.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/bootstrap-board.mjs) | Montar/renormalizar el board desde `cards.json` | `node scripts/trello/bootstrap-board.mjs [--dry-run]` |
 | [audit-comments.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/audit-comments.mjs) | Auditar comentarios y descripciones en busca de `\n` literal (y otros caracteres escapados mal) | `node scripts/trello/audit-comments.mjs [--json] [--fix]` |
 
@@ -223,6 +224,38 @@ Usa **prefijos emoji + etiqueta** para que sean escaneables:
 > [!TIP]
 > Regla del pulgar: **si un agente futuro leyera SOLO los comentarios de la card,
 > ¿podría retomar el trabajo sin hablar con nadie?** Si no, falta contexto.
+
+---
+
+## 📎 Artifacts de una tarea → se suben SOLOS a la card
+
+Todo artifact que se genere durante el trabajo de una card (plan, walkthrough,
+análisis, informe de tests, captura, fixture, documento de apoyo) se sube
+**automáticamente** como adjunto a la card correspondiente, **sin intervención del
+usuario**. El agente no espera a que munix lo pida ni pregunta: si el artifact se
+generó durante la tarea, se adjunta.
+
+```bash
+node scripts/trello/attach-file.mjs \
+  --card "Título de la card" \
+  --file "<ruta-del-artifact>/plan-vibes-NN.md,./captura.png"
+```
+
+- Se sube al terminar el trabajo (junto con el `✅ [Review]`), o antes si el artifact es grande o muestra progreso.
+- **Card correspondiente** = la card en la que se trabaja (Doing). Si un artifact no tiene card propia, se adjunta a la de la tarea.
+- **Límite:** 10 MB por fichero (API de Trello). Si lo excede, avisarlo en el comentario (nunca omitirlo en silencio).
+- **Código fuente:** no se sube al board (vive en el repo); solo si es evidencia relevante (p. ej. un script entregable).
+
+> [!IMPORTANT]
+> **Ciclo de vida de un artifact de plan:**
+> 1. El plan de una tarea se crea como **artifact** (borrador de trabajo, p. ej.
+>    `plan-vibes-<cardNumber>.md`) mientras se pelotea la tarea con munix — **no**
+>    como documento del repo. Vive en el directorio de artifacts del agente
+>    (fuera del working tree).
+> 2. Al terminar (mover a `Review`), se **sube como adjunto** a la card (comando
+>    de arriba) y **se elimina** del working tree.
+> 3. El board de Trello es el **único** lugar donde persisten los planes. Los
+>    artifacts de planes terminados no se acumulan en el repo.
 
 ---
 

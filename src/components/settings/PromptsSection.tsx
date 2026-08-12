@@ -121,15 +121,30 @@ function PromptEditor({
     }
     setIsSaving(true);
     try {
-      await ipc.prompt.update({
-        id: prompt.id,
-        title: localTitle,
-        description: localDesc,
-        content: localContent,
-        enabled: localEnabled,
-        categoryId: localCategoryId,
-        scope: localScope,
-      });
+      if (prompt.id !== null) {
+        // Override existente: actualizar fila del usuario.
+        await ipc.prompt.update({
+          id: prompt.id,
+          title: localTitle,
+          description: localDesc,
+          content: localContent,
+          enabled: localEnabled,
+          categoryId: localCategoryId,
+          scope: localScope,
+        });
+      } else {
+        // id === null: prompt del sistema sin override. Crear fila con systemId
+        // (la crea el handler de forma idempotente: si ya existe la actualiza).
+        await ipc.prompt.create({
+          title: localTitle,
+          description: localDesc,
+          content: localContent,
+          categoryId: localCategoryId,
+          systemId: prompt.systemId ?? undefined,
+          enabled: localEnabled,
+          scope: localScope,
+        });
+      }
       toast.success(`Prompt guardado`);
       onUpdate();
     } catch {
@@ -140,6 +155,9 @@ function PromptEditor({
   };
 
   const handleDelete = async () => {
+    // Solo se llama desde la UI para prompts custom (no-system). En ese caso
+    // prompt.id siempre existe. Guard explícito para que TS narrowee.
+    if (prompt.id === null) return;
     setIsDeleting(true);
     try {
       await ipc.prompt.delete(prompt.id);
@@ -153,6 +171,8 @@ function PromptEditor({
 
   const handleRestoreDefault = async () => {
     if (!prompt.systemId) return;
+    // Si no hay override (id === null), el prompt ya está en su valor de fábrica.
+    if (prompt.id === null) return;
     setIsRestoring(true);
     try {
       await ipc.prompt.restoreDefault({
@@ -183,7 +203,19 @@ function PromptEditor({
             onCheckedChange={async (c) => {
               setLocalEnabled(c);
               try {
-                await ipc.prompt.update({ id: prompt.id, enabled: c });
+                if (prompt.id !== null) {
+                  await ipc.prompt.update({ id: prompt.id, enabled: c });
+                } else {
+                  // id === null: crear override (handler hace upsert por systemId).
+                  await ipc.prompt.create({
+                    title: prompt.title,
+                    content: prompt.content,
+                    systemId: prompt.systemId ?? undefined,
+                    categoryId: prompt.categoryId ?? undefined,
+                    enabled: c,
+                    scope: prompt.scope || "all",
+                  });
+                }
                 onUpdate();
                 toast.success(`Prompt ${c ? "activado" : "desactivado"}`);
               } catch {
@@ -618,7 +650,7 @@ function PromptGroup({
         <div className="pl-4 space-y-2">
           {prompts.map((p) => (
             <PromptEditor
-              key={p.id}
+              key={p.id ?? `default-${p.systemId}`}
               prompt={p}
               categories={categories}
               onUpdate={onRefresh}
