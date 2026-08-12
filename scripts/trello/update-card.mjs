@@ -8,7 +8,7 @@
  *     [--move "Done"] \
  *     [--label-add "fase-3"] \
  *     [--label-remove "fase-2"] \
- *     [--check-item "Criterio 1"] \
+ *     [--check-item "Criterio 1"] (repetible; también acepta comas: "A,B") \
  *     [--comment "Texto del comentario"]
  *
  * Busca la card por título exacto (case-insensitive). Si no existe, falla.
@@ -29,7 +29,17 @@ const moveTo = getArg('move');
 const movePos = getArg('pos') ?? 'top';
 const labelAdd = (getArg('label-add') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const labelRemove = (getArg('label-remove') || '').split(',').map((s) => s.trim()).filter(Boolean);
-const checkItem = getArg('check-item');
+const checkItems = (() => {
+  // Recoge TODOS los valores de --check-item (puede repetirse y/o llevar comas)
+  const values = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--check-item' && args[i + 1]) {
+      values.push(...args[i + 1].split(',').map((s) => s.trim()).filter(Boolean));
+      i++; // salta el valor ya consumido
+    }
+  }
+  return values;
+})();
 const comment = getArg('comment');
 
 if (!cardName) {
@@ -101,16 +111,23 @@ if (labelRemove.length) {
   console.log(`🏷️  Labels quitados: ${labelRemove.join(', ')}`);
 }
 
-if (checkItem) {
+if (checkItems.length) {
   const checklists = await getChecklists(card.id);
-  // Busca el item en todas las checklists de la card
+  // Indexa los items por nombre (lowercase) para resolver rápido y avisar de no encontrados
+  const byName = new Map();
   for (const cl of checklists) {
     for (const item of cl.checkItems || []) {
-      if (item.name.toLowerCase() === checkItem.toLowerCase()) {
-        await updateCheckItem(card.id, item.id, 'complete');
-        console.log(`☑️  Checklist item completado: "${checkItem}"`);
-      }
+      byName.set(item.name.toLowerCase(), item);
     }
+  }
+  for (const name of checkItems) {
+    const item = byName.get(name.toLowerCase());
+    if (!item) {
+      console.warn(`⚠️  Item de checklist no encontrado: "${name}"`);
+      continue;
+    }
+    await updateCheckItem(card.id, item.id, 'complete');
+    console.log(`☑️  Checklist item completado: "${name}"`);
   }
 }
 
@@ -119,7 +136,7 @@ if (comment) {
   console.log(`💬 Comentario añadido`);
 }
 
-if (!newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItem && !comment) {
+if (!newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment) {
   console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --desc, --move, --label-add, --check-item, --comment).`);
   console.log(`   ${card.url}`);
 }
