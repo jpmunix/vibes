@@ -332,6 +332,15 @@ export async function handleRuntimeStream(
   // ── 6. Final content ───────────────────────────────────────────────────
   let finalContent = mapper.buildLiveContent();
 
+  // BUGFIX #122: si el loop terminó en error (session.failed), la UI se
+  // quedaba en blanco porque finalContent era "". Exponemos el error para que
+  // el usuario vea algo accionable en vez de "nada".
+  const failedError = mapper.getFailedError();
+  if (result?.finishReason === "error" && !finalContent) {
+    finalContent =
+      failedError ?? "Error del agente: el proveedor devolvió una respuesta inválida.";
+  }
+
   const filesChanged = mapper.getFilesChanged();
   if (filesChanged.length > 0) {
     const basenames = [

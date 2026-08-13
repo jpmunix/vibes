@@ -135,9 +135,15 @@ export class VibesEventMapper {
   /** Track files written/edited for the closing `<vibes-files-changed>` tag. */
   private filesChanged = new Set<string>();
   private diffStats = { insertions: 0, deletions: 0 };
+  /** BUGFIX #122: último error de sesión (de session.failed), para el bridge. */
+  private failedError: string | null = null;
 
   handle(event: RuntimeEvent): void {
     switch (event.type) {
+      case "session.failed": {
+        this.failedError = event.error?.message ?? "Error desconocido del agente.";
+        break;
+      }
       case "llm.delta": {
         const last = this.timeline[this.timeline.length - 1];
         if (last && last.type === "text") {
@@ -201,6 +207,11 @@ export class VibesEventMapper {
       }
     }
     return content;
+  }
+
+  /** BUGFIX #122: expone el error capturado de session.failed (o null). */
+  getFailedError(): string | null {
+    return this.failedError;
   }
 }
 

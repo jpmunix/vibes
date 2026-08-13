@@ -156,6 +156,26 @@ describe("VibesEventMapper — timeline accumulation", () => {
   });
 });
 
+describe("VibesEventMapper — session.failed (BUGFIX #122)", () => {
+  it("captures the serialized error and exposes it via getFailedError", () => {
+    const m = new VibesEventMapper();
+    expect(m.getFailedError()).toBeNull();
+    m.handle({
+      type: "session.failed",
+      sessionId: "s1",
+      ts: 0,
+      error: { name: "Error", message: "400 invalid wire format" },
+    } as any);
+    expect(m.getFailedError()).toBe("400 invalid wire format");
+  });
+
+  it("falls back to a generic message when error is missing", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "session.failed", sessionId: "s1", ts: 0 } as any);
+    expect(m.getFailedError()).toBe("Error desconocido del agente.");
+  });
+});
+
 describe("closing tags", () => {
   it("files-changed tag lists files and stats", () => {
     expect(buildFilesChangedTag(["a.ts", "b.ts"], 3, 1)).toBe(
