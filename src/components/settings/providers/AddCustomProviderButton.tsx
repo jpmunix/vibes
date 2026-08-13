@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
-import { Plus } from "@/components/ui/icons";
+import { Plus, Loader2, RefreshCw, AlertCircle } from "@/components/ui/icons";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { showError, showSuccess } from "@/lib/toast";
+import { ipc } from "@/ipc/types";
 import { CUSTOM_PROVIDER_PREFIX } from "@/ipc/shared/language_model_constants";
+import { VerifiedModelsList } from "./VerifiedModelsList";
 import type { CustomProviderConfig } from "@/lib/schemas";
 
 export function AddCustomProviderButton() {
@@ -24,8 +26,45 @@ export function AddCustomProviderButton() {
   const [newBaseUrl, setNewBaseUrl] = useState("");
   const [newApiKey, setNewApiKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{
+    ok: boolean;
+    count?: number;
+    models?: { id: string }[];
+    error?: string;
+  } | null>(null);
 
   const customProviders = settings?.customProviders ?? [];
+
+  const handleVerify = async () => {
+    if (!newBaseUrl.trim()) {
+      showError("La URL base es obligatoria para verificar.");
+      return;
+    }
+    setIsVerifying(true);
+    setVerifyResult(null);
+    try {
+      const result = await ipc.languageModel.verifyCustomProvider({
+        apiBaseUrl: newBaseUrl.trim(),
+        apiKey: newApiKey.trim() || undefined,
+      });
+      setVerifyResult(result);
+      if (result.ok) {
+        showSuccess(
+          result.count === 1
+            ? "Conexión exitosa — 1 modelo"
+            : `Conexión exitosa — ${result.count} modelos`,
+        );
+      } else {
+        showError(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setVerifyResult({ ok: false, error: error.message });
+      showError(`Error: ${error.message}`);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!newName.trim()) {
@@ -121,7 +160,10 @@ export function AddCustomProviderButton() {
                 id="provider-url"
                 placeholder="https://my-proxy.example.com/v1"
                 value={newBaseUrl}
-                onChange={(e) => setNewBaseUrl(e.target.value)}
+                onChange={(e) => {
+                  setNewBaseUrl(e.target.value);
+                  setVerifyResult(null);
+                }}
                 className="h-10 bg-background typo-input font-mono"
               />
               <p className="typo-caption">
@@ -138,9 +180,40 @@ export function AddCustomProviderButton() {
                 type="password"
                 placeholder="sk-..."
                 value={newApiKey}
-                onChange={(e) => setNewApiKey(e.target.value)}
+                onChange={(e) => {
+                  setNewApiKey(e.target.value);
+                  setVerifyResult(null);
+                }}
                 className="h-10 bg-background typo-input"
               />
+            </div>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleVerify}
+                disabled={isVerifying || !newBaseUrl.trim()}
+                className="cursor-pointer h-8"
+              >
+                {isVerifying ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Verificar
+              </Button>
+              {verifyResult && (
+                <div className="space-y-2 pt-1">
+                  {verifyResult.ok ? (
+                    <VerifiedModelsList models={verifyResult.models ?? []} />
+                  ) : (
+                    <p className="typo-caption flex items-center gap-1 text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      {verifyResult.error}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button

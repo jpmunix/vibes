@@ -11,6 +11,7 @@ import * as remoteSchema from "@/db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { readSettings, writeSettings } from "@/main/settings";
 import type { CustomProviderConfig } from "@/lib/schemas";
+import { verifyCustomProviderEndpoint } from "../utils/openai_compatible_verify";
 
 const logger = log.scope("language_model_handlers");
 
@@ -270,33 +271,23 @@ export function registerLanguageModelHandlers() {
   createTypedHandler(
     languageModelContracts.verifyCustomProvider,
     async (_event, { apiBaseUrl, apiKey }) => {
-      try {
-        const url = apiBaseUrl.replace(/\/+$/, "");
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-        const response = await fetch(`${url}/models`, {
-          method: "GET",
-          headers,
-        });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        const data = await response.json();
-
-        // Spit out the response JSON in the server console
-        console.log(
-          `[Custom Provider Verification] Response from ${url}/models:`,
-        );
-        console.log(JSON.stringify(data, null, 2));
-
-        const count = data?.data?.length ?? 0;
-        return { ok: true, count };
-      } catch (error: any) {
-        console.error(`[Custom Provider Verification] Error:`, error.message);
-        return { ok: false, error: error.message };
+      const url = apiBaseUrl.replace(/\/+$/, "");
+      const result = await verifyCustomProviderEndpoint(
+        apiBaseUrl,
+        apiKey,
+        fetch,
+        (data) => {
+          // Spit out the response JSON in the server console
+          console.log(
+            `[Custom Provider Verification] Response from ${url}/models:`,
+          );
+          console.log(JSON.stringify(data, null, 2));
+        },
+      );
+      if (!result.ok) {
+        console.error(`[Custom Provider Verification] Error:`, result.error);
       }
+      return result;
     },
   );
 }

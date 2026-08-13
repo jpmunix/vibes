@@ -16,8 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, AlertCircle } from "@/components/ui/icons";
-import { cn } from "@/lib/utils";
 import { resolveDisplayNames } from "@/ipc/utils/model_id_humanizer";
+import { parseModelsResponse } from "@/ipc/utils/openai_compatible_models_parser";
 
 interface FetchedModel {
   id: string;
@@ -78,15 +78,13 @@ export function ProviderSwitchDialog({
         }
 
         const data = await response.json();
-        if (!data?.data || !Array.isArray(data.data)) {
-          throw new Error("Formato de respuesta inválido");
-        }
+        const parsed = parseModelsResponse(data);
 
-        const ids = data.data.map((m: any) => m.id as string);
+        const ids = parsed.map((m) => m.id);
         const displayNames = resolveDisplayNames(ids);
 
-        const fetched: FetchedModel[] = data.data
-          .map((m: any) => ({
+        const fetched: FetchedModel[] = parsed
+          .map((m) => ({
             id: m.id,
             name: m.id,
             displayName: displayNames.get(m.id) ?? m.id,
@@ -157,8 +155,7 @@ export function ProviderSwitchDialog({
           <div className="flex flex-col items-center gap-3 py-10">
             <AlertCircle className="h-6 w-6 text-muted-foreground" />
             <p className="typo-caption text-center max-w-xs">
-              No se encontraron modelos en este endpoint. Asegúrate de que la
-              URL y la key son correctas.
+              El endpoint responde pero no devuelve modelos.
             </p>
             <Button
               variant="outline"

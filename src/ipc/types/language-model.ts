@@ -160,6 +160,7 @@ export const languageModelContracts = {
     output: z.object({
       ok: z.boolean(),
       count: z.number().optional(),
+      models: z.array(z.object({ id: z.string() })).optional(),
       error: z.string().optional(),
     }),
   }),

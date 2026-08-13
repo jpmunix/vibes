@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { showError, showSuccess } from "@/lib/toast";
 import { ProviderHeader } from "./ProviderHeader";
+import { VerifiedModelsList } from "./VerifiedModelsList";
 import type { CustomProviderConfig } from "@/lib/schemas";
 
 export function CustomProviderSection({
@@ -39,6 +40,7 @@ export function CustomProviderSection({
   const [testResult, setTestResult] = useState<{
     ok: boolean;
     count?: number;
+    models?: { id: string }[];
     error?: string;
   } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -63,7 +65,7 @@ export function CustomProviderSection({
         apiKey: provider.apiKey?.value,
       });
       if (!result.ok) throw new Error(result.error);
-      setTestResult({ ok: true, count: result.count });
+      setTestResult({ ok: true, count: result.count, models: result.models });
       showSuccess(`Conexión exitosa — ${result.count} modelos`);
     } catch (error: any) {
       setTestResult({ ok: false, error: error.message });
@@ -190,6 +192,9 @@ export function CustomProviderSection({
                   </span>
                 )}
               </div>
+              {testResult?.ok && (
+                <VerifiedModelsList models={testResult.models ?? []} />
+              )}
             </div>
           </div>
         )}
