@@ -20,9 +20,11 @@ import {
   Trash2,
   Edit2,
   ChevronDown,
+  Lock,
 } from "@/components/ui/icons";
 import { toast } from "sonner";
 import type { PromptDto, PromptCategoryDto } from "@/ipc/types";
+import { canDisablePrompt } from "./prompt_guard";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
   Dialog,
@@ -63,6 +65,10 @@ function PromptEditor({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // El prompt base del runtime es obligatorio: no se puede desactivar, pero
+  // su contenido sí se puede editar y restaurar (card #117 follow-up).
+  const canToggle = canDisablePrompt(prompt.systemId);
 
   const hasUnsavedChanges =
     localTitle !== prompt.title ||
@@ -198,33 +204,60 @@ function PromptEditor({
         onClick={() => setIsOpen(true)}
       >
         <div className="flex-1 flex items-center gap-3">
-          <Switch
-            checked={localEnabled}
-            onCheckedChange={async (c) => {
-              setLocalEnabled(c);
-              try {
-                if (prompt.id !== null) {
-                  await ipc.prompt.update({ id: prompt.id, enabled: c });
-                } else {
-                  // id === null: crear override (handler hace upsert por systemId).
-                  await ipc.prompt.create({
-                    title: prompt.title,
-                    content: prompt.content,
-                    systemId: prompt.systemId ?? undefined,
-                    categoryId: prompt.categoryId ?? undefined,
-                    enabled: c,
-                    scope: prompt.scope || "all",
-                  });
+          <div
+            className={cn(
+              "flex items-center",
+              !canToggle && "cursor-not-allowed",
+            )}
+            title={
+              canToggle
+                ? undefined
+                : "Prompt obligatorio del runtime: no se puede desactivar (el agente lo necesita para operar)"
+            }
+          >
+            <Switch
+              checked={canToggle ? localEnabled : true}
+              disabled={!canToggle}
+              onCheckedChange={async (c) => {
+                if (!canToggle) {
+                  // El prompt base no se desactiva nunca (card #117 follow-up).
+                  setLocalEnabled(true);
+                  toast.info(
+                    "El prompt base del runtime no se puede desactivar — es obligatorio",
+                  );
+                  return;
                 }
-                onUpdate();
-                toast.success(`Prompt ${c ? "activado" : "desactivado"}`);
-              } catch {
-                setLocalEnabled(!c);
-                toast.error("Error al actualizar estado");
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
+                setLocalEnabled(c);
+                try {
+                  if (prompt.id !== null) {
+                    await ipc.prompt.update({ id: prompt.id, enabled: c });
+                  } else {
+                    // id === null: crear override (handler hace upsert por systemId).
+                    await ipc.prompt.create({
+                      title: prompt.title,
+                      content: prompt.content,
+                      systemId: prompt.systemId ?? undefined,
+                      categoryId: prompt.categoryId ?? undefined,
+                      enabled: c,
+                      scope: prompt.scope || "all",
+                    });
+                  }
+                  onUpdate();
+                  toast.success(`Prompt ${c ? "activado" : "desactivado"}`);
+                } catch {
+                  setLocalEnabled(!c);
+                  toast.error("Error al actualizar estado");
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {!canToggle && (
+              <Lock
+                className="size-4 text-muted-foreground/70 ml-2"
+                aria-label="Bloqueado: prompt obligatorio"
+              />
+            )}
+          </div>
           <div>
             <h3 className="typo-label flex items-center gap-2 text-sm font-medium">
               {prompt.title}
@@ -235,10 +268,11 @@ function PromptEditor({
               )}
               {prompt.hasDefault && prompt.isModified && (
                 <span
-                  className="typo-micro px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                  className="inline-flex items-center gap-1.5 typo-micro px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20"
                   title="Este prompt ha sido modificado respecto al valor de fábrica."
                 >
-                  MODIFICADO · bajo tu criterio
+                  <span className="inline-block size-1.5 rounded-full bg-primary" />
+                  Modificado
                 </span>
               )}
             </h3>
@@ -404,9 +438,6 @@ function PromptEditor({
           <DialogFooter className="pt-4 border-t border-border/50 flex flex-row justify-between sm:justify-between items-center gap-2 w-full">
             {prompt.hasDefault ? (
               <div className="flex items-center gap-2 typo-caption text-muted-foreground">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
-                  ⚙ SISTEMA
-                </span>
                 No se puede eliminar. Edita o restáuralo.
               </div>
             ) : (
@@ -545,7 +576,7 @@ function PromptGroup({
         className={cn(
           "flex items-center justify-between cursor-pointer group p-4 rounded-xl border transition-colors gap-4 bg-muted/20",
           category?.isSystem
-            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+            ? "border-border hover:bg-muted/50"
             : "border-border hover:bg-muted/50",
         )}
         onClick={() => !isEditingCategory && setExpanded((e) => !e)}
@@ -586,11 +617,6 @@ function PromptGroup({
             <>
               <h3 className="typo-label flex items-center gap-2">
                 {category ? category.name : "Sin Categoría"}
-                {category?.isSystem && (
-                  <span className="typo-micro px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary text-primary-foreground border border-primary/40 shadow-sm">
-                    ⚙ SISTEMA
-                  </span>
-                )}
                 <span className="text-muted-foreground typo-caption">
                   ({prompts.length})
                 </span>

@@ -225,6 +225,21 @@ export const miscContracts = {
     }),
   }),
 
+  // Playground — streaming completion (sends chunks via playground:stream:* events)
+  playgroundStream: defineContract({
+    channel: "playground:stream",
+    input: z.object({
+      model: z.string(),
+      prompt: z.string(),
+      timeoutMs: z.number().optional(),
+    }),
+    output: z.object({
+      text: z.string(),
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional(),
+    }),
+  }),
+
   // Playground — cancel in-flight completion request
   playgroundCancel: defineContract({
     channel: "playground:cancel",
@@ -292,6 +307,42 @@ export const miscEvents = {
   chatStreamEnd: defineEvent({
     channel: "chat:stream:end",
     payload: z.object({ chatId: z.number() }),
+  }),
+
+  // Playground streaming events (sent from the playground:stream handler)
+  playgroundStreamChunk: defineEvent({
+    channel: "playground:stream:chunk",
+    payload: z.object({
+      model: z.string(),
+      delta: z.string(),
+    }),
+  }),
+
+  playgroundStreamReasoning: defineEvent({
+    channel: "playground:stream:reasoning",
+    payload: z.object({
+      model: z.string(),
+      delta: z.string(),
+    }),
+  }),
+
+  playgroundStreamEnd: defineEvent({
+    channel: "playground:stream:end",
+    payload: z.object({
+      model: z.string(),
+      text: z.string(),
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional(),
+      timeout: z.boolean().optional(),
+    }),
+  }),
+
+  playgroundStreamError: defineEvent({
+    channel: "playground:stream:error",
+    payload: z.object({
+      model: z.string(),
+      error: z.string(),
+    }),
   }),
 
   /** Slice 3.10: fired when a chat is deleted so renderer atoms (pending

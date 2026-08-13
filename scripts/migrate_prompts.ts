@@ -17,8 +17,6 @@ const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] =
       ids: [
         "ctx_language",
         "ctx_no_run_locally",
-        "ctx_context7_docs",
-        "ctx_efficiency_triage",
         "ctx_task_management",
         "ctx_plan_mode",
         "ctx_build_walkthrough",
@@ -46,11 +44,7 @@ const PROMPT_GROUPS: { title: string; description: string; ids: PromptId[] }[] =
 function getPromptDefaultScope(promptId: string): string {
   if (promptId === "ctx_plan_mode") return "plan";
   if (promptId === "ctx_build_walkthrough") return "agent";
-  if (
-    promptId === "ctx_efficiency_triage" ||
-    promptId === "ctx_task_management" ||
-    promptId === "ctx_context7_docs"
-  ) {
+  if (promptId === "ctx_task_management") {
     return "agent, plan";
   }
   return "all";

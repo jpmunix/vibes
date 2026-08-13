@@ -11,8 +11,6 @@ export type PromptId =
   // Context instructions (injected into every chat message)
   | "ctx_language"
   | "ctx_no_run_locally"
-  | "ctx_context7_docs"
-  | "ctx_efficiency_triage"
   | "ctx_task_management"
   | "ctx_plan_mode"
   | "ctx_build_walkthrough"
@@ -29,13 +27,11 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   memory_onboarding: "Bootstrap de Memorias",
   ctx_language: "Idioma de respuesta",
   ctx_no_run_locally: "No mostrar ejecución",
-  ctx_context7_docs: "Documentación Context7",
-  ctx_efficiency_triage: "Eficiencia y triaje",
   ctx_task_management: "Gestión de tareas",
 
   ctx_plan_mode: "Planificación interactiva",
   ctx_build_walkthrough: "Resumen de cambios",
-  runtime_agent_base: "Prompt base del agente runtime",
+  runtime_agent_base: "Núcleo del agente",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -55,10 +51,6 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
   ctx_no_run_locally:
     "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
-  ctx_context7_docs:
-    "Obliga al agente a consultar documentación fresca antes de integrar librerías.",
-  ctx_efficiency_triage:
-    "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
   ctx_task_management:
     "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
   ctx_plan_mode:
@@ -66,5 +58,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   ctx_build_walkthrough:
     "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
   runtime_agent_base:
-    "Prompt base del agente runtime: reglas de uso de herramientas que el modelo recibe en cada sesión. La carcasa lo compone; el runtime lo ejecuta.",
+    "Núcleo del agente: reglas de uso de herramientas que el modelo recibe en cada sesión. La carcasa lo compone; el runtime lo ejecuta.",
 };

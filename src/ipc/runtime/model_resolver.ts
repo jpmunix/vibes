@@ -57,9 +57,13 @@ function pickApiKey(providerId: string, settings: UserSettings): string | undefi
 }
 
 /**
- * Resolves the model target for a chat turn. Follows the same precedence as
- * the OpenCode adapter's resolveModelForAgent for the primary agents:
- * custom static model > chat model > agentModels override > selectedModel.
+ * Resolves the model target for a chat turn. Precedence:
+ * custom static model > selectedModel.
+ *
+ * NOTA (card #115, auditoría 2026-08-12): settings.agentModels NO se lee
+ * todavía en ninguna ruta — la precedencia "agentModels override > selectedModel"
+ * que documentaba este comentario era de la época del adapter OpenCode
+ * (resolveModelForAgent). El enchufe al runtime llega con la card #113.
  *
  * Returns null when no usable OpenAI-compatible endpoint can be resolved
  * (e.g. only anthropic/google keys configured) — the caller decides how to

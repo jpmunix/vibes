@@ -33,8 +33,6 @@ const REVISAR_CATEGORY_DESC =
 const RUNTIME_SYSTEM_IDS = new Set<string>([
   "ctx_language",
   "ctx_no_run_locally",
-  "ctx_context7_docs",
-  "ctx_efficiency_triage",
   "ctx_task_management",
   "ctx_plan_mode",
   "ctx_build_walkthrough",

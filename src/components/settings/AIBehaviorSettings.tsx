@@ -20,6 +20,7 @@ import { TextVerbositySelector } from "../TextVerbositySelector";
 import { AgentModelSelector } from "./AgentModelSelector";
 import type { AgentId } from "./AgentModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
+import { MODEL_SELECTOR_STATUS } from "./model_selector_status";
 
 // ─── Chat turns options ───
 const turnsOptions = [
@@ -76,9 +77,23 @@ const AGENT_MODEL_ENTRIES: { id: AgentId; label: string; description: string }[]
   { id: "mockup",     label: "Mockup",      description: "Mockups y ediciones visuales rápidas (sin terminal)" },
 ];
 
+// ─── Chip de deuda visual (card #115) ───
+// Marca selectores configurables pero sin lectores en el runtime todavía.
+function InactiveChip({ note }: { note?: string }) {
+  return (
+    <span
+      title={note}
+      className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400 border border-red-200 dark:border-red-800/50 cursor-help"
+    >
+      Sin efecto aún
+    </span>
+  );
+}
+
 // ─── Collapsible agent models section ───
 function AgentModelsSection() {
   const [expanded, setExpanded] = useState(false);
+  const agentModelsStatus = MODEL_SELECTOR_STATUS.agentModels;
 
   return (
     <div className="space-y-4">
@@ -87,9 +102,16 @@ function AgentModelsSection() {
         onClick={() => setExpanded((e) => !e)}
       >
         <div className="flex-1">
-          <h3 className="typo-label">Modelos por agente</h3>
+          <h3 className="typo-label">
+            Modelos por agente
+            {!agentModelsStatus.active && (
+              <InactiveChip note={agentModelsStatus.note} />
+            )}
+          </h3>
           <p className="typo-caption mt-1">
-            Asigna un modelo distinto a cada agente de OpenCode para optimizar coste y rendimiento
+            Asigna un modelo distinto a cada agente interno para optimizar coste y rendimiento
+            {!agentModelsStatus.active &&
+              " — estos overrides aún no se aplican (se enchufarán con el nuevo runtime)"}
           </p>
         </div>
         <ChevronRight
@@ -101,7 +123,12 @@ function AgentModelsSection() {
       </div>
 
       {expanded && (
-        <div className="pl-4 space-y-0">
+        <div
+          className={cn(
+            "pl-4 space-y-0",
+            !agentModelsStatus.active && "opacity-60",
+          )}
+        >
           {AGENT_MODEL_ENTRIES.map((entry) => (
             <SettingRow
               key={entry.id}

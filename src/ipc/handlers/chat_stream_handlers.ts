@@ -21,7 +21,10 @@ import * as remoteSchema from "../../db/remote-schema";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
 import { constructSystemPrompt } from "../../prompts/system_prompt";
-import { DEFAULT_PROMPTS } from "../../prompts/defaults";
+import {
+  DEFAULT_PROMPTS,
+  DEFAULT_PROMPT_SCOPES,
+} from "../../prompts/defaults";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -1751,8 +1754,6 @@ This conversation includes one or more image attachments. When the user uploads 
           const SYSTEM_PROMPT_IDS = [
             "ctx_language",
             "ctx_no_run_locally",
-            "ctx_context7_docs",
-            "ctx_efficiency_triage",
             "ctx_task_management",
             "ctx_plan_mode",
             "ctx_build_walkthrough",
@@ -1791,8 +1792,12 @@ This conversation includes one or more image attachments. When the user uploads 
               scope = (userPrompt as any).scope || "all";
             } else {
               // Sin override en DB: default del código (fuente de fábrica).
+              // El scope también es de fábrica (DEFAULT_PROMPT_SCOPES) para
+              // que los prompts pesados solo viajen en su modo (card #117):
+              // ctx_plan_mode solo en plan, ctx_build_walkthrough solo en
+              // agente. Los overrides del usuario mandan sobre esto.
               content = DEFAULT_PROMPTS[sysId] ?? "";
-              scope = "all";
+              scope = DEFAULT_PROMPT_SCOPES[sysId] ?? "all";
             }
             if (!content) continue;
 

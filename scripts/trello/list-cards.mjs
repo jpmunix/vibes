@@ -47,6 +47,8 @@ if (filterLabel) {
 if (asJson) {
   const out = filtered.map((c) => ({
     id: c.id,
+    idShort: c.idShort,
+    title: c.name,
     name: c.name,
     list: lists.find((l) => l.id === c.idList)?.name || null,
     labels: (c.idLabels || []).map((id) => labelNameById[id]).filter(Boolean),
@@ -67,7 +69,7 @@ for (const list of lists) {
   console.log(`\n📋 ${list.name} (${items.length})`);
   for (const c of items) {
     const lbls = (c.idLabels || []).map((id) => labelNameById[id]).filter(Boolean);
-    console.log(`  • ${c.name}${lbls.length ? `  [${lbls.join(', ')}]` : ''}`);
+    console.log(`  • #${c.idShort} ${c.name}${lbls.length ? `  [${lbls.join(', ')}]` : ''}`);
   }
 }
 if (!filtered.length) console.log('(sin cards que coincidan)');

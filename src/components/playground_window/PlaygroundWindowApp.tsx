@@ -11,6 +11,7 @@ import {
   useCallback,
   useMemo,
   useRef,
+  memo,
   type ChangeEvent,
 } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -59,7 +60,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
-import { ipc, type LanguageModel } from "@/ipc/types";
+import { ipc } from "@/ipc/types";
 import { useModelAliases } from "@/hooks/useModelAliases";
 import {
   DropdownMenu,
@@ -89,11 +90,15 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { Check, Image } from "@/components/ui/icons";
+import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
 import { isFreeModel } from "@/ipc/shared/model_variants";
 import { SettingsModelSelector } from "@/components/SettingsModelSelector";
+import {
+  useMultiProviderModels,
+  type MultiProviderModel,
+} from "@/hooks/useMultiProviderModels";
 
 import "@/styles/globals.css";
 
@@ -109,6 +114,8 @@ const queryClient = new QueryClient({
 interface ModelResult {
   modelApiName: string;
   modelDisplayName: string;
+  /** Human-readable provider label (e.g. "OpenRouter", "Minube") to disambiguate same-name models */
+  providerLabel?: string;
   text: string;
   inputTokens?: number;
   outputTokens?: number;
@@ -296,6 +303,7 @@ function MemoryResponseContent({ text }: { text: string }) {
 function ModelChipWithPresets({
   apiName,
   displayName,
+  providerLabel,
   time,
   disabled,
   isRunning,
@@ -306,6 +314,7 @@ function ModelChipWithPresets({
 }: {
   apiName: string;
   displayName: string;
+  providerLabel?: string;
   time?: number;
   disabled: boolean;
   isRunning: boolean;
@@ -337,6 +346,9 @@ function ModelChipWithPresets({
           }}
         >
           {displayName}
+          {providerLabel && providerLabel !== "OpenRouter" && (
+            <span className="chip-provider">{providerLabel}</span>
+          )}
           {time != null && (
             <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
           )}
@@ -379,6 +391,76 @@ function ModelChipWithPresets({
     </DropdownMenu>
   );
 }
+
+// ─── Picker model row (memoized, simplified: name + provider) ─────────────────
+
+const PickerModelItem = memo(function PickerModelItem({
+  apiName,
+  displayName,
+  provider,
+  providerLabel,
+  isSelected,
+  onSelect,
+}: {
+  apiName: string;
+  displayName: string;
+  provider?: string;
+  providerLabel?: string;
+  isSelected: boolean;
+  onSelect: (apiName: string) => void;
+}) {
+  return (
+    <CommandItem
+      value={apiName}
+      onSelect={() => onSelect(apiName)}
+      className={cn("cursor-pointer", isSelected && "bg-primary/8")}
+    >
+      <span className="w-5 shrink-0 flex items-center justify-start">
+        {isSelected && <Check size={14} className="text-primary" />}
+      </span>
+      <span className="flex-1 min-w-0 text-sm font-medium truncate flex items-center gap-1.5">
+        <span className="truncate">{displayName}</span>
+        {provider && provider !== "openrouter" && (
+          <span className="shrink-0 text-[9px] font-semibold px-1 py-px rounded bg-purple-500/15 text-purple-400">
+            {providerLabel || String(provider).replace("custom::", "")}
+          </span>
+        )}
+      </span>
+    </CommandItem>
+  );
+});
+
+const PickerLoadMore = memo(function PickerLoadMore({
+  root,
+  onVisible,
+}: {
+  root: Element | null;
+  onVisible: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) onVisible();
+      },
+      { root, rootMargin: "80px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [root, onVisible]);
+
+  return (
+    <div
+      ref={ref}
+      className="py-2 text-center typo-caption text-muted-foreground/70"
+    >
+      Cargando más modelos…
+    </div>
+  );
+});
 
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
@@ -463,6 +545,11 @@ function ResultCard({
             )}
           >
             {result.modelDisplayName}
+            {result.providerLabel && (
+              <span className="ml-1.5 align-middle text-[9px] font-semibold px-1 py-px rounded bg-purple-500/15 text-purple-400">
+                {result.providerLabel}
+              </span>
+            )}
           </h3>
           {hasPricing && (
             <div className="typo-caption text-muted-foreground/50 truncate flex items-center gap-1.5 mt-0.5">
@@ -554,7 +641,7 @@ function PlaygroundPanel() {
   const [results, setResults] = useState<ModelResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [currentModelIndex, setCurrentModelIndex] = useState(-1);
-  const [allModels, setAllModels] = useState<LanguageModel[]>([]);
+  const [allModels, setAllModels] = useState<MultiProviderModel[]>([]);
   const [modelSearch, setModelSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [modelTimes, setModelTimes] = useState<Map<string, number>>(new Map());
@@ -571,10 +658,9 @@ function PlaygroundPanel() {
     | "price-out-desc"
   >("speed-asc");
   const [retryingModel, setRetryingModel] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"memorias" | "raw">("raw");
-  const [morphActive, setMorphActive] = useState(false);
+  const viewMode = "raw" as const;
   const [nitroActive, setNitroActive] = useState(false);
-  const [timeoutSeconds, setTimeoutSeconds] = useState(15);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(300);
   const { aliases } = useModelAliases();
   const resultsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -584,6 +670,12 @@ function PlaygroundPanel() {
   const skipCurrentRef = useRef(false);
   const userScrolledRef = useRef(false);
   const [inputCollapsed, setInputCollapsed] = useState(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [streamingModel, setStreamingModel] = useState<string | null>(null);
+  const [streamingReasoning, setStreamingReasoning] = useState<string | null>(
+    null,
+  );
+  const [reasoningOpen, setReasoningOpen] = useState(true);
   // Snapshot of selectedModels at the moment the popover closes — used for sorting
   const [pickerSnapshot, setPickerSnapshot] = useState<string[]>([]);
   const [autoCollapse, setAutoCollapse] = useState(true);
@@ -649,12 +741,41 @@ function PlaygroundPanel() {
     }
   }, [presets.loaded]);
 
-  // Load models from IPC
+  // Load models from ALL configured providers (OpenRouter + custom providers).
+  const { data: multiProviderModels } = useMultiProviderModels();
   useEffect(() => {
-    ipc.languageModel
-      .getModels({ providerId: "openrouter" })
-      .then(setAllModels)
-      .catch(console.error);
+    if (multiProviderModels) {
+      setAllModels(multiProviderModels);
+    }
+  }, [multiProviderModels]);
+
+  // Listen for playground streaming events (live text while a model generates)
+  useEffect(() => {
+    const unsubChunk = ipc.events.misc.onPlaygroundStreamChunk((data) => {
+      setStreamingModel(data.model);
+      setStreamingText((prev) => (prev ?? "") + data.delta);
+    });
+    const unsubReasoning =
+      ipc.events.misc.onPlaygroundStreamReasoning((data) => {
+        setStreamingModel(data.model);
+        setStreamingReasoning((prev) => (prev ?? "") + data.delta);
+      });
+    const unsubEnd = ipc.events.misc.onPlaygroundStreamEnd(() => {
+      setStreamingText(null);
+      setStreamingModel(null);
+      setStreamingReasoning(null);
+    });
+    const unsubError = ipc.events.misc.onPlaygroundStreamError(() => {
+      setStreamingText(null);
+      setStreamingModel(null);
+      setStreamingReasoning(null);
+    });
+    return () => {
+      unsubChunk?.();
+      unsubReasoning?.();
+      unsubEnd?.();
+      unsubError?.();
+    };
   }, []);
 
   // Build a display name lookup
@@ -665,6 +786,21 @@ function PlaygroundPanel() {
     }
     return map;
   }, [allModels, aliases]);
+
+  // Provider label lookup (e.g. "OpenRouter", "Minube") to disambiguate
+  // same-name models coming from different providers.
+  const modelProviderLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of allModels) {
+      const p = (m as any).sourceProvider as string | undefined;
+      if (!p) continue;
+      const label =
+        (m as any).sourceProviderLabel ||
+        (p.startsWith("custom::") ? p.replace("custom::", "") : p);
+      map.set(m.apiName, label);
+    }
+    return map;
+  }, [allModels]);
 
   // Filter and sort models for the picker
   // Uses pickerSnapshot (frozen at popover open) so the list doesn't jump while selecting
@@ -690,6 +826,19 @@ function PlaygroundPanel() {
       return nameA.localeCompare(nameB);
     });
   }, [modelSearch, allModels, aliases, pickerSnapshot]);
+
+  // O(1) membership check for selection (picker renders many items)
+  const selectedSet = useMemo(() => new Set(selectedModels), [selectedModels]);
+
+  // Incremental rendering: start small, grow as the user scrolls.
+  const [visibleCount, setVisibleCount] = useState(40);
+  const PICKER_PAGE = 40;
+  const pickerScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset pagination when the query or the popover changes
+  useEffect(() => {
+    setVisibleCount(PICKER_PAGE);
+  }, [modelSearch, searchOpen]);
 
   // When the popover opens, snapshot the current selection for stable sorting
   const handleSearchOpenChange = useCallback(
@@ -717,7 +866,7 @@ function PlaygroundPanel() {
   // Add or remove a single model (toggle in the picker)
   const handleTogglePickerModel = useCallback(
     (apiName: string) => {
-      if (selectedModels.includes(apiName)) {
+      if (selectedSet.has(apiName)) {
         setSelectedModels((prev) => prev.filter((m) => m !== apiName));
         setDisabledModels((prev) => {
           const s = new Set(prev);
@@ -728,7 +877,7 @@ function PlaygroundPanel() {
         setSelectedModels((prev) => [...prev, apiName]);
       }
     },
-    [selectedModels],
+    [selectedSet],
   );
 
   // Remove a model chip
@@ -827,12 +976,12 @@ function PlaygroundPanel() {
     { key: "speed-desc", label: "Más lento primero", icon: <Zap size={13} /> },
     {
       key: "size-asc",
-      label: viewMode === "memorias" ? "Menos memorias" : "Respuesta más corta",
+      label: "Respuesta más corta",
       icon: <AlignLeft size={13} />,
     },
     {
       key: "size-desc",
-      label: viewMode === "memorias" ? "Más memorias" : "Respuesta más larga",
+      label: "Respuesta más larga",
       icon: <AlignLeft size={13} />,
     },
     {
@@ -873,7 +1022,6 @@ function PlaygroundPanel() {
     setCurrentModelIndex(-1);
     setRetryingModel(null);
     setInputCollapsed(false);
-    setMorphActive(false);
     setNitroActive(false);
     setPrompt("");
     setActivePresetName(null);
@@ -951,27 +1099,29 @@ function PlaygroundPanel() {
       const modelDisplayName =
         modelDisplayNameMap.get(modelApiName) || modelApiName;
 
-      // Apply nitro suffix if active and model is not free
-      const modelForApi =
-        nitroActive && !modelApiName.includes(":")
-          ? (() => {
-              const m = allModels.find((x) => x.apiName === modelApiName);
-              return m && !isFreeModel(m)
-                ? modelApiName + ":nitro"
-                : modelApiName;
-            })()
-          : modelApiName;
+      const modelForApi = (() => {
+        const m = allModels.find((x) => x.apiName === modelApiName);
+        const base = m?.apiName ?? modelApiName;
+        return nitroActive && !base.includes(":") && m && !isFreeModel(m)
+          ? base + ":nitro"
+          : base;
+      })();
 
       const startTime = performance.now();
+      setStreamingModel(modelApiName);
+      setStreamingText("");
+      setStreamingReasoning("");
       try {
-        const response = await ipc.misc.playgroundCompletion({
+        const response = await ipc.misc.playgroundStream({
           model: modelForApi,
           prompt: prompt.trim(),
+          timeoutMs: timeoutSeconds * 1000,
         });
         const durationMs = performance.now() - startTime;
         const newResult: ModelResult = {
           modelApiName,
           modelDisplayName,
+          providerLabel: modelProviderLabelMap.get(modelApiName),
           text: response.text,
           inputTokens: response.inputTokens,
           outputTokens: response.outputTokens,
@@ -986,6 +1136,7 @@ function PlaygroundPanel() {
         const newResult: ModelResult = {
           modelApiName,
           modelDisplayName,
+          providerLabel: modelProviderLabelMap.get(modelApiName),
           text: error?.message || String(error),
           durationMs,
           error: true,
@@ -995,6 +1146,9 @@ function PlaygroundPanel() {
         );
         setModelTimes((prev) => new Map(prev).set(modelApiName, durationMs));
       }
+      setStreamingText(null);
+      setStreamingModel(null);
+      setStreamingReasoning(null);
       setRetryingModel(null);
     },
     [prompt, retryingModel, modelDisplayNameMap],
@@ -1016,6 +1170,9 @@ function PlaygroundPanel() {
     skipCurrentRef.current = false;
     userScrolledRef.current = false;
     setInputCollapsed(true);
+    setStreamingText(null);
+    setStreamingModel(null);
+    setStreamingReasoning(null);
 
     const MODEL_TIMEOUT_MS = timeoutSeconds * 1000;
 
@@ -1028,31 +1185,22 @@ function PlaygroundPanel() {
       const modelDisplayName =
         modelDisplayNameMap.get(modelApiName) || modelApiName;
 
-      // Apply nitro suffix if active and model is not free
-      const modelForApi =
-        nitroActive && !modelApiName.includes(":")
-          ? (() => {
-              const m = allModels.find((x) => x.apiName === modelApiName);
-              return m && !isFreeModel(m)
-                ? modelApiName + ":nitro"
-                : modelApiName;
-            })()
-          : modelApiName;
+      const modelForApi = (() => {
+        const m = allModels.find((x) => x.apiName === modelApiName);
+        const base = m?.apiName ?? modelApiName;
+        return nitroActive && !base.includes(":") && m && !isFreeModel(m)
+          ? base + ":nitro"
+          : base;
+      })();
 
       const startTime = performance.now();
       let durationMs = 0;
       try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("__TIMEOUT__")), MODEL_TIMEOUT_MS);
+        const response = await ipc.misc.playgroundStream({
+          model: modelForApi,
+          prompt: prompt.trim(),
+          timeoutMs: MODEL_TIMEOUT_MS,
         });
-
-        const response = await Promise.race([
-          ipc.misc.playgroundCompletion({
-            model: modelForApi,
-            prompt: prompt.trim(),
-          }),
-          timeoutPromise,
-        ]);
 
         if (cancelledRef.current || skipCurrentRef.current) {
           if (skipCurrentRef.current) {
@@ -1062,6 +1210,7 @@ function PlaygroundPanel() {
               {
                 modelApiName,
                 modelDisplayName,
+                providerLabel: modelProviderLabelMap.get(modelApiName),
                 text: "Modelo omitido por el usuario",
                 durationMs,
                 error: true,
@@ -1082,6 +1231,7 @@ function PlaygroundPanel() {
           {
             modelApiName,
             modelDisplayName,
+            providerLabel: modelProviderLabelMap.get(modelApiName),
             text: response.text,
             inputTokens: response.inputTokens,
             outputTokens: response.outputTokens,
@@ -1098,6 +1248,7 @@ function PlaygroundPanel() {
           {
             modelApiName,
             modelDisplayName,
+            providerLabel: modelProviderLabelMap.get(modelApiName),
             text: isTimeout
               ? `Tiempo límite superado (${timeoutSeconds}s)`
               : error?.message || String(error),
@@ -1143,6 +1294,9 @@ function PlaygroundPanel() {
     // Run finished: collapse all, sort, scroll to top
     setRunFinished(true);
     setIsRunning(false);
+    setStreamingText(null);
+    setStreamingModel(null);
+    setStreamingReasoning(null);
     setCurrentModelIndex(-1);
     setTimeout(() => {
       if (!userScrolledRef.current) {
@@ -1230,6 +1384,18 @@ function PlaygroundPanel() {
     [modelSets],
   );
 
+  // Add a single model to an existing preset (merge) — used by chip context menu
+  const handleAddModelToPreset = useCallback(
+    async (modelApiName: string, presetName: string) => {
+      const preset = modelSets.find((s) => s.name === presetName);
+      if (!preset) return;
+      if (preset.models.includes(modelApiName)) return; // already in preset
+      const merged = [...preset.models, modelApiName];
+      await presets.saveModelPreset(presetName, merged);
+    },
+    [modelSets, presets],
+  );
+
   const handleDeletePreset = useCallback(
     async (name: string) => {
       await presets.deleteModelPreset(name);
@@ -1261,18 +1427,6 @@ function PlaygroundPanel() {
     [modelSets, selectedModels],
   );
 
-  // Add a single model to an existing preset (merge)
-  const handleAddModelToPreset = useCallback(
-    async (modelApiName: string, presetName: string) => {
-      const preset = modelSets.find((s) => s.name === presetName);
-      if (!preset) return;
-      if (preset.models.includes(modelApiName)) return; // already in preset
-      const merged = [...preset.models, modelApiName];
-      await presets.saveModelPreset(presetName, merged);
-    },
-    [modelSets, presets],
-  );
-
   const handleExportMarkdown = useCallback(() => {
     const toExport = displayResults.filter((r) =>
       exportSelection.has(`${r.modelApiName}`),
@@ -1287,7 +1441,7 @@ function PlaygroundPanel() {
       "```",
       prompt,
       "```",
-      `**Modo:** ${viewMode === "memorias" ? "Memorias" : "Raw"}`,
+      `**Modo:** Raw`,
       `**Orden:** ${sortMode}`,
       ``,
       `---`,
@@ -1446,6 +1600,20 @@ function PlaygroundPanel() {
                 .playground-chip.disabled .chip-time {
                     background: var(--muted);
                     color: var(--muted-foreground);
+                }
+                .playground-chip .chip-provider {
+                    font-size: 9px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    padding: 2px 6px;
+                    border-radius: 5px;
+                    background: oklch(from var(--primary) l c h / 0.12);
+                    color: var(--primary);
+                    opacity: 0.85;
+                }
+                .playground-chip.disabled .chip-provider {
+                    opacity: 0.5;
                 }
                 @keyframes chipIn {
                     from { opacity: 0; transform: scale(0.9); }
@@ -1816,82 +1984,40 @@ function PlaygroundPanel() {
                   value={modelSearch}
                   onValueChange={setModelSearch}
                 />
-                <CommandList className="max-h-[300px]">
+                <CommandList className="max-h-[300px]" ref={pickerScrollRef}>
                   {pickerModels.length === 0 ? (
                     <div className="py-4 text-center typo-caption">
                       Sin resultados
                     </div>
                   ) : (
                     <CommandGroup>
-                      {pickerModels.map((m) => {
-                        const isSelected = selectedModels.includes(m.apiName);
-                        const fmtTokens = (n: number | undefined) => {
-                          if (n === undefined) return "—";
-                          if (n >= 1_000_000)
-                            return `${(n / 1_000_000).toFixed(0)}M`;
-                          if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-                          return n.toString();
-                        };
-                        const fmtPrice = (p: string | undefined) => {
-                          if (!p) return "—";
-                          const v = parseFloat(p);
-                          if (isNaN(v)) return "—";
-                          if (v === 0) return "gratis";
-                          const pm = v * 1_000_000;
-                          return `$${pm < 0.01 ? pm.toFixed(4) : pm.toFixed(2)}`;
-                        };
-                        return (
-                          <CommandItem
+                      {pickerModels
+                        .slice(0, visibleCount)
+                        .map((m) => (
+                          <PickerModelItem
                             key={m.apiName}
-                            value={m.apiName}
-                            onSelect={() => handleTogglePickerModel(m.apiName)}
-                            className={cn(
-                              "cursor-pointer",
-                              isSelected && "bg-primary/8",
-                            )}
-                          >
-                            <span className="w-5 shrink-0 flex items-center justify-start">
-                              {isSelected && (
-                                <Check size={14} className="text-primary" />
-                              )}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">
-                                {aliases[m.apiName] || m.displayName}
-                              </div>
-                              <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-70">
-                                {m.inputModalities?.includes("image") && (
-                                  <Image
-                                    size={10}
-                                    className="shrink-0"
-                                    title="Soporta imágenes"
-                                  />
-                                )}
-                                <span>
-                                  Contexto: {fmtTokens(m.contextWindow)}
-                                </span>
-                                <span className="opacity-30">·</span>
-                                <span>
-                                  Salida: {fmtTokens(m.maxOutputTokens)}
-                                </span>
-                              </div>
-                              {(m.pricingInput || m.pricingOutput) && (
-                                <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-50">
-                                  <span>In</span>
-                                  <span className="tabular-nums">
-                                    {fmtPrice(m.pricingInput)}
-                                  </span>
-                                  <span className="opacity-40">·</span>
-                                  <span>Out</span>
-                                  <span className="tabular-nums">
-                                    {fmtPrice(m.pricingOutput)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </CommandItem>
-                        );
-                      })}
+                            apiName={m.apiName}
+                            displayName={aliases[m.apiName] || m.displayName}
+                            provider={(m as any).sourceProvider as
+                              | string
+                              | undefined}
+                            providerLabel={(m as any).sourceProviderLabel as
+                              | string
+                              | undefined}
+                            isSelected={selectedSet.has(m.apiName)}
+                            onSelect={handleTogglePickerModel}
+                          />
+                        ))}
+                      {pickerModels.length > visibleCount && (
+                        <PickerLoadMore
+                          root={pickerScrollRef.current}
+                          onVisible={() =>
+                            setVisibleCount((v) =>
+                              Math.min(v + PICKER_PAGE, pickerModels.length),
+                            )
+                          }
+                        />
+                      )}
                     </CommandGroup>
                   )}
                 </CommandList>
@@ -1906,6 +2032,7 @@ function PlaygroundPanel() {
                 key={apiName}
                 apiName={apiName}
                 displayName={modelDisplayNameMap.get(apiName) || apiName}
+                providerLabel={modelProviderLabelMap.get(apiName)}
                 time={time}
                 disabled={disabledModels.has(apiName)}
                 isRunning={isRunning}
@@ -2239,94 +2366,6 @@ function PlaygroundPanel() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Raw / Memorias toggle */}
-          <div className="flex items-center rounded-lg border border-border/40 overflow-hidden h-[34px]">
-            <button
-              type="button"
-              className={cn(
-                "px-3 py-1.5 typo-select transition-colors",
-                viewMode === "raw"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:bg-muted/50",
-              )}
-              onClick={() => setViewMode("raw")}
-            >
-              Raw
-            </button>
-            <div className="w-px h-5 bg-border/40" />
-            <button
-              type="button"
-              className={cn(
-                "px-3 py-1.5 typo-select transition-colors",
-                viewMode === "memorias"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:bg-muted/50",
-              )}
-              onClick={() => setViewMode("memorias")}
-            >
-              Memorias
-            </button>
-          </div>
-
-          {/* Nitro toggle */}
-          <button
-            type="button"
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors disabled:opacity-50",
-              nitroActive
-                ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-semibold"
-                : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground",
-            )}
-            title={
-              nitroActive
-                ? "Desactivar Nitro (provider más rápido)"
-                : "Activar Nitro (provider más rápido)"
-            }
-            onClick={() => setNitroActive((prev) => !prev)}
-            disabled={isRunning}
-          >
-            <Zap size={14} />
-            Nitro
-          </button>
-
-          {/* Morph button (toggle) */}
-          <button
-            type="button"
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors disabled:opacity-50",
-              morphActive
-                ? "bg-primary/10 text-primary border-primary/30 font-semibold"
-                : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground",
-            )}
-            title="Cargar / quitar test de Morph V3"
-            onClick={() => {
-              if (morphActive) {
-                setPrompt("");
-                setSelectedModels((prev) =>
-                  prev.filter((m) => !m.startsWith("morph/")),
-                );
-                setMorphActive(false);
-              } else {
-                setPrompt(
-                  '<instruction>I will add type hints</instruction>\n<code>def greet(name):\n    return "Hello " + name</code>\n<update>def greet(name: str) -> str</update>',
-                );
-                setSelectedModels((prev) => {
-                  const morphModels = [
-                    "morph/morph-v3-large",
-                    "morph/morph-v3-fast",
-                  ];
-                  const without = prev.filter((m) => !morphModels.includes(m));
-                  return [...without, ...morphModels];
-                });
-                setMorphActive(true);
-              }
-            }}
-            disabled={isRunning}
-          >
-            <Zap size={14} />
-            Morph
-          </button>
-
           {/* Auto-collapse toggle */}
           <button
             type="button"
@@ -2354,7 +2393,7 @@ function PlaygroundPanel() {
                 type="button"
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors",
-                  timeoutSeconds !== 15
+                  timeoutSeconds !== 300
                     ? "bg-amber-500/10 text-amber-600 border-amber-500/30 font-semibold"
                     : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground",
                 )}
@@ -2370,7 +2409,7 @@ function PlaygroundPanel() {
               <div className="px-3 py-1.5 typo-micro text-muted-foreground opacity-60 uppercase tracking-wider">
                 Timeout por modelo
               </div>
-              {[10, 15, 30, 60, 90, 120].map((seconds) => (
+              {[30, 60, 120, 180, 300, 600].map((seconds) => (
                 <DropdownMenuItem
                   key={seconds}
                   className={cn(
@@ -2828,6 +2867,53 @@ function PlaygroundPanel() {
             disabled={isRunning}
           />
         )}
+
+        {/* Live reasoning box: model's thinking (e.g. DeepSeek reasoning) */}
+        {isRunning && streamingModel && streamingReasoning != null && (
+          <div className="mt-2 rounded-lg border border-purple-500/20 bg-purple-500/5 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setReasoningOpen((o) => !o)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 border-b border-purple-500/15 text-left"
+            >
+              <Brain size={12} className="text-purple-400" />
+              <span className="typo-caption font-medium truncate">
+                Pensamiento de{" "}
+                {modelDisplayNameMap.get(streamingModel) || streamingModel}
+              </span>
+              <ChevronRight
+                size={13}
+                className={cn(
+                  "ml-auto shrink-0 text-muted-foreground/60 transition-transform duration-200",
+                  reasoningOpen && "rotate-90",
+                )}
+              />
+            </button>
+            {reasoningOpen && (
+              <div className="px-3 py-2 max-h-[160px] overflow-y-auto typo-body text-sm whitespace-pre-wrap break-words text-purple-200/80 italic">
+                {streamingReasoning}
+                <span className="inline-block w-1.5 h-3.5 bg-purple-400/70 animate-pulse ml-0.5 align-middle" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Live streaming box: shows what the model is writing in real time */}
+        {isRunning && streamingModel && streamingText != null && (
+          <div className="mt-2 rounded-lg border border-border/40 bg-background/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/30">
+              <Loader2 size={12} className="animate-spin text-primary" />
+              <span className="typo-caption font-medium truncate">
+                {modelDisplayNameMap.get(streamingModel) || streamingModel}
+                <span className="text-muted-foreground/60"> escribiendo…</span>
+              </span>
+            </div>
+            <div className="px-3 py-2 max-h-[160px] overflow-y-auto typo-body text-sm whitespace-pre-wrap break-words">
+              {streamingText}
+              <span className="inline-block w-1.5 h-3.5 bg-primary/70 animate-pulse ml-0.5 align-middle" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Prompt Preset Dialogs ── */}
@@ -3049,7 +3135,18 @@ function PlaygroundPanel() {
                 <strong>
                   {modelDisplayNameMap.get(activeModels[currentModelIndex]) ||
                     activeModels[currentModelIndex]}
-                </strong>{" "}
+                </strong>
+                {modelProviderLabelMap.get(
+                  activeModels[currentModelIndex],
+                ) && (
+                  <span className="ml-1.5 align-middle text-[9px] font-semibold px-1 py-px rounded bg-purple-500/15 text-purple-400">
+                    {
+                      modelProviderLabelMap.get(
+                        activeModels[currentModelIndex],
+                      )
+                    }
+                  </span>
+                )}{" "}
                 ({currentModelIndex + 1}/{activeModels.length})
               </span>
               <button
