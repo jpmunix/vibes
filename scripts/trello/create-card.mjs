@@ -9,15 +9,19 @@
  *     [--list "To Do"] \
  *     [--labels fase-2,deuda] \
  *     [--checklist "Criterio 1|Criterio 2|..."] \
- *     [--pos top]                # posición en la lista: top (default) | bottom | número
+ *     [--pos top]                # posición en la lista: top (default) | bottom | número \
+ *     [--ref "conv=<id>"]        # repetible; ancla de trazabilidad (§1.10.10 AGENTS.md)
  *
  * Si ya existe una card con el mismo título, la lista en vez de duplicar
  * y avisa por stdout para que el agente decida.
  *
  * Política de posición: por defecto 'top' — toda card nueva va arriba del todo
  * de la lista destino (consistente con update-card.mjs, que también va al top).
+ *
+ * --ref: si se pasa, tras crear la card se añade un comentario ancla con la
+ * ref-line de trazabilidad (conv / #VIBES-NN auto / rama@hash / contract / artifact).
  */
-import { findListByName, resolveCard, createCard, resolveLabelIds, createChecklist, addCheckItem, moveCard, getLists } from './lib.mjs';
+import { findListByName, resolveCard, createCard, resolveLabelIds, createChecklist, addCheckItem, moveCard, getLists, buildRefLine, addComment } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (name) => {
@@ -44,6 +48,18 @@ if (typeof posRaw === 'string') {
     process.exit(1);
   }
 }
+
+// --ref (repetible): anclas de trazabilidad; ver lib.mjs parseRefs/buildRefLine.
+const refs = (() => {
+  const values = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--ref' && args[i + 1]) {
+      values.push(args[i + 1]);
+      i++;
+    }
+  }
+  return values;
+})();
 
 if (!title) {
   console.error('❌ Falta --title');
@@ -78,4 +94,18 @@ if (checklist.length) {
     await addCheckItem(cl.id, item);
   }
   console.log(`   Checklist "${cl.name}" con ${checklist.length} items`);
+}
+
+// Ref-line de trazabilidad (§1.10.10): solo si se pasa --ref explícitamente
+// (no en toda card nueva: sería ruido redundante). El #VIBES-NN recién
+// asignado se auto-inyecta si no venía ya en --ref, porque la card lo conoce.
+if (refs.length) {
+  const refsWithCard = refs.some((r) => /^#?(VIBES-)?\d+$/i.test(r.trim()) || r.toLowerCase().startsWith('card='))
+    ? refs
+    : [...refs, `card=${card.idShort}`];
+  const refLine = buildRefLine(refsWithCard);
+  if (refLine) {
+    await addComment(card.id, refLine);
+    console.log(`🔗 Comentario ancla de trazabilidad añadido`);
+  }
 }

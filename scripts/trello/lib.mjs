@@ -322,3 +322,69 @@ export async function resolveLabelIds(labelNames = []) {
   }
   return ids;
 }
+
+/* ---------- Trazabilidad card ↔ conversación ↔ repo (regla §1.10.10 AGENTS.md) ---------- */
+
+/**
+ * Normaliza una lista de refs a un objeto estructurado.
+ *
+ * Acepta dos formatos por entrada (repetibles):
+ *   - "clave=valor" con claves conocidas: conv, card, branch, commit, contract, artifact
+ *   - Valores bare reconocibles:
+ *       "92" / "#92" / "#VIBES-92"  → card
+ *       "feat/rama@a1b2c3d"         → branch + commit (split por @)
+ *
+ * Las entradas con clave desconocida o sin formato reconocible se ignoran
+ * (sin fallar): la ref-line es información de apoyo, nunca debe romper un script.
+ *
+ * @param {string[]} refStrings  Lista cruda de refs (de --ref, repetible).
+ * @returns {{conv?:string, card?:string, branch?:string, commit?:string, contract?:string, artifact?:string}}
+ */
+export function parseRefs(refStrings = []) {
+  const refs = {};
+  for (const raw of refStrings) {
+    const s = String(raw).trim();
+    if (!s) continue;
+    const eq = s.indexOf('=');
+    if (eq !== -1) {
+      const key = s.slice(0, eq).trim().toLowerCase();
+      const value = s.slice(eq + 1).trim();
+      if (!value) continue;
+      if (['conv', 'card', 'branch', 'commit', 'contract', 'artifact'].includes(key)) {
+        refs[key] = value;
+      }
+      // claves desconocidas se ignoran a propósito (ver docstring)
+    } else if (/^#?(VIBES-)?\d+$/i.test(s)) {
+      refs.card = s;
+    } else if (s.includes('@')) {
+      const [b, c] = s.split('@');
+      if (!refs.branch && b) refs.branch = b;
+      if (!refs.commit && c) refs.commit = c;
+    }
+  }
+  return refs;
+}
+
+/**
+ * Construye la ref-line canónica para el primer comentario de una card.
+ *
+ * Formato (los campos vacíos se omiten, sin dejar separadores colgando):
+ *   🔗 Refs: conv=<id> | #VIBES-NN | <rama>@<commit> | contract=<c> | artifact=<ruta>
+ *
+ * @param {string[]} refStrings  Lista cruda de refs (de --ref, repetible).
+ * @returns {string} La ref-line, o '' si no hay ninguna ref válida.
+ */
+export function buildRefLine(refStrings = []) {
+  const r = parseRefs(refStrings);
+  const parts = [];
+  if (r.conv) parts.push(`conv=${r.conv}`);
+  if (r.card) {
+    const num = String(r.card).replace(/^#?(VIBES-)?/i, '');
+    parts.push(`#VIBES-${num}`);
+  }
+  if (r.branch || r.commit) parts.push([r.branch, r.commit].filter(Boolean).join('@'));
+  if (r.contract) parts.push(`contract=${r.contract}`);
+  if (r.artifact) parts.push(`artifact=${r.artifact}`);
+  if (!parts.length) return '';
+  return `🔗 Refs: ${parts.join(' | ')}`;
+}

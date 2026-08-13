@@ -9,11 +9,18 @@
  *     [--label-add "fase-3"] \
  *     [--label-remove "fase-2"] \
  *     [--check-item "Criterio 1"] (repetible; también acepta comas: "A,B") \
- *     [--comment "Texto del comentario"]
+ *     [--comment "Texto del comentario"] \
+ *     [--ref "conv=<id>" --ref "#VIBES-92" --ref "rama@hash" ...]
  *
  * Busca la card por título exacto (case-insensitive). Si no existe, falla.
+ *
+ * --ref (repetible): anclas de trazabilidad card ↔ conversación ↔ repo
+ * (regla §1.10.10 de AGENTS.md). Se anteponen al --comment como ref-line:
+ *   🔗 Refs: conv=<id> | #VIBES-NN | <rama>@<hash> | contract=<c> | artifact=<ruta>
+ * Claves conocidas: conv, card, branch, commit, contract, artifact.
+ * Sin --comment pero con --ref, añade un comentario solo con la ref-line.
  */
-import { resolveCard, updateCard, moveCard, resolveLabelIds, addComment, getChecklists, updateCheckItem, findListByName, getLists } from './lib.mjs';
+import { resolveCard, updateCard, moveCard, resolveLabelIds, addComment, getChecklists, updateCheckItem, findListByName, getLists, buildRefLine } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (name) => {
@@ -41,6 +48,17 @@ const checkItems = (() => {
   return values;
 })();
 const comment = getArg('comment');
+// --ref (repetible): anclas de trazabilidad; ver lib.mjs parseRefs/buildRefLine.
+const refs = (() => {
+  const values = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--ref' && args[i + 1]) {
+      values.push(args[i + 1]);
+      i++; // salta el valor ya consumido
+    }
+  }
+  return values;
+})();
 
 if (!cardName) {
   console.error('❌ Falta --card');
@@ -131,12 +149,17 @@ if (checkItems.length) {
   }
 }
 
-if (comment) {
-  await addComment(card.id, unescape(comment));
-  console.log(`💬 Comentario añadido`);
+const refLine = buildRefLine(refs);
+if (comment || refLine) {
+  // La ref-line (si existe) va SIEMPRE al inicio del comentario, separada
+  // por línea en blanco del texto del comentario (regla §1.10.10).
+  const body = comment ? unescape(comment) : '';
+  const fullText = refLine && body ? `${refLine}\n\n${body}` : refLine || body;
+  await addComment(card.id, fullText);
+  console.log(refLine ? `💬 Comentario añadido (con ref-line)` : `💬 Comentario añadido`);
 }
 
-if (!newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment) {
-  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --desc, --move, --label-add, --check-item, --comment).`);
+if (!newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine) {
+  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --desc, --move, --label-add, --check-item, --comment, --ref).`);
   console.log(`   ${card.url}`);
 }

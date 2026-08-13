@@ -272,6 +272,48 @@ Toda card que cree el agente (o munix, como convención compartida) lleva **al m
 
 > **Por qué:** el board es la única fuente de verdad (§1.10.7). Sin labels coherentes, el filtrado por dimensión (p. ej. "qué deuda de tools tenemos") es imposible y el board pierde su valor como instrumento de gestión.
 
+#### 1.10.10 Trazabilidad card ↔ conversación ↔ repo — **INNEGOCIABLE**
+
+Toda card que se mueva a `Doing` lleva, en su **primer comentario** (el `🔄 [Doing]`), una **ref-line** estándar que ancla la card a la conversación de Antigravity y al estado del repo. Se inyecta con la bandera `--ref` (repetible) de `update-card.mjs` / `create-card.mjs`, que antepone la ref-line al comentario automáticamente:
+
+```bash
+node scripts/trello/update-card.mjs --card "Título" --move Doing \
+  --ref "conv=e7ab9384-..." \
+  --ref "#VIBES-92" \
+  --ref "feat/vibes-92-x@a1b2c3d" \
+  --ref "contract=B6" \
+  --comment "🔄 [Doing] Plan: ..."
+```
+
+Formato canónico de la ref-line (construido por `buildRefLine()` en `lib.mjs`; los campos vacíos se omiten sin dejar separadores colgando):
+
+```
+🔗 Refs: conv=<conversation-id> | #VIBES-NN | <rama>@<commit> | contract=<c> | artifact=<ruta>
+```
+
+**Campos y de dónde salen:**
+
+| Campo | Qué ancla | De dónde se saca |
+|---|---|---|
+| `conv` | Conversación de Antigravity | El ID de la sesión activa (contexto del agente). Ver §1.13 (`ag-chats.mjs`) |
+| `#VIBES-NN` | idShort de la card | `list-cards --json` (`idShort`). En `create-card` se auto-inyecta al crear |
+| `<rama>@<commit>` | Estado del repo asociado | `git rev-parse --abbrev-ref HEAD` + `git rev-parse --short HEAD` — **explícito**, no autodetección |
+| `contract` | Contrato tocado (A1-A4, B6…) | `docs/TESTING.md` / Roadmap, si aplica |
+| `artifact` | Walkthrough/plan asociado | Ruta del artifact en el brain, si aplica |
+
+**Reglas:**
+- La ref-line va **siempre al inicio** del comentario (antes del prefijo `🔄/🚧/✅/🏁`), separada por una línea en blanco.
+- Se **actualiza** la ref-line en el comentario `✅ [Review]` si la rama o el commit cambiaron durante la slice (nuevo comentario con las refs actualizadas).
+- El walkthrough/plan asociado a la card lleva al final un bloque `## Trazabilidad` con la misma ref-line (verificación cruzada).
+- Las refs de **git son explícitas**: el agente las pasa a mano, no hay autodetección mágica del CWD (decisión de munix).
+- `create-card.mjs` añade el comentario ancla **solo si se pasa `--ref`** (no en toda card nueva: sería ruido redundante).
+- Cualquier búsqueda de "de dónde viene esta card" empieza por la ref-line del primer comentario.
+
+> **Por qué:** una card sin ref-line es un nodo huérfano: munix abre Antigravity desde el móvil y no sabe qué chat corresponde; abre Trello y no sabe qué conversación tiene el contexto. La ref-line hace el board **navegable de ida y de vuelta**.
+
+> [!NOTE]
+> Tests del helper: [`scripts/trello/__tests__/build-ref-line.test.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/__tests__/build-ref-line.test.mjs) — se ejecutan con `node --test "scripts/trello/__tests__/*.test.mjs"` (runner nativo, sin deps).
+
 ---
 
 ### 1.11 Repos de referencia "los arneses" — sitio de consulta — **INNEGOCIABLE**
@@ -453,5 +495,5 @@ node scripts/ag-chats.mjs show <cascadeId> --steps
 
 ---
 
-**Última actualización:** 2026-08-12 (§1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.10.9: toda card creada lleva labels coherentes con su naturaleza — vocabulario canónico consolidado; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten; §1.13: script `ag-chats.mjs` para consultar las conversaciones de Antigravity desde CLI).
+**Última actualización:** 2026-08-13 (§1.10.10: trazabilidad card ↔ conversación ↔ repo — ref-line estándar en el primer comentario de cada card, bandera `--ref` en los scripts de Trello; §1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.10.9: toda card creada lleva labels coherentes con su naturaleza — vocabulario canónico consolidado; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten; §1.13: script `ag-chats.mjs` para consultar las conversaciones de Antigravity desde CLI).
 **Mantenedor:** munix.
