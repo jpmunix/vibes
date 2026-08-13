@@ -96,8 +96,12 @@ export async function getLists() {
 
 export async function getCards(listId) {
   const params = { fields: 'id,name,desc,idList,idLabels,url,dateLastActivity,idShort' };
-  if (listId) params.idList = listId;
-  return api(`/1/boards/${CONFIG.boardId}/cards`, params);
+  // NOTA: la API de Trello IGNORA el parámetro idList en /boards/{id}/cards
+  // y devuelve siempre todas las cards del board. Filtramos en cliente aquí
+  // para que este helper cumpla su contrato (getCards() = todas, getCards(id) = esa lista).
+  const cards = await api(`/1/boards/${CONFIG.boardId}/cards`, params);
+  if (listId) return cards.filter((c) => c.idList === listId);
+  return cards;
 }
 
 export async function getLabels() {
