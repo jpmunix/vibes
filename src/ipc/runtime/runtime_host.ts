@@ -124,9 +124,18 @@ function resolveCachedProvider(): ModelProvider {
  * The ModelProvider handed to the runtime. Every call re-resolves the active
  * model from Vibes settings so mid-session model switches work like they do
  * with OpenCode (next request uses the new model).
+ *
+ * Card #VIBES-123: `id` used to be the fixed string "vibes-delegating", which
+ * is exactly what the loop prints as `model=<id>` in the `context.snapshot`
+ * header — so the log always showed `model=vibes-delegating` no matter what
+ * model the user had selected. Making `id` a getter that resolves the cached
+ * provider (whose id is `vibes:${defaultModel}`) lets the snapshot show the
+ * real model per turn. Exported for tests.
  */
-const delegatingModelProvider: ModelProvider = {
-  id: "vibes-delegating",
+export const delegatingModelProvider: ModelProvider = {
+  get id(): string {
+    return resolveCachedProvider().id;
+  },
   stream(req: CompletionRequest, signal: AbortSignal): AsyncIterable<CompletionChunk> {
     return resolveCachedProvider().stream(req, signal);
   },
