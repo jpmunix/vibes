@@ -374,7 +374,7 @@ export async function handleRuntimeStream(
   };
 
   logger.info(
-    `[RuntimeBridge] Finished chat ${req.chatId}: finish=${result?.finishReason ?? "n/a"} usage=${usage.input}+${usage.output} aborted=${aborted}`,
+    `[RuntimeBridge] Finished chat ${req.chatId}: finish=${result?.finishReason ?? "n/a"} Total input: ${usage.input} Total output: ${usage.output} aborted=${aborted}`,
   );
 
   return {
