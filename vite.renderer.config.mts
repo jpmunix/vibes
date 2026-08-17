@@ -2,6 +2,7 @@ import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { vibesAliases } from "./vite.vibes-aliases.mts";
 
 const ReactCompilerConfig = {};
 
@@ -26,6 +27,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // El crawler de optimizeDeps del dev server escanea TODO src/ y, al
+      // encontrarse los imports @vibes/* en src/ipc/runtime/*.ts, los resuelve
+      // con ESTOS aliases. Sin ellos, un re-scan (p. ej. al cambiar
+      // package-lock.json) lanza "could not be resolved".
+      ...vibesAliases,
     },
   },
   build: {
