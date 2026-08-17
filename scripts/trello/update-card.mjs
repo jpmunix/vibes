@@ -11,6 +11,7 @@
  *     [--label-remove "fase-2"] \
  *     [--check-item "Criterio 1"] (repetible; también acepta comas: "A,B") \
  *     [--comment "Texto del comentario"] \
+ *     [--archive] (archiva la card: closed=true) \
  *     [--ref "conv=<id>" --ref "#VIBES-92" --ref "rama@hash" ...]
  *
  * Busca la card por título exacto (case-insensitive). Si no existe, falla.
@@ -50,6 +51,8 @@ const checkItems = (() => {
   return values;
 })();
 const comment = getArg('comment');
+// --archive: bandera booleana para archivar la card (closed=true).
+const doArchive = args.includes('--archive');
 // --ref (repetible): anclas de trazabilidad; ver lib.mjs parseRefs/buildRefLine.
 const refs = (() => {
   const values = [];
@@ -117,6 +120,11 @@ if (moveTo) {
   console.log(`➡️  Movida a "${list.name}"${posLabel}`);
 }
 
+if (doArchive) {
+  await updateCard(card.id, { closed: true });
+  console.log(`🗄️  Archivada "${card.name}" (#${card.idShort})`);
+}
+
 if (labelAdd.length) {
   const ids = await resolveLabelIds(labelAdd);
   const current = card.idLabels || [];
@@ -166,7 +174,7 @@ if (comment || refLine) {
   console.log(refLine ? `💬 Comentario añadido (con ref-line)` : `💬 Comentario añadido`);
 }
 
-if (!newName && !newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine) {
-  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --name, --desc, --move, --label-add, --check-item, --comment, --ref).`);
+if (!newName && !newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine && !doArchive) {
+  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --name, --desc, --move, --label-add, --check-item, --comment, --ref, --archive).`);
   console.log(`   ${card.url}`);
 }

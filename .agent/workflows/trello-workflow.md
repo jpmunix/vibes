@@ -54,7 +54,7 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 |---|---|---|
 | [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards (filtro por lista/label, salida JSON) | `node scripts/trello/list-cards.mjs --list "To-do" --json` |
 | [create-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/create-card.mjs) | Crear card idempotente (no duplica por título) | `node scripts/trello/create-card.mjs --title "X" --desc "Y" --list "To-do" --labels "deuda"` |
-| [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (nombre, desc, mover, labels, checklist, comentario) | `node scripts/trello/update-card.mjs --card "X" --name "Nuevo título" --move "Done" --comment "..."` |
+| [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (nombre, desc, mover, labels, checklist, comentario, archivar) | `node scripts/trello/update-card.mjs --card "X" --name "Nuevo título" --move "Done" --comment "..."` |
 | [attach-file.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/attach-file.mjs) | Adjuntar ficheros locales a una card (multipart, máx 10 MB por fichero) | `node scripts/trello/attach-file.mjs --card "X" --file "./captura.png,./plan.pdf"` |
 | [bootstrap-board.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/bootstrap-board.mjs) | Montar/renormalizar el board desde `cards.json` | `node scripts/trello/bootstrap-board.mjs [--dry-run]` |
 | [audit-comments.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/audit-comments.mjs) | Auditar comentarios y descripciones en busca de `\n` literal (y otros caracteres escapados mal) | `node scripts/trello/audit-comments.mjs [--json] [--fix]` |
@@ -317,6 +317,11 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 - ❌ **NO** trabajar en más de 1-2 cards a la vez.
 - ❌ **NO** crear cards duplicadas (los scripts son idempotentes, pero el agente debe mirar antes).
 - ❌ **NO** borrar/archivar cards sin decirle a munix (archivar = perder evidencia).
+  - 📌 Para archivar usa el flag `--archive` de `update-card.mjs` (pone `closed=true`):
+    ```bash
+    node scripts/trello/update-card.mjs --card "X" --archive --comment "🗄️ [Archivada] Motivo..."
+    ```
+  - ⚠️ Archivar oculta la card del board activo pero conserva su historial/comentarios. **Recuperable** si hiciera falta. Siempre deja un comentario que diga **a qué card nueva (o por qué) se archiva**, para no perder la trazabilidad.
 - ❌ **NO** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11): solo munix la llena; el agente no la toca.
 - ❌ **NO** marcar checklist items sin haber verificado.
 - ✅ **SÍ** documentar SIEMPRE con comentarios (inicio, atasco, review, cierre).
