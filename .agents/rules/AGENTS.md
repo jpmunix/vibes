@@ -223,7 +223,7 @@ node scripts/trello/create-card.mjs --title "Deuda: ..." --desc "**Qué:** ...\n
 Antes de mover a Done, el agente verifica TODOS:
 1. ¿OK explícito de munix? (verbal o moviendo él la card)
 2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
-3. ¿Checklist completo? (si la card tiene)
+3. ¿Checklist completo? — `list-cards --json` ahora expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
 4. ¿Comentario-bitácora si hubo decisiones no obvias?
 
 Si falta algo → la card se queda en Review.

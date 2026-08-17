@@ -95,7 +95,7 @@ export async function getLists() {
 }
 
 export async function getCards(listId) {
-  const params = { fields: 'id,name,desc,idList,idLabels,url,dateLastActivity,idShort' };
+  const params = { fields: 'id,name,desc,idList,idLabels,url,dateLastActivity,idShort', checklists: 'all' };
   // NOTA: la API de Trello IGNORA el parámetro idList en /boards/{id}/cards
   // y devuelve siempre todas las cards del board. Filtramos en cliente aquí
   // para que este helper cumpla su contrato (getCards() = todas, getCards(id) = esa lista).
@@ -185,6 +185,24 @@ export async function addCheckItem(checklistId, name) {
 export async function updateCheckItem(cardId, checkItemId, state) {
   // state: 'complete' | 'incomplete'
   return api(`/1/cards/${cardId}/checkItem/${checkItemId}`, { state }, 'PUT');
+}
+
+/**
+ * Marca todos los items de todos los checklists de una card como 'complete'.
+ * Usado por --check-all en update-card.mjs para cerrar el flujo de cierre
+ * sin tener que enumerar cada item por nombre.
+ * Devuelve el número total de items marcados.
+ */
+export async function completeAllCheckItems(cardId) {
+  const checklists = await getChecklists(cardId);
+  let count = 0;
+  for (const cl of checklists) {
+    for (const item of cl.checkItems || []) {
+      await updateCheckItem(cardId, item.id, 'complete');
+      count += 1;
+    }
+  }
+  return count;
 }
 
 /** Límite de fichero para adjuntos de la API de Trello (10 MB). */

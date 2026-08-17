@@ -53,6 +53,15 @@ if (asJson) {
     list: lists.find((l) => l.id === c.idList)?.name || null,
     labels: (c.idLabels || []).map((id) => labelNameById[id]).filter(Boolean),
     url: c.url,
+    checklists: (c.checklists || []).map((cl) => ({
+      id: cl.id,
+      name: cl.name,
+      items: (cl.checkItems || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        state: item.state,
+      })),
+    })),
   }));
   console.log(JSON.stringify(out, null, 2));
   process.exit(0);

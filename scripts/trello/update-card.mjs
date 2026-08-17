@@ -10,6 +10,7 @@
  *     [--label-add "fase-3"] \
  *     [--label-remove "fase-2"] \
  *     [--check-item "Criterio 1"] (repetible; también acepta comas: "A,B") \
+ *     [--check-all] (marca todos los items de todos los checklists como complete) \
  *     [--comment "Texto del comentario"] \
  *     [--archive] (archiva la card: closed=true) \
  *     [--ref "conv=<id>" --ref "#VIBES-92" --ref "rama@hash" ...]
@@ -22,7 +23,7 @@
  * Claves conocidas: conv, card, branch, commit, contract, artifact.
  * Sin --comment pero con --ref, añade un comentario solo con la ref-line.
  */
-import { resolveCard, updateCard, moveCard, resolveLabelIds, addComment, getChecklists, updateCheckItem, findListByName, getLists, buildRefLine } from './lib.mjs';
+import { resolveCard, updateCard, moveCard, resolveLabelIds, addComment, getChecklists, updateCheckItem, findListByName, getLists, buildRefLine, completeAllCheckItems } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (name) => {
@@ -53,6 +54,7 @@ const checkItems = (() => {
 const comment = getArg('comment');
 // --archive: bandera booleana para archivar la card (closed=true).
 const doArchive = args.includes('--archive');
+const checkAll = args.includes('--check-all');
 // --ref (repetible): anclas de trazabilidad; ver lib.mjs parseRefs/buildRefLine.
 const refs = (() => {
   const values = [];
@@ -164,6 +166,15 @@ if (checkItems.length) {
   }
 }
 
+
+if (checkAll) {
+  const count = await completeAllCheckItems(card.id);
+  if (count > 0) {
+    console.log(`☑️  ${count} checklist items marcados como complete`);
+  } else {
+    console.log('ℹ️  No hay checklist items para marcar');
+  }
+}
 const refLine = buildRefLine(refs);
 if (comment || refLine) {
   // La ref-line (si existe) va SIEMPRE al inicio del comentario, separada
@@ -174,7 +185,7 @@ if (comment || refLine) {
   console.log(refLine ? `💬 Comentario añadido (con ref-line)` : `💬 Comentario añadido`);
 }
 
-if (!newName && !newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine && !doArchive) {
-  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --name, --desc, --move, --label-add, --check-item, --comment, --ref, --archive).`);
+if (!newName && !newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine && !doArchive && !checkAll) {
+  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --name, --desc, --move, --label-add, --check-item, --check-all, --comment, --ref, --archive).`);
   console.log(`   ${card.url}`);
 }

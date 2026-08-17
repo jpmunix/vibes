@@ -131,10 +131,17 @@ El comentario de inicio documenta **el plan** (1-2 líneas) para que cualquiera 
 
 El agente hace el trabajo (código, tests, docs) **siguiendo AGENTS.md**:
 - Slices verticales, tests por slice, contract tests golden, no regresiones.
-- **Avanza por el checklist** de la card (si tiene) marcando items con `--check-item`:
+- **Avanza por el checklist** de la card (si tiene) marcando items con `--check-item` (individual, repetible, acepta comas):
 
 ```bash
 node scripts/trello/update-card.mjs --card "X" --check-item "Criterio 1"
+```
+
+> [!TIP]
+> `--check-all` marca **todos** los items de todos los checklists de una card como complete en un solo paso. Útil al cerrar la card. El agente **siempre verifica** los items (ver `list-cards --json` expone `checklists[].items[].state`) antes de usarlo.
+
+```bash
+node scripts/trello/update-card.mjs --card "X" --check-all
 ```
 
 > [!IMPORTANT]
