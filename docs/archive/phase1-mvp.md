@@ -1,6 +1,6 @@
 # Fase 1: MVP — Sustituir OpenCode
 
-> **Objetivo único:** que el runtime de mcode-core sustituya a OpenCode en mCode Desktop
+> **Objetivo único:** que el runtime de vibes-core sustituya a OpenCode en Vibes
 > sin que los usuarios noten degradación. Nada más.
 >
 > **Regla de hierro:** cada semana que pasa sin el swap es una semana que OpenCode
@@ -14,10 +14,10 @@
 |---|---|---|---|
 | 1 | **Modular runtime composition** | G6 | Sin Builder no hay runtime. Es la base de todo. |
 | 2 | **Provider Registry** | G1 | El runtime necesita resolver qué LLM usar. Hoy solo `openai-completions`, pero el mecanismo debe existir. |
-| 3 | **Agent definitions** | G2 | mCode define build/plan/explore con prompts + tools + modelo. El runtime los ejecuta. Sin esto, el runtime no sabe qué agente corre. |
-| 4 | **Permission flow** | G4 | `requestPermission` en el loop. mCode muestra banner. Sin esto, el agente tiene barra libre. |
+| 3 | **Agent definitions** | G2 | Vibes define build/plan/explore con prompts + tools + modelo. El runtime los ejecuta. Sin esto, el runtime no sabe qué agente corre. |
+| 4 | **Permission flow** | G4 | `requestPermission` en el loop. Vibes muestra banner. Sin esto, el agente tiene barra libre. |
 | 5 | **6 tools existentes** | ✅ | `read_file`, `write_file`, `edit_file`, `glob`, `grep`, `shell`. Ya funcionan. Solo empaquetarlas en el ToolRegistry. |
-| 6 | **Bridge SDK** | N/A | Traduce `RuntimeEvent` → IPC de mCode. Es el swap. Sustituye `opencode_adapter.ts` (5500 líneas). |
+| 6 | **Bridge SDK** | N/A | Traduce `RuntimeEvent` → IPC de Vibes. Es el swap. Sustituye `opencode_adapter.ts` (5500 líneas). |
 
 ---
 
@@ -51,9 +51,9 @@ Semana 5-6: SWAP
   └─ Criterio de salida: todas las tools pasan tests de integración contra Workspace real
 
   Bloque 6: Bridge SDK
-  └─ Mapeo RuntimeEvent → IPC de mCode (contratos existentes intactos)
+  └─ Mapeo RuntimeEvent → IPC de Vibes (contratos existentes intactos)
   └─ Sustituye opencode_adapter.ts
-  └─ Criterio de salida: mCode Desktop funciona con runtime en lugar de OpenCode
+  └─ Criterio de salida: Vibes Desktop funciona con runtime en lugar de OpenCode
   └─ Los usuarios de pruebas no notan diferencia
 ```
 
@@ -63,16 +63,16 @@ Semana 5-6: SWAP
 
 | Qué | Por qué NO |
 |---|---|
-| **Sub-agentes** | mCode hoy no tiene sub-agentes con OpenCode. No es regresión. |
-| **MCP Gateway** | mCode ya tiene MCP via OpenCode. El Bridge lo mantiene mientras migramos. |
+| **Sub-agentes** | Vibes hoy no tiene sub-agentes con OpenCode. No es regresión. |
+| **MCP Gateway** | Vibes ya tiene MCP via OpenCode. El Bridge lo mantiene mientras migramos. |
 | **Compactación** | Ni OpenCode lo tiene. No es regresión. |
-| **Tools nuevas** (lsp, patch, web_fetch, todowrite, question, etc.) | OpenCode las tiene, pero mCode no depende de ellas para funcionar. Se añaden post-MVP. |
+| **Tools nuevas** (lsp, patch, web_fetch, todowrite, question, etc.) | OpenCode las tiene, pero Vibes no depende de ellas para funcionar. Se añaden post-MVP. |
 | **Observability** | Nice-to-have. No bloquea. |
 | **Browser Controller** | No se usa hoy. |
 | **Runtime SDK + Ext SDK** | El Bridge SDK se construye *durante* el MVP porque es el swap. Los otros dos se extraen *después* de que el runtime funcione. |
 | **Fork/resume** | No se usa hoy. |
 | **Cost Controller avanzado** | Budgets de tokens básicos en `LoopConfig` sí. Facturación/€ no. |
-| **Prompt Builder** (composición por secciones) | mCode envía el system prompt como string. El builder es post-MVP. |
+| **Prompt Builder** (composición por secciones) | Vibes envía el system prompt como string. El builder es post-MVP. |
 | **Tool description override** | Las descriptions por defecto del runtime bastan para el MVP. |
 | **Seguridad avanzada** (Docker, seccomp) | Workspace boundary + pills + shell policy básica (P13 del Roadmap). Suficiente para MVP. |
 | **Cancelación de agentes** (P12) | El runtime recibe AbortSignal. Cancelación con modos/graceful es post-MVP. |
@@ -81,7 +81,7 @@ Semana 5-6: SWAP
 
 ## 4. CRITERIOS DE SALIDA DEL MVP
 
-- [ ] mCode Desktop arranca con mcode-core runtime en lugar de OpenCode
+- [ ] Vibes arranca con vibes-core runtime en lugar de OpenCode
 - [ ] Chat completo: prompt → streaming → tools → respuesta. Sin regresiones.
 - [ ] Permisos: tools peligrosas piden confirmación. El usuario puede allow/deny.
 - [ ] Build agent (el más usado) funciona idéntico al actual.
@@ -96,7 +96,7 @@ Semana 5-6: SWAP
 |---|---|
 | **Bridge SDK no cubre todos los eventos** | Feature flag para volver a OpenCode en caliente. El Bridge se construye con el adapter como referencia. |
 | **Provider Registry no escala** | Solo necesita 1 provider (openai-completions). La extensibilidad se prueba en post-MVP. |
-| **Permission flow rompe UX** | El contrato `requestPermission` es fire-and-forget desde el runtime. mCode decide UI. Si falla, mCode devuelve `deny` por defecto. |
+| **Permission flow rompe UX** | El contrato `requestPermission` es fire-and-forget desde el runtime. Vibes decide UI. Si falla, Vibes devuelve `deny` por defecto. |
 | **El runtime no rinde como OpenCode** | SLOs básicos (latencia de turno < 500ms extra sobre OpenCode). Si no se cumple, se investiga antes de quitar el feature flag. |
 
 ---

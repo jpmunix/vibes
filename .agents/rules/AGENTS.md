@@ -1,4 +1,4 @@
-# AGENTS.md — Reglas del proyecto Vibes / mCode
+# AGENTS.md — Reglas del proyecto Vibes / Vibes
 
 > Contrato de trabajo entre **munix** (product owner) y el agente.
 > Las reglas aquí son **en piedra** salvo que munix diga lo contrario explícitamente.
@@ -101,7 +101,7 @@ Y espera el OK antes de tocar.
 ### 1.6 Frontera runtime ↔ carcasa (P1 del Roadmap)
 
 - **Runtime** (vibes-core): provider-agnóstico, no conoce UI, no conoce Vibes, no conoce OpenCode. Solo sabe de `RuntimeEvent`, `MessageContentPart`, `ToolResult`, `Workspace`.
-- **Carcasa** (Vibes/mCode): traduce `RuntimeEvent` a tags `<vibes-*>` para la UI. Decide prompts, contextos, pills de permisos, visionador sintético. El runtime nunca hace preprocessing de visión.
+- **Carcasa** (Vibes): traduce `RuntimeEvent` a tags `<vibes-*>` para la UI. Decide prompts, contextos, pills de permisos, visionador sintético. El runtime nunca hace preprocessing de visión.
 - Si una feature pide meter algo del runtime en Vibes o viceversa → **preguntar antes**, probablemente viola P1.
 
 ---
@@ -337,7 +337,7 @@ El directorio [`arneses/`](file:///home/munix/Desarrollo/GitRepo/arneses) contie
 
 Estas se mencionan pero no se deciden todavía. Si salen en conversación, el agente anota pero no actúa:
 
-- **DP-2 (attachments/vision)**: soporte multimodal en `MessageContentPart` → Fase 3. mCode implementa visionador sintético.
+- **DP-2 (attachments/vision)**: soporte multimodal en `MessageContentPart` → Fase 3. Vibes implementa visionador sintético.
 - **DP-3 (todos/question tool)**: Fase 2.
 - **Retry/fallback** del loop con `error_classifier` → Fase 4 (G9).
 - **Publicación de paquetes `@vibes/*`** en registry → Fase 5.
@@ -388,7 +388,7 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 ## 4. Decisión temporal sobre modelos y providers
 
 - El agente puede sugerir cambios de modelo en `settings.json` de Vibes, pero no los ejecuta.
-- Si el provider por defecto (OpenAI-compatible) no soporta visión, mCode implementa fallback con visionador sintético.
+- Si el provider por defecto (OpenAI-compatible) no soporta visión, Vibes implementa fallback con visionador sintético.
 - El runtime no sabe nada de providers específicos.
 
 ---
@@ -412,7 +412,7 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 - "Esto ya estaba así" → el estado actual no es sagrado si contradice el Roadmap.
 - Refactors especulativos ("ya que estamos aquí, mejor reescribo X") → scope creep. Si se ve la necesidad, se propone como tarea aparte.
 - "Funciona en mi cabeza" → si no hay test verde, no funciona.
-- Mezclar mcode (producto/carcasa) con opencode (motor deprecado) en explicaciones. mCode es la carcasa, vibes-core es el runtime, OpenCode es lo que estamos sustituyendo.
+- Mezclar `legacyFoo` (producto/carcasa) con `opencode` (motor deprecado) en explicaciones. `Vibes` es la carcasa, `vibes-core` es el runtime, `OpenCode` es lo que estamos sustituyendo.
 
 ---
 

@@ -14,7 +14,7 @@ runtime (vibes-core)  →  no conoce UI, no conoce Vibes, no conoce OpenCode.
                          Solo sabe de RuntimeEvent, MessageContentPart,
                          ToolResult, Workspace, StorageProvider.
 
-carcasa (Vibes/mCode) →  traduce RuntimeEvent a <vibes-*> tags para la UI.
+carcasa (Vibes/Vibes) →  traduce RuntimeEvent a <vibes-*> tags para la UI.
                          Decide prompts, contextos, pills de permisos,
                          visionador sintético. El runtime nunca hace
                          preprocessing de visión.
@@ -30,7 +30,7 @@ siempre viola P1.
 
 ```mermaid
 flowchart TB
-  subgraph Vibes["Vibes / mCode (carcasa)"]
+  subgraph Vibes["Vibes / Vibes (carcasa)"]
     UI["Renderer React<br/>+ tags &lt;vibes-*&gt;"]
     IPC["IPC handlers<br/>(src/ipc/)"]
     Bridge["runtime_bridge.ts<br/>event_mapper.ts<br/>prompt_attach.ts"]
@@ -100,7 +100,7 @@ flowchart TB
 | `ask_user` tool (DP-3, pendiente) | vibes-core (cuando se implemente) | El runtime tiene que emitir el evento `permission.ask` para que la carcasa lo muestre. |
 | Visual-edit subagent (deuda) | vibes-core (Fase 5) | Cuando se implemente, vivirá como tool/sub-agent del loop. |
 | MCP gateway (DP-Fase 3) | vibes-core (Fase 3) | El runtime tiene que poder hablar MCP. |
-| Attachments / vision | Vibes (mCode) | DP-2. La carcasa decide qué hacer cuando no hay visión (synthetic viewer). El runtime nunca preprocessa. |
+| Attachments / vision | Vibes (Vibes) | DP-2. La carcasa decide qué hacer cuando no hay visión (synthetic viewer). El runtime nunca preprocessa. |
 
 ---
 

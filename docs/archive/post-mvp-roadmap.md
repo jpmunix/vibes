@@ -44,7 +44,7 @@
 | 3.3 | **Web tools** | G13 | `web_fetch`, `web_search`. Decidir backend (Exa, Serper, etc.). |
 | 3.4 | **Browser Controller** | G12 | Tool que controla navegador. Menor prioridad. |
 | 3.5 | **MCP Gateway nativo** | G5 | Descubrimiento + registro de tools MCP en el runtime. Ambos transports (stdio + SSE). |
-| 3.6 | **Tool description override** | G8 | mCode puede sobrescribir descriptions por sesión. `createSession({ toolOverrides })`. |
+| 3.6 | **Tool description override** | G8 | Vibes puede sobrescribir descriptions por sesión. `createSession({ toolOverrides })`. |
 
 **Criterio de salida:** el runtime tiene paridad de tools con OpenCode + MCP nativo.
 
@@ -74,8 +74,8 @@
 
 | # | Qué | Gap | Notas |
 |---|---|---|---|
-| 5.1 | **Runtime SDK** (`@mcode/core/sdk`) | — | `createRuntime()` Builder, `RuntimeEvent` tipados, helpers. Se extrae del código que ya funciona. |
-| 5.2 | **Extensions SDK** (`@mcode/core/ext`) | — | `defineTool`, `defineProvider`, `definePermissionPolicy`. Validación de contratos versionados. |
+| 5.1 | **Runtime SDK** (`@vibes/sdk`) | — | `createRuntime()` Builder, `RuntimeEvent` tipados, helpers. Se extrae del código que ya funciona. |
+| 5.2 | **Extensions SDK** (`@vibes/ext`) | — | `defineTool`, `defineProvider`, `definePermissionPolicy`. Validación de contratos versionados. |
 | 5.3 | **Client Manifest** | G8 (prod) | Feature flags declarativos. Brand, policies, integraciones. |
 | 5.4 | **Private Edition deployment** | D10 | Proceso separado, servidor HTTP, on-prem. |
 | 5.5 | **SLOs y rendimiento** | D10 | Latencia, tokens/seg, sesiones concurrentes. Validar worker thread vs proceso. |

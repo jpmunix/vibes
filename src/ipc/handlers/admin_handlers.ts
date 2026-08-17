@@ -51,7 +51,7 @@ export function toLegacyMillis(value: unknown): number {
     return value.getFullYear() > 3000 ? value.getTime() / 1000 : value.getTime();
   }
   if (typeof value === "number") {
-    // < 2e10 -> seconds; >= 2e10 -> milliseconds (mcode parity)
+    // < 2e10 -> seconds; >= 2e10 -> milliseconds (vibes parity)
     return value > 0 && value < 20_000_000_000 ? value * 1000 : value;
   }
   if (typeof value === "string") {

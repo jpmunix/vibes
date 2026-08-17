@@ -233,7 +233,7 @@ export function getRuntime(): Runtime {
 
   const storagePath = path.join(app.getPath("userData"), "runtime-sessions.db");
 
-  runtimeInstance = createRuntimeBuilder("vibes-mcode")
+  runtimeInstance = createRuntimeBuilder("vibes")
     .workspaceRoot(path.dirname(app.getPath("userData"))) // sessions override per-app via workspaceRoot
     .sqliteStorage(storagePath)
     .model(delegatingModelProvider)

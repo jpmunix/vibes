@@ -37,7 +37,7 @@ const conversationsDir = path.join(agBase, 'conversations');
 const brainDir = path.join(agBase, 'brain');
 const summariesPb = path.join(agBase, 'agyhub_summaries_proto.pb');
 
-// Filtro por defecto: los workspaces activos del repo Vibes (mCode).
+// Filtro por defecto: los workspaces activos del repo Vibes.
 // arneses no tiene corpus, se detecta por workspaceUri que termine en /arneses.
 const DEFAULT_PROJECTS = ['Vibes', 'arneses', 'vibes-core'];
 

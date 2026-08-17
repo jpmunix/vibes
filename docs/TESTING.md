@@ -1,4 +1,4 @@
-# Inventario de Tests — Vibes / mCode
+# Inventario de Tests — Vibes / Vibes
 
 > **Documento vivo.** Se actualiza cuando se añaden, modifican o eliminan tests.
 > Última actualización: 2026-08-09.

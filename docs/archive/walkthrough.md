@@ -12,7 +12,7 @@ La sesión goal terminó la Fase 1 de extremo a extremo: **vibes-core (Track A)*
 |---|---|
 | A1 Provider Registry | `createProviderRegistry()` + `openAiCompatibleFactory()`, protocolo por defecto `openai-compatible` |
 | A2 AgentDefinition + hidratación | tipo `AgentDefinition`, persistencia SQLite, filtrado de tools, `toolOverrides`, `maxIterations`, fork copia el agente. Fix de bug latente: v2.4 no persistía system_prompt/enabled_tools |
-| A3 Permission flow | `PermissionGate` inyectable, eventos `permission.requested/resolved`, `requiresConsent` por tool, `createTimeoutGate` fail-closed (5 min, paridad mCode) |
+| A3 Permission flow | `PermissionGate` inyectable, eventos `permission.requested/resolved`, `requiresConsent` por tool, `createTimeoutGate` fail-closed (5 min, paridad Vibes) |
 | A4 Validación de args | validador hand-rolled (subset JSON Schema) en `@vibes/tools`; sin ajv |
 | A5 `@vibes/bridge` | `attachBridge`/`dispatch` + `buildTimeline` neutrales; los tags `<vibes-*>` viven en Vibes (frontera P1 intacta) |
 | A6 Builder API | `createRuntimeBuilder()` con defaults sensatos; CLI y server migrados |
@@ -68,7 +68,7 @@ npm run rebuild:sqlite    # recompila better-sqlite3 para Electron
 Después de `npm install` + `npm run rebuild:sqlite`, **la app ya usa el runtime por defecto** (OpenCode fue extirpado en las capas 0-2, ver abajo). No hay flag que activar.
 
 > [!NOTE]
-> No ha hecho falta migrar la BD de mCode: el runtime usa su propio SQLite en `userData/runtime-sessions.db`. Los contract tests usan storage en memoria a propósito, así que son verdes incluso antes del `npm install`.
+> No ha hecho falta migrar la BD de Vibes: el runtime usa su propio SQLite en `userData/runtime-sessions.db`. Los contract tests usan storage en memoria a propósito, así que son verdes incluso antes del `npm install`.
 
 ---
 
