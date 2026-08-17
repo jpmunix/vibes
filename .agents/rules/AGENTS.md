@@ -154,7 +154,7 @@ El board de Trello ([board](https://trello.com/b/YFE2Kkjv)) es **la única fuent
 
 El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md). Este §1.10 es el resumen ejecutivo **en piedra**; el workflow es la guía operativa (documento vivo).
 
-**Los scripts** viven en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/) (Node nativo, sin deps, idempotentes): `list-cards.mjs` (leer), `create-card.mjs` (crear), `update-card.mjs` (mover/actualizar/comentar), `attach-file.mjs` (adjuntar ficheros locales a una card), `bootstrap-board.mjs` (montar/renormalizar). Credenciales en `.env.trello` (raíz).
+**Los scripts** viven en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/) (Node nativo, sin deps, idempotentes): `list-cards.mjs` (leer), `create-card.mjs` (crear), `update-card.mjs` (renombrar/mover/actualizar/comentar), `attach-file.mjs` (adjuntar ficheros locales a una card), `bootstrap-board.mjs` (montar/renormalizar). Credenciales en `.env.trello` (raíz).
 
 #### 1.10.1 Las listas (canónicas, no renombrar sin OK)
 

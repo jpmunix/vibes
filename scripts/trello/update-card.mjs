@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * update-card.mjs — Actualiza una card existente (descripción, lista, labels, checklist).
+ * update-card.mjs — Actualiza una card existente (descripción, nombre, lista, labels, checklist).
  *
  * Uso:
  *   node scripts/trello/update-card.mjs --card "Título" \
+ *     [--name "Nuevo título"] \
  *     [--desc "Nueva descripción"] \
  *     [--move "Done"] \
  *     [--label-add "fase-3"] \
@@ -29,6 +30,7 @@ const getArg = (name) => {
 };
 
 const cardName = getArg('card');
+const newName = getArg('name');
 const newDesc = getArg('desc');
 const moveTo = getArg('move');
 // Posición al mover: 'top' (default, primera), 'bottom', o número (1 = primera).
@@ -78,6 +80,11 @@ if (card.name !== cardName && !/^\d+$/.test(String(cardName).replace(/^#/, '')))
 // (\n, \t) a sus caracteres reales, ya que bash NO las expande al pasar argumentos.
 function unescape(s) {
   return s.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+}
+
+if (newName !== undefined && newName.trim()) {
+  await updateCard(card.id, { name: newName.trim() });
+  console.log(`✏️  Renombrada a "${newName.trim()}"`);
 }
 
 if (newDesc !== undefined) {
@@ -159,7 +166,7 @@ if (comment || refLine) {
   console.log(refLine ? `💬 Comentario añadido (con ref-line)` : `💬 Comentario añadido`);
 }
 
-if (!newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine) {
-  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --desc, --move, --label-add, --check-item, --comment, --ref).`);
+if (!newName && !newDesc && !moveTo && !labelAdd.length && !labelRemove.length && !checkItems.length && !comment && !refLine) {
+  console.log(`ℹ️  Card "${cardName}" encontrada. Nada que actualizar (usa --name, --desc, --move, --label-add, --check-item, --comment, --ref).`);
   console.log(`   ${card.url}`);
 }
