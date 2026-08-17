@@ -333,6 +333,23 @@ El directorio [`arneses/`](file:///home/munix/Desarrollo/GitRepo/arneses) contie
 
 ---
 
+### 1.14 Cero endososas a terceros en código/docs — **INNEGOCIABLE**
+
+El código es nuestro. No mencionamos a ningún proyecto de terceros (OpenCode, aider, continue, pi, plandex, Cursor, Aider, etc.) en ninguna parte del código, documentación, comentarios, descripciones de tools, mensajes de commit, nombres de archivos, ni artefactos del repo propio.
+
+**Reglas duras:**
+- ❌ **NUNCA** escribir "basado en...", "paridad con...", "adaptado de...", "inspirado en OpenCode/aider/..." ni ningún equivalente en comentarios, JSDoc, cabeceras de archivo, nombres de funciones, ni nombres de tests.
+- ❌ **NUNCA** mencionar a un tercero en `description` de una tool (es string literal que el LLM lee verbatim), ni en `arg.description` del catálogo.
+- ❌ **NUNCA** mencionar a un tercero en `docs/TESTING.md`, `TESTING.md`, `walkthrough.md`, `implementation_plan.md` u otros docs del repo.
+- ❌ **NUNCA** citar un nombre de tercero en mensajes de commit, PR titles, descripciones de cards de Trello, ni comentarios-bitácora.
+- ✅ **SÍ** consultar libremente el directorio `arneses/` (§1.11) para aprender patrones — es un sitio de consulta, no una referencia citada.
+- ✅ **SÍ** mencionar a un tercero en una card de deuda, walkthrough de investigación o plan de implementación **si es estrictamente necesario para documentar el porqué de una decisión técnica** (p. ej. "se eligió X sobre Y porque..."). Pero una vez tomada la decisión, el código y docs del repo van sin la mención.
+- ✅ **SÍ** indicar la proveniencia del algoritmo en el JSDoc de cabecera del archivo si aporta contexto técnico útil para el siguiente desarrollador, pero con lenguaje descriptivo ("Algoritmo de matching X con Y niveles", no "basado en opencode/packages/...").
+
+> **Por qué:** una mención a OpenCode/aider/etc. en una description de tool es un string que el LLM lee literal y filtra al usuario. Una mención en un comentario sesga a quien lea el código (incluido el propio agente) a "rendir cuentas" a un proyecto que no es nuestro ni va a ser nuestro. El formato `apply_patch` (Begin/Add/Delete/Update/End Patch) es ahora nuestro formato — lo hemos portado, lo mantenemos, lo evolucionamos, y las decisiones sobre él son nuestras. Si alguien quiere saber de dónde viene, está en `arneses/` para consultarlo; pero el código, los tests, los docs y los commits no le hacen la pelota a nadie.
+
+---
+
 ## 2. Cosas que se hablan al post-MVP
 
 Estas se mencionan pero no se deciden todavía. Si salen en conversación, el agente anota pero no actúa:
@@ -495,5 +512,5 @@ node scripts/ag-chats.mjs show <cascadeId> --steps
 
 ---
 
-**Última actualización:** 2026-08-13 (§1.10.10: trazabilidad card ↔ conversación ↔ repo — ref-line estándar en el primer comentario de cada card, bandera `--ref` en los scripts de Trello; §1.4: scripts/consultas pedidos por munix los ejecuta el agente directamente; §1.10.8: los artifacts de una tarea se suben solos a la card; §1.10.9: toda card creada lleva labels coherentes con su naturaleza — vocabulario canónico consolidado; §1.12: ciclo de vida de artifacts de plan — se crean como artifact en el brain (fuera del repo), se suben a la card al terminar como adjunto, las explicaciones como comentarios, y se eliminan del working tree; Trello es el único lugar donde persisten; §1.13: script `ag-chats.mjs` para consultar las conversaciones de Antigravity desde CLI).
+**Última actualización:** 2026-08-17 (§1.14: cero endososas a terceros — el código es nuestro, no se menciona a OpenCode/aider/continue/pi/plandex ni en código, ni en comments, ni en descriptions de tools, ni en docs, ni en commits. `arneses/` sigue siendo sitio de consulta para aprender patrones, pero no se cita en el código del repo).
 **Mantenedor:** munix.
