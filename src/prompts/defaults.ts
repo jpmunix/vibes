@@ -339,7 +339,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados",
     "(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades),",
     "usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar.",
-    'Marca cada tarea como completada (status: "done") a medida que avanzas.',
+    'Marca cada tarea como completada (status: "completed") a medida que avanzas.',
     "NO uses todowrite para cambios simples como corregir un error, ajustar un estilo,",
     "o modificar un solo archivo. En esos casos, actúa directamente.",
   ].join(" "),
