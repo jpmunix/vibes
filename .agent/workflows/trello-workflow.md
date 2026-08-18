@@ -52,7 +52,7 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 
 | Script | Función | Comando clave |
 |---|---|---|
-| [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards (filtro por lista/label, salida JSON) | `node scripts/trello/list-cards.mjs --list "To-do" --json` |
+| [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards (filtro por lista/label/número, salida JSON) | `node scripts/trello/list-cards.mjs --list "To-do" --json` · `--number 139` filtra por idShort |
 | [create-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/create-card.mjs) | Crear card idempotente (no duplica por título) | `node scripts/trello/create-card.mjs --title "X" --desc "Y" --list "To-do" --labels "deuda"` |
 | [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (nombre, desc, mover, labels, checklist, comentario, archivar) | `node scripts/trello/update-card.mjs --card "X" --name "Nuevo título" --move "Done" --comment "..."` |
 | [attach-file.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/attach-file.mjs) | Adjuntar ficheros locales a una card (multipart, máx 10 MB por fichero) | `node scripts/trello/attach-file.mjs --card "X" --file "./captura.png,./plan.pdf"` |
@@ -60,7 +60,8 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 | [audit-comments.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/audit-comments.mjs) | Auditar comentarios y descripciones en busca de `\n` literal (y otros caracteres escapados mal) | `node scripts/trello/audit-comments.mjs [--json] [--fix]` |
 
 **Convenciones:**
-- **Siempre** usa el título de la card como identificador (`--card "Título exacto"`), no el id.
+- **Siempre** usa el título de la card como identificador (`--card "Título exacto"`), no el id. Salvo que el título cambie — en ese caso el `idShort` (`#92`) es estable.
+- **Toda card lleva su número en el título**: formato `#XXX - título` (p. ej. `#92 - Deuda: compactar en caliente`). La app de Android no muestra el número, así que el `#XXX` va SIEMPRE al principio del título. Detalle en AGENTS.md §1.10.11.
 - Los scripts son **idempotentes**: crear algo que ya existe avisa y no duplica.
 - La salida `--json` es para parsear; la salida normal es para humanos.
 
@@ -99,7 +100,13 @@ Siempre que el agente vaya a trabajar, **primero lee el board**:
 node scripts/trello/list-cards.mjs --json
 ```
 
-Esto da el estado completo. El agente **prioriza así**:
+Esto da el estado completo. Para buscar una card concreta por su número:
+
+```bash
+node scripts/trello/list-cards.mjs --number 139 --json   # acepta 139, #139 o #VIBES-139
+```
+
+El agente **prioriza así**:
 1. Cards en `Blocked` que él pueda **desbloquear** (decidir algo, hacer algo)
 2. Cards en `To-do` que munix haya dejado
 3. La card más antigua de `Backlog` con mayor valor (labels `deuda` primero, luego fases)
@@ -282,6 +289,9 @@ node scripts/trello/create-card.mjs \
   --list "Backlog" \
   --labels "deuda" \
   --checklist "Criterio 1|Criterio 2"
+# Tras crear, añade el número al título (convención #XXX - título, AGENTS.md §1.10.11):
+node scripts/trello/update-card.mjs --card "Deuda: [qué es]" \
+  --name "#<idShort> - Deuda: [qué es]"
 ```
 
 > [!NOTE]
@@ -341,6 +351,7 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 
 ```
 1. LEE el board (list-cards --json) → prioriza: Blocked desbloqueable > To-do > Backlog propuesto
+   · Para una card concreta: list-cards --number 139 --json
 2. COGE la card (--move Doing + comentario plan)
 3. TRABAJA (AGENTS.md: slices, tests, contract golden) + marca checklist
 4. SI te atascas → Blocked con motivo claro (no silencio)

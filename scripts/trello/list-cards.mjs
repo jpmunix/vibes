@@ -6,6 +6,7 @@
  *   node scripts/trello/list-cards.mjs                     # todas, agrupadas por lista
  *   node scripts/trello/list-cards.mjs --list "To Do"      # solo una lista
  *   node scripts/trello/list-cards.mjs --label "fase-2"    # filtrar por label
+ *   node scripts/trello/list-cards.mjs --number 139        # filtrar por idShort (#VIBES-139)
  *   node scripts/trello/list-cards.mjs --json              # salida JSON (para el agente)
  */
 import { getLists, getCards, getLabels } from './lib.mjs';
@@ -19,6 +20,7 @@ const hasFlag = (name) => args.includes(`--${name}`);
 
 const filterList = getArg('list');
 const filterLabel = getArg('label');
+const filterNumber = getArg('number');
 const asJson = hasFlag('json');
 
 const [lists, cards, labels] = await Promise.all([getLists(), getCards(), getLabelIds()]);
@@ -42,6 +44,14 @@ if (filterLabel) {
   filtered = filtered.filter((c) =>
     c.idLabels?.some((id) => (labelNameById[id] || '').toLowerCase() === filterLabel.toLowerCase()),
   );
+}
+if (filterNumber) {
+  const n = Number(filterNumber.replace(/^#?(VIBES-)?/i, ''));
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(`❌ Número inválido: ${filterNumber}`);
+    process.exit(1);
+  }
+  filtered = filtered.filter((c) => c.idShort === n);
 }
 
 if (asJson) {
