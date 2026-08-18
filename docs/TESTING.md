@@ -141,6 +141,21 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
+### Integración Dock Todos ↔ vibes-core (G18)
+
+| Archivo | Qué cubre |
+|---|---|
+| [event_mapper.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/event_mapper.ts) | Case `todo.updated` en el mapper: delega a callback `onTodoUpdated` inyectado por el bridge. El mapper permanece agnóstico del transporte IPC. |
+| [runtime_bridge.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/runtime/runtime_bridge.ts) | Callback `onTodoUpdated` emite `agent-tool:todos-update` con `chatId`. Hidratación post-creación de sesión: lee `todos_json` via `runtime.deps.todoHandler.get()` y emite al renderer. |
+| [TodoList.tsx](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat/TodoList.tsx) | Render de status `cancelled` (icono X + tachado + atenuado). Indicador visual de `priority` (punto de color: rojo=high, amarillo=medium, azul=low). Key estable via `todo.id`. |
+| [agent.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/types/agent.ts) | `AgentTodoSchema` alineado con `@vibes/shared Todo`: `id` obligatorio, `status` incluye `cancelled`, `priority` opcional. |
+
+**Legacy retirada:** `update_todos.ts` renombrado a `.deprecated`, import y referencia eliminados de `tool_definitions.ts`. La vía legacy (`onUpdateTodos` → canal `agent-tool:todos-update`) ya no existe como emisor activo.
+
+**Verificación manual requerida:** Abrir sesión con todos persistidos → dock muestra lista inmediatamente. Agente llama a `todowrite` → dock actualiza en tiempo real. Cerrar y reabrir sesión → dock persiste estado.
+
+---
+
 ## Reglas de mantenimiento
 
 > [!IMPORTANT]

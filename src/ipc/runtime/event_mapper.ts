@@ -137,11 +137,25 @@ export class VibesEventMapper {
   private diffStats = { insertions: 0, deletions: 0 };
   /** BUGFIX #122: último error de sesión (de session.failed), para el bridge. */
   private failedError: string | null = null;
+  /** Callback for todo.updated events — bridge provides chatId context. */
+  private onTodoUpdated?: (todos: import("@vibes/shared").Todo[]) => void;
+
+  constructor(options?: {
+    onTodoUpdated?: (todos: import("@vibes/shared").Todo[]) => void;
+  }) {
+    this.onTodoUpdated = options?.onTodoUpdated;
+  }
 
   handle(event: RuntimeEvent): void {
     switch (event.type) {
       case "session.failed": {
         this.failedError = event.error?.message ?? "Error desconocido del agente.";
+        break;
+      }
+      case "todo.updated": {
+        if (this.onTodoUpdated) {
+          this.onTodoUpdated(event.todos);
+        }
         break;
       }
       case "llm.delta": {

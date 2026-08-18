@@ -111,11 +111,13 @@ export type OpenCodePermissionResponseParams = z.infer<
 
 /**
  * Schema for agent todo item.
+ * Aligned with @vibes/shared Todo type (G18).
  */
 export const AgentTodoSchema = z.object({
   id: z.string(),
   content: z.string(),
-  status: z.enum(["pending", "in_progress", "completed"]),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
+  priority: z.enum(["high", "medium", "low"]).optional(),
 });
 
 export type AgentTodo = z.infer<typeof AgentTodoSchema>;

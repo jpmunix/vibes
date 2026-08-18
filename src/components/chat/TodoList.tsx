@@ -94,12 +94,38 @@ function HeaderCompletedIcon() {
   );
 }
 
+function CancelledIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={cn("w-4 h-4 flex-shrink-0 opacity-50", className)}
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        className="stroke-muted-foreground/40"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M5 5L11 11M11 5L5 11"
+        className="stroke-muted-foreground/60"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function getStatusIcon(status: AgentTodo["status"]) {
   switch (status) {
     case "completed":
       return <CompletedIcon />;
     case "in_progress":
       return <InProgressIcon />;
+    case "cancelled":
+      return <CancelledIcon />;
     case "pending":
     default:
       return <PendingIcon />;
@@ -232,15 +258,29 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
                 "flex items-center gap-2.5 typo-caption py-1 px-1 rounded-md transition-colors",
                 todo.status === "completed" && "text-muted-foreground",
                 todo.status === "in_progress" && "bg-primary/5",
+                todo.status === "cancelled" && "text-muted-foreground/50",
               )}
             >
               {getStatusIcon(todo.status)}
+              {todo.priority && (
+                <span
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                    todo.priority === "high" && "bg-red-500",
+                    todo.priority === "medium" && "bg-yellow-500",
+                    todo.priority === "low" && "bg-blue-400",
+                  )}
+                  title={`Priority: ${todo.priority}`}
+                />
+              )}
               <span
                 className={cn(
                   todo.status === "completed" &&
                     "line-through decoration-muted-foreground/40",
                   todo.status === "in_progress" &&
                     "text-foreground font-medium",
+                  todo.status === "cancelled" &&
+                    "line-through decoration-muted-foreground/30",
                 )}
               >
                 {todo.content}

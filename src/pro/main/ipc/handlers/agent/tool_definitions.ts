@@ -28,7 +28,6 @@ import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
 
 import { webCrawlTool } from "./tools/web_crawl";
-import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
 import { gitOperationsTool } from "./tools/git_operations";
 import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
@@ -78,7 +77,6 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   readLogsTool,
 
   webCrawlTool,
-  updateTodosTool,
   runTypeChecksTool,
   gitOperationsTool,
   askUserTool,

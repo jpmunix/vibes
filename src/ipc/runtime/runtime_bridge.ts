@@ -195,7 +195,14 @@ export async function handleRuntimeStream(
   );
 
   const runtime = getRuntime();
-  const mapper = new VibesEventMapper();
+  const mapper = new VibesEventMapper({
+    onTodoUpdated: (todos) => {
+      safeSend(event.sender, "agent-tool:todos-update", {
+        chatId: req.chatId,
+        todos,
+      });
+    },
+  });
   const workspaceRoot = getVibesAppPath(appPath);
 
   // ── 1. Fresh hydrated session for this turn (DP-4) ─────────────────────
@@ -237,6 +244,29 @@ export async function handleRuntimeStream(
   logger.info(
     `[RuntimeBridge] Session ${session.id} for chat ${req.chatId} (agent=${agentId}, workspace=${workspaceRoot})`,
   );
+
+  // ── 1b. Hydrate todos from persisted state (G18) ────────────────────────
+  // On session creation/resume, read persisted todos and emit to renderer
+  // so the dock shows existing state immediately on first turn.
+  try {
+    const todoHandler = runtime.deps.todoHandler;
+    if (todoHandler) {
+      const persistedTodos = await todoHandler.get(session.id);
+      if (persistedTodos.length > 0) {
+        safeSend(event.sender, "agent-tool:todos-update", {
+          chatId: req.chatId,
+          todos: persistedTodos,
+        });
+        logger.info(
+          `[RuntimeBridge] Hydrated ${persistedTodos.length} todos for session ${session.id}`,
+        );
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      `[RuntimeBridge] Failed to hydrate todos for session ${session.id}: ${(err as Error).message}`,
+    );
+  }
 
   // ── 2. UI context for permission prompts (B3) ──────────────────────────
   setSessionUIContext(session.id, { chatId: req.chatId, sender: event.sender });
