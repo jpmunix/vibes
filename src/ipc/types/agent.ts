@@ -75,8 +75,10 @@ export type AskUserRequestPayload = z.infer<typeof AskUserRequestSchema>;
  */
 export const AskUserResponseParamsSchema = z.object({
   requestId: z.string(),
-  response: z.union([z.string(), z.array(z.string())]),
+  response: z.union([z.string(), z.array(z.string())]).optional(),
   questionIndex: z.number().default(0),
+  /** Runtime format: answers aligned 1:1 with questions[]. */
+  answers: z.array(z.union([z.string(), z.array(z.string())])).optional(),
 });
 
 export type AskUserResponseParams = z.infer<typeof AskUserResponseParamsSchema>;

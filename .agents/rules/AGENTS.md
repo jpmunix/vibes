@@ -162,6 +162,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 |---|---|---|
 | **Backlog** | Deudas + roadmap post-MVP (fases 2-5) | El agente propone, munix decide |
 | **Ideas** | Ideas sueltas NO planificadas (fuera del flujo) | Solo munix |
+| **Bitácoras** | Resúmenes ejecutivos de auditorías, inventarios y snapshots del proyecto (no es del flujo de trabajo normal) | El agente al entregar; munix la revisa |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
 | **Doing** | En curso (máx 1-2) | El agente |
 | **Blocked** | Atascada (falta munix/decisión/dep) | El agente con motivo |
@@ -313,6 +314,21 @@ Formato canónico de la ref-line (construido por `buildRefLine()` en `lib.mjs`; 
 
 > [!NOTE]
 > Tests del helper: [`scripts/trello/__tests__/build-ref-line.test.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/__tests__/build-ref-line.test.mjs) — se ejecutan con `node --test "scripts/trello/__tests__/*.test.mjs"` (runner nativo, sin deps).
+
+#### 1.10.11 El número de card va en el título — `#XXX - título` — **INNEGOCIABLE**
+
+Toda card del board lleva su **número (`idShort`) en el título**, en formato `#XXX - título` (p. ej. `#131 - Ajustes para expertos: parámetros avanzados`). El número **siempre al principio**, precediendo a cualquier otro prefijo (incluidos `Deuda:` o `Review:` → pasan a ser `#XX - Deuda: ...`).
+
+**Por qué:** la app de Trello para Android **no muestra el número** de card en ningún sitio (ni en el listado, ni en el detalle) — solo aparece en la URL, que en el móvil es incómoda de consultar. Con el `#XXX` en el título, cualquier card es referenciable y trazable desde el móvil sin abrir la URL.
+
+**Reglas:**
+- Toda card **nueva** se crea ya con el `#XXX` en el título (tras `create-card`, el `idShort` asignado se antepone al título con `update-card --name "#XXX - <título>"`).
+- Toda card **renombrada** conserva el `#XXX` al principio.
+- El `idShort` es el que expone `list-cards --json` (el mismo `#VIBES-NN` de la ref-line, §1.10.10).
+- No usar `#VIBES-` como prefijo en el título (`#VIBES-XX` queda solo para la ref-line de los comentarios y los commits): en el título basta `#XX`.
+- El formato es `#<idShort> - <título>` (almohadilla, número, espacio, guion, espacio).
+
+> **Por qué:** sin el número en el título, desde Android no hay manera de saber qué card es cuál al hablar de ellas (\"la de los prompts\", \"esa que estaba en Doing\"...). El `#XXX` en el título es la **referencia visible universal**, en móvil y en escritorio.
 
 ---
 

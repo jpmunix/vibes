@@ -53,11 +53,7 @@ import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerPermissionHandler } from "./runtime/permission_handler";
-// TODO(mvp-cleanup, fase 5+): registerQuestionHandler todavía vive en
-// opencode_adapter. El runtime no soporta ask_user todavía (DP-3). Dejamos
-// el código comentado para no perder la feature; replicar en runtime cuando
-// proceda. Ver: docs/archive/post-mvp-roadmap.md §"Deuda del swap B6"
-// import { registerQuestionHandler } from "./handlers/opencode_adapter";
+import { registerRuntimeQuestionHandler } from "./runtime/question_handler";
 import { registerMarkdownShareHandlers } from "./handlers/markdown_share_handlers";
 import { registerDocsHandlers } from "./handlers/docs_handlers";
 import log from "electron-log";
@@ -115,9 +111,8 @@ export function registerIpcHandlers() {
 
   // OpenCode AI integration — diagnostic & test handlers removed (B6 swap).
 
-  // TODO(mvp-cleanup, fase 5+): see comment above. The function call is
-  // commented out along with its import.
-  // registerQuestionHandler();
+  // Runtime question handler — bridges runtime QuestionHandler to Vibes UI
+  registerRuntimeQuestionHandler();
 
   // OpenCode permission tool — bridges VibesPermissionBanner UI to SDK permission response
   registerPermissionHandler();

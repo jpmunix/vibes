@@ -58,6 +58,10 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
     (p) => p.question === question && p.chatId === chatId,
   );
 
+  // Unified option display: prefer richOptions (runtime), fall back to plain strings (legacy)
+  const displayOptions: Array<{ label: string; description?: string; isRecommended?: boolean }> =
+    pendingEntry?.richOptions ?? options.map((o) => ({ label: o }));
+
   const isMultiple = !!pendingEntry?.multiple;
   const isWaitingForResponse = !!pendingEntry;
   const isPartOfGroup = (pendingEntry?.totalQuestions ?? 1) > 1;
@@ -115,11 +119,25 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
     setIsSending(true);
 
     try {
-      await ipc.agent.respondToAskUser({
-        requestId: pendingEntry.requestId,
-        response,
-        questionIndex: pendingEntry.questionIndex,
-      });
+      // Runtime format: send answers[] aligned with questions[]
+      if (pendingEntry.richOptions) {
+        // Build answers array: one entry per question in the group
+        // For this specific questionIndex, wrap the response
+        const answers = Array(pendingEntry.totalQuestions).fill("");
+        answers[pendingEntry.questionIndex] = response;
+        await ipc.agent.respondToAskUser({
+          requestId: pendingEntry.requestId,
+          answers,
+          questionIndex: pendingEntry.questionIndex,
+        });
+      } else {
+        // Legacy format
+        await ipc.agent.respondToAskUser({
+          requestId: pendingEntry.requestId,
+          response,
+          questionIndex: pendingEntry.questionIndex,
+        });
+      }
       // Remove only THIS specific question from pending — don't remove
       // other questions from the same multi-question group.
       setPendingAskUsers((prev) =>
@@ -225,16 +243,17 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
         {/* Interactive area */}
         <div className="mt-3 space-y-2">
           {/* Options — radio or checkbox depending on multiple */}
-          {options.length > 0 && (
+          {displayOptions.length > 0 && (
             <div className="space-y-1.5">
-              {options.map((option, i) => {
+              {displayOptions.map((opt, i) => {
+                const optionLabel = opt.label;
                 const isSelected = isMultiple
-                  ? selectedOptions.has(option)
-                  : selectedOption === option && !useCustom;
+                  ? selectedOptions.has(optionLabel)
+                  : selectedOption === optionLabel && !useCustom;
                 return (
                   <button
                     key={i}
-                    onClick={() => handleOptionSelect(option)}
+                    onClick={() => handleOptionSelect(optionLabel)}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150 cursor-pointer group"
                     style={{
                       background: isSelected
@@ -288,15 +307,9 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
                           style={{
                             border:
                               "2px solid var(--accent-teal-selected-icon)",
+                            background: "var(--accent-teal-selected-icon)",
                           }}
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{
-                              background: "var(--accent-teal-selected-icon)",
-                            }}
-                          />
-                        </div>
+                        />
                       ) : (
                         <Circle
                           size={16}
@@ -306,16 +319,42 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
                         />
                       )}
                     </div>
-                    <span
-                      className="text-[13px]"
-                      style={{
-                        color: isSelected
-                          ? "var(--accent-teal-selected-text)"
-                          : "var(--accent-teal-option-text)",
-                      }}
-                    >
-                      {option}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className="text-[13px]"
+                        style={{
+                          color: isSelected
+                            ? "var(--accent-teal-selected-text)"
+                            : "var(--accent-teal-option-text)",
+                        }}
+                      >
+                        {optionLabel}
+                      </span>
+                      {opt.isRecommended && (
+                        <span
+                          className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--accent-teal-selected-bg)",
+                            color: "var(--accent-teal-selected-text)",
+                          }}
+                        >
+                          Recommended
+                        </span>
+                      )}
+                      {opt.description && (
+                        <div
+                          className="text-[11px] mt-0.5 truncate"
+                          style={{
+                            color: isSelected
+                              ? "var(--accent-teal-selected-text)"
+                              : "var(--text-secondary)",
+                            opacity: 0.7,
+                          }}
+                        >
+                          {opt.description}
+                        </div>
+                      )}
+                    </div>
                   </button>
                 );
               })}

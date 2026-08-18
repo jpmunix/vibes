@@ -126,8 +126,36 @@ export default function AppRoot() {
 
   // Agent ask_user requests
   useEffect(() => {
-    const unsubscribe = ipc.events.agent.onAskUserRequest((payload) => {
+    const unsubscribe = ipc.events.agent.onAskUserRequest((payload: any) => {
       setPendingAskUsers((prev) => {
+        // Runtime format: payload.questions is an array of Question objects
+        if (payload.questions && Array.isArray(payload.questions)) {
+          const newEntries: typeof prev = payload.questions.map(
+            (q: any, idx: number) => ({
+              requestId: payload.requestId,
+              chatId: payload.chatId,
+              question: q.question ?? "",
+              header: q.header,
+              options: q.options ? q.options.map((o: any) => o.label ?? o) : null,
+              richOptions: q.options,
+              context: null,
+              multiple: q.multiSelect ?? false,
+              allowFreeText: q.allowFreeText ?? false,
+              questionIndex: idx,
+              totalQuestions: payload.questions.length,
+            }),
+          );
+          // Deduplicate by requestId+questionIndex
+          const existingKeys = new Set(
+            prev.map((p) => `${p.requestId}:${p.questionIndex}`),
+          );
+          const deduped = newEntries.filter(
+            (e) => !existingKeys.has(`${e.requestId}:${e.questionIndex}`),
+          );
+          return [...prev, ...deduped];
+        }
+
+        // Legacy format: single question
         // Deduplicate: skip if this exact requestId+questionIndex already exists
         if (
           prev.some(

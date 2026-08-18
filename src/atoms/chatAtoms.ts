@@ -69,6 +69,13 @@ export interface PendingAskUser {
   questionIndex: number;
   /** Total number of questions in the parent QuestionRequest */
   totalQuestions: number;
+  // Runtime format fields (optional, present when coming from vibes-core)
+  /** Short header label for chip/tab display */
+  header?: string;
+  /** Rich options with label/description/isRecommended */
+  richOptions?: Array<{ label: string; description?: string; isRecommended?: boolean }>;
+  /** Whether free-text input is allowed */
+  allowFreeText?: boolean;
 }
 
 export const pendingAskUsersAtom = atom<PendingAskUser[]>([]);

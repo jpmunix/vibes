@@ -26,6 +26,7 @@ import type {
   CompletionResponse,
   ModelProvider,
   PermissionGate,
+  QuestionHandler,
   Runtime,
 } from "@vibes/runtime";
 import { permissionResolver } from "./permission_resolver";
@@ -42,9 +43,15 @@ import {
   waitForRuntimePermissionResponse,
   RUNTIME_PERMISSION_TIMEOUT_MS,
 } from "./permission_state";
+import {
+  waitForRuntimeQuestionResponse,
+  RUNTIME_QUESTION_TIMEOUT_MS,
+} from "./question_state";
 import { resolveRuntimeModelTarget } from "./model_resolver";
 import { safeSend } from "../utils/safe_sender";
 import { readSettings } from "../../main/settings";
+import { randomUUID } from "node:crypto";
+import type { Question, AskUserResponse } from "@vibes/shared";
 
 const logger = log.scope("runtime_host");
 
@@ -219,6 +226,58 @@ export function createVibesPermissionGate(): PermissionGate {
 }
 
 // ============================================================================
+// Question handler (DP-3)
+// ============================================================================
+
+/**
+ * Bridges runtime question requests to Vibes' UI:
+ *   - generates a requestId
+ *   - sends `agent-tool:ask-user-request` to the renderer with full Question[] payload
+ *   - waits for the renderer's answer via `agent-tool:ask-user-response`
+ *   - timeout/abort → reject with QuestionCancelled
+ */
+export function createVibesQuestionHandler(): QuestionHandler {
+  return {
+    async ask(
+      questions: Question[],
+      opts: { toolCallId?: string; signal: AbortSignal; sessionId: string },
+    ): Promise<AskUserResponse> {
+      const requestId = randomUUID();
+
+      // Look up the UI context for this session
+      const ctx = getSessionUIContext(opts.sessionId);
+      if (!ctx?.sender) {
+        logger.warn(
+          `[RuntimeHost] No UI context for question ${requestId} — cancelling`,
+        );
+        const err = new Error("No UI context for question");
+        err.name = "QuestionCancelled";
+        throw err;
+      }
+
+      // Send to renderer
+      safeSend(ctx.sender, "agent-tool:ask-user-request", {
+        requestId,
+        sessionId: opts.sessionId,
+        chatId: ctx.chatId,
+        questions,
+        toolCallId: opts.toolCallId ?? null,
+      });
+      logger.info(
+        `[RuntimeHost] Question sent to UI: ${questions.length} question(s) [${requestId}]`,
+      );
+
+      // Wait for response
+      return waitForRuntimeQuestionResponse(
+        requestId,
+        opts.signal,
+        RUNTIME_QUESTION_TIMEOUT_MS,
+      );
+    },
+  };
+}
+
+// ============================================================================
 // Runtime singleton
 // ============================================================================
 
@@ -240,6 +299,7 @@ export function getRuntime(): Runtime {
     .registerProtocol(OPENAI_COMPATIBLE_PROTOCOL, openAiCompatibleFactory())
     .tools(createBuiltInRegistry())
     .permissionGate(createVibesPermissionGate())
+    .questionHandler(createVibesQuestionHandler())
     .logger(vibesRuntimeLogger)
     .build();
 
