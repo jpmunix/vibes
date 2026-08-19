@@ -39,6 +39,7 @@ técnico, decisiones, referencias a archivos — para el agente dentro de 6 mese
 | **Doing** | En curso ahora mismo | El agente (1-2 cards máximo) |
 | **Blocked** | Atascada (falta munix, falta decisión, falta dep) | El agente la mueve con motivo |
 | **Review** | Terminada, esperando revisión de munix | El agente la mueve al acabar |
+| **Manual tests** | En pruebas manuales antes de cerrar | munix (o el agente con su OK) tras validar en Review |
 | **Done** | Cerrada y verificada | El agente la mueve tras OK de munix |
 
 **Regla de oro:** el agente NO trabaja en más de 1-2 cards a la vez. Si está en
@@ -56,7 +57,6 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 | [create-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/create-card.mjs) | Crear card idempotente (no duplica por título) | `node scripts/trello/create-card.mjs --title "X" --desc "Y" --list "To-do" --labels "deuda"` |
 | [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (nombre, desc, mover, labels, checklist, comentario, archivar) | `node scripts/trello/update-card.mjs --card "X" --name "Nuevo título" --move "Done" --comment "..."` |
 | [attach-file.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/attach-file.mjs) | Adjuntar ficheros locales a una card (multipart, máx 10 MB por fichero) | `node scripts/trello/attach-file.mjs --card "X" --file "./captura.png,./plan.pdf"` |
-| [bootstrap-board.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/bootstrap-board.mjs) | Montar/renormalizar el board desde `cards.json` | `node scripts/trello/bootstrap-board.mjs [--dry-run]` |
 | [audit-comments.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/audit-comments.mjs) | Auditar comentarios y descripciones en busca de `\n` literal (y otros caracteres escapados mal) | `node scripts/trello/audit-comments.mjs [--json] [--fix]` |
 
 **Convenciones:**
@@ -181,9 +181,30 @@ node scripts/trello/update-card.mjs \
 
 El comentario de Review resume **qué se hizo** + **evidencia de verificación** (comandos y resultados). munix revisa el código, corre pruebas manuales, y da el OK.
 
-### 6️⃣ Cerrar la card (Review → Done) — el momento CRÍTICO
+### 6️⃣ Probar manualmente (Review → Manual tests)
 
-Cuando munix da el OK (verbalmente o moviendo él la card):
+Cuando el trabajo pasa la revisión de munix en Review, la card pasa a pruebas
+manuales antes de cerrarse:
+
+```bash
+node scripts/trello/update-card.mjs \
+  --card "X" \
+  --move "Manual tests" \
+  --comment "🧪 [Manual tests] Pasa a pruebas manuales. Qué validar: ..."
+```
+
+El comentario de Manual tests lista **qué probar** y **qué validar** (los bullets
+del feature_inventory del proyecto). munix (o el agente con su OK) hace las
+pruebas manuales y da el visto bueno. Cuando las pruebas pasan, la card va a Done.
+
+> [!NOTE]
+> La lista **`Manual tests`** es un paso **intermedio** del flujo, entre `Review`
+> y `Done`: las cards pasan por pruebas manuales antes de cerrarse. No es un
+> vertedero de tarjetas paradas — la card no se queda ahí, se prueba y se mueve.
+
+### 7️⃣ Cerrar la card (Manual tests → Done) — el momento CRÍTICO
+
+Cuando munix da el OK (verbalmente, tras las pruebas manuales, o moviendo él la card):
 
 ```bash
 node scripts/trello/update-card.mjs \
@@ -314,7 +335,8 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 5. **Atasco** (ej. duda de diseño): `--move "Blocked" --comment "🚧 [Blocked] ¿El buffer reservado debe ser % o tokens? Necesito decisión de munix."`
 6. **Desbloqueo**: munix decide → mover a Doing con `🔄` de nuevo.
 7. **Terminar**: `--move "Review" --comment "✅ [Review] Implementado. Tests: 14 verdes (pnpm test). Archivos: estimator.ts, summarizer.ts, compactor.ts, loop.ts"`
-8. **Cerrar**: munix revisa, OK → `--move "Done" --comment "🏁 [Done] OK munix. Cerrada."` + `🧠 Contexto` si hubo decisiones.
+8. **Probar manualmente**: munix revisa → `--move "Manual tests" --comment "🧪 [Manual tests] Qué validar: compactar un chat largo, verificar el resumen."` → munix prueba.
+9. **Cerrar**: munix da OK tras las pruebas → `--move "Done" --comment "🏁 [Done] OK munix. Cerrada."` + `🧠 Contexto` si hubo decisiones.
 
 > [!IMPORTANT]
 > **Sobre los saltos de línea (`\n`)**: bash NO expande `\n` al pasar argumentos por
@@ -356,9 +378,10 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 3. TRABAJA (AGENTS.md: slices, tests, contract golden) + marca checklist
 4. SI te atascas → Blocked con motivo claro (no silencio)
 5. AL TERMINAR → Review con evidencia (tests, archivos)
-6. CON OK de munix → Done con comentario de cierre + bitácora si hay decisiones
-7. DEUDA nueva → create-card en Backlog (no la arregles en caliente)
-8. LABELS: toda card que creas/coges lleva labels coherentes (deuda/dimensión/fase) — vocabulario en AGENTS.md §1.10.9
+6. TRAS validar en Review → Manual tests con comentario de qué validar (pruebas manuales)
+7. CON OK de munix (tras pruebas manuales) → Done con comentario de cierre + bitácora si hay decisiones
+8. DEUDA nueva → create-card en Backlog (no la arregles en caliente)
+9. LABELS: toda card que creas/coges lleva labels coherentes (deuda/dimensión/fase) — vocabulario en AGENTS.md §1.10.9
 ```
 
 > [!IMPORTANT]
