@@ -53,17 +53,17 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 
 | Script | Función | Comando clave |
 |---|---|---|
-| [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards (filtro por lista/label/número, salida JSON) | `node scripts/trello/list-cards.mjs --list "To-do" --json` · `--number 139` filtra por idShort |
+| [list-cards.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/list-cards.mjs) | Listar cards. **`--light` es el modo por defecto** (resumen ligero: lista, labels, badges, nº comentarios). Para ver una card en detalle, `--detail` **SIEMPRE redirigido a un fichero en `/tmp`** (ver §1.1) | `node scripts/trello/list-cards.mjs --light` · `node scripts/trello/list-cards.mjs --number 139 --detail > /tmp/card-139.json` |
 | [create-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/create-card.mjs) | Crear card idempotente (no duplica por título) | `node scripts/trello/create-card.mjs --title "X" --desc "Y" --list "To-do" --labels "deuda"` |
 | [update-card.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/update-card.mjs) | Actualizar (nombre, desc, mover, labels, checklist, comentario, archivar) | `node scripts/trello/update-card.mjs --card "X" --name "Nuevo título" --move "Done" --comment "..."` |
 | [attach-file.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/attach-file.mjs) | Adjuntar ficheros locales a una card (multipart, máx 10 MB por fichero) | `node scripts/trello/attach-file.mjs --card "X" --file "./captura.png,./plan.pdf"` |
 | [audit-comments.mjs](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/audit-comments.mjs) | Auditar comentarios y descripciones en busca de `\n` literal (y otros caracteres escapados mal) | `node scripts/trello/audit-comments.mjs [--json] [--fix]` |
 
 **Convenciones:**
-- **Siempre** usa el título de la card como identificador (`--card "Título exacto"`), no el id. Salvo que el título cambie — en ese caso el `idShort` (`#92`) es estable.
+- **Siempre** usa el `idShort` como identificador (`--card "#92"` o `--card 92`), no el título. El `idShort` es estable; el título puede editarse y romper la referencia. Solo usa el título si no conoces el número.
 - **Toda card lleva su número en el título**: formato `#XXX - título` (p. ej. `#92 - Deuda: compactar en caliente`). La app de Android no muestra el número, así que el `#XXX` va SIEMPRE al principio del título. Detalle en AGENTS.md §1.10.11.
 - Los scripts son **idempotentes**: crear algo que ya existe avisa y no duplica.
-- La salida `--json` es para parsear; la salida normal es para humanos.
+- La salida normal (sin flags) es para humanos; `--light` es el modo del agente para leer el board; `--detail` **solo redirigido a fichero tmp**, nunca a stdout ni pipeado.
 
 ---
 
@@ -97,13 +97,52 @@ Ejemplos: `--card #92`, `--card 92`, `--card sQM17O2M`,
 Siempre que el agente vaya a trabajar, **primero lee el board**:
 
 ```bash
-node scripts/trello/list-cards.mjs --json
+# ✅ SIEMPRE usar --light para leer el board (resumen ligero: lista, labels, badges, nº comentarios)
+node scripts/trello/list-cards.mjs --light
 ```
 
-Esto da el estado completo. Para buscar una card concreta por su número:
+> [!IMPORTANT]
+> **`--light` es el modo por defecto para TODO.** Es suficiente para priorizar,
+> buscar cards y ver el estado general (badges, nº de comentarios, checklist
+> resumido). Si necesitas más detalle de una card, usa `--detail` **redirigido a
+> un fichero tmp** (abajo).
+
+#### 1.1 Ver una card en detalle: SIEMPRE a fichero tmp
+
+Cuando necesites los checklists completos o datos detallados de una card:
 
 ```bash
-node scripts/trello/list-cards.mjs --number 139 --json   # acepta 139, #139 o #VIBES-139
+# ✅ Correcto: redirigir a fichero tmp y leerlo con view_file
+node scripts/trello/list-cards.mjs --number 139 --detail > /tmp/card-139.json
+# luego: view_file /tmp/card-139.json
+```
+
+> [!CAUTION]
+> **PROHIBIDO pipear la salida de los scripts a `jq` o `python`.**
+> El output se trunca en pipes externos y produce JSON corrupto
+> (`jq: parse error: Unfinished string at EOF`). Esto ha pasado de verdad y
+> es una pérdida de tiempo miserable.
+>
+> ```bash
+> # ❌ NUNCA: pipear a jq (se trunca, parse error)
+> node scripts/trello/list-cards.mjs --number 73 --detail | jq '.[] | select(...)'
+>
+> # ❌ NUNCA: pipear a python
+> node scripts/trello/list-cards.mjs --detail | python3 -c 'import json,sys; ...'
+>
+> # ✅ SIEMPRE: fichero tmp + view_file
+> node scripts/trello/list-cards.mjs --number 73 --detail > /tmp/card-73.json
+> ```
+>
+> El agente lee el fichero tmp con su tool de lectura de ficheros (`view_file`).
+> Los ficheros en `/tmp` no se cortan, no se truncan, y se pueden leer por
+> trozos si son grandes.
+
+Para buscar una card concreta por su número (idShort):
+
+```bash
+node scripts/trello/list-cards.mjs --number 139 --light   # resumen rápido (por defecto)
+node scripts/trello/list-cards.mjs --number 139 --detail > /tmp/card-139.json  # detalle completo
 ```
 
 El agente **prioriza así**:
@@ -145,7 +184,7 @@ node scripts/trello/update-card.mjs --card "X" --check-item "Criterio 1"
 ```
 
 > [!TIP]
-> `--check-all` marca **todos** los items de todos los checklists de una card como complete en un solo paso. Útil al cerrar la card. El agente **siempre verifica** los items (ver `list-cards --json` expone `checklists[].items[].state`) antes de usarlo.
+> `--check-all` marca **todos** los items de todos los checklists de una card como complete en un solo paso. Útil al cerrar la card. El agente **siempre verifica** los items (ver `list-cards --number X --detail > /tmp/card-X.json` expone `checklists[].items[].state`) antes de usarlo.
 
 ```bash
 node scripts/trello/update-card.mjs --card "X" --check-all
@@ -328,7 +367,7 @@ node scripts/trello/update-card.mjs --card "Deuda: [qué es]" \
 
 Supongamos que munix dice: *"haz la compactación Modo A"*.
 
-1. **Leer**: `list-cards --json` → ve la card "Fase 4: Compactación Modo A — compactor + hook en loop" en Backlog.
+1. **Leer**: `list-cards --light` → ve la card "Fase 4: Compactación Modo A — compactor + hook en loop" en Backlog.
 2. **Proponer**: comenta *"Propongo mover esta card a To-do para trabajarla"* → munix OK (o el agente la mueve si munix dijo "hazla").
 3. **Coger**: `--move "Doing" --comment "🔄 [Doing] Plan: estimator → summarizer → compactor → hook en loop → tests"`
 4. **Trabajar**: código + tests. Marca checklist: `--check-item "Compactor.ts (Modo A)"`.
@@ -372,8 +411,8 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 ## 📌 Resumen para el agente (cheatsheet)
 
 ```
-1. LEE el board (list-cards --json) → prioriza: Blocked desbloqueable > To-do > Backlog propuesto
-   · Para una card concreta: list-cards --number 139 --json
+1. LEE el board (list-cards --light) → prioriza: Blocked desbloqueable > To-do > Backlog propuesto
+   · Para una card concreta: list-cards --number 139 --detail > /tmp/card-139.json
 2. COGE la card (--move Doing + comentario plan)
 3. TRABAJA (AGENTS.md: slices, tests, contract golden) + marca checklist
 4. SI te atascas → Blocked con motivo claro (no silencio)

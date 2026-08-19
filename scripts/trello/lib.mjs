@@ -94,8 +94,14 @@ export async function getLists() {
   return api(`/1/boards/${CONFIG.boardId}/lists`, { fields: 'id,name,pos,closed' });
 }
 
-export async function getCards(listId) {
-  const params = { fields: 'id,name,desc,idList,idLabels,url,dateLastActivity,idShort', checklists: 'all' };
+export async function getCards(listId, opts = {}) {
+  // Modo light: NO pide checklists embebidos (los items individuales de cada card
+  // inflan el payload muchísimo). En su lugar usa el campo `badges` (que incluye
+  // checkItems, checkItemsChecked y comments) agregado por la API en el listado.
+  const light = !!opts.light;
+  const params = light
+    ? { fields: 'id,name,idList,idLabels,url,dateLastActivity,idShort,badges' }
+    : { fields: 'id,name,desc,idList,idLabels,url,dateLastActivity,idShort', checklists: 'all' };
   // NOTA: la API de Trello IGNORA el parámetro idList en /boards/{id}/cards
   // y devuelve siempre todas las cards del board. Filtramos en cliente aquí
   // para que este helper cumpla su contrato (getCards() = todas, getCards(id) = esa lista).

@@ -172,7 +172,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 
 #### 1.10.2 El flujo obligatorio (cada card que se trabaja)
 
-1. **Leer el board** (`list-cards --json`) antes de trabajar. Priorizar: Blocked desbloqueable → To-do → Backlog propuesto.
+1. **Leer el board** (`list-cards --light`) antes de trabajar. Priorizar: Blocked desbloqueable → To-do → Backlog propuesto.
 2. **Coger la card**: `update-card --move Doing --comment "🔄 [Doing] Plan: ..."` — el comentario de inicio documenta el plan (1-2 líneas).
 3. **Trabajar** siguiendo AGENTS.md (slices verticales, tests, contract golden). Marcar checklist con `--check-item` conforme se cumplen criterios (no a lo bruto).
 4. **Atasco** → `--move Blocked --comment "🚧 [Blocked] Falta: ..."` — **nunca silencio**. El comentario dice qué falta y qué se necesita para desbloquear.
@@ -227,7 +227,7 @@ node scripts/trello/create-card.mjs --title "Deuda: ..." --desc "**Qué:** ...\n
 Antes de mover a Done, la card pasa por **`Manual tests`** (pruebas manuales) y el agente verifica TODOS:
 1. ¿Pasó las pruebas manuales y OK explícito de munix? (verbal o moviendo él la card)
 2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
-3. ¿Checklist completo? — `list-cards --json` ahora expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
+3. ¿Checklist completo? — `list-cards --number <N> --detail > /tmp/card-<N>.json` expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
 4. ¿Comentario-bitácora si hubo decisiones no obvias?
 
 Si falta algo → la card se queda en `Manual tests` (o `Review` si aún no pasó las pruebas).
@@ -236,7 +236,7 @@ Si falta algo → la card se queda en `Manual tests` (o `Review` si aún no pas�
 
 Cuando munix pregunte por el estado del roadmap, las tareas pendientes, los planes de trabajo o el progreso general, **siempre nos referimos al board de Trello** como la única fuente de verdad. No se contestan preguntas de roadmap mirando documentos estáticos, artifacts, ni la memoria de la conversación.
 
-- **Consultar el board** (`node scripts/trello/list-cards.mjs --json`) es el primer paso antes de responder cualquier pregunta sobre qué hay pendiente, qué está en curso, o qué se planea.
+- **Consultar el board** (`node scripts/trello/list-cards.mjs --light`) es el primer paso antes de responder cualquier pregunta sobre qué hay pendiente, qué está en curso, o qué se planea.
 - **Los artifacts temporales** (plans, walkthroughs, análisis) son **borradores de trabajo** que el agente crea mientras pelotea una tarea (como artifact, no como documento del repo). **Siempre acaban reflejados en Trello** como card, comentario, adjunto o actualización de checklist. Al terminar la tarea, el plan se **sube a la card y se elimina** del working tree (ver §1.12).
 - Si existe un artifact de plan que no tiene card equivalente en Trello → **crear la card** o preguntar a munix si debe existir.
 - **Nunca** mantener un "roadmap paralelo" en documentos, artifacts o conversaciones que no esté sincronizado con Trello.
@@ -300,7 +300,7 @@ Formato canónico de la ref-line (construido por `buildRefLine()` en `lib.mjs`; 
 | Campo | Qué ancla | De dónde se saca |
 |---|---|---|
 | `conv` | Conversación de Antigravity | El ID de la sesión activa (contexto del agente). Ver §1.13 (`ag-chats.mjs`) |
-| `#VIBES-NN` | idShort de la card | `list-cards --json` (`idShort`). En `create-card` se auto-inyecta al crear |
+| `#VIBES-NN` | idShort de la card | `list-cards --light` (`idShort`). En `create-card` se auto-inyecta al crear |
 | `<rama>@<commit>` | Estado del repo asociado | `git rev-parse --abbrev-ref HEAD` + `git rev-parse --short HEAD` — **explícito**, no autodetección |
 | `contract` | Contrato tocado (A1-A4, B6…) | `docs/TESTING.md` / Roadmap, si aplica |
 | `artifact` | Walkthrough/plan asociado | Ruta del artifact en el brain, si aplica |
@@ -327,7 +327,7 @@ Toda card del board lleva su **número (`idShort`) en el título**, en formato `
 **Reglas:**
 - Toda card **nueva** se crea ya con el `#XXX` en el título (tras `create-card`, el `idShort` asignado se antepone al título con `update-card --name "#XXX - <título>"`).
 - Toda card **renombrada** conserva el `#XXX` al principio.
-- El `idShort` es el que expone `list-cards --json` (el mismo `#VIBES-NN` de la ref-line, §1.10.10).
+- El `idShort` es el que expone `list-cards --light` (el mismo `#VIBES-NN` de la ref-line, §1.10.10).
 - No usar `#VIBES-` como prefijo en el título (`#VIBES-XX` queda solo para la ref-line de los comentarios y los commits): en el título basta `#XX`.
 - El formato es `#<idShort> - <título>` (almohadilla, número, espacio, guion, espacio).
 
@@ -479,8 +479,13 @@ artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
 > 4. El board de Trello es el **único** lugar donde persisten los planes. No se
 >    acumulan artifacts de planes terminados en el repo.
 
-El `cardNumber` se obtiene de `node scripts/trello/list-cards.mjs --json | jq '.idShort'`
-o con `resolveCard` desde `scripts/trello/lib.mjs`.
+El `cardNumber` es el `idShort`, visible en la salida de
+`node scripts/trello/list-cards.mjs --light` (cada card lleva su `idShort`).
+Si necesitas confirmarlo con detalle, redirige a fichero tmp:
+`node scripts/trello/list-cards.mjs --number <N> --detail > /tmp/card-<N>.json`
+y léelo con `view_file`. **Nunca pipes a `jq` ni `python`** (se trunca el
+output y produce parse errors — ver trello-workflow.md §1.1). También está
+`resolveCard` en `scripts/trello/lib.mjs`.
 
 
 ### 1.13 Consulta de conversaciones de Antigravity (script `ag-chats.mjs`) — **INNEGOCIABLE**
