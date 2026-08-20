@@ -85,31 +85,72 @@ function applyColorToDOM(
   }
 }
 
-/** Track which Google Font link elements have been injected to avoid duplicates */
-const loadedFontLinks = new Set<string>();
-
 /**
- * Ensure that the CSS for a Google Font is loaded in the document.
- * For bundled fonts (Geist) this is a no-op.
+ * Google Font links are injected on demand and reference-counted so that
+ * switching fonts removes the previous stylesheet from the DOM instead of
+ * accumulating stale <link> nodes (card #103 Slice 6).
+ *
+ * Two independent slots consume fonts (UI font + chat font). A single Google
+ * Fonts <link> may serve both slots when they pick the same font, so we count
+ * references per font id and only remove the element when the count hits zero.
  */
-function ensureFontLoaded(font: FontOption) {
-  const url = getGoogleFontsUrl(font);
-  if (!url || loadedFontLinks.has(font.id)) return;
+const fontLinkRefCount = new Map<string, number>();
+const fontLinkElements = new Map<string, HTMLLinkElement>();
 
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = url;
-  link.id = `font-${font.id}`;
-  document.head.appendChild(link);
-  loadedFontLinks.add(font.id);
+/** Currently applied font id per slot (to release the previous one on switch). */
+let currentUiFontId: string | null = null;
+let currentChatFontId: string | null = null;
+
+/** Add one reference to a font, injecting its Google Fonts stylesheet if needed. */
+function acquireFontLink(font: FontOption) {
+  const count = (fontLinkRefCount.get(font.id) ?? 0) + 1;
+  fontLinkRefCount.set(font.id, count);
+
+  // Only inject on the first reference; bundled fonts have no URL.
+  if (count === 1) {
+    const url = getGoogleFontsUrl(font);
+    if (url) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = url;
+      link.id = `font-${font.id}`;
+      document.head.appendChild(link);
+      fontLinkElements.set(font.id, link);
+    }
+  }
+}
+
+/** Drop one reference to a font, removing its stylesheet when the count hits zero. */
+function releaseFontLink(fontId: string) {
+  const count = fontLinkRefCount.get(fontId) ?? 0;
+  if (count <= 0) return;
+
+  const next = count - 1;
+  if (next <= 0) {
+    fontLinkRefCount.delete(fontId);
+    const link = fontLinkElements.get(fontId);
+    if (link && link.parentNode === document.head) {
+      document.head.removeChild(link);
+    }
+    fontLinkElements.delete(fontId);
+  } else {
+    fontLinkRefCount.set(fontId, next);
+  }
 }
 
 /**
- * Apply the selected font to the document by updating the CSS custom property.
+ * Apply the selected UI font to the document by updating the CSS custom
+ * property, releasing the previous font's stylesheet if nothing else uses it.
  */
 function applyFontToDOM(fontId: string) {
   const font = getFontById(fontId);
-  ensureFontLoaded(font);
+  // No-op if already applied — avoids refcount drift on repeated calls.
+  if (currentUiFontId === font.id) return;
+  if (currentUiFontId) {
+    releaseFontLink(currentUiFontId);
+  }
+  acquireFontLink(font);
+  currentUiFontId = font.id;
   document.documentElement.style.setProperty(
     "--default-font-family",
     font.family,
@@ -118,7 +159,13 @@ function applyFontToDOM(fontId: string) {
 
 function applyChatFontToDOM(fontId: string) {
   const font = getFontById(fontId);
-  ensureFontLoaded(font);
+  // No-op if already applied — avoids refcount drift on repeated calls.
+  if (currentChatFontId === font.id) return;
+  if (currentChatFontId) {
+    releaseFontLink(currentChatFontId);
+  }
+  acquireFontLink(font);
+  currentChatFontId = font.id;
   document.documentElement.style.setProperty(
     "--default-chat-font-family",
     font.family,

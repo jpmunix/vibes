@@ -11,7 +11,7 @@ type SettingsSection = {
 };
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: "general-settings", label: "Tema" },
+  { id: "general-settings", label: "General" },
   { id: "models-connectivity", label: "Proveedores de IA" },
   { id: "ai-behavior", label: "Agente" },
   { id: "custom-agents-settings", label: "Agentes Personalizados" },

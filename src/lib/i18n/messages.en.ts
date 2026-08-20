@@ -1,0 +1,87 @@
+/**
+ * UI message dictionary — English (en).
+ *
+ * Mirror of messages.es.ts. Same keys, no orphans (parity test enforces it).
+ */
+
+import type { Messages } from "./messages.es";
+
+export const messagesEn: Messages = {
+  nav: {
+    home: "Home",
+    library: "Library",
+    settings: "Settings",
+    workspace: "Workspace",
+    hub: "Hub",
+    appDetails: "App details",
+  },
+  settings: {
+    title: "Settings",
+    searchPlaceholder: "Search settings...",
+    searchEmpty: "No results for \"{query}\"",
+    general: "General",
+    appearance: "Appearance",
+    theme: "Theme",
+    language: "Language",
+    languageDescription: "Interface language",
+    agent: "Agent",
+    aiBehavior: "Agent behavior",
+    aiBehaviorDescription: "Effort, verbosity and models",
+    permissions: "Permissions",
+    permissionsDescription: "Agent tool permissions",
+    effort: "Effort",
+    effortDescription: "Agent effort level when solving tasks",
+    verbosity: "Verbosity",
+    verbosityDescription: "How much detail the agent includes in its answers",
+    model: "Model",
+    modelDescription: "Model used by the agent to answer",
+    saved: "Settings saved",
+  },
+  chat: {
+    thinking: "Thinking",
+    searching: "Searching...",
+    processing: "Processing...",
+    loading: "Loading...",
+    codeSearch: "Code Search",
+    allow: "Allow",
+    deny: "Deny",
+    allowAlways: "Always allow",
+    denyAlways: "Always deny",
+    ask: "Ask",
+    toolRequest: "The tool wants access:",
+    version: "Version",
+    versions: "Versions",
+  },
+  toast: {
+    settingsSaved: "Settings saved",
+    errorGeneric: "Something went wrong",
+    saved: "Saved",
+    deleted: "Deleted",
+    created: "Created",
+  },
+  common: {
+    yes: "Yes",
+    no: "No",
+    cancel: "Cancel",
+    confirm: "Confirm",
+    close: "Close",
+    save: "Save",
+    delete: "Delete",
+    edit: "Edit",
+    add: "Add",
+    remove: "Remove",
+    retry: "Retry",
+    back: "Back",
+    next: "Next",
+    search: "Search",
+    loading: "Loading...",
+    empty: "Nothing here",
+  },
+  plural: {
+    files: { one: "{count} file", many: "{count} files" },
+    apps: { one: "{count} app", many: "{count} apps" },
+    messages: { one: "{count} message", many: "{count} messages" },
+    minutes: { one: "{count} minute ago", many: "{count} minutes ago" },
+    seconds: { one: "{count} second ago", many: "{count} seconds ago" },
+  },
+};

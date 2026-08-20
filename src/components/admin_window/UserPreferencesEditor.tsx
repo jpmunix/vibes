@@ -136,7 +136,6 @@ const MODEL_KEYS = new Set([
   "executorModel",
   "standardModeModel",
   "proModeModel",
-  "turboEditModel",
   "appTitleGenerationModel",
   "todoAnalysisModel",
   "debateModel",
@@ -167,7 +166,6 @@ const JSON_KEYS = new Set([
   "openCodePermissions2",
   "permissions",
   "agentToolConsents",
-  "customPrompts",
   "windowState",
   "secondaryWindowStates",
   "agentModels",
@@ -303,7 +301,6 @@ const APPEARANCE_KEYS = new Set([
   "fontScaleBubbleWidth",
   // Layout & window state
   "zoomLevel",
-  "iconLibrary",
   "chatRenderMode",
   "previewDeviceMode",
   "previewPosition",
@@ -386,7 +383,6 @@ function categorizeKey(key: string): string {
     key === "aiQueryLogRotationThreshold" ||
     key === "smartContextOption" ||
     key === "proSmartContextOption" ||
-    key === "customPrompts" ||
     key === "playground_prompt_presets"
   )
     return "behavior";

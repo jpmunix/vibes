@@ -1,456 +1,224 @@
+// Iconos — solo los usados por la app (tree-shaking real).
+// IMPORTANTE: NO usar "import *" ni "export *" de lucide-react aquí.
+// Eso metería los ~1570 iconos en el chunk de arranque (~512 KB).
+// Si necesitas un icono nuevo, añádelo a la lista de imports nombrados.
 import { forwardRef } from "react";
-import * as Lucide from "lucide-react";
-import * as Iconoir from "iconoir-react";
-import { useAtomValue } from "jotai";
-import { userSettingsAtom } from "@/atoms/appAtoms";
 
-export type LucideIcon = Lucide.LucideIcon;
+export {
+  AlertCircle,
+  AlertOctagon,
+  AlertTriangle,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Archive,
+  ArchiveRestore,
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowLeftRight,
+  ArrowRight,
+  ArrowRightLeft,
+  ArrowUp,
+  ArrowUpDown,
+  Ban,
+  BarChart3,
+  Bell,
+  BellOff,
+  Blocks,
+  BookOpen,
+  Bot,
+  Box,
+  Brain,
+  BugIcon,
+  Calendar,
+  Camera,
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  CheckIcon,
+  CheckSquare,
+  ChevronDown,
+  ChevronDownIcon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronRightIcon,
+  ChevronUp,
+  ChevronUpIcon,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Circle,
+  CircleIcon,
+  CircleX,
+  Clipboard,
+  ClipboardCopy,
+  Clock,
+  Cloud,
+  CloudDownload,
+  CloudOff,
+  Code,
+  Code2,
+  Cog,
+  Coins,
+  Copy,
+  Crop,
+  Crosshair,
+  Database,
+  DatabaseZap,
+  Diff,
+  Dna,
+  DollarSign,
+  Download,
+  Edit,
+  Edit2,
+  EllipsisVertical,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  File,
+  FileCode,
+  FileCode2,
+  FileEdit,
+  FilePlus,
+  FileSearch,
+  FileText,
+  FileWarning,
+  FileX,
+  Filter,
+  Flame,
+  FlaskConical,
+  Folder,
+  FolderInput,
+  FolderOpen,
+  FolderPlus,
+  FolderTree,
+  FolderX,
+  GitBranch,
+  GitCommit,
+  GitMerge,
+  GitPullRequestArrow,
+  Github,
+  Globe,
+  GripHorizontal,
+  GripVertical,
+  Hammer,
+  HardDrive,
+  Hash,
+  HelpCircle,
+  History,
+  Image,
+  Info,
+  InfoIcon,
+  Key,
+  KeyRound,
+  Lightbulb,
+  LightbulbIcon,
+  Link2,
+  List,
+  ListChecks,
+  Loader,
+  Loader2,
+  Lock,
+  LogOut,
+  Logs,
+  MapPin,
+  Maximize2,
+  Menu,
+  MessageCircle,
+  MessageCircleQuestion,
+  MessageSquare,
+  MessageSquarePlus,
+  MessageSquareText,
+  MessagesSquare,
+  Minimize2,
+  Minus,
+  Monitor,
+  MonitorSmartphone,
+  MoreHorizontal,
+  MoreVertical,
+  MousePointer2,
+  MousePointerClick,
+  Move,
+  MoveUpRight,
+  Music,
+  Network,
+  Package,
+  PackageCheck,
+  Palette,
+  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Paperclip,
+  Pencil,
+  Pin,
+  PinOff,
+  Play,
+  Plus,
+  PlusIcon,
+  Power,
+  Quote,
+  Rabbit,
+  Redo,
+  RefreshCw,
+  Rocket,
+  RotateCcw,
+  Save,
+  Scissors,
+  ScrollText,
+  Search,
+  SearchIcon,
+  Send,
+  SendHorizontal,
+  SendHorizontalIcon,
+  SendToBack,
+  Server,
+  Settings,
+  Settings2,
+  Share2,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Shrink,
+  Smartphone,
+  Sparkles,
+  Square,
+  Star,
+  StopCircle,
+  StopCircleIcon,
+  Table,
+  Table2,
+  Tablet,
+  TabletSmartphone,
+  Terminal,
+  TestTube,
+  Trash2,
+  TrashIcon,
+  Triangle,
+  Type,
+  Undo,
+  Undo2,
+  Unlink,
+  Upload,
+  User,
+  UserPlus,
+  Users,
+  Video,
+  Volume2,
+  Wand2,
+  Wifi,
+  Wrench,
+  X,
+  XCircle,
+  XIcon,
+  XSquare,
+  Zap,
+} from "lucide-react";
 
-export const withIconFactory = (
-  LucideComponent: any,
-  IconoirComponent: any,
-) => {
-  return forwardRef<any, any>((props, ref) => {
-    const settings = useAtomValue(userSettingsAtom);
-    if (settings?.iconLibrary === "iconoir" && IconoirComponent) {
-      const iconoirProps = { ...props };
-      if (iconoirProps.size !== undefined) {
-        iconoirProps.width = iconoirProps.size;
-        iconoirProps.height = iconoirProps.size;
-        delete iconoirProps.size;
-      }
-      return <IconoirComponent ref={ref} {...iconoirProps} />;
-    }
-    return <LucideComponent ref={ref} {...props} />;
-  });
-};
-
-// Export all remaining icons from lucide-react as fallbacks
-export * from "lucide-react";
-
-export const AlertCircle = withIconFactory(
-  Lucide.AlertCircle,
-  Iconoir.WarningCircle,
-);
-export const AlertTriangle = withIconFactory(
-  Lucide.AlertTriangle,
-  Iconoir.WarningTriangle,
-);
-export const Archive = withIconFactory(Lucide.Archive, Iconoir.Archive);
-export const ArchiveRestore = withIconFactory(
-  Lucide.ArchiveRestore,
-  Iconoir.Archive,
-);
-export const ArrowDown = withIconFactory(Lucide.ArrowDown, Iconoir.ArrowDown);
-export const ArrowLeft = withIconFactory(Lucide.ArrowLeft, Iconoir.ArrowLeft);
-export const ArrowUpCircle = withIconFactory(
-  Lucide.ArrowUpCircle,
-  Iconoir.ArrowUpCircle,
-);
-export const Ban = withIconFactory(Lucide.Ban, Iconoir.Prohibition);
-export const Bell = withIconFactory(Lucide.Bell, Iconoir.Bell);
-export const BellOff = withIconFactory(
-  Lucide.BellOff,
-  Iconoir.BellNotification,
-);
-export const Bot = withIconFactory(Lucide.Bot, Iconoir.Cpu);
-export const Brain = withIconFactory(Lucide.Brain, Iconoir.Brain);
-export const Bug = withIconFactory(Lucide.Bug, Iconoir.Bug);
-export const BugIcon = withIconFactory(Lucide.BugIcon, Iconoir.Bug);
-export const Camera = withIconFactory(Lucide.Camera, Iconoir.Camera);
-export const Check = withIconFactory(Lucide.Check, Iconoir.Check);
-export const CheckCircle2 = withIconFactory(
-  Lucide.CheckCircle2,
-  Iconoir.CheckCircle,
-);
-export const CheckIcon = withIconFactory(Lucide.CheckIcon, Iconoir.Check);
-export const CheckSquare = withIconFactory(
-  Lucide.CheckSquare,
-  Iconoir.CheckSquare,
-);
-export const ChevronDown = withIconFactory(
-  Lucide.ChevronDown,
-  Iconoir.NavArrowDown,
-);
-export const ChevronDownIcon = withIconFactory(
-  Lucide.ChevronDownIcon,
-  Iconoir.NavArrowDown,
-);
-export const ChevronLeft = withIconFactory(
-  Lucide.ChevronLeft,
-  Iconoir.NavArrowLeft,
-);
-export const ChevronRight = withIconFactory(
-  Lucide.ChevronRight,
-  Iconoir.NavArrowRight,
-);
-export const ChevronRightIcon = withIconFactory(
-  Lucide.ChevronRightIcon,
-  Iconoir.NavArrowRight,
-);
-export const ChevronsDownUp = withIconFactory(
-  Lucide.ChevronsDownUp,
-  Iconoir.HelpCircle,
-);
-export const ChevronsUpDown = withIconFactory(
-  Lucide.ChevronsUpDown,
-  Iconoir.HelpCircle,
-);
-export const ChevronUp = withIconFactory(Lucide.ChevronUp, Iconoir.NavArrowUp);
-export const ChevronUpIcon = withIconFactory(
-  Lucide.ChevronUpIcon,
-  Iconoir.NavArrowUp,
-);
-export const Circle = withIconFactory(Lucide.Circle, Iconoir.Circle);
-export const CircleIcon = withIconFactory(Lucide.CircleIcon, Iconoir.Circle);
-export const ArrowRight = withIconFactory(
-  Lucide.ArrowRight,
-  Iconoir.ArrowRight,
-);
-export const ClipboardList = withIconFactory(
-  Lucide.ClipboardList,
-  Iconoir.ClipboardCheck,
-);
-export const Clock = withIconFactory(Lucide.Clock, Iconoir.Clock);
-export const CloudDownload = withIconFactory(
-  Lucide.CloudDownload,
-  Iconoir.CloudDownload,
-);
-export const Code = withIconFactory(Lucide.Code, Iconoir.Code);
-export const Code2 = withIconFactory(Lucide.Code2, Iconoir.Code);
-export const Cog = withIconFactory(Lucide.Cog, Iconoir.Settings);
-export const Copy = withIconFactory(Lucide.Copy, Iconoir.Copy);
-export const Cpu = withIconFactory(Lucide.Cpu, Iconoir.Cpu);
-export const Crop = withIconFactory(Lucide.Crop, Iconoir.Crop);
-export const Database = withIconFactory(Lucide.Database, Iconoir.Database);
-export const DatabaseZap = withIconFactory(
-  Lucide.DatabaseZap,
-  Iconoir.DatabaseScript,
-);
-export const DollarSign = withIconFactory(
-  Lucide.DollarSign,
-  Iconoir.DollarCircle,
-);
-export const Download = withIconFactory(Lucide.Download, Iconoir.Download);
-export const Edit2 = withIconFactory(Lucide.Edit2, Iconoir.EditPencil);
-export const ExternalLink = withIconFactory(
-  Lucide.ExternalLink,
-  Iconoir.OpenNewWindow,
-);
-export const Eye = withIconFactory(Lucide.Eye, Iconoir.Eye);
-export const EyeOff = withIconFactory(Lucide.EyeOff, Iconoir.EyeClosed);
-export const FileCode = withIconFactory(Lucide.FileCode, Iconoir.CodeBrackets);
-export const FileCode2 = withIconFactory(
-  Lucide.FileCode2,
-  Iconoir.CodeBrackets,
-);
-export const FileEdit = withIconFactory(Lucide.FileEdit, Iconoir.PageEdit);
-export const FileText = withIconFactory(Lucide.FileText, Iconoir.Page);
-export const Filter = withIconFactory(Lucide.Filter, Iconoir.Filter);
-export const Flame = withIconFactory(Lucide.Flame, Iconoir.FireFlame);
-export const Folder = withIconFactory(Lucide.Folder, Iconoir.Folder);
-export const FolderOpen = withIconFactory(Lucide.FolderOpen, Iconoir.Folder);
-export const FolderPlus = withIconFactory(Lucide.FolderPlus, Iconoir.Folder);
-export const GitBranch = withIconFactory(Lucide.GitBranch, Iconoir.GitBranch);
-export const GitCommit = withIconFactory(Lucide.GitCommit, Iconoir.GitCommit);
-export const Github = withIconFactory(Lucide.Github, Iconoir.Github);
-export const Globe = withIconFactory(Lucide.Globe, Iconoir.Globe);
-export const GripVertical = withIconFactory(
-  Lucide.GripVertical,
-  Iconoir.MenuScale,
-);
-export const Hammer = withIconFactory(Lucide.Hammer, Iconoir.Wrench);
-export const Hash = withIconFactory(Lucide.Hash, Iconoir.Hashtag);
-export const HelpCircle = withIconFactory(
-  Lucide.HelpCircle,
-  Iconoir.HelpCircle,
-);
-export const History = withIconFactory(Lucide.History, Iconoir.HistoricShield);
-export const Home = withIconFactory(Lucide.Home, Iconoir.HomeSimpleDoor);
-export const Image = withIconFactory(Lucide.Image, Iconoir.HelpCircle);
-export const ImageIcon = withIconFactory(Lucide.ImageIcon, Iconoir.HelpCircle);
-export const Inbox = withIconFactory(Lucide.Inbox, Iconoir.HelpCircle);
-export const Info = withIconFactory(Lucide.Info, Iconoir.InfoCircle);
-export const InfoIcon = withIconFactory(Lucide.InfoIcon, Iconoir.InfoCircle);
-export const KeyRound = withIconFactory(Lucide.KeyRound, Iconoir.Key);
-export const Layout = withIconFactory(Lucide.Layout, Iconoir.LayoutLeft);
-export const LightbulbIcon = withIconFactory(
-  Lucide.LightbulbIcon,
-  Iconoir.HelpCircle,
-);
-export const Lightbulb = withIconFactory(Lucide.Lightbulb, Iconoir.LightBulb);
-export const Loader = withIconFactory(Lucide.Loader, Iconoir.RefreshDouble);
-export const Loader2 = withIconFactory(Lucide.Loader2, Iconoir.Refresh);
-export const Lock = withIconFactory(Lucide.Lock, Iconoir.Lock);
-export const LogOut = withIconFactory(Lucide.LogOut, Iconoir.LogOut);
-export const Logs = withIconFactory(Lucide.Logs, Iconoir.List);
-export const Maximize2 = withIconFactory(Lucide.Maximize2, Iconoir.Maximize);
-export const Menu = withIconFactory(Lucide.Menu, Iconoir.Menu);
-export const MessageSquare = withIconFactory(
-  Lucide.MessageSquare,
-  Iconoir.ChatBubble,
-);
-export const MessageSquarePlus = withIconFactory(
-  Lucide.MessageSquarePlus,
-  Iconoir.ChatBubble,
-);
-export const MessagesSquare = withIconFactory(
-  Lucide.MessagesSquare,
-  Iconoir.ChatBubbleEmpty,
-);
-export const Minimize2 = withIconFactory(Lucide.Minimize2, Iconoir.Collapse);
-export const Minus = withIconFactory(Lucide.Minus, Iconoir.Minus);
-export const Monitor = withIconFactory(Lucide.Monitor, Iconoir.MacOsWindow);
-export const MonitorSmartphone = withIconFactory(
-  Lucide.MonitorSmartphone,
-  Iconoir.MacOsWindow,
-);
-export const MoreVertical = withIconFactory(
-  Lucide.MoreVertical,
-  Iconoir.MoreVert,
-);
-export const MousePointerClick = withIconFactory(
-  Lucide.MousePointerClick,
-  Iconoir.CursorPointer,
-);
-export const Move = withIconFactory(Lucide.Move, Iconoir.HelpCircle);
-export const Package = withIconFactory(Lucide.Package, Iconoir.Package);
-export const Palette = withIconFactory(Lucide.Palette, Iconoir.Palette);
-export const PanelLeft = withIconFactory(Lucide.PanelLeft, Iconoir.LayoutLeft);
-export const PanelLeftClose = withIconFactory(
-  Lucide.PanelLeftClose,
-  Iconoir.SidebarCollapse,
-);
-export const PanelLeftOpen = withIconFactory(
-  Lucide.PanelLeftOpen,
-  Iconoir.SidebarExpand,
-);
-export const PanelRightClose = withIconFactory(
-  Lucide.PanelRightClose,
-  Iconoir.SidebarCollapse,
-);
-export const PanelRightOpen = withIconFactory(
-  Lucide.PanelRightOpen,
-  Iconoir.SidebarExpand,
-);
-export const Paperclip = withIconFactory(Lucide.Paperclip, Iconoir.HelpCircle);
-export const Pencil = withIconFactory(Lucide.Pencil, Iconoir.EditPencil);
-export const Play = withIconFactory(Lucide.Play, Iconoir.Play);
-export const Plus = withIconFactory(Lucide.Plus, Iconoir.Plus);
-export const PlusIcon = withIconFactory(Lucide.PlusIcon, Iconoir.Plus);
-export const Power = withIconFactory(Lucide.Power, Iconoir.SystemShut);
-export const Quote = withIconFactory(Lucide.Quote, Iconoir.Quote);
-export const RefreshCw = withIconFactory(Lucide.RefreshCw, Iconoir.Refresh);
-export const RotateCcw = withIconFactory(Lucide.RotateCcw, Iconoir.Undo);
-export const Save = withIconFactory(Lucide.Save, Iconoir.FloppyDisk);
-export const Search = withIconFactory(Lucide.Search, Iconoir.Search);
-export const SearchIcon = withIconFactory(Lucide.SearchIcon, Iconoir.Search);
-export const SendHorizontal = withIconFactory(
-  Lucide.SendHorizontal,
-  Iconoir.SendDiagonal,
-);
-export const SendHorizontalIcon = withIconFactory(
-  Lucide.SendHorizontalIcon,
-  Iconoir.SendDiagonal,
-);
-export const Server = withIconFactory(Lucide.Server, Iconoir.Server);
-export const Settings = withIconFactory(Lucide.Settings, Iconoir.Settings);
-export const Settings2 = withIconFactory(Lucide.Settings2, Iconoir.Settings);
-export const Shield = withIconFactory(Lucide.Shield, Iconoir.Shield);
-export const ShieldAlert = withIconFactory(
-  Lucide.ShieldAlert,
-  Iconoir.ShieldAlert,
-);
-export const ShieldCheck = withIconFactory(
-  Lucide.ShieldCheck,
-  Iconoir.ShieldCheck,
-);
-export const Smartphone = withIconFactory(
-  Lucide.Smartphone,
-  Iconoir.SmartphoneDevice,
-);
-export const Sparkles = withIconFactory(Lucide.Sparkles, Iconoir.Sparks);
-export const Square = withIconFactory(Lucide.Square, Iconoir.Square);
-export const Star = withIconFactory(Lucide.Star, Iconoir.Star);
-export const StickyNote = withIconFactory(Lucide.StickyNote, Iconoir.Page);
-export const StopCircle = withIconFactory(
-  Lucide.StopCircle,
-  Iconoir.HelpCircle,
-);
-export const StopCircleIcon = withIconFactory(
-  Lucide.StopCircleIcon,
-  Iconoir.HelpCircle,
-);
-export const Tablet = withIconFactory(Lucide.Tablet, Iconoir.SmartphoneDevice);
-export const Terminal = withIconFactory(Lucide.Terminal, Iconoir.Terminal);
-export const Trash2 = withIconFactory(Lucide.Trash2, Iconoir.Trash);
-export const TrashIcon = withIconFactory(Lucide.TrashIcon, Iconoir.Trash);
-export const Triangle = withIconFactory(Lucide.Triangle, Iconoir.Triangle);
-export const Type = withIconFactory(Lucide.Type, Iconoir.Type);
-export const Undo = withIconFactory(Lucide.Undo, Iconoir.Undo);
-export const Upload = withIconFactory(Lucide.Upload, Iconoir.Upload);
-export const User = withIconFactory(Lucide.User, Iconoir.User);
-export const Wrench = withIconFactory(Lucide.Wrench, Iconoir.Wrench);
-export const X = withIconFactory(Lucide.X, Iconoir.Xmark);
-export const XCircle = withIconFactory(Lucide.XCircle, Iconoir.XmarkCircle);
-export const XIcon = withIconFactory(Lucide.XIcon, Iconoir.Xmark);
-export const Zap = withIconFactory(Lucide.Zap, Iconoir.Flash);
-export const Box = withIconFactory(Lucide.Box, Iconoir.BoxIso);
-export const XSquare = withIconFactory(Lucide.XSquare, Iconoir.Square);
-// Workspace & Details missing icons
-export const Calendar = withIconFactory(Lucide.Calendar, Iconoir.Calendar);
-export const ClipboardCopy = withIconFactory(
-  Lucide.ClipboardCopy,
-  Iconoir.PasteClipboard,
-);
-export const FolderInput = withIconFactory(
-  Lucide.FolderInput,
-  Iconoir.FolderPlus,
-);
-export const FolderX = withIconFactory(Lucide.FolderX, Iconoir.FolderMinus);
-export const MapPin = withIconFactory(Lucide.MapPin, Iconoir.MapPin);
-export const Pin = withIconFactory(Lucide.Pin, Iconoir.Pin);
-export const PinOff = withIconFactory(Lucide.PinOff, Iconoir.PinSlash);
-export const MessageCircle = withIconFactory(
-  Lucide.MessageCircle,
-  Iconoir.ChatBubble,
-);
-export const MessageSquareText = withIconFactory(
-  Lucide.MessageSquareText,
-  Iconoir.MessageText,
-);
-// Git & Connector icons
-export const ArrowDownToLine = withIconFactory(
-  Lucide.ArrowDownToLine,
-  Iconoir.ArrowDown,
-);
-export const Clipboard = withIconFactory(
-  Lucide.Clipboard,
-  Iconoir.ClipboardCheck,
-);
-export const EllipsisVertical = withIconFactory(
-  Lucide.EllipsisVertical,
-  Iconoir.MoreVert,
-);
-export const FileWarning = withIconFactory(
-  Lucide.FileWarning,
-  Iconoir.WarningTriangle,
-);
-export const GitMerge = withIconFactory(Lucide.GitMerge, Iconoir.GitMerge);
-export const GitPullRequestArrow = withIconFactory(
-  Lucide.GitPullRequestArrow,
-  Iconoir.GitPullRequest,
-);
-export const HardDrive = withIconFactory(Lucide.HardDrive, Iconoir.HardDrive);
-export const MoreHorizontal = withIconFactory(
-  Lucide.MoreHorizontal,
-  Iconoir.MoreHoriz,
-);
-export const Network = withIconFactory(Lucide.Network, Iconoir.Network);
-export const UserPlus = withIconFactory(Lucide.UserPlus, Iconoir.UserPlus);
-export const Users = withIconFactory(Lucide.Users, Iconoir.Group);
-// Visual editor & Annotator icons
-export const AlignCenter = withIconFactory(
-  Lucide.AlignCenter,
-  Iconoir.AlignCenter,
-);
-export const AlignJustify = withIconFactory(
-  Lucide.AlignJustify,
-  Iconoir.AlignJustify,
-);
-export const AlignLeft = withIconFactory(Lucide.AlignLeft, Iconoir.AlignLeft);
-export const AlignRight = withIconFactory(
-  Lucide.AlignRight,
-  Iconoir.AlignRight,
-);
-export const MousePointer2 = withIconFactory(
-  Lucide.MousePointer2,
-  Iconoir.CursorPointer,
-);
-export const MoveUpRight = withIconFactory(
-  Lucide.MoveUpRight,
-  Iconoir.ArrowUpRight,
-);
-export const Redo = withIconFactory(Lucide.Redo, Iconoir.Redo);
-export const Wand2 = withIconFactory(Lucide.Wand2, Iconoir.MagicWand);
-// Remaining icons (comprehensive audit)
-export const AlertOctagon = withIconFactory(
-  Lucide.AlertOctagon,
-  Iconoir.WarningCircle,
-);
-export const ArrowLeftRight = withIconFactory(
-  Lucide.ArrowLeftRight,
-  Iconoir.ArrowSeparate,
-);
-export const ArrowRightLeft = withIconFactory(
-  Lucide.ArrowRightLeft,
-  Iconoir.ArrowSeparate,
-);
-export const ArrowUp = withIconFactory(Lucide.ArrowUp, Iconoir.ArrowUp);
-export const ArrowUpDown = withIconFactory(
-  Lucide.ArrowUpDown,
-  Iconoir.ArrowSeparateVertical,
-);
-export const BarChart3 = withIconFactory(
-  Lucide.BarChart3,
-  Iconoir.StatsUpSquare,
-);
-export const Blocks = withIconFactory(Lucide.Blocks, Iconoir.BoxIso);
-export const CheckCircle = withIconFactory(
-  Lucide.CheckCircle,
-  Iconoir.CheckCircle,
-);
-export const CircleX = withIconFactory(Lucide.CircleX, Iconoir.XmarkCircle);
-export const Coins = withIconFactory(Lucide.Coins, Iconoir.Coins);
-export const Diff = withIconFactory(Lucide.Diff, Iconoir.GitCompare);
-export const Edit = withIconFactory(Lucide.Edit, Iconoir.EditPencil);
-export const Edit3 = withIconFactory(Lucide.Edit3, Iconoir.EditPencil);
-export const File = withIconFactory(Lucide.File, Iconoir.Page);
-export const FilePlus = withIconFactory(Lucide.FilePlus, Iconoir.PagePlus);
-export const FileSearch = withIconFactory(
-  Lucide.FileSearch,
-  Iconoir.PageSearch,
-);
-export const FileX = withIconFactory(Lucide.FileX, Iconoir.PageMinus);
-export const FolderTree = withIconFactory(Lucide.FolderTree, Iconoir.Folder);
-export const GripHorizontal = withIconFactory(
-  Lucide.GripHorizontal,
-  Iconoir.MenuScale,
-);
-export const List = withIconFactory(Lucide.List, Iconoir.List);
-export const ListChecks = withIconFactory(Lucide.ListChecks, Iconoir.TaskList);
-export const ListTodo = withIconFactory(Lucide.ListTodo, Iconoir.TaskList);
-export const MessageCircleQuestion = withIconFactory(
-  Lucide.MessageCircleQuestion,
-  Iconoir.ChatBubbleQuestion,
-);
-export const Music = withIconFactory(Lucide.Music, Iconoir.MusicDoubleNote);
-export const PackageCheck = withIconFactory(
-  Lucide.PackageCheck,
-  Iconoir.Package,
-);
-export const Rabbit = withIconFactory(Lucide.Rabbit, Iconoir.HelpCircle);
-export const Rocket = withIconFactory(Lucide.Rocket, Iconoir.Rocket);
-export const Scissors = withIconFactory(Lucide.Scissors, Iconoir.Scissor);
-export const ScrollText = withIconFactory(Lucide.ScrollText, Iconoir.Page);
-export const Send = withIconFactory(Lucide.Send, Iconoir.SendDiagonal);
-export const SendToBack = withIconFactory(
-  Lucide.SendToBack,
-  Iconoir.SendDiagonal,
-);
-export const Table = withIconFactory(Lucide.Table, Iconoir.Table);
-export const Table2 = withIconFactory(Lucide.Table2, Iconoir.TableRows);
-export const TabletSmartphone = withIconFactory(
-  Lucide.TabletSmartphone,
-  Iconoir.SmartphoneDevice,
-);
-export const TestTube = withIconFactory(Lucide.TestTube, Iconoir.Flask);
-export const TrendingUp = withIconFactory(Lucide.TrendingUp, Iconoir.GraphUp);
-export const Undo2 = withIconFactory(Lucide.Undo2, Iconoir.Undo);
-export const Video = withIconFactory(Lucide.Video, Iconoir.VideoCamera);
-export const Wifi = withIconFactory(Lucide.Wifi, Iconoir.Wifi);
-export const CloudOff = withIconFactory(Lucide.CloudOff, Iconoir.CloudDesync);
-export const Unlink = withIconFactory(Lucide.Unlink, Iconoir.Link);
+// Tipo para props de iconos lucide
+export type { LucideIcon } from "lucide-react";
 
 // Custom Brand SVGs
 const NeonSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
@@ -478,7 +246,7 @@ const NeonSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const NeonIcon = withIconFactory(NeonSvgBase, NeonSvgBase);
+export const NeonIcon = NeonSvgBase;
 
 const GoogleSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg
@@ -494,7 +262,7 @@ const GoogleSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     ></path>
   </svg>
 ));
-export const GoogleIcon = withIconFactory(GoogleSvgBase, GoogleSvgBase);
+export const GoogleIcon = GoogleSvgBase;
 
 const BunnySvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg
@@ -703,7 +471,7 @@ const BunnySvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     </g>
   </svg>
 ));
-export const BunnyIcon = withIconFactory(BunnySvgBase, BunnySvgBase);
+export const BunnyIcon = BunnySvgBase;
 
 const SupabaseSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg
@@ -719,7 +487,7 @@ const SupabaseSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const SupabaseIcon = withIconFactory(SupabaseSvgBase, SupabaseSvgBase);
+export const SupabaseIcon = SupabaseSvgBase;
 
 const PocketBaseSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg
@@ -735,10 +503,7 @@ const PocketBaseSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const PocketBaseIcon = withIconFactory(
-  PocketBaseSvgBase,
-  PocketBaseSvgBase,
-);
+export const PocketBaseIcon = PocketBaseSvgBase;
 
 // Framework SVGs
 const ReactSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
@@ -775,7 +540,7 @@ const ReactSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const ReactIcon = withIconFactory(ReactSvgBase, ReactSvgBase);
+export const ReactIcon = ReactSvgBase;
 
 const NextSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg ref={ref} {...props} viewBox="0 0 24 24" fill="currentColor">
@@ -785,7 +550,7 @@ const NextSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const NextIcon = withIconFactory(NextSvgBase, NextSvgBase);
+export const NextIcon = NextSvgBase;
 
 const VueSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg ref={ref} {...props} viewBox="0 0 24 24" fill="none">
@@ -797,7 +562,7 @@ const VueSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const VueIcon = withIconFactory(VueSvgBase, VueSvgBase);
+export const VueIcon = VueSvgBase;
 
 const AstroSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg ref={ref} {...props} viewBox="0 0 24 24" fill="currentColor">
@@ -821,7 +586,7 @@ const AstroSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const AstroIcon = withIconFactory(AstroSvgBase, AstroSvgBase);
+export const AstroIcon = AstroSvgBase;
 
 const SvelteSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
   <svg ref={ref} {...props} viewBox="0 0 24 24" fill="none">
@@ -836,4 +601,4 @@ const SvelteSvgBase = forwardRef<SVGSVGElement, any>((props, ref) => (
     />
   </svg>
 ));
-export const SvelteIcon = withIconFactory(SvelteSvgBase, SvelteSvgBase);
+export const SvelteIcon = SvelteSvgBase;

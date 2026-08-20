@@ -14,7 +14,6 @@ import { Switch } from "@/components/ui/switch";
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
-import type { ChatLanguage } from "@/lib/schemas";
 import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
 import { TextVerbositySelector } from "../TextVerbositySelector";
 import { AgentModelSelector } from "./AgentModelSelector";
@@ -29,12 +28,6 @@ const turnsOptions = [
   { value: "5", label: "Plus (5)" },
   { value: "10", label: "Alto (10)" },
   { value: "100", label: "Máximo (100)" },
-];
-
-// ─── Language options ───
-const languageOptions: { value: ChatLanguage; label: string }[] = [
-  { value: "es", label: "Español" },
-  { value: "en", label: "English" },
 ];
 
 // ─── Reusable SettingItem ───
@@ -160,8 +153,6 @@ export function AIBehaviorSettings({
     turnsOptions.find((o) => o.value === currentTurnsRaw)?.label ||
     `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})`;
 
-  const currentLang = settings?.chatLanguage || "es";
-
   const selectedEmbeddingModel =
     settings?.embeddingsModel ?? "openai/text-embedding-3-small";
   const currentEmbeddingLabel =
@@ -204,31 +195,7 @@ export function AIBehaviorSettings({
           />
         </div> */}
 
-          {/* Idioma — two pills */}
-          <SettingRow
-            label="Idioma"
-            description="Idioma en que el agente se comunicará contigo"
-            control={
-              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {languageOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      updateSettings({ chatLanguage: option.value })
-                    }
-                    className={cn(
-                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                      currentLang === option.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-primary/10",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            }
-          />
+          {/* Idioma — se ha movido a la sección "General" (card #106). */}
 
           <SettingRow
             label="Esfuerzo de razonamiento"

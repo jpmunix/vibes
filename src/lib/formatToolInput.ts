@@ -10,10 +10,20 @@
  *   - pattern-style tools (glob, grep) → "{pattern}"
  *   - fallback → JSON.stringify with indent (defensive)
  *
- * No switch per toolId — the convention is universal by arg shape.
+ * The conventions are derived from the runtime catalog's `argSchema`
+ * (`getToolMetadata(toolId).argSchema`), so a tool gets the right presentation
+ * as soon as it declares its args — no per-toolId switch needed.
  */
 
+import { getToolMetadata } from "@vibes/tools/catalog";
+
+// Shell-style legacy aliases (bash/sh/exec) — the runtime uses "shell" today.
 const SHELL_STYLE = new Set(["shell", "bash", "sh", "exec"]);
+
+function safeGet(a: Record<string, unknown>, key: string): string | undefined {
+  const v = a[key];
+  return typeof v === "string" ? v : undefined;
+}
 
 export function formatToolInput(toolId: string, args: unknown): string {
   if (args === null || args === undefined) {
@@ -26,27 +36,37 @@ export function formatToolInput(toolId: string, args: unknown): string {
 
   const a = args as Record<string, unknown>;
 
-  // Shell-style: args.cmd is the convention (vibes-core shell tool).
-  if (SHELL_STYLE.has(toolId) && typeof a.cmd === "string") {
-    return `$ ${a.cmd}${Array.isArray(a.args) && a.args.length > 0 ? " " + a.args.join(" ") : ""}`;
+  // Empty object — a tool call with no arguments (legit for tools like
+  // git_diff where every arg is optional, and what the pill receives when the
+  // runtime sends args={}). Show "(sin argumentos)" instead of "{}".
+  if (Object.keys(a).length === 0) {
+    return "(sin argumentos)";
   }
 
-  // Shell-style legacy: args.command (OpenCode-era shape).
-  if (SHELL_STYLE.has(toolId) && typeof a.command === "string") {
-    return `$ ${a.command}`;
+  const meta = getToolMetadata(toolId);
+  const schemaProps = meta?.argSchema?.properties ?? {};
+
+  // Shell-style: a `cmd` / `args` shape (vibes-core shell tool).
+  const isShellLike = "cmd" in schemaProps || "command" in a || SHELL_STYLE.has(toolId);
+  if (isShellLike && (typeof a.cmd === "string" || typeof a.command === "string")) {
+    const cmd = typeof a.cmd === "string" ? a.cmd : (a.command as string);
+    const rest = Array.isArray(a.args) && a.args.length > 0 ? " " + a.args.join(" ") : "";
+    return `$ ${cmd}${rest}`;
   }
 
-  // File-style: args.path is the convention. Include content if present.
-  if (typeof a.path === "string") {
-    if (typeof a.content === "string") {
-      return `${a.path}\n${a.content}`;
+  // File-style: a `path` arg (read_file, write_file, edit_file, list_dir…).
+  if ("path" in schemaProps || "path" in a) {
+    const p = safeGet(a, "path");
+    if (p) {
+      const content = typeof a.content === "string" ? `\n${a.content}` : "";
+      return `${p}${content}`;
     }
-    return a.path;
   }
 
-  // Pattern-style: args.pattern is the convention.
-  if (typeof a.pattern === "string") {
-    return a.pattern;
+  // Pattern-style: a `pattern` arg (glob, grep).
+  if ("pattern" in schemaProps || "pattern" in a) {
+    const p = safeGet(a, "pattern");
+    if (p) return p;
   }
 
   // Unknown shape — defensive fallback.

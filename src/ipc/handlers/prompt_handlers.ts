@@ -239,36 +239,6 @@ export function registerPromptHandlers() {
 
     if (!row) throw new Error("Failed to create prompt");
 
-    // Sync to user settings if it's a system prompt (fire & forget to avoid UI lag)
-    if (systemId) {
-      const capturedUserId = context.userId;
-      const capturedSystemId = systemId;
-      const capturedContent = content;
-      setImmediate(async () => {
-        try {
-          const asyncDb = getRemoteDb();
-          const [userSettingRow] = await asyncDb
-            .select()
-            .from(remoteSchema.userSettings)
-            .where(eq(remoteSchema.userSettings.userId, capturedUserId));
-          if (userSettingRow) {
-            const currentSettings = JSON.parse(userSettingRow.settingsJson);
-            currentSettings.customPrompts = currentSettings.customPrompts || {};
-            currentSettings.customPrompts[capturedSystemId] = capturedContent;
-            await asyncDb
-              .update(remoteSchema.userSettings)
-              .set({
-                settingsJson: JSON.stringify(currentSettings),
-                updatedAt: new Date(),
-              })
-              .where(eq(remoteSchema.userSettings.userId, capturedUserId));
-          }
-        } catch (err) {
-          _logger.error("Error syncing new prompt to user settings:", err);
-        }
-      });
-    }
-
     return {
       id: Number(row.id),
       categoryId: row.categoryId !== null ? Number(row.categoryId) : null,
@@ -306,49 +276,6 @@ export function registerPromptHandlers() {
           eq(remoteSchema.prompts.userId, context.userId),
         ),
       );
-
-    // Sync to settings (fire & forget to avoid UI lag)
-    if (content !== undefined || enabled !== undefined) {
-      const capturedUserId = context.userId;
-      const capturedId = id;
-      setImmediate(async () => {
-        try {
-          const asyncDb = getRemoteDb();
-          const [promptRow] = await asyncDb
-            .select()
-            .from(remoteSchema.prompts)
-            .where(eq(remoteSchema.prompts.id, capturedId));
-          if (promptRow && promptRow.systemId) {
-            const [userSettingRow] = await asyncDb
-              .select()
-              .from(remoteSchema.userSettings)
-              .where(eq(remoteSchema.userSettings.userId, capturedUserId));
-            if (userSettingRow) {
-              const currentSettings = JSON.parse(userSettingRow.settingsJson);
-              currentSettings.customPrompts =
-                currentSettings.customPrompts || {};
-
-              if (promptRow.enabled === 0) {
-                currentSettings.customPrompts[promptRow.systemId] = "";
-              } else {
-                currentSettings.customPrompts[promptRow.systemId] =
-                  promptRow.content;
-              }
-
-              await asyncDb
-                .update(remoteSchema.userSettings)
-                .set({
-                  settingsJson: JSON.stringify(currentSettings),
-                  updatedAt: new Date(),
-                })
-                .where(eq(remoteSchema.userSettings.userId, capturedUserId));
-            }
-          }
-        } catch (err) {
-          _logger.error("Error syncing updated prompt to user settings:", err);
-        }
-      });
-    }
   });
 
   createTypedHandler(promptContracts.delete, async (_, id, context) => {
@@ -409,39 +336,6 @@ export function registerPromptHandlers() {
             eq(remoteSchema.prompts.systemId, systemId),
           ),
         );
-
-      // Limpiar el override en userSettings.customPrompts (fire & forget).
-      const capturedUserId = context.userId;
-      const capturedSystemId = systemId;
-      setImmediate(async () => {
-        try {
-          const asyncDb = getRemoteDb();
-          const [userSettingRow] = await asyncDb
-            .select()
-            .from(remoteSchema.userSettings)
-            .where(eq(remoteSchema.userSettings.userId, capturedUserId));
-          if (userSettingRow) {
-            const currentSettings = JSON.parse(userSettingRow.settingsJson);
-            if (
-              currentSettings.customPrompts &&
-              currentSettings.customPrompts[capturedSystemId] !== undefined
-            ) {
-              delete currentSettings.customPrompts[capturedSystemId];
-              await asyncDb
-                .update(remoteSchema.userSettings)
-                .set({
-                  settingsJson: JSON.stringify(currentSettings),
-                  updatedAt: new Date(),
-                })
-                .where(
-                  eq(remoteSchema.userSettings.userId, capturedUserId),
-                );
-            }
-          }
-        } catch (err) {
-          _logger.error("Error syncing restored prompt to user settings:", err);
-        }
-      });
     },
   );
 

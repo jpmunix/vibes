@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Search, X } from "@/components/ui/icons";
-import * as LucideIcons from "@/components/ui/icons";
+import * as LucideIcons from "lucide-react";
 import iconDatabase from "@/data/lucide-icons.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

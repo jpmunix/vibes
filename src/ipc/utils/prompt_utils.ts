@@ -11,8 +11,7 @@ const logger = log.scope("prompt_utils");
  * Fetch a system prompt by its systemId for a specific user.
  * Prioridad: override del usuario en DB > default del código (DEFAULT_PROMPTS).
  * - Override habilitado con contenido → contenido del override.
- * - Override deshabilitado (enabled=0) → cadena vacía (el usuario lo apagó;
- *   consistente con el sync a customPrompts que guarda "" al desactivar).
+ * - Override deshabilitado (enabled=0) → cadena vacía (el usuario lo apagó).
  * - Sin override → default hardcoded del código.
  */
 export async function getSystemPrompt(

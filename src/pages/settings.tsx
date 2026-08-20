@@ -7,6 +7,7 @@ import {
   getColorById,
 } from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
+import { LanguageSelector } from "@/components/settings/LanguageSettings";
 import { FONT_OPTIONS } from "@/shared/fonts";
 
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
@@ -88,8 +89,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "@/components/ui/icons";
 
-import Fuse from "fuse.js";
-
 import { cn } from "@/lib/utils";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
@@ -101,6 +100,47 @@ interface SearchSettingItem {
   keywords: string[];
   section: string;
   sectionId: string;
+}
+
+/**
+ * In-house weighted search for the settings index (replaces fuse.js).
+ * The index is small (~30 items), so a plain substring match over the
+ * weighted fields is plenty — no fuzzy-matching library needed.
+ */
+function searchSettings(query: string): SearchSettingItem[] {
+  const terms = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (terms.length === 0) return [];
+
+  const scored = SETTINGS_SEARCH_INDEX.map((item) => {
+    const haystacks: Array<[string, number]> = [
+      [item.label.toLowerCase(), 2],
+      [item.description.toLowerCase(), 1],
+      [item.keywords.join(" ").toLowerCase(), 1.5],
+      [item.section.toLowerCase(), 0.5],
+    ];
+    let score = 0;
+    for (const term of terms) {
+      let termHit = false;
+      for (const [haystack, weight] of haystacks) {
+        if (haystack.includes(term)) {
+          score += weight;
+          termHit = true;
+          break; // count each term once (best-weight field wins)
+        }
+      }
+      if (!termHit) return { item, score: -1 }; // any unmatched term excludes
+    }
+    return { item, score };
+  });
+
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((s) => s.item);
 }
 
 const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
@@ -120,7 +160,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "apariencia",
       "color",
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   {
@@ -136,7 +176,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "primary",
       "chroma",
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   {
@@ -152,7 +192,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       // sub-values: font names
       ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   {
@@ -168,7 +208,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       // sub-values: font names
       ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   {
@@ -190,7 +230,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "bubble",
       "width",
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   // Workflow Settings
@@ -284,19 +324,20 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   // ─── Agente ───
   {
     id: "chat-language",
-    label: "Idioma del chat",
-    description: "Seleccionar el idioma para las respuestas del agente",
+    label: "Idioma",
+    description: "Idioma de la interfaz y de la comunicación con el agente",
     keywords: [
       "idioma",
       "language",
       "lenguaje",
+      "interfaz",
       // sub-values
       "español",
       "english",
       "ingles",
     ],
-    section: "Agente",
-    sectionId: "ai-behavior",
+    section: "General",
+    sectionId: "general-settings",
   },
   {
     id: "reasoning-effort",
@@ -557,7 +598,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "defecto",
       "restaurar",
     ],
-    section: "Tema",
+    section: "General",
     sectionId: "general-settings",
   },
   // ─── Agentes Personalizados ───
@@ -716,27 +757,11 @@ export default function SettingsPage() {
 
   // Check if release notes file has content removed (now using static new documentation system)
 
-  // Fuse.js search configuration
-  const fuse = useMemo(
-    () =>
-      new Fuse(SETTINGS_SEARCH_INDEX, {
-        keys: [
-          { name: "label", weight: 2 },
-          { name: "description", weight: 1 },
-          { name: "keywords", weight: 1.5 },
-          { name: "section", weight: 0.5 },
-        ],
-        threshold: 0.4,
-        includeScore: true,
-      }),
-    [],
-  );
-
-  // Search results
+  // Search results (in-house weighted substring search, card #103 Slice 5)
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    return fuse.search(searchQuery).map((result) => result.item);
-  }, [searchQuery, fuse]);
+    return searchSettings(searchQuery);
+  }, [searchQuery]);
 
   // Handle search result click
   const handleSearchResultClick = (sectionId: string) => {
@@ -1233,7 +1258,6 @@ export default function SettingsPage() {
               <VercelIntegration />
               <SupabaseIntegration />
               <NeonIntegration />
-              {/* <FirebaseIntegration /> */}
             </div>
           </div>
 
@@ -1415,9 +1439,14 @@ export function GeneralSettings({
           : "",
       )}
     >
-      <h2 className="typo-section-title mb-8">Tema</h2>
+      <h2 className="typo-section-title mb-8">General</h2>
 
       <div className="space-y-4">
+        <SettingItem
+          label="Idioma"
+          description="Idioma de la interfaz y de la comunicación con el agente"
+          control={<LanguageSelector />}
+        />
         <SettingItem
           label="Apariencia"
           description="Define el tema visual principal de la interfaz"
@@ -2113,33 +2142,6 @@ export function GeneralSettings({
             </div>
           )}
         </div>
-
-        {/* Icon Library Selector (Hidden - Experimental)
-        <SettingItem
-          label="Librería de Iconos"
-          description="Selecciona el paquete de iconos para la interfaz"
-          control={
-            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-              {(["lucide", "iconoir"] as const).map((option) => (
-                <button
-                  key={option}
-                  onClick={async () => {
-                    await updateSettings({ iconLibrary: option });
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
-                    (settings?.iconLibrary || "lucide") === option
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "hover:bg-primary/10",
-                  )}
-                >
-                  {option === "lucide" ? "Lucide" : "Iconoir"}
-                </button>
-              ))}
-            </div>
-          }
-        />
-        */}
       </div>
     </div>
   );

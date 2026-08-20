@@ -34,6 +34,10 @@
       "@vibes/runtime": ["../vibes-core/packages/runtime/src/index.ts"],
       "@vibes/shared": ["../vibes-core/packages/shared/src/index.ts"],
       "@vibes/tools": ["../vibes-core/packages/tools/src/index.ts"],
+      // Subpath puro (sin side-effects de Node): el catálogo de tools. La UI
+      // (renderer) lo importa para labels/metadata sin arrastrar los built-in
+      // (node:fs, node:path) al bundle del navegador.
+      "@vibes/tools/catalog": ["../vibes-core/packages/tools/src/catalog.ts"],
       "@vibes/workspace": ["../vibes-core/packages/workspace/src/index.ts"],
       "@vibes/bridge": ["../vibes-core/packages/bridge/src/index.ts"],
       "@vibes/providers/sqlite": ["../vibes-core/packages/providers/src/sqlite/index.ts"],

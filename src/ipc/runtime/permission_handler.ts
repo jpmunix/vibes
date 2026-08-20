@@ -18,32 +18,20 @@ import {
   getPendingRuntimePermissionToolId,
 } from "./permission_state";
 import { writeSettings, readSettings } from "../../main/settings";
-import type { PermissionsConfig } from "../../lib/schemas";
 
 const logger = log.scope("runtime_permission");
 
 /**
  * Map a runtime toolId to the corresponding pill key in `permissions.tools`.
- * Shell-style tools share the `shell` pill. All other tools use their toolId
- * directly (since the schema now uses toolIds as keys).
+ * The schema is now an open `Record<string, PermissionDecision>`, so every
+ * toolId maps directly to itself — shell-style aliases (bash/sh/exec) funnel
+ * to the `shell` key so they share the pill.
  */
-function toolIdToPillKey(toolId: string): keyof NonNullable<PermissionsConfig["tools"]> | null {
-  // Known tools in the schema. For unknown tools, we don't persist — the
-  // user can configure them manually via Settings.
-  const TOOL_PILL_MAP: Record<string, keyof NonNullable<PermissionsConfig["tools"]>> = {
-    read_file: "read_file",
-    write_file: "write_file",
-    edit_file: "edit_file",
-    glob: "glob",
-    grep: "grep",
-    shell: "shell",
-    bash: "shell",
-    webfetch: "webfetch",
-    websearch: "websearch",
-    task: "task",
-    skill: "skill",
-  };
-  return TOOL_PILL_MAP[toolId] ?? null;
+function toolIdToPillKey(toolId: string): string | null {
+  // Shell aliases share the `shell` pill; everything else uses its toolId.
+  const SHELL_ALIASES = new Set(["bash", "sh", "exec"]);
+  if (SHELL_ALIASES.has(toolId)) return "shell";
+  return toolId;
 }
 
 export function registerPermissionHandler() {

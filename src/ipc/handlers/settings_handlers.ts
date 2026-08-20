@@ -40,7 +40,6 @@ const LOCAL_DISK_ONLY_KEYS = new Set([
  * from re-introducing them after the local migration has cleaned them up.
  */
 const _V10_DEAD_KEYS = [
-  "turboEditModel",
   "todoAnalysisModel",
   "debateModel",
   "summaryModel",
@@ -61,7 +60,6 @@ const _V10_DEAD_KEYS = [
   "experiments",
   "releaseChannel",
   "dossierModel",
-  "enableTurboEditsV2",
 ] as const;
 
 /**

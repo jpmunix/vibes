@@ -6,10 +6,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronDown, Zap, Brain, RotateCcw, Cog } from "@/components/ui/icons";
-import * as Lucide from "lucide-react";
+import { Scale } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
-
-const Scale = Lucide.Scale;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

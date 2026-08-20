@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom, currentAppAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import {
   Terminal as TerminalIcon,
   Send,
@@ -74,6 +73,10 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 const MAX_HISTORY = 50;
 
+// Cap the visible log buffer — logs are mostly used to spot startup errors,
+// and keeping the DOM bounded avoids unbounded re-renders (card #103 Slice 4).
+const MAX_CONSOLE_ENTRIES = 100;
+
 /** Find longest common prefix of an array of strings */
 function findCommonPrefix(strs: string[]): string {
   if (strs.length === 0) return "";
@@ -90,7 +93,7 @@ function findCommonPrefix(strs: string[]): string {
 export const ConsoleTerminal = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const app = useAtomValue(currentAppAtom);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [entries, setEntries] = useState<TerminalEntry[]>([]);
@@ -138,17 +141,11 @@ export const ConsoleTerminal = () => {
     }
   }, [app?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-scroll — always scroll to bottom on new entries
+  // Auto-scroll — always scroll to bottom on new entries (native scroll).
   useEffect(() => {
-    if (virtuosoRef.current && entries.length > 0) {
-      // Small delay to let Virtuoso render the new item
-      const t = setTimeout(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: entries.length - 1,
-          behavior: "smooth",
-        });
-      }, 50);
-      return () => clearTimeout(t);
+    const el = scrollRef.current;
+    if (el && entries.length > 0) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [entries.length]);
 
@@ -163,15 +160,21 @@ export const ConsoleTerminal = () => {
 
   const addEntry = useCallback(
     (type: TerminalEntry["type"], content: string) => {
-      setEntries((prev) => [
-        ...prev,
-        {
-          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          type,
-          content,
-          timestamp: Date.now(),
-        },
-      ]);
+      setEntries((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            type,
+            content,
+            timestamp: Date.now(),
+          },
+        ];
+        // Keep the buffer bounded — drop oldest beyond the cap.
+        return next.length > MAX_CONSOLE_ENTRIES
+          ? next.slice(next.length - MAX_CONSOLE_ENTRIES)
+          : next;
+      });
     },
     [],
   );
@@ -388,20 +391,19 @@ export const ConsoleTerminal = () => {
             </div>
           </div>
         ) : (
-          <Virtuoso
-            ref={virtuosoRef}
-            data={entries}
-            initialTopMostItemIndex={Math.max(0, entries.length - 1)}
-            followOutput="smooth"
-            itemContent={(_index, entry) => (
+          <div
+            ref={scrollRef}
+            className="h-full overflow-y-auto overflow-x-hidden"
+          >
+            {entries.map((entry) => (
               <div
+                key={entry.id}
                 className={`px-4 py-0.5 break-all whitespace-pre-wrap ${getEntryClassName(entry.type)}`}
               >
                 {entry.content}
               </div>
-            )}
-            style={{ height: "100%" }}
-          />
+            ))}
+          </div>
         )}
       </div>
 

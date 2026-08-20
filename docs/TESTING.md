@@ -37,7 +37,7 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
-## Tests Unitarios / Integration (Vitest) — 21 archivos
+## Tests Unitarios / Integration (Vitest) — 25 archivos
 
 ### Runtime swap (B6) — Frontera Vibes ↔ vibes-core
 
@@ -70,18 +70,26 @@ npm run e2e:shard   # playwright test --shard
 
 | Archivo | Líneas | Qué cubre |
 |---|---|---|
-| [engine_fetch.spec.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/ipc/handlers/agent/tools/engine_fetch.spec.ts) | — | Routing de turbo file edits vía OpenRouter con `proModeModel`. Verifica URL, headers, body. |
-| [search_replace.spec.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/ipc/handlers/agent/tools/search_replace.spec.ts) | — | Tool `search_replace`: schema, validación, exact match, fuzzy match (whitespace/indent/tabs), escape de merge conflict markers, buildXml streaming, `getConsentPreview`. |
 | [search_replace_dsl.spec.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/ipc/processors/search_replace_dsl.spec.ts) | — | ★ **Golden con fixtures.** Lee `search_replace_passes.txt` (19673 bytes) y `search_replace_fails.txt` (4646 bytes), ejecuta `applySearchReplace` con `it.each`. Cambiar fixtures requiere discusión. |
 | [search_replace_processor.spec.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/ipc/processors/search_replace_processor.spec.ts) | — | Cascading fuzzy matching Pass 1-4 (exact → trailing WS → leading/trailing WS → unicode normalization smart quotes/en-dash/NBSP), CRLF, indent preservation, empty SEARCH block, detailed failure logging con `toMatchInlineSnapshot`. |
 | [search_replace_processor.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/ipc/processors/search_replace_processor.test.ts) | — | ⚠️ Variante minimal con mismo target: smart quotes, whitespace normalization, ambiguous detection, exact match. **Solapa con el `.spec.ts`** — candidato a consolidar. |
 | [visual_editing_utils.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/pro/main/utils/visual_editing_utils.test.ts) | — | `transformContent` y `analyzeComponent`: manipulación de className (Tailwind arbitrary values, font-weight vs font-family prefixes), cambios por línea. |
 
-**Cuándo usarlos:** Si se toca el sistema de turbo edits, search-replace DSL, o visual editing.
+**Cuándo usarlos:** Si se toca el sistema de search-replace DSL o visual editing.
 
 ---
 
-## Tests E2E (Playwright) — 105 specs + 254 snapshots
+### UI — contrato de iconos y tree-shaking
+
+| Archivo | Líneas | Qué cubre |
+|---|---|---|
+| [icons.test.tsx](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/ui/icons.test.tsx) | 28 | **Slice 1 (card #103) — guard de tree-shaking.** Ancla el refactor que bajó el chunk de arranque de 1,291 KB a 323 KB. Verifica a nivel de fuente que `icons.tsx` NO reintroduce `import * as` ni `export * from "lucide-react"` (que metían los ~1570 iconos en el bundle y destrozaban el tree-shaking), y que no reaparece iconoir-react (feature de doble tema eliminada). A nivel runtime comprueba que una muestra de iconos muy usados y los 10 brand SVGs siguen exportados como componentes renderizables. |
+
+**Cuándo usarlos:** Si se toca `src/components/ui/icons.tsx` o el sistema de iconos. **Este test es la barrera contra la regresión de bundle** — si alguien vuelve a meter un namespace-import o un `export *` de lucide-react, el bundle engorda ~967 KB sin que ningún otro test de comportamiento lo detecte (los iconos "funcionan igual"). Cambiar la lista de `REQUIRED_ICONS`/`BRAND_ICONS` requiere discusión.
+
+---
+
+## Tests E2E (Playwright) — 103 specs + 244 snapshots
 
 ### Infraestructura
 
@@ -109,7 +117,7 @@ npm run e2e:shard   # playwright test --shard
 | `problems`, `fix_error` | ~3 | Panel de errores TS, auto-fix con AI (2-attempt give-up), manual edit. |
 | `select_component`, `visual_editing`, `attach_image`, `annotator` | ~4 | Selección visual de componentes, edición CSS in-place, attach de imágenes. |
 | `security_review`, `free_agent_quota`, `telemetry`, `release_channel` | ~4 | Features Pro. |
-| `turbo_edits_v2`, `uncommitted_files_banner` | ~2 | Turbo edits v2 con search-replace fallback. |
+| `uncommitted_files_banner` | ~1 | Banner de archivos sin commitear. |
 | `version_integrity`, `select_component` | ~2 | Versionado de archivos, upgrade flows. |
 | `backup`, `chat_search`, `app_search`, `file_tree_search` | ~4 | Búsqueda y backup. |
 | `setup_flow`, `setup`, `main` | ~3 | Setup inicial. |

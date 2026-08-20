@@ -8,57 +8,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { toolLabel, toolDescription } from "@/lib/i18n";
+import { useSettings } from "@/hooks/useSettings";
+import type { Language } from "@/lib/i18n";
 
-// ── Human-readable labels ──
-const TOOL_LABELS: Record<string, { label: string; desc: string }> = {
-  edit: {
-    label: "editar archivos",
-    desc: "Crear, modificar y borrar archivos del proyecto",
-  },
-  bash: {
-    label: "terminal",
-    desc: "Ejecutar comandos en la terminal del proyecto",
-  },
-  read: {
-    label: "leer archivos",
-    desc: "Leer el contenido de archivos del proyecto",
-  },
-  list: {
-    label: "listar directorio",
-    desc: "Listar el contenido de un directorio",
-  },
-  glob: {
-    label: "buscar archivos",
-    desc: "Buscar archivos por patrón en el proyecto",
-  },
-  grep: {
-    label: "buscar en archivos",
-    desc: "Buscar texto dentro de archivos del proyecto",
-  },
-  webfetch: { label: "acceso web", desc: "Acceder a URLs externas" },
-  websearch: { label: "búsqueda web", desc: "Buscar información en internet" },
-  lsp: {
-    label: "diagnósticos LSP",
-    desc: "Ejecutar verificación de tipos por archivo",
-  },
-  task: {
-    label: "subagente",
-    desc: "Lanzar un sub-agente para tareas paralelas",
-  },
-  skill: { label: "skill", desc: "Ejecutar un skill o prompt predefinido" },
-  external_directory: {
-    label: "directorio externo",
-    desc: "Acceder a archivos fuera del directorio del proyecto",
-  },
-  todowrite: {
-    label: "lista de tareas",
-    desc: "Gestionar la lista de tareas del agente",
-  },
-  doom_loop: {
-    label: "recuperación",
-    desc: "Auto-recuperación cuando el agente entra en bucle",
-  },
-};
+// The pill reads the human label + description from the shell's i18n
+// dictionary (P1: the runtime carries no localized strings). Fallback: show
+// the raw tool id so unknown tools are still identifiable.
+function toolMeta(
+  toolId: string,
+  language: Language,
+): { label: string; desc: string } {
+  return {
+    label: toolLabel(toolId, language),
+    desc: toolDescription(toolId, language),
+  };
+}
 
 interface VibesPermissionBannerProps {
   permission: PendingOpenCodePermission;
@@ -72,7 +37,9 @@ export function VibesPermissionBanner({
   onResponse,
 }: VibesPermissionBannerProps) {
   const { toolName, toolInput } = permission;
-  const meta = TOOL_LABELS[toolName] ?? { label: toolName, desc: "" };
+  const { settings } = useSettings();
+  const language: Language = (settings?.chatLanguage as Language) ?? "es";
+  const meta = toolMeta(toolName, language);
 
   // Collapsible input preview
   const [isInputExpanded, setIsInputExpanded] = React.useState(false);

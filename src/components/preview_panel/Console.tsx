@@ -7,20 +7,13 @@ import type { ConsoleEntry } from "@/ipc/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ipc } from "@/ipc/types";
 import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import { ConsoleEntryComponent } from "./ConsoleEntry";
 import { ConsoleFilters } from "./ConsoleFilters";
-import { useSettings } from "@/hooks/useSettings";
 import { showError } from "@/lib/toast";
 
-// Placeholder component shown during fast scrolling
-const ScrollSeekPlaceholder = () => {
-  return (
-    <div className="font-mono text-xs py-2 px-4 border-b border-gray-200 dark:border-gray-700">
-      <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-    </div>
-  );
-};
+// Logs are mostly used to spot startup errors; cap the rendered buffer so the
+// DOM stays bounded (card #103 Slice 4). Full history lives in the backend.
+const MAX_RENDERED_LOGS = 100;
 
 // Wrapper component for console items - memoized to prevent unnecessary re-renders
 interface ConsoleItemProps {
@@ -76,8 +69,7 @@ export const Console = () => {
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const currentApp = useAtomValue(currentAppAtom);
-  const { settings } = useSettings();
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasScrolledToBottom = useRef(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -102,9 +94,6 @@ export const Console = () => {
   const [isNearBottom, setIsNearBottom] = useState(true);
   // Track if initial scroll has completed to prevent glitches during first interaction
   const initialScrollDone = useRef(false);
-  // Track if user is actively scrolling to prevent auto-scroll conflicts
-  const [isScrolling, setIsScrolling] = useState(false);
-
   const handleClearFilters = () => {
     setLevelFilter("all");
     setTypeFilter("all");
@@ -233,6 +222,28 @@ export const Console = () => {
     });
   }, [consoleEntries, levelFilter, typeFilter, sourceFilter]);
 
+  // Only render the most recent N logs — keeps the DOM bounded while the full
+  // history stays available for export and counts (card #103 Slice 4).
+  const renderedEntries = useMemo(() => {
+    return filteredEntries.length > MAX_RENDERED_LOGS
+      ? filteredEntries.slice(filteredEntries.length - MAX_RENDERED_LOGS)
+      : filteredEntries;
+  }, [filteredEntries]);
+
+  // Auto-scroll: keep following the tail when new logs arrive and the user was
+  // already at/near the bottom (replaces Virtuoso's followOutput).
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || renderedEntries.length === 0) return;
+    if (isNearBottom || !hasScrolledToBottom.current) {
+      el.scrollTop = el.scrollHeight;
+      hasScrolledToBottom.current = true;
+      if (!initialScrollDone.current) {
+        initialScrollDone.current = true;
+      }
+    }
+  }, [renderedEntries.length, isNearBottom]);
+
   const handleExportLogs = useCallback(async () => {
     if (filteredEntries.length === 0) {
       showError("No hay logs para exportar");
@@ -294,39 +305,7 @@ export const Console = () => {
     });
   }, []);
 
-  // Item renderer function for react-virtuoso
-  const ItemContent = useCallback(
-    (index: number) => {
-      return (
-        <ConsoleItem
-          index={index}
-          entry={filteredEntries[index]}
-          expandedEntries={expandedEntries}
-          typeFilter={typeFilter}
-          getEntryKey={getEntryKey}
-          toggleExpanded={toggleExpanded}
-          appId={selectedAppId}
-        />
-      );
-    },
-    [
-      filteredEntries,
-      expandedEntries,
-      typeFilter,
-      getEntryKey,
-      toggleExpanded,
-      selectedAppId,
-    ],
-  );
-
   const listHeight = containerHeight - (showFilters ? 60 : 0);
-
-  // Disable virtualization in test mode for easier e2e testing
-  // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
-  // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
-  // 2. Tests would need complex scrolling logic to bring elements into view before interaction
-  // 3. Race conditions and timing issues occur when waiting for virtualized elements to render after scrolling
-  const isTestMode = settings?.isTestMode;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -346,79 +325,45 @@ export const Console = () => {
         showFilters={showFilters}
       />
 
-      {/* Virtualized log area */}
+      {/* Log area — native scroll over the most recent MAX_RENDERED_LOGS entries */}
       <div ref={containerRef} className="flex-1 overflow-hidden px-4">
-        {containerHeight > 0 &&
-          (isTestMode ? (
-            // Non-virtualized rendering for test mode - all logs visible in DOM
-            <div
-              className="font-mono text-xs"
-              style={{ height: listHeight, overflowY: "auto" }}
-            >
-              {filteredEntries.map((entry, index) => {
-                const entryKey = getEntryKey(entry, index);
-                const isExpanded = expandedEntries.has(entryKey);
-
-                return (
-                  <div key={entryKey}>
-                    <ConsoleEntryComponent
-                      type={entry.type}
-                      level={entry.level}
-                      timestamp={entry.timestamp}
-                      message={entry.message}
-                      sourceName={entry.sourceName}
-                      typeFilter={typeFilter}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleExpanded(entryKey)}
-                      appId={selectedAppId}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Virtuoso
-              ref={virtuosoRef}
-              style={{ height: listHeight }}
-              totalCount={filteredEntries.length}
-              itemContent={ItemContent}
-              defaultItemHeight={100}
-              className="font-mono text-xs"
-              initialTopMostItemIndex={
-                filteredEntries.length > 0 ? filteredEntries.length - 1 : 0
-              }
-              followOutput={
-                isNearBottom && initialScrollDone.current && !isScrolling
-                  ? "auto"
-                  : false
-              }
-              atBottomThreshold={100}
-              atBottomStateChange={(atBottom) => {
-                // atBottomThreshold makes this fire when within 100px of bottom
-                setIsNearBottom(atBottom);
-                if (atBottom) {
-                  hasScrolledToBottom.current = true;
-                  // Mark initial scroll as done after first time we reach bottom
-                  if (!initialScrollDone.current) {
-                    initialScrollDone.current = true;
-                  }
+        {containerHeight > 0 && (
+          <div
+            ref={listRef}
+            className="font-mono text-xs"
+            style={{ height: listHeight, overflowY: "auto" }}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const nearBottom =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+              setIsNearBottom(nearBottom);
+              if (nearBottom) {
+                hasScrolledToBottom.current = true;
+                if (!initialScrollDone.current) {
+                  initialScrollDone.current = true;
                 }
-              }}
-              // Detect when user is scrolling to prevent auto-scroll conflicts
-              isScrolling={(scrolling) => {
-                setIsScrolling(scrolling);
-              }}
-              increaseViewportBy={{ top: 500, bottom: 500 }}
-              // Configure scroll seek placeholders for fast scrolling
-              scrollSeekConfiguration={{
-                enter: (velocity) => Math.abs(velocity) > 1000,
-                exit: (velocity) => Math.abs(velocity) < 100,
-              }}
-              components={{
-                ScrollSeekPlaceholder,
-              }}
-            />
-          ))}
+              }
+            }}
+          >
+            {renderedEntries.map((entry, index) => {
+              const entryKey = getEntryKey(entry, index);
+              const isExpanded = expandedEntries.has(entryKey);
+
+              return (
+                <ConsoleItem
+                  key={entryKey}
+                  index={index}
+                  entry={entry}
+                  expandedEntries={expandedEntries}
+                  typeFilter={typeFilter}
+                  getEntryKey={getEntryKey}
+                  toggleExpanded={toggleExpanded}
+                  appId={selectedAppId}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

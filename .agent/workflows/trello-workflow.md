@@ -61,7 +61,7 @@ Todo vive en [`scripts/trello/`](file:///home/munix/Desarrollo/GitRepo/Vibes/scr
 
 **Convenciones:**
 - **Siempre** usa el `idShort` como identificador (`--card "#92"` o `--card 92`), no el título. El `idShort` es estable; el título puede editarse y romper la referencia. Solo usa el título si no conoces el número.
-- **Toda card lleva su número en el título**: formato `#XXX - título` (p. ej. `#92 - Deuda: compactar en caliente`). La app de Android no muestra el número, así que el `#XXX` va SIEMPRE al principio del título. Detalle en AGENTS.md §1.10.11.
+- **Toda card lleva su número en el título**: formato `#XXX - título` (p. ej. `#92 - Deuda: compactar en caliente`). La app de Android no muestra el número, así que el `#XXX` va SIEMPRE al principio del título. **Una vez creada la card, el agente DEBE verificar que el `#idShort` está al principio del título; si no lo tiene, DEBE actualizarla para añadirlo — siempre, sin excepción. Es innegociable.** Detalle en AGENTS.md §1.10.11.
 - Los scripts son **idempotentes**: crear algo que ya existe avisa y no duplica.
 - La salida normal (sin flags) es para humanos; `--light` es el modo del agente para leer el board; `--detail` **solo redirigido a fichero tmp**, nunca a stdout ni pipeado.
 

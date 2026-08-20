@@ -326,6 +326,7 @@ Toda card del board lleva su **número (`idShort`) en el título**, en formato `
 
 **Reglas:**
 - Toda card **nueva** se crea ya con el `#XXX` en el título (tras `create-card`, el `idShort` asignado se antepone al título con `update-card --name "#XXX - <título>"`).
+- **Una vez creada la card, el agente DEBE verificar que el `#idShort` está al principio del título. Si no lo tiene, DEBE actualizarla para añadirlo — siempre, sin excepción. Es innegociable.** No se da una card por creada hasta que su título empieza por `#<idShort> - `.
 - Toda card **renombrada** conserva el `#XXX` al principio.
 - El `idShort` es el que expone `list-cards --light` (el mismo `#VIBES-NN` de la ref-line, §1.10.10).
 - No usar `#VIBES-` como prefijo en el título (`#VIBES-XX` queda solo para la ref-line de los comentarios y los commits): en el título basta `#XX`.
@@ -536,5 +537,5 @@ node scripts/ag-chats.mjs show <cascadeId> --steps
 
 ---
 
-**Última actualización:** 2026-08-17 (§1.14: cero endososas a terceros — el código es nuestro, no se menciona a OpenCode/aider/continue/pi/plandex ni en código, ni en comments, ni en descriptions de tools, ni en docs, ni en commits. `arneses/` sigue siendo sitio de consulta para aprender patrones, pero no se cita en el código del repo).
+**Última actualización:** 2026-08-20 (§1.10.11 reforzada: una vez creada una card, si no lleva su `#idShort` al principio del título, el agente DEBE actualizarla — siempre, sin excepción. Innegociable).
 **Mantenedor:** munix.

@@ -103,4 +103,22 @@ describe("formatToolInput", () => {
       );
     });
   });
+
+  describe("empty args (args={} bug)", () => {
+    it("empty object → 'sin argumentos' (not '{}')", () => {
+      // The pill used to show '{}' when a tool has no args. It should read
+      // as "(sin argumentos)".
+      expect(formatToolInput("git_diff", {})).toBe("(sin argumentos)");
+    });
+
+    it("git_diff with no args (all optional) → 'sin argumentos'", () => {
+      expect(formatToolInput("git_diff", {})).toBe("(sin argumentos)");
+    });
+
+    it("git_diff with path → shows the path", () => {
+      expect(formatToolInput("git_diff", { path: "src/foo.ts" })).toBe(
+        "src/foo.ts",
+      );
+    });
+  });
 });

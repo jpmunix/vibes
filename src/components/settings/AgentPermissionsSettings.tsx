@@ -7,88 +7,48 @@ import type {
   PermissionCustomRule,
 } from "@/lib/schemas";
 import { ChevronRight, Plus, X } from "@/components/ui/icons";
+import { TOOL_CATALOG_LIST, getToolMetadata } from "@vibes/tools/catalog";
+import { toolLabel, toolDescription } from "@/lib/i18n";
+import type { Language } from "@/lib/i18n";
 
-// ── Tool definitions — maps vibes-core toolIds to UI labels ──
-// The runtime permission gate reads settings.permissions.tools[toolId].
-// `pending: true` = tool declared in the schema but NOT registered in the
-// vibes-core runtime yet. The pill is shown disabled so the user knows it
-// doesn't do anything today.
-interface ToolDef {
+// ── Tool rows generated from the runtime catalog (source of truth) ──
+// Each row is derived from the catalog (id, riskLevel, argSchema) + the
+// shell's i18n dictionary for human labels/descriptions (P1: the runtime
+// carries no localized strings). No hardcoded list, no `pending` flag.
+
+interface ToolRow {
   toolId: string;
   label: string;
   description: string;
   defaultValue: PermissionDecision;
-  pending?: boolean;
 }
 
-const TOOLS: ToolDef[] = [
-  {
-    toolId: "read_file",
-    label: "Leer archivos",
-    description: "Leer el contenido de archivos del proyecto",
-    defaultValue: "allow",
-  },
-  {
-    toolId: "write_file",
-    label: "Escribir archivos",
-    description: "Crear y sobrescribir archivos del proyecto",
-    defaultValue: "ask",
-  },
-  {
-    toolId: "edit_file",
-    label: "Editar archivos",
-    description: "Modificar archivos existentes del proyecto",
-    defaultValue: "ask",
-  },
-  {
-    toolId: "glob",
-    label: "Buscar archivos por patrón",
-    description: "Encontrar archivos por nombre o patrón (glob)",
-    defaultValue: "allow",
-  },
-  {
-    toolId: "grep",
-    label: "Buscar contenido",
-    description: "Buscar texto dentro de los archivos del proyecto",
-    defaultValue: "allow",
-  },
-  {
-    toolId: "shell",
-    label: "Terminal (bash)",
-    description: "Ejecutar comandos en la terminal del proyecto",
-    defaultValue: "ask",
-  },
-  // ── PENDING: declaradas en el schema pero sin tool registrada en
-  // vibes-core todavía. El pill se muestra deshabilitado (no hace nada).
-  {
-    toolId: "webfetch",
-    label: "Acceso web",
-    description: "Acceder a URLs externas",
-    defaultValue: "ask",
-    pending: true,
-  },
-  {
-    toolId: "websearch",
-    label: "Búsqueda web",
-    description: "Buscar información en internet",
-    defaultValue: "ask",
-    pending: true,
-  },
-  {
-    toolId: "task",
-    label: "Subagentes",
-    description: "Lanzar sub-agentes para tareas paralelas",
-    defaultValue: "ask",
-    pending: true,
-  },
-  {
-    toolId: "skill",
-    label: "Skills",
-    description: "Ejecutar skills y prompts predefinidos",
-    defaultValue: "ask",
-    pending: true,
-  },
-];
+// Map riskLevel → default consent (mirrors Vibes policy, expressed on the
+// catalog's own metadata so a new tool gets a sane default automatically).
+const RISK_TO_DEFAULT: Record<string, PermissionDecision> = {
+  read: "allow",
+  mutation: "ask",
+  destructive: "ask",
+  web: "ask",
+  interaction: "ask",
+  vcs: "ask",
+};
+
+/**
+ * Build the permission rows from the runtime catalog + the i18n dictionary.
+ * Exported as a pure function so it can be unit-tested without rendering.
+ */
+export function buildToolList(language: Language = "es"): ToolRow[] {
+  return TOOL_CATALOG_LIST.map((def) => {
+    const meta = getToolMetadata(def.id);
+    return {
+      toolId: def.id,
+      label: toolLabel(def.id, language),
+      description: toolDescription(def.id, language),
+      defaultValue: RISK_TO_DEFAULT[meta?.riskLevel ?? "mutation"] ?? "ask",
+    };
+  });
+}
 
 // ── Shell sub-pills — granular rules for shell commands ──
 // Mirrors PermissionsConfig.shellSubPills in the schema.
@@ -147,42 +107,24 @@ function PermissionPill({
   );
 }
 
-// ── Badge "pendiente" — visible de lejos, que se note que no está activo ──
-function PendingBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wider">
-      ⏳ Sin soporte runtime
-    </span>
-  );
-}
-
 // ── Reusable SettingRow matching AIBehaviorSettings.SettingRow ──
 function PermissionRow({
   label,
   description,
   control,
-  pending,
 }: {
   label: string;
   description?: string;
   control: React.ReactNode;
-  pending?: boolean;
 }) {
   return (
     <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="typo-label">{label}</h3>
-          {pending && <PendingBadge />}
         </div>
         {description && (
           <p className="typo-caption mt-1 leading-relaxed">{description}</p>
-        )}
-        {pending && (
-          <p className="typo-caption mt-0.5 text-amber-600/80 dark:text-amber-400/80 leading-relaxed">
-            Esta herramienta aún no está activa en el runtime. El permiso se
-            guardará pero no tendrá efecto hasta que se implemente.
-          </p>
         )}
       </div>
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -205,12 +147,15 @@ export function AgentPermissionsSettings() {
     useState<PermissionDecision>("ask");
 
   // ── tools ──
-  const getToolValue = (tool: ToolDef): PermissionDecision => {
-    const v = perms?.tools?.[tool.toolId as keyof NonNullable<PermissionsConfig["tools"]>];
+  const language: Language = (settings?.chatLanguage as Language) ?? "es";
+  const toolList = React.useMemo(() => buildToolList(language), [language]);
+
+  const getToolValue = (tool: ToolRow): PermissionDecision => {
+    const v = perms?.tools?.[tool.toolId];
     return v ?? tool.defaultValue;
   };
 
-  const setToolValue = async (tool: ToolDef, value: PermissionDecision) => {
+  const setToolValue = async (tool: ToolRow, value: PermissionDecision) => {
     await updateSettings({
       permissions: {
         ...perms,
@@ -308,17 +253,15 @@ export function AgentPermissionsSettings() {
       {/* Expanded content */}
       {expanded && (
         <div className="pl-4 space-y-0">
-          {TOOLS.map((tool) => (
+          {toolList.map((tool) => (
             <React.Fragment key={tool.toolId}>
               <PermissionRow
                 label={tool.label}
                 description={tool.description}
-                pending={tool.pending}
                 control={
                   <PermissionPill
                     value={getToolValue(tool)}
                     onChange={(v) => setToolValue(tool, v)}
-                    disabled={tool.pending}
                   />
                 }
               />

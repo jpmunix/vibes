@@ -1,8 +1,13 @@
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
+import { defineConfig, type PluginOption } from "vite";
 import { vibesAliases } from "./vite.vibes-aliases.mts";
+
+// Bundle analysis: se activa con ANALYZE=1 (npm run build:analyze).
+// Genera dist/renderer-stats.html (treemap interactivo, gzip incluido).
+const ANALYZE = process.env.ANALYZE === "1";
 
 const ReactCompilerConfig = {};
 
@@ -23,6 +28,17 @@ export default defineConfig({
       },
     }),
     tailwindcss(),
+    // Debe ir el último para ver todos los tamaños tras los transforms.
+    ...(ANALYZE
+      ? [
+          visualizer({
+            filename: "dist/renderer-stats.html",
+            title: "Vibes renderer bundle",
+            template: "treemap",
+            gzipSize: true,
+          }) as PluginOption,
+        ]
+      : []),
   ],
   resolve: {
     alias: {
@@ -33,6 +49,25 @@ export default defineConfig({
       // package-lock.json) lanza "could not be resolved".
       ...vibesAliases,
     },
+  },
+  optimizeDeps: {
+    // Forzamos a Vite a no pre-bundlear los imports @vibes/* — viven en
+    // el repo hermano (vibes-core) y se sirven como TS source. Si el
+    // optimizeDeps los mete en el prebundle, los imports @vibes/tools/catalog
+    // (subpath puro) y otros no resuelven porque el alias no llega al
+    // análisis de imports pre-empaquetado.
+    exclude: [
+      "@vibes/tools",
+      "@vibes/tools/catalog",
+      "@vibes/shared",
+      "@vibes/runtime",
+      "@vibes/runtime-impl",
+      "@vibes/workspace",
+      "@vibes/bridge",
+      "@vibes/providers/sqlite",
+      "@vibes/providers/openai-compatible",
+      "@vibes/providers/openrouter",
+    ],
   },
   build: {
     rollupOptions: {

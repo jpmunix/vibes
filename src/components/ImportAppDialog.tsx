@@ -15,7 +15,7 @@ import { Folder, X, Loader2, Info } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import type { GithubRepository } from "@/ipc/types";

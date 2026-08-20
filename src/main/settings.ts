@@ -72,7 +72,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fontScaleSidebar: 1,
   fontScaleChat: 1,
   fontScaleBubbleWidth: 65,
-  iconLibrary: "lucide",
   loaderStyle: "orbital",
 };
 

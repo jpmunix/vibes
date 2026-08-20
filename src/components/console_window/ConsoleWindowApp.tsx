@@ -12,12 +12,15 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { showError } from "@/lib/toast";
 import { Toaster } from "sonner";
 import { WindowsControls } from "@/components/WindowsControls";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import { cn } from "@/lib/utils";
 import { ConsoleEntryComponent } from "../preview_panel/ConsoleEntry";
 import { ConsoleFilters } from "../preview_panel/ConsoleFilters";
 import { ConsoleTerminal } from "../preview_panel/ConsoleTerminal";
 import { Logs } from "@/components/ui/icons";
+
+// Logs are mostly used to spot startup errors; cap the rendered buffer so the
+// DOM stays bounded (card #103 Slice 4). Full history lives in the backend.
+const MAX_RENDERED_LOGS = 100;
 
 // Isolated QueryClient for the console window
 const queryClient = new QueryClient({
@@ -37,13 +40,6 @@ const queryClient = new QueryClient({
 interface ConsoleWindowAppProps {
   appId: number;
 }
-
-// ─── Scroll-seek placeholder ───────────────────────────────────────────────────
-const ScrollSeekPlaceholder = () => (
-  <div className="font-mono text-xs py-2 px-4 border-b border-gray-200 dark:border-gray-700">
-    <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-  </div>
-);
 
 // ─── Memoized log item ────────────────────────────────────────────────────────
 interface LogItemProps {
@@ -91,7 +87,7 @@ LogItem.displayName = "LogItem";
 // ─── Logs Panel (self-contained, no useSettings dependency) ────────────────────
 function LogsPanel({ appId }: { appId: number }) {
   const [entries, setEntries] = useState<ConsoleEntry[]>([]);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -181,6 +177,14 @@ function LogsPanel({ appId }: { appId: number }) {
     });
   }, [entries, levelFilter, typeFilter, sourceFilter]);
 
+  // Only render the most recent N logs — keeps the DOM bounded while the full
+  // history stays available for export and counts (card #103 Slice 4).
+  const renderedEntries = useMemo(() => {
+    return filteredEntries.length > MAX_RENDERED_LOGS
+      ? filteredEntries.slice(filteredEntries.length - MAX_RENDERED_LOGS)
+      : filteredEntries;
+  }, [filteredEntries]);
+
   // Source names for filter dropdown
   const uniqueSources = useMemo(() => {
     const sources = new Set<string>();
@@ -207,18 +211,13 @@ function LogsPanel({ appId }: { appId: number }) {
     });
   }, []);
 
-  // Auto-scroll when near bottom
+  // Auto-scroll when near bottom (native scroll)
   useEffect(() => {
-    if (isNearBottom && virtuosoRef.current && filteredEntries.length > 0) {
-      const t = setTimeout(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: filteredEntries.length - 1,
-          behavior: "smooth",
-        });
-      }, 50);
-      return () => clearTimeout(t);
+    const el = listRef.current;
+    if (isNearBottom && el && renderedEntries.length > 0) {
+      el.scrollTop = el.scrollHeight;
     }
-  }, [filteredEntries.length, isNearBottom]);
+  }, [renderedEntries.length, isNearBottom]);
 
   const handleExportLogs = useCallback(() => {
     const text = entries
@@ -266,19 +265,19 @@ function LogsPanel({ appId }: { appId: number }) {
             No hay logs disponibles
           </div>
         ) : (
-          <Virtuoso
-            ref={virtuosoRef}
-            data={filteredEntries}
-            followOutput="smooth"
-            initialTopMostItemIndex={Math.max(0, filteredEntries.length - 1)}
-            atBottomStateChange={setIsNearBottom}
-            components={{ ScrollSeekPlaceholder }}
-            scrollSeekConfiguration={{
-              enter: (v) => Math.abs(v) > 600,
-              exit: (v) => Math.abs(v) < 100,
+          <div
+            ref={listRef}
+            className="h-full overflow-y-auto"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              setIsNearBottom(
+                el.scrollHeight - el.scrollTop - el.clientHeight < 100,
+              );
             }}
-            itemContent={(index, entry) => (
+          >
+            {renderedEntries.map((entry, index) => (
               <LogItem
+                key={getEntryKey(entry, index)}
                 index={index}
                 entry={entry}
                 expandedEntries={expandedEntries}
@@ -287,9 +286,8 @@ function LogsPanel({ appId }: { appId: number }) {
                 toggleExpanded={toggleExpanded}
                 appId={appId}
               />
-            )}
-            style={{ height: "100%" }}
-          />
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -21,14 +21,14 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Palette, XSquare, Check, ChevronDown } from "@/components/ui/icons";
-import * as Lucide from "lucide-react";
-
-const Upload = Lucide.Upload;
-const ClipboardPaste = Lucide.ClipboardPaste;
-const FileText = Lucide.FileText;
-const Camera = Lucide.Camera;
-const Loader2 = Lucide.Loader2;
-const AlertTriangle = Lucide.AlertTriangle;
+import {
+  Upload,
+  ClipboardPaste,
+  FileText,
+  Camera,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
 
 // ─── Brand avatar URL from GitHub ───────────────────────────────────────────
 function brandAvatarUrl(id: string, size = 56): string {

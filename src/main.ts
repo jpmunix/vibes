@@ -821,19 +821,6 @@ async function handleDeepLinkReturn(url: string) {
     return;
   }
 
-  if (parsed.hostname === "firebase-oauth-return") {
-    const code = parsed.searchParams.get("code");
-    if (!code) {
-      dialog.showErrorBox("Invalid URL", "Expected code parameter");
-      return;
-    }
-    await handleFirebaseOAuthReturn({ code });
-    mainWindow?.webContents.send("deep-link-received", {
-      type: parsed.hostname,
-    });
-    return;
-  }
-
   if (parsed.hostname === "supabase-oauth-return") {
     const token = parsed.searchParams.get("token");
     const refreshToken = parsed.searchParams.get("refreshToken");

@@ -354,30 +354,7 @@ export async function initializeRemoteSchema(): Promise<void> {
         `ALTER TABLE prompts_categories ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0`,
       )
       .catch(() => {});
-    // Auto-create prompt_defaults if missing (v8.8) — fuente de verdad de fábrica
-    await client
-      .execute(`
-        CREATE TABLE IF NOT EXISTS prompt_defaults (
-          system_id TEXT PRIMARY KEY NOT NULL,
-          content TEXT NOT NULL,
-          version INTEGER NOT NULL DEFAULT 1,
-          updated_at INTEGER NOT NULL
-        )
-      `)
-      .catch(() => {});
-    // Add title/description columns to prompt_defaults (v8.9) — info inmutable
-    // del producto (solo cambia con nueva versión). Lo que el usuario edita vive en `prompts`.
-    await client
-      .execute(
-        `ALTER TABLE prompt_defaults ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
-      )
-      .catch(() => {});
-    await client
-      .execute(
-        `ALTER TABLE prompt_defaults ADD COLUMN description TEXT NOT NULL DEFAULT ''`,
-      )
-      .catch(() => {});
-    // Make title nullable on prompts (v8.9) — now read from prompt_defaults
+    // Make title nullable on prompts (v8.9) — title/description are optional,
     // SQLite can't easily ALTER NULLABLE, so we use a recreate trick ONLY if
     // the column is still NOT NULL. Check via pragma_table_info.
     try {

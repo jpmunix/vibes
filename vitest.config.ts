@@ -13,6 +13,9 @@ const vibesAliases: Record<string, string> = {
   "@vibes/runtime-impl": resolve(VIBES_CORE, "runtime-impl/src/index.ts"),
   "@vibes/runtime": resolve(VIBES_CORE, "runtime/src/index.ts"),
   "@vibes/shared": resolve(VIBES_CORE, "shared/src/index.ts"),
+  // Subpath puro (sin side-effects de Node): el catálogo de tools, para la UI.
+  // Va ANTES de @vibes/tools porque Vite hace match por prefijo.
+  "@vibes/tools/catalog": resolve(VIBES_CORE, "tools/src/catalog.ts"),
   "@vibes/tools": resolve(VIBES_CORE, "tools/src/index.ts"),
   "@vibes/workspace": resolve(VIBES_CORE, "workspace/src/index.ts"),
   "@vibes/bridge": resolve(VIBES_CORE, "bridge/src/index.ts"),

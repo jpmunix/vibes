@@ -78,7 +78,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "- Ficheros clave involucrados (solo si son relevantes para futuras sesiones)",
     "",
     "Ejemplo BUENO de session:",
-    '"Migramos el sistema de prompts de una página standalone a una sección inline en Settings. Decisión: usar el patrón collapsible de MemorySettings (ChevronRight + badge MODIFICADO). Se eliminaron 6 prompts muertos (todo_analysis, turbo_edit_system, etc). Los prompts activos ahora se leen vía getEffectivePrompt() que prioriza customPrompts del usuario sobre DEFAULT_PROMPTS. Ficheros clave: prompts/index.ts, PromptsSection.tsx, settings.tsx."',
+    '"Migramos el sistema de prompts de una página standalone a una sección inline en Settings. Decisión: usar el patrón collapsible de MemorySettings (ChevronRight + badge MODIFICADO). Se eliminaron 6 prompts muertos (todo_analysis, turbo_edit_system, etc). Los prompts activos ahora se leen vía getSystemPrompt() que prioriza overrides en DB sobre DEFAULT_PROMPTS. Ficheros clave: prompts/defaults.ts, PromptsSection.tsx, settings.tsx."',
     "",
     "---",
     "# QUÉ NO EXTRAER (LISTA NEGRA ESTRICTA)",

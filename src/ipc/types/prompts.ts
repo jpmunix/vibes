@@ -6,7 +6,7 @@ import { defineContract, createClient } from "../contracts/core";
 // =============================================================================
 
 export const PromptDtoSchema = z.object({
-  // null => prompt del sistema sin override del usuario (se lee de prompt_defaults).
+  // null => prompt del sistema sin override del usuario (se usa DEFAULT_PROMPTS del código).
   // En cuanto el usuario lo edita/habilita/cambia scope se crea la fila y pasa a tener id.
   id: z.number().nullable(),
   categoryId: z.number().nullable().optional(),

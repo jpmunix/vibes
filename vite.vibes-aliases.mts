@@ -33,6 +33,12 @@ export const vibesAliases: Record<string, string> = {
     VIBES_CORE,
     "providers/src/openrouter/index.ts",
   ),
+  // Subpath puro (sin side-effects de Node): el catálogo de tools. La UI
+  // (renderer) lo importa directamente para labels/metadata sin arrastrar
+  // los built-in (node:fs, node:path) al bundle del navegador.
+  // IMPORTANTE: debe ir ANTES de "@vibes/tools" — Vite matchea por prefijo
+  // y si "@vibes/tools" va primero resuelve a index.ts/catalog (ENOTDIR).
+  "@vibes/tools/catalog": path.join(VIBES_CORE, "tools/src/catalog.ts"),
   "@vibes/runtime-impl": path.join(VIBES_CORE, "runtime-impl/src/index.ts"),
   "@vibes/runtime": path.join(VIBES_CORE, "runtime/src/index.ts"),
   "@vibes/shared": path.join(VIBES_CORE, "shared/src/index.ts"),

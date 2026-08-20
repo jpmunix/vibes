@@ -317,6 +317,7 @@ export const NeonSchema = z.object({
 });
 export type Neon = z.infer<typeof NeonSchema>;
 
+
 export const ExperimentsSchema = z.object({
   enableSupabaseIntegration: z.boolean().describe("DEPRECATED").optional(),
   enableFileEditing: z.boolean().describe("DEPRECATED").optional(),
@@ -393,21 +394,14 @@ export type PermissionCustomRule = z.infer<
   typeof PermissionCustomRuleSchema
 >;
 
-// Per-tool global pill (the 10 known tools).
-export const PermissionsToolsSchema = z
-  .object({
-    read_file: PermissionDecisionSchema.optional(),
-    write_file: PermissionDecisionSchema.optional(),
-    edit_file: PermissionDecisionSchema.optional(),
-    glob: PermissionDecisionSchema.optional(),
-    grep: PermissionDecisionSchema.optional(),
-    shell: PermissionDecisionSchema.optional(),
-    webfetch: PermissionDecisionSchema.optional(),
-    websearch: PermissionDecisionSchema.optional(),
-    task: PermissionDecisionSchema.optional(),
-    skill: PermissionDecisionSchema.optional(),
-  })
-  .optional();
+// Per-tool global pill. Open Record keyed by toolId → decision so the catalog
+// (single source of truth) drives which tools appear, and new tools work
+// without schema changes. Unknown keys pass through (`.passthrough` on the
+// parent preserves them).
+export const PermissionsToolsSchema = z.record(
+  z.string(),
+  PermissionDecisionSchema,
+);
 
 // Shell sub-pills (granular rules for shell commands).
 export const PermissionsShellSubPillsSchema = z
@@ -426,7 +420,7 @@ export const PermissionsCustomRulesSchema = z
   .optional();
 
 export const PermissionsConfigSchema = z.object({
-  tools: PermissionsToolsSchema,
+  tools: PermissionsToolsSchema.optional(),
   shellSubPills: PermissionsShellSubPillsSchema,
   customRules: PermissionsCustomRulesSchema,
 });
@@ -496,7 +490,6 @@ export const UserSettingsSchema = z
     selectedModel: LargeLanguageModelSchema,
     providerSettings: z.record(z.string(), ProviderSettingSchema),
     // DEPRECATED — legacy individual model fields. Kept for backwards-compat (.passthrough()).
-    turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
     debateModel: z.string().optional(),
@@ -566,7 +559,6 @@ export const UserSettingsSchema = z
 
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
-    enableTurboEditsV2: z.boolean().optional(),
     enableProSmartFilesContextMode: z.boolean().optional(),
     // Persist token stats for charts/logging
     enableTokenStats: z.boolean().optional(),
@@ -649,7 +641,6 @@ export const UserSettingsSchema = z
     themeFlavorDark: z.string().optional(),
     themeFlavorLight: z.string().optional(),
     loaderStyle: z.string().optional(),
-    customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z
       .enum(["50", "100", "200", "500", "1000"])
       .optional(),
@@ -743,7 +734,6 @@ export const UserSettingsSchema = z
         }),
       )
       .optional(),
-    iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
     // Git commit panel: persisted vertical split size (percentage, 0-100)
     gitCommitPanelSize: z.number().optional(),
     // Plan sidebar: persisted horizontal split size (percentage, 0-100)

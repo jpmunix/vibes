@@ -41,12 +41,21 @@ const movePos = getArg('pos') ?? 'top';
 const labelAdd = (getArg('label-add') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const labelRemove = (getArg('label-remove') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const checkItems = (() => {
-  // Recoge TODOS los valores de --check-item (puede repetirse y/o llevar comas)
+  // Recoge TODOS los valores de --check-item (puede repetirse y/o llevar comas).
+  // Una coma separa items; "\," es una coma literal dentro de un item.
   const values = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--check-item' && args[i + 1]) {
-      values.push(...args[i + 1].split(',').map((s) => s.trim()).filter(Boolean));
-      i++; // salta el valor ya consumido
+      // Primero protege las comas escapadas, luego separa por coma, luego restaura.
+      const SENTINEL = '\u0000';
+      values.push(
+        ...args[i + 1]
+          .replace(/\\,/g, SENTINEL)
+          .split(',')
+          .map((s) => s.replace(new RegExp(SENTINEL, 'g'), ',').trim())
+          .filter(Boolean),
+      );
+      i++;
     }
   }
   return values;
