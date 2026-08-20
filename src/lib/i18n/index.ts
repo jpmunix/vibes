@@ -46,13 +46,17 @@ export function dateLocale(language: Language = FALLBACK_LANGUAGE) {
   return DATE_FNS_LOCALE[language];
 }
 
+/** Navigate a dotted key (`settings.sections.general`) down the dictionary tree. */
 function lookup(
   key: string,
   language: Language,
 ): MessageValue | undefined {
-  const [ns, ...rest] = key.split(".");
-  const dict = dictionaries[language]?.[ns] as Record<string, MessageValue> | undefined;
-  return dict?.[rest.join(".")];
+  let node: unknown = dictionaries[language];
+  for (const part of key.split(".")) {
+    if (typeof node !== "object" || node === null) return undefined;
+    node = (node as Record<string, unknown>)[part];
+  }
+  return node as MessageValue | undefined;
 }
 
 /** Replace `{param}` placeholders with values. */
@@ -89,8 +93,12 @@ export function tPlural(
 ): string {
   const value = lookup(key, language) ?? lookup(key, FALLBACK_LANGUAGE);
   if (!value || typeof value === "string") return t(key, language);
+  if (typeof value !== "object" || !("one" in value) || !("many" in value)) {
+    return t(key, language);
+  }
+  const plural = value as { one: string; many: string };
   const form = new Intl.PluralRules(language).select(count) === "one" ? "one" : "many";
-  return interpolate(value[form], { count });
+  return interpolate(plural[form], { count });
 }
 
 /** Format a date with the locale of the given language. */

@@ -1,6 +1,5 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import { normalizePath } from "../../shared/normalizePath";
 import { useAtom, useSetAtom } from "jotai";
 import { appsListAtom, selectedAppIdAtom } from "@/atoms/appAtoms";

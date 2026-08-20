@@ -9,6 +9,7 @@ import { ipc } from "@/ipc/types";
 import { type UserSettings } from "@/lib/schemas";
 import { useAppVersion } from "./useAppVersion";
 import { showSuccess } from "@/lib/toast";
+import { t } from "@/lib/i18n";
 
 export function useSettings() {
   const [settings, setSettingsAtom] = useAtom(userSettingsAtom);
@@ -123,7 +124,9 @@ export function useSettings() {
 
       setError(null);
       if (options?.showToast) {
-        showSuccess("Ajustes guardados");
+        showSuccess(
+          t("toast.settingsSaved", settings?.chatLanguage ?? "es"),
+        );
       }
       return updatedSettings;
     } catch (error) {

@@ -21,8 +21,8 @@ import {
   VanillaMarkdownParser,
 } from "@/components/chat/VibesMarkdownParser";
 import { UserMessageContent } from "@/components/chat/UserMessageContent";
-import { format, formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { format, formatDistanceToNow, type Locale } from "date-fns";
+import { useI18n } from "@/lib/i18n";
 import { safeDate } from "@/lib/safeDate";
 
 interface AdminApp {
@@ -58,6 +58,7 @@ interface ChatSummary {
 }
 
 function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
+  const { dateLocale } = useI18n();
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState<ChatSummary | null>(null);
@@ -105,7 +106,7 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
               {chat.messageCount === 1 ? "mensaje" : "mensajes"}
             </span>
             <span className="typo-micro text-muted-foreground shrink-0">
-              {formatDate(chat.createdAt)}
+              {formatDate(chat.createdAt, dateLocale())}
             </span>
             <button
               type="button"
@@ -285,6 +286,7 @@ function AdminMessageRow({
   user?: UserInfo;
 }) {
   const isUser = message.role === "user";
+  const { dateLocale } = useI18n();
   const isAssistant = message.role === "assistant";
   const isZen = viewMode === "zen";
   const forceFullMode = viewMode === "completo";
@@ -372,8 +374,8 @@ function AdminMessageRow({
                   <span className="typo-micro text-muted-foreground flex items-center gap-1">
                     <Clock size={10} />
                     {message.durationMs != null && message.durationMs > 0
-                      ? `${formatDuration(message.durationMs)} · ${formatDate(message.createdAt)}`
-                      : formatDate(message.createdAt)}
+                      ? `${formatDuration(message.durationMs)} · ${formatDate(message.createdAt, dateLocale())}`
+                      : formatDate(message.createdAt, dateLocale())}
                   </span>
                 )}
               </div>
@@ -389,18 +391,18 @@ function AdminMessageRow({
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string | number) {
+function formatDate(iso: string | number, locale: Locale) {
   try {
     const d = new Date(typeof iso === "number" ? iso : iso);
-    return format(d, "d MMM, H:mm", { locale: es });
+    return format(d, "d MMM, H:mm", { locale });
   } catch {
     return "—";
   }
 }
-function formatRelativeDate(ts: number | null) {
+function formatRelativeDate(ts: number | null, locale: Locale) {
   if (!ts) return "—";
   try {
-    return formatDistanceToNow(safeDate(ts), { addSuffix: true, locale: es });
+    return formatDistanceToNow(safeDate(ts), { addSuffix: true, locale });
   } catch {
     return "—";
   }
@@ -414,6 +416,7 @@ function formatDuration(ms: number) {
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AdminListApps() {
+  const { dateLocale } = useI18n();
   const [apps, setApps] = useState<AdminApp[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -511,7 +514,7 @@ export function AdminListApps() {
                       {userLatestActivity.has(userId) && (
                         <span className="ml-2 text-muted-foreground/70">
                           · última actividad{" "}
-                          {formatRelativeDate(userLatestActivity.get(userId)!)}
+                          {formatRelativeDate(userLatestActivity.get(userId)!, dateLocale())}
                         </span>
                       )}
                     </p>
@@ -544,7 +547,7 @@ export function AdminListApps() {
                               </div>
                               {app.lastMessageAt && (
                                 <p className="typo-micro text-muted-foreground mt-0.5">
-                                  {formatRelativeDate(app.lastMessageAt)}
+                                  {formatRelativeDate(app.lastMessageAt, dateLocale())}
                                 </p>
                               )}
                             </div>

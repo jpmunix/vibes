@@ -19,10 +19,10 @@ export interface PluralMessage {
   many: string;
 }
 
-export type MessageValue = string | PluralMessage;
+export type MessageValue = string | PluralMessage | Messages;
 
 export interface Messages {
-  [namespace: string]: Record<string, MessageValue>;
+  [key: string]: MessageValue;
 }
 
 export const messagesEs: Messages = {
@@ -55,6 +55,18 @@ export const messagesEs: Messages = {
     model: "Modelo",
     modelDescription: "Modelo que usa el agente para responder",
     saved: "Ajustes guardados",
+    sections: {
+      general: "General",
+      providers: "Proveedores de IA",
+      agent: "Agente",
+      customAgents: "Agentes Personalizados",
+      prompts: "Prompts",
+      guidelines: "Directrices",
+      workflow: "Flujo de trabajo",
+      integrations: "Integraciones",
+      mcp: "Herramientas MCP",
+      skills: "Skills",
+    },
   },
   chat: {
     thinking: "Pensando",
@@ -65,11 +77,21 @@ export const messagesEs: Messages = {
     allow: "Permitir",
     deny: "Denegar",
     allowAlways: "Permitir siempre",
+    allowOnce: "Solo esta vez",
+    reject: "Rechazar",
+    showMore: "Mostrar más",
+    showLess: "Mostrar menos",
+    permitQuestion: "¿Permitir {tool}?",
+    ofTotal: "({current} de {total})",
     denyAlways: "Denegar siempre",
     ask: "Preguntar",
     toolRequest: "La herramienta quiere acceso:",
     version: "Versión",
     versions: "Versiones",
+    versionHistory: "Historial de versiones",
+    closeVersionPane: "Cerrar panel de versiones",
+    noVersions: "No hay versiones disponibles",
+    now: "ahora",
   },
   toast: {
     settingsSaved: "Ajustes guardados",

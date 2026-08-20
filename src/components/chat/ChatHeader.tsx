@@ -49,7 +49,6 @@ import { useQuery } from "@tanstack/react-query";
 import { showError, showSuccess, toast } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import ConfirmationDialog from "../ConfirmationDialog";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";

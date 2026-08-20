@@ -4,27 +4,30 @@ import { useEffect } from "react";
 import { useScrollAndNavigateTo } from "@/hooks/useScrollAndNavigateTo";
 import { useAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
+import { useI18n } from "@/lib/i18n";
 
 type SettingsSection = {
   id: string;
-  label: string;
+  labelKey: string;
 };
 
+// Labels come from the i18n dictionary (settings.sections.*).
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: "general-settings", label: "General" },
-  { id: "models-connectivity", label: "Proveedores de IA" },
-  { id: "ai-behavior", label: "Agente" },
-  { id: "custom-agents-settings", label: "Agentes Personalizados" },
-  { id: "prompts-settings", label: "Prompts" },
-  { id: "memory-settings", label: "Directrices" },
-  { id: "workflow-settings", label: "Flujo de trabajo" },
-  { id: "integrations", label: "Integraciones" },
-  { id: "tools-mcp", label: "Herramientas MCP" },
-  { id: "tools-skills", label: "Skills" },
+  { id: "general-settings", labelKey: "settings.sections.general" },
+  { id: "models-connectivity", labelKey: "settings.sections.providers" },
+  { id: "ai-behavior", labelKey: "settings.sections.agent" },
+  { id: "custom-agents-settings", labelKey: "settings.sections.customAgents" },
+  { id: "prompts-settings", labelKey: "settings.sections.prompts" },
+  { id: "memory-settings", labelKey: "settings.sections.guidelines" },
+  { id: "workflow-settings", labelKey: "settings.sections.workflow" },
+  { id: "integrations", labelKey: "settings.sections.integrations" },
+  { id: "tools-mcp", labelKey: "settings.sections.mcp" },
+  { id: "tools-skills", labelKey: "settings.sections.skills" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {
   const [activeSection, setActiveSection] = useAtom(activeSettingsSectionAtom);
+  const { t } = useI18n();
 
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings", {
     behavior: "smooth",
@@ -161,7 +164,7 @@ export function SettingsList({ show }: { show: boolean }) {
                   : "hover:bg-sidebar-accent opacity-75 hover:opacity-100",
               )}
             >
-              {section.label}
+              {t(section.labelKey)}
             </button>
           ))}
         </div>

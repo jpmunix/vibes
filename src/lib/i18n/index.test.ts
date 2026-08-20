@@ -16,18 +16,14 @@ import { toolTranslationsEn } from "./tools.en";
 import { messagesEs } from "./messages.es";
 import { messagesEn } from "./messages.en";
 
-/** Recursively collect leaf keys (`ns.key`), skipping plural objects. */
+/** Recursively collect leaf keys (`ns.key` or `ns.sub.key`), skipping plural objects. */
 function leafKeys(messages: typeof messagesEs, prefix = ""): string[] {
   const keys: string[] = [];
-  for (const [ns, values] of Object.entries(messages)) {
-    for (const [key, value] of Object.entries(values)) {
-      const full = prefix ? `${prefix}${ns}.${key}` : `${ns}.${key}`;
-      if (typeof value === "string") {
-        keys.push(full);
-      } else {
-        // plural object {one,many}
-        keys.push(full);
-      }
+  for (const [key, value] of Object.entries(messages)) {
+    if (typeof value === "string" || (value && typeof value === "object" && "one" in value && "many" in value)) {
+      keys.push(`${prefix}${key}`);
+    } else if (value && typeof value === "object") {
+      keys.push(...leafKeys(value as typeof messagesEs, `${prefix}${key}.`));
     }
   }
   return keys;
@@ -98,6 +94,13 @@ describe("i18n messages dictionary (Slice 1)", () => {
     expect(t("settings.title", "en")).toBe("Settings");
     expect(t("chat.thinking", "es")).toBe("Pensando");
     expect(t("chat.thinking", "en")).toBe("Thinking");
+  });
+
+  it("t resolves nested keys (settings.sections.*)", () => {
+    expect(t("settings.sections.general", "es")).toBe("General");
+    expect(t("settings.sections.general", "en")).toBe("General");
+    expect(t("settings.sections.providers", "es")).toBe("Proveedores de IA");
+    expect(t("settings.sections.providers", "en")).toBe("AI Providers");
   });
 
   it("t falls back to the key for unknown keys (fail-closed)", () => {

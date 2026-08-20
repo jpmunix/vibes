@@ -32,8 +32,8 @@ import {
   ArrowUp,
   type LucideIcon,
 } from "@/components/ui/icons";
-import { formatDistanceToNow, format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatDistanceToNow, format, type Locale } from "date-fns";
+import { useI18n } from "@/lib/i18n";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -173,18 +173,22 @@ function translateError(raw: string): string {
 }
 
 /** Compact relative time: "2h", "15min", "3d", or full date if > 7d */
-const formatTimestamp = (timestamp: string | Date) => {
+const formatTimestamp = (
+  timestamp: string | Date,
+  locale: Locale,
+  tNow: string,
+) => {
   const now = new Date();
   const messageTime = new Date(timestamp);
   const diffMs = now.getTime() - messageTime.getTime();
   const diffMin = Math.floor(diffMs / 60000);
   const diffH = Math.floor(diffMin / 60);
   const diffD = Math.floor(diffH / 24);
-  if (diffMin < 1) return "ahora";
+  if (diffMin < 1) return tNow;
   if (diffMin < 60) return `${diffMin}min`;
   if (diffH < 24) return `${diffH}h`;
   if (diffD <= 7) return `${diffD}d`;
-  return format(messageTime, "d MMM, H:mm", { locale: es });
+  return format(messageTime, "d MMM, H:mm", { locale });
 };
 
 /** Format milliseconds into a human-readable duration (e.g. "23s", "1m 23s") */
@@ -227,6 +231,7 @@ const ChatMessage = ({
     : undefined;
 
   const { settings: chatMsgSettings } = useSettings();
+  const { t, dateLocale } = useI18n();
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -1002,8 +1007,8 @@ const ChatMessage = ({
                                 <Clock size={10} />
                                 {message.durationMs != null &&
                                 message.durationMs > 0
-                                  ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
-                                  : formatTimestamp(message.createdAt)}
+                                  ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt, dateLocale(), t("chat.now"))}`
+                                  : formatTimestamp(message.createdAt, dateLocale(), t("chat.now"))}
                               </span>
                             )}
                           </>
@@ -1116,8 +1121,8 @@ const ChatMessage = ({
                             <Clock size={10} />
                             {message.durationMs != null &&
                             message.durationMs > 0
-                              ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
-                              : formatTimestamp(message.createdAt)}
+                              ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt, dateLocale(), t("chat.now"))}`
+                              : formatTimestamp(message.createdAt, dateLocale(), t("chat.now"))}
                           </span>
                         )}
                       </div>

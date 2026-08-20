@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { useI18n } from "@/lib/i18n";
 import { safeDate } from "@/lib/safeDate";
 import {
   Pin,
@@ -47,6 +47,7 @@ export function AppItem({
   onArchive,
 }: AppItemProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const { dateLocale } = useI18n();
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -127,7 +128,7 @@ export function AppItem({
             >
               {formatDistanceToNow(safeDate(app.createdAt), {
                 addSuffix: true,
-                locale: es,
+                locale: dateLocale(),
               })}
               {app.localPathExists === false && (
                 <span className="typo-micro text-red-500 font-medium whitespace-nowrap">

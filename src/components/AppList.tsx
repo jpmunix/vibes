@@ -42,7 +42,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { useI18n } from "@/lib/i18n";
 import { safeDate } from "@/lib/safeDate";
 
 export function AppList({ show }: { show?: boolean }) {
@@ -55,6 +55,7 @@ export function AppList({ show }: { show?: boolean }) {
     useAddAppToFavorite();
   const { createApp } = useCreateApp();
   const { theme, intensity } = useTheme();
+  const { dateLocale } = useI18n();
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
 
@@ -573,7 +574,7 @@ export function AppList({ show }: { show?: boolean }) {
                               <span className="text-xs text-muted-foreground/45 mt-0.5">
                                 {formatDistanceToNow(safeDate(app.createdAt), {
                                   addSuffix: true,
-                                  locale: es,
+                                  locale: dateLocale(),
                                 })}
                               </span>
                             </div>

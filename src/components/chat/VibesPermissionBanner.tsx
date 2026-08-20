@@ -8,22 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { toolLabel, toolDescription } from "@/lib/i18n";
-import { useSettings } from "@/hooks/useSettings";
-import type { Language } from "@/lib/i18n";
-
-// The pill reads the human label + description from the shell's i18n
-// dictionary (P1: the runtime carries no localized strings). Fallback: show
-// the raw tool id so unknown tools are still identifiable.
-function toolMeta(
-  toolId: string,
-  language: Language,
-): { label: string; desc: string } {
-  return {
-    label: toolLabel(toolId, language),
-    desc: toolDescription(toolId, language),
-  };
-}
+import { useI18n } from "@/lib/i18n";
 
 interface VibesPermissionBannerProps {
   permission: PendingOpenCodePermission;
@@ -37,9 +22,11 @@ export function VibesPermissionBanner({
   onResponse,
 }: VibesPermissionBannerProps) {
   const { toolName, toolInput } = permission;
-  const { settings } = useSettings();
-  const language: Language = (settings?.chatLanguage as Language) ?? "es";
-  const meta = toolMeta(toolName, language);
+  const { t, toolLabel, toolDescription } = useI18n();
+  const meta = {
+    label: toolLabel(toolName),
+    desc: toolDescription(toolName),
+  };
 
   // Collapsible input preview
   const [isInputExpanded, setIsInputExpanded] = React.useState(false);
@@ -77,10 +64,10 @@ export function VibesPermissionBanner({
           <ShieldCheck size={14} />
         </div>
         <span className="text-[13px] font-medium text-foreground">
-          ¿Permitir <span className="font-mono">{meta.label}</span>?
+          {t("chat.permitQuestion", { tool: meta.label })}
           {queueTotal > 1 && (
             <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-              (1 de {queueTotal})
+              {t("chat.ofTotal", { current: 1, total: queueTotal })}
             </span>
           )}
         </span>
@@ -119,7 +106,7 @@ export function VibesPermissionBanner({
                 className="cursor-pointer mt-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setIsInputExpanded((v) => !v)}
               >
-                {isInputExpanded ? "Mostrar menos" : "Mostrar más"}
+                {isInputExpanded ? t("chat.showLess") : t("chat.showMore")}
               </button>
             )}
           </div>
@@ -132,21 +119,21 @@ export function VibesPermissionBanner({
             className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
           >
             <ShieldCheck size={13} />
-            Permitir siempre
+            {t("chat.allowAlways")}
           </button>
           <button
             onClick={() => onResponse("once")}
             className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
           >
             <Check size={13} />
-            Solo esta vez
+            {t("chat.allowOnce")}
           </button>
           <button
             onClick={() => onResponse("reject")}
             className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
           >
             <Ban size={13} />
-            Rechazar
+            {t("chat.reject")}
           </button>
         </div>
       </div>

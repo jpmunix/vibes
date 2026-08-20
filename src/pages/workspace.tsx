@@ -18,7 +18,7 @@ import {
   Trash2,
 } from "@/components/ui/icons";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { useI18n } from "@/lib/i18n";
 import { safeDate } from "@/lib/safeDate";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
@@ -71,6 +71,7 @@ export default function WorkspacePage() {
   const [appsList] = useAtom(appsListAtom);
   const restoredRef = useRef(false);
   const queryClient = useQueryClient();
+  const { dateLocale } = useI18n();
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
@@ -197,7 +198,7 @@ export default function WorkspacePage() {
                 description: app.createdAt
                   ? formatDistanceToNow(safeDate(app.createdAt), {
                       addSuffix: true,
-                      locale: es,
+                      locale: dateLocale(),
                     })
                   : undefined,
               }))}
@@ -231,7 +232,7 @@ export default function WorkspacePage() {
                     description: chat.createdAt
                       ? formatDistanceToNow(safeDate(chat.createdAt), {
                           addSuffix: true,
-                          locale: es,
+                          locale: dateLocale(),
                         })
                       : undefined,
                     leftIcon: chatStreaming ? (

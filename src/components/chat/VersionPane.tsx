@@ -2,7 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, selectedVersionIdAtom } from "@/atoms/appAtoms";
 import { useVersions } from "@/hooks/useVersions";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { useI18n } from "@/lib/i18n";
 import { RotateCcw, X, Database, Loader2 } from "@/components/ui/icons";
 import type { Version } from "@/ipc/types";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
   );
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { branchInfo } = useCurrentBranch(appId);
+  const { t, dateLocale } = useI18n();
   const wasVisibleRef = useRef(false);
   const [cachedVersions, setCachedVersions] = useState<Version[]>([]);
 
@@ -114,12 +115,12 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
   return (
     <div className="h-full border-border w-full">
       <div className="p-2 border-b border-border flex items-center justify-between">
-        <h2 className="text-base font-medium pl-2">Historial de versiones</h2>
+        <h2 className="text-base font-medium pl-2">{t("chat.versionHistory")}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             className="cursor-pointer p-1 hover:bg-(--background-lightest) rounded-md  "
-            aria-label="Cerrar panel de versiones"
+            aria-label={t("chat.closeVersionPane")}
           >
             <X size={20} />
           </button>
@@ -127,7 +128,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
       </div>
       <div className="overflow-y-auto h-[calc(100%-60px)]">
         {versions.length === 0 ? (
-          <div className="p-4 ">No hay versiones disponibles</div>
+          <div className="p-4 ">{t("chat.noVersions")}</div>
         ) : (
           <div className="divide-y divide-border">
             {versions.map((version: Version, index: number) => (
@@ -200,7 +201,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             new Date(version.timestamp * 1000),
                             {
                               addSuffix: true,
-                              locale: es,
+                              locale: dateLocale(),
                             },
                           )}
                     </span>

@@ -19,6 +19,7 @@ import { AutoApproveSwitch } from "@/components/AutoApproveSwitch";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
 
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { Button } from "@/components/ui/button";
 import {
@@ -714,6 +715,7 @@ export default function SettingsPage() {
   const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const router = useRouter();
   const navigate = useNavigate();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
@@ -1155,7 +1157,7 @@ export default function SettingsPage() {
                 : ""
             }`}
           >
-            <h2 className="typo-section-title mb-2">Agentes Personalizados</h2>
+            <h2 className="typo-section-title mb-2">{t("settings.sections.customAgents")}</h2>
             <p className="typo-caption mb-8">
               Construye y administra tus propios agentes con instrucciones
               específicas. Puedes inyectar un system prompt aditivo o pisar
@@ -1174,7 +1176,7 @@ export default function SettingsPage() {
             }`}
           >
             <div className="flex justify-between items-center mb-2">
-              <h2 className="typo-section-title">Prompts</h2>
+              <h2 className="typo-section-title">{t("settings.sections.prompts")}</h2>
               <Button
                 size="sm"
                 variant="outline"
@@ -1227,7 +1229,7 @@ export default function SettingsPage() {
                 : ""
             }`}
           >
-            <h2 className="typo-section-title mb-2">Directrices</h2>
+            <h2 className="typo-section-title mb-2">{t("settings.sections.guidelines")}</h2>
             <p className="typo-caption mb-8">
               Define directrices que el agente recuerda entre sesiones para
               personalizar sus respuestas.
@@ -1248,7 +1250,7 @@ export default function SettingsPage() {
                 : ""
             }`}
           >
-            <h2 className="typo-section-title mb-2">Integraciones</h2>
+            <h2 className="typo-section-title mb-2">{t("settings.sections.integrations")}</h2>
             <p className="typo-caption mb-8">
               Conecta servicios externos para automatizar despliegues y bases de
               datos.
@@ -1270,7 +1272,7 @@ export default function SettingsPage() {
                 : ""
             }`}
           >
-            <h2 className="typo-section-title mb-6">Herramientas MCP</h2>
+            <h2 className="typo-section-title mb-6">{t("settings.sections.mcp")}</h2>
             <McpServersSettings />
           </div>
 
@@ -1278,7 +1280,7 @@ export default function SettingsPage() {
             id="tools-skills"
             className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
           >
-            <h2 className="typo-section-title mb-2">Skills</h2>
+            <h2 className="typo-section-title mb-2">{t("settings.sections.skills")}</h2>
             <p className="typo-caption mb-8">
               Instrucciones y guías de comportamiento personalizadas para el
               agente, aplicadas de forma global o específicas por proyecto.
@@ -1328,6 +1330,7 @@ export function GeneralSettings({
   } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const activeColorId = isDarkMode
     ? settings?.primaryColorDark || DEFAULT_DARK_COLOR
     : settings?.primaryColorLight || DEFAULT_LIGHT_COLOR;
@@ -1439,7 +1442,7 @@ export function GeneralSettings({
           : "",
       )}
     >
-      <h2 className="typo-section-title mb-8">General</h2>
+      <h2 className="typo-section-title mb-8">{t("settings.sections.general")}</h2>
 
       <div className="space-y-4">
         <SettingItem
@@ -2153,6 +2156,7 @@ export function WorkflowSettings({
   isHighlighted?: boolean;
 }) {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
 
   return (
     <div
@@ -2164,7 +2168,7 @@ export function WorkflowSettings({
           : "",
       )}
     >
-      <h2 className="typo-section-title mb-2">Flujo de Trabajo</h2>
+      <h2 className="typo-section-title mb-2">{t("settings.sections.workflow")}</h2>
       <p className="typo-caption mb-8">
         Configura cómo interactúas con la aplicación y el comportamiento de las
         herramientas de desarrollo.

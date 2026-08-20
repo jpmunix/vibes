@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { useI18n } from "@/lib/i18n";
 import { safeDate } from "@/lib/safeDate";
 import {
   ChevronRight,
@@ -994,6 +994,7 @@ const AppChats = memo(function AppChats({
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
+  const { dateLocale } = useI18n();
   const queryClient = useQueryClient();
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
@@ -1229,7 +1230,7 @@ const AppChats = memo(function AppChats({
                         <span className="typo-micro opacity-60 mt-0.5">
                           {formatDistanceToNow(safeDate(chat.createdAt), {
                             addSuffix: false,
-                            locale: es,
+                            locale: dateLocale(),
                           })}
                         </span>
                       </div>
@@ -1538,6 +1539,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const { isServerRunning } = useAppServerStatus(app.id);
+  const { dateLocale } = useI18n();
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
   const { settings } = useSettings();
@@ -1896,7 +1898,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 {formatDistanceToNow(safeDate(app.createdAt), {
                   addSuffix: true,
-                  locale: es,
+                  locale: dateLocale(),
                 })}
               </span>
             </div>
@@ -2609,7 +2611,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                     safeDate(chat.createdAt),
                                     {
                                       addSuffix: true,
-                                      locale: es,
+                                      locale: dateLocale(),
                                     },
                                   )}
                                 </span>
@@ -2738,7 +2740,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               ? `Chat #${previewPlan.chatId}`
                               : "Sin chat asociado"}
                           {previewPlan?.createdAt
-                            ? ` · ${formatDistanceToNow(safeDate(previewPlan.createdAt), { addSuffix: true, locale: es })}`
+                            ? ` · ${formatDistanceToNow(safeDate(previewPlan.createdAt), { addSuffix: true, locale: dateLocale() })}`
                             : ""}
                         </span>
                       </div>
@@ -2876,7 +2878,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 <span className="text-[11px] text-muted-foreground/40 mt-0.5">
                                   {formatDistanceToNow(
                                     safeDate(plan.createdAt),
-                                    { addSuffix: true, locale: es },
+                                    { addSuffix: true, locale: dateLocale() },
                                   )}
                                 </span>
                               ) : (
@@ -2920,6 +2922,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 // --- Main WorkspaceList component ---
 export function WorkspaceList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
+  const { dateLocale } = useI18n();
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
@@ -4244,7 +4247,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         <span className="text-xs text-muted-foreground/45 mt-0.5">
                           {formatDistanceToNow(safeDate(app.createdAt), {
                             addSuffix: true,
-                            locale: es,
+                            locale: dateLocale(),
                           })}
                         </span>
                       </div>
