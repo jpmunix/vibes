@@ -7,14 +7,21 @@ import type {
   PermissionCustomRule,
 } from "@/lib/schemas";
 import { ChevronRight, Plus, X } from "@/components/ui/icons";
-import { TOOL_CATALOG_LIST, getToolMetadata } from "@vibes/tools/catalog";
+import { TOOL_CATALOG_LIST } from "@vibes/tools/catalog";
 import { toolLabel, toolDescription } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
+import {
+  VIBES_PERMISSION_DEFAULTS,
+  LOCKED_TOOLS,
+} from "@/ipc/runtime/permission_defaults";
 
 // ── Tool rows generated from the runtime catalog (source of truth) ──
 // Each row is derived from the catalog (id, riskLevel, argSchema) + the
 // shell's i18n dictionary for human labels/descriptions (P1: the runtime
 // carries no localized strings). No hardcoded list, no `pending` flag.
+//
+// Locked tools (question, todowrite) are filtered out — they are always
+// allowed and must never appear in the permission settings UI.
 
 interface ToolRow {
   toolId: string;
@@ -23,31 +30,25 @@ interface ToolRow {
   defaultValue: PermissionDecision;
 }
 
-// Map riskLevel → default consent (mirrors Vibes policy, expressed on the
-// catalog's own metadata so a new tool gets a sane default automatically).
-const RISK_TO_DEFAULT: Record<string, PermissionDecision> = {
-  read: "allow",
-  mutation: "ask",
-  destructive: "ask",
-  web: "ask",
-  interaction: "ask",
-  vcs: "ask",
-};
-
 /**
  * Build the permission rows from the runtime catalog + the i18n dictionary.
  * Exported as a pure function so it can be unit-tested without rendering.
+ *
+ * Defaults come from VIBES_PERMISSION_DEFAULTS (the actual policy), not from
+ * a separate riskLevel mapping. Locked tools are excluded entirely.
  */
 export function buildToolList(language: Language = "es"): ToolRow[] {
-  return TOOL_CATALOG_LIST.map((def) => {
-    const meta = getToolMetadata(def.id);
-    return {
-      toolId: def.id,
-      label: toolLabel(def.id, language),
-      description: toolDescription(def.id, language),
-      defaultValue: RISK_TO_DEFAULT[meta?.riskLevel ?? "mutation"] ?? "ask",
-    };
-  });
+  return TOOL_CATALOG_LIST
+    .filter((def) => !LOCKED_TOOLS.has(def.id))
+    .map((def) => {
+      return {
+        toolId: def.id,
+        label: toolLabel(def.id, language),
+        description: toolDescription(def.id, language),
+        defaultValue:
+          VIBES_PERMISSION_DEFAULTS[def.id] ?? "ask",
+      };
+    });
 }
 
 // ── Shell sub-pills — granular rules for shell commands ──
@@ -59,7 +60,7 @@ interface SubPillDef {
 }
 
 const SHELL_SUB_PILLS: SubPillDef[] = [
-  { subPillKey: "rm", label: "rm (borrar)", defaultValue: "ask" },
+  { subPillKey: "rm", label: "rm", defaultValue: "ask" },
   { subPillKey: "gitReset", label: "git reset", defaultValue: "ask" },
   { subPillKey: "gitPush", label: "git push", defaultValue: "ask" },
   { subPillKey: "gitPushForce", label: "git push --force", defaultValue: "deny" },
@@ -336,7 +337,7 @@ export function AgentPermissionsSettings() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") addCustomRule();
                           }}
-                          placeholder="docker *, npm publish *..."
+                          placeholder="rm -rf, docker build, npm publish..."
                           className="flex-1 min-w-0 px-3 py-1.5 typo-input rounded-lg border border-border bg-background focus:border-primary/50 transition-colors"
                         />
                         <PermissionPill

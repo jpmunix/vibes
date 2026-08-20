@@ -55,18 +55,52 @@ export type AgentToolConsentResponseParams = z.infer<
 >;
 
 /**
- * Schema for ask_user request payload (main → renderer).
+ * Schema for a single Question object (runtime format, from @vibes/shared).
  */
-export const AskUserRequestSchema = z.object({
-  requestId: z.string(),
-  chatId: z.number(),
-  question: z.string(),
-  options: z.array(z.string()).nullable(),
-  context: z.string().nullable(),
-  multiple: z.boolean().optional(),
-  questionIndex: z.number().default(0),
-  totalQuestions: z.number().default(1),
+const QuestionOptionSchema = z.object({
+  label: z.string(),
+  description: z.string().optional(),
+  isRecommended: z.boolean().optional(),
 });
+
+const QuestionSchema = z.object({
+  question: z.string(),
+  header: z.string(),
+  options: z.array(QuestionOptionSchema),
+  multiSelect: z.boolean().optional(),
+  allowFreeText: z.boolean().optional(),
+});
+
+/**
+ * Schema for ask_user request payload (main → renderer).
+ *
+ * Two formats coexist:
+ *   - Legacy (OpenCode adapter): single question with flat fields.
+ *   - Runtime (vibes-core): `questions` array of rich Question objects.
+ *
+ * The renderer (ChatWindowApp / AppRoot) handles both via runtime check.
+ */
+export const AskUserRequestSchema = z.union([
+  // Runtime format (vibes-core question tool)
+  z.object({
+    requestId: z.string(),
+    sessionId: z.string(),
+    chatId: z.number(),
+    questions: z.array(QuestionSchema).min(1),
+    toolCallId: z.string().nullable().optional(),
+  }),
+  // Legacy format (single question)
+  z.object({
+    requestId: z.string(),
+    chatId: z.number(),
+    question: z.string(),
+    options: z.array(z.string()).nullable(),
+    context: z.string().nullable(),
+    multiple: z.boolean().optional(),
+    questionIndex: z.number().default(0),
+    totalQuestions: z.number().default(1),
+  }),
+]);
 
 export type AskUserRequestPayload = z.infer<typeof AskUserRequestSchema>;
 

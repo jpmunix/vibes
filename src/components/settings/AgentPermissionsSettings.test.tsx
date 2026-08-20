@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { buildToolList } from "./AgentPermissionsSettings";
 
 describe("AgentPermissionsSettings.buildToolList (filas desde catálogo + i18n)", () => {
-  it("genera una fila por cada tool del catálogo", () => {
+  it("genera una fila por cada tool del catálogo excepto locked tools", () => {
     const rows = buildToolList("es");
-    // El catálogo de vibes-core tiene 12 tools v1.
-    expect(rows.length).toBe(12);
+    // El catálogo de vibes-core tiene 12 tools v1, menos 2 locked (question, todowrite).
+    expect(rows.length).toBe(10);
   });
 
   it("cada fila tiene un label humano que no es el id crudo", () => {
@@ -23,8 +23,13 @@ describe("AgentPermissionsSettings.buildToolList (filas desde catálogo + i18n)"
     expect(ids.has("git_diff")).toBe(true);
     expect(ids.has("patch")).toBe(true);
     expect(ids.has("list_dir")).toBe(true);
-    expect(ids.has("question")).toBe(true);
-    expect(ids.has("todowrite")).toBe(true);
+  });
+
+  it("NO incluye locked tools (question, todowrite) — siempre aprobadas, no configurables", () => {
+    const rows = buildToolList("es");
+    const ids = new Set(rows.map((r) => r.toolId));
+    expect(ids.has("question")).toBe(false);
+    expect(ids.has("todowrite")).toBe(false);
   });
 
   it("NO incluye tools fake 'pending' (webfetch/websearch/task/skill) que no existen en el runtime", () => {
@@ -37,7 +42,7 @@ describe("AgentPermissionsSettings.buildToolList (filas desde catálogo + i18n)"
     expect(ids.has("skill")).toBe(false);
   });
 
-  it("deriva el default consent del riskLevel del catálogo", () => {
+  it("deriva el default de VIBES_PERMISSION_DEFAULTS (la política real)", () => {
     const rows = buildToolList("es");
     const byId = new Map(rows.map((r) => [r.toolId, r]));
     // read → allow
@@ -47,7 +52,7 @@ describe("AgentPermissionsSettings.buildToolList (filas desde catálogo + i18n)"
     // mutation → ask
     expect(byId.get("write_file")?.defaultValue).toBe("ask");
     expect(byId.get("edit_file")?.defaultValue).toBe("ask");
-    // destructive → ask
+    // shell → ask
     expect(byId.get("shell")?.defaultValue).toBe("ask");
   });
 

@@ -68,6 +68,39 @@ describe("permissionResolver", () => {
       });
       expect(r.decision).toBe("ask");
     });
+
+    it("returns allow for question with default (non-mutating)", () => {
+      const r = permissionResolver({
+        toolId: "question",
+        args: { questions: [{ question: "¿Sí o no?", header: "Test", options: [{ label: "Sí" }] }] },
+        settings: undefined,
+      });
+      expect(r.decision).toBe("allow");
+      expect(r.source).toBe("default");
+    });
+
+    it("returns allow for todowrite with default (non-mutating)", () => {
+      const r = permissionResolver({
+        toolId: "todowrite",
+        args: { todos: [{ content: "test", status: "pending" }] },
+        settings: undefined,
+      });
+      expect(r.decision).toBe("allow");
+      expect(r.source).toBe("default");
+    });
+
+    it("pill can override question allow to ask", () => {
+      const settings: PermissionsConfig = {
+        tools: { question: "ask" },
+      };
+      const r = permissionResolver({
+        toolId: "question",
+        args: { questions: [] },
+        settings,
+      });
+      expect(r.decision).toBe("ask");
+      expect(r.source).toBe("pill");
+    });
   });
 
   describe("pill global by tool", () => {

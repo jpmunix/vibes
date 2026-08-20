@@ -40,4 +40,22 @@ export const VIBES_PERMISSION_DEFAULTS: Record<string, VibesPermissionDecision> 
   // Agent capabilities — ask
   task: "ask",
   skill: "ask",
+
+  // Non-mutating agent interaction tools — always allowed.
+  // These tools ask the user something or write internal state; they never
+  // touch files, shell, or the network. Requiring permission for them is a
+  // UX bug (the user already consented by talking to the agent).
+  question: "allow",
+  todowrite: "allow",
 };
+
+/**
+ * Tools that are ALWAYS allowed and must NEVER appear in the permission
+ * settings UI. They are non-mutating agent interaction tools — the user
+ * already consented to them by talking to the agent. The settings UI
+ * (AgentPermissionsSettings) filters these out via buildToolList().
+ */
+export const LOCKED_TOOLS: ReadonlySet<string> = new Set([
+  "question",
+  "todowrite",
+]);
