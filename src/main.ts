@@ -24,7 +24,6 @@ import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
 
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
-import { handleFirebaseOAuthReturn } from "./firebase_admin/firebase_return_handler";
 import {
   AddMcpServerConfigSchema,
   AddMcpServerPayload,
@@ -225,17 +224,9 @@ if (process.defaultApp) {
     app.setAsDefaultProtocolClient("dyad", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
-    app.setAsDefaultProtocolClient(
-      "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3",
-      process.execPath,
-      [path.resolve(process.argv[1])],
-    );
   }
 } else {
   app.setAsDefaultProtocolClient("dyad");
-  app.setAsDefaultProtocolClient(
-    "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3",
-  );
 }
 
 function getRecentLogs(lines: number = 50): string {
@@ -803,22 +794,6 @@ async function handleDeepLinkReturn(url: string) {
     "hostname",
     parsed.hostname,
   );
-
-  // Handle Google iOS-style redirect (e.g. com.googleusercontent.apps.xxx:/oauth2redirect)
-  if (
-    parsed.protocol ===
-      "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3:" &&
-    parsed.pathname === "/oauth2redirect"
-  ) {
-    const code = parsed.searchParams.get("code");
-    if (code) {
-      await handleFirebaseOAuthReturn({ code });
-      mainWindow?.webContents.send("deep-link-received", {
-        type: "firebase-oauth-return",
-      });
-      return;
-    }
-  }
 
   if (parsed.protocol !== "dyad:") {
     dialog.showErrorBox(

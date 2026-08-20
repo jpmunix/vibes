@@ -31,8 +31,6 @@ export const AppBaseSchema = z.object({
   installCommand: z.string().nullable(),
   startCommand: z.string().nullable(),
   isFavorite: z.any(),
-  firebaseProjectId: z.string().nullable().optional(),
-  firebaseConfig: z.any().nullable().optional(),
   bunnyConfig: z.any().nullable().optional(),
   pocketbaseConfig: z.any().nullable().optional(),
   primaryLanguage: z.string().nullable().optional(),

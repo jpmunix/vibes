@@ -35,7 +35,7 @@ export { mcpContracts, mcpEvents } from "./mcp";
 export { vercelContracts } from "./vercel";
 export { supabaseContracts } from "./supabase";
 export { neonContracts } from "./neon";
-export { firebaseContracts } from "./firebase";
+
 export { bunnyContracts } from "./bunny";
 export { pocketbaseContracts } from "./pocketbase";
 export { systemContracts, systemEvents } from "./system";
@@ -74,7 +74,6 @@ export { mcpClient, mcpEventClient } from "./mcp";
 export { vercelClient } from "./vercel";
 export { supabaseClient } from "./supabase";
 export { neonClient } from "./neon";
-export { firebaseClient } from "./firebase";
 export { bunnyClient } from "./bunny";
 export { pocketbaseClient } from "./pocketbase";
 export { systemClient, systemEventClient } from "./system";
@@ -221,14 +220,6 @@ export type {
   GetNeonProjectParams,
   GetNeonProjectResponse,
 } from "./neon";
-
-// Firebase types
-export type {
-  FirebaseProject,
-  FirebaseWebConfig,
-  SetFirebaseAppProjectParams,
-  CreateFirebaseProjectParams,
-} from "./firebase";
 
 // Bunny types
 export type {
@@ -380,7 +371,6 @@ import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
 
-import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
 import { pocketbaseClient } from "./pocketbase";
 import { authClient } from "./auth";
@@ -426,7 +416,6 @@ export const ipc = {
   vercel: vercelClient,
   supabase: supabaseClient,
   neon: neonClient,
-  firebase: firebaseClient,
   bunny: bunnyClient,
   pocketbase: pocketbaseClient,
 

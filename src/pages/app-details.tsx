@@ -56,8 +56,6 @@ import {
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { SupabaseConnector } from "@/components/SupabaseConnector";
 import { PocketBaseConnector } from "@/components/PocketBaseConnector";
-// Firebase hidden - not mature yet
-// import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
 import {
   DropdownMenu,

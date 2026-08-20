@@ -62,10 +62,6 @@ const TOOL_LABELS: Record<string, { label: string; description: string }> = {
     label: "Ver estructura de tablas",
     description: "Consultar la estructura de las tablas en Supabase",
   },
-  get_firebase_project_info: {
-    label: "Consultar info de Firebase",
-    description: "Obtener información sobre tu proyecto de Firebase",
-  },
   set_chat_summary: {
     label: "Generar resumen del chat",
     description: "Crear un resumen de la conversación actual",

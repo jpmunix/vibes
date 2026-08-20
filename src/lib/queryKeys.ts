@@ -241,13 +241,6 @@ export const queryKeys = {
       ["app-env-vars", appId] as const,
   },
   // ─────────────────────────────────────────────────────────────────────────────
-  // Firebase
-  // ─────────────────────────────────────────────────────────────────────────────
-  firebase: {
-    all: ["firebase"] as const,
-    projects: ["firebase", "projects"] as const,
-  },
-  // ─────────────────────────────────────────────────────────────────────────────
   // Bunny.net
   // ─────────────────────────────────────────────────────────────────────────────
   bunny: {
@@ -352,5 +345,4 @@ export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.mcp)[keyof typeof queryKeys.mcp]>
   | QueryKeyOf<(typeof queryKeys.supabase)[keyof typeof queryKeys.supabase]>
   | QueryKeyOf<(typeof queryKeys.neon)[keyof typeof queryKeys.neon]>
-  | QueryKeyOf<(typeof queryKeys.appEnvVars)[keyof typeof queryKeys.appEnvVars]>
-  | QueryKeyOf<(typeof queryKeys.firebase)[keyof typeof queryKeys.firebase]>;
+  | QueryKeyOf<(typeof queryKeys.appEnvVars)[keyof typeof queryKeys.appEnvVars]>;

@@ -163,7 +163,6 @@ const JSON_KEYS = new Set([
   "selectedModel",
   "supabase",
   "neon",
-  "firebase",
   "openCodePermissions",
   "openCodePermissions2",
   "permissions",
@@ -356,8 +355,7 @@ function categorizeKey(key: string): string {
     key === "supabase" ||
     key === "telemetryUserId" ||
     key === "githubUser" ||
-    key === "neon" ||
-    key === "firebase"
+    key === "neon"
   )
     return "keys";
 

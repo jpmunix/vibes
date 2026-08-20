@@ -3,8 +3,6 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { VercelConnector } from "@/components/VercelConnector";
-import { FirebaseConnector } from "@/components/FirebaseConnector";
-import { FirebaseDeployer } from "@/components/FirebaseDeployer";
 import { PortalMigrate } from "@/components/PortalMigrate";
 import { ipc } from "@/ipc/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +13,6 @@ import {
   Server,
   Github,
   AlertTriangle,
-  Flame,
 } from "@/components/ui/icons";
 
 export const PublishPanel = () => {
@@ -126,34 +123,6 @@ export const PublishPanel = () => {
           </CardContent>
         </Card>
 
-        {/* Firebase Section - Hidden temporarily
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  ipc.system.openExternalUrl("https://console.firebase.google.com/");
-                }}
-                className="flex items-center gap-2 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer bg-transparent border-none p-0"
-              >
-                <Flame className="w-5 h-5 text-orange-500" />
-                Firebase
-              </button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Publica tu aplicación directamente en Firebase Hosting.
-            </p>
-
-            {app.firebaseProjectId ? (
-              <FirebaseDeployer appId={selectedAppId} app={app} />
-            ) : (
-              <FirebaseConnector appId={selectedAppId} noCard={true} />
-            )}
-          </CardContent>
-        </Card>
-        */}
       </div>
     </div>
   );

@@ -215,7 +215,7 @@ const TECH_PATTERNS = {
 
   // Database and storage
   database:
-    /\b(select|insert|update|delete|table|index|query|join|where|mongodb|redis|prisma|mongoose|sequelize|typeorm|drizzle|supabase|firebase|postgresql|mysql|sqlite|transaction|rollback|commit|migration|schema|nosql|memcached|localstorage|indexeddb|dynamodb)\b/i,
+    /\b(select|insert|update|delete|table|index|query|join|where|mongodb|redis|prisma|mongoose|sequelize|typeorm|drizzle|supabase|postgresql|mysql|sqlite|transaction|rollback|commit|migration|schema|nosql|memcached|localstorage|indexeddb|dynamodb)\b/i,
 
   // Network, infrastructure, and auth
   network:

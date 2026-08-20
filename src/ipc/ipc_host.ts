@@ -4,7 +4,6 @@ import { registerAppHandlers } from "./handlers/app_handlers";
 import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
 import registerChatStreamHandlers from "./handlers/chat_stream_handlers";
-import { registerFirebaseHandlers } from "./handlers/firebase_handlers";
 import { registerBunnyHandlers } from "./handlers/bunny_handlers";
 import { registerPocketBaseHandlers } from "./handlers/pocketbase_handlers";
 //import { registerProHandlers } from "./handlers/pro_handlers";
@@ -80,7 +79,6 @@ export function registerIpcHandlers() {
   registerDebugHandlers();
   registerSupabaseHandlers();
   registerNeonHandlers();
-  registerFirebaseHandlers();
   registerBunnyHandlers();
   registerPocketBaseHandlers();
   registerLocalModelHandlers();

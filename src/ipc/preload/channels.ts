@@ -20,7 +20,6 @@ import { pocketbaseContracts } from "../types/pocketbase";
 import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
-import { firebaseContracts } from "../types/firebase";
 import { contextContracts } from "../types/context";
 
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
@@ -91,7 +90,6 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(vercelContracts),
   ...getInvokeChannels(supabaseContracts),
   ...getInvokeChannels(neonContracts),
-  ...getInvokeChannels(firebaseContracts),
 
   // Features
   ...getInvokeChannels(systemContracts),

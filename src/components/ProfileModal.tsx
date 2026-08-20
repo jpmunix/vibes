@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { auth } from "@/lib/firebase";
-import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { toast } from "sonner";
 import { User, Lock, Upload, X, Palette } from "@/components/ui/icons";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -102,12 +100,11 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
     setIsLoading(true);
     try {
-      const credential = EmailAuthProvider.credential(
-        user.email!,
+      await (ipc as any).auth.changePassword({
+        userId: user.id,
         currentPassword,
-      );
-      await reauthenticateWithCredential(user, credential);
-      await updatePassword(user, newPassword);
+        newPassword,
+      });
       toast.success("Contraseña actualizada correctamente");
       setCurrentPassword("");
       setNewPassword("");

@@ -77,8 +77,6 @@ export const apps = sqliteTable("apps", {
   vercelProjectName: text("vercel_project_name"),
   vercelTeamId: text("vercel_team_id"),
   vercelDeploymentUrl: text("vercel_deployment_url"),
-  firebaseProjectId: text("firebase_project_id"),
-  firebaseConfig: text("firebase_config", { mode: "json" }),
   bunnyConfig: text("bunny_config", { mode: "json" }),
   pocketbaseConfig: text("pocketbase_config", { mode: "json" }),
   installCommand: text("install_command"),
@@ -266,29 +264,15 @@ export const prompts = sqliteTable("prompts", {
     .notNull()
     .references(() => users.id),
   categoryId: integer("category_id").references(() => promptsCategories.id),
-  // systemId is a logical reference to prompt_defaults.system_id (not a DB FK
-  // because prompt_defaults is global and not per-user).
+  // systemId is a logical key referencing DEFAULT_PROMPTS in code.
   systemId: text("system_id"),
-  // title/description come from prompt_defaults — not stored here, they're
-  // immutable per version. The list handler joins to read them.
+  // title/description are stored for display convenience.
   title: text("title"),
   description: text("description"),
   content: text("content").notNull(),
   enabled: integer("enabled").notNull().default(1),
   scope: text("scope").notNull().default("all"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-// Defaults de fábrica de los prompts del sistema (global, no per-user).
-// Fuente de verdad inmutable (por versión) para título/descripción/contenido.
-// Tabla mutable `prompts` (per-user) solo guarda `content` editado + flags.
-export const promptDefaults = sqliteTable("prompt_defaults", {
-  systemId: text("system_id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description").notNull().default(""),
-  content: text("content").notNull(),
-  version: integer("version").notNull().default(1),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 

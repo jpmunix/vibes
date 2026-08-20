@@ -317,14 +317,6 @@ export const NeonSchema = z.object({
 });
 export type Neon = z.infer<typeof NeonSchema>;
 
-export const FirebaseSchema = z.object({
-  accessToken: SecretSchema.optional(),
-  refreshToken: SecretSchema.optional(),
-  expiresIn: z.number().optional(),
-  tokenTimestamp: z.number().optional(),
-});
-export type Firebase = z.infer<typeof FirebaseSchema>;
-
 export const ExperimentsSchema = z.object({
   enableSupabaseIntegration: z.boolean().describe("DEPRECATED").optional(),
   enableFileEditing: z.boolean().describe("DEPRECATED").optional(),
@@ -541,7 +533,6 @@ export const UserSettingsSchema = z
     vercelAccessToken: SecretSchema.optional(),
     supabase: SupabaseSchema.optional(),
     neon: NeonSchema.optional(),
-    firebase: FirebaseSchema.optional(),
     autoApproveChanges: z.boolean().optional(),
     telemetryConsent: z.enum(["opted_in", "opted_out", "unset"]).optional(),
     telemetryUserId: z.string().optional(),
