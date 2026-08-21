@@ -32,12 +32,22 @@ function CompletedIcon({ className }: { className?: string }) {
   );
 }
 
-function InProgressIcon({ className }: { className?: string }) {
+function InProgressIcon({
+  className,
+  spinning = true,
+}: {
+  className?: string;
+  spinning?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      className={cn("w-4 h-4 flex-shrink-0 animate-spin", className)}
+      className={cn(
+        "w-4 h-4 flex-shrink-0",
+        spinning && "animate-spin",
+        className,
+      )}
     >
       <circle
         cx="8"
@@ -118,12 +128,30 @@ function CancelledIcon({ className }: { className?: string }) {
   );
 }
 
-function getStatusIcon(status: AgentTodo["status"]) {
+/**
+ * Blindaje G18 (UI coherencia) — regla "congelado":
+ * una tarea `in_progress` SOLO "gira" mientras el chat está en activo
+ * (`isStreaming`). Cuando la conversación se detiene (fin de turno, abort,
+ * error) el spinner se congela: el LLM ya no puede cambiar nada hasta la
+ * siguiente ronda, así que un spinner girando sería una mentira. En la próxima
+ * ronda `isStreaming` vuelve a true y el LLM, si reactiva la tarea a
+ * `in_progress`, el spinner gira de nuevo — descongelado por sí solo.
+ *
+ * Pura y exportada para poder testearla sin montar el componente.
+ */
+export function isTodoSpinning(
+  status: AgentTodo["status"],
+  isStreaming: boolean,
+): boolean {
+  return status === "in_progress" && isStreaming;
+}
+
+function getStatusIcon(status: AgentTodo["status"], spinning: boolean) {
   switch (status) {
     case "completed":
       return <CompletedIcon />;
     case "in_progress":
-      return <InProgressIcon />;
+      return <InProgressIcon spinning={spinning} />;
     case "cancelled":
       return <CancelledIcon />;
     case "pending":
@@ -182,7 +210,10 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
               {allDone ? (
                 <HeaderCompletedIcon />
               ) : inProgressTask ? (
-                <InProgressIcon className="w-[18px] h-[18px]" />
+                <InProgressIcon
+                  className="w-[18px] h-[18px]"
+                  spinning={!!isStreaming}
+                />
               ) : (
                 <svg
                   viewBox="0 0 16 16"
@@ -214,7 +245,10 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
             </>
           ) : inProgressTask ? (
             <>
-              <InProgressIcon className="w-[18px] h-[18px]" />
+              <InProgressIcon
+                className="w-[18px] h-[18px]"
+                spinning={!!isStreaming}
+              />
               <span className="typo-caption truncate">
                 {inProgressTask.content}
               </span>
@@ -261,7 +295,10 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
                 todo.status === "cancelled" && "text-muted-foreground/50",
               )}
             >
-              {getStatusIcon(todo.status)}
+              {getStatusIcon(
+                todo.status,
+                isTodoSpinning(todo.status, !!isStreaming),
+              )}
               {todo.priority && (
                 <span
                   className={cn(

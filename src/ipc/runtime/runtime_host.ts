@@ -29,6 +29,10 @@ import type {
   QuestionHandler,
   Runtime,
 } from "@vibes/runtime";
+import {
+  createSqliteStorageProvider,
+  SqliteTodoHandler,
+} from "@vibes/providers/sqlite";
 import { permissionResolver } from "./permission_resolver";
 import type { PermissionsConfig } from "../../lib/schemas";
 import { createRuntimeBuilder } from "@vibes/runtime-impl";
@@ -292,14 +296,22 @@ export function getRuntime(): Runtime {
 
   const storagePath = path.join(app.getPath("userData"), "runtime-sessions.db");
 
+  // Bug 76: build the SQLite provider explicitly so the same instance can back
+  // both the storage and the TodoHandler. The builder's .sqliteStorage() builds
+  // an internal provider we can't reach, and the loop needs a TodoHandler to
+  // persist session-scoped todo lists (ctx.todo) — without it todowrite throws
+  // 'Todo handler not configured' and the model dumps the list as plain text.
+  const storageProvider = createSqliteStorageProvider({ path: storagePath });
+
   runtimeInstance = createRuntimeBuilder("vibes")
     .workspaceRoot(path.dirname(app.getPath("userData"))) // sessions override per-app via workspaceRoot
-    .sqliteStorage(storagePath)
+    .storage(storageProvider)
     .model(delegatingModelProvider)
     .registerProtocol(OPENAI_COMPATIBLE_PROTOCOL, openAiCompatibleFactory())
     .tools(createBuiltInRegistry())
     .permissionGate(createVibesPermissionGate())
     .questionHandler(createVibesQuestionHandler())
+    .todoHandler(new SqliteTodoHandler(storageProvider))
     .logger(vibesRuntimeLogger)
     .build();
 
