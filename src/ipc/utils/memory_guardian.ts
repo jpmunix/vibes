@@ -86,6 +86,8 @@ const VIBES_TOOL_TAG_NAMES = [
   "vibes-command",
   "vibes-mcp-tool-call",
   "vibes-mcp-tool-result",
+  "vibes-question",
+  "vibes-todo",
   "vibes-list-files",
   "vibes-database-schema",
   "vibes-supabase-table-schema",

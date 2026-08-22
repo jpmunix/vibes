@@ -504,6 +504,8 @@ const ChatMessage = ({
       "think",
       "thought",
       "vibes-mcp-tool-call",
+      "vibes-question",
+      "vibes-todo",
       "vibes-list-files",
       "vibes-database-schema",
       "vibes-supabase-table-schema",

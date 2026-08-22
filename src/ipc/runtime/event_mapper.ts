@@ -11,25 +11,21 @@
  */
 
 import type { RuntimeEvent } from "@vibes/shared";
+import { resolveRuntimeToolTag } from "@/lib/tools/toolPresentation";
 
 // ============================================================================
 // Tool → vibes tag
 // ============================================================================
 
 /**
- * Maps a vibes-core built-in tool id to its Vibes tag. Mirrors the adapter's
- * mapToolToVibesTag, adapted from OpenCode tool names to runtime tool ids.
+ * Maps a vibes-core built-in tool id to its Vibes tag. #168: la tabla vive en
+ * la fuente única (@/lib/tools/toolPresentation), compartida con el renderer,
+ * y cubre TODAS las tools del catálogo — ninguna built-in cae ya en el
+ * fallback genérico `vibes-mcp-tool-call`, que queda reservado para tools
+ * realmente desconocidas (MCP u otras fuentes).
  */
 export function mapRuntimeToolToVibesTag(toolId: string): string {
-  const map: Record<string, string> = {
-    write_file: "vibes-write",
-    read_file: "vibes-read",
-    edit_file: "vibes-search-replace",
-    shell: "vibes-run-command",
-    glob: "vibes-list-files",
-    grep: "vibes-grep",
-  };
-  return map[toolId] || "vibes-mcp-tool-call";
+  return resolveRuntimeToolTag(toolId) ?? "vibes-mcp-tool-call";
 }
 
 /** Escape XML/HTML attribute values. */
@@ -74,18 +70,269 @@ export function extractToolDetail(toolId: string, args: unknown): string {
   }
 }
 
+// ============================================================================
+// Tool result → texto legible (#168)
+// ============================================================================
+
+/** Renderiza hunks FileDiff como líneas unificadas (+/−/contexto). */
+function renderDiffLines(
+  hunks: Array<{ startLine: number; lines: string[] }>,
+): string {
+  const out: string[] = [];
+  for (const h of hunks) {
+    out.push(`@@ -${h.startLine} @@`);
+    for (const line of h.lines) out.push(line);
+  }
+  return out.join("\n");
+}
+
+/** Bytes → tamaño legible (1.2 KB / 3.4 MB). */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Formatters de output por tool: convierten el resultado estructurado del
+ * runtime en texto legible para el contenido del tag (el modal lo pinta tal
+ * cual). Los shapes siguen los tipos de los built-ins de @vibes/tools.
+ */
+const TOOL_RESULT_FORMATTERS: Record<
+  string,
+  (result: unknown, cmd?: string) => string
+> = {
+  read_file: (r) => {
+    const res = r as { content?: string };
+    return typeof res.content === "string" ? res.content : "";
+  },
+  write_file: (r) => {
+    const res = r as {
+      existed?: boolean;
+      diff?: { additions: number; deletions: number; hunks: Array<{ startLine: number; lines: string[] }> };
+    };
+    if (!res?.diff?.hunks?.length) return "(sin cambios)";
+    const header = `${res.existed === false ? "creado" : "actualizado"} · +${res.diff.additions} −${res.diff.deletions}`;
+    return `${header}\n\n${renderDiffLines(res.diff.hunks)}`;
+  },
+  edit_file: (r) => {
+    const res = r as {
+      diff?: { additions: number; deletions: number; hunks: Array<{ startLine: number; lines: string[] }> };
+    };
+    if (!res?.diff?.hunks?.length) return "(sin cambios)";
+    const header = `editado · +${res.diff.additions} −${res.diff.deletions}`;
+    return `${header}\n\n${renderDiffLines(res.diff.hunks)}`;
+  },
+  patch: (r) => {
+    const res = r as {
+      files?: Array<{
+        path: string;
+        operation: "add" | "update" | "delete";
+        diff: { hunks: Array<{ startLine: number; lines: string[] }> };
+      }>;
+      additions?: number;
+      deletions?: number;
+    };
+    if (!res?.files?.length) return "(sin cambios)";
+    const ops = { add: "creado", update: "actualizado", delete: "eliminado" } as const;
+    const summary = res.files
+      .map((f) => `${ops[f.operation] ?? f.operation}: ${f.path}`)
+      .join("\n");
+    const diffs = res.files
+      .filter((f) => f.diff?.hunks?.length)
+      .map((f) => `--- ${f.path}\n${renderDiffLines(f.diff.hunks)}`)
+      .join("\n\n");
+    const header = `patch · ${res.files.length} fichero(s) · +${res.additions ?? 0} −${res.deletions ?? 0}`;
+    return [header, "", summary, diffs].filter(Boolean).join("\n");
+  },
+  glob: (r) => {
+    const res = r as { files?: string[] };
+    if (!Array.isArray(res.files)) return "";
+    if (res.files.length === 0) return "(sin resultados)";
+    return res.files.join("\n");
+  },
+  grep: (r) => {
+    const res = r as {
+      matches?: Array<{ path: string; line: number; column: number; text: string }>;
+    };
+    if (!Array.isArray(res.matches)) return "";
+    if (res.matches.length === 0) return "(sin resultados)";
+    return res.matches
+      .map((m) => `${m.path}:${m.line}:${m.column}: ${m.text}`)
+      .join("\n");
+  },
+  list_dir: (r) => {
+    const res = r as {
+      entries?: Array<{ name: string; type: string; size?: number }>;
+    };
+    if (!Array.isArray(res.entries)) return "";
+    if (res.entries.length === 0) return "(directorio vacío)";
+    const ICON: Record<string, string> = {
+      directory: "📁",
+      file: "📄",
+      "symbolic-link": "🔗",
+    };
+    return res.entries
+      .map((e) => {
+        const icon = ICON[e.type] ?? "📄";
+        const slash = e.type === "directory" ? "/" : "";
+        const size = typeof e.size === "number" ? ` (${formatSize(e.size)})` : "";
+        return `${icon} ${e.name}${slash}${size}`;
+      })
+      .join("\n");
+  },
+  git_log: (r) => {
+    const res = r as {
+      commits?: Array<{ sha: string; author: string; isoDate: string; subject: string }>;
+      truncated?: boolean;
+    };
+    if (!Array.isArray(res.commits)) return "";
+    if (res.commits.length === 0) return "(sin commits)";
+    const lines = res.commits.map(
+      (c) => `${c.sha.slice(0, 7)} ${c.isoDate.slice(0, 10)} ${c.author} — ${c.subject}`,
+    );
+    if (res.truncated) lines.push("… (truncado)");
+    return lines.join("\n");
+  },
+  git_diff: (r) => {
+    const res = r as {
+      diff?: string;
+      additions?: number;
+      deletions?: number;
+      truncated?: boolean;
+      warning?: string;
+    };
+    if (typeof res.diff !== "string") return "(sin cambios)";
+    let out = `+${res.additions ?? 0} −${res.deletions ?? 0}`;
+    if (res.truncated) out += " (truncado)";
+    if (res.warning) out += `\n⚠️ ${res.warning}`;
+    return `${out}\n\n${res.diff}`;
+  },
+  shell: (r, cmd) => {
+    const res = r as {
+      exitCode?: number;
+      stdout?: string;
+      stderr?: string;
+      timedOut?: boolean;
+    };
+    const parts: string[] = [];
+    const stripEcho = (text: string) => {
+      if (!cmd) return text;
+      // El core a veces antepone el comando al output (eco). El header del
+      // badge ya lo muestra; lo quitamos para no duplicarlo.
+      const lines = text.split("\n");
+      const first = lines[0]?.trim();
+      if (first && first.startsWith(cmd.trim())) return lines.slice(1).join("\n");
+      return text;
+    };
+    if (typeof res.stdout === "string") {
+      const cleaned = stripEcho(res.stdout).trimEnd();
+      if (cleaned) parts.push(cleaned);
+    }
+    if (typeof res.stderr === "string" && res.stderr.trim())
+      parts.push(`[stderr]\n${res.stderr.trimEnd()}`);
+    if (res.timedOut) parts.push("[timeout]");
+    if (!parts.length && typeof res.exitCode === "number" && res.exitCode !== 0)
+      parts.push(`(exit code ${res.exitCode})`);
+    return parts.join("\n") || "(exit code 0, sin salida)";
+  },
+  question: (r) => {
+    const res = r as { answers?: Array<string | string[]> };
+    if (!Array.isArray(res.answers)) return "";
+    return (
+      res.answers
+        .map((a) => (Array.isArray(a) ? a.join(", ") : a))
+        .filter(Boolean)
+        .join("\n") || "(sin respuesta)"
+    );
+  },
+  todowrite: (r) => {
+    const res = r as { todos?: Array<{ content: string; status: string }> };
+    if (!Array.isArray(res.todos)) return "";
+    const MARK: Record<string, string> = {
+      pending: "○",
+      in_progress: "◐",
+      completed: "●",
+      cancelled: "✗",
+    };
+    return res.todos.map((t) => `${MARK[t.status] ?? "○"} ${t.content}`).join("\n");
+  },
+};
+
 /**
  * Extracts a compact textual body from a tool result for the tag content.
- * Keeps it short — the UI renders tool cards, not full file dumps.
+ * #168: usa el formatter de la tool si existe (texto legible); JSON crudo
+ * truncado solo como fallback defensivo.
+ *
+ * El runtime a veces entrega `output` como string JSON (`'{"exitCode":0,...}'`)
+ * en vez de objeto (p.ej. vía wrappers del modelo). Para esas tools con
+ * formatter, intentamos parsear el string y aplicarle el formatter; el
+ * verbatim solo aplica a strings planos o a tools sin formatter.
  */
-export function extractToolContent(result: unknown): string {
+export function extractToolContent(toolId: string, result: unknown): string {
   if (!result) return "";
+  if (typeof toolId === "string" && TOOL_RESULT_FORMATTERS[toolId]) {
+    let target: unknown = result;
+    if (typeof result === "string" && looksLikeJson(result)) {
+      try {
+        target = JSON.parse(result);
+      } catch {
+        target = result;
+      }
+    }
+    if (typeof target !== "string") {
+      try {
+        const formatted = TOOL_RESULT_FORMATTERS[toolId](target);
+        if (typeof formatted === "string") return formatted;
+      } catch {
+        // Un formatter nunca debe romper el stream: cae al fallback JSON.
+      }
+    }
+  }
   if (typeof result === "string") return result;
   try {
     const json = JSON.stringify(result);
     return json.length > 400 ? json.slice(0, 400) + "…" : json;
   } catch {
     return "";
+  }
+}
+
+/** True si el string parece un JSON de objeto/array (no texto plano). */
+function looksLikeJson(s: string): boolean {
+  const trimmed = s.trimStart();
+  return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
+/**
+ * Reformatea el content de un tag de tool persistido (mensajes viejos):
+ * si `content` es un string JSON y la tool tiene formatter, lo convierte al
+ * mismo texto legible que produce el mapper hoy. Si no, lo devuelve tal cual.
+ * Se usa en render time para que los mensajes históricos (con JSON crudo) se
+ * vean igual que los nuevos.
+ */
+export function reformatToolResultContent(
+  toolId: string,
+  content: string,
+  cmd?: string,
+): string {
+  if (!content) return content;
+  if (typeof toolId !== "string" || !TOOL_RESULT_FORMATTERS[toolId]) {
+    return content;
+  }
+  if (!looksLikeJson(content)) return content;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return content;
+  }
+  if (typeof parsed !== "object" || parsed === null) return content;
+  try {
+    const formatted = TOOL_RESULT_FORMATTERS[toolId](parsed, cmd);
+    return typeof formatted === "string" ? formatted : content;
+  } catch {
+    return content;
   }
 }
 
@@ -109,6 +356,15 @@ export function buildVibesToolTag(
       return `<vibes-run-command cmd="${escapeAttr(detail)}">${content}</vibes-run-command>`;
     case "vibes-list-files":
       return `<vibes-list-files directory="${escapeAttr(detail)}">${content}</vibes-list-files>`;
+    case "vibes-git":
+      // git_log/git_diff comparten el tag de git; el toolId va en operation.
+      return `<vibes-git operation="${escapeAttr(toolId === "git_log" ? "log" : "diff")}">${content}</vibes-git>`;
+    case "vibes-patch":
+      return `<vibes-patch path="${escapeAttr(detail)}" description="">${content}</vibes-patch>`;
+    case "vibes-question":
+      return `<vibes-question>${content}</vibes-question>`;
+    case "vibes-todo":
+      return `<vibes-todo>${content}</vibes-todo>`;
     case "vibes-mcp-tool-call":
     default:
       return `<vibes-mcp-tool-call tool="${escapeAttr(toolId)}">${content}</vibes-mcp-tool-call>`;
@@ -178,7 +434,7 @@ export class VibesEventMapper {
         const detail = started?.detail ?? "";
         const ok = event.result.ok;
         const output = ok
-          ? extractToolContent(event.result.output)
+          ? extractToolContent(toolId, event.result.output)
           : event.result.error?.message ?? "[error]";
         this.timeline.push({
           type: "tool",

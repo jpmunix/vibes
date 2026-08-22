@@ -15,6 +15,7 @@ import {
 
 import { agentContracts, agentEvents } from "../types/agent";
 import { appContracts } from "../types/app";
+import { appFolderContracts } from "../types/app_folders";
 import { bunnyContracts } from "../types/bunny";
 import { pocketbaseContracts } from "../types/pocketbase";
 import { backupContracts } from "../types/backup";
@@ -75,6 +76,7 @@ export const VALID_INVOKE_CHANNELS = [
   // Core domains
   ...getInvokeChannels(settingsContracts),
   ...getInvokeChannels(appContracts),
+  ...getInvokeChannels(appFolderContracts),
   ...getInvokeChannels(chatContracts),
 
   ...getInvokeChannels(agentContracts),

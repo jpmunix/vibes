@@ -1,74 +1,298 @@
 /**
- * Model Validator — Boot-time safety net
+ * Model Validator — Boot-time safety net (multi-proveedor, card #87)
  *
- * On every app launch, validates that all model references in user settings
- * still exist in OpenRouter's current model catalogue. If a configured model
- * has been retired (e.g. a provider renamed or removed it), this module
- * silently replaces it with a known-good fallback and persists the change.
+ * En cada arranque valida que las referencias a modelos de los settings
+ * sigan existiendo. Ahora contra el catálogo multi-proveedor de models.dev
+ * (SDK @opencode-ai/models), no solo contra OpenRouter:
  *
- * This prevents the cascade of "model not found" 400/404 errors that occur
- * when a user's settings.json references a model that no longer exists.
+ *   - Provider local (ollama/lmstudio)   → solo formato, se valida en runtime.
+ *   - Provider custom (custom::/DB)      → contra los custom models de la DB.
+ *   - Provider nativo (anthropic/google) → contra catalog.providers[p].models.
+ *   - OpenRouter (vendor/model)          → contra catalog.providers.openrouter.
  *
- * ⚠️  IMPORTANT: Changes must be synced to Bunny DB (remote settings), not
- * just written to disk. Otherwise getUserSettings() will merge stale remote
- * values back on top: `{ ...local, ...remote }` → dead models return.
+ * Un modelo muerto se reemplaza por un fallback del MISMO provider (si existe
+ * un candidato viable); si no, por el fallback universal de OpenRouter. Esto
+ * evita la cascada de "model not found" 400/404 sin empujar al usuario a un
+ * provider que no eligió.
  *
- * Called from main.ts during the splash screen phase.
+ * ⚠️  Los cambios se sincronizan a Bunny DB (remote settings), no solo a disco.
+ *     getUserSettings() mergea `{ ...local, ...remote }`: sin el sync, los
+ *     valores muertos vuelven en cada boot.
+ *
+ * Se llama desde main.ts durante el splash. Fire-and-forget: nunca lanza.
  */
-
 import log from "electron-log";
 import { BrowserWindow } from "electron";
 import { readSettings, writeSettings } from "../../main/settings";
-import { fetchOpenRouterModels } from "./openrouter_models_service";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import { safeSend } from "./safe_sender";
 import {
   FALLBACK_SELECTED_MODEL,
+  FALLBACK_STANDARD_MODEL,
   DEFAULT_ENABLED_MODELS,
 } from "../shared/language_model_constants";
+import { MODEL_PROVIDER_SEPARATOR } from "../../lib/schemas";
+import type { UserSettings } from "../../lib/schemas";
 import {
-  DEFAULT_STANDARD_MODEL,
-  MODEL_PROVIDER_SEPARATOR,
-} from "../../lib/schemas";
+  resolveCatalog,
+  isModelKnown,
+  isModelDeprecated,
+  getFallbackModel,
+  type Catalog,
+} from "./models_dev_service";
 
 const logger = log.scope("model_validator");
 
+/** Providers locales: el runtime los valida (no van contra el catálogo). */
+const LOCAL_PROVIDERS = new Set(["ollama", "lmstudio"]);
+
+// ─── Lógica pura (testeable) ────────────────────────────────────────────────
+
+export interface ValidationDeps {
+  catalog: Catalog;
+  /** Nombres de custom models de la DB (no se prunan). */
+  customModelNames: Set<string>;
+}
+
+export interface ValidationResult {
+  settings: UserSettings;
+  /** Referencias migradas (para el log + broadcast). */
+  migrated: string[];
+  /** Modelos deprecated detectados (solo aviso, no auto-migrar). */
+  deprecated: string[];
+}
+
 /**
- * Validate all active model references in settings against the current
- * OpenRouter model catalogue. Replaces stale references with safe fallbacks.
+ * ¿Conocemos el modelo para su provider? Local → siempre conocido (runtime).
+ * Custom → en la DB. Nativo/openrouter → en el catálogo.
  *
- * Designed to be fire-and-forget — never throws, never blocks the UI.
+ * Los custom models de la DB cuentan para CUALQUIER provider (el original
+ * solo los cargaba si builtinProviderId === "openrouter", pero un usuario
+ * puede crear un custom model apuntando a anthropic/google/etc.). Sin esto,
+ * el validator migraría modelos custom perfectamente válidos.
+ */
+function knownForProvider(
+  catalog: Catalog,
+  customModelNames: Set<string>,
+  providerId: string,
+  name: string,
+): boolean {
+  if (LOCAL_PROVIDERS.has(providerId)) return true;
+  if (customModelNames.has(name)) return true;
+  if (providerId.startsWith("custom::") || providerId === "custom") {
+    return false;
+  }
+  return isModelKnown(catalog, providerId, name);
+}
+
+/** Fallback resuelto: el nombre a guardar + el provider que lo sirve. */
+interface ResolvedFallback {
+  name: string;
+  provider: string;
+}
+
+/**
+ * Fallback para una referencia muerta de un provider dado. Mantiene los
+ * fallbacks específicos de OpenRouter (compat con el comportamiento actual)
+ * y añade el fallback por provider para los nativos. Devuelve `{name, provider}`
+ * explícito porque un fallback universal puede cambiar también el provider.
+ */
+function fallbackFor(
+  catalog: Catalog,
+  providerId: string,
+  kind: "selected" | "executor" | "strategist" | "memories",
+  currentName?: string,
+): ResolvedFallback {
+  // OpenRouter: los fallbacks específicos de antes (estables + contract golden).
+  if (providerId === "openrouter") {
+    switch (kind) {
+      case "selected":
+        return { name: FALLBACK_SELECTED_MODEL, provider: "openrouter" };
+      case "strategist":
+        return { name: "deepseek/deepseek-v3.2", provider: "openrouter" };
+      default:
+        return { name: FALLBACK_STANDARD_MODEL, provider: "openrouter" };
+    }
+  }
+  // Provider nativo: un modelo GA viable del MISMO provider, si lo hay.
+  const sameProvider = getFallbackModel(catalog, providerId, currentName);
+  if (sameProvider) return { name: sameProvider, provider: providerId };
+  // Sin candidato del provider → red universal de OpenRouter (known-good).
+  // Nota: cambia el provider a openrouter (el modelo es un vendor/model OR).
+  return { name: FALLBACK_SELECTED_MODEL, provider: "openrouter" };
+}
+
+/**
+ * Valida TODAS las referencias a modelos de los settings contra el catálogo
+ * multi-proveedor. Pura: no toca disco/red/DB. Devuelve los settings (inmuta
+ * una copia) + lo que migró + los deprecated detectados.
+ */
+export function validateModelReferences(
+  settings: UserSettings,
+  deps: ValidationDeps,
+): ValidationResult {
+  const { catalog, customModelNames } = deps;
+  const migrated: string[] = [];
+  const deprecated: string[] = [];
+
+  // Guard: catálogo vacío (sin fuente disponible) → no validar nada, para no
+  // marcar todas las referencias como muertas. El wrapper también lo comprueba.
+  if (Object.keys(catalog.providers).length === 0) {
+    return { settings, migrated, deprecated };
+  }
+
+  // Copia superficial + selectedModel inmutable (para no mutar el original).
+  const next: UserSettings = { ...settings };
+  const setSelectModel = (patch: Partial<NonNullable<UserSettings["selectedModel"]>>) => {
+    next.selectedModel = { ...next.selectedModel!, ...patch };
+  };
+
+  // ── 1. selectedModel (chat principal) ──
+  const sm = next.selectedModel;
+  if (sm?.name) {
+    const provider = sm.provider || "openrouter";
+    if (!knownForProvider(catalog, customModelNames, provider, sm.name)) {
+      const fb = fallbackFor(catalog, provider, "selected", sm.name);
+      logger.warn(
+        `[ModelValidator] selectedModel "${sm.name}" (${provider}) no existe → "${fb.name}" (${fb.provider})`,
+      );
+      setSelectModel({ name: fb.name, provider: fb.provider });
+      migrated.push(`selectedModel → ${fb.name} (${fb.provider})`);
+    } else if (!LOCAL_PROVIDERS.has(provider) && isModelDeprecated(catalog, provider, sm.name)) {
+      deprecated.push(`selectedModel=${sm.name}`);
+      logger.warn(
+        `[ModelValidator] selectedModel "${sm.name}" está deprecated (no se auto-migra)`,
+      );
+    }
+  }
+
+  // ── 2. Referencias de string (executor/strategist/memories) ──
+  const handleStringRef = (
+    key: "executorModel" | "strategistModel" | "memoriesSynthesisModelV2" | "memoriesRouterModelV2",
+    kind: "executor" | "strategist" | "memories",
+  ) => {
+    const raw = (next as Record<string, any>)[key];
+    if (!raw || typeof raw !== "string") return;
+
+    // Formatos reales en settings (verificados):
+    //  - "vendor/model"            → OpenRouter (sin separador).
+    //  - "ollama::qwen2.5-coder:7b" → cross-provider (PRIMERA :: es el corte;
+    //    los ids de modelo local pueden llevar ":" pero no "::").
+    //  - "custom::cortecs::mi-modelo" → custom provider (DOS ::; el id del
+    //    provider va entre el primero y el segundo, el resto es el apiName).
+    //    Es el formato que compone useMultiProviderModels y que escriben los
+    //    selectores (StrategistModelSelector/ExecutorModelSelector).
+    let provider: string;
+    let name: string;
+    if (raw.startsWith("custom::")) {
+      // El primer separador es el sufijo fijo del prefijo "custom::"; el
+      // SEGUNDO hay que buscarlo a partir de ahí (si busco desde el índice 2
+      // encuentro el primero otra vez).
+      const second = raw.indexOf(
+        MODEL_PROVIDER_SEPARATOR,
+        "custom::".length,
+      );
+      if (second === -1) {
+        // "custom::<nombre>" sin id de provider — forma legacy; tratar como
+        // referencia de DB con nombre completo.
+        provider = "custom";
+        name = raw.slice(MODEL_PROVIDER_SEPARATOR.length);
+      } else {
+        provider = `custom::${raw.slice(
+          MODEL_PROVIDER_SEPARATOR.length,
+          second,
+        )}`;
+        name = raw.slice(second + MODEL_PROVIDER_SEPARATOR.length);
+      }
+    } else if (raw.includes(MODEL_PROVIDER_SEPARATOR)) {
+      const sep = raw.indexOf(MODEL_PROVIDER_SEPARATOR);
+      provider = raw.slice(0, sep);
+      name = raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length);
+    } else {
+      // Sin separador → convención OpenRouter (vendor/model).
+      provider = "openrouter";
+      name = raw;
+    }
+
+    if (knownForProvider(catalog, customModelNames, provider, name)) {
+      // OK. (Los local se consideran conocidos.)
+      if (!LOCAL_PROVIDERS.has(provider) && isModelDeprecated(catalog, provider, name)) {
+        deprecated.push(`${key}=${raw}`);
+        logger.warn(`[ModelValidator] ${key} "${raw}" está deprecated`);
+      }
+      return;
+    }
+
+    const fb = fallbackFor(catalog, provider, kind, name);
+    // Reconstruir la referencia según el provider de destino:
+    //  - openrouter → el nombre ya es vendor/model (sin separador).
+    //  - cross/local → provider::name (formato de string cross-provider).
+    const newRef =
+      fb.provider === "openrouter"
+        ? fb.name
+        : `${fb.provider}${MODEL_PROVIDER_SEPARATOR}${fb.name}`;
+    logger.warn(`[ModelValidator] ${key} "${raw}" no existe → "${newRef}"`);
+    (next as Record<string, any>)[key] = newRef;
+    migrated.push(`${key} → ${newRef}`);
+  };
+
+  handleStringRef("executorModel", "executor");
+  handleStringRef("strategistModel", "strategist");
+  handleStringRef("memoriesSynthesisModelV2", "memories");
+  handleStringRef("memoriesRouterModelV2", "memories");
+
+  // ── 3. enabledOpenRouterModels (picker) — prune muertas + deprecated ──
+  const enabled = next.enabledOpenRouterModels;
+  if (enabled && Array.isArray(enabled)) {
+    const keep: string[] = [];
+    const removed: string[] = [];
+    for (const name of enabled) {
+      const alive =
+        customModelNames.has(name) ||
+        (isModelKnown(catalog, "openrouter", name) &&
+          !isModelDeprecated(catalog, "openrouter", name));
+      if (alive) keep.push(name);
+      else removed.push(name);
+    }
+    if (removed.length > 0) {
+      logger.warn(
+        `[ModelValidator] Pruned ${removed.length} modelos muertos/deprecated de enabledOpenRouterModels: ${removed.join(", ")}`,
+      );
+      next.enabledOpenRouterModels =
+        keep.length > 0 ? keep : [...DEFAULT_ENABLED_MODELS];
+      migrated.push(`enabledOpenRouterModels: removed ${removed.length}`);
+    }
+  }
+
+  return { settings: next, migrated, deprecated };
+}
+
+// ─── Wrapper con I/O (boot) ─────────────────────────────────────────────────
+
+/**
+ * Valida los settings contra el catálogo y persiste si hubo migraciones.
+ * Fire-and-forget: nunca lanza, nunca bloquea la UI.
  */
 export async function validateModelSettings(): Promise<void> {
   try {
     const settings = readSettings();
 
-    // ── Skip validation when using a custom provider ──
-    // The validator checks against the OpenRouter model catalogue.
-    // If the active provider is NOT OpenRouter, all its models would be
-    // falsely flagged as "dead" and replaced with OpenRouter fallbacks.
-    const activeProvider = settings.selectedModel?.provider || "openrouter";
-    if (activeProvider !== "openrouter") {
+    // Catálogo multi-proveedor (live → disk → snapshot). Nunca rechaza.
+    const catalog = await resolveCatalog();
+
+    // Guard del original: si el catálogo viene COMPLETAMENTE vacío (sin
+    // live, sin disco y sin snapshot — caso extremo), saltarse la validación
+    // para no marcar todas las referencias como muertas.
+    if (Object.keys(catalog.providers).length === 0) {
       logger.info(
-        `[ModelValidator] Skipped — active provider is "${activeProvider}", not OpenRouter`,
+        "[ModelValidator] Skipped — empty catalog (no source available)",
       );
       return;
     }
 
-    const models = await fetchOpenRouterModels();
-
-    // If we got zero models (network down, API error), skip validation
-    // to avoid falsely flagging everything as invalid.
-    if (models.length === 0) {
-      logger.info(
-        "[ModelValidator] Skipped — no models available (network/API issue)",
-      );
-      return;
-    }
-
-    // Retrieve custom models from Drizzle DB for the current user, to avoid falsely pruning them.
+    // Custom models de la DB (para no prunarlos).
     const customModelNames = new Set<string>();
     const userId = settings.userId;
     if (userId) {
@@ -79,154 +303,61 @@ export async function validateModelSettings(): Promise<void> {
           .from(remoteSchema.languageModels)
           .where(eq(remoteSchema.languageModels.userId, userId));
         for (const cm of customModels) {
-          if ((cm.builtinProviderId || "openrouter") === "openrouter") {
-            customModelNames.add(cm.apiName);
-          }
+          customModelNames.add(cm.apiName);
         }
       } catch (dbErr: any) {
         logger.warn(
-          `[ModelValidator] Failed to query custom models from database: ${dbErr.message}`,
+          `[ModelValidator] Failed to query custom models: ${dbErr.message}`,
         );
       }
     }
 
-    const availableNames = new Set([
-      ...models.map((m) => m.name),
-      ...customModelNames,
-    ]);
-    const migrated: string[] = [];
+    const { settings: next, migrated, deprecated } = validateModelReferences(
+      settings,
+      { catalog, customModelNames },
+    );
 
-    // ── 1. selectedModel (the main chat model) ──
-    if (
-      settings.selectedModel?.name &&
-      !availableNames.has(settings.selectedModel.name)
-    ) {
+    if (deprecated.length > 0) {
       logger.warn(
-        `[ModelValidator] selectedModel "${settings.selectedModel.name}" no longer exists → "${FALLBACK_SELECTED_MODEL}"`,
+        `[ModelValidator] Modelos deprecated detectados (solo aviso): ${deprecated.join(", ")}`,
       );
-      settings.selectedModel = {
-        name: FALLBACK_SELECTED_MODEL,
-        provider: "openrouter",
-      };
-      migrated.push(`selectedModel → ${FALLBACK_SELECTED_MODEL}`);
     }
 
-    // ── 2. executorModel (lightweight tasks) ──
-    // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
-    if (
-      settings.executorModel &&
-      !settings.executorModel.includes(MODEL_PROVIDER_SEPARATOR) &&
-      !availableNames.has(settings.executorModel)
-    ) {
-      logger.warn(
-        `[ModelValidator] executorModel "${settings.executorModel}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`,
-      );
-      settings.executorModel = DEFAULT_STANDARD_MODEL;
-      migrated.push(`executorModel → ${DEFAULT_STANDARD_MODEL}`);
-    }
-
-    // ── 2b. strategistModel (reasoning agents) ──
-    // Skip validation for cross-provider models (e.g. "ollama::qwen2.5-coder:7b")
-    if (
-      settings.strategistModel &&
-      !settings.strategistModel.includes(MODEL_PROVIDER_SEPARATOR) &&
-      !availableNames.has(settings.strategistModel)
-    ) {
-      const fallback = "deepseek/deepseek-v3.2";
-      logger.warn(
-        `[ModelValidator] strategistModel "${settings.strategistModel}" no longer exists → "${fallback}"`,
-      );
-      settings.strategistModel = fallback;
-      migrated.push(`strategistModel → ${fallback}`);
-    }
-
-    // ── 3. memoriesSynthesisModelV2 (memory extraction) ──
-    if (
-      settings.memoriesSynthesisModelV2 &&
-      !availableNames.has(settings.memoriesSynthesisModelV2)
-    ) {
-      logger.warn(
-        `[ModelValidator] memoriesSynthesisModelV2 "${settings.memoriesSynthesisModelV2}" no longer exists → "${DEFAULT_STANDARD_MODEL}"`,
-      );
-      settings.memoriesSynthesisModelV2 = DEFAULT_STANDARD_MODEL;
-      migrated.push(`memoriesSynthesisModelV2 → ${DEFAULT_STANDARD_MODEL}`);
-    }
-
-    // ── 4. memoriesRouterModelV2 (memory selection) ──
-    if (
-      (settings as any).memoriesRouterModelV2 &&
-      !availableNames.has((settings as any).memoriesRouterModelV2)
-    ) {
-      const fallback = DEFAULT_STANDARD_MODEL;
-      logger.warn(
-        `[ModelValidator] memoriesRouterModelV2 "${(settings as any).memoriesRouterModelV2}" no longer exists → "${fallback}"`,
-      );
-      (settings as any).memoriesRouterModelV2 = fallback;
-      migrated.push(`memoriesRouterModelV2 → ${fallback}`);
-    }
-
-    // ── 5. enabledOpenRouterModels (picker list) — prune dead entries ──
-    const enabledModels = settings.enabledOpenRouterModels;
-    if (enabledModels && Array.isArray(enabledModels)) {
-      const alive = enabledModels.filter((name) => availableNames.has(name));
-      const dead = enabledModels.filter((name) => !availableNames.has(name));
-
-      if (dead.length > 0) {
-        logger.warn(
-          `[ModelValidator] Pruned ${dead.length} dead models from enabledOpenRouterModels: ${dead.join(", ")}`,
-        );
-        // Ensure we don't end up with an empty list
-        settings.enabledOpenRouterModels =
-          alive.length > 0 ? alive : [...DEFAULT_ENABLED_MODELS];
-        migrated.push(
-          `enabledOpenRouterModels: removed ${dead.length} dead models`,
-        );
-      }
-    }
-
-    // ── Persist if anything changed ──
     if (migrated.length > 0) {
-      // Step 1: Write to disk + in-memory cache
-      writeSettings(settings);
+      writeSettings(next);
       logger.info(
         `[ModelValidator] Migrated ${migrated.length} stale model references: ${migrated.join("; ")}`,
       );
 
-      // Step 2: Sync to Bunny DB so getUserSettings merge doesn't
-      // overwrite the pruned values with stale remote data.
-      // This is critical — without it, `{ ...local, ...remote }` in
-      // getUserSettings brings the dead models back on every boot.
+      // Sync a Bunny DB (crítico: el merge {...local, ...remote} reviviría los muertos).
       try {
         const updated = readSettings();
-        const userId = updated.userId;
-        if (userId) {
+        const uid = updated.userId;
+        if (uid) {
           const db = getRemoteDb();
           const { userId: _u, sessionToken: _s, ...syncable } = updated;
           const settingsJson = JSON.stringify(syncable);
           const existing = await db.query.userSettings.findFirst({
-            where: eq(remoteSchema.userSettings.userId, userId),
+            where: eq(remoteSchema.userSettings.userId, uid),
           });
           if (existing) {
             await db
               .update(remoteSchema.userSettings)
               .set({ settingsJson, updatedAt: new Date() })
-              .where(eq(remoteSchema.userSettings.userId, userId));
+              .where(eq(remoteSchema.userSettings.userId, uid));
           } else {
             await db.insert(remoteSchema.userSettings).values({
-              userId,
+              userId: uid,
               settingsJson,
               updatedAt: new Date(),
             });
           }
-          logger.info("[ModelValidator] Synced pruned settings to Bunny DB");
         }
       } catch (syncErr: any) {
-        logger.warn(
-          `[ModelValidator] Bunny DB sync failed (non-fatal): ${syncErr.message}`,
-        );
+        logger.warn(`[ModelValidator] Bunny DB sync failed (non-fatal): ${syncErr.message}`);
       }
 
-      // Step 3: Broadcast to renderer
+      // Broadcast al renderer.
       const updated = readSettings();
       for (const win of BrowserWindow.getAllWindows()) {
         if (!win.isDestroyed() && win.webContents) {
@@ -238,9 +369,6 @@ export async function validateModelSettings(): Promise<void> {
       logger.info("[ModelValidator] All model references are valid ✓");
     }
   } catch (error: any) {
-    // Never crash the app — validation is best-effort
-    logger.warn(
-      `[ModelValidator] Validation failed (non-fatal): ${error.message}`,
-    );
+    logger.warn(`[ModelValidator] Validation failed (non-fatal): ${error.message}`);
   }
 }

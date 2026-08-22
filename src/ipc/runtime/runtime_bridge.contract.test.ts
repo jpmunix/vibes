@@ -46,12 +46,48 @@ const hoisted = vi.hoisted(() => ({
   testRoot: "",
   runtime: null as unknown as import("@vibes/runtime").Runtime,
   responses: [] as unknown[],
+  /**
+   * #95: folders to return from the stubbed `app_folders` query. `null`
+   * makes the stub throw (degradation path — single-root). An empty array
+   * means "the app has no extras" (still single-root). A populated array
+   * triggers the multi-root path. Set per-test with `hoisted.appFolders = [...]`.
+   */
+  appFolders: null as unknown as null | Array<{
+    id: number;
+    appId: number;
+    path: string;
+    label: string;
+    language: string | null;
+    projectType: string | null;
+    isPrimary: number;
+    createdAt: Date;
+  }>,
 }));
 
 vi.mock("../../db/remote", () => ({
-  getRemoteDb: () => ({
-    update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
-  }),
+  getRemoteDb: () => {
+    // Build a chainable stub that returns the configured appFolders rows.
+    // The bridge calls: db.select().from(appFolders).where(...).orderBy(...)
+    // When hoisted.appFolders is null (the default for existing tests), the
+    // stub throws on `.select()` — reproducing the "db.select is not a
+    // function" degradation path the existing tests rely on.
+    const rows = hoisted.appFolders;
+    if (rows === null) {
+      // Return an object WITHOUT a `select` method → bridge catch degrades.
+      return {
+        update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
+      };
+    }
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => Promise.resolve(rows),
+    };
+    return {
+      update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
+      select: () => chain,
+    };
+  },
 }));
 
 vi.mock("../../paths/paths", () => ({
@@ -234,6 +270,7 @@ function makeOptions(overrides: Partial<RuntimeStreamOptions> = {}): RuntimeStre
   return {
     placeholderMessageId: 42,
     appPath: "my-app",
+    appId: 0,
     chatMessages: [
       { id: 1, role: "user", content: "say hi" },
       { id: 42, role: "assistant", content: "" },
@@ -782,5 +819,170 @@ describe("handleRuntimeStream contract — Slice 3.9 leftover purge", () => {
 
     expect(result.success).toBe(true);
     expect(getActiveRuntimeSession(99)).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// #95 — Workspace multi-proyecto: multi-root bridge fixtures (NEW)
+// ============================================================================
+// These tests exercise the multi-root path WITHOUT touching the existing
+// single-root fixtures (decision #13). They inject `hoisted.appFolders` rows
+// so the stubbed `getRemoteDb().select().from().where().orderBy()` returns
+// them, and the bridge mounts a multi-root session.
+//
+// Important: `hoisted.appFolders` MUST be reset to `null` in `afterEach` so
+// the 16 existing tests keep using the degradation path (no `select` method).
+
+describe("handleRuntimeStream contract — multi-root workspace (#95)", () => {
+  afterEach(() => {
+    // Reset to null so the next test (even outside this describe) gets the
+    // degradation stub, not a stale array.
+    hoisted.appFolders = null;
+  });
+
+  it("with 2 folders, the system prompt carries the WORKSPACE FOLDERS descriptor", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    // Two folders: the primary (backfilled, isPrimary=1) and one extra.
+    // The bridge skips the primary row (uses appPath) and uses extras.
+    hoisted.appFolders = [
+      {
+        id: 1,
+        appId: 0,
+        path: join(hoisted.testRoot, "my-app"),
+        label: "my-app",
+        language: "typescript",
+        projectType: "generic",
+        isPrimary: 1,
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        appId: 0,
+        path: join(hoisted.testRoot, "other-repo"),
+        label: "other-repo",
+        language: "typescript",
+        projectType: "generic",
+        isPrimary: 0,
+        createdAt: new Date(),
+      },
+    ];
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 500, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    const sessions = await storage.listSessions();
+    const record = sessions[0]!;
+    // The descriptor is pushed to contextInstructions → lands in systemPrompt.
+    expect(record.systemPrompt).toContain("WORKSPACE FOLDERS");
+    expect(record.systemPrompt).toContain("Your workspace consists of 2 folders");
+    expect(record.systemPrompt).toContain("Folder 1 (primary");
+    expect(record.systemPrompt).toContain(join(hoisted.testRoot, "my-app"));
+    expect(record.systemPrompt).toContain("Folder 2");
+    expect(record.systemPrompt).toContain(join(hoisted.testRoot, "other-repo"));
+    // The instruction to use the question tool for ambiguity is present.
+    expect(record.systemPrompt).toContain("use the question tool to clarify");
+  });
+
+  it("with 2 folders, createSession receives workspaceRoots with 2 entries (primary first)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    hoisted.appFolders = [
+      {
+        id: 1,
+        appId: 0,
+        path: join(hoisted.testRoot, "my-app"),
+        label: "my-app",
+        language: null,
+        projectType: null,
+        isPrimary: 1,
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        appId: 0,
+        path: join(hoisted.testRoot, "vibes-core"),
+        label: "vibes-core",
+        language: "typescript",
+        projectType: "generic",
+        isPrimary: 0,
+        createdAt: new Date(),
+      },
+    ];
+
+    // Spy on createSession to capture the workspaceRoots argument.
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 501, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(createSessionSpy).toHaveBeenCalledOnce();
+    const arg = createSessionSpy.mock.calls[0]![0]!;
+    expect(arg.workspaceRoots).toBeDefined();
+    expect(arg.workspaceRoots!.length).toBe(2);
+    // The primary (appPath) is first.
+    expect(arg.workspaceRoots![0]).toBe(join(hoisted.testRoot, "my-app"));
+    // The extra follows in insertion order.
+    expect(arg.workspaceRoots![1]).toBe(join(hoisted.testRoot, "vibes-core"));
+
+    createSessionSpy.mockRestore();
+  });
+
+  it("with 0 extra folders (single-root), the system prompt does NOT carry the descriptor", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    // Empty array = the app has a primary but no extras → single-root.
+    hoisted.appFolders = [];
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 502, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    const sessions = await storage.listSessions();
+    const record = sessions[0]!;
+    // The descriptor is NOT pushed when isMultiRoot is false. When the chat
+    // has no custom prompt and no other contextInstructions, systemPrompt is
+    // undefined — the optional chaining makes `.not.toContain` a no-op.
+    expect(record.systemPrompt ?? "").not.toContain("WORKSPACE FOLDERS");
+    expect(record.systemPrompt ?? "").not.toContain("Your workspace consists of");
+  });
+
+  it("degrades to single-root when the app_folders query throws (table missing, etc.)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    // null = the stub has no `select` method → bridge catch degrades.
+    hoisted.appFolders = null;
+
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 503, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(createSessionSpy).toHaveBeenCalledOnce();
+    const arg = createSessionSpy.mock.calls[0]![0]!;
+    // Falls back to a single-root workspace (the primary only).
+    expect(arg.workspaceRoots).toBeDefined();
+    expect(arg.workspaceRoots!.length).toBe(1);
+
+    createSessionSpy.mockRestore();
   });
 });

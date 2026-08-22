@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import type { ModelOption } from "../shared/language_model_constants";
 import { resolveDisplayNames } from "./model_id_humanizer";
+import { enrichModelOptions } from "./models_dev_service";
 
 const logger = log.scope("openai-compatible-models");
 
@@ -396,19 +397,30 @@ async function refreshFromAPI(
       transformModel(m, displayNames.get(m.id) ?? m.id),
     );
 
+    // Card #87 — Slice C: enriquece los huecos de un /models pobre (proxy sin
+    // pricing/context) con el catálogo de models.dev. El provider GANA: el
+    // catálogo solo completa campos ausentes. Nunca lanza: si el catálogo no
+    // resuelve, los modelos salen tal cual (el fetch no se rompe).
+    const enriched = await enrichModelOptions(transformed, ids);
+    if (enriched.some((m, i) => m !== transformed[i])) {
+      logger.info(
+        `Enriched ${enriched.filter((m, i) => m !== transformed[i]).length} models from models.dev catalog for ${providerId}`,
+      );
+    }
+
     // Sort alphabetically by displayName
-    transformed.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    enriched.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     // Save to cache
     const cache: CachedModelsFile = {
-      models: transformed,
+      models: enriched,
       fetchedAt: Date.now(),
       cacheVersion: CACHE_VERSION,
     };
     memoryCache.set(providerId, cache);
     await writeCacheToDisk(providerId, cache);
 
-    return transformed;
+    return enriched;
   } catch (error) {
     logger.error(`Failed to fetch models for ${providerId}:`, error);
     // Return whatever we have

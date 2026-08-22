@@ -18,9 +18,10 @@ import {
   buildTokenUsageTag,
   buildCancelledTag,
   cleanResponseText,
+  reformatToolResultContent,
 } from "./event_mapper";
 
-describe("mapRuntimeToolToVibesTag — parity with adapter", () => {
+describe("mapRuntimeToolToVibesTag — fuente única #168", () => {
   it.each([
     ["write_file", "vibes-write"],
     ["read_file", "vibes-read"],
@@ -28,12 +29,29 @@ describe("mapRuntimeToolToVibesTag — parity with adapter", () => {
     ["shell", "vibes-run-command"],
     ["glob", "vibes-list-files"],
     ["grep", "vibes-grep"],
+    // Nuevos en #168: antes caían en vibes-mcp-tool-call
+    ["patch", "vibes-patch"],
+    ["git_log", "vibes-git"],
+    ["git_diff", "vibes-git"],
+    ["list_dir", "vibes-list-files"],
+    ["question", "vibes-question"],
+    ["todowrite", "vibes-todo"],
   ])("maps %s → %s", (toolId, expected) => {
     expect(mapRuntimeToolToVibesTag(toolId)).toBe(expected);
   });
 
   it("unknown tools fall back to the generic mcp-tool-call", () => {
     expect(mapRuntimeToolToVibesTag("some_mcp_tool")).toBe("vibes-mcp-tool-call");
+  });
+
+  it("ninguna tool del catálogo built-in cae en el fallback MCP", () => {
+    const BUILT_INS = [
+      "read_file", "write_file", "edit_file", "patch", "glob", "grep",
+      "shell", "git_log", "git_diff", "list_dir", "question", "todowrite",
+    ];
+    for (const id of BUILT_INS) {
+      expect(mapRuntimeToolToVibesTag(id)).not.toBe("vibes-mcp-tool-call");
+    }
   });
 });
 
@@ -61,18 +79,168 @@ describe("extractToolDetail", () => {
   });
 });
 
-describe("extractToolContent", () => {
+describe("extractToolContent — formatters por tool (#168)", () => {
   it("returns strings verbatim", () => {
-    expect(extractToolContent("hello")).toBe("hello");
+    expect(extractToolContent("list_dir", "hello")).toBe("hello");
   });
-  it("JSON-serializes objects", () => {
-    expect(extractToolContent({ path: "a", bytes: 4 })).toBe('{"path":"a","bytes":4}');
+  it("JSON-serializes objects de tools sin formatter", () => {
+    expect(extractToolContent("desconocida", { path: "a", bytes: 4 })).toBe(
+      '{"path":"a","bytes":4}',
+    );
   });
   it("truncates very large payloads", () => {
     const big = { data: "x".repeat(1000) };
-    const out = extractToolContent(big);
+    const out = extractToolContent("desconocida", big);
     expect(out.length).toBeLessThanOrEqual(401);
     expect(out.endsWith("…")).toBe(true);
+  });
+  it("list_dir → listado legible con iconos, no JSON crudo", () => {
+    const out = extractToolContent("list_dir", {
+      path: "/x",
+      entries: [
+        { name: "ui", type: "directory" },
+        { name: "index.tsx", type: "file", size: 2048 },
+      ],
+    });
+    expect(out).toContain("📁 ui/");
+    expect(out).toContain("📄 index.tsx (2.0 KB)");
+    expect(out).not.toContain("{");
+  });
+  it("glob → lista de paths", () => {
+    const out = extractToolContent("glob", { files: ["a.ts", "b.ts"], total: 2 });
+    expect(out).toBe("a.ts\nb.ts");
+  });
+  it("grep → matches formato path:line:col", () => {
+    const out = extractToolContent("grep", {
+      matches: [{ path: "a.ts", line: 3, column: 5, text: "foo" }],
+      total: 1,
+    });
+    expect(out).toBe("a.ts:3:5: foo");
+  });
+  it("git_log → líneas sha fecha autor asunto", () => {
+    const out = extractToolContent("git_log", {
+      commits: [{ sha: "abc1234567", author: "munix", isoDate: "2026-08-21T10:00:00Z", subject: "fix" }],
+      truncated: false,
+    });
+    expect(out).toContain("abc1234 2026-08-21 munix — fix");
+  });
+  it("git_diff → cabecera +/− y diff unificado", () => {
+    const out = extractToolContent("git_diff", {
+      diff: "+hola\n-adios",
+      additions: 1,
+      deletions: 1,
+      truncated: false,
+    });
+    expect(out).toContain("+1 −1");
+    expect(out).toContain("+hola");
+  });
+  it("shell → stdout limpio, stderr etiquetado", () => {
+    const out = extractToolContent("shell", { exitCode: 0, stdout: "ok\n", stderr: "" });
+    expect(out).toBe("ok");
+  });
+  it("shell con cmd → elimina el eco del comando de la 1ª línea del stdout", () => {
+    const out = extractToolContent("shell", {
+      exitCode: 0,
+      stdout: "ls src/components\ntotal 4\nErrorBoundary.tsx",
+      stderr: "",
+    });
+    // El formatter no tiene cmd por defecto en extractToolContent (no lo pasa).
+    // Aquí solo verificamos que no rompe sin cmd.
+    expect(out).toContain("ErrorBoundary.tsx");
+  });
+  it("shell (formatter directo) con cmd → quita la 1ª línea si repite cmd", () => {
+    // A través de reformatToolResultContent que sí pasa cmd.
+    const out = reformatToolResultContent(
+      "shell",
+      JSON.stringify({
+        exitCode: 0,
+        stdout: "ls src/components\ntotal 4\nErrorBoundary.tsx",
+        stderr: "",
+      }),
+      "ls src/components",
+    );
+    expect(out).not.toContain("ls src/components");
+    expect(out).toContain("total 4");
+    expect(out).toContain("ErrorBoundary.tsx");
+  });
+  it("write_file → resumen creado/actualizado + diff", () => {
+    const out = extractToolContent("write_file", {
+      path: "a.ts",
+      bytes: 5,
+      existed: false,
+      diff: { path: "a.ts", additions: 2, deletions: 0, hunks: [{ startLine: 1, lines: ["+l1", "+l2"] }] },
+    });
+    expect(out).toContain("creado · +2 −0");
+    expect(out).toContain("+l1");
+  });
+  it("formatter roto cae al JSON defensivo sin lanzar", () => {
+    const out = extractToolContent("list_dir", null as any);
+    // result null → early return ""
+    expect(out).toBe("");
+    const out2 = extractToolContent("list_dir", { entries: "no-array" } as any);
+    expect(out2).not.toContain("entries");
+  });
+
+  it("un formatter que lanza no rompe el stream (fallback JSON)", () => {
+    // Patch interno: pasamos un shape raro que dispare el throw del formatter
+    const evil = { entries: [], get length(): number { throw new Error("boom"); } } as any;
+    const out = extractToolContent("list_dir", evil);
+    expect(typeof out).toBe("string");
+  });
+
+  it("shell con output STRING JSON (git status) → stdout legible, no JSON crudo", () => {
+    const raw =
+      '{"exitCode":0,"stdout":"En la rama main\\nTu rama está actualizada","stderr":""}';
+    const out = extractToolContent("shell", raw);
+    expect(out).toContain("En la rama main");
+    expect(out).toContain("actualizada");
+    expect(out).not.toContain('"exitCode"');
+    expect(out).not.toContain("\\n");
+  });
+
+  it("list_dir con output STRING JSON → listado con iconos", () => {
+    const raw =
+      '{"path":"/x","entries":[{"name":"ui","type":"directory"},{"name":"a.ts","type":"file","size":2048}]}';
+    const out = extractToolContent("list_dir", raw);
+    expect(out).toContain("📁 ui/");
+    expect(out).toContain("📄 a.ts (2.0 KB)");
+    expect(out).not.toContain('"entries"');
+  });
+
+  it("string plano (no JSON) se mantiene verbatim incluso con formatter", () => {
+    // Un stdout que no empiece por { o [ no debe parsearse.
+    const out = extractToolContent("shell", "solo texto plano");
+    expect(out).toBe("solo texto plano");
+  });
+});
+
+describe("reformatToolResultContent — retroactivo (#168)", () => {
+  it("reformatea JSON crudo persistido de shell (git status)", () => {
+    const raw =
+      '{"exitCode":0,"stdout":"En la rama main","stderr":""}';
+    const out = reformatToolResultContent("shell", raw);
+    expect(out).toContain("En la rama main");
+    expect(out).not.toContain('"exitCode"');
+  });
+
+  it("reformatea JSON crudo de list_dir persistido", () => {
+    const raw =
+      '{"path":"/x","entries":[{"name":"ui","type":"directory"}]}';
+    const out = reformatToolResultContent("list_dir", raw);
+    expect(out).toContain("📁 ui/");
+    expect(out).not.toContain('"entries"');
+  });
+
+  it("deja intacto content ya legible (no JSON)", () => {
+    expect(reformatToolResultContent("shell", "texto plano ya legible")).toBe(
+      "texto plano ya legible",
+    );
+  });
+
+  it("devuelve tal cual si no hay formatter o el content no es JSON", () => {
+    expect(reformatToolResultContent("mcp_foo", '{"a":1}')).toBe('{"a":1}');
+    expect(reformatToolResultContent("shell", "no es json")).toBe("no es json");
+    expect(reformatToolResultContent("shell", "")).toBe("");
   });
 });
 
@@ -90,6 +258,27 @@ describe("buildVibesToolTag — tag shapes", () => {
   it("unknown tool uses tool attribute", () => {
     expect(buildVibesToolTag("foo_bar", "detail", "body")).toBe(
       '<vibes-mcp-tool-call tool="foo_bar">body</vibes-mcp-tool-call>',
+    );
+  });
+  it("patch → vibes-patch con path", () => {
+    expect(buildVibesToolTag("patch", "multi-file", "body")).toBe(
+      '<vibes-patch path="multi-file" description="">body</vibes-patch>',
+    );
+  });
+  it("git_log/git_diff → vibes-git con operation", () => {
+    expect(buildVibesToolTag("git_log", "", "body")).toBe(
+      '<vibes-git operation="log">body</vibes-git>',
+    );
+    expect(buildVibesToolTag("git_diff", "", "body")).toBe(
+      '<vibes-git operation="diff">body</vibes-git>',
+    );
+  });
+  it("question → vibes-question y todowrite → vibes-todo", () => {
+    expect(buildVibesToolTag("question", "", "ans")).toBe(
+      "<vibes-question>ans</vibes-question>",
+    );
+    expect(buildVibesToolTag("todowrite", "", "list")).toBe(
+      "<vibes-todo>list</vibes-todo>",
     );
   });
 });

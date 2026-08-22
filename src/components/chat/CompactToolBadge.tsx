@@ -20,6 +20,7 @@ import {
   Play,
   Square,
   List,
+  ListChecks,
   Wifi,
   CircleX,
   Wrench,
@@ -30,6 +31,8 @@ import {
   Blocks,
   type LucideIcon,
 } from "@/components/ui/icons";
+import { resolveRuntimeToolTag, RUNTIME_TOOL_TAGS } from "@/lib/tools/toolPresentation";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -245,6 +248,19 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     color: "text-purple-500",
   },
 
+  "vibes-question": {
+    icon: MessageCircleQuestion,
+    label: "Pregunta",
+    pendingLabel: "Esperando respuesta",
+    color: "text-violet-500",
+  },
+  "vibes-todo": {
+    icon: ListChecks,
+    label: "Tareas",
+    pendingLabel: "Actualizando tareas",
+    color: "text-sky-500",
+  },
+
   think: {
     icon: Brain,
     label: "Pensamiento",
@@ -338,6 +354,7 @@ const TEXT_TO_BG: Record<string, string> = {
   "text-emerald-500": "bg-emerald-500",
   "text-violet-500": "bg-violet-500",
   "text-teal-500": "bg-teal-500",
+  "text-sky-500": "bg-sky-500",
   "text-emerald-600 dark:text-lime-500": "bg-lime-500",
   "text-amber-600 dark:text-yellow-500": "bg-yellow-500",
 };
@@ -393,6 +410,21 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
     const meta = resolveToolMeta(tag, attributes);
     const Icon = meta.icon;
 
+    // #168 — Descripción canónica de la tool (i18n) para el modal. Se resuelve
+    // el toolId desde el tag vía la fuente única (incluido el upgrade
+    // retroactivo de badges viejos grabados como vibes-mcp-tool-call).
+    const resolvedToolId =
+      Object.entries(RUNTIME_TOOL_TAGS).find(([, t]) => t === tag)?.[0] ??
+      (tag === "vibes-mcp-tool-call" && attributes?.tool
+        ? resolveRuntimeToolTag(attributes.tool)
+          ? attributes.tool
+          : undefined
+        : undefined);
+    const { toolDescription } = useI18n();
+    const description = resolvedToolId
+      ? toolDescription(resolvedToolId)
+      : "";
+
     // Pending state: no inline badge — the streaming loader handles this
     if (state === "pending") {
       return null;
@@ -438,6 +470,11 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
                 {detail && <span className="typo-caption ml-1">{detail}</span>}
               </DialogTitle>
             </DialogHeader>
+            {description && (
+              <p className="typo-caption text-muted-foreground -mt-2">
+                {description}
+              </p>
+            )}
             <div className="mt-2 overflow-hidden min-w-0">
               {originalContent}
             </div>
@@ -486,6 +523,17 @@ export function resolveToolMeta(
     attributes?.path?.includes(".git/")
   ) {
     return TOOL_META["vibes-git"];
+  }
+  // #168 — Upgrade retroactivo: los mensajes anteriores a la unificación
+  // guardaron las tools built-in como `vibes-mcp-tool-call tool="list_dir"`.
+  // Si el atributo tool= corresponde a una tool del catálogo, resolvemos su
+  // meta real (icono/label/color) en vez de mostrar el genérico "MCP".
+  if (tag === "vibes-mcp-tool-call" && attributes?.tool) {
+    const realTag = resolveRuntimeToolTag(attributes.tool);
+    if (realTag && realTag !== "vibes-mcp-tool-call") {
+      const upgraded = TOOL_META[realTag];
+      if (upgraded) return upgraded;
+    }
   }
   return defaultMeta;
 }

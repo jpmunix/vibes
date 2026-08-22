@@ -1,6 +1,7 @@
 import { registerVisualEditingHandlers } from "../pro/main/ipc/handlers/visual_editing_handlers";
 import { registerAppEnvVarsHandlers } from "./handlers/app_env_vars_handlers";
 import { registerAppHandlers } from "./handlers/app_handlers";
+import { registerAppFoldersHandlers } from "./handlers/app_folders_handlers";
 import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
 import registerChatStreamHandlers from "./handlers/chat_stream_handlers";
@@ -63,6 +64,7 @@ export function registerIpcHandlers() {
   registerAdminHandlers();
 
   registerAppHandlers();
+  registerAppFoldersHandlers();
   registerChatHandlers();
   registerChatStreamHandlers();
   registerSettingsHandlers();

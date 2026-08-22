@@ -2111,6 +2111,7 @@ This conversation includes one or more image attachments. When the user uploads 
           } = await handleRuntimeStream(event, req, abortController, {
             placeholderMessageId: placeholderAssistantMessage.id,
             appPath: updatedChat.app.path,
+            appId: updatedChat.app.id,
             chatMessages: updatedChat.messages,
             agentId,
             contextInstructions,

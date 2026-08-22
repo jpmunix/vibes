@@ -536,6 +536,12 @@ export const UserSettingsSchema = z
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
     agentMaxSteps: z.number().optional(), // retained for migration compat — no longer used
+    // #165: límites duros del loop del agente, configurables desde
+    // Ajustes > Agente. undefined = usar el default de vibes-core
+    // (1000 iteraciones / 4 horas de reloj). La carcasa los aplica EN
+    // CALIENTE mutando el LoopConfig del runtime (no se recrea).
+    agentMaxIterations: z.number().min(1).max(100_000).optional(),
+    agentMaxWallClockMinutes: z.number().min(1).max(60 * 24 * 7).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     // ── Inference hyperparameters (user-tunable from chat input) ──
     inferenceTemperature: z.number().min(0).max(2).optional(),

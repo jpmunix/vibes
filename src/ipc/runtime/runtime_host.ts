@@ -28,7 +28,9 @@ import type {
   PermissionGate,
   QuestionHandler,
   Runtime,
+  LoopConfig,
 } from "@vibes/runtime";
+import { DEFAULT_LOOP_CONFIG } from "@vibes/runtime";
 import {
   createSqliteStorageProvider,
   SqliteTodoHandler,
@@ -287,6 +289,14 @@ export function createVibesQuestionHandler(): QuestionHandler {
 
 let runtimeInstance: Runtime | null = null;
 
+// #165: LoopConfig que gobierna el loop del runtime. Vive a nivel de módulo
+// (no dentro de getRuntime) para que el accessor de hot-reload
+// (applyAgentLoopLimits) pueda mutarlo. El loop lo lee POR REFERENCIA en cada
+// iteración, así que mutarlo aplica el cambio a la siguiente iteración SIN
+// recrear el runtime ni tocar sesiones en curso. Es una copia del default del
+// paquete para no pisar DEFAULT_LOOP_CONFIG compartido.
+let loopConfigMutable: LoopConfig = { ...DEFAULT_LOOP_CONFIG };
+
 /**
  * Lazily builds the shared Runtime. Throws if settings can't produce a
  * storage dir (should never happen in a real app).
@@ -312,11 +322,74 @@ export function getRuntime(): Runtime {
     .permissionGate(createVibesPermissionGate())
     .questionHandler(createVibesQuestionHandler())
     .todoHandler(new SqliteTodoHandler(storageProvider))
+    .loopConfig(loopConfigMutable)
     .logger(vibesRuntimeLogger)
     .build();
 
+  // Aplica los límites persistidos por el usuario (si existen) sobre el
+  // loopConfig recién creado. Así un arranque de app respeta lo guardado.
+  applyAgentLoopLimits(readSettings());
+
   logger.info(`[RuntimeHost] Runtime ready (storage: ${storagePath})`);
   return runtimeInstance;
+}
+
+/**
+ * #165: aplica los límites duros del loop configurados por el usuario
+ * (Ajustes > Agente) al LoopConfig del runtime, mutándolo EN CALIENTE.
+ *
+ * El loop del runtime lee `loopConfig` por referencia en cada iteración, así
+ * que mutar este objeto aplica el cambio a la siguiente iteración sin recrear
+ * el runtime ni interrumpir sesiones en curso. Se llama:
+ *   - desde getRuntime() al arrancar (respeta lo persistido)
+ *   - desde setUserSettings() cuando el usuario cambia el valor (hot-reload)
+ *
+ * Valores undefined / fuera de rango → se cae al default de vibes-core.
+ */
+export function applyAgentLoopLimits(
+  settings: { agentMaxIterations?: number; agentMaxWallClockMinutes?: number } | null | undefined,
+): void {
+  const maxIterations =
+    typeof settings?.agentMaxIterations === "number" &&
+    Number.isFinite(settings.agentMaxIterations) &&
+    settings.agentMaxIterations >= 1
+      ? Math.floor(settings.agentMaxIterations)
+      : DEFAULT_LOOP_CONFIG.maxIterations;
+
+  const maxWallClockMs =
+    typeof settings?.agentMaxWallClockMinutes === "number" &&
+    Number.isFinite(settings.agentMaxWallClockMinutes) &&
+    settings.agentMaxWallClockMinutes >= 1
+      ? Math.floor(settings.agentMaxWallClockMinutes) * 60 * 1000
+      : DEFAULT_LOOP_CONFIG.maxWallClockMs;
+
+  // Solo mutamos si cambia (evita ruido en el log y trabajo innecesario).
+  if (
+    maxIterations === loopConfigMutable.maxIterations &&
+    maxWallClockMs === loopConfigMutable.maxWallClockMs
+  ) {
+    return;
+  }
+
+  loopConfigMutable.maxIterations = maxIterations;
+  loopConfigMutable.maxWallClockMs = maxWallClockMs;
+  logger.info(
+    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h)`,
+  );
+}
+
+/**
+ * #165: expone los límites actuales del loop (post-aplicación de settings).
+ * Útil para diagnóstico y para tests del hot-reload.
+ */
+export function getAgentLoopLimits(): {
+  maxIterations: number;
+  maxWallClockMs: number;
+} {
+  return {
+    maxIterations: loopConfigMutable.maxIterations,
+    maxWallClockMs: loopConfigMutable.maxWallClockMs,
+  };
 }
 
 /**

@@ -72,6 +72,11 @@ export const __activeSessionByChat = activeSessionByChat;
 export type RuntimeStreamOptions = {
   placeholderMessageId: number;
   appPath: string;
+  /**
+   * #95: the app id, used by the bridge to resolve the linked folders
+   * (app_folders table) and mount a multi-root runtime session.
+   */
+  appId: number;
   chatMessages: any[];
   agentId?: "build" | "plan" | "explore" | "mockup";
   contextInstructions?: string[];
@@ -189,10 +194,9 @@ export async function handleRuntimeStream(
     );
   }
 
-  const systemPrompt = attachToSystemPrompt(
-    contextInstructions.length > 0 ? contextInstructions : undefined,
-    options.customSystemPrompt,
-  );
+  // Note: `systemPrompt` is built later, after the #95 workspace folders
+  // descriptor is pushed to `contextInstructions`, so the model knows about
+  // all the linked folders when it receives the system prompt.
 
   const runtime = getRuntime();
   const mapper = new VibesEventMapper({
@@ -203,7 +207,56 @@ export async function handleRuntimeStream(
       });
     },
   });
-  const workspaceRoot = getVibesAppPath(appPath);
+
+  // ── #95: Workspace multi-proyecto ───────────────────────────────────────
+  // Resolve the app's linked folders: the primary (app.path) plus the extras
+  // from the app_folders table. The primary is always first; extras follow in
+  // insertion order. When the app has no extras, workspaceRoots has length 1
+  // and the runtime falls back to single-root (byte-a-byte compat).
+  const primaryRoot = getVibesAppPath(appPath);
+  let extraFolders: { path: string; label: string; language: string | null; projectType: string | null }[] = [];
+  try {
+    const db = getRemoteDb();
+    const rows = await db
+      .select()
+      .from(remoteSchema.appFolders)
+      .where(eq(remoteSchema.appFolders.appId, options.appId))
+      .orderBy(remoteSchema.appFolders.isPrimary, remoteSchema.appFolders.id);
+    // Skip the primary row (if present from backfill) — the primary is
+    // already `primaryRoot` and we want it first, deterministically.
+    extraFolders = rows
+      .filter((r) => r.isPrimary === 0)
+      .map((r) => ({ path: r.path, label: r.label, language: r.language, projectType: r.projectType }));
+  } catch (err) {
+    // If the table is missing or the query fails, degrade gracefully to
+    // single-root (the chat still works, just without multi-folder).
+    logger.warn(
+      `[RuntimeBridge] Failed to load app_folders for app ${options.appId}: ${(err as Error).message} — falling back to single-root`,
+    );
+  }
+  const workspaceRoots = [primaryRoot, ...extraFolders.map((f) => f.path)];
+  const isMultiRoot = workspaceRoots.length > 1;
+
+  // Push a folder descriptor to contextInstructions so the model knows what
+  // it has access to (decision #6: one line per folder).
+  if (isMultiRoot) {
+    const lines: string[] = [
+      `Your workspace consists of ${workspaceRoots.length} folders. When calling file/shell tools, use ABSOLUTE paths so the runtime routes the operation to the correct folder.`,
+      `When the user's request is ambiguous, use the question tool to clarify which folder they mean.`,
+      `Folder 1 (primary, ${appPath}): ${primaryRoot}`,
+    ];
+    extraFolders.forEach((f, i) => {
+      const meta = [f.language, f.projectType].filter(Boolean).join('/');
+      const tag = meta ? ` (${meta})` : '';
+      lines.push(`Folder ${i + 2}${tag}: ${f.path}`);
+    });
+    contextInstructions.push(`WORKSPACE FOLDERS:\n${lines.join('\n')}`);
+  }
+
+  const systemPrompt = attachToSystemPrompt(
+    contextInstructions.length > 0 ? contextInstructions : undefined,
+    options.customSystemPrompt,
+  );
 
   // ── 1. Fresh hydrated session for this turn (DP-4) ─────────────────────
   // Slice 3.9: if a previous session for this chat is still in the active
@@ -238,11 +291,12 @@ export async function handleRuntimeStream(
         : {}),
     },
     messages: convertHistoryToRuntimeMessages(chatMessages, req.prompt),
-    workspaceRoot,
+    // #95: pass all roots; the runtime picks multi vs single based on length.
+    workspaceRoots,
   });
   activeSessionByChat.set(req.chatId, session.id);
   logger.info(
-    `[RuntimeBridge] Session ${session.id} for chat ${req.chatId} (agent=${agentId}, workspace=${workspaceRoot})`,
+    `[RuntimeBridge] Session ${session.id} for chat ${req.chatId} (agent=${agentId}, workspace=${primaryRoot}, folders=${workspaceRoots.length})`,
   );
 
   // ── 1b. Hydrate todos from persisted state (G18) ────────────────────────
@@ -390,6 +444,32 @@ export async function handleRuntimeStream(
   }
 
   sendChunk(finalContent);
+
+  // #165: un corte por límite (wall-clock / iteraciones) NO es un error
+  // (el modelo hizo su trabajo hasta el tope), pero SÍ es informativo: el
+  // usuario debe saber que la tarea llegó al límite y cómo subirlo. Antes el
+  // bridge lo marcaba success=true en silencio (finish=max-wall-clock) y
+  // parecía que la tarea terminó sola. Ahora se añade un aviso visible
+  // (blockquote de markdown — robusto, siempre se renderiza) + warning en log.
+  const limitReason =
+    result?.finishReason === "max-wall-clock"
+      ? "wall-clock"
+      : result?.finishReason === "max-iterations"
+        ? "iterations"
+        : null;
+  if (limitReason) {
+    const limitMsg =
+      limitReason === "wall-clock"
+        ? "⚠️ **Límite de tiempo alcanzado.** La tarea se detuvo al llegar al límite de tiempo del agente. Puedes subirlo en *Ajustes > Agente*."
+        : "⚠️ **Límite de iteraciones alcanzado.** La tarea se detuvo al llegar al máximo de iteraciones del agente. Puedes subirlo en *Ajustes > Agente*.";
+    finalContent += `\n\n> ${limitMsg}\n`;
+    sendChunk(finalContent);
+    logger.warn(
+      `[RuntimeBridge] Chat ${req.chatId} hit loop limit (${limitReason}). ` +
+        `Total input: ${result?.usage.input ?? 0} output: ${result?.usage.output ?? 0}. ` +
+        `User can raise it in Settings > Agente.`,
+    );
+  }
 
   const success =
     !runError &&

@@ -30,6 +30,25 @@ const turnsOptions = [
   { value: "100", label: "Máximo (100)" },
 ];
 
+// ─── #165: límites del loop — presets ───
+// Iteraciones máximas del agente por tarea (default runtime: 1000).
+const iterationOptions = [
+  { value: 100, label: "100" },
+  { value: 1000, label: "1000 (default)" },
+  { value: 5000, label: "5000" },
+  { value: 20000, label: "20000" },
+];
+// Tiempo máximo de tarea, en minutos (default runtime: 240 = 4h).
+const wallClockOptions = [
+  { value: 60, label: "1 h" },
+  { value: 240, label: "4 h (default)" },
+  { value: 720, label: "12 h" },
+  { value: 1440, label: "24 h" },
+];
+// Valor por defecto mostrado en la UI cuando no hay setting persistido.
+const DEFAULT_AGENT_ITERATIONS = 1000;
+const DEFAULT_AGENT_WALL_CLOCK_MIN = 240;
+
 // ─── Reusable SettingItem ───
 function SettingRow({
   label,
@@ -246,6 +265,61 @@ export function AIBehaviorSettings({
           />
 
           {/* Turnos de contexto — hidden: OpenCode manages context internally */}
+
+          {/* #165: límites duros del loop — configurables, se aplican en caliente
+              al runtime (Ajustes > Agente). Antes los defaults del runtime (30
+              iter / 5 min) cortaban las tareas largas en silencio. */}
+          <SettingRow
+            label="Máx. iteraciones del agente"
+            description="Hasta dónde puede trabajar el agente antes de detenerse. Si una tarea se corta, súbelo aquí."
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {iterationOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() =>
+                      updateSettings({ agentMaxIterations: option.value })
+                    }
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.agentMaxIterations ??
+                        DEFAULT_AGENT_ITERATIONS) === option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+
+          <SettingRow
+            label="Tiempo máximo de tarea"
+            description="Límite de reloj por tarea. Con 4 h las sesiones largas ya no se cortan a mitad."
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {wallClockOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() =>
+                      updateSettings({ agentMaxWallClockMinutes: option.value })
+                    }
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.agentMaxWallClockMinutes ??
+                        DEFAULT_AGENT_WALL_CLOCK_MIN) === option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
 
           {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
 

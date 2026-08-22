@@ -506,6 +506,19 @@ export default function AppDetailsPage() {
                   <FolderX className="h-5 w-5" />
                   Cerrar workspace
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!appId) return;
+                    navigate({ to: "/app-folders", search: { appId } });
+                  }}
+                  className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-transparent border-border hover:bg-muted/50 transition-colors"
+                  size="lg"
+                  title="Gestionar carpetas vinculadas a este workspace"
+                >
+                  <FolderOpen className="h-5 w-5" />
+                  Folders
+                </Button>
               </div>
 
               {(hasDesignMd || hasAgentsMd) && (

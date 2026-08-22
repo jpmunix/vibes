@@ -1,0 +1,1292 @@
+{
+  "generatedAt": "2026-08-20T05:33:03.300Z",
+  "providers": {
+    "anthropic": {
+      "id": "anthropic",
+      "env": [
+        "ANTHROPIC_API_KEY"
+      ],
+      "npm": "@ai-sdk/anthropic",
+      "name": "Anthropic",
+      "doc": "https://docs.anthropic.com/en/docs/about-claude/models",
+      "models": {
+        "claude-fable-5": {
+          "id": "claude-fable-5",
+          "name": "Claude Fable 5",
+          "description": "Claude model for creative writing, analysis, and controlled agent workflows",
+          "family": "claude-fable",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "release_date": "2026-06-07",
+          "last_updated": "2026-06-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 10,
+            "output": 50,
+            "cache_read": 1,
+            "cache_write": 12.5
+          }
+        },
+        "claude-haiku-4-5": {
+          "id": "claude-haiku-4-5",
+          "name": "Claude Haiku 4.5 (latest)",
+          "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
+          "family": "claude-haiku",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-02-28",
+          "release_date": "2025-10-15",
+          "last_updated": "2025-10-15",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "cost": {
+            "input": 1,
+            "output": 5,
+            "cache_read": 0.1,
+            "cache_write": 1.25
+          }
+        },
+        "claude-haiku-4-5-20251001": {
+          "id": "claude-haiku-4-5-20251001",
+          "name": "Claude Haiku 4.5",
+          "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
+          "family": "claude-haiku",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-02-28",
+          "release_date": "2025-10-15",
+          "last_updated": "2025-10-15",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "cost": {
+            "input": 1,
+            "output": 5,
+            "cache_read": 0.1,
+            "cache_write": 1.25
+          }
+        },
+        "claude-opus-4-5": {
+          "id": "claude-opus-4-5",
+          "name": "Claude Opus 4.5 (latest)",
+          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+          "family": "claude-opus",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 1024
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2025-11-24",
+          "last_updated": "2025-11-24",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "cost": {
+            "input": 5,
+            "output": 25,
+            "cache_read": 0.5,
+            "cache_write": 6.25
+          }
+        }
+      }
+    },
+    "openai": {
+      "id": "openai",
+      "env": [
+        "OPENAI_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai",
+      "name": "OpenAI",
+      "doc": "https://platform.openai.com/docs/models",
+      "models": {
+        "chatgpt-image-latest": {
+          "id": "chatgpt-image-latest",
+          "name": "chatgpt-image-latest",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": false,
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2025-12-16",
+          "last_updated": "2025-12-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 0,
+            "input": 0,
+            "output": 0
+          }
+        },
+        "gpt-3.5-turbo": {
+          "id": "gpt-3.5-turbo",
+          "name": "GPT-3.5-turbo",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+          "family": "gpt",
+          "attachment": false,
+          "reasoning": false,
+          "tool_call": false,
+          "structured_output": false,
+          "temperature": true,
+          "knowledge": "2021-09-01",
+          "release_date": "2023-03-01",
+          "last_updated": "2023-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 16385,
+            "output": 4096
+          },
+          "status": "deprecated",
+          "cost": {
+            "input": 0.5,
+            "output": 1.5,
+            "cache_read": 0
+          }
+        },
+        "gpt-4": {
+          "id": "gpt-4",
+          "name": "GPT-4",
+          "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": false,
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "knowledge": "2023-11",
+          "release_date": "2023-11-06",
+          "last_updated": "2024-04-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "status": "deprecated",
+          "cost": {
+            "input": 30,
+            "output": 60
+          }
+        },
+        "gpt-4-turbo": {
+          "id": "gpt-4-turbo",
+          "name": "GPT-4 Turbo",
+          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": false,
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "knowledge": "2023-12",
+          "release_date": "2023-11-06",
+          "last_updated": "2024-04-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "status": "deprecated",
+          "cost": {
+            "input": 10,
+            "output": 30
+          }
+        }
+      }
+    },
+    "deepseek": {
+      "id": "deepseek",
+      "env": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "api": "https://api.deepseek.com",
+      "name": "DeepSeek",
+      "doc": "https://api-docs.deepseek.com/quick_start/pricing",
+      "models": {
+        "deepseek-chat": {
+          "id": "deepseek-chat",
+          "name": "DeepSeek Chat",
+          "description": "DeepSeek chat model for instruction following, coding, and analysis",
+          "family": "deepseek",
+          "attachment": true,
+          "reasoning": false,
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-09",
+          "release_date": "2025-12-01",
+          "last_updated": "2026-02-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cache_read": 0.0028
+          }
+        },
+        "deepseek-reasoner": {
+          "id": "deepseek-reasoner",
+          "name": "DeepSeek Reasoner",
+          "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
+          "family": "deepseek-thinking",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2025-09",
+          "release_date": "2025-12-01",
+          "last_updated": "2026-02-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "reasoning": 0.28,
+            "cache_read": 0.0028
+          }
+        },
+        "deepseek-v4-flash": {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+          "family": "deepseek-flash",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2026-07-31",
+          "last_updated": "2026-07-31",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "reasoning": 0.28,
+            "cache_read": 0.0028
+          }
+        },
+        "deepseek-v4-pro": {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
+          "family": "deepseek-thinking",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-12",
+          "last_updated": "2026-08-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "cost": {
+            "input": 0.435,
+            "output": 0.87,
+            "reasoning": 0.87,
+            "cache_read": 0.003625
+          }
+        }
+      }
+    },
+    "google": {
+      "id": "google",
+      "env": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "GEMINI_API_KEY"
+      ],
+      "npm": "@ai-sdk/google",
+      "name": "Google",
+      "doc": "https://ai.google.dev/gemini-api/docs/models",
+      "models": {
+        "deep-research-max-preview-04-2026": {
+          "id": "deep-research-max-preview-04-2026",
+          "name": "Deep Research Max Preview (Apr-21-2026)",
+          "description": "Maximum-comprehensiveness agentic researcher for multi-step investigation, synthesis, and cited reports",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-04-21",
+          "last_updated": "2026-04-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "cost": {
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "tiers": [
+              {
+                "input": 4,
+                "output": 18,
+                "cache_read": 0.4,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4
+            }
+          }
+        },
+        "deep-research-preview-04-2026": {
+          "id": "deep-research-preview-04-2026",
+          "name": "Deep Research Preview (Apr-21-2026)",
+          "description": "Agentic model for autonomous multi-step research, synthesis, and cited reports",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-04-21",
+          "last_updated": "2026-04-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "cost": {
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "tiers": [
+              {
+                "input": 4,
+                "output": 18,
+                "cache_read": 0.4,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4
+            }
+          }
+        },
+        "gemini-2.5-computer-use-preview-10-2025": {
+          "id": "gemini-2.5-computer-use-preview-10-2025",
+          "name": "Gemini 2.5 Computer Use Preview 10-2025",
+          "description": "Specialized Gemini 2.5 model for browser-control agents that automate UI tasks",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2025-10-07",
+          "last_updated": "2025-10-07",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "cost": {
+            "input": 1.25,
+            "output": 10,
+            "tiers": [
+              {
+                "input": 2.5,
+                "output": 15,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 2.5,
+              "output": 15
+            }
+          }
+        },
+        "gemini-2.5-flash": {
+          "id": "gemini-2.5-flash",
+          "name": "Gemini 2.5 Flash",
+          "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
+          "family": "gemini-flash",
+          "attachment": true,
+          "reasoning": true,
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "budget_tokens",
+              "min": 0,
+              "max": 24576
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2025-06-17",
+          "last_updated": "2025-06-17",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0.3,
+            "output": 2.5,
+            "cache_read": 0.03,
+            "input_audio": 1
+          }
+        }
+      }
+    },
+    "openrouter": {
+      "id": "openrouter",
+      "env": [
+        "OPENROUTER_API_KEY"
+      ],
+      "npm": "@openrouter/ai-sdk-provider",
+      "api": "https://openrouter.ai/api/v1",
+      "name": "OpenRouter",
+      "doc": "https://openrouter.ai/models",
+      "models": {
+        "aion-labs/aion-2.0": {
+          "id": "aion-labs/aion-2.0",
+          "name": "Aion-2.0",
+          "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "release_date": "2026-02-23",
+          "last_updated": "2026-02-23",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "cost": {
+            "input": 0.8,
+            "output": 1.6,
+            "cache_read": 0.2
+          }
+        },
+        "aion-labs/aion-3.0": {
+          "id": "aion-labs/aion-3.0",
+          "name": "Aion-3.0",
+          "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "release_date": "2026-07-07",
+          "last_updated": "2026-07-07",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "cost": {
+            "input": 3,
+            "output": 6,
+            "cache_read": 0.75
+          }
+        },
+        "aion-labs/aion-3.0-mini": {
+          "id": "aion-labs/aion-3.0-mini",
+          "name": "Aion-3.0-Mini",
+          "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "release_date": "2026-07-07",
+          "last_updated": "2026-07-07",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "cost": {
+            "input": 0.7,
+            "output": 1.4,
+            "cache_read": 0.18
+          }
+        },
+        "aion-labs/aion-rp-llama-3.1-8b": {
+          "id": "aion-labs/aion-rp-llama-3.1-8b",
+          "name": "Aion-RP 1.0 (8B)",
+          "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
+          "family": "llama",
+          "attachment": false,
+          "reasoning": false,
+          "tool_call": false,
+          "structured_output": false,
+          "temperature": true,
+          "knowledge": "2023-12-31",
+          "release_date": "2025-02-04",
+          "last_updated": "2025-02-04",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 32768,
+            "output": 32768
+          },
+          "cost": {
+            "input": 0.8,
+            "output": 1.6
+          }
+        }
+      }
+    },
+    "moonshotai": {
+      "id": "moonshotai",
+      "env": [
+        "MOONSHOT_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "api": "https://api.moonshot.ai/v1",
+      "name": "Moonshot AI",
+      "doc": "https://platform.moonshot.ai/docs/api/chat",
+      "models": {
+        "kimi-k2-0711-preview": {
+          "id": "kimi-k2-0711-preview",
+          "name": "Kimi K2 0711",
+          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
+          "family": "kimi-k2",
+          "attachment": false,
+          "reasoning": false,
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-07-14",
+          "last_updated": "2025-07-14",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          }
+        },
+        "kimi-k2-0905-preview": {
+          "id": "kimi-k2-0905-preview",
+          "name": "Kimi K2 0905",
+          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
+          "family": "kimi-k2",
+          "attachment": false,
+          "reasoning": false,
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-09-05",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          }
+        },
+        "kimi-k2-thinking": {
+          "id": "kimi-k2-thinking",
+          "name": "Kimi K2 Thinking",
+          "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
+          "family": "kimi-thinking",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-11-06",
+          "last_updated": "2025-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          }
+        },
+        "kimi-k2-thinking-turbo": {
+          "id": "kimi-k2-thinking-turbo",
+          "name": "Kimi K2 Thinking Turbo",
+          "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
+          "family": "kimi-thinking",
+          "attachment": false,
+          "reasoning": true,
+          "reasoning_options": [],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-11-06",
+          "last_updated": "2025-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "cost": {
+            "input": 1.15,
+            "output": 8,
+            "cache_read": 0.15
+          }
+        }
+      }
+    }
+  },
+  "models": {
+    "aisingapore/gemma-sea-lion-v4-27b-it": {
+      "id": "aisingapore/gemma-sea-lion-v4-27b-it",
+      "name": "Gemma-SEA-LION-v4-27B-IT",
+      "description": "Gemma 3 27B tuned by AI Singapore for Southeast Asian languages and instruction following",
+      "family": "gemma",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": false,
+      "temperature": true,
+      "release_date": "2025-09-23",
+      "last_updated": "2025-09-23",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 128000,
+        "output": 128000
+      },
+      "weights": [
+        {
+          "label": "Hugging Face",
+          "url": "https://huggingface.co/aisingapore/Gemma-SEA-LION-v4-27B-IT"
+        }
+      ]
+    },
+    "alibaba/qwen-flash": {
+      "id": "alibaba/qwen-flash",
+      "name": "Qwen Flash",
+      "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": true,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2025-07-28",
+      "last_updated": "2025-07-28",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 32768
+      }
+    },
+    "alibaba/qwen-max": {
+      "id": "alibaba/qwen-max",
+      "name": "Qwen Max",
+      "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-04-03",
+      "last_updated": "2025-01-25",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 32768,
+        "output": 8192
+      },
+      "benchmarks": [
+        {
+          "name": "Aider Polyglot",
+          "score": 21.8,
+          "metric": "percent correct",
+          "source": "https://aider.chat/docs/leaderboards/",
+          "date": "2025-01-28"
+        }
+      ]
+    },
+    "alibaba/qwen-omni-turbo": {
+      "id": "alibaba/qwen-omni-turbo",
+      "name": "Qwen-Omni Turbo",
+      "description": "Qwen omni model for text, vision, audio, and multimodal agent tasks",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2025-01-19",
+      "last_updated": "2025-03-26",
+      "modalities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video"
+        ],
+        "output": [
+          "text",
+          "audio"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 32768,
+        "output": 2048
+      }
+    },
+    "alibaba/qwen-plus": {
+      "id": "alibaba/qwen-plus",
+      "name": "Qwen Plus",
+      "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": true,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-01-25",
+      "last_updated": "2025-09-11",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 32768
+      }
+    },
+    "alibaba/qwen-turbo": {
+      "id": "alibaba/qwen-turbo",
+      "name": "Qwen Turbo",
+      "description": "Efficient Qwen model for fast chat, extraction, and high-volume workloads",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": true,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-11-01",
+      "last_updated": "2025-04-28",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 1000000,
+        "output": 16384
+      }
+    },
+    "alibaba/qwen-vl-max": {
+      "id": "alibaba/qwen-vl-max",
+      "name": "Qwen-VL Max",
+      "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-04-08",
+      "last_updated": "2025-08-13",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 131072,
+        "output": 8192
+      }
+    },
+    "alibaba/qwen-vl-plus": {
+      "id": "alibaba/qwen-vl-plus",
+      "name": "Qwen-VL Plus",
+      "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-01-25",
+      "last_updated": "2025-08-15",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": false,
+      "limit": {
+        "context": 131072,
+        "output": 8192
+      }
+    },
+    "alibaba/qwen2-5-vl-72b-instruct": {
+      "id": "alibaba/qwen2-5-vl-72b-instruct",
+      "name": "Qwen2.5-VL 72B Instruct",
+      "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": true,
+      "temperature": true,
+      "knowledge": "2024-04",
+      "release_date": "2024-09",
+      "last_updated": "2024-09",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 131072,
+        "output": 8192
+      },
+      "weights": [
+        {
+          "label": "Hugging Face",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-VL-72B-Instruct"
+        }
+      ]
+    },
+    "alibaba/qwen2.5-coder-0.5b": {
+      "id": "alibaba/qwen2.5-coder-0.5b",
+      "name": "Qwen2.5-Coder-0.5B",
+      "description": "Tiny open Qwen code model for lightweight completion and on-device coding",
+      "family": "qwen",
+      "attachment": false,
+      "reasoning": false,
+      "tool_call": false,
+      "temperature": true,
+      "release_date": "2024-11-12",
+      "last_updated": "2024-11-12",
+      "modalities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 32768,
+        "output": 8192
+      },
+      "license": "Apache 2.0",
+      "weights": [
+        {
+          "label": "Hugging Face",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B"
+        }
+      ]
+    }
+  }
+}

@@ -13,6 +13,7 @@ import { app, BrowserWindow } from "electron";
 import { safeSend } from "../utils/safe_sender";
 import { preferencesCache } from "../../main/preferences-cache";
 import type { UserSettings } from "../../lib/schemas";
+import { applyAgentLoopLimits } from "../runtime/runtime_host";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -215,6 +216,12 @@ export function registerSettingsHandlers() {
         context.userId && preferencesCache.isHydrated
           ? composeSettingsFromCache(context.userId)
           : readSettings();
+
+      // #165: aplicar EN CALIENTE los límites del loop (Ajustes > Agente) al
+      // LoopConfig del runtime. El loop lo lee por referencia por iteración,
+      // así que el cambio se refleja en la siguiente iteración sin recrear el
+      // runtime ni interrumpir sesiones en curso.
+      applyAgentLoopLimits(updated);
 
       // ── Backup: also update the legacy blob in Bunny (fire-and-forget) ──
       // The real settings are already persisted locally in the KV cache above.

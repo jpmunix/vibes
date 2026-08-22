@@ -1507,6 +1507,7 @@ interface WorkspaceAppItemProps {
   onOpenCode: (appId: number) => void;
   onStopServer: (appId: number) => void;
   onArchiveApp: (appId: number, appName: string) => void;
+  onOpenFolders: (appId: number) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -1531,6 +1532,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onOpenCode,
   onStopServer,
   onArchiveApp,
+  onOpenFolders,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
@@ -2244,6 +2246,17 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     >
                       <Terminal size={14} className="opacity-60 shrink-0" />
                       Abrir en terminal
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                      onClick={() => {
+                        closeMenu();
+                        onOpenFolders(app.id);
+                      }}
+                    >
+                      <FolderOpen size={14} className="opacity-60 shrink-0" />
+                      Folders
                     </button>
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
@@ -2967,6 +2980,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       ipc.system.openCodeWindow({ appId, theme, themeIntensity: intensity });
     },
     [theme, intensity],
+  );
+
+  const handleOpenFolders = useCallback(
+    (appId: number) => {
+      navigate({ to: "/app-folders", search: { appId } });
+    },
+    [navigate],
   );
 
   const handleStopServer = useCallback(
@@ -4196,6 +4216,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         onCloseApp={handleCloseAppClick}
                         onOpenGit={handleOpenGit}
                         onOpenCode={handleOpenCode}
+                        onOpenFolders={handleOpenFolders}
                         onStopServer={handleStopServer}
                         selectedChatId={selectedChatId}
                         selectedAppId={selectedAppId}

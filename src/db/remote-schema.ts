@@ -90,6 +90,32 @@ export const apps = sqliteTable("apps", {
 });
 
 // =============================================================================
+// APP FOLDERS (multi-proyecto workspace, card #95)
+// =============================================================================
+// Cada app (workspace) tiene N carpetas vinculadas. La primaria (isPrimary=1)
+// es el app.path original; las extras son paths arbitrarios del disco.
+// El chat hereda los folders del app para montar el runtime multi-root.
+
+export const appFolders = sqliteTable(
+  "app_folders",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    appId: integer("app_id")
+      .notNull()
+      .references(() => apps.id, { onDelete: "cascade" }),
+    path: text("path").notNull(), // path absoluto del folder
+    label: text("label").notNull(), // nombre amigable editable
+    language: text("language"), // primaryLanguage detectado (detect_language.ts)
+    projectType: text("project_type"), // projectType detectado
+    isPrimary: integer("is_primary").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => ({
+    uniqAppPath: uniqueIndex("idx_app_folders_app_path").on(t.appId, t.path),
+  }),
+);
+
+// =============================================================================
 // CHATS
 // =============================================================================
 

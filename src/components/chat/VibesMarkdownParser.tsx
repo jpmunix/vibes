@@ -75,6 +75,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { RUNTIME_TOOL_TAGS } from "@/lib/tools/toolPresentation";
+import { reformatToolResultContent } from "@/ipc/runtime/event_mapper";
 
 function cleanVibesPath(p: string): string {
   const dotIndex = p.indexOf(".vibes/");
@@ -86,6 +88,25 @@ function cleanVibesPath(p: string): string {
     return "." + p.substring(noDotIndex);
   }
   return p;
+}
+
+/**
+ * Reformatea el content de un tag de tool si contiene JSON crudo de una tool
+ * del catálogo (mensajes viejos persistidos antes de #168). Resuelve el toolId
+ * desde el tag vía la fuente única; si no hay match, devuelve el content tal
+ * cual.
+ */
+function maybeReformat(
+  tag: string,
+  content: string,
+  cmd?: string,
+): string {
+  if (!content) return content;
+  const toolId = Object.entries(RUNTIME_TOOL_TAGS).find(
+    ([, t]) => t === tag,
+  )?.[0];
+  if (!toolId) return content;
+  return reformatToolResultContent(toolId, content, cmd);
 }
 
 /** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */
@@ -152,6 +173,8 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-command",
   "vibes-mcp-tool-call",
   "vibes-mcp-tool-result",
+  "vibes-question",
+  "vibes-todo",
 
   "vibes-list-files",
   "vibes-database-schema",
@@ -1065,7 +1088,7 @@ function renderCustomTag(
             },
           }}
         >
-          {content}
+          {content && maybeReformat("vibes-grep", content)}
         </VibesGrep>
       );
 
@@ -1182,7 +1205,7 @@ function renderCustomTag(
             },
           }}
         >
-          {content}
+          {content && maybeReformat("vibes-list-files", content)}
         </VibesListFiles>
       );
 
@@ -1284,7 +1307,7 @@ function renderCustomTag(
             },
           }}
         >
-          {content}
+          {content && maybeReformat("vibes-git", content)}
         </VibesGit>
       );
 
@@ -1357,8 +1380,8 @@ function renderCustomTag(
             )}
           </div>
           {content && (
-            <div className="px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
-              {content}
+            <div className="px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto text-muted-foreground">
+              {maybeReformat(tag, content, attributes.cmd)}
             </div>
           )}
         </div>
@@ -1588,7 +1611,9 @@ function renderModalContent(
           </div>
           {content && (
             <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-log">{content}</CodeHighlight>
+              <CodeHighlight className="language-log">
+                {maybeReformat("vibes-grep", content)}
+              </CodeHighlight>
             </div>
           )}
         </div>
@@ -1681,7 +1706,7 @@ function renderModalContent(
           )}
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
-              {content}
+              {maybeReformat("vibes-list-files", content)}
             </div>
           )}
         </div>
@@ -1876,6 +1901,26 @@ function renderModalContent(
       );
     }
 
+    // === Question / Todo (runtime built-ins #168) ===
+    case "vibes-question":
+    case "vibes-todo": {
+      const meta = resolveToolMeta(tag, attributes);
+      const Icon = meta.icon;
+      return (
+        <div className="space-y-2">
+          <div className={`text-sm font-medium flex items-center gap-1.5 ${meta.color}`}>
+            <Icon size={14} />
+            {meta.label}
+          </div>
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap max-h-[70vh] overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // === MCP Tools ===
     case "vibes-mcp-tool-call": {
       const toolName = attributes.tool || attributes.server || "MCP Tool";
@@ -1907,7 +1952,9 @@ function renderModalContent(
           )}
           {content && (
             <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-log">{content}</CodeHighlight>
+              <CodeHighlight className="language-log">
+                {maybeReformat("vibes-git", content)}
+              </CodeHighlight>
             </div>
           )}
         </div>
@@ -1945,8 +1992,8 @@ function renderModalContent(
             </div>
           )}
           {content && (
-            <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-log">{content}</CodeHighlight>
+            <div className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground bg-muted/20 px-3 py-2 rounded overflow-y-auto max-h-60">
+              {maybeReformat("vibes-run-command", content, attributes.cmd)}
             </div>
           )}
         </div>
