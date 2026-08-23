@@ -12,6 +12,7 @@
 
 import type { RuntimeEvent } from "@vibes/shared";
 import { resolveRuntimeToolTag } from "@/lib/tools/toolPresentation";
+import { escapeXmlContent } from "../../../shared/xmlEscape";
 
 // ============================================================================
 // Tool → vibes tag
@@ -377,7 +378,8 @@ export function buildVibesToolTag(
 
 export type VibesTimelineEntry =
   | { type: "text"; text: string }
-  | { type: "tool"; tool: string; detail: string; error: boolean; output: string };
+  | { type: "tool"; tool: string; detail: string; error: boolean; output: string }
+  | { type: "reasoning"; text: string; closed: boolean };
 
 /**
  * Accumulator that mirrors the adapter's chronological timeline. Feed it
@@ -420,6 +422,31 @@ export class VibesEventMapper {
           last.text += event.text;
         } else {
           this.timeline.push({ type: "text", text: event.text });
+        }
+        break;
+      }
+      // 172: razonamiento nativo (delta.reasoning_content del provider). Se
+      // traduce a un tag <vibes-think> para reutilizar el render existente de
+      // la UI (LiveThinkingPanel en vivo, badge compacto al cerrar). Abierto
+      // durante el streaming → inProgress → panel activo; cerrado → badge.
+      case "llm.reasoning_start": {
+        this.timeline.push({ type: "reasoning", text: "", closed: false });
+        break;
+      }
+      case "llm.reasoning_delta": {
+        const last = this.timeline[this.timeline.length - 1];
+        if (last && last.type === "reasoning") {
+          last.text += event.text;
+        } else {
+          // Defensivo: un delta sin start previo (no debería pasar).
+          this.timeline.push({ type: "reasoning", text: event.text, closed: false });
+        }
+        break;
+      }
+      case "llm.reasoning_end": {
+        const last = this.timeline[this.timeline.length - 1];
+        if (last && last.type === "reasoning") {
+          last.closed = true;
         }
         break;
       }
@@ -472,6 +499,15 @@ export class VibesEventMapper {
       if (entry.type === "tool") {
         const body = entry.error ? "[error]" : entry.output;
         content += buildVibesToolTag(entry.tool, entry.detail, body) + "\n";
+      } else if (entry.type === "reasoning") {
+        // 172: razonamiento nativo → <vibes-think>. Si sigue abierto
+        // (streaming) emitimos solo el opening tag: el parser lo marca
+        // inProgress y lo renderiza como LiveThinkingPanel activo. Si ya se
+        // cerró, emitimos el tag completo (badge compacto al terminar).
+        const body = escapeXmlContent(entry.text);
+        content += entry.closed
+          ? `<vibes-think>${body}</vibes-think>\n`
+          : `<vibes-think>${body}\n`;
       } else {
         content += cleanResponseText(entry.text);
       }

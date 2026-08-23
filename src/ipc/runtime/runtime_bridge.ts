@@ -361,6 +361,10 @@ export async function handleRuntimeStream(
     (handler) => session.subscribe(handler),
     {
       onTextDelta: () => pushChunk(),
+      // 172: el razonamiento nativo se emite en vivo (LiveThinkingPanel).
+      onReasoningStart: () => pushChunk(),
+      onReasoningDelta: () => pushChunk(),
+      onReasoningEnd: () => pushChunk(),
       onToolStarted: () => pushChunk(),
       onToolFinished: () => pushChunk(),
     },

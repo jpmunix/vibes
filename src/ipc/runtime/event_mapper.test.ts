@@ -343,6 +343,51 @@ describe("VibesEventMapper — timeline accumulation", () => {
     } as any);
     expect(m.buildLiveContent()).toContain("[error]");
   });
+
+  // 172: razonamiento nativo → entrada reasoning en el timeline.
+  it("coalesces llm.reasoning_delta into one closed reasoning entry", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "reasoning-0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "Paso 1: " } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "pensar" } as any);
+    m.handle({ type: "llm.reasoning_end", blockId: "reasoning-0" } as any);
+    const timeline = m.getTimeline();
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]).toEqual({ type: "reasoning", text: "Paso 1: pensar", closed: true });
+  });
+
+  it("renders a closed reasoning entry as a full <vibes-think> tag", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "reasoning-0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "cogiendo algo" } as any);
+    m.handle({ type: "llm.reasoning_end", blockId: "reasoning-0" } as any);
+    expect(m.buildLiveContent()).toBe("<vibes-think>cogiendo algo</vibes-think>\n");
+  });
+
+  it("leaves an OPEN <vibes-think> tag while the reasoning is still streaming", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "reasoning-0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "thinking hard..." } as any);
+    // Sin reasoning_end → el parser (preprocessUnclosedTags) lo marca inProgress
+    // y lo renderiza como LiveThinkingPanel activo.
+    const content = m.buildLiveContent();
+    expect(content).toBe("<vibes-think>thinking hard...\n");
+    expect(content).not.toContain("</vibes-think>");
+  });
+
+  it("escapes XML special chars in reasoning content", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "reasoning-0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "a & b < c" } as any);
+    m.handle({ type: "llm.reasoning_end", blockId: "reasoning-0" } as any);
+    expect(m.buildLiveContent()).toBe("<vibes-think>a &amp; b &lt; c</vibes-think>\n");
+  });
+
+  it("handles a reasoning delta with no prior start (defensive)", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "orphan" } as any);
+    expect(m.getTimeline()).toEqual([{ type: "reasoning", text: "orphan", closed: false }]);
+  });
 });
 
 describe("VibesEventMapper — session.failed (BUGFIX #122)", () => {

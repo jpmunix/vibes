@@ -96,17 +96,34 @@ function cleanVibesPath(p: string): string {
  * desde el tag vía la fuente única; si no hay match, devuelve el content tal
  * cual.
  */
-function maybeReformat(
-  tag: string,
-  content: string,
-  cmd?: string,
-): string {
+/**
+ * Quita la 1ª línea del content si es el eco del comando (el core a veces
+ * antepone `$ <cmd>` al output del shell). El header del badge ya muestra el
+ * comando, así que no debe duplicarse. Idempotente.
+ */
+function stripCmdEcho(content: string, cmd?: string): string {
+  if (!cmd || !content) return content;
+  const target = cmd.trim();
+  const lines = content.split("\n");
+  const first = lines[0]?.trim().replace(/^\$\s*/, "");
+  if (!first) return content;
+  if (first === target || first.startsWith(target)) {
+    return lines.slice(1).join("\n").replace(/^\n+/, "");
+  }
+  return content;
+}
+
+function maybeReformat(tag: string, content: string, cmd?: string): string {
   if (!content) return content;
   const toolId = Object.entries(RUNTIME_TOOL_TAGS).find(
     ([, t]) => t === tag,
   )?.[0];
   if (!toolId) return content;
-  return reformatToolResultContent(toolId, content, cmd);
+  const reformatted = reformatToolResultContent(toolId, content, cmd);
+  // Para run-command, quitar el eco del comando en la 1ª línea (cubre mensajes
+  // viejos persistidos como texto plano que el formatter de main no reformatea).
+  if (tag === "vibes-run-command") return stripCmdEcho(reformatted, cmd);
+  return reformatted;
 }
 
 /** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */

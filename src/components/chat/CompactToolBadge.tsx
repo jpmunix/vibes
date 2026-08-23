@@ -467,7 +467,11 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
               <DialogTitle className={`flex items-center gap-2 ${meta.color}`}>
                 <Icon size={20} />
                 {meta.label}
-                {detail && <span className="typo-caption ml-1">{detail}</span>}
+                {detail && (
+                  <span className="typo-caption ml-1 text-muted-foreground">
+                    {detail}
+                  </span>
+                )}
               </DialogTitle>
             </DialogHeader>
             {description && (
