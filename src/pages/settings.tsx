@@ -33,7 +33,6 @@ import {
   Info,
   FileText,
   MoreHorizontal,
-  RotateCcw,
   Volume2,
 } from "@/components/ui/icons";
 import { ChevronRight, Plus } from "@/components/ui/icons";
@@ -398,16 +397,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRestartOpenCode = async () => {
-    try {
-      await ipc.system.restartOpenCodeServer();
-      showSuccess(t("toasts.opencodeRestarted"));
-    } catch (err) {
-      console.error("Error restarting OpenCode:", err);
-      showError(t("toasts.opencodeRestartError"));
-    }
-  };
-
   return (
     <div
       id="settings-scroll-container"
@@ -487,7 +476,7 @@ export default function SettingsPage() {
                             v{versionInfo.vibes}
                           </span>
                           <span className="text-muted-foreground">
-                            OpenCode
+                            Runtime
                           </span>
                           <span className="font-mono">
                             {versionInfo.opencode
@@ -572,13 +561,6 @@ export default function SettingsPage() {
                   >
                     <FileText className="h-4 w-4" />
                     {t("search.viewLogs")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleRestartOpenCode}
-                    className="cursor-pointer gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    {t("search.restartApp")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
