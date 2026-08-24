@@ -204,8 +204,8 @@ export const SETTINGS_SEARCH_ENTRIES: SearchEntry[] = [
       "limpio",
       "esencial",
     ],
-    sectionKey: "agent",
-    sectionId: "ai-behavior",
+    sectionKey: "general",
+    sectionId: "general-settings",
   },
   {
     id: "standard-model",

@@ -46,7 +46,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
-import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
 import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
@@ -231,7 +230,7 @@ export default function SettingsPage() {
       setIsCreatingCategory(false);
       setPromptsRefreshKey((k) => k + 1); // fuerza reload de PromptsSection
     } catch {
-      showError("Error al crear categoría");
+      showError(t("toasts.createCategoryError"));
     }
   };
 
@@ -313,13 +312,11 @@ export default function SettingsPage() {
     setIsResetting(true);
     try {
       await ipc.system.resetAll();
-      showSuccess(
-        "Se ha reseteado todo correctamente. Reinicia la aplicación.",
-      );
+      showSuccess(t("toasts.resetAllSuccess"));
     } catch (error) {
       console.error("Error resetting:", error);
       showError(
-        error instanceof Error ? error.message : "Ocurrió un error desconocido",
+        error instanceof Error ? error.message : t("toasts.unknownError"),
       );
     } finally {
       setIsResetting(false);
@@ -330,7 +327,7 @@ export default function SettingsPage() {
   const handleExportSettings = () => {
     try {
       if (!settings) {
-        showError("No hay configuración para exportar");
+        showError(t("toasts.noConfigToExport"));
         return;
       }
 
@@ -352,10 +349,10 @@ export default function SettingsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showSuccess("Configuración exportada correctamente");
+      showSuccess(t("toasts.configExported"));
     } catch (err) {
       console.error("Export error:", err);
-      showError("Error al exportar la configuración");
+      showError(t("toasts.exportConfigError"));
     }
   };
 
@@ -374,21 +371,17 @@ export default function SettingsPage() {
 
         // Validate the imported data
         if (!data.settings || typeof data.settings !== "object") {
-          showError("Formato de archivo inválido");
+          showError(t("toasts.invalidFileFormat"));
           return;
         }
 
         // Update all settings
         await updateSettings(data.settings);
 
-        showSuccess(
-          "Configuración importada correctamente. Recarga la página para ver todos los cambios.",
-        );
+        showSuccess(t("toasts.configImported"));
       } catch (err) {
         console.error("Import error:", err);
-        showError(
-          "Error al importar la configuración. Verifica el formato del archivo.",
-        );
+        showError(t("toasts.importConfigError"));
       }
     };
 
@@ -401,17 +394,17 @@ export default function SettingsPage() {
       await ipc.system.showItemInFolder(logPath);
     } catch (err) {
       console.error("Error opening logs:", err);
-      showError("No se pudo abrir el archivo de logs");
+      showError(t("toasts.openLogsError"));
     }
   };
 
   const handleRestartOpenCode = async () => {
     try {
       await ipc.system.restartOpenCodeServer();
-      showSuccess("OpenCode reiniciado correctamente");
+      showSuccess(t("toasts.opencodeRestarted"));
     } catch (err) {
       console.error("Error restarting OpenCode:", err);
-      showError("No se pudo reiniciar OpenCode");
+      showError(t("toasts.opencodeRestartError"));
     }
   };
 
@@ -450,7 +443,7 @@ export default function SettingsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
               <Input
                 type="text"
-                placeholder="Buscar ajustes..."
+                placeholder={t("settingsItems.buscar_ajustes")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-10 h-10 bg-muted/50 border border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl typo-input transition-colors hover:bg-muted/70"
@@ -727,7 +720,7 @@ export default function SettingsPage() {
               <div className="flex gap-2 p-3 bg-muted/20 rounded-xl border border-border mb-4">
                 <Input
                   autoFocus
-                  placeholder="Nombre de la nueva categoría..."
+                  placeholder={t("settingsItems.nueva_categoria")}
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   onKeyDown={(e) => {
@@ -823,10 +816,10 @@ export default function SettingsPage() {
 
       <ConfirmationDialog
         isOpen={isResetDialogOpen}
-        title="Valores por defecto"
-        message="¿Estás seguro de que quieres restaurar los valores por defecto? Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer."
-        confirmText="Restaurar valores por defecto"
-        cancelText="Cancelar"
+        title={t("dialogs.resetDefaultsTitle")}
+        message={t("dialogs.resetDefaultsMessage")}
+        confirmText={t("dialogs.resetDefaultsConfirm")}
+        cancelText={t("dialogs.cancel")}
         onConfirm={handleResetEverything}
         onCancel={() => setIsResetDialogOpen(false)}
       />
@@ -977,13 +970,13 @@ export function GeneralSettings({
 
       <div className="space-y-4">
         <SettingItem
-          label="Idioma"
-          description="Idioma de la interfaz y de la comunicación con el agente"
+          label={t("settingsItems.idioma")}
+          description={t("settingsItems.idiomaDesc")}
           control={<LanguageSelector />}
         />
         <SettingItem
-          label="Apariencia"
-          description="Define el tema visual principal de la interfaz"
+          label={t("settingsItems.apariencia")}
+          description={t("settingsItems.aparienciaDesc")}
           control={
             <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
               {(["light", "dark"] as const).map((option) => (
@@ -1000,7 +993,7 @@ export function GeneralSettings({
                       : "hover:bg-primary/10",
                   )}
                 >
-                  {option === "light" ? "Claro" : "Oscuro"}
+                  {option === "light" ? t("settingsItems.claro") : t("settingsItems.oscuro")}
                 </button>
               ))}
             </div>
@@ -1009,8 +1002,8 @@ export function GeneralSettings({
 
         {!isDarkMode ? (
           <SettingItem
-            label="Variante del tema claro"
-            description="Personaliza el tema claro con un esquema de color de autor"
+            label={t("settingsItems.variante_del_tema_claro")}
+            description={t("settingsItems.variante_del_tema_claroDesc")}
             control={
               <UnifiedSelector
                 value={themeFlavorLight || "default"}
@@ -1024,53 +1017,53 @@ export function GeneralSettings({
                 options={[
                   {
                     value: "default",
-                    label: "Claro Clásico",
-                    description: "Esquema de colores claro estándar",
+                    label: t("themeVariants.claro_classico"),
+                    description: t("themeVariants.claro_classicoDesc"),
                   },
                   {
                     value: "github-light",
-                    label: "GitHub Light",
-                    description: "Estilo limpio al estilo de GitHub",
+                    label: t("themeVariants.github_light"),
+                    description: t("themeVariants.github_lightDesc"),
                   },
                   {
                     value: "solarized-light",
-                    label: "Solarized Light",
-                    description: "Tono crema cálido de alta legibilidad",
+                    label: t("themeVariants.solarized_light"),
+                    description: t("themeVariants.solarized_lightDesc"),
                   },
                   {
                     value: "gruvbox-light",
-                    label: "Gruvbox Light",
-                    description: "Esquema retro y cálido color crema/arena",
+                    label: t("themeVariants.gruvbox_light"),
+                    description: t("themeVariants.gruvbox_lightDesc"),
                   },
                   {
                     value: "nord-light",
-                    label: "Nord Light",
-                    description: "Diseño nórdico de tonos claros y fríos",
+                    label: t("themeVariants.nord_light"),
+                    description: t("themeVariants.nord_lightDesc"),
                   },
                   {
                     value: "cupcake",
-                    label: "Cupcake",
-                    description: "Paleta pastel dulce con tonos rosa y morado",
+                    label: t("themeVariants.cupcake"),
+                    description: t("themeVariants.cupcakeDesc"),
                   },
                   {
                     value: "one-light",
-                    label: "One Light",
-                    description: "El tema claro limpio de Atom One",
+                    label: t("themeVariants.one_light"),
+                    description: t("themeVariants.one_lightDesc"),
                   },
                   {
                     value: "forest-light",
-                    label: "Forest Light",
-                    description: "Fondo verde salvia muy relajante y suave",
+                    label: t("themeVariants.forest_light"),
+                    description: t("themeVariants.forest_lightDesc"),
                   },
                   {
                     value: "papercolor-light",
-                    label: "PaperColor Light",
-                    description: "Fondo blanco puro de alto contraste",
+                    label: t("themeVariants.papercolor_light"),
+                    description: t("themeVariants.papercolor_lightDesc"),
                   },
                   {
                     value: "catppuccin-latte",
-                    label: "Catppuccin Latte",
-                    description: "Paleta pastel moderna con tonos lavanda",
+                    label: t("themeVariants.catppuccin_latte"),
+                    description: t("themeVariants.catppuccin_latteDesc"),
                   },
                 ]}
                 triggerVariant="pill"
@@ -1082,8 +1075,8 @@ export function GeneralSettings({
           />
         ) : (
           <SettingItem
-            label="Variante del tema oscuro"
-            description="Personaliza el tema oscuro con un esquema de color de autor"
+            label={t("settingsItems.variante_del_tema_oscuro")}
+            description={t("settingsItems.variante_del_tema_oscuroDesc")}
             control={
               <UnifiedSelector
                 value={themeFlavorDark || "default"}
@@ -1097,54 +1090,53 @@ export function GeneralSettings({
                 options={[
                   {
                     value: "default",
-                    label: "Oscuro Clásico",
-                    description: "Esquema de colores oscuro estándar",
+                    label: t("themeVariants.oscuro_classico"),
+                    description: t("themeVariants.oscuro_classicoDesc"),
                   },
                   {
                     value: "dracula",
-                    label: "Dracula",
-                    description: "Paleta violeta y gris oscuro de Dracula",
+                    label: t("themeVariants.dracula"),
+                    description: t("themeVariants.draculaDesc"),
                   },
                   {
                     value: "one-dark",
-                    label: "One Dark",
-                    description: "Tema clásico de Atom One Dark",
+                    label: t("themeVariants.one_dark"),
+                    description: t("themeVariants.one_darkDesc"),
                   },
                   {
                     value: "nord",
-                    label: "Nord Dark",
-                    description: "Tonos árticos azulados fríos y limpios",
+                    label: t("themeVariants.nord_dark"),
+                    description: t("themeVariants.nord_darkDesc"),
                   },
                   {
                     value: "monokai",
-                    label: "Monokai",
-                    description: "Fondo gris cálido con acentos neon clásicos",
+                    label: t("themeVariants.monokai"),
+                    description: t("themeVariants.monokaiDesc"),
                   },
                   {
                     value: "solarized-dark",
-                    label: "Solarized Dark",
-                    description: "Fondo verde azulado profundo clásico",
+                    label: t("themeVariants.solarized_dark"),
+                    description: t("themeVariants.solarized_darkDesc"),
                   },
                   {
                     value: "gruvbox-dark",
-                    label: "Gruvbox Dark",
-                    description: "Paleta retro en marrón oscuro y arena",
+                    label: t("themeVariants.gruvbox_dark"),
+                    description: t("themeVariants.gruvbox_darkDesc"),
                   },
                   {
                     value: "synthwave84",
-                    label: "Synthwave '84",
-                    description: "Fondo morado y rosa neon de estética retro",
+                    label: t("themeVariants.synthwave84"),
+                    description: t("themeVariants.synthwave84Desc"),
                   },
                   {
                     value: "night-owl",
-                    label: "Night Owl",
-                    description:
-                      "Diseño azul marino profundo para uso nocturno",
+                    label: t("themeVariants.night_owl"),
+                      description: t("themeVariants.night_owlDesc"),
                   },
                   {
                     value: "tokyo-night",
-                    label: "Tokyo Night",
-                    description: "Paleta gris azulada elegante y limpia",
+                    label: t("themeVariants.tokyo_night"),
+                    description: t("themeVariants.tokyo_nightDesc"),
                   },
                 ]}
                 triggerVariant="pill"
@@ -1158,12 +1150,12 @@ export function GeneralSettings({
 
         {/* Primary Color Picker */}
         <SettingItem
-          label="Color primario"
-          description="Elige el color de acento para cada modo de tema"
+          label={t("settingsItems.color_primario")}
+          description={t("settingsItems.color_primarioDesc")}
           control={
             <div className="flex w-fit">
               <PrimaryColorPicker
-                label="Claro"
+                label={t("settingsItems.claro")}
                 pillPosition="first"
                 defaultColor={DEFAULT_LIGHT_COLOR}
                 selectedColor={
@@ -1193,7 +1185,7 @@ export function GeneralSettings({
                 }}
               />
               <PrimaryColorPicker
-                label="Oscuro"
+                label={t("settingsItems.oscuro")}
                 variant="dark"
                 pillPosition="last"
                 defaultColor={DEFAULT_DARK_COLOR}
@@ -1227,8 +1219,8 @@ export function GeneralSettings({
 
         {/* Loader Style Selector */}
         <SettingItem
-          label="Estilo de animación de carga"
-          description="Personaliza la animación que se muestra mientras la IA piensa o procesa"
+          label={t("settingsItems.estilo_de_animacion_de_carga")}
+          description={t("settingsItems.estilo_de_animacion_de_cargaDesc")}
           control={
             <UnifiedSelector
               value={settings?.loaderStyle || "orbital"}
@@ -1491,8 +1483,8 @@ export function GeneralSettings({
 
         {/* Font Selector */}
         <SettingItem
-          label="Tipografía de la Interfaz"
-          description="Elige la fuente para toda la interfaz (menús, botones)"
+          label={t("settingsItems.tipografia_de_la_interfaz")}
+          description={t("settingsItems.tipografia_de_la_interfazDesc")}
           control={
             <UnifiedSelector
               value={currentFontId}
@@ -1515,8 +1507,8 @@ export function GeneralSettings({
 
         {/* Chat Font Selector */}
         <SettingItem
-          label="Tipografía del Chat"
-          description="Elige la fuente base para los mensajes del chat"
+          label={t("settingsItems.tipografia_del_chat")}
+          description={t("settingsItems.tipografia_del_chatDesc")}
           control={
             <UnifiedSelector
               value={currentChatFontId}
@@ -1535,7 +1527,43 @@ export function GeneralSettings({
               data-testid="chat-font-selector"
             />
           }
-        />
+          />
+
+          {/* Vista del chat: Max / Flow / Zen */}
+          <SettingItem
+            label={t("settingsItems.vista_del_chat")}
+            description={
+              (settings?.chatRenderMode ?? "zen") === "zen"
+                ? t("agentSection.chatViewZen")
+                : settings?.chatRenderMode === "flow"
+                  ? t("agentSection.chatViewFlow")
+                  : t("agentSection.chatViewFull")
+            }
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {[
+                  { value: "full" as const, label: "Max" },
+                  { value: "flow" as const, label: "Flow" },
+                  { value: "zen" as const, label: "Zen" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() =>
+                      updateSettings({ chatRenderMode: option.value })
+                    }
+                    className={cn(
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                      (settings?.chatRenderMode ?? "zen") === option.value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-primary/10",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            }
+          />
 
         {/* Font Scale — collapsible */}
         <div className="space-y-0">
@@ -1544,9 +1572,9 @@ export function GeneralSettings({
             onClick={() => setFontScaleExpanded((e) => !e)}
           >
             <div className="flex-1">
-              <h3 className="typo-label">Tamaño de fuente</h3>
+              <h3 className="typo-label">{t("settingsItems.tamano_de_fuente")}</h3>
               <p className="typo-caption mt-1">
-                Ajusta el tamaño del texto por zona
+                {t("settingsItems.tamano_de_fuenteDesc")}
               </p>
             </div>
             <ChevronRight
@@ -1560,8 +1588,8 @@ export function GeneralSettings({
           {fontScaleExpanded && (
             <div className="pl-4 space-y-0">
               <SettingItem
-                label="Interfaz"
-                description="Títulos, botones, labels, badges y controles"
+                label={t("settingsItems.interfaz")}
+                description={t("settingsItems.interfazDesc")}
                 control={
                   <UnifiedSelector
                     value={String(fontScales.ui)}
@@ -1588,8 +1616,8 @@ export function GeneralSettings({
                 }
               />
               <SettingItem
-                label="Sidebar"
-                description="Menús, apps y chats de la barra lateral"
+                label={t("settingsItems.sidebar")}
+                description={t("settingsItems.sidebarDesc")}
                 control={
                   <UnifiedSelector
                     value={String(fontScales.sidebar)}
@@ -1616,8 +1644,8 @@ export function GeneralSettings({
                 }
               />
               <SettingItem
-                label="Chat"
-                description="Mensajes y contenido del chat"
+                label={t("settingsItems.chat")}
+                description={t("settingsItems.chatDesc")}
                 control={
                   <UnifiedSelector
                     value={String(fontScales.chat)}
@@ -1646,8 +1674,8 @@ export function GeneralSettings({
                 }
               />
               <SettingItem
-                label="Ancho de burbuja"
-                description="Porcentaje del contenedor (100% = ancho total)"
+                label={t("settingsItems.ancho_de_burbuja")}
+                description={t("settingsItems.ancho_de_burbujaDesc")}
                 control={
                   <UnifiedSelector
                     value={String(bubbleWidthPct)}
@@ -1708,16 +1736,16 @@ export function WorkflowSettings({
       <div className="space-y-12">
         <div className="space-y-4">
           <SettingItem
-            label="Modo de chat predeterminado"
-            description="El modo de chat usado para crear nuevos chats"
+            label={t("settingsItems.modo_de_chat_predeterminado")}
+            description={t("settingsItems.modo_de_chat_predeterminadoDesc")}
             control={<DefaultChatModeSelector />}
           />
 
           {/* Git nativo — hardcoded to always enabled */}
 
           <SettingItem
-            label="Confirmar cambios en git"
-            description="Confirma automáticamente los cambios de la IA en git. Si se desactiva, los cambios quedan pendientes."
+            label={t("settingsItems.confirmar_cambios_en_git")}
+            description={t("settingsItems.confirmar_cambios_en_gitDesc")}
             onClick={() =>
               updateSettings({
                 autoApproveChanges: !settings?.autoApproveChanges,
@@ -1734,8 +1762,8 @@ export function WorkflowSettings({
           />
 
           <SettingItem
-            label="Expandir vista previa"
-            description="Abre automáticamente el panel de vista previa lateral cuando el código cambia."
+            label={t("settingsItems.expandir_vista_previa")}
+            description={t("settingsItems.expandir_vista_previaDesc")}
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                 {(["off", "right", "left"] as const).map((option) => {
@@ -1777,8 +1805,8 @@ export function WorkflowSettings({
           />
 
           <SettingItem
-            label="Notificaciones de respuesta"
-            description="Muestra una notificación nativa del sistema cuando el chat termina de generar."
+            label={t("settingsItems.notificaciones_de_respuesta")}
+            description={t("settingsItems.notificaciones_de_respuestaDesc")}
             onClick={() =>
               updateSettings({
                 enableChatCompletionNotifications:
@@ -1796,8 +1824,8 @@ export function WorkflowSettings({
           />
 
           <SettingItem
-            label="Reproducir sonido"
-            description="Reproduce un sonido al terminar la respuesta. Funciona en apps sin firmar en macOS donde las notificaciones nativas no están disponibles."
+            label={t("settingsItems.reproducir_sonido")}
+            description={t("settingsItems.reproducir_sonidoDesc")}
             onClick={() =>
               updateSettings({
                 enableNotificationSound:
@@ -1815,8 +1843,8 @@ export function WorkflowSettings({
           />
 
           <SettingItem
-            label="Búsqueda web"
-            description="Permite al modelo buscar en internet cuando necesite información actualizada. OpenRouter ejecuta la búsqueda automáticamente."
+            label={t("settingsItems.busqueda_web")}
+            description={t("settingsItems.busqueda_webDesc")}
             onClick={() =>
               updateSettings({
                 enableWebSearch: !settings?.enableWebSearch,

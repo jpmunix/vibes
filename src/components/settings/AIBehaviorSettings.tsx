@@ -8,7 +8,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { StrategistModelSelector } from "./StrategistModelSelector";
 import { ExecutorModelSelector } from "./ExecutorModelSelector";
 import { VisionModelSelector } from "./VisionModelSelector";
-import { AgentToolsSettings } from "./AgentToolsSettings";
 import { AgentPermissionsSettings } from "./AgentPermissionsSettings";
 import { Switch } from "@/components/ui/switch";
 
@@ -19,7 +18,9 @@ import { TextVerbositySelector } from "../TextVerbositySelector";
 import { AgentModelSelector } from "./AgentModelSelector";
 import type { AgentId } from "./AgentModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import { MODEL_SELECTOR_STATUS } from "./model_selector_status";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 // ─── Chat turns options ───
 const turnsOptions = [
@@ -33,17 +34,17 @@ const turnsOptions = [
 // ─── #165: límites del loop — presets ───
 // Iteraciones máximas del agente por tarea (default runtime: 1000).
 const iterationOptions = [
-  { value: 100, label: "100" },
-  { value: 1000, label: "1000 (default)" },
-  { value: 5000, label: "5000" },
-  { value: 20000, label: "20000" },
+  { value: "100", label: "100" },
+  { value: "1000", label: "1000" },
+  { value: "5000", label: "5000" },
+  { value: "20000", label: "20000" },
 ];
 // Tiempo máximo de tarea, en minutos (default runtime: 240 = 4h).
 const wallClockOptions = [
-  { value: 60, label: "1 h" },
-  { value: 240, label: "4 h (default)" },
-  { value: 720, label: "12 h" },
-  { value: 1440, label: "24 h" },
+  { value: "60", label: "1 h" },
+  { value: "240", label: "4 h" },
+  { value: "720", label: "12 h" },
+  { value: "1440", label: "24 h" },
 ];
 // Valor por defecto mostrado en la UI cuando no hay setting persistido.
 const DEFAULT_AGENT_ITERATIONS = 1000;
@@ -104,6 +105,7 @@ function InactiveChip({ note }: { note?: string }) {
 
 // ─── Collapsible agent models section ───
 function AgentModelsSection() {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const agentModelsStatus = MODEL_SELECTOR_STATUS.agentModels;
 
@@ -115,15 +117,15 @@ function AgentModelsSection() {
       >
         <div className="flex-1">
           <h3 className="typo-label">
-            Modelos por agente
+            {t("agentSection.modelsByAgent")}
             {!agentModelsStatus.active && (
               <InactiveChip note={agentModelsStatus.note} />
             )}
           </h3>
           <p className="typo-caption mt-1">
-            Asigna un modelo distinto a cada agente interno para optimizar coste y rendimiento
+            {t("agentSection.modelsByAgentDesc")}
             {!agentModelsStatus.active &&
-              " — estos overrides aún no se aplican (se enchufarán con el nuevo runtime)"}
+              t("agentSection.modelsByAgentInactive")}
           </p>
         </div>
         <ChevronRight
@@ -160,6 +162,7 @@ export function AIBehaviorSettings({
 }: {
   isHighlighted?: boolean;
 }) {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
   const isAdminUser = useIsAdmin();
@@ -190,10 +193,9 @@ export function AIBehaviorSettings({
         )}
       >
         <div className="mb-8">
-          <h2 className="typo-section-title">Agente</h2>
+          <h2 className="typo-section-title">{t("agentSection.title")}</h2>
           <p className="typo-caption mt-1">
-            Personaliza cómo los agentes procesan la información y los modelos
-            que usan
+            {t("agentSection.desc")}
           </p>
         </div>
 
@@ -217,51 +219,15 @@ export function AIBehaviorSettings({
           {/* Idioma — se ha movido a la sección "General" (card #106). */}
 
           <SettingRow
-            label="Esfuerzo de razonamiento"
-            description="Controla cuánto análisis previo realiza el agente"
+            label={t("settingsItems.esfuerzo_de_razonamiento")}
+            description={t("settingsItems.esfuerzo_de_razonamientoDesc")}
             control={<ReasoningEffortSelector variant="settings" />}
           />
 
           <SettingRow
-            label="Verbosidad"
-            description="Controla cuánto detalle incluye el agente en sus respuestas"
+            label={t("settingsItems.verbosidad")}
+            description={t("settingsItems.verbosidadDesc")}
             control={<TextVerbositySelector variant="settings" />}
-          />
-
-          {/* Vista del chat: Max / Flow / Zen */}
-          <SettingRow
-            label="Vista del chat"
-            description={
-              (settings?.chatRenderMode ?? "zen") === "zen"
-                ? "Respuestas limpias mostrando solo lo esencial. Más ligero y rápido."
-                : settings?.chatRenderMode === "flow"
-                  ? "Como Zen, pero mostrando los pensamientos de la IA en tiempo real."
-                  : "Muestra todos los pasos intermedios del agente con detalles expandibles."
-            }
-            control={
-              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {[
-                  { value: "full" as const, label: "Max" },
-                  { value: "flow" as const, label: "Flow" },
-                  { value: "zen" as const, label: "Zen" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      updateSettings({ chatRenderMode: option.value })
-                    }
-                    className={cn(
-                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                      (settings?.chatRenderMode ?? "zen") === option.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-primary/10",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            }
           />
 
           {/* Turnos de contexto — hidden: OpenCode manages context internally */}
@@ -270,54 +236,43 @@ export function AIBehaviorSettings({
               al runtime (Ajustes > Agente). Antes los defaults del runtime (30
               iter / 5 min) cortaban las tareas largas en silencio. */}
           <SettingRow
-            label="Máx. iteraciones del agente"
-            description="Hasta dónde puede trabajar el agente antes de detenerse. Si una tarea se corta, súbelo aquí."
+            label={t("settingsItems.max_iteraciones_del_agente")}
+            description={t("settingsItems.max_iteraciones_del_agenteDesc")}
             control={
-              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {iterationOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      updateSettings({ agentMaxIterations: option.value })
-                    }
-                    className={cn(
-                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                      (settings?.agentMaxIterations ??
-                        DEFAULT_AGENT_ITERATIONS) === option.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-primary/10",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <UnifiedSelector
+                value={String(
+                  settings?.agentMaxIterations ?? DEFAULT_AGENT_ITERATIONS,
+                )}
+                onChange={(value) =>
+                  updateSettings({ agentMaxIterations: Number(value) })
+                }
+                options={iterationOptions}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-max-iterations-selector"
+              />
             }
           />
 
           <SettingRow
-            label="Tiempo máximo de tarea"
-            description="Límite de reloj por tarea. Con 4 h las sesiones largas ya no se cortan a mitad."
+            label={t("settingsItems.tiempo_maximo_de_tarea")}
+            description={t("settingsItems.tiempo_maximo_de_tareaDesc")}
             control={
-              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {wallClockOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      updateSettings({ agentMaxWallClockMinutes: option.value })
-                    }
-                    className={cn(
-                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                      (settings?.agentMaxWallClockMinutes ??
-                        DEFAULT_AGENT_WALL_CLOCK_MIN) === option.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-primary/10",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <UnifiedSelector
+                value={String(
+                  settings?.agentMaxWallClockMinutes ??
+                    DEFAULT_AGENT_WALL_CLOCK_MIN,
+                )}
+                onChange={(value) =>
+                  updateSettings({ agentMaxWallClockMinutes: Number(value) })
+                }
+                options={wallClockOptions}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-max-wall-clock-selector"
+              />
             }
           />
 
@@ -329,28 +284,28 @@ export function AIBehaviorSettings({
 
           {/* ── Modelo Estratega ── */}
           <SettingRow
-            label="Modelo estratega"
-            description="Asistente de prompts, resúmenes de traspaso y compactación de memoria"
+            label={t("settingsItems.modelo_estratega")}
+            description={t("settingsItems.modelo_estrategaDesc")}
             control={<StrategistModelSelector />}
           />
 
           {/* ── Modelo Ejecutor ── */}
           <SettingRow
-            label="Modelo ejecutor"
-            description="Títulos de chats/apps, mensajes de commit en Git y agente rápido de mockups"
+            label={t("settingsItems.modelo_ejecutor")}
+            description={t("settingsItems.modelo_ejecutorDesc")}
             control={<ExecutorModelSelector />}
           />
 
           {/* ── Preprocesador de Visión ── */}
           <SettingRow
-            label="Preprocesador de Visión"
-            description="Traduce imágenes a texto de forma transparente cuando usas un modelo sin capacidades de visión"
+            label={t("settingsItems.preprocesador_de_vision")}
+            description={t("settingsItems.preprocesador_de_visionDesc")}
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                 {(
                   [
-                    { value: false, label: "Desactivado" },
-                    { value: true, label: "Activado" },
+                    { value: false, label: t("common.disabled") },
+                    { value: true, label: t("common.enabled") },
                   ] as const
                 ).map((option) => (
                   <button
@@ -376,8 +331,8 @@ export function AIBehaviorSettings({
           />
           {settings?.visionPreprocessorEnabled !== false && (
             <SettingRow
-              label="Modelo de Visión"
-              description="El modelo encargado de analizar y describir las imágenes"
+              label={t("settingsItems.modelo_de_vision")}
+              description={t("settingsItems.modelo_de_visionDesc")}
               control={<VisionModelSelector />}
             />
           )}
@@ -385,14 +340,14 @@ export function AIBehaviorSettings({
           {/* Morph Patch Engine — admin only */}
           {isAdminUser && (
             <SettingRow
-              label="Morph Patch Engine"
-              description="Ediciones de código ultrarrápidas vía Morph V3"
+              label={t("settingsItems.morph_patch_engine")}
+              description={t("settingsItems.morph_patch_engineDesc")}
               control={
                 <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                   {(
                     [
-                      { value: false, label: "Desactivado" },
-                      { value: true, label: "Activado" },
+                      { value: false, label: t("common.disabled") },
+                      { value: true, label: t("common.enabled") },
                     ] as const
                   ).map((option) => (
                     <button
