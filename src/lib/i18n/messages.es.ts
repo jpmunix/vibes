@@ -61,6 +61,7 @@ export const messagesEs: Messages = {
       agent: "Agente",
       customAgents: "Agentes Personalizados",
       customAgentsDesc: "Construye y administra tus propios agentes con instrucciones específicas. Puedes inyectar un system prompt aditivo o pisar completamente las instrucciones nativas.",
+      newCategory: "Nueva categoría",
       prompts: "Prompts",
       promptsDesc: "Personaliza las instrucciones que reciben los modelos AI para tareas internas, generación de nombres y el sistema de directrices.",
       guidelines: "Directrices",

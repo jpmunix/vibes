@@ -42,6 +42,7 @@ export const messagesEn: Messages = {
       agent: "Agent",
       customAgents: "Custom Agents",
       customAgentsDesc: "Build and manage your own agents with specific instructions. You can inject an additive system prompt or completely override the native instructions.",
+      newCategory: "New category",
       prompts: "Prompts",
       promptsDesc: "Customize the instructions that AI models receive for internal tasks, name generation, and the guidelines system.",
       guidelines: "Guidelines",

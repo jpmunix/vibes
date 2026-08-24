@@ -685,7 +685,7 @@ export default function SettingsPage() {
                 onClick={() => setIsCreatingCategory(true)}
                 className="gap-2"
               >
-                <Plus className="h-3.5 w-3.5" /> Nueva Categoría
+                <Plus className="h-3.5 w-3.5" /> {t("settings.sections.newCategory")}
               </Button>
             </div>
             <p className="typo-caption mb-8">{" "}{t("settings.sections.promptsDesc")}</p>
@@ -708,7 +708,7 @@ export default function SettingsPage() {
                   variant="ghost"
                   onClick={() => setIsCreatingCategory(false)}
                 >
-                  Cancelar
+                  {t("prompts.cancel")}
                 </Button>
               </div>
             )}

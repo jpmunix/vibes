@@ -46,6 +46,22 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
+type TFunc = (key: string, params?: Record<string, string | number>) => string;
+
+/**
+ * i18n: resuelve el nombre visible de una categoría. Las del sistema llevan
+ * nameKey (clave de traducción); se traduce con t() y se cae al texto libre
+ * de la DB si la clave no existe (o si es categoría de usuario, nameKey null).
+ */
+function resolveCategoryName(c: PromptCategoryDto, t: TFunc): string {
+  if (c.nameKey) {
+    const key = `prompts.categories.${c.nameKey}`;
+    const translated = t(key);
+    return translated === key ? c.name : translated;
+  }
+  return c.name;
+}
+
 function PromptEditor({
   prompt,
   categories,
@@ -98,6 +114,19 @@ function PromptEditor({
     const translated = t(key);
     return translated === key ? fallback : translated;
   };
+
+  // i18n: las categorías del sistema llevan nameKey. Traducir el nombre
+  // visible para dropdowns y botones; las de usuario usan su texto libre.
+  const getCategoryDisplayName = (c: PromptCategoryDto): string =>
+    resolveCategoryName(c, t);
+
+  // Title/Description en el diálogo: si son readonly (prompt del sistema),
+  // mostrar el valor traducido — no el crudo de la DB. En el resto, el
+  // valor editable del usuario (localTitle/localDesc).
+  const displayTitle = editorLock.titleReadonly ? getSystemLabel() : localTitle;
+  const displayDesc = editorLock.descriptionReadonly
+    ? (getSystemDesc() ?? "")
+    : localDesc;
 
   const hasUnsavedChanges =
     localTitle !== prompt.title ||
@@ -355,7 +384,7 @@ function PromptEditor({
                   {t("prompts.title")}
                 </label>
                 <Input
-                  value={localTitle}
+                  value={displayTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
                   placeholder={t("prompts.promptTitlePlaceholder")}
                   readOnly={editorLock.titleReadonly}
@@ -382,7 +411,7 @@ function PromptEditor({
                     <SelectContent>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
+                          {getCategoryDisplayName(c)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -454,7 +483,7 @@ function PromptEditor({
                 {t("prompts.descriptionLabel")}
               </label>
               <Input
-                value={localDesc}
+                value={displayDesc}
                 onChange={(e) => setLocalDesc(e.target.value)}
                 placeholder={t("prompts.descriptionOptional")}
                 readOnly={editorLock.descriptionReadonly}
@@ -469,7 +498,7 @@ function PromptEditor({
             <div className="space-y-1.5">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Contenido del Prompt
+                  {t("prompts.content")}
                 </label>
                 {!editorLock.hideAiGenerate && (
                   <AiStrategistAssistant
@@ -639,13 +668,7 @@ function PromptGroup({
   // usan su texto libre de la DB.
   const getCategoryName = (): string => {
     if (!category) return t("prompts.noCategory");
-    if (category.nameKey) {
-      const key = `prompts.categories.${category.nameKey}`;
-      const translated = t(key);
-      // Fallback: si la clave no existe, t() devuelve la key — usar el name.
-      return translated === key ? category.name : translated;
-    }
-    return category.name;
+    return resolveCategoryName(category, t);
   };
 
   const getCategoryDesc = (): string | null => {
