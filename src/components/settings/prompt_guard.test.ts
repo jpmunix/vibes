@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   canDisablePrompt,
   getPromptEditorLock,
+  isAgentCorePrompt,
   LOCKED_PROMPT_SYSTEM_IDS,
 } from "./prompt_guard";
 
@@ -61,5 +62,23 @@ describe("getPromptEditorLock — campos del editor por prompt", () => {
       expect(lock.descriptionReadonly).toBe(false);
       expect(lock.hideAiGenerate).toBe(false);
     }
+  });
+});
+
+// Card #182: aviso informativo de verbosidad en el editor del Núcleo del agente.
+
+describe("isAgentCorePrompt — detección del prompt del Núcleo del agente", () => {
+  it("runtime_agent_base es el núcleo", () => {
+    expect(isAgentCorePrompt("runtime_agent_base")).toBe(true);
+  });
+
+  it("los ctx_* no son el núcleo", () => {
+    expect(isAgentCorePrompt("ctx_language")).toBe(false);
+    expect(isAgentCorePrompt("ctx_build_walkthrough")).toBe(false);
+  });
+
+  it("los prompts custom (sin systemId) no son el núcleo", () => {
+    expect(isAgentCorePrompt(null)).toBe(false);
+    expect(isAgentCorePrompt(undefined)).toBe(false);
   });
 });
