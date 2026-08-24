@@ -8,8 +8,10 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { AddPromptDeepLinkData } from "@/ipc/deep_link_data";
 import { showInfo } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 export default function LibraryPage() {
+  const { t } = useI18n();
   const { prompts, isLoading, createPrompt, updatePrompt, deletePrompt } =
     usePrompts();
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
@@ -53,7 +55,7 @@ export default function LibraryPage() {
     <div className="min-h-screen px-8 py-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold mr-4">Biblioteca: Prompts</h1>
+          <h1 className="text-3xl font-bold mr-4">{t("library.title")}</h1>
           <CreatePromptDialog
             onCreatePrompt={createPrompt}
             prefillData={prefillData}
@@ -63,10 +65,10 @@ export default function LibraryPage() {
         </div>
 
         {isLoading ? (
-          <div>Cargando...</div>
+          <div>{t("library.loading")}</div>
         ) : prompts.length === 0 ? (
           <div className="text-muted-foreground">
-            Aún no hay prompts. Crea uno para empezar.
+            {t("library.empty")}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">

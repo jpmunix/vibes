@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "@/components/ui/icons";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -104,6 +105,7 @@ export const ConsoleTerminal = () => {
 
   // Load command history from localStorage
   useEffect(() => {
+  const { t } = useI18n();
     try {
       const saved = localStorage.getItem("console-command-history");
       if (saved) {
@@ -384,7 +386,7 @@ export const ConsoleTerminal = () => {
           <div className="flex items-center justify-center h-full text-muted-foreground text-xs select-none">
             <div className="text-center">
               <TerminalIcon size={28} className="mx-auto mb-2 opacity-30" />
-              <p>Consola lista</p>
+              <p>{t("previewPanel.consoleReady")}</p>
               <p className="text-xs mt-1 text-foreground">
                 Escribe un comando o usa las acciones rápidas
               </p>

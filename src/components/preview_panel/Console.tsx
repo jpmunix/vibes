@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { ConsoleEntryComponent } from "./ConsoleEntry";
 import { ConsoleFilters } from "./ConsoleFilters";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 // Logs are mostly used to spot startup errors; cap the rendered buffer so the
 // DOM stays bounded (card #103 Slice 4). Full history lives in the backend.
@@ -95,6 +96,7 @@ export const Console = () => {
   // Track if initial scroll has completed to prevent glitches during first interaction
   const initialScrollDone = useRef(false);
   const handleClearFilters = () => {
+  const { t } = useI18n();
     setLevelFilter("all");
     setTypeFilter("all");
     setSourceFilter("");
@@ -246,7 +248,7 @@ export const Console = () => {
 
   const handleExportLogs = useCallback(async () => {
     if (filteredEntries.length === 0) {
-      showError("No hay logs para exportar");
+      showError(t("previewPanel.noLogsToExport"));
       return;
     }
 

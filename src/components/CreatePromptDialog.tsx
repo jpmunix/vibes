@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Plus, Save, Edit2 } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 interface CreateOrEditPromptDialogProps {
   mode: "create" | "edit";
@@ -57,6 +58,7 @@ export function CreateOrEditPromptDialog({
   isOpen,
   onOpenChange,
 }: CreateOrEditPromptDialogProps) {
+  const { t } = useI18n();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen !== undefined ? isOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
@@ -187,7 +189,7 @@ export function CreateOrEditPromptDialog({
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Editar prompt</p>
+            <p>{t("dialogs.editPrompt")}</p>
           </TooltipContent>
         </Tooltip>
       )}

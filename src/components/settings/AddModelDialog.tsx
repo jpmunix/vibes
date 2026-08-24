@@ -19,6 +19,7 @@ import { ipc } from "@/ipc/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { showError, showSuccess } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 // =============================================================================
 // Price formatting — clean, no "/M" suffix (prices are always per million)
@@ -129,6 +130,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
   );
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilterValue>("all");
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: modelsByProviders, isLoading } = useLanguageModelsByProviders();
   const [detailModel, setDetailModel] = useState<LanguageModel | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -269,7 +271,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
           {/* ── Header with title + refresh + close ── */}
           <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/50 shrink-0">
             <div className="flex items-center justify-between">
-              <DialogTitle>Añadir modelos</DialogTitle>
+              <DialogTitle>{t("dialogs.addModelsTitle")}</DialogTitle>
               <div className="flex items-center gap-1">
                 <button
                   type="button"

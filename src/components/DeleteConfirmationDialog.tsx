@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,7 @@ export function DeleteConfirmationDialog({
   trigger,
   isDeleting = false,
 }: DeleteConfirmationDialogProps) {
+  const { t } = useI18n();
   return (
     <AlertDialog>
       {trigger ? (
@@ -65,7 +67,7 @@ export function DeleteConfirmationDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>{t("dialogs.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onDelete}
             disabled={isDeleting}

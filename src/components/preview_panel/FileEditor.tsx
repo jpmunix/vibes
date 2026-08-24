@@ -17,6 +17,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { getLanguage } from "@/utils/get_language";
 import { queryKeys } from "@/lib/queryKeys";
+import { useI18n } from "@/lib/i18n";
 
 interface FileEditorProps {
   appId: number | null;
@@ -95,6 +96,7 @@ export const FileEditor = ({
   filePath,
   initialLine = null,
 }: FileEditorProps) => {
+  const { t } = useI18n();
   const { content, loading, error } = useLoadAppFile(appId, filePath);
   const { theme } = useTheme();
   const [value, setValue] = useState<string | undefined>(undefined);
@@ -213,7 +215,7 @@ export const FileEditor = ({
       if (warning) {
         showWarning(warning);
       } else {
-        showSuccess("File saved");
+        showSuccess(t("previewPanel.fileSaved"));
       }
 
       originalValueRef.current = currentValueRef.current;

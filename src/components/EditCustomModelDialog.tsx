@@ -14,6 +14,7 @@ import { ipc } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useMutation } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 interface Model {
   apiName: string;
@@ -46,6 +47,7 @@ export function EditCustomModelDialog({
   const [maxOutputTokens, setMaxOutputTokens] = useState<string>("");
   const [contextWindow, setContextWindow] = useState<string>("");
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (model) {
@@ -108,11 +110,11 @@ export function EditCustomModelDialog({
         try {
           await updateSettings({ selectedModel: newModel });
         } catch {
-          showError("Failed to update settings");
+          showError(t("models.updateSettingsError"));
           return; // stop closing dialog
         }
       }
-      showSuccess("¡Modelo personalizado actualizado con éxito!");
+      showSuccess(t("models.customModelUpdated"));
       onSuccess();
       onClose();
     },
@@ -138,7 +140,7 @@ export function EditCustomModelDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Editar modelo personalizado</DialogTitle>
+          <DialogTitle>{t("models.editCustomModelTitle")}</DialogTitle>
           <DialogDescription>
             Modifica la configuración del modelo de lenguaje seleccionado.
           </DialogDescription>

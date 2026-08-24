@@ -36,6 +36,7 @@ import { useSearchAppFiles } from "@/hooks/useSearchAppFiles";
 import { ipc } from "@/ipc/types";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 interface FileTreeProps {
   appId: number | null;
@@ -549,6 +550,7 @@ function FileContextMenu({
 
 // File tree component
 export const FileTree = ({ appId, files }: FileTreeProps) => {
+  const { t } = useI18n();
   const [searchValue, setSearchValue] = useState("");
   const [searchMode, setSearchMode] = useState<"content" | "name">("name");
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -841,7 +843,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("previewPanel.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (!deleteTarget || !appId) return;

@@ -47,6 +47,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { showError, showSuccess } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 import { useMutation } from "@tanstack/react-query";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
@@ -79,6 +80,7 @@ const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
 
 // Preview Header component with preview mode toggle
 export const ActionHeader = () => {
+  const { t } = useI18n();
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -160,10 +162,10 @@ export const ActionHeader = () => {
     },
     onSuccess: async () => {
       await refreshAppIframe();
-      showSuccess("Datos de vista previa borrados");
+      showSuccess(t("preview.dataCleared"));
     },
     onError: (error) => {
-      showError(`Error al borrar los datos de vista previa: ${error}`);
+      showError(t("preview.clearDataError", { error }));
     },
   });
 
@@ -338,7 +340,7 @@ export const ActionHeader = () => {
                 onClick={() => selectPanel("preview")}
               >
                 <Eye size={iconSize} />
-                {!isCompact && <span>Vista previa</span>}
+                {!isCompact && <span>{t("previewPanel.preview")}</span>}
                 <ChevronDown
                   size={10}
                   className={
@@ -360,12 +362,12 @@ export const ActionHeader = () => {
                 className={cn(previewMode === "preview" && "bg-accent")}
               >
                 <Eye size={14} />
-                <span>Vista previa</span>
+                <span>{t("previewPanel.preview")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onRestart}>
                 <RefreshCw size={14} />
                 <div className="flex flex-col">
-                  <span>Reiniciar</span>
+                  <span>{t("previewPanel.restart")}</span>
                   <span className="typo-caption opacity-80">
                     Reinicia el servidor de desarrollo
                   </span>
@@ -374,7 +376,7 @@ export const ActionHeader = () => {
               <DropdownMenuItem onClick={onStop}>
                 <Square size={14} />
                 <div className="flex flex-col">
-                  <span>Detener servidor</span>
+                  <span>{t("previewPanel.stopServer")}</span>
                   <span className="typo-caption opacity-80">
                     Detiene el servidor de desarrollo
                   </span>
@@ -383,7 +385,7 @@ export const ActionHeader = () => {
               <DropdownMenuItem onClick={onCleanRestart}>
                 <Hammer size={14} />
                 <div className="flex flex-col">
-                  <span>Reconstruir</span>
+                  <span>{t("previewPanel.rebuild")}</span>
                   <span className="typo-caption opacity-80">
                     Reinstala node_modules y reinicia
                   </span>
@@ -392,7 +394,7 @@ export const ActionHeader = () => {
               <DropdownMenuItem onClick={onClearSessionData}>
                 <Trash2 size={14} />
                 <div className="flex flex-col">
-                  <span>Borrar caché</span>
+                  <span>{t("previewPanel.clearCache")}</span>
                   <span className="typo-caption opacity-80">
                     Borra cookies y almacenamiento local
                   </span>
@@ -454,7 +456,7 @@ export const ActionHeader = () => {
                 disabled={selectedAppId == null}
               >
                 <FolderOpen size={14} />
-                <span>Explorar código</span>
+                <span>{t("previewPanel.exploreCode")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}
@@ -462,7 +464,7 @@ export const ActionHeader = () => {
               >
                 <AlertTriangle size={14} />
                 <div className="flex items-center gap-2">
-                  <span>Problemas</span>
+                  <span>{t("previewPanel.problems")}</span>
                   {displayCount && (
                     <span className="px-1 py-0.5 typo-micro bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
                       {displayCount}
@@ -483,7 +485,7 @@ export const ActionHeader = () => {
                     disabled={selectedAppId == null}
                   >
                     <Database size={14} />
-                    <span>Base de datos</span>
+                    <span>{t("previewPanel.database")}</span>
                   </DropdownMenuItem>
                 </>
               )}
@@ -500,7 +502,7 @@ export const ActionHeader = () => {
                 disabled={selectedAppId == null}
               >
                 <Logs size={14} />
-                <span>Consola</span>
+                <span>{t("previewPanel.console")}</span>
               </DropdownMenuItem>
               {memoriesEnabled && (
                 <DropdownMenuItem
@@ -516,7 +518,7 @@ export const ActionHeader = () => {
                   disabled={selectedAppId == null}
                 >
                   <Database size={14} />
-                  <span>Directrices</span>
+                  <span>{t("previewPanel.guidelines")}</span>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -580,14 +582,14 @@ export const ActionHeader = () => {
                 }}
               >
                 <GitBranch size={14} />
-                <span>Git</span>
+                <span>{t("previewPanel.git")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("publish")}
                 className={cn(previewMode === "publish" && "bg-accent")}
               >
                 <Globe size={14} />
-                <span>Publicar</span>
+                <span>{t("previewPanel.publish")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -602,7 +604,7 @@ export const ActionHeader = () => {
                 onClick={() => selectPanel("configure")}
               >
                 <Cog size={iconSize} />
-                {!isCompact && <span>Configurar</span>}
+                {!isCompact && <span>{t("previewPanel.configure")}</span>}
               </button>
             );
 
@@ -611,7 +613,7 @@ export const ActionHeader = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
                   <TooltipContent>
-                    <p>Configurar</p>
+                    <p>{t("previewPanel.configure")}</p>
                   </TooltipContent>
                 </Tooltip>
               );

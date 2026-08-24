@@ -7,6 +7,7 @@ import { useTemplates } from "@/hooks/useTemplates";
 import { TemplateCard } from "@/components/TemplateCard";
 import { CreateAppDialog } from "@/components/CreateAppDialog";
 import { NeonConnector } from "@/components/NeonConnector";
+import { useI18n } from "@/lib/i18n";
 
 const HubPage: React.FC = () => {
   const router = useRouter();
@@ -103,14 +104,15 @@ const HubPage: React.FC = () => {
 };
 
 function BackendSection() {
+  const { t } = useI18n();
   return (
     <div className="">
       <header className="mb-4 text-left">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Servicios de Backend
+          {t("hub.backendTitle")}
         </h1>
         <p className="text-md text-muted-foreground">
-          Conéctate a servicios de backend para tus proyectos.
+          {t("hub.backendSubtitle")}
         </p>
       </header>
 

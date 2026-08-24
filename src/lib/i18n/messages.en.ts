@@ -62,6 +62,8 @@ export const messagesEn: Messages = {
     reject: "Reject",
     showMore: "Show more",
     showLess: "Show less",
+    seeMore: "See more",
+    seeLess: "See less",
     permitQuestion: "Allow {tool}?",
     ofTotal: "({current} of {total})",
     denyAlways: "Always deny",
@@ -98,6 +100,7 @@ export const messagesEn: Messages = {
     search: "Search",
     loading: "Loading...",
     empty: "Nothing here",
+    create: "Create",
   },
   plural: {
     files: { one: "{count} file", many: "{count} files" },
@@ -105,5 +108,355 @@ export const messagesEn: Messages = {
     messages: { one: "{count} message", many: "{count} messages" },
     minutes: { one: "{count} minute ago", many: "{count} minutes ago" },
     seconds: { one: "{count} second ago", many: "{count} seconds ago" },
+  },
+  search: {
+    noResults: "No settings found",
+    noResultsHint: "Try different search terms",
+    import: "Import",
+    export: "Export",
+    viewLogs: "View logs",
+    restartApp: "Restart OpenCode",
+    testNotification: "Test notification",
+    testNotificationBody: "If you hear this, the sound works correctly",
+    resetting: "Resetting...",
+    resetSettings: "Reset settings",
+    sections: {
+      general: "General",
+      workflow: "Workflow Settings",
+      agent: "Agent",
+      providers: "AI Providers",
+      openrouter: "OpenRouter",
+      integrations: "Integrations",
+      mcp: "MCP Tools",
+      skills: "Skills",
+      customAgents: "Custom Agents",
+    },
+    items: {
+      theme: {
+        label: "Appearance",
+        description: "Set the main visual theme of the interface",
+      },
+      primaryColor: {
+        label: "Primary color",
+        description: "Choose the main accent color for light and dark mode",
+      },
+      font: {
+        label: "Interface Typography",
+        description: "Choose the font for the whole interface (menus, buttons)",
+      },
+      chatFont: {
+        label: "Chat Typography",
+        description: "Choose the base font for chat messages",
+      },
+      fontScale: {
+        label: "Font size",
+        description: "Adjust text size by zone (interface, sidebar, chat)",
+      },
+      chatMode: {
+        label: "Default chat mode",
+        description: "Select the chat mode used by default",
+      },
+      autoApprove: {
+        label: "Confirm git changes",
+        description: "Automatically commit AI changes to git",
+      },
+      autoExpandPreview: {
+        label: "Expand preview",
+        description:
+          "Automatically open the side preview panel when code changes",
+      },
+      chatCompletionNotification: {
+        label: "Response notifications",
+        description:
+          "Show a native system notification when the chat finishes generating",
+      },
+      notificationSound: {
+        label: "Play sound",
+        description:
+          "Play a sound when the answer finishes (useful on unsigned macOS apps)",
+      },
+      webSearch: {
+        label: "Web search",
+        description:
+          "Let the model search the internet when it needs up-to-date information",
+      },
+      chatLanguage: {
+        label: "Language",
+        description: "Language of the interface and of communication with the agent",
+      },
+      reasoningEffort: {
+        label: "Reasoning effort",
+        description: "Control how much reasoning the model uses before answering",
+      },
+      textVerbosity: {
+        label: "Verbosity",
+        description: "Control how much detail the agent includes in its answers",
+      },
+      agentMaxIterations: {
+        label: "Max agent iterations",
+        description: "Limit of steps the agent can take before stopping",
+      },
+      agentMaxWallClock: {
+        label: "Max task time",
+        description: "Wall clock limit before the agent stops the task",
+      },
+      chatView: {
+        label: "Chat view",
+        description:
+          "Clean answers showing only the essentials or all intermediate steps",
+      },
+      standardModel: {
+        label: "Model for internal tasks",
+        description: "Titles, summaries and maintenance",
+      },
+      agentPermissions: {
+        label: "Agent Permissions",
+        description: "Configure which tools the agent can use",
+      },
+      aiProviders: {
+        label: "AI Providers",
+        description: "Configure and switch between AI model providers",
+      },
+      enabledModels: {
+        label: "Enabled models",
+        description: "Manage which models appear in the chat selector",
+      },
+      providerSettings: {
+        label: "OpenRouter settings",
+        description: "Configure the OpenRouter API key and models",
+      },
+      showCostDisplay: {
+        label: "Show cost in chats",
+        description:
+          "Show accumulated cost in the header and cost per message",
+      },
+      github: {
+        label: "GitHub",
+        description: "GitHub integration",
+      },
+      vercel: {
+        label: "Vercel",
+        description: "Vercel integration for deployment",
+      },
+      supabase: {
+        label: "Supabase",
+        description: "Supabase integration",
+      },
+      neon: {
+        label: "Neon",
+        description: "Neon Database integration",
+      },
+      mcpServers: {
+        label: "MCP Servers",
+        description:
+          "Manage Model Context Protocol servers to extend agent tools",
+      },
+      skillsSettings: {
+        label: "Project Skills",
+        description:
+          "Manage knowledge agents and custom directives (.claude/skills)",
+      },
+      resetAll: {
+        label: "Default values",
+        description: "Restore all settings to default values",
+      },
+      customAgents: {
+        label: "Custom Agents",
+        description:
+          "Create and manage your own agents with specific instructions and custom slash commands",
+      },
+    },
+  },
+  errors: {
+    fallback: "An unexpected error occurred.",
+    showDetails: "View details",
+    retryingIn: "Retrying in {seconds}s...",
+    userMessage: {
+      creditsExhausted: "It looks like your AI credits ran out.",
+      authInvalid:
+        "It looks like there is a problem with your API key. Check it in settings.",
+      modelNotFound:
+        "It looks like the selected model is not available. Try another one.",
+      contextExceeded:
+        "It looks like this chat is too long for the model. Start a new chat or switch to a model with a larger context window.",
+      contentFiltered:
+        "It looks like the content was blocked by the model's safety filters.",
+      opencodeNotInstalled:
+        "It looks like the AI agent was not found. Restart Vibes to fix it.",
+      diskFull:
+        "It looks like there is no disk space left. Free up space and try again.",
+      rateLimit:
+        "You have exceeded the request limit. Wait a moment and try again.",
+      timeout: "The request took too long. Try again.",
+      networkError:
+        "Connection error with the AI provider. Check your internet connection.",
+      serverError: "AI server error. Try again in a few seconds.",
+      sessionBusy: "The agent is busy with another task. Wait for it to finish.",
+      sessionNotFound: "Could not create the agent session. Try again.",
+      providerError: "The AI provider returned an error. Try again.",
+      noOutput: "The AI did not generate any response. Try again.",
+      serverCrash: "Internal application error. Restart Vibes to fix it.",
+    },
+    action: {
+      reloadCredits: "Reload credits",
+      changeModel: "Change model",
+      openSettings: "Open Settings",
+      newChat: "New chat",
+      retry: "Retry",
+      retryIn10s: "Retry in 10s",
+      retryIn3s: "Retry in 3s",
+    },
+  },
+  workspace: {
+    urlCopied: "URL copied to clipboard",
+    planAttached: "Plan attached to the current chat",
+    appArchived: "\"{name}\" archived",
+    alreadyRegistered: "\"{name}\" was already registered. Opened directly.",
+    opened: "Workspace \"{name}\" opened successfully.",
+    openError: "Error opening workspace: {error}",
+    chatArchived: "\"{name}\" archived",
+    chatDeleted: "Chat deleted successfully",
+    deleteChatError: "Error deleting the chat: {error}",
+    closeError: "Error closing: {error}",
+    appRenamed: "App name updated",
+    renameAppError: "Error renaming the app: {error}",
+    createChatError: "Error creating chat: {error}",
+    loading: "Loading...",
+    note: "Note:",
+    noteChangesAccepted: "Accepted code changes will be kept.",
+    deleteChatConfirm: "\"{name}\" will be permanently deleted. This action cannot be undone.",
+  },
+  models: {
+    updateSettingsError: "Could not update settings",
+    customModelUpdated: "Custom model updated successfully!",
+    editCustomModelTitle: "Edit custom model",
+  },
+  configure: {
+    startCommandsSaved: "Startup commands saved",
+    saveCommandsError: "Error saving commands: {error}",
+    envVarsSaved: "Environment variables saved",
+    saveEnvVarsError: "Error saving environment variables: {error}",
+    bothRequired: "Both key and value are required",
+    envVarExists: "An environment variable with this key already exists",
+  },
+  preview: {
+    dataCleared: "Preview data cleared",
+    clearDataError: "Error clearing preview data: {error}",
+  },
+  artifacts: {
+    markdownCopied: "Markdown copied to clipboard",
+    urlCopied: "Artifact URL copied to clipboard",
+  },
+  home: {
+    createAppError: "Error creating the app. {error}",
+    phases: {
+      thinkingName: {
+        title: "Thinking of a cool name",
+        subtitle: "The AI is choosing the perfect name for your app…",
+      },
+      preparingProject: {
+        title: "Preparing the project",
+        subtitle: "Creating the file structure and configuration…",
+      },
+      installingDeps: {
+        title: "Installing dependencies",
+        subtitle: "Setting up everything your new app needs…",
+      },
+      initializingRepo: {
+        title: "Initializing the repository",
+        subtitle: "Configuring Git for version control…",
+      },
+      applyingTheme: {
+        title: "Applying your theme",
+        subtitle: "Customizing the app styles and colors…",
+      },
+      almostReady: {
+        title: "Almost ready!",
+        subtitle: "Opening the development environment…",
+      },
+    },
+  },
+  library: {
+    title: "Library: Prompts",
+    loading: "Loading...",
+    empty: "No prompts yet. Create one to get started.",
+  },
+  hub: {
+    backendTitle: "Backend Services",
+    backendSubtitle: "Connect to backend services for your projects.",
+  },
+  previewPanel: {
+    discard: "Discard",
+    loading: "Loading...",
+    publishApp: "Publish app",
+    allLevels: "All levels",
+    allTypes: "All types",
+    dynamicStyle: "This element's style changes based on conditions",
+    deselectComponent: "Deselect component",
+    dynamicStyles: "This component has dynamic styles",
+    fixWithAI: "Fix with AI",
+    openInBrowser: "Open in browser",
+    deviceMode: "Device mode",
+    desktop: "Desktop",
+    tablet: "Tablet",
+    mobile: "Mobile",
+    cancel: "Cancel",
+    color: "Color",
+    deleteSelected: "Delete selected",
+    undo: "Undo",
+    redo: "Redo",
+    copyClipboard: "Copy to clipboard",
+    saveAsFile: "Save as file",
+    consoleReady: "Console ready",
+    info: "Info",
+    warn: "Warn",
+    error: "Error",
+    server: "Server",
+    client: "Client",
+    edgeFunction: "Edge Function",
+    noLogsToExport: "No logs to export",
+    fileSaved: "File saved",
+    attachScreenshotError: "Error attaching the screenshot to the chat",
+    nativeScreenshotError: "Error taking the native screenshot",
+    visualChangesSaved: "Visual changes saved to source files",
+    saveChangesError: "Failed to save changes: {error}",
+    preview: "Preview",
+    restart: "Restart",
+    addToChat: "Add to chat",
+    closeAnnotator: "Close annotator",
+    installCommand: "Install command",
+    startCommand: "Start command",
+    key: "Key",
+    networkRequests: "Network Requests",
+    allSources: "All Sources",
+    clearLogs: "Clear logs",
+    row: "Row",
+    column: "Column",
+    rowReverse: "Row Reverse",
+    columnReverse: "Column Reverse",
+    fullPage: "Full page",
+    selection: "Selection",
+    stopServer: "Stop server",
+    rebuild: "Rebuild",
+    clearCache: "Clear cache",
+    exploreCode: "Explore code",
+    exportLogsToFile: "Export logs to file",
+    problems: "Problems",
+    database: "Database",
+    console: "Console",
+    guidelines: "Guidelines",
+    git: "Git",
+    publish: "Publish",
+    configure: "Configure",
+  },
+  dialogs: {
+    addModelsTitle: "Add models",
+    unexpectedCloseTitle: "Unexpected close detected",
+    accept: "Accept",
+    editPrompt: "Edit prompt",
+    createAppTitle: "Create new app",
+    appNameLabel: "App name",
+    cancel: "Cancel",
+    newProject: "New project",
   },
 };

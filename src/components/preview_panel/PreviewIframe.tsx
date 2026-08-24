@@ -84,6 +84,7 @@ import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { useI18n } from "@/lib/i18n";
 import { VibesInitLoader } from "./VibesInitLoader";
 
 interface ErrorBannerProps {
@@ -93,6 +94,7 @@ interface ErrorBannerProps {
 }
 
 const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
+  const { t } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const { isStreaming } = useStreamChat();
   if (!error) return null;
@@ -200,7 +202,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
               >
                 <Sparkles size={16} />
-                <span>Arreglar con IA</span>
+                <span>{t("previewPanel.fixWithAI")}</span>
               </button>
             </div>
           ))}
@@ -217,6 +219,7 @@ export const ExpandPreviewButton = ({
 }: {
   position: "left" | "right";
 }) => {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
   const chatPosition = useAtomValue(chatPositionAtom);
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
@@ -270,6 +273,7 @@ export const ExpandPreviewButton = ({
 // Open in external browser button
 export const OpenExternalButton = () => {
   const { appUrl, originalUrl } = useAtomValue(appUrlAtom);
+  const { t } = useI18n();
   // In web mode, appUrl is already the accessible URL (rewritten by the server).
   // In Electron, originalUrl is the direct dev-server URL (before proxy).
   const urlToOpen = appUrl || originalUrl;
@@ -297,7 +301,7 @@ export const OpenExternalButton = () => {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Abrir en navegador</p>
+          <p>{t("previewPanel.openInBrowser")}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -307,6 +311,7 @@ export const OpenExternalButton = () => {
 // Device mode button with popover
 export const DeviceModeButton = () => {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
   const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
 
@@ -333,7 +338,7 @@ export const DeviceModeButton = () => {
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Modo de dispositivo</p>
+            <p>{t("previewPanel.deviceMode")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -365,7 +370,7 @@ export const DeviceModeButton = () => {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Desktop</p>
+                  <p>{t("previewPanel.desktop")}</p>
                 </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
@@ -377,7 +382,7 @@ export const DeviceModeButton = () => {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Tablet</p>
+                  <p>{t("previewPanel.tablet")}</p>
                 </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
@@ -389,7 +394,7 @@ export const DeviceModeButton = () => {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Mobile</p>
+                  <p>{t("previewPanel.mobile")}</p>
                 </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
@@ -1016,13 +1021,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 })
                 .catch((err) => {
                   console.error("Failed to auto-attach screenshot:", err);
-                  showError("Error al adjuntar la captura al chat");
+                  showError(t("previewPanel.attachScreenshotError"));
                 });
             }
           })
           .catch((err) => {
             console.error("Native capture failed:", err);
-            showError("Error al realizar la captura nativa");
+            showError(t("previewPanel.nativeScreenshotError"));
           });
         return;
       }
@@ -1047,7 +1052,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               })
               .catch((err) => {
                 console.error("Failed to auto-attach screenshot:", err);
-                showError("Error al adjuntar la captura al chat");
+                showError(t("previewPanel.attachScreenshotError"));
               });
           }
         } else {
@@ -1619,11 +1624,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onSelect={handleAnnotatorClick}>
                   <Monitor size={14} className="mr-2" />
-                  <span>Página completa</span>
+                  <span>{t("previewPanel.fullPage")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleStartSelection}>
                   <Crop size={14} className="mr-2" />
-                  <span>Selección</span>
+                  <span>{t("previewPanel.selection")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

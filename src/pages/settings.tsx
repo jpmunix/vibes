@@ -92,23 +92,23 @@ import { ChevronDown } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import {
+  buildSettingsSearchIndex,
+  type SettingsSearchItem,
+} from "@/lib/i18n/settingsSearch";
 
-// Settings search index
-interface SearchSettingItem {
-  id: string;
-  label: string;
-  description: string;
-  keywords: string[];
-  section: string;
-  sectionId: string;
-}
+// Settings search index (i18n-aware, see lib/i18n/settingsSearch.ts)
 
 /**
  * In-house weighted search for the settings index (replaces fuse.js).
- * The index is small (~30 items), so a plain substring match over the
+ * The index is small (~31 items), so a plain substring match over the
  * weighted fields is plenty — no fuzzy-matching library needed.
+ * The index is localized (see buildSettingsSearchIndex in lib/i18n/settingsSearch).
  */
-function searchSettings(query: string): SearchSettingItem[] {
+function searchSettings(
+  query: string,
+  index: SettingsSearchItem[],
+): SettingsSearchItem[] {
   const terms = query
     .trim()
     .toLowerCase()
@@ -116,7 +116,7 @@ function searchSettings(query: string): SearchSettingItem[] {
     .filter(Boolean);
   if (terms.length === 0) return [];
 
-  const scored = SETTINGS_SEARCH_INDEX.map((item) => {
+  const scored = index.map((item) => {
     const haystacks: Array<[string, number]> = [
       [item.label.toLowerCase(), 2],
       [item.description.toLowerCase(), 1],
@@ -144,519 +144,9 @@ function searchSettings(query: string): SearchSettingItem[] {
     .map((s) => s.item);
 }
 
-const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
-  // ─── General / Tema ───
-  {
-    id: "theme",
-    label: "Apariencia",
-    description: "Define el tema visual principal de la interfaz",
-    keywords: [
-      "tema",
-      "mode",
-      "dark",
-      "light",
-      // sub-values (pill labels)
-      "claro",
-      "oscuro",
-      "apariencia",
-      "color",
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  {
-    id: "primary-color",
-    label: "Color primario",
-    description: "Elige el color de acento principal para modo claro y oscuro",
-    keywords: [
-      "color",
-      "primario",
-      "acento",
-      "tema",
-      "personalizar",
-      "primary",
-      "chroma",
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  {
-    id: "font",
-    label: "Tipografía de la Interfaz",
-    description: "Elige la fuente para toda la interfaz (menús, botones)",
-    keywords: [
-      "fuente",
-      "tipografía",
-      "font",
-      "letra",
-      "interfaz",
-      // sub-values: font names
-      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  {
-    id: "chat-font",
-    label: "Tipografía del Chat",
-    description: "Elige la fuente base para los mensajes del chat",
-    keywords: [
-      "fuente",
-      "tipografía",
-      "font",
-      "chat",
-      "mensajes",
-      // sub-values: font names
-      ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  {
-    id: "font-scale",
-    label: "Tamaño de fuente",
-    description:
-      "Ajusta el tamaño del texto por zona (interfaz, sidebar, chat)",
-    keywords: [
-      "tamaño",
-      "fuente",
-      "escala",
-      "zoom",
-      "scale",
-      "interfaz",
-      "sidebar",
-      "chat",
-      "ancho",
-      "burbuja",
-      "bubble",
-      "width",
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  // Workflow Settings
-  {
-    id: "chat-mode",
-    label: "Modo de chat predeterminado",
-    description: "Seleccionar el modo de chat que se usa por defecto",
-    keywords: ["modo", "chat", "predeterminado", "default"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  {
-    id: "auto-approve",
-    label: "Confirmar cambios en git",
-    description: "Confirma automáticamente los cambios de la IA en git",
-    keywords: [
-      "aprobar",
-      "automatico",
-      "cambios",
-      "codigo",
-      "ejecutar",
-      "git",
-      "commit",
-      "confirmar",
-    ],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  {
-    id: "auto-expand-preview",
-    label: "Expandir vista previa",
-    description:
-      "Abre automáticamente el panel de vista previa lateral cuando el código cambia",
-    keywords: [
-      "expandir",
-      "preview",
-      "vista previa",
-      "panel",
-      "automatico",
-      // sub-values
-      "desactivado",
-      "derecha",
-      "izquierda",
-    ],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  {
-    id: "chat-completion-notification",
-    label: "Notificaciones de respuesta",
-    description:
-      "Muestra una notificación nativa del sistema cuando el chat termina de generar",
-    keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  {
-    id: "notification-sound",
-    label: "Reproducir sonido",
-    description:
-      "Reproduce un sonido al terminar la respuesta (útil en apps sin firmar en macOS)",
-    keywords: [
-      "sonido",
-      "sound",
-      "audio",
-      "notificacion",
-      "chime",
-      "beep",
-      "mac",
-    ],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  {
-    id: "web-search",
-    label: "Búsqueda web",
-    description:
-      "Permite al modelo buscar en internet cuando necesite información actualizada",
-    keywords: [
-      "web",
-      "search",
-      "busqueda",
-      "internet",
-      "buscar",
-      "openrouter",
-      "online",
-    ],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
-  },
-  // ─── Agente ───
-  {
-    id: "chat-language",
-    label: "Idioma",
-    description: "Idioma de la interfaz y de la comunicación con el agente",
-    keywords: [
-      "idioma",
-      "language",
-      "lenguaje",
-      "interfaz",
-      // sub-values
-      "español",
-      "english",
-      "ingles",
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  {
-    id: "reasoning-effort",
-    label: "Esfuerzo de razonamiento",
-    description:
-      "Controla cuánto razonamiento usa el modelo antes de responder",
-    keywords: [
-      "reasoning",
-      "effort",
-      "esfuerzo",
-      "razonamiento",
-      "thinking",
-      "openrouter",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "text-verbosity",
-    label: "Verbosidad",
-    description: "Controla cuánto detalle incluye el agente en sus respuestas",
-    keywords: ["verbosity", "verbosidad", "detalle", "conciso", "detallado"],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "agent-max-iterations",
-    label: "Máx. iteraciones del agente",
-    description: "Límite de pasos que el agente puede dar antes de detenerse",
-    keywords: [
-      "iteraciones",
-      "iterations",
-      "límite",
-      "limit",
-      "pasos",
-      "tareas largas",
-      "se corta",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "agent-max-wall-clock",
-    label: "Tiempo máximo de tarea",
-    description: "Límite de reloj antes de que el agente detenga la tarea",
-    keywords: [
-      "tiempo",
-      "wall clock",
-      "reloj",
-      "hora",
-      "horas",
-      "tareas largas",
-      "se corta",
-      "límite",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-
-  {
-    id: "chat-view",
-    label: "Vista del chat",
-    description:
-      "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",
-    keywords: [
-      "vista",
-      "chat",
-      "render",
-      "modo",
-      "view",
-      // sub-values (pill labels)
-      "completo",
-      "flow",
-      "zen",
-      "ligero",
-      "rapido",
-      "limpio",
-      "esencial",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "standard-model",
-    label: "Modelo para tareas internas",
-    description: "Títulos, resúmenes y mantenimiento",
-    keywords: [
-      "modelo",
-      "tareas",
-      "internas",
-      "titulos",
-      "resumenes",
-      "standard",
-      "gemini",
-      "flash",
-      "lite",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  {
-    id: "agent-permissions",
-    label: "Permisos del Agente",
-    description: "Configurar qué herramientas puede usar el agente",
-    keywords: [
-      "permisos",
-      "agente",
-      "agent",
-      "herramientas",
-      "tools",
-      "permissions",
-      "seguridad",
-      // sub-values: permission names
-      "editar archivos",
-      "terminal",
-      "bash",
-      "acceso web",
-      "webfetch",
-      "búsqueda web",
-      "websearch",
-      "diagnósticos",
-      "lsp",
-      // sub-values: permission levels
-      "siempre",
-      "preguntar",
-      "nunca",
-      // sub-values: granular rules
-      "rm",
-      "borrar",
-      "git add",
-      "git commit",
-      "git push",
-      "git reset",
-      "git checkout",
-      "git restore",
-      "git clean",
-      "git rebase",
-    ],
-    section: "Agente",
-    sectionId: "ai-behavior",
-  },
-  // ─── Proveedores de IA ───
-  {
-    id: "ai-providers",
-    label: "Proveedores de IA",
-    description: "Configurar y cambiar entre proveedores de modelos de IA",
-    keywords: [
-      "proveedor",
-      "provider",
-      "proxy",
-      "endpoint",
-      "custom",
-      "litellm",
-      "openai",
-      "compatible",
-    ],
-    section: "Proveedores de IA",
-    sectionId: "models-connectivity",
-  },
-  // ─── OpenRouter ───
-  {
-    id: "enabled-models",
-    label: "Modelos habilitados",
-    description: "Gestiona qué modelos aparecen en el selector del chat",
-    keywords: [
-      "modelos",
-      "models",
-      "habilitados",
-      "enabled",
-      "activar",
-      "desactivar",
-      "openrouter",
-      "añadir",
-    ],
-    section: "OpenRouter",
-    sectionId: "models-connectivity",
-  },
-  {
-    id: "provider-settings",
-    label: "Configuración de OpenRouter",
-    description: "Configurar clave API de OpenRouter y modelos",
-    keywords: ["openrouter", "api", "key", "clave", "ia"],
-    section: "OpenRouter",
-    sectionId: "models-connectivity",
-  },
-  {
-    id: "show-cost-display",
-    label: "Mostrar gasto en chats",
-    description:
-      "Muestra el coste acumulado en la cabecera y el coste por mensaje",
-    keywords: [
-      "gasto",
-      "coste",
-      "cost",
-      "precio",
-      "dinero",
-      "tokens",
-      "openrouter",
-      "mostrar",
-      "ocultar",
-    ],
-    section: "OpenRouter",
-    sectionId: "models-connectivity",
-  },
-  // ─── Integraciones ───
-  {
-    id: "github",
-    label: "GitHub",
-    description: "Integración con GitHub",
-    keywords: ["github", "git", "repositorio", "repo", "integracion"],
-    section: "Integraciones",
-    sectionId: "integrations",
-  },
-  {
-    id: "vercel",
-    label: "Vercel",
-    description: "Integración con Vercel para deploy",
-    keywords: ["vercel", "deploy", "deployment", "despliegue", "integracion"],
-    section: "Integraciones",
-    sectionId: "integrations",
-  },
-  {
-    id: "supabase",
-    label: "Supabase",
-    description: "Integración con Supabase",
-    keywords: ["supabase", "database", "db", "base de datos", "integracion"],
-    section: "Integraciones",
-    sectionId: "integrations",
-  },
-  {
-    id: "neon",
-    label: "Neon",
-    description: "Integración con Neon Database",
-    keywords: [
-      "neon",
-      "database",
-      "db",
-      "postgres",
-      "postgresql",
-      "integracion",
-    ],
-    section: "Integraciones",
-    sectionId: "integrations",
-  },
-  // ─── Herramientas MCP ───
-  {
-    id: "mcp-servers",
-    label: "Servidores MCP",
-    description:
-      "Gestionar servidores Model Context Protocol para ampliar las herramientas del agente",
-    keywords: [
-      "mcp",
-      "tools",
-      "herramientas",
-      "servidor",
-      "protocolo",
-      "context",
-      "plugin",
-    ],
-    section: "Herramientas MCP",
-    sectionId: "tools-mcp",
-  },
-  {
-    id: "skills-settings",
-    label: "Skills del Proyecto",
-    description:
-      "Gestionar agentes de conocimiento y directivas personalizadas (.claude/skills)",
-    keywords: [
-      "skills",
-      "opencode",
-      "agentes",
-      "conocimiento",
-      "personalizar",
-      "directivas",
-      "markdown",
-    ],
-    section: "Skills",
-    sectionId: "tools-skills",
-  },
-  // ─── Otros ───
-  {
-    id: "reset-all",
-    label: "Valores por defecto",
-    description: "Restaurar toda la configuración a valores por defecto",
-    keywords: [
-      "reset",
-      "resetear",
-      "eliminar",
-      "borrar",
-      "todo",
-      "defecto",
-      "restaurar",
-    ],
-    section: "General",
-    sectionId: "general-settings",
-  },
-  // ─── Agentes Personalizados ───
-  {
-    id: "custom-agents",
-    label: "Agentes Personalizados",
-    description:
-      "Crea y administra tus propios agentes con instrucciones específicas y comandos slash personalizados",
-    keywords: [
-      "agentes",
-      "personalizados",
-      "custom",
-      "agents",
-      "system",
-      "prompt",
-      "slash",
-      "comando",
-      "additive",
-      "replace",
-    ],
-    section: "Agentes Personalizados",
-    sectionId: "custom-agents-settings",
-  },
-];
+// Search index lives in src/lib/i18n/settingsSearch.ts (i18n-aware).
+// Build it per language with buildSettingsSearchIndex() and memoize in the
+// component: the visible strings are localized, keywords stay bilingual.
 
 function SettingItem({
   label,
@@ -748,7 +238,13 @@ export default function SettingsPage() {
   const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+
+  // Localized settings search index (rebuilds when language changes)
+  const searchIndex = useMemo(
+    () => buildSettingsSearchIndex(language),
+    [language],
+  );
   const router = useRouter();
   const navigate = useNavigate();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
@@ -795,8 +291,8 @@ export default function SettingsPage() {
   // Search results (in-house weighted substring search, card #103 Slice 5)
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    return searchSettings(searchQuery);
-  }, [searchQuery]);
+    return searchSettings(searchQuery, searchIndex);
+  }, [searchQuery, searchIndex]);
 
   // Handle search result click
   const handleSearchResultClick = (sectionId: string) => {
@@ -1067,14 +563,14 @@ export default function SettingsPage() {
                     className="cursor-pointer gap-2"
                   >
                     <Download className="h-4 w-4" />
-                    Importar
+                    {t("search.import")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleExportSettings}
                     className="cursor-pointer gap-2"
                   >
                     <Upload className="h-4 w-4" />
-                    Exportar
+                    {t("search.export")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -1082,27 +578,27 @@ export default function SettingsPage() {
                     className="cursor-pointer gap-2"
                   >
                     <FileText className="h-4 w-4" />
-                    Ver logs
+                    {t("search.viewLogs")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleRestartOpenCode}
                     className="cursor-pointer gap-2"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    Reiniciar OpenCode
+                    {t("search.restartApp")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() =>
                       sendAppNotification({
                         title: "Test",
-                        body: "Si escuchas esto, el sonido funciona correctamente",
+                        body: t("search.testNotificationBody"),
                         settings: settings ?? null,
                       })
                     }
                     className="cursor-pointer gap-2"
                   >
                     <Volume2 className="h-4 w-4" />
-                    Probar notificación
+                    {t("search.testNotification")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -1110,7 +606,9 @@ export default function SettingsPage() {
                     disabled={isResetting}
                     className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                   >
-                    {isResetting ? "Reseteando..." : "Restablecer ajustes"}
+                    {isResetting
+                      ? t("search.resetting")
+                      : t("search.resetSettings")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1151,10 +649,10 @@ export default function SettingsPage() {
                 <div className="p-12 text-center">
                   <Search className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
                   <p className="typo-subsection-title">
-                    No se encontraron ajustes
+                    {t("search.noResults")}
                   </p>
                   <p className="typo-caption mt-1">
-                    Intenta con otros términos de búsqueda
+                    {t("search.noResultsHint")}
                   </p>
                 </div>
               )}
@@ -1238,7 +736,7 @@ export default function SettingsPage() {
                   }}
                   className="h-9"
                 />
-                <Button onClick={handleCreateCategory}>Crear</Button>
+                <Button onClick={handleCreateCategory}>{t("common.create")}</Button>
                 <Button
                   variant="ghost"
                   onClick={() => setIsCreatingCategory(false)}

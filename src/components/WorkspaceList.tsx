@@ -197,11 +197,11 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
   onRename,
   onArchive,
   onDelete,
-  onChatClick,
   onLabelDialog,
 }: ChatMenuAction) {
   const queryClient = useQueryClient();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const memoriesEnabled = settings?.memoriesEnabled !== false;
 
   return createPortal(
@@ -294,7 +294,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
                 format: "md",
               });
               await navigator.clipboard.writeText(result.data.share_url);
-              showSuccess("URL copiada al portapapeles");
+              showSuccess(t("workspace.urlCopied"));
             } catch (e) {
               showError(e);
             }
@@ -994,7 +994,7 @@ const AppChats = memo(function AppChats({
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const queryClient = useQueryClient();
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
@@ -1134,7 +1134,7 @@ const AppChats = memo(function AppChats({
       <div className="pl-6 py-2">
         <div className="flex items-center gap-2 typo-micro opacity-60">
           <Loader2 size={12} className="animate-spin" />
-          <span>Cargando...</span>
+          <span>{t("workspace.loading")}</span>
         </div>
       </div>
     );
@@ -1541,7 +1541,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const { isServerRunning } = useAppServerStatus(app.id);
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
   const { settings } = useSettings();
@@ -2777,7 +2777,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                     path: previewPlanPath,
                                     chatId: selectedChatId,
                                   });
-                                  showSuccess("Plan adjuntado al chat actual");
+                                  showSuccess(t("workspace.planAttached"));
                                   const updated = await ipc.chat.getAppPlans(
                                     app.id,
                                   );
@@ -2935,7 +2935,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 // --- Main WorkspaceList component ---
 export function WorkspaceList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
@@ -3022,7 +3022,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       try {
         await ipc.app.archiveApp({ appId, archived: true });
         queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
-        showSuccess(`"${appName}" archivado`);
+        showSuccess(t("workspace.appArchived", { name: appName }));
       } catch (e) {
         // Rollback on failure
         refreshApps();
@@ -3421,7 +3421,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           search: { appId, chatId },
         });
       } catch (error) {
-        showError(`Error al crear chat: ${(error as any).toString()}`);
+        showError(t("workspace.createChatError", { error: (error as any).toString() }));
       }
     },
     [navigate, queryClient],
@@ -3460,7 +3460,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           search: { appId: nameCheck.existingAppId, chatId },
         });
         showSuccess(
-          `"${folderName}" ya estaba registrada. Abierta directamente.`,
+          t("workspace.alreadyRegistered", { name: folderName }),
         );
         return;
       }
@@ -3480,9 +3480,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         search: { appId: importResult.appId, chatId: importResult.chatId },
       });
 
-      showSuccess(`Workspace "${folderName}" abierto con éxito.`);
+      showSuccess(t("workspace.opened", { name: folderName }));
     } catch (error) {
-      showError(`Error al abrir workspace: ${(error as any).toString()}`);
+      showError(t("workspace.openError", { error: (error as any).toString() }));
     } finally {
       setIsOpeningFolder(false);
     }
@@ -3572,7 +3572,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       try {
         await ipc.chat.archiveChat({ chatId, archived: true });
         queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-        showSuccess(`"${chatTitle}" archivado`);
+        showSuccess(t("workspace.chatArchived", { name: chatTitle }));
         // Also unpin if it was pinned
         if (pinnedChatIds.has(chatId)) {
           await ipc.chat.pinChat({ chatId, pinned: false });
@@ -3645,7 +3645,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       await ipc.chat.deleteChat(deleteChatId);
       // Invalidate all chat list queries so AppChats re-fetches immediately
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-      showSuccess("Chat eliminado correctamente");
+      showSuccess(t("workspace.chatDeleted"));
 
       // If the deleted chat was selected, clear atom and navigate away
       if (selectedChatId === deleteChatId) {
@@ -3657,7 +3657,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         });
       }
     } catch (error) {
-      showError(`Error al eliminar el chat: ${(error as any).toString()}`);
+      showError(t("workspace.deleteChatError", { error: (error as any).toString() }));
     } finally {
       setIsDeleteChatDialogOpen(false);
       setDeleteChatId(null);
@@ -3682,7 +3682,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           .catch(() => {});
       }
     } catch (error) {
-      showError(`Error al cerrar: ${(error as any).toString()}`);
+      showError(t("workspace.closeError", { error: (error as any).toString() }));
     } finally {
       setIsClosing(false);
       setCloseAppId(null);
@@ -3719,10 +3719,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       });
       await refreshApps();
       queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
-      showSuccess("Nombre de la aplicación actualizado");
+      showSuccess(t("workspace.appRenamed"));
       setIsRenameAppDialogOpen(false);
     } catch (e) {
-      showError(`Error al renombrar la app: ${(e as any).toString()}`);
+      showError(t("workspace.renameAppError", { error: (e as any).toString() }));
     } finally {
       setIsRenamingApp(false);
     }
@@ -4403,12 +4403,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará "{deleteChatTitle}" de forma permanente. Esta acción
-              no se puede deshacer.
+              {t("workspace.deleteChatConfirm", { name: deleteChatTitle })}
               <br />
               <br />
-              <strong>Nota:</strong> Los cambios de código ya aceptados se
-              mantendrán.
+              <strong>{t("workspace.note")}</strong>{" "}
+              {t("workspace.noteChangesAccepted")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4495,7 +4494,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Nuevo proyecto</DialogTitle>
+            <DialogTitle>{t("dialogs.newProject")}</DialogTitle>
           </DialogHeader>
           <p className="typo-caption text-muted-foreground">
             Se creará un proyecto con el scaffold del template seleccionado,

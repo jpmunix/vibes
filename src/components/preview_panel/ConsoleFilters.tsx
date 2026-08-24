@@ -1,4 +1,5 @@
 import { Filter, X, Trash2, Download } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +43,7 @@ export const ConsoleFilters = ({
   showFilters,
   onExportLogs,
 }: ConsoleFiltersProps) => {
+  const { t } = useI18n();
   const hasActiveFilters =
     levelFilter !== "all" || typeFilter !== "all" || sourceFilter !== "";
 
@@ -61,10 +63,10 @@ export const ConsoleFilters = ({
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
       >
-        <option value="all">Todos los niveles</option>
-        <option value="info">Info</option>
-        <option value="warn">Warn</option>
-        <option value="error">Error</option>
+        <option value="all">{t("previewPanel.allLevels")}</option>
+        <option value="info">{t("previewPanel.info")}</option>
+        <option value="warn">{t("previewPanel.warn")}</option>
+        <option value="error">{t("previewPanel.error")}</option>
       </select>
 
       {/* Type filter */}
@@ -82,11 +84,11 @@ export const ConsoleFilters = ({
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
       >
-        <option value="all">Todos los tipos</option>
-        <option value="server">Server</option>
-        <option value="client">Client</option>
-        <option value="edge-function">Edge Function</option>
-        <option value="network-requests">Network Requests</option>
+        <option value="all">{t("previewPanel.allTypes")}</option>
+        <option value="server">{t("previewPanel.server")}</option>
+        <option value="client">{t("previewPanel.client")}</option>
+        <option value="edge-function">{t("previewPanel.edgeFunction")}</option>
+        <option value="network-requests">{t("previewPanel.networkRequests")}</option>
       </select>
 
       {/* Source filter */}
@@ -96,7 +98,7 @@ export const ConsoleFilters = ({
           onChange={(e) => onSourceFilterChange(e.target.value)}
           className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
         >
-          <option value="">All Sources</option>
+          <option value="">{t("previewPanel.allSources")}</option>
           {uniqueSources.map((source) => (
             <option key={source} value={source}>
               {source}
@@ -128,7 +130,7 @@ export const ConsoleFilters = ({
               <Trash2 size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Clear logs</TooltipContent>
+          <TooltipContent>{t("previewPanel.clearLogs")}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -143,7 +145,7 @@ export const ConsoleFilters = ({
               <Download size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Exportar logs a archivo</TooltipContent>
+          <TooltipContent>{t("previewPanel.exportLogsToFile")}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 

@@ -5,6 +5,9 @@
  * Muestra un mensaje amigable, botones de accion contextuales (segun si el
  * error es recuperable o irrecuperable), y una seccion colapsable con
  * detalles tecnicos.
+ *
+ * P1: los strings visibles viven en el diccionario i18n (namespace `errors.*`),
+ * la clasificacion devuelve claves y el componente resuelve con useI18n().
  */
 
 import React, { useState, useCallback } from "react";
@@ -19,17 +22,28 @@ import {
   Bot,
   Plus,
 } from "@/components/ui/icons";
-import type { ErrorCode, ErrorAction } from "@/ipc/utils/error_classifier";
+import type { ErrorCode, ErrorActionType } from "@/ipc/utils/error_classifier";
+import { useI18n } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Clasificacion local (frontend) — mirrors error_classifier.ts patterns
 // ---------------------------------------------------------------------------
 
+interface FrontendAction {
+  type: ErrorActionType;
+  /** i18n key under `errors.action.*` */
+  labelKey: string;
+  delayMs?: number;
+  route?: string;
+  url?: string;
+}
+
 interface FrontendClassification {
   code: ErrorCode;
-  userMessage: string;
+  /** i18n key under `errors.userMessage.*` */
+  userMessageKey: string;
   recoverable: boolean;
-  actions: ErrorAction[];
+  actions: FrontendAction[];
 }
 
 /** Clasifica un string de error en el frontend para determinar UX. */
@@ -52,14 +66,14 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "credits_exhausted",
       recoverable: false,
-      userMessage: "Parece que se agotaron los creditos de IA de tu cuenta.",
+      userMessageKey: "errors.userMessage.creditsExhausted",
       actions: [
         {
           type: "open_external",
-          label: "Recargar creditos",
+          labelKey: "errors.action.reloadCredits",
           url: "https://openrouter.ai/credits",
         },
-        { type: "navigate", label: "Cambiar modelo", route: "/settings" },
+        { type: "navigate", labelKey: "errors.action.changeModel", route: "/settings" },
       ],
     };
   }
@@ -67,10 +81,9 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "auth_invalid",
       recoverable: false,
-      userMessage:
-        "Parece que hay un problema con tu clave API. Revisala en ajustes.",
+      userMessageKey: "errors.userMessage.authInvalid",
       actions: [
-        { type: "navigate", label: "Abrir Ajustes", route: "/settings" },
+        { type: "navigate", labelKey: "errors.action.openSettings", route: "/settings" },
       ],
     };
   }
@@ -82,10 +95,9 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "model_not_found",
       recoverable: false,
-      userMessage:
-        "Parece que el modelo seleccionado no esta disponible. Prueba con otro.",
+      userMessageKey: "errors.userMessage.modelNotFound",
       actions: [
-        { type: "navigate", label: "Cambiar modelo", route: "/settings" },
+        { type: "navigate", labelKey: "errors.action.changeModel", route: "/settings" },
       ],
     };
   }
@@ -97,11 +109,10 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "context_exceeded",
       recoverable: false,
-      userMessage:
-        "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.",
+      userMessageKey: "errors.userMessage.contextExceeded",
       actions: [
-        { type: "new_chat", label: "Nuevo chat" },
-        { type: "navigate", label: "Cambiar modelo", route: "/settings" },
+        { type: "new_chat", labelKey: "errors.action.newChat" },
+        { type: "navigate", labelKey: "errors.action.changeModel", route: "/settings" },
       ],
     };
   }
@@ -109,8 +120,7 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "content_filtered",
       recoverable: false,
-      userMessage:
-        "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.",
+      userMessageKey: "errors.userMessage.contentFiltered",
       actions: [],
     };
   }
@@ -118,8 +128,7 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "opencode_not_installed",
       recoverable: false,
-      userMessage:
-        "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.",
+      userMessageKey: "errors.userMessage.opencodeNotInstalled",
       actions: [],
     };
   }
@@ -127,8 +136,7 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "disk_full",
       recoverable: false,
-      userMessage:
-        "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.",
+      userMessageKey: "errors.userMessage.diskFull",
       actions: [],
     };
   }
@@ -142,10 +150,9 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "rate_limit",
       recoverable: true,
-      userMessage:
-        "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.",
+      userMessageKey: "errors.userMessage.rateLimit",
       actions: [
-        { type: "retry_delayed", label: "Reintentar en 10s", delayMs: 10_000 },
+        { type: "retry_delayed", labelKey: "errors.action.retryIn10s", delayMs: 10_000 },
       ],
     };
   }
@@ -153,8 +160,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "timeout",
       recoverable: true,
-      userMessage: "La solicitud tardo demasiado. Intentalo de nuevo.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.timeout",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (
@@ -165,28 +172,25 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "network_error",
       recoverable: true,
-      userMessage:
-        "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.networkError",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (/server.*error|internal.*error|500|502|503/i.test(msg)) {
     return {
       code: "server_error",
       recoverable: true,
-      userMessage:
-        "Error del servidor de IA. Intentalo de nuevo en unos segundos.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.serverError",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (/session.*busy|SessionBusy/i.test(msg)) {
     return {
       code: "session_busy",
       recoverable: true,
-      userMessage:
-        "El agente esta ocupado con otra tarea. Espera a que termine.",
+      userMessageKey: "errors.userMessage.sessionBusy",
       actions: [
-        { type: "retry_delayed", label: "Reintentar en 3s", delayMs: 3_000 },
+        { type: "retry_delayed", labelKey: "errors.action.retryIn3s", delayMs: 3_000 },
       ],
     };
   }
@@ -194,33 +198,32 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
     return {
       code: "session_not_found",
       recoverable: true,
-      userMessage: "No se pudo crear la sesion del agente. Intentalo de nuevo.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.sessionNotFound",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (/provider returned error/i.test(msg)) {
     return {
       code: "server_error",
       recoverable: true,
-      userMessage: "El proveedor de IA devolvio un error. Intentalo de nuevo.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.providerError",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (/no.?output.?generated|empty.*response|zero.*tokens/i.test(msg)) {
     return {
       code: "server_error",
       recoverable: true,
-      userMessage: "La IA no genero ninguna respuesta. Intentalo de nuevo.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.noOutput",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
   if (/cannot access.*before initialization|ReferenceError/i.test(msg)) {
     return {
       code: "server_crash",
       recoverable: true,
-      userMessage:
-        "Error interno de la aplicacion. Reinicia Vibes para resolverlo.",
-      actions: [{ type: "retry", label: "Reintentar" }],
+      userMessageKey: "errors.userMessage.serverCrash",
+      actions: [{ type: "retry", labelKey: "errors.action.retry" }],
     };
   }
 
@@ -228,8 +231,8 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
   return {
     code: "unknown",
     recoverable: true,
-    userMessage: msg || "Ha ocurrido un error inesperado.",
-    actions: [{ type: "retry", label: "Reintentar" }],
+    userMessageKey: "errors.fallback",
+    actions: [{ type: "retry", labelKey: "errors.action.retry" }],
   };
 }
 
@@ -237,7 +240,7 @@ function classifyErrorFrontend(raw: string): FrontendClassification {
 // Icon resolver for actions
 // ---------------------------------------------------------------------------
 
-function getActionIcon(action: ErrorAction) {
+function getActionIcon(action: FrontendAction) {
   switch (action.type) {
     case "retry":
     case "retry_delayed":
@@ -272,13 +275,14 @@ export function ErrorBubble({
   onNewChat,
 }: ErrorBubbleProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
 
   const classified = classifyErrorFrontend(rawError);
 
   const handleAction = useCallback(
-    (action: ErrorAction) => {
+    (action: FrontendAction) => {
       switch (action.type) {
         case "retry":
           onRetry?.();
@@ -327,7 +331,7 @@ export function ErrorBubble({
       <div className="flex items-start gap-2 text-rose-600 dark:text-rose-400">
         <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
         <span className="typo-label leading-relaxed">
-          {classified.userMessage}
+          {t(classified.userMessageKey)}
         </span>
       </div>
 
@@ -339,8 +343,8 @@ export function ErrorBubble({
             const isCountingDown =
               action.type === "retry_delayed" && retryCountdown !== null;
             const label = isCountingDown
-              ? `Reintentando en ${retryCountdown}s...`
-              : action.label;
+              ? t("errors.retryingIn", { seconds: retryCountdown ?? 0 })
+              : t(action.labelKey);
 
             return (
               <button
@@ -374,7 +378,7 @@ export function ErrorBubble({
         className="flex items-center gap-1 ml-6 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         {showDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        <span>Ver detalles</span>
+        <span>{t("errors.showDetails")}</span>
       </button>
 
       {showDetails && (

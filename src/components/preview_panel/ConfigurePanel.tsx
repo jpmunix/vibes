@@ -20,6 +20,7 @@ import {
   Terminal,
 } from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 import { selectedAppIdAtom, currentAppAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { NeonConfigure } from "./NeonConfigure";
@@ -45,6 +46,7 @@ const EnvironmentVariablesTitle = () => (
 );
 
 export const ConfigurePanel = () => {
+  const { t } = useI18n();
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const currentApp = useAtomValue(currentAppAtom);
   const queryClient = useQueryClient();
@@ -77,11 +79,11 @@ export const ConfigurePanel = () => {
       queryClient.invalidateQueries({
         queryKey: ["app", selectedAppId],
       });
-      showSuccess("Comandos de arranque guardados");
+      showSuccess(t("configure.startCommandsSaved"));
       setCommandsDirty(false);
     },
     onError: (error) => {
-      showError(`Error al guardar los comandos: ${error}`);
+      showError(t("configure.saveCommandsError", { error }));
     },
   });
 
@@ -139,22 +141,22 @@ export const ConfigurePanel = () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.appEnvVars.byApp({ appId: selectedAppId }),
       });
-      showSuccess("Variables de entorno guardadas");
+      showSuccess(t("configure.envVarsSaved"));
     },
     onError: (error) => {
-      showError(`Error al guardar las variables de entorno: ${error}`);
+      showError(t("configure.saveEnvVarsError", { error }));
     },
   });
 
   const handleAdd = useCallback(() => {
     if (!newKey.trim() || !newValue.trim()) {
-      showError("Both key and value are required");
+      showError(t("configure.bothRequired"));
       return;
     }
 
     // Check for duplicate keys
     if (envVars.some((envVar) => envVar.key === newKey.trim())) {
-      showError("Environment variable with this key already exists");
+      showError(t("configure.envVarExists"));
       return;
     }
 
@@ -176,7 +178,7 @@ export const ConfigurePanel = () => {
 
   const handleSaveEdit = useCallback(() => {
     if (!editingKeyValue.trim() || !editingValue.trim()) {
-      showError("Both key and value are required");
+      showError(t("configure.bothRequired"));
       return;
     }
 
@@ -187,7 +189,7 @@ export const ConfigurePanel = () => {
           envVar.key === editingKeyValue.trim() && envVar.key !== editingKey,
       )
     ) {
-      showError("Environment variable with this key already exists");
+      showError(t("configure.envVarExists"));
       return;
     }
 
@@ -321,7 +323,7 @@ export const ConfigurePanel = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="install-command">Comando de instalación</Label>
+            <Label htmlFor="install-command">{t("previewPanel.installCommand")}</Label>
             <Input
               id="install-command"
               placeholder="npm install --legacy-peer-deps"
@@ -331,7 +333,7 @@ export const ConfigurePanel = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="start-command">Comando de inicio</Label>
+            <Label htmlFor="start-command">{t("previewPanel.startCommand")}</Label>
             <Input
               id="start-command"
               placeholder="npm run dev -- --port {port}"
@@ -377,7 +379,7 @@ export const ConfigurePanel = () => {
           {isAddingNew ? (
             <div className="space-y-3 p-3 border rounded-md bg-muted/50">
               <div className="space-y-2">
-                <Label htmlFor="new-key">Clave</Label>
+                <Label htmlFor="new-key">{t("previewPanel.key")}</Label>
                 <Input
                   id="new-key"
                   placeholder="e.g., API_URL"

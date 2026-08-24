@@ -6,6 +6,7 @@ import { Check, X } from "@/components/ui/icons";
 import { useState, useEffect, useRef } from "react";
 import { showError, showSuccess } from "@/lib/toast";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { useI18n } from "@/lib/i18n";
 
 interface VisualEditingChangesDialogProps {
   onReset?: () => void;
@@ -16,6 +17,7 @@ export function VisualEditingChangesDialog({
   onReset,
   iframeRef,
 }: VisualEditingChangesDialogProps) {
+  const { t } = useI18n();
   const [pendingChanges, setPendingChanges] = useAtom(pendingVisualChangesAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,11 +80,11 @@ export function VisualEditingChangesDialog({
 
           setPendingChanges(new Map());
           textContentCache.current.clear();
-          showSuccess("Visual changes saved to source files");
+          showSuccess(t("previewPanel.visualChangesSaved"));
           onReset?.();
         } catch (error) {
           console.error("Failed to save visual editing changes:", error);
-          showError(`Failed to save changes: ${error}`);
+          showError(t("previewPanel.saveChangesError", { error }));
         } finally {
           setIsSaving(false);
           setAllResponsesReceived(false);
@@ -160,13 +162,13 @@ export function VisualEditingChangesDialog({
 
         setPendingChanges(new Map());
         textContentCache.current.clear();
-        showSuccess("Visual changes saved to source files");
+        showSuccess(t("previewPanel.visualChangesSaved"));
         onReset?.();
         setIsSaving(false);
       }
     } catch (error) {
       console.error("Failed to save visual editing changes:", error);
-      showError(`Failed to save changes: ${error}`);
+      showError(t("previewPanel.saveChangesError", { error }));
       setIsSaving(false);
       isWaitingForResponses.current = false;
     }
@@ -195,7 +197,7 @@ export function VisualEditingChangesDialog({
           disabled={isSaving}
         >
           <X size={14} className="mr-1" />
-          <span>Discard</span>
+          <span>{t("previewPanel.discard")}</span>
         </Button>
       </div>
     </div>

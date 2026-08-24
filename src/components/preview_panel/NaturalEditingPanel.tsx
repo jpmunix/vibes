@@ -37,6 +37,7 @@ import {
 } from "@/atoms/previewAtoms";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { useI18n } from "@/lib/i18n";
 import { rgbToHex, processNumericValue } from "@/utils/style-utils";
 import { IconSelector } from "./IconSelector";
 import "./NaturalEditingPanel.css";
@@ -108,6 +109,7 @@ export function NaturalEditingPanel({
   selectedComponent,
   iframeRef,
 }: NaturalEditingPanelProps) {
+  const { t } = useI18n();
   const elementType = useAtomValue(elementTypeAtom);
   const setNaturalEditingPanelOpen = useSetAtom(naturalEditingPanelOpenAtom);
   const setPendingChanges = useSetAtom(pendingVisualChangesAtom);
@@ -617,7 +619,7 @@ export function NaturalEditingPanel({
       {isDynamic && (
         <div className="nep-dynamic-warn">
           <AlertTriangle size={14} />
-          <span>El estilo de este elemento cambia según condiciones</span>
+          <span>{t("previewPanel.dynamicStyle")}</span>
         </div>
       )}
 
@@ -838,10 +840,10 @@ export function NaturalEditingPanel({
                   });
                 }}
               >
-                <option value="row">Row</option>
-                <option value="column">Column</option>
-                <option value="row-reverse">Row Reverse</option>
-                <option value="column-reverse">Column Reverse</option>
+                <option value="row">{t("previewPanel.row")}</option>
+                <option value="column">{t("previewPanel.column")}</option>
+                <option value="row-reverse">{t("previewPanel.rowReverse")}</option>
+                <option value="column-reverse">{t("previewPanel.columnReverse")}</option>
               </select>
             </div>
           )}

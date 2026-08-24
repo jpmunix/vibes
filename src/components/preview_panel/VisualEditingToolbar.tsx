@@ -12,6 +12,7 @@ import {
 import { StylePopover } from "./StylePopover";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -68,6 +69,7 @@ export function VisualEditingToolbar({
   isDynamic,
   hasStaticText,
 }: VisualEditingToolbarProps) {
+  const { t } = useI18n();
   const coordinates = useAtomValue(currentComponentCoordinatesAtom);
   const [currentMargin, setCurrentMargin] = useState({ x: "", y: "" });
   const [currentPadding, setCurrentPadding] = useState({ x: "", y: "" });
@@ -332,14 +334,14 @@ export function VisualEditingToolbar({
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            <p>Deseleccionar componente</p>
+            <p>{t("previewPanel.deselectComponent")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
       {isDynamic ? (
         <div className="flex items-center px-2 py-1 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
-          <span>Este componente tiene estilos dinámicos</span>
+          <span>{t("previewPanel.dynamicStyles")}</span>
         </div>
       ) : (
         <>

@@ -83,95 +83,6 @@ interface ChatMessageProps {
 }
 // Hoisted to module level — pure function, no component state needed
 
-/** Translate common AI error messages to user-friendly Spanish */
-function translateError(raw: string): string {
-  // Strip common prefixes
-  let msg = raw
-    .replace(/^Sorry, there was an error from the AI:\s*/i, "")
-    .replace(/^Sorry, there was an error processing your request:\s*/i, "")
-    .replace(/^Session Error:\s*/i, "")
-    .replace(/^\[req:[^\]]*\]\s*/i, "")
-    .replace(/^AI error:\s*/i, "")
-    .replace(/^Error de la IA:\s*/i, "")
-    .replace(/^❌\s*(Error:?\s*)?/i, "")
-    .trim();
-
-  // --- Irrecuperables: "Parece que..." ---
-  if (
-    /insufficient.*(credit|fund|balance)|ExceededBudget|exceeded.*budget/i.test(
-      msg,
-    )
-  ) {
-    return "Parece que se agotaron los creditos de IA de tu cuenta.";
-  }
-  if (/API key|unauthorized|authentication|forbidden|401|403/i.test(msg)) {
-    return "Parece que hay un problema con tu clave API. Revisala en ajustes.";
-  }
-  if (
-    /model.*not.*found|does not exist|invalid.*model|No endpoints found/i.test(
-      msg,
-    )
-  ) {
-    return "Parece que el modelo seleccionado no esta disponible. Prueba con otro.";
-  }
-  if (
-    /context.*(too long|exceeded|limit)|max.*tokens|token.*limit|context_length/i.test(
-      msg,
-    )
-  ) {
-    return "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.";
-  }
-  if (/content.*filter|safety|blocked|moderation|content_policy/i.test(msg)) {
-    return "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.";
-  }
-  if (/spawn.*ENOENT|opencode.*not found|binary not found/i.test(msg)) {
-    return "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.";
-  }
-  if (/ENOSPC|no space left/i.test(msg)) {
-    return "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.";
-  }
-
-  // --- Recuperables ---
-  if (
-    /rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(
-      msg,
-    )
-  ) {
-    return "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.";
-  }
-  if (/provider returned error/i.test(msg)) {
-    return "El proveedor de IA devolvio un error. Intentalo de nuevo.";
-  }
-  if (/no.?output.?generated|empty.*response|zero.*tokens/i.test(msg)) {
-    return "La IA no genero ninguna respuesta. Intentalo de nuevo.";
-  }
-  if (
-    /network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket|APIConnectionError/i.test(
-      msg,
-    )
-  ) {
-    return "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.";
-  }
-  if (/timeout|timed?\s*out|APIConnectionTimeoutError/i.test(msg)) {
-    return "La solicitud tardo demasiado. Intentalo de nuevo.";
-  }
-  if (/server.*error|internal.*error|500|502|503/i.test(msg)) {
-    return "Error del servidor de IA. Intentalo de nuevo en unos segundos.";
-  }
-  if (/session.*busy|SessionBusy/i.test(msg)) {
-    return "El agente esta ocupado con otra tarea. Espera a que termine.";
-  }
-  if (/Session creation returned no data/i.test(msg)) {
-    return "No se pudo crear la sesion del agente. Intentalo de nuevo.";
-  }
-  if (/cannot access.*before initialization|ReferenceError/i.test(msg)) {
-    return "Error interno de la aplicacion. Reinicia Vibes para resolverlo.";
-  }
-
-  // Fallback: return stripped message as-is
-  return msg || "Ha ocurrido un error inesperado.";
-}
-
 /** Compact relative time: "2h", "15min", "3d", or full date if > 7d */
 const formatTimestamp = (
   timestamp: string | Date,
@@ -940,12 +851,12 @@ const ChatMessage = ({
                             {isUserExpanded ? (
                               <>
                                 <ChevronUp size={12} />
-                                <span>Ver menos</span>
+                                <span>{t("chat.seeLess")}</span>
                               </>
                             ) : (
                               <>
                                 <ChevronDown size={12} />
-                                <span>Ver más</span>
+                                <span>{t("chat.seeMore")}</span>
                               </>
                             )}
                           </button>

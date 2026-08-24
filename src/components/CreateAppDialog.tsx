@@ -23,6 +23,7 @@ import { Loader2 } from "@/components/ui/icons";
 import { neonTemplateHook } from "@/client_logic/template_hook";
 import { showError } from "@/lib/toast";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/lib/i18n";
 
 interface CreateAppDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function CreateAppDialog({
   onOpenChange,
   template,
 }: CreateAppDialogProps) {
+  const { t } = useI18n();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const [appName, setAppName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,7 +96,7 @@ export function CreateAppDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crear nueva aplicación</DialogTitle>
+          <DialogTitle>{t("dialogs.createAppTitle")}</DialogTitle>
           <DialogDescription>
             {`Crea una nueva aplicación usando la plantilla ${template?.title}.`}
           </DialogDescription>
@@ -103,7 +105,7 @@ export function CreateAppDialog({
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="appName">Nombre de la aplicación</Label>
+              <Label htmlFor="appName">{t("dialogs.appNameLabel")}</Label>
               <Input
                 id="appName"
                 value={appName}

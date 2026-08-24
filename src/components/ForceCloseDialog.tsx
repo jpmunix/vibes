@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertTriangle, Copy } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { useState } from "react";
 
 interface ForceCloseDialogProps {
@@ -35,6 +36,7 @@ export function ForceCloseDialog({
   platform,
   recentLogs,
 }: ForceCloseDialogProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const formatTimestamp = (timestamp: number) => {
@@ -96,7 +98,7 @@ export function ForceCloseDialog({
         <AlertDialogHeader className="flex-shrink-0">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            <AlertDialogTitle>Cierre inesperado detectado</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogs.unexpectedCloseTitle")}</AlertDialogTitle>
           </div>
         </AlertDialogHeader>
         <AlertDialogDescription asChild>
@@ -218,7 +220,7 @@ export function ForceCloseDialog({
             <Copy className="h-4 w-4" />
             {copied ? "¡Copiado!" : "Copiar informe"}
           </Button>
-          <AlertDialogAction onClick={onClose}>Aceptar</AlertDialogAction>
+          <AlertDialogAction onClick={onClose}>{t("dialogs.accept")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

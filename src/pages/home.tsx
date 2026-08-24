@@ -16,6 +16,7 @@ import { useAppVersion } from "@/hooks/useAppVersion";
 
 import { useTheme } from "@/contexts/ThemeContext";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useQueryClient } from "@tanstack/react-query";
 import { ForceCloseDialog } from "@/components/ForceCloseDialog";
@@ -38,6 +39,7 @@ export default function HomePage() {
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const { refreshApps } = useLoadApps();
   const { settings, updateSettings, envVars } = useSettings();
+  const { t } = useI18n();
 
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -266,44 +268,20 @@ export default function HomePage() {
       navigate({ to: "/app-details", search: { appId: result.app.id } });
     } catch (error) {
       console.error("Failed to create chat:", error);
-      showError("Error al crear la aplicación. " + (error as any).toString());
+      showError(t("home.createAppError", { error: (error as any).toString() }));
       setIsLoading(false); // Ensure loading state is reset on error
     }
     // No finally block needed for setIsLoading(false) here if navigation happens on success
   };
 
-  // Dynamic loading phases for app creation
-  const CREATION_PHASES = [
-    {
-      title: "Pensando un nombre genial",
-      subtitle: "La IA está eligiendo el nombre perfecto para tu app…",
-      icon: "💭",
-    },
-    {
-      title: "Preparando el proyecto",
-      subtitle: "Creando la estructura de archivos y configuración…",
-      icon: "📁",
-    },
-    {
-      title: "Instalando dependencias",
-      subtitle: "Preparando todo lo necesario para tu nueva app…",
-      icon: "📦",
-    },
-    {
-      title: "Inicializando el repositorio",
-      subtitle: "Configurando Git para control de versiones…",
-      icon: "🔧",
-    },
-    {
-      title: "Aplicando tu tema",
-      subtitle: "Personalizando los estilos y colores de la app…",
-      icon: "🎨",
-    },
-    {
-      title: "¡Casi listo!",
-      subtitle: "Abriendo el entorno de desarrollo…",
-      icon: "🚀",
-    },
+  // Dynamic loading phases for app creation (localized via i18n home.phases.*)
+  const CREATION_PHASE_KEYS = [
+    { titleKey: "home.phases.thinkingName.title", subtitleKey: "home.phases.thinkingName.subtitle", icon: "💭" },
+    { titleKey: "home.phases.preparingProject.title", subtitleKey: "home.phases.preparingProject.subtitle", icon: "📁" },
+    { titleKey: "home.phases.installingDeps.title", subtitleKey: "home.phases.installingDeps.subtitle", icon: "📦" },
+    { titleKey: "home.phases.initializingRepo.title", subtitleKey: "home.phases.initializingRepo.subtitle", icon: "🔧" },
+    { titleKey: "home.phases.applyingTheme.title", subtitleKey: "home.phases.applyingTheme.subtitle", icon: "🎨" },
+    { titleKey: "home.phases.almostReady.title", subtitleKey: "home.phases.almostReady.subtitle", icon: "🚀" },
   ];
 
   const [creationPhase, setCreationPhase] = useState(0);
@@ -322,7 +300,7 @@ export default function HomePage() {
     let fadeTimeoutId: NodeJS.Timeout;
 
     const advancePhase = (currentPhase: number) => {
-      if (currentPhase >= CREATION_PHASES.length - 1) return;
+      if (currentPhase >= CREATION_PHASE_KEYS.length - 1) return;
 
       const delay = phaseTimings[currentPhase] || 2000;
       timeoutId = setTimeout(() => {
@@ -347,7 +325,7 @@ export default function HomePage() {
 
   // Loading overlay for app creation
   if (isLoading) {
-    const phase = CREATION_PHASES[creationPhase];
+    const phase = CREATION_PHASE_KEYS[creationPhase];
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
         {/* Ambient glow orbs (same as main view) */}
@@ -420,16 +398,16 @@ export default function HomePage() {
             <div
               className={`phase-fade ${phaseVisible ? "visible" : "hidden"} flex flex-col items-center w-full`}
             >
-              <h2 className="typo-section-title mb-2">{phase.title}</h2>
+              <h2 className="typo-section-title mb-2">{t(phase.titleKey)}</h2>
               <p className="typo-caption text-center max-w-md mb-6">
-                {phase.subtitle}
+                {t(phase.subtitleKey)}
               </p>
             </div>
           </div>
 
           {/* Progress dots */}
           <div className="flex items-center gap-2 mt-2">
-            {CREATION_PHASES.map((_, i) => (
+            {CREATION_PHASE_KEYS.map((_, i) => (
               <div
                 key={i}
                 className="rounded-full transition-[width,background-color,opacity] duration-500"

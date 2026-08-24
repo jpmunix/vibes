@@ -13,6 +13,7 @@ import {
   Download,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -63,6 +64,7 @@ export const AnnotatorToolbar = ({
   onDeactivate,
   hasSubmitHandler,
 }: AnnotatorToolbarProps) => {
+  const { t } = useI18n();
   const toolBtn = (id: ToolType, label: string, Icon: React.ElementType) => (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -102,7 +104,7 @@ export const AnnotatorToolbar = ({
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Color</p>
+              <p>{t("previewPanel.color")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -120,7 +122,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Eliminar seleccionado</p>
+              <p>{t("previewPanel.deleteSelected")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -138,7 +140,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Deshacer</p>
+              <p>{t("previewPanel.undo")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -154,7 +156,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Rehacer</p>
+              <p>{t("previewPanel.redo")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -171,7 +173,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Copiar al portapapeles</p>
+              <p>{t("previewPanel.copyClipboard")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -186,7 +188,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Guardar como archivo</p>
+              <p>{t("previewPanel.saveAsFile")}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -204,7 +206,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Añadir al chat</p>
+              <p>{t("previewPanel.addToChat")}</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
@@ -218,7 +220,7 @@ export const AnnotatorToolbar = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Cerrar anotador</p>
+              <p>{t("previewPanel.closeAnnotator")}</p>
             </TooltipContent>
           </Tooltip>
         </div>

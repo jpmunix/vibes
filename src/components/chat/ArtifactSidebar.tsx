@@ -30,6 +30,7 @@ import {
 import { VibesMarkdownParser } from "./VibesMarkdownParser";
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { showSuccess, showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 import {
   useArtifactComments,
   type ArtifactComment,
@@ -177,6 +178,7 @@ export function ArtifactSidebar() {
   const isStreaming = !!(selectedChatId && isStreamingById.get(selectedChatId));
 
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const isDraggingRef = useRef(false);
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -378,7 +380,7 @@ export function ArtifactSidebar() {
     try {
       await navigator.clipboard.writeText(content);
       setIsCopied(true);
-      showSuccess("Markdown copiado al portapapeles");
+      showSuccess(t("artifacts.markdownCopied"));
       setTimeout(() => setIsCopied(false), 2000);
     } catch (e) {
       showError(e);
@@ -398,7 +400,7 @@ export function ArtifactSidebar() {
         format: "md",
       });
       await navigator.clipboard.writeText(result.data.share_url);
-      showSuccess("URL del artefacto copiada al portapapeles");
+      showSuccess(t("artifacts.urlCopied"));
     } catch (e) {
       showError(e);
     } finally {
