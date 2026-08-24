@@ -4,7 +4,7 @@
 import log from "electron-log";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
-import { eq, sql, max } from "drizzle-orm";
+import { eq, sql, max, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { adminContracts } from "../types/admin";
 import type { AdminUser, AdminDbTarget } from "../types/admin";
@@ -196,7 +196,7 @@ export function registerAdminHandlers(): void {
     adminContracts.updateUser,
     async (_event, input, context) => {
       assertAdmin(context);
-      const { db } = await adminDb();
+      const { db, legacy } = await adminDb();
 
       const updates: Partial<typeof remoteSchema.users.$inferInsert> = {};
       if (input.email !== undefined)
@@ -736,7 +736,13 @@ export function registerAdminHandlers(): void {
         .from(remoteSchema.userPreferences)
         .where(eq(remoteSchema.userPreferences.userId, input.userId));
 
-      const preferences = rows.map((r) => ({
+      const preferences: Array<{
+        key: string;
+        value: string;
+        updatedAt: string | null;
+        displayCategory?: string;
+        displayName?: string;
+      }> = rows.map((r) => ({
         key: r.key,
         value: r.value,
         updatedAt: r.updatedAt ? toLegacyIso(r.updatedAt) : null,
@@ -767,7 +773,7 @@ export function registerAdminHandlers(): void {
           value: pr.content || "",
           updatedAt: pr.updatedAt ? toLegacyIso(pr.updatedAt) : null,
           displayCategory: pr.categoryName || "Prompts y Contexto",
-          displayName: pr.title || pr.systemId,
+          displayName: pr.title || pr.systemId || undefined,
         });
       }
 

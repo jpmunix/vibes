@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 // @ts-ignore
 import openrouterLogo from "../../../assets/ai-logos/openrouter-logo.png";
 
@@ -24,6 +25,7 @@ type WizardStep = "welcome" | "key" | "verify";
  * Blocks access to the entire app until the user provides a valid key.
  */
 export function OpenRouterSetupWizard() {
+  const { t } = useI18n();
   const { settings, loading: settingsLoading, updateSettings } = useSettings();
   const { isProviderSetup, isLoading: providersLoading } =
     useLanguageModelProviders();
@@ -38,7 +40,7 @@ export function OpenRouterSetupWizard() {
 
   const handleVerify = useCallback(async () => {
     if (!apiKey.trim()) {
-      showError("Introduce tu API key de OpenRouter");
+      showError(t("wizard.enterApiKey"));
       return;
     }
 
@@ -71,7 +73,7 @@ export function OpenRouterSetupWizard() {
           },
         });
 
-        showSuccess("¡OpenRouter configurado correctamente!");
+        showSuccess(t("wizard.configured"));
       } else {
         throw new Error("Respuesta inesperada de OpenRouter");
       }
@@ -129,15 +131,15 @@ export function OpenRouterSetupWizard() {
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <span>Registro gratuito con Google o GitHub</span>
+                  <span>{t("wizard.registerFree")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <span>Modelos gratuitos disponibles para empezar</span>
+                  <span>{t("wizard.freeModels")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <span>Paga solo por uso — sin suscripciones</span>
+                  <span>{t("wizard.payPerUse")}</span>
                 </li>
               </ul>
             </div>

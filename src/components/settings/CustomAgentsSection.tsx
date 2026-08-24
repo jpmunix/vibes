@@ -60,14 +60,18 @@ const getUltimateBaseAgent = (
   return currentBase as "build" | "plan" | "explore";
 };
 
-const getBaseAgentLabel = (baseStr: string, allAgents: any[]) => {
-  if (baseStr === "build") return "Agente (Build)";
-  if (baseStr === "plan") return "Planificador";
-  if (baseStr === "explore") return "Explorador";
+const getBaseAgentLabel = (
+  baseStr: string,
+  allAgents: any[],
+  t: (k: string, p?: Record<string, string | number>) => string,
+) => {
+  if (baseStr === "build") return t("customAgents.baseBuildLabel");
+  if (baseStr === "plan") return t("customAgents.basePlanLabel");
+  if (baseStr === "explore") return t("customAgents.baseExploreLabel");
   if (baseStr.startsWith("custom-agent::")) {
     const parentId = parseInt(baseStr.split("::")[1]);
     const parent = allAgents.find((ca) => ca.id === parentId);
-    return parent ? `Hereda de: ${parent.name}` : "Custom Agent";
+    return parent ? t("customAgents.inheritsFrom", { name: parent.name }) : "Custom Agent";
   }
   return baseStr;
 };
@@ -172,11 +176,11 @@ export function CustomAgentEditor({
 
   const validate = (): boolean => {
     if (!name.trim()) {
-      setValidationError("El nombre del agente es requerido.");
+      setValidationError(t("customAgents.nameRequired"));
       return false;
     }
     if (!slashCommand.trim()) {
-      setValidationError("El comando slash es requerido.");
+      setValidationError(t("customAgents.slashRequired"));
       return false;
     }
     const commandRegex = /^[a-zA-Z0-9_-]+$/;
@@ -271,7 +275,7 @@ export function CustomAgentEditor({
               /{agent.slashCommand}
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
-              {t("customAgents.baseLabel")}: {getBaseAgentLabel(agent.baseAgent, customAgents)}
+              {t("customAgents.baseLabel")}: {getBaseAgentLabel(agent.baseAgent, customAgents, t)}
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
               {t("customAgents.modeLabel")}:{" "}
@@ -286,7 +290,7 @@ export function CustomAgentEditor({
                 {t("customAgents.defaultLabel")} (
                 {agent.baseAgent.startsWith("custom-agent::")
                   ? getUltimateBaseLabel(agent.baseAgent, customAgents, t)
-                  : getBaseAgentLabel(agent.baseAgent, customAgents)}
+                  : getBaseAgentLabel(agent.baseAgent, customAgents, t)}
                 )
               </span>
             )}
@@ -322,7 +326,7 @@ export function CustomAgentEditor({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor={`agent-name-${agent.id}`} className="typo-label">
-                Nombre del Agente
+                {t("customAgents.agentName")}
               </Label>
               <Input
                 id={`agent-name-${agent.id}`}
@@ -335,7 +339,7 @@ export function CustomAgentEditor({
 
             <div className="space-y-1.5">
               <Label htmlFor={`agent-slash-${agent.id}`} className="typo-label">
-                Comando Slash (sin /)
+                {t("customAgents.slashCommand")}
               </Label>
               <Input
                 id={`agent-slash-${agent.id}`}
@@ -366,7 +370,7 @@ export function CustomAgentEditor({
                     .map((ca: any) => ({
                       value: `custom-agent::${ca.id}`,
                       label: `${ca.name} (Custom)`,
-                      description: `Hereda de ${ca.name}`,
+                      description: t("customAgents.inheritsDesc", { name: ca.name }),
                     })),
                 ]}
                 triggerVariant="default"
@@ -391,7 +395,7 @@ export function CustomAgentEditor({
               <Input
                 id={`agent-desc-${agent.id}`}
                 type="text"
-                placeholder="ej. Refactorizador experto en Rust"
+                placeholder={t("customAgents.shortDescPlaceholder")}
                 maxLength={50}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -445,8 +449,7 @@ export function CustomAgentEditor({
               </div>
             ) : (
               <div className="p-4 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground flex items-center h-full min-h-[58px]">
-                El agente utilizará de forma dinámica el modelo que tengas
-                seleccionado en la caja de chat al enviar el mensaje.
+                {t("customAgents.dynamicModelNote")}
               </div>
             )}
           </div>
@@ -519,11 +522,10 @@ export function CustomAgentEditor({
                 htmlFor={`agent-default-${agent.id}`}
                 className="text-xs font-semibold cursor-pointer text-foreground"
               >
-                Establecer como agente por defecto
+                {t("customAgents.setDefault")}
               </Label>
               <span className="text-[10px] text-muted-foreground">
-                Reemplaza al agente base original en el selector de chat y
-                comandos slash.
+                {t("customAgents.setDefaultDesc")}
               </span>
             </div>
           </div>
@@ -533,7 +535,7 @@ export function CustomAgentEditor({
               htmlFor={`default-prompt-${agent.id}`}
               className="typo-label"
             >
-              Prompt por defecto (Autopegado)
+              {t("customAgents.defaultPrompt")}
             </Label>
             <textarea
               id={`default-prompt-${agent.id}`}
@@ -550,7 +552,7 @@ export function CustomAgentEditor({
                 htmlFor={`system-prompt-${agent.id}`}
                 className="typo-label"
               >
-                System Prompt
+                {t("customAgents.systemPromptLabel")}
               </Label>
             </div>
             <textarea
@@ -564,7 +566,7 @@ export function CustomAgentEditor({
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/40">
             <DeleteConfirmationDialog
               itemName={agent.name}
-              itemType="agente personalizado"
+              itemType={t("customAgents.agentType")}
               onDelete={handleDelete}
               isDeleting={isDeleting}
               trigger={
@@ -576,7 +578,7 @@ export function CustomAgentEditor({
                   disabled={isDeleting}
                 >
                   <Trash2 className="size-3.5" />
-                  Eliminar
+                  {t("common.delete")}
                 </Button>
               }
             />
@@ -587,7 +589,7 @@ export function CustomAgentEditor({
                 variant="ghost"
                 className="cursor-pointer hover:bg-muted rounded-xl"
               >
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -597,12 +599,12 @@ export function CustomAgentEditor({
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-1.5 size-4 animate-spin" />
-                    Guardando...
+                    {t("common.saving")}
                   </>
                 ) : (
                   <>
                     <Check className="mr-1.5 size-4" />
-                    Guardar
+                    {t("common.save")}
                   </>
                 )}
               </Button>
@@ -651,11 +653,11 @@ export function CustomAgentCreator({
 
   const validate = (): boolean => {
     if (!name.trim()) {
-      setValidationError("El nombre del agente es requerido.");
+      setValidationError(t("customAgents.nameRequired"));
       return false;
     }
     if (!slashCommand.trim()) {
-      setValidationError("El comando slash es requerido.");
+      setValidationError(t("customAgents.slashRequired"));
       return false;
     }
     const commandRegex = /^[a-zA-Z0-9_-]+$/;
@@ -722,7 +724,7 @@ export function CustomAgentCreator({
           className="h-8 px-2 rounded-lg cursor-pointer"
           onClick={onCancel}
         >
-          Cancelar
+          {t("common.cancel")}
         </Button>
       </div>
 
@@ -737,12 +739,12 @@ export function CustomAgentCreator({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="new-agent-name" className="typo-label">
-              Nombre del Agente
+              {t("customAgents.agentName")}
             </Label>
             <Input
               id="new-agent-name"
               type="text"
-              placeholder="ej. Experto en Rust"
+              placeholder={t("customAgents.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-primary rounded-xl typo-input"
@@ -751,12 +753,12 @@ export function CustomAgentCreator({
 
           <div className="space-y-1.5">
             <Label htmlFor="new-agent-slash" className="typo-label">
-              Comando Slash (sin /)
+              {t("customAgents.slashCommand")}
             </Label>
             <Input
               id="new-agent-slash"
               type="text"
-              placeholder="ej. rust"
+              placeholder={t("customAgents.slashPlaceholder")}
               value={slashCommand}
               onChange={(e) =>
                 setSlashCommand(e.target.value.replace(/\s+/g, ""))
@@ -777,7 +779,7 @@ export function CustomAgentCreator({
                 ...customAgents.map((ca: any) => ({
                   value: `custom-agent::${ca.id}`,
                   label: `${ca.name} (Custom)`,
-                  description: `Hereda de ${ca.name}`,
+                  description: t("customAgents.inheritsDesc", { name: ca.name }),
                 })),
               ]}
               triggerVariant="default"
@@ -799,7 +801,7 @@ export function CustomAgentCreator({
             <Input
               id="new-agent-desc"
               type="text"
-              placeholder="ej. Refactorizador experto en Rust"
+              placeholder={t("customAgents.shortDescPlaceholder")}
               maxLength={50}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -851,8 +853,7 @@ export function CustomAgentCreator({
             </div>
           ) : (
             <div className="p-4 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground flex items-center h-full min-h-[58px]">
-              El agente utilizará de forma dinámica el modelo que tengas
-              seleccionado en la caja de chat al enviar el mensaje.
+              {t("customAgents.dynamicModelNote")}
             </div>
           )}
         </div>
@@ -923,18 +924,17 @@ export function CustomAgentCreator({
               htmlFor="new-agent-default"
               className="text-xs font-semibold cursor-pointer text-foreground"
             >
-              Establecer como agente por defecto
+              {t("customAgents.setDefault")}
             </Label>
             <span className="text-[10px] text-muted-foreground">
-              Reemplaza al agente base original en el selector de chat y
-              comandos slash.
+              {t("customAgents.setDefaultDesc")}
             </span>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="new-agent-prompt" className="typo-label">
-            Prompt por defecto (Autopegado)
+            {t("customAgents.defaultPrompt")}
           </Label>
           <textarea
             id="new-agent-prompt"
@@ -948,7 +948,7 @@ export function CustomAgentCreator({
         <div className="space-y-1.5">
           <div className="flex justify-between items-center">
             <Label htmlFor="new-system-prompt" className="typo-label">
-              System Prompt
+              {t("customAgents.systemPromptLabel")}
             </Label>
           </div>
           <textarea
@@ -967,7 +967,7 @@ export function CustomAgentCreator({
             variant="ghost"
             className="cursor-pointer hover:bg-muted rounded-xl"
           >
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button
             type="submit"
@@ -987,6 +987,7 @@ export function CustomAgentCreator({
  * ──────────────────────────────────────────────────────────────────────────── */
 
 export function CustomAgentsSection() {
+  const { t } = useI18n();
   const { customAgents, loading, reload } = useCustomAgents();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -994,17 +995,16 @@ export function CustomAgentsSection() {
     <div className="space-y-4">
       {loading ? (
         <div className="py-12 text-center text-muted-foreground typo-body">
-          Cargando agentes...
+          {t("customAgents.loading")}
         </div>
       ) : customAgents.length === 0 ? (
         <div className="border border-dashed border-border/80 rounded-2xl p-12 text-center flex flex-col items-center justify-center bg-muted/10">
           <Bot className="size-12 text-muted-foreground/30 mb-4" />
           <p className="typo-subsection-title text-muted-foreground">
-            No tienes agentes personalizados
+            {t("customAgents.emptyTitle")}
           </p>
           <p className="typo-caption mt-1 max-w-sm mb-6">
-            Comienza creando un agente para definir flujos de trabajo
-            específicos o inyectar prompts predefinidos.
+            {t("customAgents.emptyDesc")}
           </p>
           {!isCreating && (
             <Button
@@ -1014,7 +1014,7 @@ export function CustomAgentsSection() {
               className="cursor-pointer border-border hover:bg-muted gap-1.5 rounded-xl"
             >
               <Plus className="size-4" />
-              Crear el primero
+              {t("customAgents.createFirst")}
             </Button>
           )}
         </div>
@@ -1053,7 +1053,7 @@ export function CustomAgentsSection() {
         >
           <Plus className="size-4 text-muted-foreground" />
           <span className="text-sm font-semibold text-muted-foreground">
-            Crear Agente Personalizado
+            {t("customAgents.createAgentButton")}
           </span>
         </Button>
       )}

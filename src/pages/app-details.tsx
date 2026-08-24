@@ -84,11 +84,13 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { BunnyConnector } from "@/components/BunnyConnector";
 import { LanguageBadge } from "@/components/LanguageBadge";
+import { useI18n } from "@/lib/i18n";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/app-details" as const });
+  const { t } = useI18n();
   const [appsList] = useAtom(appsListAtom);
   const { refreshApps } = useLoadApps();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -204,7 +206,7 @@ export default function AppDetailsPage() {
       await refreshApps();
     } catch (error) {
       console.error("Failed to generate title:", error);
-      showError("Error al generar el título");
+      showError(t("appDetails.titleGenerateError"));
     } finally {
       setIsGeneratingTitle(false);
       setIsRenaming(false);
@@ -331,7 +333,7 @@ export default function AppDetailsPage() {
     onSuccess: async () => {
       await invalidateAppQuery(queryClient, { appId });
       await refreshApps();
-      showSuccess("Ubicación de la aplicación actualizada");
+      showSuccess(t("appDetails.locationUpdated"));
     },
     onError: (error) => {
       showError(error);
@@ -351,7 +353,7 @@ export default function AppDetailsPage() {
           Atrás
         </Button>
         <div className="flex flex-col items-center justify-center flex-1">
-          <h2 className="typo-section-title">Aplicación no encontrada</h2>
+          <h2 className="typo-section-title">{t("appDetails.notFound")}</h2>
         </div>
       </div>
     );
@@ -408,7 +410,7 @@ export default function AppDetailsPage() {
         format: "md",
       });
       await navigator.clipboard.writeText(result.data.share_url);
-      showSuccess("URL copiada al portapapeles");
+      showSuccess(t("appDetails.urlCopied"));
     } catch (e) {
       showError(e);
     }
@@ -423,7 +425,7 @@ export default function AppDetailsPage() {
         format: "md",
       });
       await navigator.clipboard.writeText(result.data.share_url);
-      showSuccess("URL copiada al portapapeles");
+      showSuccess(t("appDetails.urlCopied"));
     } catch (e) {
       showError(e);
     }
@@ -691,7 +693,7 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>Renombrar aplicación</DialogTitle>
+                  <DialogTitle>{t("appDetails.rename")}</DialogTitle>
                 </DialogHeader>
                 <Input
                   value={newAppName}
@@ -781,7 +783,7 @@ export default function AppDetailsPage() {
                         Crea una copia independiente de esta aplicación con un
                         nuevo nombre.
                       </p>
-                      <p>Las integraciones (Supabase, GitHub) no se clonan.</p>
+                      <p>{t("appDetails.integrationsNotCloned")}</p>
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3 my-2">
@@ -837,7 +839,7 @@ export default function AppDetailsPage() {
                           </span>
                         </div>
                         <div className="text-left">
-                          <p className="typo-label">Clonar con historial</p>
+                          <p className="typo-label">{t("appDetails.cloneWithHistory")}</p>
                           <p className="typo-caption text-muted-foreground">
                             Clona toda la aplicación incluyendo el historial de
                             versiones.
@@ -893,7 +895,7 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>Cambiar ubicación del workspace</DialogTitle>
+                  <DialogTitle>{t("appDetails.changeWorkspaceLocation")}</DialogTitle>
                   <DialogDescription>
                     Selecciona una ubicación donde se guardará este workspace.
                     El nombre del directorio seguirá siendo el mismo.

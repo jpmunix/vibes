@@ -92,6 +92,7 @@ function findCommonPrefix(strs: string[]): string {
 }
 
 export const ConsoleTerminal = () => {
+  const { t } = useI18n();
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const app = useAtomValue(currentAppAtom);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -105,7 +106,6 @@ export const ConsoleTerminal = () => {
 
   // Load command history from localStorage
   useEffect(() => {
-  const { t } = useI18n();
     try {
       const saved = localStorage.getItem("console-command-history");
       if (saved) {

@@ -1,5 +1,6 @@
 import React from "react";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import {
   UnifiedSelector,
   type SelectorOption,
@@ -11,30 +12,18 @@ interface ReasoningEffortSelectorProps {
 
 const defaultReasoningValue = "medium";
 
-const reasoningOptions: SelectorOption[] = [
-  {
-    value: "low",
-    label: "Bajo",
-    description: "Razonamiento ligero. Para tareas simples y directas.",
-  },
-  {
-    value: "medium",
-    label: "Medio",
-    description:
-      "Equilibrio entre velocidad y profundidad. Recomendado para la mayoría de tareas.",
-  },
-  {
-    value: "high",
-    label: "Alto",
-    description:
-      "Análisis profundo. Para problemas complejos, debugging y refactorizaciones.",
-  },
-];
 
 export const ReasoningEffortSelector: React.FC<
   ReasoningEffortSelectorProps
 > = ({ variant = "default" }) => {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
+
+  const reasoningOptions: SelectorOption[] = [
+    { value: "low", label: t("agentPills.low"), description: t("agentPills.lowDesc") },
+    { value: "medium", label: t("agentPills.medium"), description: t("agentPills.mediumDesc") },
+    { value: "high", label: t("agentPills.high"), description: t("agentPills.highDesc") },
+  ];
 
   const currentReasoning = settings?.reasoningEffort || defaultReasoningValue;
 

@@ -74,6 +74,16 @@ Cada slice tiene:
 - `pnpm lint` / `eslint`.
 - Comandos puramente lectores (`ls`, `cat`, `grep`, `find`, `wc`, `git status`, `git diff`, `git log`).
 
+> [!IMPORTANT]
+> **Typecheck correcto en Vibes (carcasa) — innegociable.**
+> El [`tsconfig.json`](file:///home/munix/Desarrollo/GitRepo/Vibes/tsconfig.json) es un **solution file** (`"files": []` + `references`). Correr `npx tsc --noEmit` contra él **no compila nada** y devuelve exit 0 aunque el código esté roto. El comando que **sí** comprueba el código es el script oficial del repo:
+> ```
+> pnpm ts:main        # = npx tsgo -p tsconfig.app.json --noEmit --incremental
+> ```
+> (tsgo es el compiler rápido; el equivalente clásico es `npx tsc -p tsconfig.app.json --noEmit`). **Antes de declarar una tarea con TypeScript completada, SIEMPRE ejecutar `pnpm ts:main` y leer el output completo** (no `| head -5`, no confiar en el `$?` de un pipe).
+>
+> **Fallo documentado (2026-08-24):** se usó `npx tsc --noEmit 2>&1 | head -5; echo "TSC: $?"` contra el solution file. El `head` truncó el output y el `$?` devolvía el código de `head` (0), no de `tsc`. Resultado: se declaró "TSC: 0 errores" habiendo **132 errores reales**. Lección: (1) usar el tsconfig de la app (`-p tsconfig.app.json` / `pnpm ts:main`), (2) no truncar el output ni depender del `$?` de un pipe — leer el log entero o coger el `$?` justo tras el comando sin pipe intermedio.
+
 Estos son **parte del trabajo del agente** y se ejecutan sin pedir permiso. El agente los lanza para verificar sus propios cambios (regla §3.3) y para diagnosticar (regla §3.1). No necesitan OK de munix.
 
 **Lo que el agente nunca ejecuta sin OK explícito:**
@@ -368,6 +378,21 @@ El código es nuestro. No mencionamos a ningún proyecto de terceros (OpenCode, 
 
 > **Por qué:** una mención a OpenCode/aider/etc. en una description de tool es un string que el LLM lee literal y filtra al usuario. Una mención en un comentario sesga a quien lea el código (incluido el propio agente) a "rendir cuentas" a un proyecto que no es nuestro ni va a ser nuestro. El formato `apply_patch` (Begin/Add/Delete/Update/End Patch) es ahora nuestro formato — lo hemos portado, lo mantenemos, lo evolucionamos, y las decisiones sobre él son nuestras. Si alguien quiere saber de dónde viene, está en `arneses/` para consultarlo; pero el código, los tests, los docs y los commits no le hacen la pelota a nadie.
 
+### 1.15 i18n en UI — todo texto visible va a diccionarios — **INNEGOCIABLE**
+
+Cuando se genere o modifique UI (cualquier componente React, cualquier string que el usuario vea), **todo texto visible debe ir a los diccionarios i18n** (`messages.es.ts` / `messages.en.ts`), nunca hardcoded en español (ni en inglés) directamente en el JSX.
+
+**Reglas duras:**
+- ❌ **NUNCA** escribir strings literales en el JSX: `>Guardar<`, `placeholder="Selecciona un modelo"`, `title="Eliminar"`, `label: "Con razonamiento"`.
+- ✅ **SIEMPRE** usar `t("namespace.key")` o `tPlural("namespace.key", count)` para todo texto que el usuario vea.
+- ✅ Cada string nuevo va en **AMBOS diccionarios** (es + en) o el test de paridad falla.
+- ✅ Si el string está en un array/const a nivel de módulo (fuera del componente), convertirlo a función que recibe `t`: `getOptions(t)`.
+- ✅ Si el string está en un subcomponente (función no exportada en el mismo archivo), ese subcomponente necesita su PROPIO `useI18n()` — el hook del padre no lo cubre.
+- ✅ Si el texto es un valor de datos que se persiste en BD (alias de claves, nombres de usuario), **no se traduce** — se deja como valor del usuario. Pero el placeholder, label y descripción del campo SÍ se traducen.
+- ❌ "Es un string trivial, no necesita i18n" **no es una respuesta aceptable**. Si el usuario lo ve, va al diccionario.
+
+> **Por qué:** Vibes está en producción y ya tiene sistema i18n con paridad es/en. Hardcodear strings en español rompe el cambio de idioma: el usuario cambia a English y ve mitad de la UI en español. Un string que no está en el diccionario es un string que se cuela sin traducir y que el siguiente agente no sabe que existe. La paridad (31/31) existe precisamente para cazar esto — si añadimos un string sin diccionario, perdemos la garantía de que todo está localizado.
+
 ---
 
 ## 2. Cosas que se hablan al post-MVP
@@ -537,5 +562,5 @@ node scripts/ag-chats.mjs show <cascadeId> --steps
 
 ---
 
-**Última actualización:** 2026-08-20 (§1.10.11 reforzada: una vez creada una card, si no lleva su `#idShort` al principio del título, el agente DEBE actualizarla — siempre, sin excepción. Innegociable).
+**Última actualización:** 2026-08-24 (§1.5 reforzado: typecheck en Vibes SIEMPRE con `pnpm ts:main` / `-p tsconfig.app.json`, nunca contra el solution file `tsconfig.json`. Fallo documentado: 132 errores no detectados por usar `tsc --noEmit` + `head` + `$?` del pipe).
 **Mantenedor:** munix.

@@ -42,11 +42,13 @@ const iterationOptions = [
   { value: "20000", label: "20000" },
 ];
 // Tiempo máximo de tarea, en minutos (default runtime: 240 = 4h).
-const wallClockOptions = [
-  { value: "60", label: "1 h" },
-  { value: "240", label: "4 h" },
-  { value: "720", label: "12 h" },
-  { value: "1440", label: "24 h" },
+const getWallClockOptions = (
+  t: (k: string) => string,
+) => [
+  { value: "60", label: t("agentSection.wallClock1h") },
+  { value: "240", label: t("agentSection.wallClock4h") },
+  { value: "720", label: t("agentSection.wallClock12h") },
+  { value: "1440", label: t("agentSection.wallClock24h") },
 ];
 // Valor por defecto mostrado en la UI cuando no hay setting persistido.
 const DEFAULT_AGENT_ITERATIONS = 1000;
@@ -96,13 +98,13 @@ const getAgentModelEntries = (
 
 // ─── Chip de deuda visual (card #115) ───
 // Marca selectores configurables pero sin lectores en el runtime todavía.
-function InactiveChip({ note }: { note?: string }) {
+function InactiveChip({ note, label }: { note?: string; label: string }) {
   return (
     <span
       title={note}
       className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400 border border-red-200 dark:border-red-800/50 cursor-help"
     >
-      Sin efecto aún
+      {label}
     </span>
   );
 }
@@ -123,7 +125,7 @@ function AgentModelsSection() {
           <h3 className="typo-label">
             {t("agentSection.modelsByAgent")}
             {!agentModelsStatus.active && (
-              <InactiveChip note={agentModelsStatus.note} />
+              <InactiveChip note={agentModelsStatus.note} label={t("agentSection.inactiveChip")} />
             )}
           </h3>
           <p className="typo-caption mt-1">
@@ -271,7 +273,7 @@ export function AIBehaviorSettings({
                 onChange={(value) =>
                   updateSettings({ agentMaxWallClockMinutes: Number(value) })
                 }
-                options={wallClockOptions}
+                options={getWallClockOptions(t)}
                 triggerVariant="pill"
                 triggerSize="md"
                 popoverWidth="w-[160px]"
@@ -338,44 +340,6 @@ export function AIBehaviorSettings({
               label={t("settingsItems.modelo_de_vision")}
               description={t("settingsItems.modelo_de_visionDesc")}
               control={<VisionModelSelector />}
-            />
-          )}
-
-          {/* Morph Patch Engine — admin only */}
-          {isAdminUser && (
-            <SettingRow
-              label={t("settingsItems.morph_patch_engine")}
-              description={t("settingsItems.morph_patch_engineDesc")}
-              control={
-                <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                  {(
-                    [
-                      { value: false, label: t("common.disabled") },
-                      { value: true, label: t("common.enabled") },
-                    ] as const
-                  ).map((option) => (
-                    <button
-                      key={String(option.value)}
-                      onClick={() => {
-                        updateSettings({
-                          enableMorphPatchTool: option.value,
-                        } as any);
-                        // Restart OpenCode server so new tool state takes effect immediately
-                        systemClient.restartOpenCodeServer().catch(() => {});
-                      }}
-                      className={cn(
-                        "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                        ((settings as any)?.enableMorphPatchTool === true) ===
-                          option.value
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "hover:bg-primary/10",
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              }
             />
           )}
 

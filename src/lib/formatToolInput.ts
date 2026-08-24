@@ -54,8 +54,10 @@ export function formatToolInput(toolId: string, args: unknown): string {
     return `$ ${cmd}${rest}`;
   }
 
-  // File-style: a `path` arg (read_file, write_file, edit_file, list_dir…).
-  if ("path" in schemaProps || "path" in a) {
+  // File-style: a `path` arg present in the actual call args.
+  // (Schema-only check is not enough: git_log declares optional `path` but a
+  // call like {max_count: 30} has no path → must not match here.)
+  if ("path" in a) {
     const p = safeGet(a, "path");
     if (p) {
       const content = typeof a.content === "string" ? `\n${a.content}` : "";
@@ -63,15 +65,23 @@ export function formatToolInput(toolId: string, args: unknown): string {
     }
   }
 
-  // Pattern-style: a `pattern` arg (glob, grep).
-  if ("pattern" in schemaProps || "pattern" in a) {
+  // Pattern-style: a `pattern` arg present in the actual call args.
+  if ("pattern" in a) {
     const p = safeGet(a, "pattern");
     if (p) return p;
   }
 
-  // Unknown shape — defensive fallback.
+  // Human-readable fallback: one `key: value` per line.
+  // Much friendlier than raw JSON for permission pills.
   try {
-    return JSON.stringify(args, null, 2);
+    const entries = Object.entries(a);
+    if (entries.length === 0) return "(sin argumentos)";
+    return entries
+      .map(([k, v]) => {
+        const val = typeof v === "string" ? v : JSON.stringify(v);
+        return `${k}: ${val}`;
+      })
+      .join("\n");
   } catch {
     return String(args);
   }

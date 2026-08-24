@@ -356,7 +356,7 @@ const ChatMessage = ({
         format: "md",
       });
       await navigator.clipboard.writeText(result.data.share_url);
-      showSuccess("URL del mensaje copiada al portapapeles");
+      showSuccess(t("toasts.messageUrlCopied"));
     } catch (e) {
       showError(e);
     } finally {
@@ -433,6 +433,7 @@ const ChatMessage = ({
       "vibes-wait-http",
       "vibes-token-usage",
       "vibes-vision",
+      "vibes-context-summary",
     ];
 
     let lastOpenTag: string | null = null;

@@ -25,10 +25,8 @@ describe("formatToolInput", () => {
     });
 
     it("shell: handles missing command gracefully", () => {
-      // Without args.cmd/args.command, falls through to the JSON fallback.
-      expect(formatToolInput("shell", { other: "x" })).toBe(
-        JSON.stringify({ other: "x" }, null, 2),
-      );
+      // Without args.cmd/args.command, falls through to the key: value fallback.
+      expect(formatToolInput("shell", { other: "x" })).toBe("other: x");
     });
   });
 
@@ -61,9 +59,17 @@ describe("formatToolInput", () => {
   });
 
   describe("fallback", () => {
-    it("unknown tool returns JSON formatted", () => {
-      expect(formatToolInput("unknown", { a: 1, b: 2 })).toBe(
-        JSON.stringify({ a: 1, b: 2 }, null, 2),
+    it("unknown tool returns key: value lines (not raw JSON)", () => {
+      expect(formatToolInput("unknown", { a: 1, b: 2 })).toBe("a: 1\nb: 2");
+    });
+
+    it("git_log with max_count only → 'max_count: 30' (no JSON)", () => {
+      expect(formatToolInput("git_log", { max_count: 30 })).toBe("max_count: 30");
+    });
+
+    it("git_log with multiple args → one per line", () => {
+      expect(formatToolInput("git_log", { max_count: 10, author: "munix" })).toBe(
+        "max_count: 10\nauthor: munix",
       );
     });
 

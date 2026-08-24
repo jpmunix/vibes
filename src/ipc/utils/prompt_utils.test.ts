@@ -103,13 +103,7 @@ describe("runtime_agent_base — prompt endurecido (análisis #108, Nivel 1)", (
     expect(base).toContain("CRITICAL — Tool usage rules:");
     expect(base).toContain("NEVER just describe");
     expect(base).toContain("report the error verbatim");
-    expect(base).toContain("brief final summary");
-  });
-
-  it("añade el bloque de concisión con límite numérico (1-3 sentencias)", () => {
-    expect(base).toContain("Concision:");
-    expect(base).toContain("final summary MUST be 1-3 sentences");
-    expect(base).toContain("no preamble, no postamble");
+    expect(base).toContain("write a final summary in plain text and stop");
   });
 
   it("añade el bloque de professional objectivity", () => {
@@ -120,16 +114,13 @@ describe("runtime_agent_base — prompt endurecido (análisis #108, Nivel 1)", (
     expect(base).toContain("Disagree when necessary");
   });
 
-  it("incluye los 3 ejemplos de calibración de verbosidad", () => {
-    const examples = base.match(/<example>/g) ?? [];
-    expect(examples).toHaveLength(3);
-    // one-word answer
-    expect(base).toContain("user: what is 2+2?");
-    expect(base).toContain("assistant: 4");
-    // one-line answer con referencia file:line
-    expect(base).toContain("src/services/auth.ts:42");
-    // respuesta corta + tool calls
-    expect(base).toContain("user: add a /health endpoint");
+  it("YA NO contiene instrucciones de longitud: la verbosidad la inyecta la carcasa (card #182)", () => {
+    // El núcleo define CÓMO actúa el agente, nunca CUÁNTO habla. La longitud
+    // vive en src/prompts/verbosity.ts y se inyecta según settings.textVerbosity.
+    expect(base).not.toContain("Concision:");
+    expect(base).not.toContain("MUST be 1-3 sentences");
+    expect(base).not.toContain("<example>");
+    expect(base).not.toContain("Calibration examples");
   });
 
   it("no degrada el tamaño: el prompt sigue por debajo de ~600 tokens (heurística 4 chars/token)", () => {

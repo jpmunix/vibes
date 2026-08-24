@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { useI18n } from "@/lib/i18n";
 import {
   ChevronDown,
   ChevronRight,
@@ -276,6 +277,7 @@ const EMPTY_STORAGE: BunnyStorageZoneEntry = {
 };
 
 export function BunnyConnector({ appId }: { appId: number }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [databases, setDatabases] = useState<BunnyDatabaseEntry[]>([]);
@@ -358,7 +360,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
       savedSnapshot.current = JSON.stringify({ databases, storageZones });
       setDbSectionOpen(false);
       setStorageSectionOpen(false);
-      showSuccess("Configuración de Bunny.net guardada");
+      showSuccess(t("integrations.bunnySaved"));
     } catch (err) {
       showError(err);
     } finally {
@@ -390,7 +392,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
       <CollapsibleCard
         title="Bunny.net"
         icon={<BunnyIcon className="h-5 w-5" />}
-        description="Bases de datos en la nube y almacenamiento de archivos"
+        description={t("integrations.bunnyCloudDesc")}
       >
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -404,7 +406,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
     <CollapsibleCard
       title="Bunny.net"
       icon={<BunnyIcon className="h-5 w-5" />}
-      description="Bases de datos en la nube y almacenamiento de archivos"
+      description={t("integrations.bunnyCloudDesc")}
     >
       <div className="space-y-3">
         {/* Databases Section */}
@@ -421,7 +423,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               )}
               <Database className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Bases de datos</span>
+              <span className="text-sm font-medium">{t("integrations.bunnyDatabases")}</span>
               {databases.length > 0 && (
                 <span className="text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">
                   {databases.length}

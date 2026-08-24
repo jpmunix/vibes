@@ -43,10 +43,12 @@ interface ImportAppDialogProps {
   onClose: () => void;
 }
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/lib/i18n";
 
 export const AI_RULES_PROMPT =
   "Genera un archivo AI_RULES.md para esta aplicación. Describe el stack tecnológico en 5-10 puntos y describe reglas claras sobre qué librerías usar para qué.";
 export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
+  const { t } = useI18n();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [hasAiRules, setHasAiRules] = useState<boolean | null>(null);
   const [customAppName, setCustomAppName] = useState<string>("");
@@ -365,7 +367,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 Directorio local
               </TabsTrigger>
               <TabsTrigger value="github-repos" className="typo-body px-2 py-2">
-                <span className="hidden sm:inline">Mis repos de GitHub</span>
+                <span className="hidden sm:inline">{t("integrations.myGithubRepos")}</span>
                 <span className="sm:hidden">GitHub</span>
               </TabsTrigger>
               <TabsTrigger value="github-url" className="typo-body px-2 py-2">
@@ -409,7 +411,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           disabled={importAppMutation.isPending}
                         >
                           <X className="h-4 w-4" />
-                          <span className="sr-only">Limpiar selección</span>
+                          <span className="sr-only">{t("integrations.clearSelection")}</span>
                         </Button>
                       </div>
                     </div>
@@ -741,7 +743,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label className="typo-body">Comando de inicio</Label>
+                      <Label className="typo-body">{t("integrations.startCommand")}</Label>
                       <Input
                         value={startCommand}
                         onChange={(e) => setStartCommand(e.target.value)}

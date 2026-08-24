@@ -111,6 +111,7 @@ const VIBES_TOOL_TAG_NAMES = [
   "vibes-cancelled",
   "vibes-files-changed",
   "vibes-vision",
+  "vibes-context-summary",
 ];
 
 const VIBES_TOOL_TAG_GROUP = VIBES_TOOL_TAG_NAMES.join("|");

@@ -39,10 +39,12 @@ import {
 import { showError, showSuccess } from "@/lib/toast";
 import { appClient } from "@/ipc/types/app";
 import { appFolderClient, type AppFolder } from "@/ipc/types/app_folders";
+import { useI18n } from "@/lib/i18n";
 
 export default function AppFoldersPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/app-folders" as const });
+  const { t } = useI18n();
   const appId = search.appId;
   const queryClient = useQueryClient();
 
@@ -66,7 +68,7 @@ export default function AppFoldersPage() {
   const addMutation = useMutation({
     mutationFn: appFolderClient.addAppFolder,
     onSuccess: () => {
-      showSuccess("Folder vinculado");
+      showSuccess(t("appFolders.linked"));
       invalidate();
     },
     onError: (e: unknown) => showError((e as Error).message ?? "Error al vincular"),
@@ -75,7 +77,7 @@ export default function AppFoldersPage() {
   const removeMutation = useMutation({
     mutationFn: appFolderClient.removeAppFolder,
     onSuccess: () => {
-      showSuccess("Folder desvinculado (archivos intactos)");
+      showSuccess(t("appFolders.unlinked"));
       invalidate();
     },
     onError: (e: unknown) => showError((e as Error).message ?? "Error al desvincular"),
@@ -84,7 +86,7 @@ export default function AppFoldersPage() {
   const renameMutation = useMutation({
     mutationFn: appFolderClient.updateAppFolderLabel,
     onSuccess: () => {
-      showSuccess("Label actualizado");
+      showSuccess(t("appFolders.labelUpdated"));
       invalidate();
       setEditingId(null);
     },
@@ -175,7 +177,7 @@ export default function AppFoldersPage() {
           {!isLoading && !error && folders.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">
               <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No hay carpetas vinculadas todavía.</p>
+              <p>{t("appFolders.noLinked")}</p>
               <p className="text-xs mt-1">
                 Pulsa “Añadir carpeta” para elegir un directorio del disco.
               </p>

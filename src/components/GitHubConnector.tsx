@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GithubBranchManager } from "@/components/GithubBranchManager";
+import { useI18n } from "@/lib/i18n";
 
 type SyncResult =
   | { error: Error; handled?: boolean }
@@ -80,6 +81,7 @@ function ConnectedGitHubConnector({
   triggerAutoSync,
   onAutoSyncComplete,
 }: ConnectedGitHubConnectorProps) {
+  const { t } = useI18n();
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
@@ -915,7 +917,7 @@ function ConnectedGitHubConnector({
                     </strong>
                   </p>
                   <ul className="typo-caption list-disc list-inside mt-2 space-y-1">
-                    <li>Sobrescribir el historial del repositorio remoto</li>
+                    <li>{t("integrations.githubOverwrite")}</li>
                     <li>
                       Eliminar permanentemente los commits que existen en el
                       remoto pero no localmente
@@ -955,6 +957,7 @@ export function UnconnectedGitHubConnector({
   handleRepoSetupComplete,
   expanded,
 }: UnconnectedGitHubConnectorProps) {
+  const { t } = useI18n();
   // --- Collapsible State ---
   const [isExpanded, setIsExpanded] = useState(expanded || false);
 
@@ -1269,7 +1272,7 @@ export function UnconnectedGitHubConnector({
         {/* GitHub Connection Status/Instructions */}
         {(githubUserCode || githubStatusMessage || githubError) && (
           <div className="mt-6 p-4 border rounded-md bg-muted/50 border-border">
-            <h4 className="font-medium mb-2">Conexión con GitHub</h4>
+            <h4 className="font-medium mb-2">{t("integrations.githubConnection")}</h4>
             {githubError && (
               <p className="text-destructive mb-2">Error: {githubError}</p>
             )}
@@ -1340,7 +1343,7 @@ export function UnconnectedGitHubConnector({
           !isExpanded ? "cursor-pointer hover:bg-muted" : ""
         }`}
       >
-        <span className="typo-label">Configura tu repositorio de GitHub</span>
+        <span className="typo-label">{t("integrations.githubConfigure")}</span>
         {isExpanded ? undefined : (
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}

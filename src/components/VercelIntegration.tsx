@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
 import { showSuccess, showError } from "@/lib/toast";
 import { Triangle } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 export function VercelIntegration() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
@@ -15,9 +17,9 @@ export function VercelIntegration() {
         vercelAccessToken: undefined,
       });
       if (result) {
-        showSuccess("Desconectado de Vercel con éxito");
+        showSuccess(t("integrations.vercelDisconnected"));
       } else {
-        showError("Error al desconectar de Vercel");
+        showError(t("integrations.vercelDisconnectError"));
       }
     } catch (err: any) {
       showError(err.message || "Se produjo un error al desconectar de Vercel");
@@ -39,7 +41,7 @@ export function VercelIntegration() {
           <Triangle className="h-4 w-4 text-muted-foreground shrink-0 fill-current" />
           <h3 className="typo-label flex items-center gap-2">Vercel</h3>
         </div>
-        <p className="typo-caption mt-1">Tu cuenta está conectada a Vercel</p>
+        <p className="typo-caption mt-1">{t("integrations.vercelConnected")}</p>
       </div>
       <div className="shrink-0">
         <Button

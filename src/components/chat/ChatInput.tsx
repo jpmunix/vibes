@@ -93,6 +93,7 @@ import { quotedMessagesAtom } from "@/atoms/chatAtoms";
 import { saveDraft, loadDraft, clearDraft } from "@/lib/chat-draft";
 import { UndoConfirmDialog } from "./UndoConfirmDialog";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
+import { useI18n } from "@/lib/i18n";
 
 export function ChatInput({
   chatId,
@@ -105,6 +106,7 @@ export function ChatInput({
   isPlanMode?: boolean;
   workspaceMode?: boolean;
 }) {
+  const { t } = useI18n();
   // Telemetry removed
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
@@ -373,7 +375,7 @@ export function ChatInput({
           }
         }
         if (lastAssistantIdx < 0) {
-          showError("No hay mensaje de asistente para deshacer");
+          showError(t("toasts.noAssistantMessageToUndo"));
           setIsUndoLoading(false);
           return;
         }
@@ -388,7 +390,7 @@ export function ChatInput({
           }
         }
         if (!userMessage) {
-          showError("No se encontró el mensaje de usuario para deshacer");
+          showError(t("toasts.noUserMessageToUndo"));
           setIsUndoLoading(false);
           return;
         }
@@ -518,7 +520,7 @@ export function ChatInput({
         });
       } catch (error) {
         console.error("Error during undo:", error);
-        showError("Failed to undo changes");
+        showError(t("toasts.undoChangesError"));
       } finally {
         setIsUndoLoading(false);
       }
@@ -1330,10 +1332,11 @@ function ChatInputActions({
   isApproving,
   isRejecting,
 }: ChatInputActionsProps) {
+  const { t } = useI18n();
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   if (proposal.type === "tip-proposal") {
-    return <div>Propuesta de consejo</div>;
+    return <div>{t("chatInput.adviceProposal")}</div>;
   }
   if (proposal.type === "action-proposal") {
     // Botones de sugerencias (Resumir en un nuevo chat, Continuar) deshabilitados
@@ -1353,6 +1356,7 @@ function ChatInputActions({
     title: string;
     isDetailsVisible: boolean;
   }) {
+    const { t } = useI18n();
     if (isDetailsVisible) {
       return title;
     }
@@ -1443,7 +1447,7 @@ function ChatInputActions({
 
             {proposal.packagesAdded?.length > 0 && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">Paquetes añadidos</h4>
+                <h4 className="font-semibold mb-1">{t("chatInput.packagesAdded")}</h4>
                 <ul className="space-y-1">
                   {proposal.packagesAdded.map((pkg, index) => (
                     <li
@@ -1494,7 +1498,7 @@ function ChatInputActions({
 
             {otherFilesChanged.length > 0 && (
               <div>
-                <h4 className="font-semibold mb-1">Archivos cambiados</h4>
+                <h4 className="font-semibold mb-1">{t("chatInput.filesChanged")}</h4>
                 <ul className="space-y-1">
                   {otherFilesChanged.map((file: FileChange, index: number) => (
                     <li key={index} className="flex items-center space-x-2">
@@ -1549,6 +1553,7 @@ function ProposalSummary({
   packagesAdded?: string[];
   filesChanged?: FileChange[];
 }) {
+  const { t } = useI18n();
   // If no changes, show a simple message
   if (
     !sqlQueries.length &&
@@ -1556,7 +1561,7 @@ function ProposalSummary({
     !packagesAdded.length &&
     !filesChanged.length
   ) {
-    return <span>Sin cambios</span>;
+    return <span>{t("chatInput.noChanges")}</span>;
   }
 
   // Build parts array with only the segments that have content

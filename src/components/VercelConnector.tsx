@@ -10,6 +10,7 @@ import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n";
 
 interface VercelConnectorProps {
   appId: number | null;
@@ -41,6 +42,7 @@ function ConnectedVercelConnector({
   app,
   refreshApp,
 }: ConnectedVercelConnectorProps) {
+  const { t } = useI18n();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const {
     deployments,
@@ -76,7 +78,7 @@ function ConnectedVercelConnector({
       className="mt-4 w-full rounded-md"
       data-testid="vercel-connected-project"
     >
-      <p className="typo-caption">Conectado al proyecto de Vercel:</p>
+      <p className="typo-caption">{t("connectors.vercelConnected")}</p>
       <a
         onClick={(e) => {
           e.preventDefault();
@@ -196,6 +198,7 @@ function UnconnectedVercelConnector({
   refreshSettings,
   refreshApp,
 }: UnconnectedVercelConnectorProps) {
+  const { t } = useI18n();
   // --- Manual Token Entry State ---
   const [accessToken, setAccessToken] = useState("");
   const [isSavingToken, setIsSavingToken] = useState(false);
@@ -361,9 +364,9 @@ function UnconnectedVercelConnector({
                 Para conectar tu app a Vercel, deberás crear un token de acceso:
               </p>
               <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                <li>Si no tienes una cuenta de Vercel, regístrate primero</li>
-                <li>Ve a los ajustes de Vercel para crear un token</li>
-                <li>Copia el token y pégalo a continuación</li>
+                <li>{t("connectors.vercelNoAccount")}</li>
+                <li>{t("connectors.vercelSettings")}</li>
+                <li>{t("connectors.vercelCopyToken")}</li>
               </ol>
 
               <div className="flex gap-2 mt-3">
@@ -443,7 +446,7 @@ function UnconnectedVercelConnector({
   return (
     <div className="mt-4 w-full rounded-md" data-testid="vercel-setup-project">
       {/* Collapsible Header */}
-      <div className="font-medium mb-2">Configura tu proyecto de Vercel</div>
+      <div className="font-medium mb-2">{t("connectors.vercelConfigure")}</div>
 
       {/* Collapsible Content */}
       <div
@@ -589,6 +592,7 @@ function UnconnectedVercelConnector({
 }
 
 export function VercelConnector({ appId, folderName }: VercelConnectorProps) {
+  const { t } = useI18n();
   const { app, refreshApp } = useLoadApp(appId);
   const { settings, refreshSettings } = useSettings();
 

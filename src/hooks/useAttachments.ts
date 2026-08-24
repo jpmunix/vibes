@@ -188,7 +188,7 @@ export function useAttachments() {
         }
       }
     },
-    [addAttachments, supportsImages, isStrategistMode],
+    [addAttachments, supportsImages],
   );
 
   return {

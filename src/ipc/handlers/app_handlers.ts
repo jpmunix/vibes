@@ -1739,7 +1739,7 @@ export function registerAppHandlers() {
     );
     return {
       vibes: packageJson.version,
-      runtime: runtimePkg.version,
+      opencode: runtimePkg.version,
       node: process.versions.node,
       electron: process.versions.electron || "?",
       platform: process.platform,

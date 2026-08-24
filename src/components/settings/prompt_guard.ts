@@ -22,3 +22,54 @@ export function canDisablePrompt(systemId: string | null | undefined): boolean {
 export const LOCKED_PROMPT_SYSTEM_IDS: ReadonlySet<string> = new Set([
   "runtime_agent_base",
 ]);
+
+/**
+ * ¿Es este el prompt del Núcleo del agente (runtime_agent_base)?
+ *
+ * Se usa para mostrar el aviso informativo de verbosidad (card #182): el
+ * núcleo define CÓMO actúa el agente, pero la longitud de respuesta la
+ * controla el selector de Verbosidad, no este texto.
+ */
+export function isAgentCorePrompt(
+  systemId: string | null | undefined,
+): boolean {
+  return systemId === "runtime_agent_base";
+}
+
+/**
+ * Campos del editor de prompt que quedan ocultos o en solo lectura.
+ *
+ * Para el prompt del sistema (runtime_agent_base, "Núcleo del agente") solo se
+ * deja editar el CONTENIDO: título y descripción pasan a solo lectura, y se
+ * ocultan la categoría, el ámbito (scope) y el asistente "Generar con IA"
+ * (card #183). Para el resto de prompts (custom y ctx_*) todos los campos son
+ * editables.
+ */
+export interface PromptEditorLock {
+  /** Oculta el selector de Categoría. */
+  hideCategory: boolean;
+  /** Oculta el selector de Ámbito (Scope). */
+  hideScope: boolean;
+  /** Título en solo lectura. */
+  titleReadonly: boolean;
+  /** Descripción en solo lectura. */
+  descriptionReadonly: boolean;
+  /** Oculta el asistente "Generar con IA". */
+  hideAiGenerate: boolean;
+}
+
+export function getPromptEditorLock(
+  systemId: string | null | undefined,
+): PromptEditorLock {
+  const locked =
+    systemId !== null && systemId !== undefined
+      ? LOCKED_PROMPT_SYSTEM_IDS.has(systemId)
+      : false;
+  return {
+    hideCategory: locked,
+    hideScope: locked,
+    titleReadonly: locked,
+    descriptionReadonly: locked,
+    hideAiGenerate: locked,
+  };
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   canDisablePrompt,
+  getPromptEditorLock,
   LOCKED_PROMPT_SYSTEM_IDS,
 } from "./prompt_guard";
 
@@ -23,5 +24,42 @@ describe("canDisablePrompt — regla de prompts bloqueados", () => {
   it("los prompts custom (sin systemId) sí se pueden desactivar", () => {
     expect(canDisablePrompt(null)).toBe(true);
     expect(canDisablePrompt(undefined)).toBe(true);
+  });
+});
+
+// Card #183: el prompt del sistema solo permite editar su contenido. El resto
+// de campos del editor (categoría, scope, título, descripción, Generar con IA)
+// quedan ocultos o en solo lectura.
+
+describe("getPromptEditorLock — campos del editor por prompt", () => {
+  it("el prompt del sistema bloquea todos los campos excepto el contenido", () => {
+    const lock = getPromptEditorLock("runtime_agent_base");
+    expect(lock.hideCategory).toBe(true);
+    expect(lock.hideScope).toBe(true);
+    expect(lock.titleReadonly).toBe(true);
+    expect(lock.descriptionReadonly).toBe(true);
+    expect(lock.hideAiGenerate).toBe(true);
+  });
+
+  it("los prompts ctx_* conservan todos los campos editables", () => {
+    for (const id of ["ctx_language", "ctx_task_management", "ctx_plan_mode", "ctx_build_walkthrough"]) {
+      const lock = getPromptEditorLock(id);
+      expect(lock.hideCategory).toBe(false);
+      expect(lock.hideScope).toBe(false);
+      expect(lock.titleReadonly).toBe(false);
+      expect(lock.descriptionReadonly).toBe(false);
+      expect(lock.hideAiGenerate).toBe(false);
+    }
+  });
+
+  it("los prompts custom (sin systemId) conservan todos los campos editables", () => {
+    for (const id of [null, undefined] as const) {
+      const lock = getPromptEditorLock(id);
+      expect(lock.hideCategory).toBe(false);
+      expect(lock.hideScope).toBe(false);
+      expect(lock.titleReadonly).toBe(false);
+      expect(lock.descriptionReadonly).toBe(false);
+      expect(lock.hideAiGenerate).toBe(false);
+    }
   });
 });

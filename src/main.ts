@@ -122,7 +122,6 @@ const SILENCED_SCOPES = new Set<string>([
   "auth-handlers",
   "token_count_handlers",
   // "opencode_diagnostic" removed (B6 swap Slice 2.1.2.c) — handler deleted
-  "morph_patcher",
   "proposal_handlers",
   "window-handlers",
   "tsc",

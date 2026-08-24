@@ -54,16 +54,17 @@ export function DeleteConfirmationDialog({
             </AlertDialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Eliminar {itemType.toLowerCase()}</p>
+            <p>{t("dialogs.deleteTooltip", { type: itemType.toLowerCase() })}</p>
           </TooltipContent>
         </Tooltip>
       )}
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar {itemType}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("dialogs.deleteTitle", { type: itemType })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            ¿Estás seguro de que quieres eliminar "{itemName}"? Esta acción no
-            se puede deshacer.
+            {t("dialogs.deleteDescription", { name: itemName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -76,10 +77,10 @@ export function DeleteConfirmationDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Eliminando...
+                {t("dialogs.deleting")}
               </>
             ) : (
-              "Eliminar"
+              t("dialogs.delete")
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

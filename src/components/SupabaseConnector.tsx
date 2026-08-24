@@ -35,8 +35,10 @@ import { useDeepLink } from "@/contexts/DeepLinkContext";
 
 import { ExternalLink, Plus, RefreshCw, Trash2 } from "@/components/ui/icons";
 import { isSupabaseConnected } from "@/lib/schemas";
+import { useI18n } from "@/lib/i18n";
 
 export function SupabaseConnector({ appId }: { appId: number }) {
+  const { t } = useI18n();
   const { settings, refreshSettings } = useSettings();
   const { app, refreshApp } = useLoadApp(appId);
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
@@ -198,7 +200,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
       <CollapsibleCard
         title="Supabase"
         icon={<SupabaseIcon className="h-5 w-5" />}
-        description="Selecciona un proyecto de Supabase para conectar a esta app"
+        description={t("integrations.supabaseProjectDesc")}
       >
         <div className="flex items-center justify-end gap-2 mb-4">
           <Button
@@ -284,7 +286,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
               </p>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="project-select">Proyecto</Label>
+                <Label htmlFor="project-select">{t("integrations.project")}</Label>
                 <UnifiedSelector
                   value={currentProjectValue}
                   onChange={handleProjectSelect}
@@ -320,7 +322,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
     <CollapsibleCard
       title="Supabase"
       icon={<SupabaseIcon className="h-5 w-5" />}
-      description="Conecta tu cuenta de Supabase para gestionar tu base de datos"
+      description={t("integrations.supabaseAccountDesc")}
     >
       <Button
         onClick={handleAddAccount}

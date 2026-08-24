@@ -17,6 +17,7 @@ import {
   buildFilesChangedTag,
   buildTokenUsageTag,
   buildCancelledTag,
+  buildTurnSummaryTag,
   cleanResponseText,
   reformatToolResultContent,
 } from "./event_mapper";
@@ -426,6 +427,86 @@ describe("closing tags", () => {
   });
   it("cancelled tag", () => {
     expect(buildCancelledTag()).toBe("<vibes-cancelled></vibes-cancelled>");
+  });
+});
+
+describe("turn summary tag — memoria de turno #180 (Slice 2)", () => {
+  it("buildTurnSummaryTag formats Read/Listed/Modified lines", () => {
+    const tag = buildTurnSummaryTag({
+      filesRead: ["a.ts", "b.ts"],
+      dirsListed: ["src"],
+      filesModified: ["c.ts"],
+    });
+    expect(tag).toBe(
+      "<vibes-context-summary>\nRead: a.ts, b.ts\nListed: src\nModified: c.ts\n</vibes-context-summary>",
+    );
+  });
+
+  it("buildTurnSummaryTag returns empty string when no data", () => {
+    expect(buildTurnSummaryTag({ filesRead: [], dirsListed: [], filesModified: [] })).toBe("");
+    expect(buildTurnSummaryTag({})).toBe("");
+  });
+
+  it("buildTurnSummaryTag dedupes and caps list lengths", () => {
+    const tag = buildTurnSummaryTag({
+      filesRead: ["dup.ts", "dup.ts", "other.ts"],
+      dirsListed: ["d1", "d1"],
+    });
+    expect(tag).toContain("Read: dup.ts, other.ts");
+    expect(tag).toContain("Listed: d1");
+    expect(tag).not.toContain("Modified:");
+    // Cap: más de 30 reads → solo 30 en el tag.
+    const many = Array.from({ length: 35 }, (_, i) => `f${i}.ts`);
+    const capped = buildTurnSummaryTag({ filesRead: many });
+    expect(capped).toContain("Read: f0.ts");
+    expect(capped).not.toContain("f30.ts");
+  });
+
+  it("mapper tracks read/list files for the turn summary", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc-r",
+      toolId: "read_file",
+      args: { path: "src/a.ts" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc-r",
+      toolId: "read_file",
+      result: { ok: true, output: "content" },
+    } as any);
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc-l",
+      toolId: "list_dir",
+      args: { path: "src" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc-l",
+      toolId: "list_dir",
+      result: { ok: true, output: "entries" },
+    } as any);
+    expect(m.getFilesRead()).toEqual(["src/a.ts"]);
+    expect(m.getDirsListed()).toEqual(["src"]);
+  });
+
+  it("failed reads are not tracked", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc-f",
+      toolId: "read_file",
+      args: { path: "missing.ts" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc-f",
+      toolId: "read_file",
+      result: { ok: false, error: { name: "FileNotFound", message: "nope" } },
+    } as any);
+    expect(m.getFilesRead()).toEqual([]);
   });
 });
 

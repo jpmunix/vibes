@@ -83,6 +83,7 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
 import { WindowsControls } from "@/components/WindowsControls";
+import { useI18n } from "@/lib/i18n";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 interface GitPanelProps {
@@ -522,6 +523,7 @@ function FileContentViewer({
   isDirectory?: boolean;
   changedFilesCount?: number;
 }) {
+  const { t } = useI18n();
   const { isDarkMode } = useTheme();
   const lang = filepath ? getLanguageFromPath(filepath) : undefined;
   const highlighter = useHighlighter(lang);
@@ -541,7 +543,7 @@ function FileContentViewer({
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
         <Diff size={36} className="opacity-15" />
-        <p className="text-sm">Selecciona un archivo para ver diferencias</p>
+        <p className="text-sm">{t("gitPanel.selectFile")}</p>
       </div>
     );
   }
@@ -911,6 +913,7 @@ export function GitPanel({
   initialCommitHash,
   isWindow,
 }: GitPanelProps) {
+  const { t } = useI18n();
   const [discardTarget, setDiscardTarget] = useState<string[] | null>(null);
   const appId = useAtomValue(selectedAppIdAtom);
   const { app, refreshApp } = useLoadApp(appId);
@@ -1612,7 +1615,7 @@ export function GitPanel({
                                         <FolderTree size={14} />
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Vista árbol</TooltipContent>
+                                    <TooltipContent>{t("gitPanel.treeView")}</TooltipContent>
                                   </Tooltip>
                                 )}
                               </div>
@@ -1766,7 +1769,7 @@ export function GitPanel({
                               )}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Generar con IA</TooltipContent>
+                          <TooltipContent>{t("gitPanel.generateWithAI")}</TooltipContent>
                         </Tooltip>
                       </div>
                     </div>
@@ -1999,6 +2002,7 @@ function MergeConflictSection({
   isResolvingMerge: boolean;
   isAbortingMerge: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="border-b border-amber-500/25 bg-amber-950/20 shrink-0">
       <div className="px-3 py-2 space-y-2">
@@ -2066,7 +2070,7 @@ function MergeConflictSection({
                               <ShieldCheck size={11} />
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent>Mío</TooltipContent>
+                          <TooltipContent>{t("gitPanel.mine")}</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>

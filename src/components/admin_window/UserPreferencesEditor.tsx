@@ -145,7 +145,6 @@ const MODEL_KEYS = new Set([
   "embeddingsModel",
   "memoriesSynthesisModelV2",
   "memoriesRouterModelV2",
-  "morphPatchModel",
 ]);
 
 /** Keys that contain sensitive values (API keys, tokens) */

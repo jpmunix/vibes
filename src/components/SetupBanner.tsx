@@ -28,6 +28,7 @@ import openrouterLogo from "../../assets/ai-logos/openrouter-logo.png";
 import { OnboardingBanner } from "./home/OnboardingBanner";
 import { showError } from "@/lib/toast";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 
 type NodeInstallStep =
   | "install"
@@ -36,6 +37,7 @@ type NodeInstallStep =
   | "finished-checking";
 
 export function SetupBanner() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(true);
@@ -190,7 +192,7 @@ export function SetupBanner() {
                 </p>
               ) : (
                 <div className="text-sm">
-                  <p>Node.js es necesario para ejecutar apps localmente.</p>
+                  <p>{t("integrations.nodeRequired")}</p>
                   {nodeInstallStep === "waiting-for-continue" && (
                     <p className="mt-1">
                       Después de instalar Node.js, haz clic en "Continuar". Si
@@ -362,6 +364,7 @@ function VibesStartHeading() {
 }
 
 function NodeJsHelpCallout() {
+  const { t } = useI18n();
   return (
     <div className="mt-3 p-3 bg-(--background-lighter) border rounded-lg text-sm">
       <p>
@@ -378,7 +381,7 @@ function NodeJsHelpCallout() {
       </p>
       <p className="mt-2">
         ¿Sigues atascado? Haz clic en el botón de <b>Ayuda</b> en la esquina
-        inferior izquierda y luego en <b>Reportar un error</b>.
+        inferior izquierda y luego en <b>{t("integrations.reportError")}</b>.
       </p>
     </div>
   );

@@ -332,6 +332,72 @@ describe("handleRuntimeStream contract — return shape", () => {
     expect(result.success).toBe(false);
     expect(result.fullResponse).toMatch(/modelo/i);
   });
+
+  // #179: un prompt vacío (post-strip de slash commands) no debe llegar al
+  // runtime: el provider descarta user messages con texto vacío y el modelo
+  // respondería sin petición. El guard aborta con success:false y mensaje
+  // visible, SIN crear sesión (cero tokens quemados).
+  it("#179 fails fast when req.prompt is empty (no session created, no tokens)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+    const { sender } = makeFakeSender();
+
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 1, prompt: "" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.fullResponse).toMatch(/vacío|vacio/i);
+    // El guard dispara ANTES de tocar el runtime: ni sesión ni tokens.
+    expect(createSessionSpy).not.toHaveBeenCalled();
+    expect(result.inputTokens).toBe(0);
+    expect(result.outputTokens).toBe(0);
+    createSessionSpy.mockRestore();
+  });
+
+  it("#179 fails fast when prompt is whitespace-only", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 1, prompt: "   \n\t " },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.fullResponse).toMatch(/vacío|vacio/i);
+  });
+
+  // undoRedo sin prompt es un flujo legítimo (deshacer sin nuevo mensaje):
+  // el guard NO debe dispararse. El chat real siempre trae historial (el undo
+  // ocurre sobre mensajes previos), y ese historial es lo que satisface al
+  // guard de vibes-core (createSession con prompt vacío + messages vacíos
+  // lanza). Aquí se verifica la interacción entre ambas defensas.
+  it("#179 allows empty prompt when undoRedo is set (legit undo flow)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 1, prompt: "", undoRedo: true },
+      new AbortController(),
+      makeOptions({
+        chatMessages: [
+          { id: 1, role: "user", content: "mensaje previo" },
+          { id: 42, role: "assistant", content: "respuesta previa" },
+        ],
+      }),
+    );
+
+    // El guard no dispara: el flujo continúa con el historial como contexto.
+    expect(result.success).toBe(true);
+    expect(result.fullResponse).not.toMatch(/vacío|vacio/i);
+  });
 });
 
 // ============================================================================

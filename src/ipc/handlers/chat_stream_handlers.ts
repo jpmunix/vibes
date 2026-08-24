@@ -14,7 +14,6 @@ import {
   type ToolExecutionOptions,
 } from "ai";
 
-import { getAuthContext } from "../../lib/auth/store";
 import { notifyStreamStarted, notifyStreamEnded } from "../../main/tray";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -25,6 +24,7 @@ import {
   DEFAULT_PROMPTS,
   DEFAULT_PROMPT_SCOPES,
 } from "../../prompts/defaults";
+import { buildVerbosityInstructions } from "../../prompts/verbosity";
 import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
@@ -1388,6 +1388,8 @@ This conversation includes one or more image attachments. When the user uploads 
           );
         }
 
+        let visionThought = "";
+
         const simpleStreamText = async ({
           chatMessages,
           modelClient,
@@ -1502,7 +1504,6 @@ This conversation includes one or more image attachments. When the user uploads 
             });
 
           let finalMessages = framedMessages;
-          let visionThought = "";
 
           if (
             !modelSupportsVision(selectedModel.name) &&
@@ -1510,7 +1511,7 @@ This conversation includes one or more image attachments. When the user uploads 
           ) {
             const result = await preprocessImages(
               finalMessages,
-              context.userId,
+              currentUserId,
               settings,
             );
             finalMessages = result.messages;
@@ -1837,6 +1838,18 @@ This conversation includes one or more image attachments. When the user uploads 
             }
             contextInstructions.push(prompt.content);
           }
+
+          // Verbosidad dinámica (card #182): el selector de Ajustes es la
+          // fuente de verdad sobre cuánto habla el agente. Se inyecta SIEMPRE
+          // (independiente de overrides) — el núcleo editable no controla la
+          // longitud de respuesta. Se añade AL FINAL para que sea la última
+          // voz que lee el modelo sobre longitud (el núcleo ya no trae ninguna).
+          const verbosityLevel = settings.textVerbosity ?? "low";
+          contextInstructions.push(
+            buildVerbosityInstructions(verbosityLevel, {
+              includeWalkthrough: agentId === "build",
+            }),
+          );
 
           // MCP Server instructions
           try {

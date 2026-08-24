@@ -197,6 +197,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
   onRename,
   onArchive,
   onDelete,
+  onChatClick,
   onLabelDialog,
 }: ChatMenuAction) {
   const queryClient = useQueryClient();

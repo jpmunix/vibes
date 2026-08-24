@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { useI18n } from "@/lib/i18n";
 import {
   Database,
   Eye,
@@ -29,6 +30,7 @@ const EMPTY_CONFIG: PocketBaseConfig = {
 };
 
 export function PocketBaseConnector({ appId }: { appId: number }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<PocketBaseConfig>({ ...EMPTY_CONFIG });
@@ -96,7 +98,7 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
       <CollapsibleCard
         title="PocketBase"
         icon={<PocketBaseIcon className="h-5 w-5" />}
-        description="BaaS SQLite en un solo archivo con Auth, DB y Realtime"
+        description={t("integrations.pocketbaseDesc")}
       >
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -110,12 +112,12 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
     <CollapsibleCard
       title="PocketBase"
       icon={<PocketBaseIcon className="h-5 w-5" />}
-      description="Backend-as-a-Service (BaaS) con Auth, Database, Realtime y Storage (Files)."
+      description={t("integrations.pocketbaseFullDesc")}
     >
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-black/10 dark:border-white/10 bg-black/3 dark:bg-white/3 space-y-3">
           <div>
-            <Label className="text-xs">URL de la Instancia</Label>
+            <Label className="text-xs">{t("integrations.pocketbaseUrl")}</Label>
             <Input
               value={config.url}
               onChange={(e) => setConfig({ ...config, url: e.target.value })}

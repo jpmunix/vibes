@@ -1,6 +1,7 @@
 import { sidebarActionAtom, type SidebarAction } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 
@@ -45,44 +46,48 @@ import { showReleaseNotesBadgeAtom } from "@/atoms/uiAtoms";
 // Menu items.
 type NavMenuAction = {
   label: string;
+  labelKey?: string;
   icon: React.ElementType;
   action: SidebarAction;
 };
 
 const items: {
-  title: string;
+  titleKey: string;
   tabKey: string;
   to: string;
   icon: React.ElementType;
   menuItems?: NavMenuAction[];
 }[] = [
   {
-    title: "Agente",
+    titleKey: "tabs.agent",
     tabKey: "Workspace",
     to: "/",
     icon: Bot,
     menuItems: [
       {
         label: "Nuevo proyecto",
+        labelKey: "workspaceMenu.newProject",
         icon: FolderPlus,
         action: "workspace:new-project",
       },
       {
         label: "Abrir workspace",
+        labelKey: "workspaceMenu.openWorkspace",
         icon: FolderOpen,
         action: "workspace:open-folder",
       },
-      { label: "Buscar workspaces", icon: Search, action: "workspace:search" },
+      { label: "Buscar workspaces", labelKey: "workspaceMenu.searchWorkspaces", icon: Search, action: "workspace:search" },
       { label: "_separator", icon: Plus, action: null },
       {
         label: "Cerrar workspaces",
+        labelKey: "workspaceMenu.closeWorkspaces",
         icon: FolderX,
         action: "workspace:bulk-close",
       },
     ],
   },
   {
-    title: "Ajustes",
+    titleKey: "tabs.settings",
     tabKey: "Ajustes",
     to: "/settings",
     icon: Settings,
@@ -96,6 +101,7 @@ const items: {
  */
 export function TopNavbar() {
   const { state, toggleSidebar } = useSidebar();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useActiveTab();
   const dispatchAction = useSetAtom(sidebarActionAtom);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
@@ -278,7 +284,7 @@ export function TopNavbar() {
                 isActive && item.menuItems && item.menuItems.length > 0;
               return (
                 <div
-                  key={item.title}
+                  key={item.titleKey}
                   className="relative"
                   onMouseEnter={() => {
                     if (hoverTimeoutRef.current)
@@ -309,7 +315,7 @@ export function TopNavbar() {
                     }}
                   >
                     <item.icon size={17} />
-                    <span>{item.title}</span>
+                    <span>{t(item.titleKey)}</span>
                     {hasMenu && (
                       <ChevronDown size={12} className="opacity-50 -ml-1" />
                     )}
@@ -344,7 +350,7 @@ export function TopNavbar() {
                               size={14}
                               className="opacity-60 shrink-0"
                             />
-                            <span>{mi.label}</span>
+                            <span>{mi.labelKey ? t(mi.labelKey) : mi.label}</span>
                           </button>
                         );
                       })}

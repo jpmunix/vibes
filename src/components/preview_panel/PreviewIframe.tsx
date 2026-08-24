@@ -407,6 +407,7 @@ export const DeviceModeButton = () => {
 
 // Preview iframe component
 export const PreviewIframe = ({ loading }: { loading: boolean }) => {
+  const { t } = useI18n();
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { appUrl, originalUrl } = useAtomValue(appUrlAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);

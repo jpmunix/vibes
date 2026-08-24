@@ -57,9 +57,9 @@ export function registerPermissionHandler() {
               const result = await writeSettings({
                 ...prev,
                 permissions: {
-                  ...(prev.permissions ?? {}),
+                  ...prev.permissions,
                   tools: {
-                    ...(prev.permissions?.tools ?? {}),
+                    ...prev.permissions?.tools,
                     [pillKey]: "allow",
                   },
                 },

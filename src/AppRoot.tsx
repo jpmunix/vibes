@@ -17,6 +17,7 @@ import { queryKeys } from "./lib/queryKeys";
 import { useUpdateChecker } from "./hooks/useUpdateChecker";
 import { UpdateAvailableDialog } from "./components/UpdateAvailableDialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { showError } from "./lib/toast";
 
 export default function AppRoot() {
   const queryClient = useQueryClient();

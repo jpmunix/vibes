@@ -25,7 +25,11 @@ import {
 } from "@/components/ui/icons";
 import { toast } from "sonner";
 import type { PromptDto, PromptCategoryDto } from "@/ipc/types";
-import { canDisablePrompt } from "./prompt_guard";
+import {
+  canDisablePrompt,
+  getPromptEditorLock,
+  isAgentCorePrompt,
+} from "./prompt_guard";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
   Dialog,
@@ -71,6 +75,11 @@ function PromptEditor({
   // El prompt base del runtime es obligatorio: no se puede desactivar, pero
   // su contenido sí se puede editar y restaurar (card #117 follow-up).
   const canToggle = canDisablePrompt(prompt.systemId);
+
+  // Card #183: para el prompt del sistema solo se deja editar el contenido;
+  // los demás campos (categoría, scope, título, descripción, Generar con IA)
+  // quedan ocultos o en solo lectura.
+  const editorLock = getPromptEditorLock(prompt.systemId);
 
   const hasUnsavedChanges =
     localTitle !== prompt.title ||
@@ -316,7 +325,12 @@ function PromptEditor({
 
           <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1 custom-scrollbar">
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
+              <div
+                className={cn(
+                  "space-y-1.5",
+                  editorLock.hideCategory && editorLock.hideScope && "col-span-3",
+                )}
+              >
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Título
                 </label>
@@ -324,82 +338,95 @@ function PromptEditor({
                   value={localTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
                   placeholder={t("prompts.promptTitlePlaceholder")}
-                  className="h-9 rounded-lg"
+                  readOnly={editorLock.titleReadonly}
+                  disabled={editorLock.titleReadonly}
+                  className={cn(
+                    "h-9 rounded-lg",
+                    editorLock.titleReadonly && "cursor-not-allowed",
+                  )}
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  {t("prompts.categoryLabel")}
-                </label>
-                <Select
-                  value={localCategoryId ? String(localCategoryId) : undefined}
-                  onValueChange={(val) => setLocalCategoryId(Number(val))}
-                >
-                  <SelectTrigger className="h-9 rounded-lg">
-                    <SelectValue placeholder={t("prompts.selectCategory")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!editorLock.hideCategory && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t("prompts.categoryLabel")}
+                  </label>
+                  <Select
+                    value={localCategoryId ? String(localCategoryId) : undefined}
+                    onValueChange={(val) => setLocalCategoryId(Number(val))}
+                  >
+                    <SelectTrigger className="h-9 rounded-lg">
+                      <SelectValue placeholder={t("prompts.selectCategory")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Ámbito (Scope)
-                </label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full h-9 rounded-lg justify-between font-normal bg-background px-3 border-border hover:bg-background/80"
-                    >
-                      <span className="truncate">
-                        {getScopeLabel(localScope)}
-                      </span>
-                      <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="start">
-                    <DropdownMenuCheckboxItem
-                      checked={localScope === "all"}
-                      onCheckedChange={() => handleToggleScope("all")}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Todos
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem
-                      checked={
-                        localScope !== "all" && activeScopes.has("agent")
-                      }
-                      onCheckedChange={() => handleToggleScope("agent")}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Agente
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                      checked={localScope !== "all" && activeScopes.has("plan")}
-                      onCheckedChange={() => handleToggleScope("plan")}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Planificar
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                      checked={localScope !== "all" && activeScopes.has("ask")}
-                      onCheckedChange={() => handleToggleScope("ask")}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Preguntar
-                    </DropdownMenuCheckboxItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {!editorLock.hideScope && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Ámbito (Scope)
+                  </label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full h-9 rounded-lg justify-between font-normal bg-background px-3 border-border hover:bg-background/80"
+                      >
+                        <span className="truncate">
+                          {getScopeLabel(localScope)}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="start">
+                      <DropdownMenuCheckboxItem
+                        checked={localScope === "all"}
+                        onCheckedChange={() => handleToggleScope("all")}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        Todos
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuCheckboxItem
+                        checked={
+                          localScope !== "all" && activeScopes.has("agent")
+                        }
+                        onCheckedChange={() => handleToggleScope("agent")}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        Agente
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={
+                          localScope !== "all" && activeScopes.has("plan")
+                        }
+                        onCheckedChange={() => handleToggleScope("plan")}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        Planificar
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={
+                          localScope !== "all" && activeScopes.has("ask")
+                        }
+                        onCheckedChange={() => handleToggleScope("ask")}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        Preguntar
+                      </DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -410,7 +437,12 @@ function PromptEditor({
                 value={localDesc}
                 onChange={(e) => setLocalDesc(e.target.value)}
                 placeholder={t("prompts.descriptionOptional")}
-                className="h-9 rounded-lg"
+                readOnly={editorLock.descriptionReadonly}
+                disabled={editorLock.descriptionReadonly}
+                className={cn(
+                  "h-9 rounded-lg",
+                  editorLock.descriptionReadonly && "cursor-not-allowed",
+                )}
               />
             </div>
 
@@ -419,11 +451,13 @@ function PromptEditor({
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Contenido del Prompt
                 </label>
-                <AiStrategistAssistant
-                  type="prompt"
-                  currentContent={localContent}
-                  onAccept={setLocalContent}
-                />
+                {!editorLock.hideAiGenerate && (
+                  <AiStrategistAssistant
+                    type="prompt"
+                    currentContent={localContent}
+                    onAccept={setLocalContent}
+                  />
+                )}
               </div>
 
               <div className="rounded-xl border border-border overflow-hidden bg-muted/10 focus-within:ring-2 focus-within:ring-primary/30 transition-all duration-200">
@@ -434,6 +468,13 @@ function PromptEditor({
                   onChange={(e) => setLocalContent(e.target.value)}
                 />
               </div>
+
+              {isAgentCorePrompt(prompt.systemId) && (
+                <p className="text-xs text-muted-foreground flex items-start gap-1.5 px-1">
+                  <span aria-hidden="true">ℹ️</span>
+                  {t("prompts.verbosityNotice")}
+                </p>
+              )}
             </div>
           </div>
 

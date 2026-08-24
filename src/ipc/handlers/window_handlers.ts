@@ -1122,11 +1122,11 @@ export function registerWindowHandlers() {
         .filter((t) => !!t.sessionId);
       if (dryRun) {
         return {
-          dryRun: true,
-          scanned: userChats.length,
-          candidates: targets.length,
+          totalInOpenCode: userChats.length,
+          knownInVibes: targets.length,
+          orphaned: 0,
           deleted: 0,
-          orphans: 0,
+          errors: 0,
           report:
             `Would delete ${targets.length} runtime session(s) ` +
             `across ${userChats.length} chat(s).`,
@@ -1137,23 +1137,25 @@ export function registerWindowHandlers() {
         deleteRuntimeSessionBySessionId,
       } = await import("../runtime/runtime_bridge");
       let deleted = 0;
+      let errors = 0;
       for (const t of targets) {
         try {
           await deleteRuntimeSessionBySessionId(t.sessionId!);
           await deleteRuntimeSession(t.chatId);
           deleted += 1;
         } catch (e: any) {
+          errors += 1;
           logger.warn(
             `[window_handlers] purge failed for session ${t.sessionId}: ${e.message}`,
           );
         }
       }
       return {
-        dryRun: false,
-        scanned: userChats.length,
-        candidates: targets.length,
+        totalInOpenCode: userChats.length,
+        knownInVibes: targets.length,
+        orphaned: 0,
         deleted,
-        orphans: 0,
+        errors,
         report: `Deleted ${deleted}/${targets.length} runtime session(s).`,
       };
     },

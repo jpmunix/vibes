@@ -66,6 +66,7 @@ ConsoleItem.displayName = "ConsoleItem";
 
 // Console component
 export const Console = () => {
+  const { t } = useI18n();
   const consoleEntries = useAtomValue(appConsoleEntriesAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -96,7 +97,6 @@ export const Console = () => {
   // Track if initial scroll has completed to prevent glitches during first interaction
   const initialScrollDone = useRef(false);
   const handleClearFilters = () => {
-  const { t } = useI18n();
     setLevelFilter("all");
     setTypeFilter("all");
     setSourceFilter("");

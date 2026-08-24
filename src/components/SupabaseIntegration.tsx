@@ -8,6 +8,7 @@ import { useSupabase } from "@/hooks/useSupabase";
 import { showSuccess, showError } from "@/lib/toast";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 function TogglePill({
   checked,
@@ -37,6 +38,7 @@ function TogglePill({
 }
 
 export function SupabaseIntegration() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -57,7 +59,7 @@ export function SupabaseIntegration() {
         supabaseTokenExpiresAt: undefined,
         supabaseUserId: undefined,
       });
-      showSuccess("Desconectado de Supabase con éxito");
+      showSuccess(t("integrations.supabaseDisconnected"));
     } catch (err: any) {
       showError(
         err.message || "Se produjo un error al desconectar de Supabase",
@@ -70,7 +72,7 @@ export function SupabaseIntegration() {
   const handleDeleteOrganization = async (slug: string) => {
     try {
       await deleteOrganization({ organizationSlug: slug });
-      showSuccess("Organización desconectada");
+      showSuccess(t("integrations.orgDisconnected"));
     } catch (err: any) {
       showError(err.message || "Error al desconectar organización");
     }
@@ -81,7 +83,7 @@ export function SupabaseIntegration() {
       await updateSettings({
         enableSupabaseWriteSqlMigration: enabled,
       });
-      showSuccess("Ajuste actualizado");
+      showSuccess(t("integrations.settingUpdated"));
     } catch (err: any) {
       showError(err.message || "Error al actualizar el ajuste");
     }
@@ -92,7 +94,7 @@ export function SupabaseIntegration() {
       await updateSettings({
         skipPruneEdgeFunctions: enabled,
       });
-      showSuccess("Ajuste actualizado");
+      showSuccess(t("integrations.settingUpdated"));
     } catch (err: any) {
       showError(err.message || "Error al actualizar el ajuste");
     }

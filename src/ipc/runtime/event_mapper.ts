@@ -390,6 +390,10 @@ export class VibesEventMapper {
   private timeline: VibesTimelineEntry[] = [];
   /** toolCallId → args snapshot for rendering finished tools. */
   private toolArgs = new Map<string, { toolId: string; detail: string }>();
+  /** Track files read for turn context summary. */
+  private filesRead = new Set<string>();
+  /** Track directories listed for turn context summary. */
+  private dirsListed = new Set<string>();
   /** Track files written/edited for the closing `<vibes-files-changed>` tag. */
   private filesChanged = new Set<string>();
   private diffStats = { insertions: 0, deletions: 0 };
@@ -470,9 +474,15 @@ export class VibesEventMapper {
           error: !ok,
           output,
         });
-        // Track changed files for the closing summary tag.
-        if (ok && (toolId === "write_file" || toolId === "edit_file") && detail) {
-          this.filesChanged.add(detail);
+        // Track files/directories for summary memory between turns.
+        if (ok && detail) {
+          if (toolId === "write_file" || toolId === "edit_file" || toolId === "patch") {
+            this.filesChanged.add(detail);
+          } else if (toolId === "read_file") {
+            this.filesRead.add(detail);
+          } else if (toolId === "list_dir" || toolId === "glob") {
+            this.dirsListed.add(detail);
+          }
         }
         break;
       }
@@ -487,6 +497,14 @@ export class VibesEventMapper {
 
   getFilesChanged(): string[] {
     return Array.from(this.filesChanged);
+  }
+
+  getFilesRead(): string[] {
+    return Array.from(this.filesRead);
+  }
+
+  getDirsListed(): string[] {
+    return Array.from(this.dirsListed);
   }
 
   /**
@@ -534,6 +552,34 @@ export function buildFilesChangedTag(
   if (files.length === 0) return "";
   const filesAttr = files.map(escapeAttr).join(",");
   return `<vibes-files-changed files="${filesAttr}" insertions="${insertions}" deletions="${deletions}"></vibes-files-changed>`;
+}
+
+/**
+ * Builds the compact turn summary tag (<vibes-context-summary>) storing
+ * files read, dirs listed and files modified during the turn (Pi pattern).
+ * This tag is parsed during hydration on subsequent turns to give the model
+ * workspace memory without re-running exploratory tools.
+ */
+export function buildTurnSummaryTag(params: {
+  filesRead?: string[];
+  dirsListed?: string[];
+  filesModified?: string[];
+}): string {
+  const { filesRead = [], dirsListed = [], filesModified = [] } = params;
+  if (filesRead.length === 0 && dirsListed.length === 0 && filesModified.length === 0) {
+    return "";
+  }
+  const lines: string[] = [];
+  if (filesRead.length > 0) {
+    lines.push(`Read: ${[...new Set(filesRead)].slice(0, 30).join(", ")}`);
+  }
+  if (dirsListed.length > 0) {
+    lines.push(`Listed: ${[...new Set(dirsListed)].slice(0, 20).join(", ")}`);
+  }
+  if (filesModified.length > 0) {
+    lines.push(`Modified: ${[...new Set(filesModified)].slice(0, 30).join(", ")}`);
+  }
+  return `<vibes-context-summary>\n${lines.join("\n")}\n</vibes-context-summary>`;
 }
 
 /** Builds the `<vibes-token-usage>` tag from runtime usage. */

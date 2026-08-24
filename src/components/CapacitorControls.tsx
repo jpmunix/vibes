@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { queryKeys } from "@/lib/queryKeys";
+import { useI18n } from "@/lib/i18n";
 
 interface CapacitorControlsProps {
   appId: number;
@@ -33,6 +34,7 @@ interface CapacitorControlsProps {
 type CapacitorStatus = "idle" | "syncing" | "opening";
 
 export function CapacitorControls({ appId }: CapacitorControlsProps) {
+  const { t } = useI18n();
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{
     title: string;
@@ -66,7 +68,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     },
     onSuccess: () => {
       setIosStatus("idle");
-      showSuccess("Proyecto iOS sincronizado y abierto en Xcode");
+      showSuccess(t("integrations.iosSynced"));
     },
     onError: (error) => {
       setIosStatus("idle");
@@ -86,7 +88,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     },
     onSuccess: () => {
       setAndroidStatus("idle");
-      showSuccess("Proyecto Android sincronizado y abierto en Android Studio");
+      showSuccess(t("integrations.androidSynced"));
     },
     onError: (error) => {
       setAndroidStatus("idle");
@@ -224,7 +226,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(errorDetails.message);
-                  showSuccess("Detalles del error copiados al portapapeles");
+                  showSuccess(t("integrations.errorDetailsCopied"));
                 }}
                 variant="ghost"
                 size="sm"

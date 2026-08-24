@@ -664,11 +664,7 @@ export default function SettingsPage() {
             }`}
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.customAgents")}</h2>
-            <p className="typo-caption mb-8">
-              Construye y administra tus propios agentes con instrucciones
-              específicas. Puedes inyectar un system prompt aditivo o pisar
-              completamente las instrucciones nativas.
-            </p>
+            <p className="typo-caption mb-8">{" "}{t("settings.sections.customAgentsDesc")}</p>
             <CustomAgentsSection />
           </div>
 
@@ -692,11 +688,7 @@ export default function SettingsPage() {
                 <Plus className="h-3.5 w-3.5" /> Nueva Categoría
               </Button>
             </div>
-            <p className="typo-caption mb-8">
-              Personaliza las instrucciones que reciben los modelos AI para
-              tareas internas, generación de nombres y el sistema de
-              directrices.
-            </p>
+            <p className="typo-caption mb-8">{" "}{t("settings.sections.promptsDesc")}</p>
 
             {isCreatingCategory && (
               <div className="flex gap-2 p-3 bg-muted/20 rounded-xl border border-border mb-4">
@@ -736,10 +728,7 @@ export default function SettingsPage() {
             }`}
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.guidelines")}</h2>
-            <p className="typo-caption mb-8">
-              Define directrices que el agente recuerda entre sesiones para
-              personalizar sus respuestas.
-            </p>
+            <p className="typo-caption mb-8">{" "}{t("settings.sections.guidelinesDesc")}</p>
             <MemorySettings />
           </div>
 
@@ -757,10 +746,7 @@ export default function SettingsPage() {
             }`}
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.integrations")}</h2>
-            <p className="typo-caption mb-8">
-              Conecta servicios externos para automatizar despliegues y bases de
-              datos.
-            </p>
+            <p className="typo-caption mb-8">{" "}{t("settings.sections.integrationsDesc")}</p>
             <div className="space-y-6">
               <GitHubIntegration />
               <VercelIntegration />
@@ -787,10 +773,7 @@ export default function SettingsPage() {
             className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.skills")}</h2>
-            <p className="typo-caption mb-8">
-              Instrucciones y guías de comportamiento personalizadas para el
-              agente, aplicadas de forma global o específicas por proyecto.
-            </p>
+            <p className="typo-caption mb-8">{" "}{t("settings.sections.skillsDesc")}</p>
             <SkillsSettings />
           </div>
         </div>
@@ -1216,242 +1199,242 @@ export function GeneralSettings({
                 {
                   value: "orbital",
                   label: "Orbital (Original)",
-                  description: "Tres partículas luminosas en órbita con estela",
+                  description: t("loaders.orbital"),
                   rightIcon: renderLoaderIcon("orbital"),
                 },
                 {
                   value: "aurora",
                   label: "Aurora Pulse",
-                  description: "Ondas circulares concéntricas y expansivas",
+                  description: t("loaders.aurora"),
                   rightIcon: renderLoaderIcon("aurora"),
                 },
                 {
                   value: "wave",
                   label: "Bouncing Wave",
-                  description: "Cinco puntos rebotando en onda desfasada",
+                  description: t("loaders.wave"),
                   rightIcon: renderLoaderIcon("wave"),
                 },
                 {
                   value: "jelly",
                   label: "Morphing Jelly",
-                  description: "Gota fluida orgánica en deformación constante",
+                  description: t("loaders.jelly"),
                   rightIcon: renderLoaderIcon("jelly"),
                 },
                 {
                   value: "spark",
                   label: "Pulse Spark",
-                  description: "Chispas brillantes que nacen y se expanden",
+                  description: t("loaders.spark"),
                   rightIcon: renderLoaderIcon("spark"),
                 },
                 {
                   value: "equalizer",
                   label: "Bar Equalizer",
-                  description: "Columnas de frecuencia que suben y bajan",
+                  description: t("loaders.equalizer"),
                   rightIcon: renderLoaderIcon("equalizer"),
                 },
                 {
                   value: "infinity",
                   label: "Infinity Loop",
-                  description: "Partícula que dibuja el símbolo de infinito",
+                  description: t("loaders.infinity"),
                   rightIcon: renderLoaderIcon("infinity"),
                 },
                 {
                   value: "grid",
                   label: "Pixel Grid",
-                  description: "Cuadrícula retro de micro-píxeles secuenciales",
+                  description: t("loaders.grid"),
                   rightIcon: renderLoaderIcon("grid"),
                 },
                 {
                   value: "brackets",
                   label: "Code Brackets",
-                  description: "Corchetes de código en pulsación alternada",
+                  description: t("loaders.brackets"),
                   rightIcon: renderLoaderIcon("brackets"),
                 },
                 {
                   value: "terminal",
                   label: "Terminal Cursor",
-                  description: "Cursor parpadeante de terminal de desarrollo",
+                  description: t("loaders.terminal"),
                   rightIcon: renderLoaderIcon("terminal"),
                 },
                 {
                   value: "server",
                   label: "Server Lights",
                   description:
-                    "Indicadores LED parpadeantes estilo rack de servidores",
+                    t("loaders.server"),
                   rightIcon: renderLoaderIcon("server"),
                 },
                 {
                   value: "morph",
                   label: "Morphing AI Core",
                   description:
-                    "Núcleo con rotación y cambio de forma geométrico",
+                    t("loaders.morph"),
                   rightIcon: renderLoaderIcon("morph"),
                 },
                 {
                   value: "matrix",
                   label: "Matrix Rain",
                   description:
-                    "Flujo descendente de código binario estilo Matrix",
+                    t("loaders.matrix"),
                   rightIcon: renderLoaderIcon("matrix"),
                 },
                 {
                   value: "glow",
                   label: "Glowing Sphere",
-                  description: "Esfera luminosa pulsante con brillo de neon",
+                  description: t("loaders.glow"),
                   rightIcon: renderLoaderIcon("glow"),
                 },
                 {
                   value: "voice",
                   label: "AI Voice",
-                  description: "Barras de espectro de voz de asistente de IA",
+                  description: t("loaders.voice"),
                   rightIcon: renderLoaderIcon("voice"),
                 },
                 {
                   value: "packet",
                   label: "Network Packet",
-                  description: "Envío de paquetes de datos a través de una red",
+                  description: t("loaders.packet"),
                   rightIcon: renderLoaderIcon("packet"),
                 },
                 {
                   value: "sonar",
                   label: "Sonar Ripple",
-                  description: "Ondas de radar concéntricas estilo sonar",
+                  description: t("loaders.sonar"),
                   rightIcon: renderLoaderIcon("sonar"),
                 },
                 {
                   value: "blocks",
                   label: "Data Blocks",
                   description:
-                    "Bloques de datos que se expanden secuencialmente",
+                    t("loaders.blocks"),
                   rightIcon: renderLoaderIcon("blocks"),
                 },
                 {
                   value: "nodes",
                   label: "Node Connection",
-                  description: "Conexión de datos secuencial entre dos nodos",
+                  description: t("loaders.nodes"),
                   rightIcon: renderLoaderIcon("nodes"),
                 },
                 {
                   value: "glowring",
                   label: "Neon Glow Ring",
                   description:
-                    "Anillo neon giratorio de dos colores con brillo",
+                    t("loaders.glowring"),
                   rightIcon: renderLoaderIcon("glowring"),
                 },
                 {
                   value: "m-dots",
                   label: "Micro Dots",
-                  description: "Tres puntitos de 2.5px parpadeantes",
+                  description: t("loaders.m-dots"),
                   rightIcon: renderLoaderIcon("m-dots"),
                 },
                 {
                   value: "m-radar",
                   label: "Micro Radar",
-                  description: "Círculo con barrido angular de barrido cónico",
+                  description: t("loaders.m-radar"),
                   rightIcon: renderLoaderIcon("m-radar"),
                 },
                 {
                   value: "m-sine",
                   label: "Sine Line",
-                  description: "Línea de frecuencia con escala horizontal",
+                  description: t("loaders.m-sine"),
                   rightIcon: renderLoaderIcon("m-sine"),
                 },
                 {
                   value: "m-orbit",
                   label: "Orbit Dot",
-                  description: "Punto central con satélite orbitando",
+                  description: t("loaders.m-orbit"),
                   rightIcon: renderLoaderIcon("m-orbit"),
                 },
                 {
                   value: "m-eq",
                   label: "Micro Equalizer",
-                  description: "Tres barras finas verticales de frecuencia",
+                  description: t("loaders.m-eq"),
                   rightIcon: renderLoaderIcon("m-eq"),
                 },
                 {
                   value: "m-pulse",
                   label: "Pulsing Core",
-                  description: "Núcleo con latido nítido y expansión de halo",
+                  description: t("loaders.m-pulse"),
                   rightIcon: renderLoaderIcon("m-pulse"),
                 },
                 {
                   value: "m-cross",
                   label: "Cross Rotator",
-                  description: "Mini aspa de cruz giratoria",
+                  description: t("loaders.m-cross"),
                   rightIcon: renderLoaderIcon("m-cross"),
                 },
                 {
                   value: "m-flip",
                   label: "Flipping Square",
-                  description: "Cubo 3D que gira y flipea en perspectiva",
+                  description: t("loaders.m-flip"),
                   rightIcon: renderLoaderIcon("m-flip"),
                 },
                 {
                   value: "m-blink",
                   label: "Cursor Blink",
                   description:
-                    "Cursor parpadeante estilo terminal de desarrollo",
+                    t("loaders.m-blink"),
                   rightIcon: renderLoaderIcon("m-blink"),
                 },
                 {
                   value: "m-breathe",
                   label: "Breathe Ring",
-                  description: "Anillo en pulsación de escala y opacidad",
+                  description: t("loaders.m-breathe"),
                   rightIcon: renderLoaderIcon("m-breathe"),
                 },
                 {
                   value: "m-swap",
                   label: "Swapping Dots",
-                  description: "Dos puntos cruzándose alternadamente",
+                  description: t("loaders.m-swap"),
                   rightIcon: renderLoaderIcon("m-swap"),
                 },
                 {
                   value: "m-sonar",
                   label: "Sonar Ping",
-                  description: "Punto con ondas concéntricas expansivas",
+                  description: t("loaders.m-sonar"),
                   rightIcon: renderLoaderIcon("m-sonar"),
                 },
                 {
                   value: "m-pie",
                   label: "Pie Fill",
-                  description: "Relleno circular secuencial de 4 pasos",
+                  description: t("loaders.m-pie"),
                   rightIcon: renderLoaderIcon("m-pie"),
                 },
                 {
                   value: "m-scan",
                   label: "Scan Line",
-                  description: "Línea de escaneo láser horizontal en caja",
+                  description: t("loaders.m-scan"),
                   rightIcon: renderLoaderIcon("m-scan"),
                 },
                 {
                   value: "m-hour",
                   label: "Micro Hourglass",
-                  description: "Reloj de arena clásico giratorio",
+                  description: t("loaders.m-hour"),
                   rightIcon: renderLoaderIcon("m-hour"),
                 },
                 {
                   value: "m-yin",
                   label: "Semicircle",
-                  description: "Doble semicírculo giratorio",
+                  description: t("loaders.m-yin"),
                   rightIcon: renderLoaderIcon("m-yin"),
                 },
                 {
                   value: "m-diamond",
                   label: "Diamond Pulse",
-                  description: "Rombo giratorio con cambio de escala y relleno",
+                  description: t("loaders.m-diamond"),
                   rightIcon: renderLoaderIcon("m-diamond"),
                 },
                 {
                   value: "m-clock",
                   label: "Clock Hand",
-                  description: "Aguja de reloj giratoria con anillo",
+                  description: t("loaders.m-clock"),
                   rightIcon: renderLoaderIcon("m-clock"),
                 },
                 {
                   value: "m-expand",
                   label: "Bar Expand",
                   description:
-                    "Punto a línea con expansión horizontal simétrica",
+                    t("loaders.m-expand"),
                   rightIcon: renderLoaderIcon("m-expand"),
                 },
               ]}
@@ -1710,10 +1693,7 @@ export function WorkflowSettings({
       )}
     >
       <h2 className="typo-section-title mb-2">{t("settings.sections.workflow")}</h2>
-      <p className="typo-caption mb-8">
-        Configura cómo interactúas con la aplicación y el comportamiento de las
-        herramientas de desarrollo.
-      </p>
+      <p className="typo-caption mb-8">{" "}{t("settings.sections.workflowDesc")}</p>
 
       <div className="space-y-12">
         <div className="space-y-4">

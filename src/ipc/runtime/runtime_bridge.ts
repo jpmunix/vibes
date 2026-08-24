@@ -42,6 +42,7 @@ import {
   VibesEventMapper,
   buildTokenUsageTag,
   buildCancelledTag,
+  buildTurnSummaryTag,
   escapeAttr,
 } from "./event_mapper";
 import {
@@ -98,7 +99,8 @@ export type RuntimeStreamResult = {
 
 /**
  * Converts Vibes chat history into runtime Messages for hydration.
- *   - Assistant content is scrubbed of `<vibes-*>` tags and think blocks.
+ *   - Assistant content is scrubbed of `<vibes-*>` tags and think blocks, EXCEPT
+ *     for `<vibes-context-summary>` which stores previous turn exploration memory.
  *   - The trailing empty assistant placeholder is naturally skipped.
  *   - The current user prompt is dropped if it matches the tail — it will be
  *     re-seeded by createSession (avoids duplication).
@@ -113,15 +115,28 @@ function convertHistoryToRuntimeMessages(
     if (role !== "user" && role !== "assistant") continue;
     const raw: string = typeof msg.content === "string" ? msg.content : "";
     if (!raw.trim()) continue;
+
+    // Extract context summary if present before stripping other tags
+    const summaryMatch = raw.match(/<vibes-context-summary>([\s\S]*?)<\/vibes-context-summary>/);
+    const summaryText = summaryMatch ? summaryMatch[1].trim() : "";
+
     const scrubbed = raw
       .replace(/<vibes-[^>]*\/>/g, "")
       .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
       .replace(/<think>[\s\S]*?<\/think>/g, "")
       .trim();
-    if (!scrubbed) continue;
+
+    let finalText = scrubbed;
+    if (summaryText) {
+      finalText = finalText
+        ? `${finalText}\n\n[Previous Turn Context Summary]\n${summaryText}`
+        : `[Previous Turn Context Summary]\n${summaryText}`;
+    }
+
+    if (!finalText) continue;
     messages.push({
       role,
-      content: [{ type: "text", text: scrubbed }],
+      content: [{ type: "text", text: finalText }],
       ts: typeof msg.createdAt === "number" ? msg.createdAt : undefined,
     });
   }
@@ -183,6 +198,30 @@ export async function handleRuntimeStream(
       ...emptyResult,
       fullResponse:
         "No hay ningún modelo OpenAI-compatible configurado. Abre el panel de modelos y configura OpenRouter, un proveedor custom o un modelo local.",
+    };
+  }
+
+  // ── 0b. Pre-flight: guard de prompt vacío (#179) ─────────────────────────
+  // El handler de chat_stream muta req.prompt al strippear slash commands
+  // (p.ej. un prompt que era solo "/agent  " queda ""). Un prompt vacío llega
+  // al runtime, que seedea un user message con texto '' que el provider
+  // openai-compatible descarta del wire → el modelo responde sin petición
+  // ("estoy listo, ¿qué hago?"). Abortamos con error visible y log de
+  // diagnóstico (chatId, longitudes y banderas) para cazar la vía por la que
+  // se perdió el texto. undoRedo sin prompt es un flujo legítimo (solo
+  // deshacer), se respeta.
+  const promptLen = (req.prompt ?? "").length;
+  if (!req.prompt?.trim() && !req.undoRedo) {
+    logger.warn(
+      `[RuntimeBridge] Empty prompt guard tripped (chat ${req.chatId}): ` +
+        `promptLen=${promptLen} attachments=${req.attachments?.length ?? 0} ` +
+        `priorMessages=${req.priorMessages?.length ?? 0} selectedComponents=${req.selectedComponents?.length ?? 0} ` +
+        `chatMode=${req.chatMode ?? "n/a"} undoRedo=${req.undoRedo ?? false} redo=${req.redo ?? false}`,
+    );
+    return {
+      ...emptyResult,
+      fullResponse:
+        "El mensaje llegó vacío al agente (posible comando sin texto). Revisa el log de la app para más detalle.",
     };
   }
 
@@ -435,6 +474,15 @@ export async function handleRuntimeStream(
       ...new Set(filesChanged.map((f) => path.basename(f))),
     ];
     finalContent += `\n<vibes-files-changed files="${basenames.length}" insertions="0" deletions="0" paths="${escapeAttr(basenames.join(","))}">\n</vibes-files-changed>\n`;
+  }
+
+  const summaryTag = buildTurnSummaryTag({
+    filesRead: mapper.getFilesRead(),
+    dirsListed: mapper.getDirsListed(),
+    filesModified: filesChanged,
+  });
+  if (summaryTag) {
+    finalContent += `\n${summaryTag}\n`;
   }
 
   if (result) {

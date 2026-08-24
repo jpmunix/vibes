@@ -75,6 +75,7 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
+import { useI18n } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -94,6 +95,7 @@ export function ChatHeader({
   onTogglePreview,
   workspaceMode,
 }: ChatHeaderProps) {
+  const { t } = useI18n();
   const appId = useAtomValue(selectedAppIdAtom);
   const previewMode = useAtomValue(previewModeAtom);
   const { navigate } = useRouter();
@@ -148,7 +150,7 @@ export function ChatHeader({
     // If this throws, it will automatically show an error toast
     await renameBranch({ oldBranchName: "master", newBranchName: "main" });
 
-    showSuccess("Rama master renombrada a main");
+    showSuccess(t("toasts.masterRenamedToMain"));
   };
 
   const handleNewChat = async () => {
@@ -471,7 +473,7 @@ export function ChatHeader({
                 }
               }
             }
-            showSuccess("Chat eliminado");
+            showSuccess(t("toasts.chatDeleted"));
           } catch (error) {
             showError(
               `Error al eliminar el chat: ${(error as any).toString()}`,
@@ -506,7 +508,7 @@ export function ChatHeader({
                     title: newTitle,
                   });
                   await invalidateChats();
-                  showSuccess("Título actualizado");
+                  showSuccess(t("toasts.titleUpdated"));
                 } catch (err) {
                   showError(`Error al renombrar: ${(err as any).toString()}`);
                 }
@@ -694,6 +696,7 @@ function ExpandChatButton({
 }
 
 function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
+  const { t } = useI18n();
   const appId = useAtomValue(selectedAppIdAtom);
   const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
   const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
@@ -739,7 +742,7 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
         path: normalizedPath,
         chatId,
       });
-      showSuccess("Plan adjuntado al chat actual");
+      showSuccess(t("toasts.planAttached"));
       setSelectedPath(normalizedPath);
       setSidebarOpen(true);
       await invalidateArtifacts();
@@ -877,7 +880,7 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
             }
             await invalidateArtifacts();
             refetchAppPlans();
-            showSuccess("Plan desacoplado del chat");
+            showSuccess(t("toasts.planDetached"));
           } catch (error) {
             showError(
               `Error al desacoplar el plan: ${(error as any).toString()}`,

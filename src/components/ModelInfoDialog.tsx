@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { type LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
 import { Separator } from "@/components/ui/separator";
+import { useI18n } from "@/lib/i18n";
 import {
   Type,
   Image,
@@ -130,6 +131,7 @@ export function ModelInfoDialog({
   onEditCustomModel,
   onDeleteCustomModel,
 }: ModelInfoDialogProps) {
+  const { t } = useI18n();
   const [isEditingAlias, setIsEditingAlias] = useState(false);
   const [aliasValue, setAliasValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -257,7 +259,7 @@ export function ModelInfoDialog({
               {model.displayName}
             </p>
           )}
-          <DialogDescription>Detalles técnicos del modelo</DialogDescription>
+          <DialogDescription>{t("integrations.modelTechnicalDetails")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
@@ -294,13 +296,13 @@ export function ModelInfoDialog({
           {/* Context & Output tokens */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <span className="typo-caption">Ventana de contexto</span>
+              <span className="typo-caption">{t("integrations.contextWindow")}</span>
               <div className="typo-mono font-semibold">
                 {formatTokens(model.contextWindow)} tokens
               </div>
             </div>
             <div className="space-y-1">
-              <span className="typo-caption">Máx. salida</span>
+              <span className="typo-caption">{t("integrations.maxOutput")}</span>
               <div className="typo-mono font-semibold">
                 {formatTokens(model.maxOutputTokens)} tokens
               </div>
