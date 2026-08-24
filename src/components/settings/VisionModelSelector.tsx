@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
@@ -6,6 +7,7 @@ const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 export function VisionModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue =
@@ -32,7 +34,7 @@ export function VisionModelSelector() {
       onModelSelect={handleChange}
       models={filteredModels}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
       showProviderBadge
       specialOptions={[
@@ -41,7 +43,7 @@ export function VisionModelSelector() {
           label:
             defaultModelInList?.displayName ||
             "Gemini 2.5 Flash",
-          description: defaultModelInList ? undefined : "Modelo predeterminado",
+          description: defaultModelInList ? undefined : t("addModel.defaultModel"),
         },
       ]}
     />

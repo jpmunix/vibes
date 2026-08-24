@@ -49,7 +49,7 @@ function formatTokens(num: number | undefined): string {
 
 // =============================================================================
 // Extensible filter config
-// To add a new filter: append an entry to MODEL_CAPABILITY_FILTERS.
+// To add a new filter: append an entry to FILTER_IDS and getCapabilityFilters().
 // The `parameter` must match a key in model.supportedParameters (from OpenRouter).
 // =============================================================================
 
@@ -66,26 +66,34 @@ interface CapabilityFilter {
   defaultValue: FilterValue;
 }
 
-const MODEL_CAPABILITY_FILTERS: CapabilityFilter[] = [
+// Non-translated core for filtering logic (id / parameter / default).
+const FILTER_IDS: { id: string; parameter: string; defaultValue: FilterValue }[] = [
+  { id: "reasoning", parameter: "reasoning", defaultValue: "with" },
+  { id: "tools", parameter: "tools", defaultValue: "with" },
+];
+
+const getCapabilityFilters = (
+  t: (k: string) => string,
+): CapabilityFilter[] => [
   {
     id: "reasoning",
-    label: "Razonamiento",
+    label: t("addModel.reasoningLabel"),
     parameter: "reasoning",
     options: [
-      { value: "with", label: "Con razonamiento" },
-      { value: "without", label: "Sin razonamiento" },
-      { value: "all", label: "Todos" },
+      { value: "with", label: t("addModel.withReasoning") },
+      { value: "without", label: t("addModel.withoutReasoning") },
+      { value: "all", label: t("addModel.all") },
     ],
     defaultValue: "with",
   },
   {
     id: "tools",
-    label: "Tool calling",
+    label: t("addModel.toolCallingLabel"),
     parameter: "tools",
     options: [
-      { value: "with", label: "Con tools" },
-      { value: "without", label: "Sin tools" },
-      { value: "all", label: "Todos" },
+      { value: "with", label: t("addModel.withTools") },
+      { value: "without", label: t("addModel.withoutTools") },
+      { value: "all", label: t("addModel.all") },
     ],
     defaultValue: "with",
   },
@@ -98,19 +106,18 @@ const MODEL_CAPABILITY_FILTERS: CapabilityFilter[] = [
 
 type EnabledFilterValue = "all" | "enabled" | "disabled";
 
-const ENABLED_FILTER_OPTIONS: Array<{
-  value: EnabledFilterValue;
-  label: string;
-}> = [
-  { value: "all", label: "Todos" },
-  { value: "enabled", label: "Habilitados" },
-  { value: "disabled", label: "No habilitados" },
+const getEnabledFilterOptions = (
+  t: (k: string) => string,
+): Array<{ value: EnabledFilterValue; label: string }> => [
+  { value: "all", label: t("addModel.all") },
+  { value: "enabled", label: t("addModel.enabledOnly") },
+  { value: "disabled", label: t("addModel.disabledOnly") },
 ];
 
 // Build initial state from defaults
 function buildDefaultFilterState(): Record<string, FilterValue> {
   return Object.fromEntries(
-    MODEL_CAPABILITY_FILTERS.map((f) => [f.id, f.defaultValue]),
+    FILTER_IDS.map((f) => [f.id, f.defaultValue]),
   );
 }
 
@@ -157,10 +164,10 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.languageModels.byProviders,
       });
-      showSuccess("Modelos actualizados");
+      showSuccess(t("addModel.modelsUpdated"));
     } catch (error: any) {
       console.error("Error en refreshModels:", error);
-      showError("Error al actualizar los modelos");
+      showError(t("addModel.refreshError"));
     } finally {
       setIsRefreshing(false);
     }
@@ -171,7 +178,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
     let result = allModels;
 
     // Capability filters
-    for (const filterDef of MODEL_CAPABILITY_FILTERS) {
+    for (const filterDef of FILTER_IDS) {
       const value = filters[filterDef.id];
       if (value === "with") {
         result = result.filter((m) =>
@@ -278,7 +285,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   className="p-2 rounded-md opacity-60 hover:opacity-100 hover:bg-muted transition-all duration-200 cursor-pointer disabled:opacity-30"
-                  title="Actualizar lista de modelos"
+                  title={t("addModel.refreshList")}
                 >
                   <RefreshCw
                     className={cn("h-4 w-4", isRefreshing && "animate-spin")}
@@ -312,7 +319,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
           <div className="px-6 py-4 space-y-3 shrink-0 border-b border-border/30 bg-muted/10">
             {/* Filter row — compact inline chips */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {MODEL_CAPABILITY_FILTERS.map((filterDef) => (
+              {getCapabilityFilters(t).map((filterDef) => (
                 <FilterChip
                   key={filterDef.id}
                   label={filterDef.label}
@@ -322,8 +329,8 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                 />
               ))}
               <FilterChip
-                label="Estado"
-                options={ENABLED_FILTER_OPTIONS}
+                label={t("settingsItems.estado")}
+                options={getEnabledFilterOptions(t)}
                 value={enabledFilter}
                 onChange={setEnabledFilter}
               />
@@ -334,7 +341,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
               <Input
                 type="text"
-                placeholder="Buscar modelos..."
+                placeholder={t("addModel.searchModels")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 bg-background/50 border-border/40"
@@ -365,7 +372,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                       type="button"
                       className="flex-1 min-w-0 text-left cursor-pointer"
                       onClick={() => setDetailModel(model)}
-                      title="Ver detalles del modelo"
+                      title={t("addModel.viewDetails")}
                     >
                       {/* Line 1: Model name */}
                       <div className="typo-label truncate group-hover:text-primary transition-colors">
@@ -375,11 +382,12 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                       {/* Line 2: Context window + max output tokens */}
                       <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-70">
                         {model.inputModalities?.includes("image") && (
-                          <Image
-                            size={10}
-                            className="shrink-0"
-                            title="Soporta imágenes"
-                          />
+                          <span
+                            title={t("models.supportsImages")}
+                            className="shrink-0 inline-flex"
+                          >
+                            <Image size={10} />
+                          </span>
                         )}
                         <span>
                           Contexto: {formatTokens(model.contextWindow)}

@@ -18,6 +18,7 @@ import {
 import { Loader2, AlertCircle } from "@/components/ui/icons";
 import { resolveDisplayNames } from "@/ipc/utils/model_id_humanizer";
 import { parseModelsResponse } from "@/ipc/utils/openai_compatible_models_parser";
+import { useI18n } from "@/lib/i18n";
 
 interface FetchedModel {
   id: string;
@@ -44,6 +45,7 @@ export function ProviderSwitchDialog({
   onOpenChange,
   onConfirm,
 }: ProviderSwitchDialogProps) {
+  const { t } = useI18n();
   const [models, setModels] = useState<FetchedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -174,23 +176,23 @@ export function ProviderSwitchDialog({
             </p>
 
             <ModelSlot
-              label="Modelo principal del chat"
+              label={t("settingsItems.modelo_principal_del_chat")}
               value={chatModel}
               onChange={setChatModel}
               models={models}
             />
 
             <ModelSlot
-              label="Modelo para tareas internas"
-              description="Títulos, resúmenes y mantenimiento"
+              label={t("settingsItems.modelo_para_tareas_internas")}
+              description={t("settingsItems.modelo_para_tareas_internasDesc")}
               value={executorModel}
               onChange={setExecutorModel}
               models={models}
             />
 
             <ModelSlot
-              label="Modelo de razonamiento"
-              description="Agentes de planificación y análisis"
+              label={t("settingsItems.modelo_de_razonamiento")}
+              description={t("settingsItems.modelo_de_razonamientoDesc")}
               value={strategistModel}
               onChange={setStrategistModel}
               models={models}
@@ -234,13 +236,14 @@ function ModelSlot({
   onChange: (v: string) => void;
   models: FetchedModel[];
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-1.5">
       <Label className="typo-label">{label}</Label>
       {description && <p className="typo-caption">{description}</p>}
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-10 bg-background">
-          <SelectValue placeholder="Seleccionar modelo" />
+          <SelectValue placeholder={t("models.selectModel")} />
         </SelectTrigger>
         <SelectContent>
           {models.map((m) => (

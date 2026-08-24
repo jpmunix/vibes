@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 import {
   AlertTriangle,
   PlusIcon,
@@ -56,6 +57,7 @@ interface ModelsSectionProps {
 }
 
 export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
+  const { t } = useI18n();
   const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
   const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
 
@@ -220,8 +222,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
       )}
       {!modelsLoading && !modelsError && enabledModels.length === 0 && (
         <p className="text-muted-foreground mt-4">
-          No hay modelos habilitados. Usa "Añadir más modelos" para activar
-          algunos.
+          {t("models.noEnabled")}
         </p>
       )}
 
@@ -309,7 +310,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? "Eliminando..." : "Sí, eliminarlo"}
+              {isDeleting ? t("models.deleting") : t("models.confirmDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

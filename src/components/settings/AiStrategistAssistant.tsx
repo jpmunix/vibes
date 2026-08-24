@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { ipc } from "@/ipc/types";
 import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
 import { Sparkles, Loader2, Check, X } from "@/components/ui/icons";
@@ -60,6 +61,7 @@ export function AiStrategistAssistant({
   onAccept,
 }: AiStrategistAssistantProps) {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -95,9 +97,9 @@ Instrucciones del usuario para modificar o refinar este contenido:
 
       if (response && response.text) {
         setProposal(response.text);
-        showSuccess("Propuesta generada con éxito");
+        showSuccess(t("aiStrategist.success"));
       } else {
-        throw new Error("No se recibió texto de respuesta");
+        throw new Error(t("aiStrategist.noResponse"));
       }
     } catch (e: any) {
       console.error(e);
@@ -162,8 +164,8 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   className="w-full flex-1 min-h-[220px] rounded-xl border border-border bg-muted/10 px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans leading-relaxed custom-scrollbar"
                   placeholder={
                     type === "skill"
-                      ? "ej: 'añade reglas para formatear con Prettier, estructurado y claro'"
-                      : "ej: 'haz que responda de manera formal y estructurada en formato markdown'"
+                      ? t("aiStrategist.exampleSkill")
+                      : t("aiStrategist.examplePrompt")
                   }
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}

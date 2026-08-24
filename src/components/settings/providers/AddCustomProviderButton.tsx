@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
 import { Plus, Loader2, RefreshCw, AlertCircle } from "@/components/ui/icons";
@@ -19,6 +20,7 @@ import { VerifiedModelsList } from "./VerifiedModelsList";
 import type { CustomProviderConfig } from "@/lib/schemas";
 
 export function AddCustomProviderButton() {
+  const { t, tPlural } = useI18n();
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -38,7 +40,7 @@ export function AddCustomProviderButton() {
 
   const handleVerify = async () => {
     if (!newBaseUrl.trim()) {
-      showError("La URL base es obligatoria para verificar.");
+      showError(t("customProvider.urlRequiredVerify"));
       return;
     }
     setIsVerifying(true);
@@ -51,9 +53,7 @@ export function AddCustomProviderButton() {
       setVerifyResult(result);
       if (result.ok) {
         showSuccess(
-          result.count === 1
-            ? "Conexión exitosa — 1 modelo"
-            : `Conexión exitosa — ${result.count} modelos`,
+          tPlural("customProvider.connected", result.count ?? 0),
         );
       } else {
         showError(`Error: ${result.error}`);
@@ -68,11 +68,11 @@ export function AddCustomProviderButton() {
 
   const handleAdd = async () => {
     if (!newName.trim()) {
-      showError("El nombre es obligatorio.");
+      showError(t("customProvider.nameRequired"));
       return;
     }
     if (!newBaseUrl.trim()) {
-      showError("La URL base es obligatoria.");
+      showError(t("customProvider.urlRequired"));
       return;
     }
 
@@ -84,7 +84,7 @@ export function AddCustomProviderButton() {
         .replace(/[^a-z0-9]+/g, "-");
       const id = `${CUSTOM_PROVIDER_PREFIX}${slug}`;
       if (customProviders.some((p) => p.id === id)) {
-        showError("Ya existe un proveedor con ese nombre.");
+        showError(t("customProvider.duplicateName"));
         setIsSaving(false);
         return;
       }
@@ -111,9 +111,9 @@ export function AddCustomProviderButton() {
       setNewBaseUrl("");
       setNewApiKey("");
       setShowDialog(false);
-      showSuccess(`Proveedor "${newProvider.name}" añadido`);
+      showSuccess(t("customProvider.addedSuccess", { name: newProvider.name }));
     } catch (error: any) {
-      showError(error.message || "Error al añadir el proveedor.");
+      showError(error.message || t("customProvider.addError"));
     } finally {
       setIsSaving(false);
     }
@@ -128,7 +128,7 @@ export function AddCustomProviderButton() {
       >
         <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <span className="typo-label text-muted-foreground group-hover:text-primary transition-colors">
-          Añadir proveedor personalizado
+          {t("customProvider.addButton")}
         </span>
       </button>
 
@@ -136,17 +136,17 @@ export function AddCustomProviderButton() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Nuevo Proveedor de IA
+              <Plus className="h-4 w-4" /> {t("customProvider.newProviderTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="provider-name" className="typo-label">
-                Nombre
+                {t("customProvider.name")}
               </Label>
               <Input
                 id="provider-name"
-                placeholder="Ej: Mi Proxy LiteLLM"
+                placeholder={t("customProvider.namePlaceholder")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 className="h-10 bg-background typo-input"
@@ -154,7 +154,7 @@ export function AddCustomProviderButton() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="provider-url" className="typo-label">
-                URL Base
+                {t("customProvider.urlBase")}
               </Label>
               <Input
                 id="provider-url"
@@ -167,13 +167,12 @@ export function AddCustomProviderButton() {
                 className="h-10 bg-background typo-input font-mono"
               />
               <p className="typo-caption">
-                Endpoint compatible con la API de OpenAI (/models y
-                /chat/completions)
+                {t("customProvider.endpointHint")}
               </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="provider-key" className="typo-label">
-                API Key (opcional)
+                {t("customProvider.apiKeyOptional")}
               </Label>
               <Input
                 id="provider-key"
@@ -200,7 +199,7 @@ export function AddCustomProviderButton() {
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 )}
-                Verificar
+                {t("customProvider.verify")}
               </Button>
               {verifyResult && (
                 <div className="space-y-2 pt-1">
@@ -221,14 +220,14 @@ export function AddCustomProviderButton() {
                 onClick={() => setShowDialog(false)}
                 className="h-10 px-4"
               >
-                Cancelar
+                {t("customProvider.cancel")}
               </Button>
               <Button
                 onClick={handleAdd}
                 disabled={isSaving || !newName || !newBaseUrl}
                 className="h-10 px-6 font-bold"
               >
-                {isSaving ? "Guardando..." : "Añadir"}
+                {isSaving ? t("customProvider.saving") : t("customProvider.add")}
               </Button>
             </div>
           </div>

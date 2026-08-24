@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,6 +26,7 @@ export function AzureConfiguration({
   envVars,
   updateSettings,
 }: AzureConfigurationProps) {
+  const { t } = useI18n();
   const existing =
     (settings?.providerSettings?.azure as AzureProviderSetting | undefined) ??
     {};
@@ -89,7 +91,7 @@ export function AzureConfiguration({
 
       setSaved(true);
     } catch (e: any) {
-      setError(e?.message || "Failed to save Azure settings");
+      setError(e?.message || t("providersCloud.azureSaveError"));
     } finally {
       setSaving(false);
     }
@@ -99,9 +101,9 @@ export function AzureConfiguration({
     if (hasSavedSettings) {
       return {
         variant: "default" as const,
-        title: "Azure OpenAI configurado",
+        title: t("providersCloud.azureConfigured"),
         description:
-          "Vibes utilizará las credenciales guardadas en Ajustes para los modelos de Azure OpenAI.",
+          t("providersCloud.azureSavedInfo"),
         icon: KeyRound,
         titleClassName: "",
         descriptionClassName: "",
@@ -111,9 +113,9 @@ export function AzureConfiguration({
     if (usingEnvironmentOnly) {
       return {
         variant: "default" as const,
-        title: "Usando variables de entorno",
+        title: t("providersCloud.azureEnvTitle"),
         description:
-          "AZURE_API_KEY y AZURE_RESOURCE_NAME están configuradas. Los valores guardados a continuación las sobrescribirán.",
+          t("providersCloud.azureEnvInfo"),
         icon: Info,
         titleClassName: "",
         descriptionClassName: "",
@@ -122,9 +124,9 @@ export function AzureConfiguration({
     }
     return {
       variant: "destructive" as const,
-      title: "Configuración de Azure OpenAI requerida",
+      title: t("providersCloud.azureRequired"),
       description:
-        "Proporciona tu nombre de recurso de Azure y la clave API a continuación, o configura las variables de entorno AZURE_API_KEY y AZURE_RESOURCE_NAME.",
+        t("providersCloud.azureSetup"),
       icon: Info,
       titleClassName: "text-red-800 dark:text-red-400",
       descriptionClassName: "text-red-800 dark:text-red-400",
@@ -179,7 +181,7 @@ export function AzureConfiguration({
               setSaved(false);
               setError(null);
             }}
-            placeholder="Introduce tu clave API de Azure OpenAI"
+            placeholder={t("providersCloud.azureKeyPlaceholder")}
             autoComplete="off"
             type="password"
           />
@@ -188,7 +190,7 @@ export function AzureConfiguration({
 
       <div className="flex items-center gap-2">
         <Button onClick={handleSave} disabled={saving || !hasUnsavedChanges}>
-          {saving ? "Guardando..." : "Guardar Ajustes"}
+          {saving ? t("common.saving") : t("common.saveSettings")}
         </Button>
         {saved && !error && (
           <span className="flex items-center text-green-600 text-sm">
@@ -200,7 +202,7 @@ export function AzureConfiguration({
       {!isConfigured && !error && (
         <Alert variant="default">
           <Info className="h-4 w-4" />
-          <AlertTitle>Configuración necesaria</AlertTitle>
+          <AlertTitle>{t("providersCloud.azureNeeded")}</AlertTitle>
           <AlertDescription>
             Las solicitudes de Azure OpenAI requieren tanto un nombre de recurso
             como una clave API. Introdúcelos arriba o proporciona las variables
@@ -211,7 +213,7 @@ export function AzureConfiguration({
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error al guardar</AlertTitle>
+          <AlertTitle>{t("providersCloud.saveError")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -239,7 +241,7 @@ export function AzureConfiguration({
                   data-testid="azure-api-key-status"
                   className={`px-2 py-1 rounded typo-caption font-medium ${envApiKey ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
-                  {envApiKey ? "Configurada" : "No configurada"}
+                  {envApiKey ? t("providersCloud.envConfigured") : t("providersCloud.envNotConfigured")}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted rounded border">
@@ -250,7 +252,7 @@ export function AzureConfiguration({
                   data-testid="azure-resource-name-status"
                   className={`px-2 py-1 rounded typo-caption font-medium ${envResourceName ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
-                  {envResourceName ? "Configurada" : "No configurada"}
+                  {envResourceName ? t("providersCloud.envConfigured") : t("providersCloud.envNotConfigured")}
                 </span>
               </div>
             </div>

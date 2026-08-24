@@ -1,10 +1,13 @@
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/hooks/useSettings";
 import type { ChatLanguage } from "@/lib/schemas";
 
 // ─── Language options ───
-const languageOptions: { value: ChatLanguage; label: string }[] = [
-  { value: "es", label: "Español" },
+const getLanguageOptions = (
+  t: (k: string) => string,
+): { value: ChatLanguage; label: string }[] => [
+  { value: "es", label: t("language.spanish") },
   { value: "en", label: "English" },
 ];
 
@@ -14,12 +17,13 @@ const languageOptions: { value: ChatLanguage; label: string }[] = [
  * (SettingItem / SettingRow) para mantener coherencia visual con cada sección.
  */
 export function LanguageSelector() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const currentLang = settings?.chatLanguage || "es";
 
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-      {languageOptions.map((option) => (
+      {getLanguageOptions(t).map((option) => (
         <button
           key={option.value}
           onClick={() => updateSettings({ chatLanguage: option.value })}

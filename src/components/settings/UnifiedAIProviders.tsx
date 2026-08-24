@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { ChevronRight } from "@/components/ui/icons";
 import { OpenRouterProviderSection } from "./providers/OpenRouterProviderSection";
 import { OllamaProviderSection } from "./providers/OllamaProviderSection";
@@ -18,6 +19,7 @@ export function UnifiedAIProviders({
   isHighlighted?: boolean;
 }) {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const customProviders = settings?.customProviders ?? [];
 
   return (
@@ -31,9 +33,9 @@ export function UnifiedAIProviders({
       )}
     >
       <div className="mb-6">
-        <h2 className="typo-section-title">Proveedores de IA</h2>
+        <h2 className="typo-section-title">{t("aiProviders.title")}</h2>
         <p className="typo-caption mt-1">
-          Configura los servicios de IA disponibles en Vibes
+          {t("aiProviders.desc")}
         </p>
       </div>
 

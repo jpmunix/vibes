@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { Search, Package } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 // Listado de modelos devueltos por la verificación de un proveedor
 // OpenAI-compatible. Scrollable, IDs en monospace, búsqueda si la lista es
 // grande (N>20). Empty state claro cuando el endpoint responde pero no
 // devuelve modelos.
 export function VerifiedModelsList({ models }: { models: { id: string }[] }) {
+  const { t, tPlural } = useI18n();
   const [filter, setFilter] = useState("");
 
   const visible = useMemo(() => {
@@ -20,7 +22,7 @@ export function VerifiedModelsList({ models }: { models: { id: string }[] }) {
       <div className="flex flex-col items-center gap-2 py-4 rounded-lg border border-dashed border-border bg-muted/20">
         <Package className="h-4 w-4 text-muted-foreground" />
         <p className="typo-caption text-muted-foreground text-center">
-          El endpoint responde pero no devuelve modelos.
+          {t("customProvider.noModelsReturned")}
         </p>
       </div>
     );
@@ -29,9 +31,7 @@ export function VerifiedModelsList({ models }: { models: { id: string }[] }) {
   return (
     <div className="space-y-2">
       <p className="typo-caption text-muted-foreground">
-        {models.length === 1
-          ? "1 modelo disponible"
-          : `${models.length} modelos disponibles`}
+        {tPlural("customProvider.verifiedModels", models.length)}
       </p>
 
       {models.length > 20 && (
@@ -40,7 +40,7 @@ export function VerifiedModelsList({ models }: { models: { id: string }[] }) {
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder={`Buscar en ${models.length} modelos…`}
+            placeholder={t("customProvider.searchInModels", { count: models.length })}
             className="h-8 pl-8 bg-background typo-input"
           />
         </div>
@@ -49,7 +49,7 @@ export function VerifiedModelsList({ models }: { models: { id: string }[] }) {
       <div className="max-h-44 overflow-y-auto rounded-md border border-border bg-background">
         {visible.length === 0 ? (
           <p className="typo-caption text-muted-foreground text-center py-3">
-            Sin resultados para "{filter}"
+            {t("customProvider.noResultsFor", { query: filter })}
           </p>
         ) : (
           <ul className="divide-y divide-border/60">

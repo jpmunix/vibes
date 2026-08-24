@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { ipc } from "@/ipc/types";
 import {
   Trash2,
@@ -33,6 +34,7 @@ export function CustomProviderSection({
 }: {
   provider: CustomProviderConfig;
 }) {
+  const { t, tPlural } = useI18n();
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -66,7 +68,7 @@ export function CustomProviderSection({
       });
       if (!result.ok) throw new Error(result.error);
       setTestResult({ ok: true, count: result.count, models: result.models });
-      showSuccess(`Conexión exitosa — ${result.count} modelos`);
+      showSuccess(tPlural("customProvider.connected", result.count ?? 0));
     } catch (error: any) {
       setTestResult({ ok: false, error: error.message });
       showError(`Error: ${error.message}`);
@@ -95,7 +97,7 @@ export function CustomProviderSection({
     queryClient.invalidateQueries({
       queryKey: queryKeys.languageModels.byProviders,
     });
-    showSuccess("Proveedor eliminado");
+    showSuccess(t("customProvider.deleted"));
   };
 
   const handleFieldChange = (field: "apiBaseUrl" | "apiKey", value: string) => {
@@ -130,7 +132,7 @@ export function CustomProviderSection({
                 setConfirmDelete(true);
               }}
               className="p-1.5 rounded-md text-muted-foreground/40 hover:!text-red-600 hover:!bg-red-100 dark:hover:!bg-red-900/20 transition-colors cursor-pointer"
-              title="Eliminar"
+              title={t("common.delete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -141,7 +143,7 @@ export function CustomProviderSection({
           <div className="p-4 pt-0 space-y-4 border-t border-border bg-muted/10">
             <div className="grid gap-4 pt-4">
               <div className="space-y-2">
-                <Label className="typo-label text-xs">URL Base</Label>
+                <Label className="typo-label text-xs">{t("customProvider.urlBase")}</Label>
                 <Input
                   value={provider.apiBaseUrl}
                   onChange={(e) =>
@@ -152,7 +154,7 @@ export function CustomProviderSection({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="typo-label text-xs">API Key</Label>
+                <Label className="typo-label text-xs">{t("customProvider.apiKey")}</Label>
                 <Input
                   type="password"
                   value={provider.apiKey?.value ?? ""}
@@ -174,14 +176,14 @@ export function CustomProviderSection({
                   ) : (
                     <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                   )}
-                  Verificar
+                  {t("customProvider.verify")}
                 </Button>
                 {testResult && (
                   <span className="typo-caption flex items-center gap-1">
                     {testResult.ok ? (
                       <>
                         <CheckCircle className="h-3.5 w-3.5 text-green-500" />{" "}
-                        {testResult.count} modelos
+                        {tPlural("customProvider.modelsFound", testResult.count ?? 0)}
                       </>
                     ) : (
                       <>
@@ -203,14 +205,13 @@ export function CustomProviderSection({
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
+            <AlertDialogTitle>{t("customProvider.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará la configuración de "{provider.name}". Esta acción no
-              se puede deshacer.
+              {t("customProvider.deleteDescription", { name: provider.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 handleDelete();
@@ -218,7 +219,7 @@ export function CustomProviderSection({
               }}
               className="bg-destructive hover:bg-destructive/90 text-white"
             >
-              Eliminar
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

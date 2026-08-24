@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import {
@@ -18,6 +19,7 @@ const DEFAULT_MODEL = DEFAULT_STRATEGIST_MODEL;
  */
 export function StrategistModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue =
@@ -44,7 +46,7 @@ export function StrategistModelSelector() {
       onModelSelect={handleChange}
       models={filteredModels}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
       showProviderBadge
       specialOptions={[
@@ -52,8 +54,8 @@ export function StrategistModelSelector() {
           value: DEFAULT_MODEL,
           label:
             defaultModelInList?.displayName ||
-            "DeepSeek V4 Flash (recomendado)",
-          description: defaultModelInList ? undefined : "Modelo predeterminado",
+            t("addModel.strategistLabel"),
+          description: defaultModelInList ? undefined : t("addModel.defaultModel"),
         },
       ]}
     />

@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
@@ -12,6 +13,7 @@ const DEFAULT_MODEL = "qwen/qwen3-coder";
  */
 export function MemoryExtractionModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: openRouterModels, isLoading } =
     useLanguageModelsForProvider("openrouter");
 
@@ -35,7 +37,7 @@ export function MemoryExtractionModelSelector() {
       onModelSelect={handleChange}
       models={openRouterModels || []}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
     />
   );

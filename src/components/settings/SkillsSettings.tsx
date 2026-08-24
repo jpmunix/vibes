@@ -31,6 +31,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { useI18n } from "@/lib/i18n";
 
 interface SkillData {
   name: string;
@@ -151,6 +152,7 @@ function SkillGroup({
 }
 
 export function SkillsSettings() {
+  const { t } = useI18n();
   const currentApp = useAtomValue(currentAppAtom);
   const [apps, setApps] = useState<
     { id: number; name: string; path: string }[]
@@ -233,10 +235,10 @@ export function SkillsSettings() {
           filePath: `.claude/skills/${skill.name}`,
         });
       }
-      showSuccess("Skill eliminado");
+      showSuccess(t("skills.deleted"));
       loadAllSkills();
     } catch {
-      showError("Error al eliminar skill");
+      showError(t("skills.deleteError"));
     }
   };
 
@@ -245,6 +247,7 @@ export function SkillsSettings() {
     scope: string,
     checked: boolean,
   ) => {
+    const { t } = useI18n();
     try {
       const oldName = checked ? "SKILL.disabled" : "SKILL.md";
       const newName = checked ? "SKILL.md" : "SKILL.disabled";
@@ -260,17 +263,17 @@ export function SkillsSettings() {
           newPath: `.claude/skills/${skill.name}/${newName}`,
         });
       }
-      showSuccess(checked ? "Skill activado" : "Skill desactivado");
+      showSuccess(checked ? t("skills.activated") : t("skills.deactivated"));
       loadAllSkills();
     } catch {
-      showError("Error al cambiar estado del skill");
+      showError(t("skills.toggleError"));
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold">Skills del Agente</h3>
+        <h3 className="text-sm font-semibold">{t("skills.title")}</h3>
         <SkillDialog
           apps={apps}
           currentAppId={currentApp?.id}
@@ -286,8 +289,7 @@ export function SkillsSettings() {
       ) : globalSkills.length === 0 && projectsWithSkills.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-border/80 rounded-xl bg-muted/10">
           <p className="typo-caption text-muted-foreground">
-            No hay ningún skill configurado. Haz clic en "Crear Skill" para
-            empezar.
+            {t("skills.empty")}
           </p>
         </div>
       ) : (
@@ -337,6 +339,7 @@ function SkillDialog({
   existingScope,
   onSave,
 }: SkillDialogProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(existingSkill?.name || "");
   const [content, setContent] = useState("");
@@ -353,7 +356,7 @@ function SkillDialog({
           ipc.settings
             .readGlobalSkill({ filePath: existingSkill.path })
             .then(setContent)
-            .catch(() => showError("No se pudo cargar el skill global"))
+            .catch(() => showError(t("skills.loadGlobalError")))
             .finally(() => setIsLoading(false));
         } else {
           ipc.app
@@ -362,7 +365,7 @@ function SkillDialog({
               filePath: existingSkill.path,
             })
             .then(setContent)
-            .catch(() => showError("No se pudo cargar el skill local"))
+            .catch(() => showError(t("skills.loadLocalError")))
             .finally(() => setIsLoading(false));
         }
       } else {
@@ -448,7 +451,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         });
       }
 
-      showSuccess("Skill guardado con éxito");
+      showSuccess(t("skills.saved"));
       setOpen(false);
       onSave();
     } catch (e: any) {
@@ -479,7 +482,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
       <DialogContent className="sm:max-w-[975px] max-h-[85vh] flex flex-col rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-foreground">
-            {existingSkill ? "Editar Skill" : "Crear Skill"}
+            {existingSkill ? t("skills.editSkill") : t("skills.createSkill")}
           </DialogTitle>
         </DialogHeader>
 
@@ -515,10 +518,10 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 disabled={!!existingSkill || isLoading}
               >
                 <SelectTrigger className="w-full h-9 rounded-lg border-border bg-background">
-                  <SelectValue placeholder="Selecciona el ámbito" />
+                  <SelectValue placeholder={t("skills.scopePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
+                  <SelectItem value="global">{t("skills.global")}</SelectItem>
                   {apps.map((app) => (
                     <SelectItem key={app.id} value={String(app.id)}>
                       Proyecto: {app.name}

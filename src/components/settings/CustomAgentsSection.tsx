@@ -20,6 +20,7 @@ import { showSuccess, showError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "@/components/SettingsModelSelector";
+import { useI18n } from "@/lib/i18n";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * CustomAgentEditor — Collapsible inline card to edit an existing custom agent
@@ -71,29 +72,33 @@ const getBaseAgentLabel = (baseStr: string, allAgents: any[]) => {
   return baseStr;
 };
 
-const getUltimateBaseLabel = (baseStr: string, allAgents: any[]) => {
+const getUltimateBaseLabel = (
+  baseStr: string,
+  allAgents: any[],
+  t: (k: string) => string,
+) => {
   const ult = getUltimateBaseAgent(baseStr, allAgents);
-  if (ult === "build") return "Agente";
-  if (ult === "plan") return "Planificador";
-  if (ult === "explore") return "Explorador";
+  if (ult === "build") return t("customAgents.ultBuild");
+  if (ult === "plan") return t("customAgents.ultPlan");
+  if (ult === "explore") return t("customAgents.ultExplore");
   return ult;
 };
 
-const baseOptionsList = [
+const getBaseOptionsList = (t: (k: string) => string) => [
   {
     value: "build",
-    label: "Agente (Build)",
-    description: "Acceso total, lee y escribe código",
+    label: t("customAgents.baseBuildLabel"),
+    description: t("customAgents.baseBuildDesc"),
   },
   {
     value: "plan",
-    label: "Planificador",
-    description: "Propone un plan interactivo paso a paso",
+    label: t("customAgents.basePlanLabel"),
+    description: t("customAgents.basePlanDesc"),
   },
   {
     value: "explore",
-    label: "Explorador (Ask)",
-    description: "Solo lectura, ideal para preguntas rápidas",
+    label: t("customAgents.baseExploreLabel"),
+    description: t("customAgents.baseExploreDesc"),
   },
 ];
 
@@ -110,6 +115,7 @@ export function CustomAgentEditor({
   onUpdate,
   onDelete,
 }: CustomAgentEditorProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState(agent.name);
   const [description, setDescription] = useState(agent.description || "");
@@ -176,16 +182,16 @@ export function CustomAgentEditor({
     const commandRegex = /^[a-zA-Z0-9_-]+$/;
     if (!commandRegex.test(slashCommand)) {
       setValidationError(
-        "El comando slash solo puede contener letras, números, guiones y guiones bajos (sin espacios ni la barra inicial /).",
+        t("customAgents.slashValidation"),
       );
       return false;
     }
     if (modelSource === "static" && !model) {
-      setValidationError("Por favor, selecciona un modelo estático.");
+      setValidationError(t("customAgents.staticModelValidation"));
       return false;
     }
     if (!systemPrompt.trim()) {
-      setValidationError("Las instrucciones del System Prompt son requeridas.");
+      setValidationError(t("customAgents.systemPromptRequired"));
       return false;
     }
     setValidationError(null);
@@ -213,12 +219,12 @@ export function CustomAgentEditor({
         model: modelSource === "static" ? model : null,
         prompt: prompt.trim() || null,
       });
-      showSuccess("Agente personalizado actualizado correctamente");
+      showSuccess(t("customAgents.updated"));
       setExpanded(false);
       onUpdate();
     } catch (err: any) {
       console.error(err);
-      setValidationError(err.message || "Error al guardar el agente");
+      setValidationError(err.message || t("customAgents.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -228,11 +234,11 @@ export function CustomAgentEditor({
     setIsDeleting(true);
     try {
       await customAgentsClient.delete(agent.id);
-      showSuccess(`Agente "${agent.name}" eliminado correctamente`);
+      showSuccess(t("customAgents.deletedToast", { name: agent.name }));
       onDelete();
     } catch (err: any) {
       console.error(err);
-      showError(err.message || "Error al eliminar el agente");
+      showError(err.message || t("customAgents.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -265,32 +271,32 @@ export function CustomAgentEditor({
               /{agent.slashCommand}
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
-              Base: {getBaseAgentLabel(agent.baseAgent, customAgents)}
+              {t("customAgents.baseLabel")}: {getBaseAgentLabel(agent.baseAgent, customAgents)}
             </span>
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
-              Modo:{" "}
+              {t("customAgents.modeLabel")}:{" "}
               {agent.baseAgent.startsWith("custom-agent::")
-                ? "Aditivo"
+                ? t("customAgents.additive")
                 : agent.promptMode === "additive"
-                  ? "Aditivo"
-                  : "Reemplazar"}
+                  ? t("customAgents.additive")
+                  : t("customAgents.replace")}
             </span>
             {agent.isDefaultBase === 1 && (
               <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 rounded-md">
-                Por defecto (
+                {t("customAgents.defaultLabel")} (
                 {agent.baseAgent.startsWith("custom-agent::")
-                  ? getUltimateBaseLabel(agent.baseAgent, customAgents)
+                  ? getUltimateBaseLabel(agent.baseAgent, customAgents, t)
                   : getBaseAgentLabel(agent.baseAgent, customAgents)}
                 )
               </span>
             )}
             <span className="text-[11px] font-semibold px-2 py-0.5 bg-muted rounded-md text-muted-foreground">
-              Modelo:{" "}
+              {t("customAgents.modelLabel")}:{" "}
               {agent.modelSource === "static"
                 ? agent.model
                   ? agent.model.split("::").pop() || agent.model
-                  : "Estático"
-                : "Chat"}
+                  : t("customAgents.modelStatic")
+                : t("customAgents.modelChat")}
             </span>
           </div>
         </div>
@@ -345,12 +351,12 @@ export function CustomAgentEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div className="space-y-1.5">
-              <Label className="typo-label">Agente Base</Label>
+              <Label className="typo-label">{t("customAgents.baseAgent")}</Label>
               <UnifiedSelector
                 value={baseAgent}
                 onChange={(val) => setBaseAgent(val)}
                 options={[
-                  ...baseOptionsList,
+                  ...getBaseOptionsList(t),
                   ...customAgents
                     .filter(
                       (ca: any) =>
@@ -376,7 +382,7 @@ export function CustomAgentEditor({
                   htmlFor={`agent-desc-${agent.id}`}
                   className="typo-label"
                 >
-                  Descripción Corta
+                  {t("customAgents.shortDesc")}
                 </Label>
                 <span className="text-[11px] text-muted-foreground font-mono">
                   {description.length}/50
@@ -396,20 +402,20 @@ export function CustomAgentEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div className="space-y-1.5">
-              <Label className="typo-label">Origen del Modelo</Label>
+              <Label className="typo-label">{t("customAgents.modelOrigin")}</Label>
               <UnifiedSelector
                 value={modelSource}
                 onChange={(val) => setModelSource(val as "chat" | "static")}
                 options={[
                   {
                     value: "chat",
-                    label: "Modelo del chat",
-                    description: "Usa el modelo activo seleccionado en el chat",
+                    label: t("customAgents.chatModelLabel"),
+                    description: t("customAgents.chatModelDesc"),
                   },
                   {
                     value: "static",
-                    label: "Modelo estático",
-                    description: "Usa siempre un modelo fijo configurado",
+                    label: t("customAgents.staticModelLabel"),
+                    description: t("customAgents.staticModelDesc"),
                   },
                 ]}
                 triggerVariant="default"
@@ -422,7 +428,7 @@ export function CustomAgentEditor({
             {modelSource === "static" ? (
               <div className="space-y-1.5">
                 <Label className="typo-label">
-                  Seleccionar Modelo Estático
+                  {t("customAgents.selectStaticModel")}
                 </Label>
                 <SettingsModelSelector
                   variant="default"
@@ -431,7 +437,7 @@ export function CustomAgentEditor({
                   onModelSelect={(val) => setModel(val)}
                   models={allModels || []}
                   loading={modelsLoading}
-                  placeholder="Selecciona un modelo..."
+                  placeholder={t("customAgents.selectModelPlaceholder")}
                   disableEnabledFilter
                   showProviderBadge
                   className="w-full justify-between bg-muted/30 hover:bg-muted/50 rounded-xl py-3 h-auto"
@@ -449,18 +455,17 @@ export function CustomAgentEditor({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
               <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground leading-relaxed flex flex-col justify-center min-h-[58px]">
                 <strong className="text-foreground mb-0.5">
-                  Modo del Prompt: Apilamiento Aditivo
+                  {t("customAgents.promptModeAdditive")}
                 </strong>
                 <span>
-                  Al heredar de otro agente personalizado, las instrucciones se
-                  apilan de forma aditiva y acumulativa automáticamente.
+                  {t("customAgents.promptAdditiveInherit")}
                 </span>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
               <div className="space-y-1.5">
-                <Label className="typo-label">Modo del Prompt</Label>
+                <Label className="typo-label">{t("customAgents.promptMode")}</Label>
                 <UnifiedSelector
                   value={promptMode}
                   onChange={(val) =>
@@ -469,15 +474,15 @@ export function CustomAgentEditor({
                   options={[
                     {
                       value: "replace",
-                      label: "Reemplazar base (Default)",
+                      label: t("customAgents.replaceBase"),
                       description:
-                        "Sustituye las instrucciones por defecto de su padre",
+                        t("customAgents.replaceBaseDesc"),
                     },
                     {
                       value: "additive",
-                      label: "Aditivo (Recomendado)",
+                      label: t("customAgents.additiveRecommended"),
                       description:
-                        "Añade tus instrucciones al final de las instrucciones base",
+                        t("customAgents.additiveDesc"),
                     },
                   ]}
                   triggerVariant="default"
@@ -490,17 +495,13 @@ export function CustomAgentEditor({
               <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-[11px] text-muted-foreground leading-relaxed flex flex-col justify-center h-full min-h-[58px]">
                 {promptMode === "replace" ? (
                   <span>
-                    <strong>Reemplazar:</strong> Sustituye el system prompt por
-                    defecto del agente base. Útil para redefinir por completo el
-                    comportamiento del agente. Se conservarán los MCPs, idioma y
-                    credenciales de Vibes.
+                    <strong>{t("customAgents.replace")}:</strong>{" "}
+                    {t("customAgents.replaceCombineFull")}
                   </span>
                 ) : (
                   <span>
-                    <strong>Aditivo:</strong> Combina las instrucciones nativas
-                    del agente base con tu System Prompt al final. Útil para
-                    complementar la lógica base (p. ej. tu planificación
-                    interactiva) con reglas extra.
+                    <strong>{t("customAgents.additive")}:</strong>{" "}
+                    {t("customAgents.additiveCombineFull")}
                   </span>
                 )}
               </div>
@@ -536,7 +537,7 @@ export function CustomAgentEditor({
             </Label>
             <textarea
               id={`default-prompt-${agent.id}`}
-              placeholder="Escribe el prompt que se autopegará al seleccionar el agente (opcional)..."
+              placeholder={t("customAgents.defaultPromptPlaceholder")}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="w-full min-h-[80px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input resize-y"
@@ -628,6 +629,7 @@ export function CustomAgentCreator({
   onCreated,
   onCancel,
 }: CustomAgentCreatorProps) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [slashCommand, setSlashCommand] = useState("");
@@ -659,16 +661,16 @@ export function CustomAgentCreator({
     const commandRegex = /^[a-zA-Z0-9_-]+$/;
     if (!commandRegex.test(slashCommand)) {
       setValidationError(
-        "El comando slash solo puede contener letras, números, guiones y guiones bajos (sin espacios ni la barra inicial /).",
+        t("customAgents.slashValidation"),
       );
       return false;
     }
     if (modelSource === "static" && !model) {
-      setValidationError("Por favor, selecciona un modelo estático.");
+      setValidationError(t("customAgents.staticModelValidation"));
       return false;
     }
     if (!systemPrompt.trim()) {
-      setValidationError("Las instrucciones del System Prompt son requeridas.");
+      setValidationError(t("customAgents.systemPromptRequired"));
       return false;
     }
     setValidationError(null);
@@ -695,13 +697,13 @@ export function CustomAgentCreator({
         model: modelSource === "static" ? model : null,
         prompt: prompt.trim() || null,
       });
-      showSuccess("Agente personalizado creado correctamente");
+      showSuccess(t("customAgents.created"));
       setPrompt("");
       setDescription("");
       onCreated();
     } catch (err: any) {
       console.error(err);
-      setValidationError(err.message || "Error al guardar el agente");
+      setValidationError(err.message || t("customAgents.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -712,7 +714,7 @@ export function CustomAgentCreator({
       <div className="p-4 bg-primary/5 border-b border-border/40 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-primary text-sm">
           <Plus className="size-4" />
-          <span>Nuevo Agente Personalizado</span>
+          <span>{t("customAgents.newAgentTitle")}</span>
         </div>
         <Button
           variant="ghost"
@@ -766,12 +768,12 @@ export function CustomAgentCreator({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <div className="space-y-1.5">
-            <Label className="typo-label">Agente Base</Label>
+            <Label className="typo-label">{t("customAgents.baseAgent")}</Label>
             <UnifiedSelector
               value={baseAgent}
               onChange={(val) => setBaseAgent(val)}
               options={[
-                ...baseOptionsList,
+                ...getBaseOptionsList(t),
                 ...customAgents.map((ca: any) => ({
                   value: `custom-agent::${ca.id}`,
                   label: `${ca.name} (Custom)`,
@@ -788,7 +790,7 @@ export function CustomAgentCreator({
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <Label htmlFor="new-agent-desc" className="typo-label">
-                Descripción Corta
+                {t("customAgents.shortDesc")}
               </Label>
               <span className="text-[11px] text-muted-foreground font-mono">
                 {description.length}/50
@@ -808,20 +810,20 @@ export function CustomAgentCreator({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <div className="space-y-1.5">
-            <Label className="typo-label">Origen del Modelo</Label>
+            <Label className="typo-label">{t("customAgents.modelOrigin")}</Label>
             <UnifiedSelector
               value={modelSource}
               onChange={(val) => setModelSource(val as "chat" | "static")}
               options={[
                 {
                   value: "chat",
-                  label: "Modelo del chat",
-                  description: "Usa el modelo activo seleccionado en el chat",
+                  label: t("customAgents.chatModelLabel"),
+                  description: t("customAgents.chatModelDesc"),
                 },
                 {
                   value: "static",
-                  label: "Modelo estático",
-                  description: "Usa siempre un modelo fijo configurado",
+                  label: t("customAgents.staticModelLabel"),
+                  description: t("customAgents.staticModelDesc"),
                 },
               ]}
               triggerVariant="default"
@@ -833,7 +835,7 @@ export function CustomAgentCreator({
 
           {modelSource === "static" ? (
             <div className="space-y-1.5">
-              <Label className="typo-label">Seleccionar Modelo Estático</Label>
+              <Label className="typo-label">{t("customAgents.selectStaticModel")}</Label>
               <SettingsModelSelector
                 variant="default"
                 size="md"
@@ -841,7 +843,7 @@ export function CustomAgentCreator({
                 onModelSelect={(val) => setModel(val)}
                 models={allModels || []}
                 loading={modelsLoading}
-                placeholder="Selecciona un modelo..."
+                placeholder={t("customAgents.selectModelPlaceholder")}
                 disableEnabledFilter
                 showProviderBadge
                 className="w-full justify-between bg-muted/30 hover:bg-muted/50 rounded-xl py-3 h-auto"
@@ -859,33 +861,32 @@ export function CustomAgentCreator({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-xs text-muted-foreground leading-relaxed flex flex-col justify-center min-h-[58px]">
               <strong className="text-foreground mb-0.5">
-                Modo del Prompt: Apilamiento Aditivo
+                {t("customAgents.promptModeAdditive")}
               </strong>
               <span>
-                Al heredar de otro agente personalizado, las instrucciones se
-                apilan de forma aditiva y acumulativa automáticamente.
+                {t("customAgents.promptAdditiveInherit")}
               </span>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div className="space-y-1.5">
-              <Label className="typo-label">Modo del Prompt</Label>
+              <Label className="typo-label">{t("customAgents.promptMode")}</Label>
               <UnifiedSelector
                 value={promptMode}
                 onChange={(val) => setPromptMode(val as "replace" | "additive")}
                 options={[
                   {
                     value: "replace",
-                    label: "Reemplazar base (Default)",
+                    label: t("customAgents.replaceBase"),
                     description:
-                      "Sustituye las instrucciones por defecto de su padre",
+                      t("customAgents.replaceBaseDesc"),
                   },
                   {
                     value: "additive",
-                    label: "Aditivo (Recomendado)",
+                    label: t("customAgents.additiveRecommended"),
                     description:
-                      "Añade tus instrucciones al final de las instrucciones base",
+                      t("customAgents.additiveDesc"),
                   },
                 ]}
                 triggerVariant="default"
@@ -898,17 +899,13 @@ export function CustomAgentCreator({
             <div className="p-3.5 bg-muted/20 border border-border/50 rounded-xl text-[11px] text-muted-foreground leading-relaxed flex flex-col justify-center h-full min-h-[58px]">
               {promptMode === "replace" ? (
                 <span>
-                  <strong>Reemplazar:</strong> Sustituye el system prompt por
-                  defecto del agente base. Útil para redefinir por completo el
-                  comportamiento del agente. Se conservarán los MCPs, idioma y
-                  credenciales de Vibes.
+                  <strong>{t("customAgents.replace")}:</strong>{" "}
+                  {t("customAgents.replaceCombineFull")}
                 </span>
               ) : (
                 <span>
-                  <strong>Aditivo:</strong> Combina las instrucciones nativas
-                  del agente base con tu System Prompt al final. Útil para
-                  complementar la lógica base (p. ej. tu planificación
-                  interactiva) con reglas extra.
+                  <strong>{t("customAgents.additive")}:</strong>{" "}
+                  {t("customAgents.additiveCombineFull")}
                 </span>
               )}
             </div>
@@ -941,7 +938,7 @@ export function CustomAgentCreator({
           </Label>
           <textarea
             id="new-agent-prompt"
-            placeholder="Escribe el prompt que se autopegará al seleccionar el agente (opcional)..."
+            placeholder={t("customAgents.defaultPromptPlaceholder")}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="w-full min-h-[80px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input resize-y"
@@ -956,7 +953,7 @@ export function CustomAgentCreator({
           </div>
           <textarea
             id="new-system-prompt"
-            placeholder="Escribe el system prompt completo para el agente. Nota: Al reemplazar el prompt nativo, asegúrate de indicarle cómo interactuar y comportarse."
+            placeholder={t("customAgents.systemPromptPlaceholder")}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             className="w-full min-h-[250px] p-4 bg-muted/40 border border-border focus:outline-none focus:ring-1 focus:ring-primary rounded-xl typo-input font-mono resize-y"
@@ -977,7 +974,7 @@ export function CustomAgentCreator({
             disabled={isSaving}
             className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-xl font-semibold px-6"
           >
-            {isSaving ? "Creando..." : "Crear Agente"}
+            {isSaving ? t("customAgents.creating") : t("customAgents.createAgent")}
           </Button>
         </div>
       </form>

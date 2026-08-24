@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import { DEFAULT_AGENT_MODEL } from "@/lib/schemas";
@@ -24,6 +25,7 @@ interface AgentModelSelectorProps {
  */
 export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: openRouterModels, isLoading } =
     useLanguageModelsForProvider("openrouter");
 
@@ -56,17 +58,17 @@ export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
         (m) => m.apiName !== DEFAULT_AGENT_MODEL,
       )}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
       specialOptions={[
         {
           value: DEFAULT_AGENT_MODEL,
           label:
             defaultModelInList?.displayName ||
-            "Gemini 3.1 Flash Lite (recomendado)",
+            t("agentModels.defaultLabel"),
           description: defaultModelInList
             ? undefined
-            : "Modelo por defecto para este agente",
+            : t("agentModels.defaultDesc"),
         },
       ]}
     />

@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
@@ -12,6 +13,7 @@ const DEFAULT_MODEL = DEFAULT_STANDARD_MODEL;
  */
 export function StandardModeModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: openRouterModels, isLoading } =
     useLanguageModelsForProvider("openrouter");
 
@@ -37,15 +39,15 @@ export function StandardModeModelSelector() {
         (m) => m.apiName !== DEFAULT_MODEL,
       )}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
       specialOptions={[
         {
           value: DEFAULT_MODEL,
           label:
             defaultModelInList?.displayName ||
-            "Gemini 2.5 Flash Lite (recomendado)",
-          description: defaultModelInList ? undefined : "Modelo predeterminado",
+            t("addModel.defaultModelLabel"),
+          description: defaultModelInList ? undefined : t("addModel.defaultModel"),
         },
       ]}
     />

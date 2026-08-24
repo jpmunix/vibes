@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { ipc } from "@/ipc/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProviderHeader } from "./ProviderHeader";
 
 export function OllamaProviderSection() {
+  const { t, tPlural } = useI18n();
   const { settings, updateSettings } = useSettings();
   const [expanded, setExpanded] = useState(false);
   const [urlInput, setUrlInput] = useState(settings?.ollamaBaseUrl || "");
@@ -73,10 +75,10 @@ export function OllamaProviderSection() {
         ? "online"
         : "offline";
   const subtitle = !enabled
-    ? "Desactivado"
+    ? t("common.disabled")
     : status?.online
-      ? `${status.modelCount} modelo${status.modelCount !== 1 ? "s" : ""}`
-      : "No disponible";
+      ? tPlural("plural.models", status.modelCount)
+      : t("aiProviders.noAvailable");
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
@@ -107,7 +109,7 @@ export function OllamaProviderSection() {
               {checking ? (
                 <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : (
-                "Verificar"
+                t("ollama.verify")
               )}
             </Button>
           </div>
@@ -115,7 +117,7 @@ export function OllamaProviderSection() {
           {/* URL */}
           <div className="space-y-2">
             <label className="typo-label text-muted-foreground text-xs">
-              URL del servidor
+              {t("ollama.serverUrl")}
             </label>
             <div className="flex gap-2">
               <Input
@@ -130,7 +132,7 @@ export function OllamaProviderSection() {
                 onClick={handleSaveUrl}
                 className="h-9 px-4 cursor-pointer rounded-lg"
               >
-                Guardar
+                {t("ollama.save")}
               </Button>
             </div>
           </div>
@@ -139,7 +141,7 @@ export function OllamaProviderSection() {
           {models.length > 0 && (
             <div className="space-y-1.5">
               <label className="typo-label text-muted-foreground text-xs">
-                Modelos disponibles
+                {t("ollama.availableModels")}
               </label>
               {models.map((m) => (
                 <div

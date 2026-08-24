@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
 import { ChevronRight, Check, Loader2 } from "@/components/ui/icons";
@@ -14,6 +15,7 @@ import {
 import { DEFAULT_VISION_PROMPT } from "@/ipc/shared/vision_constants";
 
 export function VisionPromptGroup() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const [expanded, setExpanded] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -52,9 +54,9 @@ export function VisionPromptGroup() {
           ? ""
           : localContent;
       await updateSettings({ visionPreprocessorPrompt: valueToSave });
-      toast.success("Prompt de visión guardado");
+      toast.success(t("visionPrompts.saved"));
     } catch {
-      toast.error("Error al guardar");
+      toast.error(t("visionPrompts.saveError"));
     } finally {
       setIsSaving(false);
     }

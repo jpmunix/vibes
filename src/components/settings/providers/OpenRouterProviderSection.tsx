@@ -36,8 +36,10 @@ import { ipc } from "@/ipc/types";
 import { CreateCustomModelDialog } from "@/components/CreateCustomModelDialog";
 import { ProviderHeader } from "./ProviderHeader";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/lib/i18n";
 
 export function OpenRouterProviderSection() {
+  const { t, tPlural } = useI18n();
   const { settings, loading: settingsLoading, updateSettings } = useSettings();
   const queryClient = useQueryClient();
   const providerId = "openrouter";
@@ -91,7 +93,7 @@ export function OpenRouterProviderSection() {
 
   const handleAddKey = async () => {
     if (!newKeyInput.trim()) {
-      showError("La clave API no puede estar vacía.");
+      showError(t("openRouter.emptyKeyError"));
       return;
     }
     setIsSaving(true);
@@ -123,9 +125,9 @@ export function OpenRouterProviderSection() {
       setNewKeyInput("");
       setNewKeyAlias("");
       setShowAddKeyForm(false);
-      showSuccess("Clave API añadida");
+      showSuccess(t("openRouter.keyAdded"));
     } catch (error: any) {
-      showError(error.message || "Error al añadir la clave.");
+      showError(error.message || t("openRouter.addKeyError"));
     } finally {
       setIsSaving(false);
     }
@@ -151,9 +153,9 @@ export function OpenRouterProviderSection() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.system.openRouterCredits,
       });
-      showSuccess("Clave eliminada");
+      showSuccess(t("openRouter.keyDeleted"));
     } catch {
-      showError("Error al eliminar la clave");
+      showError(t("openRouter.deleteKeyError"));
     } finally {
       setIsSaving(false);
     }
@@ -169,7 +171,7 @@ export function OpenRouterProviderSection() {
     queryClient.invalidateQueries({
       queryKey: queryKeys.system.openRouterCredits,
     });
-    showSuccess("Clave seleccionada");
+    showSuccess(t("openRouter.keySelected"));
   };
 
   return (
@@ -183,8 +185,8 @@ export function OpenRouterProviderSection() {
           onToggleExpand={() => setExpanded((e) => !e)}
           subtitle={
             keys.length > 0
-              ? `${keys.length} clave${keys.length !== 1 ? "s" : ""}`
-              : "Sin configurar"
+              ? tPlural("openRouter.keysCount", keys.length)
+              : t("openRouter.notConfigured")
           }
         />
 
@@ -193,9 +195,9 @@ export function OpenRouterProviderSection() {
             {/* API Keys */}
             <div className="flex justify-between gap-8 p-4 items-center">
               <div className="flex-1">
-                <h4 className="typo-label text-sm">Clave API activa</h4>
+                <h4 className="typo-label text-sm">{t("openRouter.activeApiKey")}</h4>
                 <p className="typo-caption mt-0.5">
-                  Gestiona tus claves de acceso
+                  {t("aiProviders.activeApiKeyDesc")}
                 </p>
               </div>
               <div onClick={(e) => e.stopPropagation()}>
@@ -205,7 +207,7 @@ export function OpenRouterProviderSection() {
                     onClick={() => setShowAddKeyForm(true)}
                     className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
                   >
-                    Añadir clave
+                    {t("aiProviders.addKey")}
                   </button>
                 ) : (
                   <DropdownMenu>
@@ -215,7 +217,7 @@ export function OpenRouterProviderSection() {
                         className="border-0 bg-primary text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto typo-select hover:brightness-110 transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center"
                       >
                         {keys.find((k) => k.id === selectedKeyId)?.alias ||
-                          "Seleccionar"}
+                          t("openRouter.select")}
                         <ChevronRight className="h-4 w-4 rotate-90 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
@@ -234,7 +236,7 @@ export function OpenRouterProviderSection() {
                         >
                           <div className="flex flex-col min-w-0">
                             <span className="!font-semibold truncate">
-                              {key.alias || "Sin nombre"}
+                              {key.alias || t("common.unlabeled")}
                             </span>
                             <span className="typo-mono-xs truncate">{`${key.key.value.substring(0, 8)}...${key.key.value.substring(key.key.value.length - 4)}`}</span>
                           </div>
@@ -266,9 +268,9 @@ export function OpenRouterProviderSection() {
             {/* Cost display toggle */}
             <div className="flex justify-between gap-8 p-4 items-center">
               <div className="flex-1">
-                <h4 className="typo-label text-sm">Mostrar gasto en chats</h4>
+                <h4 className="typo-label text-sm">{t("aiProviders.costDisplay")}</h4>
                 <p className="typo-caption mt-0.5">
-                  Coste acumulado y por mensaje
+                  {t("aiProviders.costDisplayDesc")}
                 </p>
               </div>
               <div onClick={(e) => e.stopPropagation()}>
@@ -284,7 +286,7 @@ export function OpenRouterProviderSection() {
                           : "hover:bg-primary/10",
                       )}
                     >
-                      {value ? "Activado" : "Desactivado"}
+                      {value ? t("common.enabled") : t("common.disabled")}
                     </button>
                   ))}
                 </div>
@@ -294,9 +296,9 @@ export function OpenRouterProviderSection() {
             {/* Custom model */}
             <div className="flex justify-between gap-8 p-4 items-center">
               <div className="flex-1">
-                <h4 className="typo-label text-sm">Modelo personalizado</h4>
+                <h4 className="typo-label text-sm">{t("openRouter.customModel")}</h4>
                 <p className="typo-caption mt-0.5">
-                  Presets o IDs arbitrarios de OpenRouter
+                  {t("aiProviders.customModelDesc")}
                 </p>
               </div>
               <button
@@ -304,7 +306,7 @@ export function OpenRouterProviderSection() {
                 onClick={() => setIsCustomModelDialogOpen(true)}
                 className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
               >
-                Crear
+                {t("common.create")}
               </button>
             </div>
 
@@ -332,9 +334,9 @@ export function OpenRouterProviderSection() {
                 onClick={() => setModelsExpanded((e) => !e)}
               >
                 <div className="flex-1">
-                  <h4 className="typo-label text-sm">Modelos habilitados</h4>
+                  <h4 className="typo-label text-sm">{t("aiProviders.enabledModels")}</h4>
                   <p className="typo-caption mt-0.5">
-                    Modelos visibles en el selector del chat
+                    {t("aiProviders.enabledModelsDesc")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -346,7 +348,7 @@ export function OpenRouterProviderSection() {
                     }}
                     className="px-3 py-1 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-1.5 text-xs"
                   >
-                    <Plus className="h-3 w-3" /> Añadir
+                    <Plus className="h-3 w-3" /> {t("common.add")}
                   </button>
                   <ChevronRight
                     className={cn(
@@ -389,9 +391,9 @@ export function OpenRouterProviderSection() {
               }}
             >
               <div className="flex-1">
-                <h4 className="typo-label text-sm">Playground</h4>
+                <h4 className="typo-label text-sm">{t("aiProviders.playground")}</h4>
                 <p className="typo-caption mt-0.5">
-                  Compara modelos con el mismo prompt
+                  {t("aiProviders.playgroundDesc")}
                 </p>
               </div>
               <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-foreground transition-colors duration-200 shrink-0" />
@@ -447,7 +449,7 @@ export function OpenRouterProviderSection() {
                 disabled={isSaving || !newKeyInput}
                 className="h-10 px-6 font-bold"
               >
-                {isSaving ? "Guardando..." : "Añadir"}
+                {isSaving ? t("openRouter.saving") : t("openRouter.add")}
               </Button>
             </div>
           </div>
@@ -461,13 +463,13 @@ export function OpenRouterProviderSection() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar clave API?</AlertDialogTitle>
+            <AlertDialogTitle>{t("aiProviders.deleteKeyTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer.
+              {t("aiProviders.deleteKeyMsg")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (keyToDelete) {

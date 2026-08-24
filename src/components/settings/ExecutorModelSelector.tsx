@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import {
@@ -19,6 +20,7 @@ const DEFAULT_MODEL = DEFAULT_EXECUTOR_MODEL;
  */
 export function ExecutorModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue =
@@ -47,7 +49,7 @@ export function ExecutorModelSelector() {
       onModelSelect={handleChange}
       models={filteredModels}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
       showProviderBadge
       specialOptions={[
@@ -56,7 +58,7 @@ export function ExecutorModelSelector() {
           label:
             defaultModelInList?.displayName ||
             "Gemini 2.5 Flash Lite (recomendado)",
-          description: defaultModelInList ? undefined : "Modelo predeterminado",
+          description: defaultModelInList ? undefined : t("addModel.defaultModel"),
         },
       ]}
     />

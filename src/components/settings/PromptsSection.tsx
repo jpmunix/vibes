@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AiStrategistAssistant } from "./AiStrategistAssistant";
@@ -52,6 +53,7 @@ function PromptEditor({
   onUpdate: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [localTitle, setLocalTitle] = useState(prompt.title);
   const [localDesc, setLocalDesc] = useState(prompt.description || "");
@@ -103,12 +105,12 @@ function PromptEditor({
   };
 
   const getScopeLabel = (scopeStr: string) => {
-    if (scopeStr === "all") return "Todos";
+    if (scopeStr === "all") return t("prompts.all");
     const parts = scopeStr.split(",").filter(Boolean);
     const labels: string[] = [];
-    if (parts.includes("agent")) labels.push("Agente");
-    if (parts.includes("plan")) labels.push("Planificar");
-    if (parts.includes("ask")) labels.push("Preguntar");
+    if (parts.includes("agent")) labels.push(t("prompts.scopeAgent"));
+    if (parts.includes("plan")) labels.push(t("prompts.scopePlan"));
+    if (parts.includes("ask")) labels.push(t("prompts.scopeAsk"));
     return labels.join(", ");
   };
 
@@ -122,7 +124,7 @@ function PromptEditor({
 
   const handleSave = async () => {
     if (!localCategoryId) {
-      toast.error("Debes seleccionar una categoría para el prompt.");
+      toast.error(t("prompts.needCategory"));
       return;
     }
     setIsSaving(true);
@@ -154,7 +156,7 @@ function PromptEditor({
       toast.success(`Prompt guardado`);
       onUpdate();
     } catch {
-      toast.error("Error al guardar el prompt");
+      toast.error(t("prompts.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -167,10 +169,10 @@ function PromptEditor({
     setIsDeleting(true);
     try {
       await ipc.prompt.delete(prompt.id);
-      toast.success("Prompt eliminado");
+      toast.success(t("prompts.deleted"));
       onDelete();
     } catch {
-      toast.error("Error al eliminar");
+      toast.error(t("prompts.deleteError"));
       setIsDeleting(false);
     }
   };
@@ -185,10 +187,10 @@ function PromptEditor({
         id: prompt.id,
         systemId: prompt.systemId,
       });
-      toast.success("Prompt restaurado al valor de fábrica");
+      toast.success(t("prompts.restored"));
       onUpdate();
     } catch {
-      toast.error("Error al restaurar el prompt");
+      toast.error(t("prompts.restoreError"));
     } finally {
       setIsRestoring(false);
     }
@@ -246,7 +248,7 @@ function PromptEditor({
                   toast.success(`Prompt ${c ? "activado" : "desactivado"}`);
                 } catch {
                   setLocalEnabled(!c);
-                  toast.error("Error al actualizar estado");
+                  toast.error(t("prompts.statusUpdateError"));
                 }
               }}
               onClick={(e) => e.stopPropagation()}
@@ -269,10 +271,10 @@ function PromptEditor({
               {prompt.hasDefault && prompt.isModified && (
                 <span
                   className="inline-flex items-center gap-1.5 typo-micro px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20"
-                  title="Este prompt ha sido modificado respecto al valor de fábrica."
+                  title={t("prompts.modifiedNote")}
                 >
                   <span className="inline-block size-1.5 rounded-full bg-primary" />
-                  Modificado
+                  {t("prompts.modified")}
                 </span>
               )}
             </h3>
@@ -291,7 +293,7 @@ function PromptEditor({
               handleRestoreDefault();
             }}
             disabled={isRestoring}
-            title="Restaurar el contenido al valor de fábrica"
+            title={t("prompts.restoreTitle")}
           >
             {isRestoring ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -321,21 +323,21 @@ function PromptEditor({
                 <Input
                   value={localTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
-                  placeholder="Título del prompt"
+                  placeholder={t("prompts.promptTitlePlaceholder")}
                   className="h-9 rounded-lg"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Categoría
+                  {t("prompts.categoryLabel")}
                 </label>
                 <Select
                   value={localCategoryId ? String(localCategoryId) : undefined}
                   onValueChange={(val) => setLocalCategoryId(Number(val))}
                 >
                   <SelectTrigger className="h-9 rounded-lg">
-                    <SelectValue placeholder="Selecciona una Categoría..." />
+                    <SelectValue placeholder={t("prompts.selectCategory")} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
@@ -402,12 +404,12 @@ function PromptEditor({
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Descripción
+                {t("prompts.descriptionLabel")}
               </label>
               <Input
                 value={localDesc}
                 onChange={(e) => setLocalDesc(e.target.value)}
-                placeholder="Descripción (opcional)"
+                placeholder={t("prompts.descriptionOptional")}
                 className="h-9 rounded-lg"
               />
             </div>
@@ -477,7 +479,7 @@ function PromptEditor({
                   setIsOpen(false);
                 }}
               >
-                Cancelar
+                {t("prompts.cancel")}
               </Button>
               <Button
                 size="sm"
@@ -493,7 +495,7 @@ function PromptEditor({
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
-                Guardar
+                {t("prompts.save")}
               </Button>
             </div>
           </DialogFooter>
@@ -514,6 +516,7 @@ function PromptGroup({
   categories: PromptCategoryDto[];
   onRefresh: () => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [isCreatingPrompt, setIsCreatingPrompt] = useState(false);
   const [newPromptTitle, setNewPromptTitle] = useState("");
@@ -531,14 +534,14 @@ function PromptGroup({
       await ipc.prompt.create({
         title: newPromptTitle,
         description: "",
-        content: "Escribe tu prompt aquí...",
+        content: t("prompts.writePrompt"),
         categoryId: category?.id,
       });
       setNewPromptTitle("");
       setIsCreatingPrompt(false);
       onRefresh();
     } catch {
-      toast.error("Error al crear prompt");
+      toast.error(t("prompts.createError"));
     }
   };
 
@@ -546,10 +549,10 @@ function PromptGroup({
     if (!category) return;
     try {
       await ipc.prompt.deleteCategory(category.id);
-      toast.success("Categoría eliminada");
+      toast.success(t("prompts.categoryDeleted"));
       onRefresh();
     } catch {
-      toast.error("Error al eliminar categoría");
+      toast.error(t("prompts.categoryDeleteError"));
     }
   };
 
@@ -562,11 +565,11 @@ function PromptGroup({
         name: editCategoryName,
         description: editCategoryDesc,
       });
-      toast.success("Categoría actualizada");
+      toast.success(t("prompts.categoryUpdated"));
       setIsEditingCategory(false);
       onRefresh();
     } catch {
-      toast.error("Error al actualizar categoría");
+      toast.error(t("prompts.categoryUpdateError"));
     }
   };
 
@@ -587,18 +590,18 @@ function PromptGroup({
               <Input
                 value={editCategoryName}
                 onChange={(e) => setEditCategoryName(e.target.value)}
-                placeholder="Nombre de la categoría"
+                placeholder={t("prompts.categoryNamePlaceholder")}
                 className="h-8"
               />
               <Input
                 value={editCategoryDesc}
                 onChange={(e) => setEditCategoryDesc(e.target.value)}
-                placeholder="Descripción (opcional)"
+                placeholder={t("prompts.descriptionOptional")}
                 className="h-8"
               />
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleUpdateCategory}>
-                  Guardar
+                  {t("prompts.save")}
                 </Button>
                 <Button
                   size="sm"
@@ -609,14 +612,14 @@ function PromptGroup({
                     setIsEditingCategory(false);
                   }}
                 >
-                  Cancelar
+                  {t("prompts.cancel")}
                 </Button>
               </div>
             </div>
           ) : (
             <>
               <h3 className="typo-label flex items-center gap-2">
-                {category ? category.name : "Sin Categoría"}
+                {category ? category.name : t("prompts.noCategory")}
                 <span className="text-muted-foreground typo-caption">
                   ({prompts.length})
                 </span>
@@ -646,7 +649,7 @@ function PromptGroup({
                   {category.isSystem ? null : (
                     <DeleteConfirmationDialog
                       itemName={category.name}
-                      itemType="categoría"
+                      itemType={t("prompts.categoryType")}
                       onDelete={handleDeleteCategory}
                       trigger={
                         <Button
@@ -689,7 +692,7 @@ function PromptGroup({
               <div className="flex gap-2 p-2 bg-muted/20 rounded-xl border border-border mt-2">
                 <Input
                   autoFocus
-                  placeholder="Nombre del nuevo prompt..."
+                  placeholder={t("prompts.newPromptPlaceholder")}
                   value={newPromptTitle}
                   onChange={(e) => setNewPromptTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -706,7 +709,7 @@ function PromptGroup({
                   variant="ghost"
                   onClick={() => setIsCreatingPrompt(false)}
                 >
-                  Cancelar
+                  {t("prompts.cancel")}
                 </Button>
               </div>
             ) : (
@@ -728,6 +731,7 @@ function PromptGroup({
 }
 
 export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
+  const { t } = useI18n();
   const [categories, setCategories] = useState<PromptCategoryDto[]>([]);
   const [prompts, setPrompts] = useState<PromptDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -742,7 +746,7 @@ export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
       setCategories(cats);
       setPrompts(prmpts);
     } catch {
-      toast.error("Error al cargar prompts");
+      toast.error(t("prompts.loadError"));
     } finally {
       if (isInitial) setLoading(false);
     }

@@ -1,4 +1,5 @@
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
@@ -12,6 +13,7 @@ const DEFAULT_MODEL = "google/gemini-3-flash-preview";
  */
 export function MemorySelectionModelSelector() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const { data: openRouterModels, isLoading } =
     useLanguageModelsForProvider("openrouter");
 
@@ -31,7 +33,7 @@ export function MemorySelectionModelSelector() {
       onModelSelect={handleChange}
       models={openRouterModels || []}
       loading={isLoading}
-      placeholder="Selecciona un modelo"
+      placeholder={t("common.selectModel")}
       disableEnabledFilter
     />
   );

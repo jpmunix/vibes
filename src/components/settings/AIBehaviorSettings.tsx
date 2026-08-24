@@ -23,12 +23,14 @@ import { MODEL_SELECTOR_STATUS } from "./model_selector_status";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 // ─── Chat turns options ───
-const turnsOptions = [
-  { value: "2", label: "Económico (2)" },
-  { value: "default", label: `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})` },
-  { value: "5", label: "Plus (5)" },
-  { value: "10", label: "Alto (10)" },
-  { value: "100", label: "Máximo (100)" },
+const getTurnsOptions = (
+  t: (k: string, p?: Record<string, string | number>) => string,
+) => [
+  { value: "2", label: t("agentSection.turnsEconomical") },
+  { value: "default", label: t("agentSection.turnsDefault", { max: MAX_CHAT_TURNS_IN_CONTEXT }) },
+  { value: "5", label: t("agentSection.turnsPlus") },
+  { value: "10", label: t("agentSection.turnsHigh") },
+  { value: "100", label: t("agentSection.turnsMax") },
 ];
 
 // ─── #165: límites del loop — presets ───
@@ -80,14 +82,16 @@ function SettingRow({
 }
 
 // ─── Agent model definitions for the collapsible section ───
-const AGENT_MODEL_ENTRIES: { id: AgentId; label: string; description: string }[] = [
-  { id: "plan",       label: "Plan",        description: "Análisis y planificación" },
-  { id: "explore",    label: "Explore",     description: "Exploración del codebase (solo lectura)" },
-  { id: "general",    label: "General",     description: "Subagente multipropósito para tareas en paralelo" },
-  { id: "compaction", label: "Compaction",  description: "Compactación automática de contexto largo" },
-  { id: "title",      label: "Title",       description: "Generación de títulos de sesión" },
-  { id: "summary",    label: "Summary",     description: "Resúmenes automáticos de sesión" },
-  { id: "mockup",     label: "Mockup",      description: "Mockups y ediciones visuales rápidas (sin terminal)" },
+const getAgentModelEntries = (
+  t: (k: string) => string,
+): { id: AgentId; label: string; description: string }[] => [
+  { id: "plan",       label: "Plan",        description: t("agentModels.plan") },
+  { id: "explore",    label: "Explore",     description: t("agentModels.explore") },
+  { id: "general",    label: "General",     description: t("agentModels.general") },
+  { id: "compaction", label: "Compaction",  description: t("agentModels.compaction") },
+  { id: "title",      label: "Title",       description: t("agentModels.title") },
+  { id: "summary",    label: "Summary",     description: t("agentModels.summary") },
+  { id: "mockup",     label: "Mockup",      description: t("agentModels.mockup") },
 ];
 
 // ─── Chip de deuda visual (card #115) ───
@@ -143,7 +147,7 @@ function AgentModelsSection() {
             !agentModelsStatus.active && "opacity-60",
           )}
         >
-          {AGENT_MODEL_ENTRIES.map((entry) => (
+          {getAgentModelEntries(t).map((entry) => (
             <SettingRow
               key={entry.id}
               label={entry.label}
@@ -172,8 +176,8 @@ export function AIBehaviorSettings({
   const currentTurnsRaw =
     settings?.maxChatTurnsInContext?.toString() || "default";
   const currentTurnsLabel =
-    turnsOptions.find((o) => o.value === currentTurnsRaw)?.label ||
-    `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})`;
+    getTurnsOptions(t).find((o) => o.value === currentTurnsRaw)?.label ||
+    t("agentSection.turnsDefault", { max: MAX_CHAT_TURNS_IN_CONTEXT });
 
   const selectedEmbeddingModel =
     settings?.embeddingsModel ?? "openai/text-embedding-3-small";

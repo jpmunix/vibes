@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +9,7 @@ import { useSettings } from "@/hooks/useSettings";
 import type { UserSettings, VertexProviderSetting } from "@/lib/schemas";
 
 export function VertexConfiguration() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const existing =
     (settings?.providerSettings?.vertex as VertexProviderSetting) ?? {};
@@ -58,7 +60,7 @@ export function VertexConfiguration() {
       await updateSettings(settingsUpdate);
       setSaved(true);
     } catch (e: any) {
-      setError(e?.message || "Failed to save Vertex settings");
+      setError(e?.message || t("providersCloud.vertexSaveError"));
     } finally {
       setSaving(false);
     }
@@ -90,9 +92,7 @@ export function VertexConfiguration() {
             placeholder="us-central1"
           />
           <p className="mt-1 typo-caption text-muted-foreground">
-            If you see a "model not found" error, try a different region. Some
-            partner models (MaaS) are only available in specific locations
-            (e.g., us-central1, us-west2).
+            {t("providersCloud.vertexHint")}
           </p>
         </div>
         <div>
@@ -102,7 +102,7 @@ export function VertexConfiguration() {
           <Textarea
             value={serviceAccountKey}
             onChange={(e) => setServiceAccountKey(e.target.value)}
-            placeholder="Pega aquí el contenido JSON completo de tu clave de cuenta de servicio"
+            placeholder={t("providersCloud.vertexKeyPlaceholder")}
             className="min-h-40"
           />
         </div>
@@ -110,7 +110,7 @@ export function VertexConfiguration() {
 
       <div className="flex items-center gap-2">
         <Button onClick={onSave} disabled={saving}>
-          {saving ? "Guardando..." : "Guardar Ajustes"}
+          {saving ? t("common.saving") : t("common.saveSettings")}
         </Button>
         {saved && !error && (
           <span className="flex items-center text-green-600 text-sm">
@@ -122,15 +122,14 @@ export function VertexConfiguration() {
       {!isConfigured && (
         <Alert variant="default">
           <Info className="h-4 w-4" />
-          <AlertTitle>Configuración requerida</AlertTitle>
-          Proporciona el Proyecto, la Ubicación y una clave JSON de cuenta de
-          servicio con acceso a Vertex AI.
+          <AlertTitle>{t("providersCloud.vertexRequired")}</AlertTitle>
+          {t("providersCloud.vertexInfo")}
         </Alert>
       )}
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error al guardar</AlertTitle>
+          <AlertTitle>{t("providersCloud.saveError")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

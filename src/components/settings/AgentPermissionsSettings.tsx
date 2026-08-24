@@ -8,7 +8,7 @@ import type {
 } from "@/lib/schemas";
 import { ChevronRight, Plus, X } from "@/components/ui/icons";
 import { TOOL_CATALOG_LIST } from "@vibes/tools/catalog";
-import { toolLabel, toolDescription } from "@/lib/i18n";
+import { toolLabel, toolDescription, useI18n } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import {
   VIBES_PERMISSION_DEFAULTS,
@@ -67,10 +67,12 @@ const SHELL_SUB_PILLS: SubPillDef[] = [
   { subPillKey: "gitPushDelete", label: "git push --delete", defaultValue: "deny" },
 ];
 
-const PERMISSION_OPTIONS: { value: PermissionDecision; label: string }[] = [
-  { value: "allow", label: "Siempre" },
-  { value: "ask", label: "Preguntar" },
-  { value: "deny", label: "Nunca" },
+const getPermissionOptions = (
+  t: (k: string) => string,
+): { value: PermissionDecision; label: string }[] => [
+  { value: "allow", label: t("permissions.always") },
+  { value: "ask", label: t("permissions.ask") },
+  { value: "deny", label: t("permissions.never") },
 ];
 
 // ── Tri-state pill following the existing design tokens ──
@@ -83,6 +85,7 @@ function PermissionPill({
   onChange: (v: PermissionDecision) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -90,7 +93,7 @@ function PermissionPill({
         disabled && "opacity-40 pointer-events-none select-none",
       )}
     >
-      {PERMISSION_OPTIONS.map((opt) => (
+      {getPermissionOptions(t).map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
@@ -137,6 +140,7 @@ function PermissionRow({
 
 // ── Main component (collapsible, following Modelos pattern) ──
 export function AgentPermissionsSettings() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   // ACTIVE policy — read from settings.permissions (Slice 3.2 schema).
   const perms: PermissionsConfig | undefined = settings?.permissions;
@@ -238,9 +242,9 @@ export function AgentPermissionsSettings() {
         onClick={() => setExpanded((e) => !e)}
       >
         <div className="flex-1">
-          <h3 className="typo-label">Permisos del agente</h3>
+          <h3 className="typo-label">{t("permissions.title")}</h3>
           <p className="typo-caption mt-1">
-            Controla qué acciones puede ejecutar sin tu aprobación
+            {t("permissions.desc")}
           </p>
         </div>
         <ChevronRight
@@ -280,7 +284,7 @@ export function AgentPermissionsSettings() {
                         bashExpanded && "rotate-90",
                       )}
                     />
-                    Reglas por comando
+                    {t("permissions.shellRules")}
                   </button>
 
                   {bashExpanded && (
@@ -312,7 +316,7 @@ export function AgentPermissionsSettings() {
                             <button
                               onClick={() => removeCustomRule(rule.id)}
                               className="flex-shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer rounded-md hover:bg-destructive/10"
-                              title="Eliminar regla"
+                              title={t("permissions.deleteRule")}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -337,7 +341,7 @@ export function AgentPermissionsSettings() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") addCustomRule();
                           }}
-                          placeholder="rm -rf, docker build, npm publish..."
+                          placeholder={t("permissions.patternPlaceholder")}
                           className="flex-1 min-w-0 px-3 py-1.5 typo-input rounded-lg border border-border bg-background focus:border-primary/50 transition-colors"
                         />
                         <PermissionPill
@@ -354,7 +358,7 @@ export function AgentPermissionsSettings() {
                           )}
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Añadir
+                          {t("permissions.add")}
                         </button>
                       </div>
                     </div>

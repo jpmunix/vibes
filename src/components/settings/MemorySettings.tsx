@@ -7,6 +7,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
 import { MemorySelectionModelSelector } from "./MemorySelectionModelSelector";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import { useI18n } from "@/lib/i18n";
 
 // =============================================================================
 // SettingRow — same as AIBehaviorSettings.SettingRow
@@ -55,6 +56,7 @@ function TogglePill({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
       {([false, true] as const).map((value) => (
@@ -68,7 +70,7 @@ function TogglePill({
               : "hover:bg-primary/10",
           )}
         >
-          {value ? "Activado" : "Desactivado"}
+          {value ? t("common.enabled") : t("common.disabled")}
         </button>
       ))}
     </div>
@@ -80,14 +82,15 @@ function TogglePill({
 // =============================================================================
 
 export function MemorySettings() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
 
   return (
     <div className="space-y-4">
       {/* ⚙️ Toggle: project preferences enabled */}
       <SettingRow
-        label="Directrices del proyecto"
-        description="El agente utiliza tus directrices para personalizar sus respuestas"
+        label={t("settingsItems.directrices_del_proyecto")}
+        description={t("settingsItems.directrices_del_proyectoDesc")}
         onClick={() =>
           updateSettings({
             memoriesEnabled: !(settings?.memoriesEnabled !== false),
@@ -105,15 +108,15 @@ export function MemorySettings() {
 
       {/* ⚙️ Model selector — Router (reads) */}
       <SettingRow
-        label="Modelo de selección"
-        description="Modelo ultraligero que clasifica qué directrices inyectar según el prompt del usuario"
+        label={t("settingsItems.modelo_de_seleccion")}
+        description={t("settingsItems.modelo_de_seleccionDesc")}
         control={<MemorySelectionModelSelector />}
       />
 
       {/* ⚙️ Max preferences to inject */}
       <SettingRow
-        label="Directrices máximas por inyección"
-        description="Cantidad máxima de directrices que se pueden inyectar en cada prompt"
+        label={t("settingsItems.directrices_maximas_por_inyeccion")}
+        description={t("settingsItems.directrices_maximas_por_inyeccionDesc")}
         control={
           <UnifiedSelector
             value={String(settings?.memoriesMaxSelection || 5)}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useMcpServers, useMcpTools } from "@/hooks/useMcpServers";
+import { useI18n } from "@/lib/i18n";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -29,6 +30,7 @@ import type { McpServer } from "@/ipc/types/mcp";
 import { cn } from "@/lib/utils";
 
 function McpToolsList({ serverId }: { serverId: number }) {
+  const { t } = useI18n();
   const { data: tools, isLoading, isError, refetch } = useMcpTools(serverId);
 
   if (isLoading) {
@@ -103,6 +105,7 @@ function McpServerCard({
   onUpdate: (id: number, enabled: boolean) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -141,7 +144,7 @@ function McpServerCard({
               <Switch
                 checked={server.enabled}
                 onCheckedChange={(c) => onUpdate(server.id, c)}
-                title="Context7 — desactívalo si no lo necesitas"
+                title={t("mcp.context7Disabled")}
               />
             ) : (
               <Switch
@@ -187,6 +190,7 @@ function McpServerCard({
 }
 
 function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
+  const { t } = useI18n();
   const { createServer, updateServer, isCreating, isUpdating } =
     useMcpServers();
   const [open, setOpen] = useState(false);
@@ -370,8 +374,8 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
             {isContext7
               ? "Editar Instrucciones de Context7"
               : existingServer
-                ? "Editar Servidor MCP"
-                : "Añadir Servidor MCP"}
+                ? t("mcp.editServer")
+                : t("mcp.addServer")}
           </DialogTitle>
         </DialogHeader>
 
@@ -432,8 +436,8 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
                   </div>
                   <div className="space-y-2">
                     <label className="typo-label flex justify-between">
-                      Argumentos{" "}
-                      <span className="typo-caption">Uno por línea</span>
+                      {t("mcp.args")}{" "}
+                      <span className="typo-caption">{t("mcp.onePerLine")}</span>
                     </label>
                     <textarea
                       className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -500,7 +504,7 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
             </label>
             <textarea
               className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Instrucciones para el agente cuando este servidor MCP esté activo. Usa {{SERVER_PREFIX}} para referirte a los tools de este servidor."
+              placeholder={t("mcp.instructionsPlaceholder")}
               value={instructionsStr}
               onChange={(e) => setInstructionsStr(e.target.value)}
             />

@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { ChevronRight } from "@/components/ui/icons";
 
 interface ProviderHeaderProps {
@@ -32,6 +33,7 @@ export function ProviderHeader({
   toggleDisabled,
   rightActions,
 }: ProviderHeaderProps) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -90,11 +92,11 @@ export function ProviderHeader({
                 )}
                 title={
                   value === false && toggleDisabled
-                    ? "No puedes desactivar todos los proveedores"
+                    ? t("common.cannotDisableLastProvider")
                     : undefined
                 }
               >
-                {value ? "Activado" : "Desactivado"}
+                {value ? t("common.enabled") : t("common.disabled")}
               </button>
             ))}
           </div>
