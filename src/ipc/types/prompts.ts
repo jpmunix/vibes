@@ -27,6 +27,9 @@ export const PromptCategoryDtoSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
+  // i18n: clave de traducción para categorías del sistema. Si viene, la UI
+  // resuelve el nombre visible con t() en lugar del name de la DB.
+  nameKey: z.string().nullable().optional(),
   isSystem: z.boolean().optional(),
 });
 

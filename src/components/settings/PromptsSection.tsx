@@ -81,6 +81,24 @@ function PromptEditor({
   // quedan ocultos o en solo lectura.
   const editorLock = getPromptEditorLock(prompt.systemId);
 
+  // i18n: los prompts del sistema tienen label/desc en DB en el idioma con el
+  // que se crearon (español). Si el systemId tiene key de traducción, resolver
+  // el texto visible con t(); fallback al valor que trae el handler.
+  const getSystemLabel = (): string => {
+    if (!prompt.systemId) return prompt.title;
+    const key = `prompts.system.labels.${prompt.systemId}`;
+    const translated = t(key);
+    return translated === key ? prompt.title : translated;
+  };
+
+  const getSystemDesc = (): string | null => {
+    const fallback = prompt.description;
+    if (!prompt.systemId) return fallback;
+    const key = `prompts.system.descs.${prompt.systemId}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+
   const hasUnsavedChanges =
     localTitle !== prompt.title ||
     localDesc !== (prompt.description || "") ||
@@ -114,12 +132,12 @@ function PromptEditor({
   };
 
   const getScopeLabel = (scopeStr: string) => {
-    if (scopeStr === "all") return t("prompts.all");
+    if (scopeStr === "all") return t("prompts.scope.all");
     const parts = scopeStr.split(",").filter(Boolean);
     const labels: string[] = [];
-    if (parts.includes("agent")) labels.push(t("prompts.scopeAgent"));
-    if (parts.includes("plan")) labels.push(t("prompts.scopePlan"));
-    if (parts.includes("ask")) labels.push(t("prompts.scopeAsk"));
+    if (parts.includes("agent")) labels.push(t("prompts.scope.agent"));
+    if (parts.includes("plan")) labels.push(t("prompts.scope.plan"));
+    if (parts.includes("ask")) labels.push(t("prompts.scope.ask"));
     return labels.join(", ");
   };
 
@@ -223,7 +241,7 @@ function PromptEditor({
             title={
               canToggle
                 ? undefined
-                : "Prompt obligatorio del runtime: no se puede desactivar (el agente lo necesita para operar)"
+                : t("prompts.requiredTitle")
             }
           >
             <Switch
@@ -233,9 +251,7 @@ function PromptEditor({
                 if (!canToggle) {
                   // El prompt base no se desactiva nunca (card #117 follow-up).
                   setLocalEnabled(true);
-                  toast.info(
-                    "El prompt base del runtime no se puede desactivar — es obligatorio",
-                  );
+                  toast.info(t("prompts.requiredToast"));
                   return;
                 }
                 setLocalEnabled(c);
@@ -254,7 +270,11 @@ function PromptEditor({
                     });
                   }
                   onUpdate();
-                  toast.success(`Prompt ${c ? "activado" : "desactivado"}`);
+                  toast.success(
+                    c
+                      ? t("prompts.activated")
+                      : t("prompts.deactivated"),
+                  );
                 } catch {
                   setLocalEnabled(!c);
                   toast.error(t("prompts.statusUpdateError"));
@@ -265,16 +285,16 @@ function PromptEditor({
             {!canToggle && (
               <Lock
                 className="size-4 text-muted-foreground/70 ml-2"
-                aria-label="Bloqueado: prompt obligatorio"
+                aria-label={t("prompts.requiredTitle")}
               />
             )}
           </div>
           <div>
             <h3 className="typo-label flex items-center gap-2 text-sm font-medium">
-              {prompt.title}
+              {getSystemLabel()}
               {!localEnabled && (
                 <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">
-                  DESACTIVADO
+                  {t("prompts.disabled")}
                 </span>
               )}
               {prompt.hasDefault && prompt.isModified && (
@@ -288,7 +308,7 @@ function PromptEditor({
               )}
             </h3>
             <p className="typo-caption mt-1 text-xs text-muted-foreground">
-              {prompt.description}
+              {getSystemDesc()}
             </p>
           </div>
         </div>
@@ -309,7 +329,7 @@ function PromptEditor({
             ) : (
               <Check className="h-3.5 w-3.5" />
             )}
-            Restaurar defaults
+            {t("prompts.restoreDefaults")}
           </Button>
         )}
         <ChevronRight className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-colors shrink-0" />
@@ -319,7 +339,7 @@ function PromptEditor({
         <DialogContent className="sm:max-w-[975px] max-h-[85vh] flex flex-col p-6 rounded-2xl shadow-2xl bg-popover border border-border">
           <DialogHeader className="pb-4 border-b border-border/50">
             <DialogTitle className="text-base font-bold text-foreground">
-              Editar Prompt
+              {t("prompts.editPrompt")}
             </DialogTitle>
           </DialogHeader>
 
@@ -332,7 +352,7 @@ function PromptEditor({
                 )}
               >
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Título
+                  {t("prompts.title")}
                 </label>
                 <Input
                   value={localTitle}
@@ -373,7 +393,7 @@ function PromptEditor({
               {!editorLock.hideScope && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Ámbito (Scope)
+                    {t("prompts.scope.label")}
                   </label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -393,7 +413,7 @@ function PromptEditor({
                         onCheckedChange={() => handleToggleScope("all")}
                         onSelect={(e) => e.preventDefault()}
                       >
-                        Todos
+                        {t("prompts.scope.all")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuCheckboxItem
@@ -403,7 +423,7 @@ function PromptEditor({
                         onCheckedChange={() => handleToggleScope("agent")}
                         onSelect={(e) => e.preventDefault()}
                       >
-                        Agente
+                        {t("prompts.scope.agent")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={
@@ -412,7 +432,7 @@ function PromptEditor({
                         onCheckedChange={() => handleToggleScope("plan")}
                         onSelect={(e) => e.preventDefault()}
                       >
-                        Planificar
+                        {t("prompts.scope.plan")}
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuCheckboxItem
                         checked={
@@ -421,7 +441,7 @@ function PromptEditor({
                         onCheckedChange={() => handleToggleScope("ask")}
                         onSelect={(e) => e.preventDefault()}
                       >
-                        Preguntar
+                        {t("prompts.scope.ask")}
                       </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -481,7 +501,7 @@ function PromptEditor({
           <DialogFooter className="pt-4 border-t border-border/50 flex flex-row justify-between sm:justify-between items-center gap-2 w-full">
             {prompt.hasDefault ? (
               <div className="flex items-center gap-2 typo-caption text-muted-foreground">
-                No se puede eliminar. Edita o restáuralo.
+                {t("prompts.noDelete")}
               </div>
             ) : (
               <DeleteConfirmationDialog
@@ -500,7 +520,7 @@ function PromptEditor({
                     disabled={isDeleting}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Eliminar
+                    {t("prompts.delete")}
                   </Button>
                 }
               />
@@ -614,6 +634,30 @@ function PromptGroup({
     }
   };
 
+  // i18n: las categorías del sistema llevan nameKey (clave de traducción).
+  // El nombre/descripción visibles se resuelven con t(); las de usuario
+  // usan su texto libre de la DB.
+  const getCategoryName = (): string => {
+    if (!category) return t("prompts.noCategory");
+    if (category.nameKey) {
+      const key = `prompts.categories.${category.nameKey}`;
+      const translated = t(key);
+      // Fallback: si la clave no existe, t() devuelve la key — usar el name.
+      return translated === key ? category.name : translated;
+    }
+    return category.name;
+  };
+
+  const getCategoryDesc = (): string | null => {
+    if (!category) return null;
+    if (category.nameKey) {
+      const key = `prompts.categories.${category.nameKey}Desc`;
+      const translated = t(key);
+      return translated === key ? category.description : translated;
+    }
+    return category.description;
+  };
+
   return (
     <>
       <div
@@ -660,13 +704,13 @@ function PromptGroup({
           ) : (
             <>
               <h3 className="typo-label flex items-center gap-2">
-                {category ? category.name : t("prompts.noCategory")}
+                {getCategoryName()}
                 <span className="text-muted-foreground typo-caption">
                   ({prompts.length})
                 </span>
               </h3>
-              {category?.description && (
-                <p className="typo-caption mt-1">{category.description}</p>
+              {getCategoryDesc() && (
+                <p className="typo-caption mt-1">{getCategoryDesc()}</p>
               )}
             </>
           )}
@@ -743,7 +787,7 @@ function PromptGroup({
                   className="h-8"
                 />
                 <Button size="sm" onClick={handleCreatePrompt}>
-                  Crear
+                  {t("prompts.create")}
                 </Button>
                 <Button
                   size="sm"
@@ -761,7 +805,7 @@ function PromptGroup({
                 onClick={() => setIsCreatingPrompt(true)}
               >
                 <Plus className="h-3.5 w-3.5" />
-                Nuevo Prompt en {category.name}
+                {t("prompts.newIn", { category: getCategoryName() })}
               </Button>
             )
           ) : null}
@@ -806,7 +850,7 @@ export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
   if (loading) {
     return (
       <div className="text-center text-sm text-muted-foreground py-4">
-        Cargando prompts...
+        {t("prompts.loading")}
       </div>
     );
   }

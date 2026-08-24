@@ -910,12 +910,83 @@ export const messagesEn: Messages = {
     noCategory: "No Category",
     categoryType: "category",
     newPromptPlaceholder: "New prompt name...",
-    all: "All",
-    scopeAgent: "Agent",
-    scopePlan: "Plan",
-    scopeAsk: "Ask",
     verbosityNotice:
       "Response length is controlled in Settings → Agent → Verbosity. This prompt defines how the agent acts, not how much it talks.",
+    saved: "Prompt saved",
+    requiredTitle:
+      "Mandatory runtime prompt: cannot be disabled (the agent needs it to operate)",
+    requiredToast:
+      "The base runtime prompt cannot be disabled — it is mandatory",
+    disabled: "DISABLED",
+    restoreDefaults: "Restore defaults",
+    editPrompt: "Edit Prompt",
+    title: "Title",
+    scope: {
+      label: "Scope",
+      all: "All",
+      agent: "Agent",
+      plan: "Plan",
+      ask: "Ask",
+    },
+    content: "Prompt Content",
+    noDelete: "Cannot be deleted. Edit or restore it.",
+    delete: "Delete",
+    create: "Create",
+    newIn: "New Prompt in {category}",
+    loading: "Loading prompts...",
+    activated: "Prompt enabled",
+    deactivated: "Prompt disabled",
+    categories: {
+      systemPrompts: "System Prompts",
+      systemPromptsDesc:
+        "Factory system prompts. Editable at your discretion.",
+      review: "Review",
+      reviewDesc:
+        "Prompts that do NOT reach the runtime. Other handlers use them (chat titles, commits, memory, etc.).",
+    },
+    system: {
+      labels: {
+        chat_title: "Chat Titles",
+        app_title_short: "App Titles",
+        app_name_pro: "App Names",
+        auto_commit_message: "Commit Message",
+        memory_synthesis: "Memory Generation",
+        memory_selection: "Memory Selection",
+        memory_onboarding: "Memory Bootstrap",
+        ctx_language: "Response language",
+        ctx_no_run_locally: "Do not show execution",
+        ctx_task_management: "Task management",
+        ctx_plan_mode: "Interactive planning",
+        ctx_build_walkthrough: "Changes summary",
+        runtime_agent_base: "Agent core",
+      },
+      descs: {
+        chat_title:
+          "Generates automatic chat titles from the user's first message.",
+        app_title_short: "Generates short, catchy titles for apps.",
+        app_name_pro: "Generates functional, descriptive names when creating apps.",
+        auto_commit_message:
+          "Generates automatic commit messages in Conventional Commits format.",
+        memory_synthesis:
+          "Synthesizer instructions: decide what to extract from each conversation and generate operations (add/update/merge).",
+        memory_selection:
+          "Router instructions: select which memories to inject based on the user's prompt.",
+        memory_onboarding:
+          "Bootstrap instructions: analyze project config files to generate foundational memories.",
+        ctx_language:
+          "Forces the agent to always respond in the selected language. Uses {{LANGUAGE}} as placeholder.",
+        ctx_no_run_locally:
+          "Prevents the agent from explaining how to run the app (npm run dev, etc.)",
+        ctx_task_management:
+          "When the agent should use todowrite to organize complex tasks.",
+        ctx_plan_mode:
+          "Instructions for interactive planning mode (ask before planning).",
+        ctx_build_walkthrough:
+          "Instructions to generate a changes summary in the .vibes/ folder when finishing complex tasks in build mode.",
+        runtime_agent_base:
+          "Agent core: tool usage rules the model receives every session. The shell composes it; the runtime executes it.",
+      },
+    },
   },
   permissions: {
     always: "Always",

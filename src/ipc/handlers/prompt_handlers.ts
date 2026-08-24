@@ -46,19 +46,34 @@ export function registerPromptHandlers() {
     // existir para el usuario. Si no están (instalación nueva, o un DROP de
     // la tabla prompts_categories), se crean aquí al vuelo. Esto evita tener
     // que re-ejecutar scripts de seed manualmente.
+    // i18n: la búsqueda es por name_key (clave estable, inmune al idioma),
+    // no por nombre visible (que depende del locale del usuario).
     const findOrCreateCategory = async (
-      name: string,
-      description: string,
+      nameKey: string,
+      fallbackName: string,
+      fallbackDescription: string,
       isSystem: boolean,
     ) => {
-      const existing = categoryRows.find((c) => c.name === name);
+      const existing = categoryRows.find((c) => c.nameKey === nameKey);
       if (existing) return existing.id;
+      // Fallback: installs previos a name_key pueden tener la fila sin key.
+      const byName = categoryRows.find(
+        (c) => c.name === fallbackName && c.nameKey == null,
+      );
+      if (byName) {
+        await db
+          .update(remoteSchema.promptsCategories)
+          .set({ nameKey })
+          .where(eq(remoteSchema.promptsCategories.id, byName.id));
+        return byName.id;
+      }
       const [created] = await db
         .insert(remoteSchema.promptsCategories)
         .values({
           userId: context.userId as string,
-          name,
-          description,
+          name: fallbackName,
+          nameKey,
+          description: fallbackDescription,
           isSystem: isSystem ? 1 : 0,
         })
         .returning();
@@ -66,6 +81,7 @@ export function registerPromptHandlers() {
     };
 
     const systemCategoryId = await findOrCreateCategory(
+      "systemPrompts",
       "Prompts del sistema",
       "Prompts de fábrica del sistema. Editables bajo tu criterio.",
       true,
@@ -73,6 +89,7 @@ export function registerPromptHandlers() {
     // Categoría "revisar" — prompts que NO llegan a vibes-core (los leen
     // otros handlers: títulos de chat, commits, memoria, etc.).
     const revisarCategoryId = await findOrCreateCategory(
+      "review",
       "revisar",
       "Prompts que NO llegan a vibes-core. Los usan otros handlers (títulos de chat, commits, memoria, etc.).",
       false,
@@ -351,6 +368,7 @@ export function registerPromptHandlers() {
       id: Number(r.id),
       name: r.name,
       description: r.description ?? null,
+      nameKey: r.nameKey ?? null,
       isSystem: r.isSystem === 1,
     }));
   });
@@ -377,6 +395,7 @@ export function registerPromptHandlers() {
         id: Number(row.id),
         name: row.name,
         description: row.description ?? null,
+        nameKey: row.nameKey ?? null,
         isSystem: row.isSystem === 1,
       };
     },

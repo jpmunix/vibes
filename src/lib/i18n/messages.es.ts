@@ -934,12 +934,83 @@ export const messagesEs: Messages = {
     noCategory: "Sin Categoría",
     categoryType: "categoría",
     newPromptPlaceholder: "Nombre del nuevo prompt...",
-    all: "Todos",
-    scopeAgent: "Agente",
-    scopePlan: "Planificar",
-    scopeAsk: "Preguntar",
     verbosityNotice:
       "La longitud de las respuestas se controla desde Ajustes → Agente → Verbosidad. Este prompt define cómo actúa el agente, no cuánto habla.",
+    saved: "Prompt guardado",
+    requiredTitle:
+      "Prompt obligatorio del runtime: no se puede desactivar (el agente lo necesita para operar)",
+    requiredToast:
+      "El prompt base del runtime no se puede desactivar — es obligatorio",
+    disabled: "DESACTIVADO",
+    restoreDefaults: "Restaurar defaults",
+    editPrompt: "Editar Prompt",
+    title: "Título",
+    scope: {
+      label: "Ámbito (Scope)",
+      all: "Todos",
+      agent: "Agente",
+      plan: "Planificar",
+      ask: "Preguntar",
+    },
+    content: "Contenido del Prompt",
+    noDelete: "No se puede eliminar. Edita o restáuralo.",
+    delete: "Eliminar",
+    create: "Crear",
+    newIn: "Nuevo Prompt en {category}",
+    loading: "Cargando prompts...",
+    activated: "Prompt activado",
+    deactivated: "Prompt desactivado",
+    categories: {
+      systemPrompts: "Prompts del sistema",
+      systemPromptsDesc:
+        "Prompts de fábrica del sistema. Editables bajo tu criterio.",
+      review: "Revisar",
+      reviewDesc:
+        "Prompts que NO llegan a vibes-core. Los usan otros handlers (títulos de chat, commits, memoria, etc.).",
+    },
+    system: {
+      labels: {
+        chat_title: "Títulos de Chat",
+        app_title_short: "Títulos de App",
+        app_name_pro: "Nombres de App",
+        auto_commit_message: "Mensaje de Commit",
+        memory_synthesis: "Generación de Memorias",
+        memory_selection: "Selección de Memorias",
+        memory_onboarding: "Bootstrap de Memorias",
+        ctx_language: "Idioma de respuesta",
+        ctx_no_run_locally: "No mostrar ejecución",
+        ctx_task_management: "Gestión de tareas",
+        ctx_plan_mode: "Planificación interactiva",
+        ctx_build_walkthrough: "Resumen de cambios",
+        runtime_agent_base: "Núcleo del agente",
+      },
+      descs: {
+        chat_title:
+          "Genera títulos automáticos para los chats a partir del primer mensaje del usuario.",
+        app_title_short: "Genera títulos cortos y atractivos para las apps.",
+        app_name_pro: "Genera nombres funcionales y descriptivos al crear apps.",
+        auto_commit_message:
+          "Genera mensajes de commit automáticos en formato Conventional Commits.",
+        memory_synthesis:
+          "Instrucciones del Synthesizer: decide qué extraer de cada conversación y genera operaciones (add/update/merge).",
+        memory_selection:
+          "Instrucciones del Router: selecciona qué memorias inyectar según el prompt del usuario.",
+        memory_onboarding:
+          "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
+        ctx_language:
+          "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
+        ctx_no_run_locally:
+          "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
+        ctx_task_management:
+          "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
+        ctx_plan_mode:
+          "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
+        ctx_build_walkthrough:
+          "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
+        runtime_agent_base:
+          "Núcleo del agente: reglas de uso de herramientas que el modelo recibe en cada sesión. La carcasa lo compone; el runtime lo ejecuta.",
+      },
+    },
   },
   permissions: {
     always: "Siempre",

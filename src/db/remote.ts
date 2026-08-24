@@ -399,6 +399,24 @@ export async function initializeRemoteSchema(): Promise<void> {
       )
       .catch(() => {});
 
+    // ── i18n categorías del sistema: columna name_key (v10.0) ──────────────
+    // Las categorías del sistema guardan una clave de traducción (name_key);
+    // el nombre visible se resuelve con t() en la UI. Null = categoría de
+    // usuario con texto libre. Auto-heal idempotente para installs previos.
+    await client
+      .execute(`ALTER TABLE prompts_categories ADD COLUMN name_key TEXT`)
+      .catch(() => {});
+    await client
+      .execute(
+        `UPDATE prompts_categories SET name_key = 'systemPrompts' WHERE name = 'Prompts del sistema' AND name_key IS NULL`,
+      )
+      .catch(() => {});
+    await client
+      .execute(
+        `UPDATE prompts_categories SET name_key = 'review' WHERE name = 'revisar' AND name_key IS NULL`,
+      )
+      .catch(() => {});
+
     // ── Auto-heal: fix timestamps stored in milliseconds instead of seconds ──
     // Bug: some records had created_at stored as Date.now() (millis) instead of
     // Unix seconds. Drizzle mode:"timestamp" expects seconds. Fix on startup.

@@ -281,6 +281,9 @@ export const promptsCategories = sqliteTable("prompts_categories", {
     .references(() => users.id),
   name: text("name").notNull(),
   description: text("description"),
+  // i18n: clave de traducción para categorías del sistema (null = categoría
+  // de usuario con texto libre). El nombre visible se resuelve con t() en UI.
+  nameKey: text("name_key"),
   isSystem: integer("is_system").notNull().default(0),
 });
 
