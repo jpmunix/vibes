@@ -25,6 +25,7 @@ import { ipc } from "@/ipc/types";
 import type { DocTreeNode } from "@/types/docsTypes";
 import type { DocSearchResult } from "@/types/docsTypes";
 import { Dot } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface DocsSidebarProps {
   tree: DocTreeNode | null;
@@ -39,6 +40,7 @@ export function DocsSidebar({
   activePath,
   onNavigate,
 }: DocsSidebarProps) {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +98,7 @@ export function DocsSidebar({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar en la documentación..."
+            placeholder={t("docsWindow.searchPlaceholder")}
             className="w-full pl-8 pr-8 py-1.5 rounded-md border border-border bg-background text-foreground typo-body placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
           {searchQuery && (
@@ -158,6 +160,7 @@ function SearchResults({
   activePath: string | null;
   onNavigate: (path: string, anchor?: string) => void;
 }) {
+  const { t } = useI18n();
   if (isSearching) {
     return (
       <div className="p-3 space-y-2">
@@ -182,7 +185,7 @@ function SearchResults({
       <div className="p-4 text-center">
         <Search size={24} className="mx-auto text-muted-foreground/40 mb-2" />
         <p className="typo-body text-muted-foreground">
-          Sin resultados para "
+          {t("docsWindow.noResultsFor")} "
           <span className="font-medium text-foreground">{query}</span>"
         </p>
       </div>
@@ -192,7 +195,9 @@ function SearchResults({
   return (
     <div className="space-y-1">
       <div className="px-2 py-1 typo-micro text-muted-foreground">
-        {results.length} resultado{results.length !== 1 ? "s" : ""}
+        {results.length === 1
+          ? t("docsWindow.resultsCount", { count: results.length })
+          : t("docsWindow.resultsCountPlural", { count: results.length })}
       </div>
       {results.map((result, idx) => {
         const isActive = activePath === result.relativePath;

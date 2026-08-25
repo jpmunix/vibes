@@ -10,6 +10,7 @@ import { and, eq } from "drizzle-orm";
 import { readSettings, writeSettings } from "../../main/settings";
 import { isAdmin } from "../../lib/admin";
 import { getActiveFlavor } from "../../flavors";
+import { t } from "../../lib/i18n";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -1573,6 +1574,12 @@ export function registerWindowHandlers() {
         height: 700,
       });
 
+      const settings = readSettings();
+      const docTitle = t(
+        "docsWindow.title",
+        settings.chatLanguage ?? "es",
+      );
+
       docsWindow = new BrowserWindow({
         icon: iconPath,
         show: false,
@@ -1583,7 +1590,7 @@ export function registerWindowHandlers() {
         minWidth: 700,
         minHeight: 500,
         skipTaskbar: false,
-        title: "Documentación",
+        title: docTitle,
         autoHideMenuBar: true,
         titleBarStyle: "hidden",
         titleBarOverlay: false,
@@ -1693,6 +1700,12 @@ export function registerWindowHandlers() {
         height: 700,
       });
 
+      const rnSettings = readSettings();
+      const rnTitle = t(
+        "docsWindow.releaseNotesTitle",
+        rnSettings.chatLanguage ?? "es",
+      );
+
       releaseNotesWindow = new BrowserWindow({
         icon: iconPath,
         show: false,
@@ -1703,7 +1716,7 @@ export function registerWindowHandlers() {
         minWidth: 700,
         minHeight: 500,
         skipTaskbar: false,
-        title: "Notas de Versión",
+        title: rnTitle,
         autoHideMenuBar: true,
         titleBarStyle: "hidden",
         titleBarOverlay: false,

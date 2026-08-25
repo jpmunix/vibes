@@ -29,6 +29,7 @@ import { ipc } from "@/ipc/types";
 import { DocsSidebar } from "./DocsSidebar";
 import { DocsContent } from "./DocsContent";
 import type { DocTreeNode } from "@/types/docsTypes";
+import { useI18n } from "@/lib/i18n";
 
 import "@/styles/globals.css";
 
@@ -42,11 +43,12 @@ const queryClient = new QueryClient({
 // ─── Title bar ──────────────────────────────────────────────────────────────
 
 function TitleBar() {
+  const { t } = useI18n();
   return (
     <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
       <div className="flex items-center gap-2">
         <BookOpen size={14} className="text-primary" />
-        <span className="typo-button">Documentación</span>
+        <span className="typo-button">{t("docsWindow.title")}</span>
       </div>
       <WindowsControls
         className="no-app-region-drag pr-0 pointer-events-auto"
@@ -60,6 +62,7 @@ function TitleBar() {
 
 function DocsWindowContent() {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const [activePath, setActivePath] = useState<string | null>(null);
   const [searchHighlight, setSearchHighlight] = useState<string | null>(null);
   const [scrollToAnchor, setScrollToAnchor] = useState<string | null>(null);
@@ -135,8 +138,8 @@ function DocsWindowContent() {
   }, [settings?.selectedFont, applyFont]);
 
   useEffect(() => {
-    document.title = "Documentación";
-  }, []);
+    document.title = t("docsWindow.title");
+  }, [t]);
 
   // Fetch the doc tree
   const { data: docTree, isLoading: treeLoading } = useQuery({

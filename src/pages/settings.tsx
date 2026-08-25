@@ -463,7 +463,7 @@ export default function SettingsPage() {
                     className="h-10 px-4 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl"
                   >
                     <Info className="h-4 w-4 mr-2 opacity-70" />
-                    {appVersion ? `v${appVersion}` : "Info"}
+                    {appVersion ? `v${appVersion}` : t("docsWindow.versionInfo")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -474,34 +474,34 @@ export default function SettingsPage() {
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-2.5 px-1">
                         <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Sistema
+                          {t("docsWindow.system")}
                         </h4>
                         <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
-                          <span className="text-muted-foreground">Vibes</span>
+                          <span className="text-muted-foreground">{t("docsWindow.vibes")}</span>
                           <span className="font-mono font-medium text-primary">
                             v{versionInfo.vibes}
                           </span>
                           <span className="text-muted-foreground">
-                            Runtime
+                            {t("docsWindow.runtime")}
                           </span>
                           <span className="font-mono">
                             {versionInfo.opencode
                               ? `v${versionInfo.opencode}`
-                              : "N/A"}
+                              : t("docsWindow.notAvailable")}
                           </span>
                           <div className="col-span-2 h-px bg-border/50 my-1" />
-                          <span className="text-muted-foreground">Node.js</span>
+                          <span className="text-muted-foreground">{t("docsWindow.nodejs")}</span>
                           <span className="font-mono opacity-80">
                             v{versionInfo.node}
                           </span>
                           <span className="text-muted-foreground">
-                            Electron
+                            {t("docsWindow.electron")}
                           </span>
                           <span className="font-mono opacity-80">
                             v{versionInfo.electron}
                           </span>
                           <span className="text-muted-foreground">
-                            Arquitectura
+                            {t("docsWindow.architecture")}
                           </span>
                           <span className="font-mono opacity-80">
                             {versionInfo.platform}/{versionInfo.arch}
@@ -521,13 +521,13 @@ export default function SettingsPage() {
                           variant="ghost"
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
-                          Novedades de la versión
+                          {t("docsWindow.releaseNotesButton")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <div className="py-6 flex justify-center text-sm text-muted-foreground">
-                      Cargando...
+                      {t("docsWindow.loading")}
                     </div>
                   )}
                 </PopoverContent>

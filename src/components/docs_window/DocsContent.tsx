@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { DocsMarkdownRenderer } from "./DocsMarkdownRenderer";
 import { BookOpen, Loader2 } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 interface DocsContentProps {
   activePath: string | null;
@@ -109,6 +110,7 @@ export function DocsContent({
   scrollToAnchor,
   onHighlightDone,
 }: DocsContentProps) {
+  const { t } = useI18n();
   const {
     data: pageData,
     isLoading,
@@ -169,7 +171,7 @@ export function DocsContent({
       <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-8">
         <BookOpen size={48} className="opacity-30" />
         <p className="typo-body opacity-60">
-          Selecciona un artículo del panel lateral
+          {t("docsWindow.selectArticle")}
         </p>
       </div>
     );
@@ -188,9 +190,9 @@ export function DocsContent({
   if (error || !pageData) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground p-8">
-        <p className="typo-body">No se pudo cargar la página.</p>
+        <p className="typo-body">{t("docsWindow.loadError")}</p>
         <p className="typo-micro opacity-50">
-          {String(error?.message || "Contenido no disponible")}
+          {String(error?.message || t("docsWindow.contentUnavailable"))}
         </p>
       </div>
     );
