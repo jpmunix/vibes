@@ -1754,7 +1754,6 @@ This conversation includes one or more image attachments. When the user uploads 
           // override. Un override deshabilitado (enabled=0) desactiva el prompt.
           const SYSTEM_PROMPT_IDS = [
             "ctx_language",
-            "ctx_no_run_locally",
             "ctx_task_management",
             "ctx_plan_mode",
             "ctx_build_walkthrough",

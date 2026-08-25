@@ -41,7 +41,6 @@ describe("SYSTEM_PROMPT_GROUPS — jerarquía a 2 niveles (card #195)", () => {
     expect(byKey.core).toEqual([
       "runtime_agent_base",
       "ctx_language",
-      "ctx_no_run_locally",
       "ctx_task_management",
       "ctx_plan_mode",
       "ctx_build_walkthrough",

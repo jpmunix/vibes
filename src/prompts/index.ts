@@ -10,7 +10,6 @@ export type PromptId =
   | "memory_onboarding"
   // Context instructions (injected into every chat message)
   | "ctx_language"
-  | "ctx_no_run_locally"
   | "ctx_task_management"
   | "ctx_plan_mode"
   | "ctx_build_walkthrough"
@@ -29,7 +28,6 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   memory_selection: "Selección de Memorias",
   memory_onboarding: "Bootstrap de Memorias",
   ctx_language: "Idioma de respuesta",
-  ctx_no_run_locally: "No mostrar ejecución",
   ctx_task_management: "Gestión de tareas",
 
   ctx_plan_mode: "Planificación interactiva",
@@ -53,8 +51,6 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
   ctx_language:
     "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
-  ctx_no_run_locally:
-    "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
   ctx_task_management:
     "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
   ctx_plan_mode:
@@ -90,7 +86,6 @@ export const SYSTEM_PROMPT_GROUPS: readonly SystemPromptGroup[] = [
     promptIds: [
       "runtime_agent_base",
       "ctx_language",
-      "ctx_no_run_locally",
       "ctx_task_management",
       "ctx_plan_mode",
       "ctx_build_walkthrough",

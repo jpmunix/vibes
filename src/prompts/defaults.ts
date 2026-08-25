@@ -230,9 +230,6 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   ctx_language:
     "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in {{LANGUAGE}}. Think in {{LANGUAGE}}, reason in {{LANGUAGE}} and write ALL your responses completely in {{LANGUAGE}}. Do not use another language under any circumstances except for code names, variables or technologies.",
 
-  ctx_no_run_locally:
-    "NEVER explain to the user how to run the application locally (e.g. npm run dev) or how to see updated changes. The environment already recompiles and displays the app automatically and transparently. Omit all execution instructions.",
-
   ctx_task_management: [
     "TASK MANAGEMENT: If the user's request requires 3 or more distinct changes",
     "(creating several files, modifying multiple components, implementing several features),",

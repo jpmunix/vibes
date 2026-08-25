@@ -107,7 +107,6 @@ describe("DEFAULT_PROMPTS — semilla de fábrica que debe cubrir los systemIds 
   // quedaría sin prompt cuando no hay override en la DB. Este test lo detecta.
   const RUNTIME_SYSTEM_PROMPT_IDS = [
     "ctx_language",
-    "ctx_no_run_locally",
     "ctx_task_management",
     "ctx_plan_mode",
     "ctx_build_walkthrough",
@@ -178,7 +177,6 @@ describe("DEFAULT_PROMPT_SCOPES — scopes de fábrica para prompts pesados", ()
   it("el resto de systemIds del runtime no tienen scope de fábrica (viajan en todos los modos)", () => {
     const runtimeIds = [
       "ctx_language",
-      "ctx_no_run_locally",
       "ctx_task_management",
       "runtime_agent_base",
     ] as const;

@@ -380,34 +380,6 @@ const PROMPTS = [
       "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en {{LANGUAGE}}. Piensa en {{LANGUAGE}}, razona en {{LANGUAGE}} y redacta TODAS tus respuestas completamente en {{LANGUAGE}}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.",
   },
   {
-    systemId: "ctx_no_run_locally",
-    content:
-      "NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.",
-  },
-  {
-    systemId: "ctx_context7_docs",
-    content:
-      "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated.",
-  },
-  {
-    systemId: "ctx_efficiency_triage",
-    content: [
-      "CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:",
-      "Antes de empezar cualquier tarea, evalúa su complejidad:",
-      "",
-      "TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):",
-      "- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.",
-      "- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).",
-      "- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.",
-      "- Mantén tu respuesta final extremadamente corta y directa.",
-      "",
-      "TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):",
-      "- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.",
-      "",
-      "RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.",
-    ].join("\n"),
-  },
-  {
     systemId: "ctx_task_management",
     content: [
       "GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados",
@@ -706,9 +678,6 @@ const TITLES = {
   memory_selection: "Selección de Memorias",
   memory_onboarding: "Bootstrap de Memorias",
   ctx_language: "Idioma de respuesta",
-  ctx_no_run_locally: "No mostrar ejecución",
-  ctx_context7_docs: "Documentación Context7",
-  ctx_efficiency_triage: "Eficiencia y triaje",
   ctx_task_management: "Gestión de tareas",
   ctx_plan_mode: "Planificación interactiva",
   ctx_build_walkthrough: "Resumen de cambios",
@@ -729,9 +698,6 @@ const DESCRIPTIONS = {
   memory_selection: "Instrucciones del Router: selecciona qué memorias inyectar según el prompt del usuario.",
   memory_onboarding: "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
   ctx_language: "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
-  ctx_no_run_locally: "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
-  ctx_context7_docs: "Obliga al agente a consultar documentación fresca antes de integrar librerías.",
-  ctx_efficiency_triage: "Criterios para que el agente clasifique tareas simples vs complejas y ajuste su esfuerzo.",
   ctx_task_management: "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
   ctx_plan_mode: "Instrucciones para el modo de planificación interactiva (preguntar antes de planificar).",
   ctx_build_walkthrough: "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
