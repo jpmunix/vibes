@@ -370,6 +370,7 @@ function LabelDialog({
   chatId: number | null;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedColor, setSelectedColor] = useState("#3B82F6");
@@ -876,7 +877,7 @@ function LabelDialog({
                           <button
                             type="button"
                             onClick={() => startEditing(gLabel)}
-                            title="Editar etiqueta"
+                            title={t("common.editTag")}
                             className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer"
                           >
                             <Pencil size={12} />
@@ -889,7 +890,7 @@ function LabelDialog({
                                 name: gLabel.name,
                               })
                             }
-                            title="Eliminar etiqueta permanentemente"
+                            title={t("common.deleteTag")}
                             className="p-1 text-muted-foreground hover:text-destructive hover:bg-muted rounded transition-colors cursor-pointer"
                           >
                             <Trash2 size={12} />
@@ -1145,7 +1146,7 @@ const AppChats = memo(function AppChats({
     <>
       <div className="pl-8 flex flex-col gap-1 py-1.5">
         {sortedChats.length === 0 ? (
-          <div className="px-2 py-1.5 typo-micro opacity-50">Sin chats</div>
+          <div className="px-2 py-1.5 typo-micro opacity-50">{t("workspaceMenu.noChats")}</div>
         ) : (
           <>
             {sortedChats.map((chat) => {
@@ -1253,7 +1254,7 @@ const AppChats = memo(function AppChats({
                         type="button"
                         className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                         title={
-                          pinnedChatIds.has(chat.id) ? "Desfijar" : "Fijar"
+                          pinnedChatIds.has(chat.id) ? t("common.unpin") : t("common.pin")
                         }
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1278,7 +1279,7 @@ const AppChats = memo(function AppChats({
                       <button
                         type="button"
                         className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
-                        title="Archivar"
+                        title={t("common.archive")}
                         onClick={(e) => {
                           e.stopPropagation();
                           onArchiveChat(chat.id, chat.title || "Nuevo chat");
@@ -1294,7 +1295,7 @@ const AppChats = memo(function AppChats({
                         }}
                         type="button"
                         className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
-                        title="Opciones"
+                        title={t("common.options")}
                         onClick={(e) => {
                           e.stopPropagation();
                           isMenuOpen ? closeMenu() : openMenu(chat.id);
@@ -1426,6 +1427,7 @@ const SidebarServerDot = memo(function SidebarServerDot({
 }: {
   appId: number;
 }) {
+  const { t } = useI18n();
   const { isServerRunning } = useAppServerStatus(appId);
 
   if (!isServerRunning) return null;
@@ -1434,7 +1436,7 @@ const SidebarServerDot = memo(function SidebarServerDot({
     <span
       className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1 animate-pulse"
       style={{ boxShadow: "0 0 6px 1px rgba(16,185,129,0.45)" }}
-      title="Servidor activo"
+      title={t("common.serverActive")}
     />
   );
 });
@@ -1922,7 +1924,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             ref={menuBtnRef}
             type="button"
             className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/app-row:opacity-100"}`}
-            title="Opciones"
+            title={t("common.options")}
             onClick={(e) => {
               e.stopPropagation();
               menuOpen ? closeMenu() : openMenu();
@@ -1935,7 +1937,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             type="button"
             className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
-            title="Archivar"
+            title={t("common.archive")}
             onClick={(e) => {
               e.stopPropagation();
               onArchiveApp(app.id, app.name);
@@ -1948,7 +1950,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             type="button"
             className={`absolute right-[3.75rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
-            title="Nuevo chat"
+            title={t("workspaceMenu.newChat")}
             onClick={(e) => {
               e.stopPropagation();
               onNewChat(app.id);
@@ -1998,7 +2000,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 <span className="flex items-center gap-2">
                   <MessageSquare size={14} className="opacity-60 shrink-0" />
-                  Chat
+                  {t("workspaceMenu.chat")}
                 </span>
                 <ChevronRight size={12} className="opacity-40 shrink-0" />
                 {/* Submenu: Chat */}
@@ -2016,7 +2018,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <Plus size={14} className="opacity-60 shrink-0" />
-                      Nuevo chat
+                      {t("workspaceMenu.newChat")}
                     </button>
                     <button
                       type="button"
@@ -2031,7 +2033,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <ExternalLink size={14} className="opacity-60 shrink-0" />
-                      Abrir en Chat
+                      {t("workspaceMenu.openInChat")}
                     </button>
                     <button
                       type="button"
@@ -2039,7 +2041,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       onClick={loadAndShowArchived}
                     >
                       <Archive size={14} className="opacity-60 shrink-0" />
-                      Ver archivados
+                      {t("workspaceMenu.viewArchived")}
                     </button>
                   </div>
                 )}
@@ -2057,7 +2059,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 <span className="flex items-center gap-2">
                   <FileText size={14} className="opacity-60 shrink-0" />
-                  Planes
+                  {t("workspaceMenu.plans")}
                 </span>
               </div>
 
@@ -2072,7 +2074,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 <span className="flex items-center gap-2">
                   <Code size={14} className="opacity-60 shrink-0" />
-                  Código
+                  {t("workspaceMenu.code")}
                 </span>
                 <ChevronRight size={12} className="opacity-40 shrink-0" />
                 {/* Submenu: Código */}
@@ -2090,7 +2092,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <FolderOpen size={14} className="opacity-60 shrink-0" />
-                      Explorar código
+                      {t("workspaceMenu.exploreCode")}
                     </button>
                     <button
                       type="button"
@@ -2101,7 +2103,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <GitBranch size={14} className="opacity-60 shrink-0" />
-                      {hasUnpushedChanges ? "Revisar cambios" : "Git"}
+                      {hasUnpushedChanges ? t("workspaceMenu.reviewChanges") : t("workspaceMenu.git")}
                     </button>
 
                     {(hasDesignMd || hasAgentsMd) && (
@@ -2174,7 +2176,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 <span className="flex items-center gap-2">
                   <Folder size={14} className="opacity-60 shrink-0" />
-                  Workspace
+                  {t("workspaceMenu.workspace")}
                 </span>
                 <ChevronRight size={12} className="opacity-40 shrink-0" />
                 {/* Submenu: Workspace */}
@@ -2192,7 +2194,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <Pencil size={14} className="opacity-60 shrink-0" />
-                      Renombrar workspace
+                      {t("workspaceMenu.renameWorkspace")}
                     </button>
                     <button
                       type="button"
@@ -2203,7 +2205,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <Archive size={14} className="opacity-60 shrink-0" />
-                      Archivar
+                      {t("workspaceMenu.archive")}
                     </button>
                     {memoriesEnabled && (
                       <button
@@ -2219,7 +2221,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         }}
                       >
                         <Database size={14} className="opacity-60 shrink-0" />
-                        Directrices
+                        {t("workspaceMenu.guidelines")}
                       </button>
                     )}
                     <button
@@ -2233,7 +2235,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <FolderOpen size={14} className="opacity-60 shrink-0" />
-                      Abrir directorio
+                      {t("workspaceMenu.openDirectory")}
                     </button>
                     <button
                       type="button"
@@ -2246,7 +2248,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <Terminal size={14} className="opacity-60 shrink-0" />
-                      Abrir en terminal
+                      {t("workspaceMenu.openInTerminal")}
                     </button>
                     <button
                       type="button"
@@ -2257,7 +2259,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <FolderOpen size={14} className="opacity-60 shrink-0" />
-                      Folders
+                      {t("workspaceMenu.folders")}
                     </button>
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
@@ -2270,7 +2272,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         }}
                       >
                         <Square size={14} className="shrink-0" />
-                        Detener servidor
+                        {t("workspaceMenu.stopServer")}
                       </button>
                     )}
                     <button
@@ -2282,7 +2284,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       }}
                     >
                       <X size={14} className="shrink-0" />
-                      Cerrar workspace
+                      {t("workspaceMenu.closeWorkspace")}
                     </button>
                   </div>
                 )}
@@ -2300,7 +2302,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 }}
               >
                 <Settings size={14} className="opacity-60 shrink-0" />
-                Integraciones
+                {t("workspaceMenu.integrations")}
               </button>
             </div>
           </>,
@@ -2327,7 +2329,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   </div>
                   <div>
                     <span className="text-sm font-semibold block">
-                      Integraciones
+                      {t("workspaceMenu.integrations")}
                     </span>
                     <span className="text-xs text-muted-foreground/60">
                       {app.name}
@@ -2456,7 +2458,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           setPreviewChatMessages([]);
                           setPreviewChatTitle(null);
                         }}
-                        title="Volver a la lista"
+                        title={t("common.backToList")}
                       >
                         <ArrowLeft size={16} />
                       </button>
@@ -2478,7 +2480,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           setPreviewChatTitle(null);
                         }}
                         disabled={unarchivingId === previewChatId}
-                        title="Restaurar chat"
+                        title={t("common.restoreChat")}
                       >
                         {unarchivingId === previewChatId ? (
                           <Loader2 size={14} className="animate-spin" />
@@ -2522,7 +2524,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                             type="button"
                             className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/75 transition-colors cursor-pointer"
                             onClick={() => setArchivedSearchQuery("")}
-                            title="Limpiar búsqueda"
+                            title={t("common.clearSearch")}
                           >
                             <X size={13} />
                           </button>
@@ -2639,7 +2641,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                                   onClick={() => handleUnarchive(chat.id)}
                                   disabled={unarchivingId === chat.id}
-                                  title="Restaurar"
+                                  title={t("common.restore")}
                                 >
                                   {unarchivingId === chat.id ? (
                                     <Loader2
@@ -2739,7 +2741,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           setPreviewPlanPath(null);
                           setPreviewContent(null);
                         }}
-                        title="Volver a la lista"
+                        title={t("common.backToList")}
                       >
                         <ArrowLeft size={16} />
                       </button>
@@ -2802,7 +2804,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   showError(err);
                                 }
                               }}
-                              title="Adjuntar al chat actual"
+                              title={t("common.attachToCurrentChat")}
                             >
                               Adjuntar a este chat
                             </button>
@@ -2814,7 +2816,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       {loadingPreview ? (
                         <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
                           <Loader2 size={16} className="animate-spin" />
-                          <span className="text-sm">Cargando preview...</span>
+                          <span className="text-sm">{t("workspaceMenu.loadingPreview")}</span>
                         </div>
                       ) : previewContent ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -2836,7 +2838,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     {loadingPlans ? (
                       <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
                         <Loader2 size={16} className="animate-spin" />
-                        <span className="text-sm">Cargando planes...</span>
+                        <span className="text-sm">{t("workspaceMenu.loadingPlans")}</span>
                       </div>
                     ) : appPlans.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
@@ -3849,7 +3851,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 type="button"
                 className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
                 onClick={exitSelectionMode}
-                title="Cancelar"
+                title={t("common.cancel")}
               >
                 <X size={14} className="text-muted-foreground" />
               </button>
@@ -4001,7 +4003,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                             <button
                               type="button"
                               className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
-                              title="Desfijar"
+                              title={t("common.unpin")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleUnpinChat(pinned.id);
@@ -4013,7 +4015,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                             <button
                               type="button"
                               className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
-                              title="Archivar"
+                              title={t("common.archive")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleArchiveChatClick(
@@ -4034,7 +4036,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               }}
                               type="button"
                               className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/pin-row:opacity-100"}`}
-                              title="Opciones"
+                              title={t("common.options")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 isMenuOpen
@@ -4136,7 +4138,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     setSearchQuery("");
                     setSearchVisible(false);
                   }}
-                  title="Cerrar búsqueda"
+                  title={t("common.closeSearch")}
                 >
                   <X size={13} />
                 </button>
@@ -4278,7 +4280,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                         onClick={() => handleUnarchiveApp(app.id)}
                         disabled={unarchivingId === app.id}
-                        title="Restaurar"
+                        title={t("common.restore")}
                       >
                         {unarchivingId === app.id ? (
                           <Loader2 size={15} className="animate-spin" />
@@ -4434,7 +4436,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Renombrar "{renameAppName}"</DialogTitle>
+            <DialogTitle>{t("workspaceMenu.renameTitle")} "{renameAppName}"</DialogTitle>
           </DialogHeader>
           <input
             type="text"

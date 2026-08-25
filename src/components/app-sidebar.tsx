@@ -266,8 +266,8 @@ export function TopNavbar() {
             onClick={toggleSidebar}
             title={
               state === "expanded"
-                ? "Cerrar panel lateral"
-                : "Abrir panel lateral"
+                ? t("common.closeSidebar")
+                : t("common.openSidebar")
             }
           >
             <Menu size={18} />
@@ -367,7 +367,7 @@ export function TopNavbar() {
             <button
               type="button"
               className="topnav-util-btn no-app-region-drag relative"
-              title="Notas de Versión"
+              title={t("docsWindow.releaseNotesTitle")}
               onClick={() => {
                 ipc.system.openReleaseNotesWindow({
                   theme: theme as "light" | "dark" | "system",
