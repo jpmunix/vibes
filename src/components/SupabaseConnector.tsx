@@ -93,10 +93,10 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         appId,
         organizationSlug,
       });
-      toast.success("Proyecto conectado a la app con éxito");
+      toast.success(t("supabase.projectConnected"));
       await refreshApp();
     } catch (error) {
-      toast.error("Error al conectar el proyecto a la app: " + error);
+      toast.error(t("supabase.connectError", { error: String(error) }));
     }
   };
 
@@ -138,20 +138,20 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   const handleUnsetProject = async () => {
     try {
       await unsetAppProject(appId);
-      toast.success("Proyecto desconectado de la app con éxito");
+      toast.success(t("supabase.projectDisconnected"));
       await refreshApp();
     } catch (error) {
       console.error("Failed to disconnect project:", error);
-      toast.error("Error al desconectar el proyecto de la app");
+      toast.error(t("supabase.disconnectError"));
     }
   };
 
   const handleDeleteOrganization = async (organizationSlug: string) => {
     try {
       await deleteOrganization({ organizationSlug });
-      toast.success("Organización desconectada con éxito");
+      toast.success(t("supabase.orgDisconnected"));
     } catch (error) {
-      toast.error("Error al desconectar la organización: " + error);
+      toast.error(t("supabase.disconnectOrgError", { error: String(error) }));
     }
   };
 
@@ -269,7 +269,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                       onClick={() =>
                         handleDeleteOrganization(org.organizationSlug)
                       }
-                      title="Desconectar organización"
+                      title={t("supabase.disconnectOrg")}
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" />
                       <span className="text-xs">Desconectar</span>

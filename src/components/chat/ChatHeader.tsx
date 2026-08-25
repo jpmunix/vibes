@@ -188,7 +188,7 @@ export function ChatHeader({
 
   const showLoadingBar = isAnyCheckoutVersionInProgress;
   const loadingMessage = isAnyCheckoutVersionInProgress
-    ? "Recuperando versión..."
+    ? t("chat.restoringVersion")
     : undefined;
 
   return (
@@ -357,7 +357,7 @@ export function ChatHeader({
                                 e.stopPropagation();
                                 if (!appId) return;
                                 const tid = toast.loading(
-                                  "Generando resumen y creando chat nuevo...",
+                                  t("workspace.summarizing"),
                                 );
                                 try {
                                   const newChatId =
@@ -372,7 +372,7 @@ export function ChatHeader({
                                     search: { id: newChatId },
                                   });
                                   toast.success(
-                                    "Resumen completado con éxito",
+                                    t("workspace.summarizeSuccess"),
                                     { id: tid },
                                   );
                                 } catch (err) {
@@ -390,7 +390,7 @@ export function ChatHeader({
                               />
                             </button>
                             <button
-                              title="Renombrar chat"
+                              title={t("chat.renameChat")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setChatToRename({
@@ -493,7 +493,7 @@ export function ChatHeader({
       >
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Renombrar chat</DialogTitle>
+            <DialogTitle>{t("chat.renameChat")}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={async (e) => {
@@ -608,6 +608,7 @@ function formatSessionCost(usd: number): string {
 }
 
 function ChatPositionToggle() {
+  const { t } = useI18n();
   const [chatPosition, setChatPosition] = useAtom(chatPositionAtom);
   const { updateSettings } = useSettings();
   const isLeft = chatPosition === "left";
@@ -627,7 +628,7 @@ function ChatPositionToggle() {
       ) : (
         <PanelLeft size={16} className="mr-2" />
       )}
-      {isLeft ? "Chat a la derecha" : "Chat a la izquierda"}
+      {isLeft ? t("chat.chatRight") : t("chat.chatLeft")}
     </DropdownMenuItem>
   );
 }
@@ -760,7 +761,7 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
             variant="ghost"
             size="icon"
             className="relative h-8 w-8"
-            title="Ver planificaciones y artefactos"
+            title={t("chat.viewPlans")}
           >
             <FileText size={16} />
             {hasUnreviewed && (
@@ -805,7 +806,7 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
                     )}
                   </div>
                   <button
-                    title="Desacoplar plan del chat"
+                    title={t("chat.decouplePlan")}
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();

@@ -142,7 +142,7 @@ function ConnectedVercelConnector({
       )}
       {deployments.length > 0 && (
         <div className="mt-4">
-          <h4 className="font-medium mb-2">Despliegues recientes:</h4>
+          <h4 className="font-medium mb-2">{t("vercel.recentDeployments")}</h4>
           <div className="space-y-2">
             {deployments.map((deployment) => (
               <div key={deployment.uid} className="bg-muted rounded-md p-3">
@@ -277,7 +277,7 @@ function UnconnectedVercelConnector({
       setAccessToken("");
       refreshSettings();
     } catch (err: any) {
-      setTokenError(err.message || "Failed to save access token.");
+      setTokenError(err.message || t("vercel.saveTokenFailed"));
     } finally {
       setIsSavingToken(false);
     }
@@ -298,7 +298,7 @@ function UnconnectedVercelConnector({
       }
     } catch (err: any) {
       setProjectCheckError(
-        err.message || "Failed to check project availability.",
+        err.message || t("vercel.checkAvailabilityFailed"),
       );
     } finally {
       setIsCheckingProject(false);
@@ -418,7 +418,7 @@ function UnconnectedVercelConnector({
                     Guardando token...
                   </>
                 ) : (
-                  "Guardar token de acceso"
+                  t("vercel.saveToken")
                 )}
               </Button>
             </form>
@@ -547,8 +547,8 @@ function UnconnectedVercelConnector({
                     triggerClassName="w-full mt-1"
                     placeholder={
                       isLoadingProjects
-                        ? "Cargando proyectos..."
-                        : "Selecciona un proyecto"
+                        ? t("vercel.loadingProjects")
+                        : t("vercel.selectProject")
                     }
                     data-testid="vercel-project-select"
                   />
@@ -567,11 +567,11 @@ function UnconnectedVercelConnector({
             >
               {isCreatingProject
                 ? projectSetupMode === "create"
-                  ? "Creando..."
-                  : "Conectando..."
+                  ? t("vercel.creating")
+                  : t("vercel.connecting")
                 : projectSetupMode === "create"
-                  ? "Crear proyecto"
-                  : "Conectar al proyecto"}
+                  ? t("vercel.createProject")
+                  : t("vercel.connectProject")}
             </Button>
           </form>
 

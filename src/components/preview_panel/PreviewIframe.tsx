@@ -142,7 +142,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
           <button
             onClick={onDismiss}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Cerrar"
+            aria-label={t("preview.close")}
           >
             <X size={20} className="text-muted-foreground" />
           </button>
@@ -255,7 +255,7 @@ export const ExpandPreviewButton = ({
               isExpanded ? "bg-accent" : "hover:bg-accent",
             )}
             data-testid="preview-expand-button"
-            aria-label={isExpanded ? "Contraer vista" : "Expandir vista"}
+            aria-label={isExpanded ? t("preview.collapseView") : t("preview.expandView")}
           >
             <div className="transition-transform duration-200 hover:scale-110">
               {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -263,7 +263,7 @@ export const ExpandPreviewButton = ({
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isExpanded ? "Contraer vista" : "Expandir vista"}</p>
+          <p>{isExpanded ? t("preview.collapseView") : t("preview.expandView")}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -350,7 +350,7 @@ export const DeviceModeButton = () => {
         <TooltipProvider>
           <ToggleGroup
             type="single"
-            title="Modo de dispositivo"
+            title={t("preview.deviceMode")}
             value={deviceMode}
             onValueChange={(value) => {
               if (value) {
@@ -979,7 +979,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
         if (!iframeRect) {
           showError(
-            "No se pudo determinar la posición del área de previsualización",
+            t("preview.noPreviewArea"),
           );
           return;
         }
@@ -1552,7 +1552,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       setErrorMessage({
         message:
-          "Timeout: El servidor local no responde. Intentando reiniciar automáticamente...",
+          t("preview.timeoutRestart"),
         source: "preview-app",
       });
     }, 30000); // 30 seconds
@@ -1726,7 +1726,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                                 e.stopPropagation();
                                 removeFromHistory(path);
                               }}
-                              title="Eliminar del historial"
+                              title={t("preview.removeHistory")}
                             >
                               <X size={12} />
                             </button>
@@ -1866,7 +1866,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
                   setErrorMessage({
                     message:
-                      "Error de conexión con el servidor local (127.0.0.1). Intentando reiniciar automáticamente...",
+                      t("preview.connectionErrorRestart"),
                     source: "preview-app",
                   });
                 }}

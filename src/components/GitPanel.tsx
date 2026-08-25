@@ -1212,7 +1212,7 @@ export function GitPanel({
               ) : (
                 <History size={15} />
               )}
-              {tab === "changes" ? "Cambios" : "Historial"}
+              {tab === "changes" ? t("git.changes") : t("git.history")}
               {tab === "changes" && hasChanges && (
                 <span className="typo-caption px-1.5 py-0 rounded-full bg-primary/15 text-primary font-semibold">
                   {uncommittedFiles.length}
@@ -1831,18 +1831,18 @@ export function GitPanel({
 
       <ConfirmationDialog
         isOpen={!!discardTarget}
-        title="Revertir cambios"
+        title={t("git.revertChanges")}
         message={
           discardTarget?.length === 1
-            ? `¿Estás seguro de querer revertir los cambios en ${discardTarget[0]}? Esta acción es irreversible.`
-            : `¿Estás seguro de querer revertir los cambios en ${discardTarget?.length} archivos? Esta acción es irreversible.`
+            ? t("git.revertConfirmSingle", { file: discardTarget[0] ?? "" })
+            : t("git.revertConfirmMultiple", { count: String(discardTarget?.length ?? 0) })
         }
         confirmText={
           discardTarget?.length === 1
-            ? "Revertir"
-            : `Revertir ${discardTarget?.length} archivos`
+            ? t("git.revert")
+            : t("git.revertCount", { count: String(discardTarget?.length ?? 0) })
         }
-        cancelText="Cancelar"
+        cancelText={t("git.cancel")}
         onConfirm={async () => {
           if (discardTarget) {
             const isAll = discardTarget.length === uncommittedFiles.length;
@@ -1862,12 +1862,15 @@ export function GitPanel({
               if (errors === 0) {
                 toast.success(
                   discardTarget.length === 1
-                    ? "Cambios descartados"
-                    : `${discardTarget.length} archivos revertidos`,
+                    ? t("git.changesDiscarded")
+                    : t("git.filesReverted", { count: String(discardTarget.length) }),
                 );
               } else {
                 toast.warning(
-                  `${discardTarget.length - errors} revertidos, ${errors} con error`,
+                  t("git.partialRevert", {
+                    success: String(discardTarget.length - errors),
+                    failed: String(errors),
+                  }),
                 );
               }
             }

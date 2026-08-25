@@ -5,6 +5,7 @@
  */
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -266,6 +267,7 @@ export function AdminKnowledgeBase() {
 // ── AppAnalyzer — telemetry + pipeline for a specific user+app ──────────────
 
 function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
+  const { t } = useI18n();
   const [stats, setStats] = useState<{ action: string; count: number }[]>([]);
   const [recent, setRecent] = useState<TelemetryEvent[]>([]);
   const [pipelineLogs, setPipelineLogs] = useState<PipelineLog[]>([]);
@@ -354,7 +356,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
     return (
       <div className="flex items-center gap-2 p-4 pl-8 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="typo-caption">Cargando análisis...</span>
+        <span className="typo-caption">{t("adminKb.loadingAnalysis")}</span>
       </div>
     );
   }
@@ -399,7 +401,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
 
       {activeTab === "telemetry" ? (
         totalInteractions === 0 ? (
-          <p className="typo-caption p-4">Sin datos de telemetría.</p>
+          <p className="typo-caption p-4">{t("adminKb.noTelemetry")}</p>
         ) : (
           <>
             {/* Funnel */}
@@ -544,7 +546,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
         )
       ) : activeTab === "pipeline" ? (
         pipelineLogs.length === 0 ? (
-          <p className="typo-caption p-4">Sin logs del pipeline.</p>
+          <p className="typo-caption p-4">{t("adminKb.noPipelineLogs")}</p>
         ) : (
           <div className="space-y-2">
             {pipelineLogs.map((log) => (
@@ -569,7 +571,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
       debugLoading ? (
         <div className="flex items-center gap-2 p-4 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="typo-caption">Cargando debug logs...</span>
+          <span className="typo-caption">{t("adminKb.loadingDebugLogs")}</span>
         </div>
       ) : debugLogs.length === 0 ? (
         <p className="typo-caption p-4">
@@ -623,6 +625,7 @@ function PipelineLogRow({
   fullPayload: boolean;
   onTogglePayload: () => void;
 }) {
+  const { t } = useI18n();
   const stageMeta = STAGE_LABELS[log.stage] || {
     label: log.stage,
     color: "text-muted-foreground",
@@ -724,12 +727,12 @@ function PipelineLogRow({
               ) : (
                 <Maximize2 className="size-3" />
               )}
-              {fullPayload ? "Colapsar todo" : "Expandir todo"}
+              {fullPayload ? t("adminKb.collapseAll") : t("adminKb.expandAll")}
             </button>
           </div>
           {log.error && (
             <PayloadBlock
-              label="Error"
+              label={t("adminKb.error")}
               content={log.error}
               variant="error"
               expanded={fullPayload}
@@ -764,7 +767,7 @@ function PipelineLogRow({
           )}
           {log.systemPrompt && (
             <PayloadBlock
-              label="System prompt"
+              label={t("adminKb.systemPrompt")}
               content={log.systemPrompt}
               variant="dim"
               expanded={fullPayload}
@@ -789,6 +792,7 @@ function downloadMarkdown(filename: string, content: string) {
 }
 
 function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
+  const { t } = useI18n();
   const [viewingLog, setViewingLog] = useState<DebugLogEntry | null>(null);
 
   const handleShare = async (log: DebugLogEntry) => {
@@ -835,7 +839,7 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 cursor-pointer"
-                title="Descargar"
+                title={t("adminKb.download")}
                 onClick={(e) => {
                   e.stopPropagation();
                   downloadMarkdown(log.filename, log.contentMd);
@@ -847,7 +851,7 @@ function DebugLogViewer({ logs }: { logs: DebugLogEntry[] }) {
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 cursor-pointer"
-                title="Compartir"
+                title={t("adminKb.share")}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleShare(log);

@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ipc } from "@/ipc/types";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import {
   Triangle,
@@ -59,6 +60,7 @@ function VercelSetupDialog({
   onClose,
   onLinked,
 }: VercelSetupDialogProps) {
+  const { t } = useI18n();
   const { settings, refreshSettings } = useSettings();
   const hasToken = !!settings?.vercelAccessToken;
   const [mode, setMode] = useState<"choose" | "create" | "existing">("choose");
@@ -128,7 +130,7 @@ function VercelSetupDialog({
     try {
       setProjects(await ipc.vercel.listProjects());
     } catch {
-      toast.error("Error al cargar proyectos");
+      toast.error(t("vercel.loadProjectsError"));
     } finally {
       setIsLoadingProjects(false);
     }
@@ -144,11 +146,11 @@ function VercelSetupDialog({
     setIsSavingToken(true);
     try {
       await ipc.vercel.saveToken({ token: tokenInput.trim() });
-      toast.success("Token de Vercel guardado");
+      toast.success(t("vercel.tokenSaved"));
       setTokenInput("");
       refreshSettings();
     } catch (err: any) {
-      toast.error(err.message || "Error al guardar token");
+      toast.error(err.message || t("vercel.saveTokenError"));
     } finally {
       setIsSavingToken(false);
     }
@@ -164,7 +166,7 @@ function VercelSetupDialog({
       onLinked();
       onClose();
     } catch (err: any) {
-      toast.error(err.message || "Error al crear proyecto");
+      toast.error(err.message || t("vercel.createProjectError"));
     } finally {
       setIsWorking(false);
     }
@@ -179,11 +181,11 @@ function VercelSetupDialog({
         projectId: selectedProject,
         appId,
       });
-      toast.success("Proyecto de Vercel vinculado");
+      toast.success(t("vercel.projectLinked"));
       onLinked();
       onClose();
     } catch (err: any) {
-      toast.error(err.message || "Error al vincular proyecto");
+      toast.error(err.message || t("vercel.linkProjectError"));
     } finally {
       setIsWorking(false);
     }
@@ -256,7 +258,7 @@ function VercelSetupDialog({
                 {isSavingToken ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  "Guardar"
+                  t("vercel.save")
                 )}
               </Button>
             </div>
@@ -424,7 +426,7 @@ function VercelSetupDialog({
                 </div>
               ) : filteredProjects.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-6">
-                  {projectSearch ? "Sin resultados" : "No hay proyectos"}
+                  {projectSearch ? t("vercel.noResults") : t("vercel.noProjects")}
                 </p>
               ) : (
                 filteredProjects.map((p) => (
