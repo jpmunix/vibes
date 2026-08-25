@@ -98,6 +98,11 @@ export const messagesEn: Messages = {
     deletePending: "Delete pending message",
     continue: "Continue",
     sqlQuery: "SQL Query",
+    goToMessageStart: "Go to start of message",
+    quote: "Quote",
+    quoteMessage: "Quote message",
+    quoteResponse: "Quote response",
+    shareMessage: "Share message",
   },
   toast: {
     settingsSaved: "Settings saved",

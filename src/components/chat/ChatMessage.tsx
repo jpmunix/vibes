@@ -672,18 +672,18 @@ const ChatMessage = ({
                   {isStuck && (
                     <button
                       onClick={handleScrollToNaturalTop}
-                      title="Ir al inicio del mensaje"
+                      title={t("chat.goToMessageStart")}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                      aria-label="Ir al inicio del mensaje"
+                      aria-label={t("chat.goToMessageStart")}
                     >
                       <ArrowUp size={13} />
                     </button>
                   )}
                   <button
                     onClick={handleQuote}
-                    title="Citar"
+                    title={t("chat.quote")}
                     className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                    aria-label="Citar mensaje"
+                    aria-label={t("chat.quoteMessage")}
                   >
                     <Quote size={13} />
                   </button>
@@ -701,9 +701,9 @@ const ChatMessage = ({
                   </button>
                   <button
                     onClick={handleShareMessage}
-                    title="Compartir mensaje"
+                    title={t("chat.shareMessage")}
                     className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                    aria-label="Compartir mensaje"
+                    aria-label={t("chat.shareMessage")}
                     disabled={isSharing}
                   >
                     <Share2
@@ -879,9 +879,9 @@ const ChatMessage = ({
                           <>
                             <button
                               onClick={handleQuote}
-                              title="Citar"
+                              title={t("chat.quote")}
                               className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                              aria-label="Citar respuesta"
+                              aria-label={t("chat.quoteResponse")}
                             >
                               <Quote size={12} />
                             </button>
@@ -899,9 +899,9 @@ const ChatMessage = ({
                             </button>
                             <button
                               onClick={handleShareMessage}
-                              title="Compartir mensaje"
+                              title={t("chat.shareMessage")}
                               className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                              aria-label="Compartir mensaje"
+                              aria-label={t("chat.shareMessage")}
                               disabled={isSharing}
                             >
                               <Share2
@@ -994,9 +994,9 @@ const ChatMessage = ({
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={handleQuote}
-                          title="Citar"
+                          title={t("chat.quote")}
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                          aria-label="Citar respuesta"
+                          aria-label={t("chat.quoteResponse")}
                         >
                           <Quote size={12} />
                         </button>
@@ -1014,9 +1014,9 @@ const ChatMessage = ({
                         </button>
                         <button
                           onClick={handleShareMessage}
-                          title="Compartir mensaje"
+                          title={t("chat.shareMessage")}
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                          aria-label="Compartir mensaje"
+                          aria-label={t("chat.shareMessage")}
                           disabled={isSharing}
                         >
                           <Share2

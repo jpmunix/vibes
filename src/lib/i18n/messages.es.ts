@@ -117,6 +117,11 @@ export const messagesEs: Messages = {
     deletePending: "Eliminar mensaje pendiente",
     continue: "Continuar",
     sqlQuery: "Consulta SQL",
+    goToMessageStart: "Ir al inicio del mensaje",
+    quote: "Citar",
+    quoteMessage: "Citar mensaje",
+    quoteResponse: "Citar respuesta",
+    shareMessage: "Compartir mensaje",
   },
   toast: {
     settingsSaved: "Ajustes guardados",
