@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 
 // ---- Helpers ----
 
@@ -166,6 +167,7 @@ function PlanTaskItem({
   onEdit: (newText: string) => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -262,14 +264,14 @@ function PlanTaskItem({
           <button
             onClick={startEdit}
             className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-            title="Editar tarea"
+            title={t("chatActions.editTask")}
           >
             <Pencil className="h-3 w-3" />
           </button>
           <button
             onClick={onDelete}
             className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-            title="Eliminar tarea"
+            title={t("chatActions.deleteTask")}
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -290,6 +292,7 @@ function PlanStageSection({
   onUpdateStage: (updated: PlanStage) => void;
   onDeleteStage: () => void;
 }) {
+  const { t } = useI18n();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleText, setTitleText] = useState(stage.title);
 
@@ -370,7 +373,7 @@ function PlanStageSection({
           <button
             onClick={onDeleteStage}
             className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Eliminar etapa"
+            title={t("chatActions.deleteStage")}
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -404,6 +407,7 @@ function PlanStageSection({
 // ---- Main PlanPanel ----
 
 export function PlanPanel({ chatId }: { chatId?: number }) {
+  const { t } = useI18n();
   const plans = useAtomValue(plansByChatIdAtom);
   const setPlans = useSetAtom(plansByChatIdAtom);
   const collapsedMap = useAtomValue(planCollapsedByChatIdAtom);
@@ -549,7 +553,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
           className="flex-1 flex items-center gap-2 cursor-pointer text-left min-w-0"
         >
           <ListChecks className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-sm font-semibold text-foreground">Plan</span>
+          <span className="text-sm font-semibold text-foreground">{t("chatActions.plan")}</span>
           {plan.objective && (
             <span className="text-xs text-muted-foreground truncate max-w-[250px] border-l border-border/50 pl-2 ml-0.5">
               {plan.objective}
@@ -561,7 +565,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
           {allCompleted && (
             <span className="text-xs font-medium text-primary flex items-center gap-1 ml-1.5 shrink-0">
               <CheckCircle className="h-3.5 w-3.5" />
-              Completado
+              {t("chatActions.completed")}
             </span>
           )}
           <div className="ml-1">

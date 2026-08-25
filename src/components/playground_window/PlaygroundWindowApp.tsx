@@ -99,6 +99,7 @@ import {
   useMultiProviderModels,
   type MultiProviderModel,
 } from "@/hooks/useMultiProviderModels";
+import { useI18n } from "@/lib/i18n";
 
 import "@/styles/globals.css";
 
@@ -498,6 +499,7 @@ function ResultCard({
   pricingInput?: string;
   pricingOutput?: string;
 }) {
+  const { t } = useI18n();
   const isTimeout = result.timeout;
   const memoryCount = !result.error ? getMemoryCount(result.text) : null;
   const canExpand = !isTimeout;
@@ -602,7 +604,7 @@ function ResultCard({
                 onRetry();
               }}
               disabled={isRetrying}
-              title="Repetir este modelo"
+              title={t("playground.repeatModel")}
             >
               {isRetrying ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -634,6 +636,7 @@ function ResultCard({
 // ─── Main Playground Panel ───────────────────────────────────────────────────
 
 function PlaygroundPanel() {
+  const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
   const [prompt, setPrompt] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -1968,7 +1971,7 @@ function PlaygroundPanel() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Search size={14} className="shrink-0" />
-                  <span className="truncate">Buscar modelos...</span>
+                  <span className="truncate">{t("playground.searchModels")}</span>
                 </div>
                 <ChevronDown size={14} className="shrink-0 opacity-50" />
               </button>
@@ -1980,7 +1983,7 @@ function PlaygroundPanel() {
             >
               <Command shouldFilter={false}>
                 <CommandInput
-                  placeholder="Buscar modelos..."
+                  placeholder={t("playground.searchModels")}
                   value={modelSearch}
                   onValueChange={setModelSearch}
                 />
@@ -2128,7 +2131,7 @@ function PlaygroundPanel() {
                           setRenameValue(set.name);
                           setPresetMenuOpen(false);
                         }}
-                        title="Renombrar preset"
+                        title={t("playground.renamePreset")}
                       >
                         <Pencil size={11} />
                       </button>
@@ -2164,7 +2167,7 @@ function PlaygroundPanel() {
                           setPendingDeletePreset(set.name);
                           setPresetMenuOpen(false);
                         }}
-                        title="Eliminar preset"
+                        title={t("playground.deletePreset")}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -2184,7 +2187,7 @@ function PlaygroundPanel() {
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Eliminar preset</AlertDialogTitle>
+                <AlertDialogTitle>{t("playground.deletePreset")}</AlertDialogTitle>
                 <AlertDialogDescription>
                   ¿Estás seguro de que quieres eliminar "{pendingDeletePreset}"?
                   Esta acción no se puede deshacer.
@@ -2268,7 +2271,7 @@ function PlaygroundPanel() {
                   type="button"
                   className="flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border border-primary/30 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors text-primary"
                   onClick={() => handleSavePreset(activePresetName)}
-                  title={`Actualizar "${activePresetName}"`}
+                  title={t("playground.updatePreset", { name: activePresetName })}
                 >
                   <Pencil size={13} />
                   Actualizar
@@ -2280,7 +2283,7 @@ function PlaygroundPanel() {
                   <button
                     type="button"
                     className="flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground"
-                    title="Guardar selección como preset"
+                    title={t("playground.saveSelectionAsPreset")}
                   >
                     <Save size={13} />
                     {activePresetName ? "Guardar como…" : "Guardar"}
@@ -2298,7 +2301,7 @@ function PlaygroundPanel() {
                     <input
                       type="text"
                       className="w-full px-3 py-1.5 typo-body text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="Ej: Modelos benchmark..."
+                      placeholder={t("playground.presetNamePlaceholder")}
                       value={saveAsName}
                       onChange={(e) => setSaveAsName(e.target.value)}
                       onKeyDown={(e) => {
@@ -2398,7 +2401,7 @@ function PlaygroundPanel() {
                     : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground",
                 )}
                 disabled={isRunning}
-                title="Tiempo límite por modelo"
+                title={t("playground.timeLimitPerModel")}
               >
                 <Clock size={14} />
                 {timeoutSeconds}s
@@ -2511,7 +2514,7 @@ function PlaygroundPanel() {
                       if (b.apiName === analysisModel) return 1;
                       return 0;
                     })}
-                    placeholder="Modelo analista"
+                    placeholder={t("playground.analystModel")}
                     size="sm"
                     variant="pill"
                     disableEnabledFilter
@@ -2610,7 +2613,7 @@ function PlaygroundPanel() {
                         <div className="rankings-grid">
                           <div className="rankings-header">
                             <span>#</span>
-                            <span>Modelo</span>
+                            <span>{t("playground.model")}</span>
                             <span>Calidad</span>
                             <span>Velocidad</span>
                             <span>Global</span>
@@ -2717,7 +2720,7 @@ function PlaygroundPanel() {
                     e.stopPropagation();
                     setPromptPresetMenuOpen((o) => !o);
                   }}
-                  title="Presets de prompt"
+                  title={t("playground.promptPresets")}
                 >
                   <FileText size={12} />
                   {activePromptPreset ? (
@@ -2835,7 +2838,7 @@ function PlaygroundPanel() {
                             setPendingDeletePromptPreset(pp.name);
                             setPromptPresetMenuOpen(false);
                           }}
-                          title="Eliminar"
+                          title={t("playground.delete")}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -2925,7 +2928,7 @@ function PlaygroundPanel() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Guardar prompt como preset</AlertDialogTitle>
+            <AlertDialogTitle>{t("playground.savePromptAsPreset")}</AlertDialogTitle>
             <AlertDialogDescription>
               Dale un nombre al preset para guardarlo.
             </AlertDialogDescription>
@@ -2934,7 +2937,7 @@ function PlaygroundPanel() {
             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground typo-body"
             value={promptSaveName}
             onChange={(e) => setPromptSaveName(e.target.value)}
-            placeholder="Nombre del preset…"
+            placeholder={t("playground.presetName")}
             onKeyDown={(e) => {
               if (e.key === "Enter" && promptSaveName.trim()) {
                 presets.savePromptPreset(promptSaveName.trim(), prompt);
@@ -3025,7 +3028,7 @@ function PlaygroundPanel() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar preset de prompt</AlertDialogTitle>
+            <AlertDialogTitle>{t("playground.deletePromptPreset")}</AlertDialogTitle>
             <AlertDialogDescription>
               ¿Eliminar <strong>"{pendingDeletePromptPreset}"</strong>? Esta
               acción no se puede deshacer.
@@ -3153,7 +3156,7 @@ function PlaygroundPanel() {
                 type="button"
                 className="flex items-center gap-1 px-2 py-1 typo-micro rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                 onClick={handleSkipCurrent}
-                title="Omitir este modelo"
+                title={t("playground.skipModel")}
               >
                 <StopCircle size={11} />
                 Omitir

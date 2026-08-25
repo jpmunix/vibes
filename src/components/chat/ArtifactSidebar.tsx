@@ -699,7 +699,7 @@ export function ArtifactSidebar() {
 
                     <textarea
                       autoFocus
-                      placeholder="Añade detalles opcionales..."
+                      placeholder={t("chatActions.addOptionalDetails")}
                       value={reviewMessage}
                       onChange={(e) => setReviewMessage(e.target.value)}
                       className="w-full min-h-[72px] rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none placeholder:text-muted-foreground/50 text-foreground"
@@ -715,18 +715,18 @@ export function ArtifactSidebar() {
                           comments.length === 0 && !reviewMessage.trim()
                         }
                         onClick={handleRefinePlan}
-                        title="Seguir planificando con estos comentarios"
+                        title={t("chatActions.continuePlanningTitle")}
                       >
-                        Seguir planificando
+                        {t("chatActions.continuePlanning")}
                       </Button>
                       <Button
                         variant="default"
                         size="sm"
                         className="h-8 text-xs px-4 cursor-pointer"
                         onClick={handleAcceptPlan}
-                        title="Aceptar plan y comenzar implementación"
+                        title={t("chatActions.acceptPlan")}
                       >
-                        Aceptar plan
+                        {t("chatActions.acceptPlan")}
                       </Button>
                     </div>
 
@@ -742,8 +742,9 @@ export function ArtifactSidebar() {
                           ) : (
                             <ChevronRight size={12} />
                           )}
-                          Ver {commentCount} comentario
-                          {commentCount !== 1 ? "s" : ""} en secciones
+                          {t("chatActions.viewComments", {
+                            count: commentCount,
+                          })}
                         </button>
                         {expandedReview && (
                           <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
@@ -776,7 +777,7 @@ export function ArtifactSidebar() {
               className="h-7 w-7"
               onClick={handleCopyMd}
               disabled={!content}
-              title="Copiar Markdown al portapapeles"
+              title={t("chatActions.copyMarkdown")}
             >
               {isCopied ? (
                 <Check size={14} className="text-emerald-500" />
@@ -1007,7 +1008,7 @@ export function ArtifactSidebar() {
                                 );
                               }}
                               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                              title="Editar"
+                              title={t("chatActions.edit")}
                             >
                               <Pencil size={13} />
                             </button>
@@ -1017,7 +1018,7 @@ export function ArtifactSidebar() {
                                 setActiveComment(null);
                               }}
                               className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                              title="Eliminar"
+                              title={t("chatActions.delete")}
                             >
                               <Trash2 size={13} />
                             </button>
