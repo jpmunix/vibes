@@ -84,7 +84,7 @@ interface SettingsModelSelectorProps {
   /** "default" = outline button, "pill" = primary pill like other selectors */
   variant?: "default" | "pill";
   /**
-   * When true, bypasses the enabledOpenRouterModels filter so all cached
+   * When true, bypasses the enabledModels filter so all cached
    * models appear in the search dropdown (e.g. for the internal-tasks selector).
    */
   disableEnabledFilter?: boolean;
@@ -116,9 +116,9 @@ export function SettingsModelSelector({
   const filteredModels = useMemo(() => {
     if (disableEnabledFilter) return models;
     const enabledModels =
-      settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+      settings?.enabledModels ?? DEFAULT_ENABLED_MODELS;
     return models.filter((model) => enabledModels.includes(model.apiName));
-  }, [models, settings?.enabledOpenRouterModels, disableEnabledFilter]);
+  }, [models, settings?.enabledModels, disableEnabledFilter]);
 
   // Build a lookup for display names (and provider info)
   const modelLookup = useMemo(() => {

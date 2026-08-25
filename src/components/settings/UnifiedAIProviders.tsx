@@ -22,6 +22,15 @@ export function UnifiedAIProviders({
   const { t } = useI18n();
   const customProviders = settings?.customProviders ?? [];
 
+  // Card #160 T9 — OpenRouter is now de-privileged: its section only appears
+  // when a key is actually configured. During initial load (settings == null)
+  // we keep it visible to avoid flicker.
+  const orSettings = (settings?.providerSettings as any)?.["openrouter"];
+  const openRouterConfigured =
+    !settings ||
+    (orSettings?.keys?.length ?? 0) > 0 ||
+    !!orSettings?.apiKey?.value;
+
   return (
     <div
       id="models-connectivity"
@@ -40,8 +49,8 @@ export function UnifiedAIProviders({
       </div>
 
       <div className="space-y-4">
-        {/* OpenRouter — always first */}
-        <OpenRouterProviderSection />
+        {/* OpenRouter — only when configured (T9: de-privileged) */}
+        {openRouterConfigured && <OpenRouterProviderSection />}
 
         {/* Custom providers */}
         {customProviders.map((cp) => (

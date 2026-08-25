@@ -160,33 +160,51 @@ describe("referencias de string", () => {
   });
 });
 
-// ─── enabledOpenRouterModels (picker) ──────────────────────────────────────
+// ─── enabledModels (picker) ─────────────────────────────────────────────────
 
-describe("enabledOpenRouterModels", () => {
+describe("enabledModels", () => {
   it("prune modelos muertos + deprecated, conserva los vivos", () => {
     const s = base({
-      enabledOpenRouterModels: [
+      enabledModels: [
         "aion-labs/aion-2.0", // vivo en el catálogo OR
         "vendor/model-jetado", // muerto
       ],
     });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledOpenRouterModels).toContain("aion-labs/aion-2.0");
-    expect(r.settings.enabledOpenRouterModels).not.toContain("vendor/model-jetado");
+    expect(r.settings.enabledModels).toContain("aion-labs/aion-2.0");
+    expect(r.settings.enabledModels).not.toContain("vendor/model-jetado");
   });
 
   it("si todo queda pruned → DEFAULT_ENABLED_MODELS", () => {
-    const s = base({ enabledOpenRouterModels: ["muerto/1", "muerto/2"] });
+    const s = base({ enabledModels: ["muerto/1", "muerto/2"] });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledOpenRouterModels?.length).toBeGreaterThan(0);
-    expect(r.settings.enabledOpenRouterModels).not.toContain("muerto/1");
+    expect(r.settings.enabledModels?.length).toBeGreaterThan(0);
+    expect(r.settings.enabledModels).not.toContain("muerto/1");
   });
 
   it("no toca la lista si todos son vivos", () => {
+    const s = base({ enabledModels: ["aion-labs/aion-2.0"] });
+    const r = validateModelReferences(s, deps);
+    expect(r.settings.enabledModels).toEqual(["aion-labs/aion-2.0"]);
+    expect(containsAny(r.migrated, "enabledModels")).toBe(false);
+  });
+
+  it("migra la clave legacy enabledOpenRouterModels → enabledModels", () => {
     const s = base({ enabledOpenRouterModels: ["aion-labs/aion-2.0"] });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledOpenRouterModels).toEqual(["aion-labs/aion-2.0"]);
-    expect(containsAny(r.migrated, "enabledOpenRouterModels")).toBe(false);
+    expect(r.settings.enabledModels).toEqual(["aion-labs/aion-2.0"]);
+    expect(r.settings).not.toHaveProperty("enabledOpenRouterModels");
+    expect(containsAny(r.migrated, "enabledOpenRouterModels → enabledModels")).toBe(
+      true,
+    );
+  });
+
+  it("conserva modelos cross-provider (con ::) aunque no estén en el catálogo OR", () => {
+    const s = base({ enabledModels: ["ollama::qwen2.5-coder", "custom::id::name"] });
+    const r = validateModelReferences(s, deps);
+    expect(r.settings.enabledModels).toContain("ollama::qwen2.5-coder");
+    expect(r.settings.enabledModels).toContain("custom::id::name");
+    expect(containsAny(r.migrated, "enabledModels: removed")).toBe(false);
   });
 });
 

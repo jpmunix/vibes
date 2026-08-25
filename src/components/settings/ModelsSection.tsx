@@ -76,7 +76,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   const { aliases, setAlias, removeAlias } = useModelAliases();
 
   const enabledModelIds =
-    settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+    settings?.enabledModels ?? DEFAULT_ENABLED_MODELS;
 
   const invalidateModels = () => {
     queryClient.invalidateQueries({
@@ -129,16 +129,13 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   };
 
   const handleToggleModel = (modelApiName: string, enabled: boolean) => {
-    const current = settings?.enabledOpenRouterModels ?? [
+    const current = settings?.enabledModels ?? [
       ...DEFAULT_ENABLED_MODELS,
     ];
-    let newEnabled: string[];
-    if (enabled) {
-      newEnabled = [...current, modelApiName];
-    } else {
-      newEnabled = current.filter((id) => id !== modelApiName);
-    }
-    updateSettings({ enabledOpenRouterModels: newEnabled });
+    const newEnabled = enabled
+      ? [...current, modelApiName]
+      : current.filter((id) => id !== modelApiName);
+    updateSettings({ enabledModels: newEnabled });
   };
 
   return (
@@ -256,10 +253,11 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
         />
       )}
 
-      {/* Add Model Dialog (search OpenRouter models) */}
+      {/* Add Model Dialog (search models for this provider) */}
       <AddModelDialog
         open={isAddModelDialogOpen}
         onOpenChange={setIsAddModelDialogOpen}
+        providerId={providerId}
       />
 
       <CreateCustomModelDialog

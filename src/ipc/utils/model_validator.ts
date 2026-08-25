@@ -243,12 +243,30 @@ export function validateModelReferences(
   handleStringRef("memoriesSynthesisModelV2", "memories");
   handleStringRef("memoriesRouterModelV2", "memories");
 
-  // ── 3. enabledOpenRouterModels (picker) — prune muertas + deprecated ──
-  const enabled = next.enabledOpenRouterModels;
+  // ── 3. enabledModels (picker) — migración legacy + prune muertas/deprecated ──
+  // Card #160: la clave se renombró a enabledModels (neutral multi-provider).
+  // La clave legacy enabledOpenRouterModels solo se lee para migrar una vez.
+  if (
+    Array.isArray((next as Record<string, any>).enabledOpenRouterModels) &&
+    !Array.isArray(next.enabledModels)
+  ) {
+    next.enabledModels = (next as Record<string, any>)
+      .enabledOpenRouterModels as string[];
+    delete (next as Record<string, any>).enabledOpenRouterModels;
+    migrated.push("enabledOpenRouterModels → enabledModels");
+  }
+
+  const enabled = next.enabledModels;
   if (enabled && Array.isArray(enabled)) {
     const keep: string[] = [];
     const removed: string[] = [];
     for (const name of enabled) {
+      // Modelos cross-provider (custom::id::name, ollama::name) se conservan
+      // siempre: no viven en el catálogo de OpenRouter.
+      if (name.includes(MODEL_PROVIDER_SEPARATOR)) {
+        keep.push(name);
+        continue;
+      }
       const alive =
         customModelNames.has(name) ||
         (isModelKnown(catalog, "openrouter", name) &&
@@ -258,11 +276,10 @@ export function validateModelReferences(
     }
     if (removed.length > 0) {
       logger.warn(
-        `[ModelValidator] Pruned ${removed.length} modelos muertos/deprecated de enabledOpenRouterModels: ${removed.join(", ")}`,
+        `[ModelValidator] Pruned ${removed.length} modelos muertos/deprecated de enabledModels: ${removed.join(", ")}`,
       );
-      next.enabledOpenRouterModels =
-        keep.length > 0 ? keep : [...DEFAULT_ENABLED_MODELS];
-      migrated.push(`enabledOpenRouterModels: removed ${removed.length}`);
+      next.enabledModels = keep.length > 0 ? keep : [...DEFAULT_ENABLED_MODELS];
+      migrated.push(`enabledModels: removed ${removed.length}`);
     }
   }
 

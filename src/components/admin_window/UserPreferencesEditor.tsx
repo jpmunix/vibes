@@ -171,7 +171,7 @@ const JSON_KEYS = new Set([
   "playgroundModelSets",
   "lastKnownPerformance",
   "githubUser",
-  "enabledOpenRouterModels",
+  "enabledModels",
   "openCodeIgnorePatterns",
   "_migrations",
 ]);
@@ -338,7 +338,7 @@ function categorizeKey(key: string): string {
     key === "customProviders" ||
     key === "playgroundModelSets" ||
     key === "playground_model_presets" ||
-    key === "enabledOpenRouterModels" ||
+    key === "enabledModels" ||
     key === "memoriesSynthesisModel"
   )
     return "models";

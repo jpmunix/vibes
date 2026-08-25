@@ -554,6 +554,9 @@ export const UserSettingsSchema = z
     inferenceRepetitionPenalty: z.number().min(0.5).max(2).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
+    // Card #160 — clave neutral multi-provider (antes: enabledOpenRouterModels).
+    // El validator migra la clave legacy → esta al boot.
+    enabledModels: z.array(z.string()).optional(),
     // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")
     // Applied globally; ignored for free models at runtime.
     selectedModelVariant: z.string().optional(),

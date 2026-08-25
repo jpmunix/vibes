@@ -829,25 +829,6 @@ export function GeneralSettings({
   const activeColorHex =
     getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
 
-  // #VIBES-202: miniaturas estáticas — cada loader tiene su silueta
-  // característica pero ninguna se anima (evitamos 30+ rAF solo para el
-  // desplegable). Las siluetas usan el color activo.
-  const renderLoaderIcon = (style: string, size: number = 18) => {
-    const baseStyle: React.CSSProperties = { width: size, height: size, color: activeColorHex } as React.CSSProperties;
-    // import dinámico del CSS de loaders si no está cargado
-    let inner: React.ReactNode;
-    if (style === "wave") {
-      inner = (<div className="flex items-center gap-1" style={baseStyle}>{[0,1,2].map(i=>(<span key={i} className="rounded-full shrink-0" style={{ width: 2.5, height: 2.5, background: activeColorHex }}/>))}</div>);
-    } else if (style === "orbital") {
-      inner = (<div className="orbital-loader shrink-0" style={baseStyle} />);
-    } else if (style.startsWith("m-")) {
-      inner = (<div className={"micro-loader " + style.replace(/^m-/, "m-") + " shrink-0"} style={{ "--m-color": activeColorHex, width: size, height: size } as React.CSSProperties}>{(style==="m-dots"||style==="m-eq"||style==="m-swap")&&(<><div/><div/><div/></>)}</div>);
-    } else {
-      inner = (<div className="rounded-full shrink-0" style={{ width: size*0.55, height: size*0.55, background: activeColorHex, opacity: 0.8 }} aria-hidden />);
-    }
-    return (<div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner" aria-hidden>{inner}</div>);
-  };
-
   useEffect(() => {
     if (settings?.theme !== undefined && settings.theme !== theme) {
       setTheme(settings.theme);
@@ -873,10 +854,8 @@ export function GeneralSettings({
     }
   }, [settings?.themeFlavorLight, setThemeFlavorLight, themeFlavorLight]);
 
-  // ── Escaparate temporal de loaders (#VIBES-202) ───────────────────────
-  // TODO: temporal — borrar cuando munix haya elegido el/los loader(s).
+  // ── Modal escaparate de loaders (#VIBES-202) ─────────────────
   const [showcaseOpen, setShowcaseOpen] = useState(false);
-
 
   const handleShowcaseSelect = async (value: string) => {
     await updateSettings({ loaderStyle: value }, { showToast: true });
@@ -1208,289 +1187,41 @@ export function GeneralSettings({
           }
         />
 
-        {/* Loader Style Selector */}
+        {/* Loader Style Selector — fila con tab selector + modal escaparate */}
         <SettingItem
           label={t("settingsItems.estilo_de_animacion_de_carga")}
           description={t("settingsItems.estilo_de_animacion_de_cargaDesc")}
+          onClick={() => setShowcaseOpen(true)}
           control={
-            <UnifiedSelector
-              value={settings?.loaderStyle || "orbital"}
-              onChange={async (value) => {
-                await updateSettings(
-                  { loaderStyle: value },
-                  { showToast: true },
-                );
-              }}
-              options={[
-                {
-                  value: "orbital",
-                  label: "Orbital (Original)",
-                  description: t("loaders.orbital"),
-                  rightIcon: renderLoaderIcon("orbital"),
-                },
-                {
-                  value: "aurora",
-                  label: "Aurora Pulse",
-                  description: t("loaders.aurora"),
-                  rightIcon: renderLoaderIcon("aurora"),
-                },
-                {
-                  value: "wave",
-                  label: "Bouncing Wave",
-                  description: t("loaders.wave"),
-                  rightIcon: renderLoaderIcon("wave"),
-                },
-                {
-                  value: "jelly",
-                  label: "Morphing Jelly",
-                  description: t("loaders.jelly"),
-                  rightIcon: renderLoaderIcon("jelly"),
-                },
-                {
-                  value: "spark",
-                  label: "Pulse Spark",
-                  description: t("loaders.spark"),
-                  rightIcon: renderLoaderIcon("spark"),
-                },
-                {
-                  value: "equalizer",
-                  label: "Bar Equalizer",
-                  description: t("loaders.equalizer"),
-                  rightIcon: renderLoaderIcon("equalizer"),
-                },
-                {
-                  value: "infinity",
-                  label: "Infinity Loop",
-                  description: t("loaders.infinity"),
-                  rightIcon: renderLoaderIcon("infinity"),
-                },
-                {
-                  value: "grid",
-                  label: "Pixel Grid",
-                  description: t("loaders.grid"),
-                  rightIcon: renderLoaderIcon("grid"),
-                },
-                {
-                  value: "brackets",
-                  label: "Code Brackets",
-                  description: t("loaders.brackets"),
-                  rightIcon: renderLoaderIcon("brackets"),
-                },
-                {
-                  value: "terminal",
-                  label: "Terminal Cursor",
-                  description: t("loaders.terminal"),
-                  rightIcon: renderLoaderIcon("terminal"),
-                },
-                {
-                  value: "server",
-                  label: "Server Lights",
-                  description:
-                    t("loaders.server"),
-                  rightIcon: renderLoaderIcon("server"),
-                },
-                {
-                  value: "morph",
-                  label: "Morphing AI Core",
-                  description:
-                    t("loaders.morph"),
-                  rightIcon: renderLoaderIcon("morph"),
-                },
-                {
-                  value: "matrix",
-                  label: "Matrix Rain",
-                  description:
-                    t("loaders.matrix"),
-                  rightIcon: renderLoaderIcon("matrix"),
-                },
-                {
-                  value: "glow",
-                  label: "Glowing Sphere",
-                  description: t("loaders.glow"),
-                  rightIcon: renderLoaderIcon("glow"),
-                },
-                {
-                  value: "voice",
-                  label: "AI Voice",
-                  description: t("loaders.voice"),
-                  rightIcon: renderLoaderIcon("voice"),
-                },
-                {
-                  value: "packet",
-                  label: "Network Packet",
-                  description: t("loaders.packet"),
-                  rightIcon: renderLoaderIcon("packet"),
-                },
-                {
-                  value: "sonar",
-                  label: "Sonar Ripple",
-                  description: t("loaders.sonar"),
-                  rightIcon: renderLoaderIcon("sonar"),
-                },
-                {
-                  value: "blocks",
-                  label: "Data Blocks",
-                  description:
-                    t("loaders.blocks"),
-                  rightIcon: renderLoaderIcon("blocks"),
-                },
-                {
-                  value: "nodes",
-                  label: "Node Connection",
-                  description: t("loaders.nodes"),
-                  rightIcon: renderLoaderIcon("nodes"),
-                },
-                {
-                  value: "glowring",
-                  label: "Neon Glow Ring",
-                  description:
-                    t("loaders.glowring"),
-                  rightIcon: renderLoaderIcon("glowring"),
-                },
-                {
-                  value: "m-dots",
-                  label: "Micro Dots",
-                  description: t("loaders.m-dots"),
-                  rightIcon: renderLoaderIcon("m-dots"),
-                },
-                {
-                  value: "m-radar",
-                  label: "Micro Radar",
-                  description: t("loaders.m-radar"),
-                  rightIcon: renderLoaderIcon("m-radar"),
-                },
-                {
-                  value: "m-sine",
-                  label: "Sine Line",
-                  description: t("loaders.m-sine"),
-                  rightIcon: renderLoaderIcon("m-sine"),
-                },
-                {
-                  value: "m-orbit",
-                  label: "Orbit Dot",
-                  description: t("loaders.m-orbit"),
-                  rightIcon: renderLoaderIcon("m-orbit"),
-                },
-                {
-                  value: "m-eq",
-                  label: "Micro Equalizer",
-                  description: t("loaders.m-eq"),
-                  rightIcon: renderLoaderIcon("m-eq"),
-                },
-                {
-                  value: "m-pulse",
-                  label: "Pulsing Core",
-                  description: t("loaders.m-pulse"),
-                  rightIcon: renderLoaderIcon("m-pulse"),
-                },
-                {
-                  value: "m-cross",
-                  label: "Cross Rotator",
-                  description: t("loaders.m-cross"),
-                  rightIcon: renderLoaderIcon("m-cross"),
-                },
-                {
-                  value: "m-flip",
-                  label: "Flipping Square",
-                  description: t("loaders.m-flip"),
-                  rightIcon: renderLoaderIcon("m-flip"),
-                },
-                {
-                  value: "m-blink",
-                  label: "Cursor Blink",
-                  description:
-                    t("loaders.m-blink"),
-                  rightIcon: renderLoaderIcon("m-blink"),
-                },
-                {
-                  value: "m-breathe",
-                  label: "Breathe Ring",
-                  description: t("loaders.m-breathe"),
-                  rightIcon: renderLoaderIcon("m-breathe"),
-                },
-                {
-                  value: "m-swap",
-                  label: "Swapping Dots",
-                  description: t("loaders.m-swap"),
-                  rightIcon: renderLoaderIcon("m-swap"),
-                },
-                {
-                  value: "m-sonar",
-                  label: "Sonar Ping",
-                  description: t("loaders.m-sonar"),
-                  rightIcon: renderLoaderIcon("m-sonar"),
-                },
-                {
-                  value: "m-pie",
-                  label: "Pie Fill",
-                  description: t("loaders.m-pie"),
-                  rightIcon: renderLoaderIcon("m-pie"),
-                },
-                {
-                  value: "m-scan",
-                  label: "Scan Line",
-                  description: t("loaders.m-scan"),
-                  rightIcon: renderLoaderIcon("m-scan"),
-                },
-                {
-                  value: "m-hour",
-                  label: "Micro Hourglass",
-                  description: t("loaders.m-hour"),
-                  rightIcon: renderLoaderIcon("m-hour"),
-                },
-                {
-                  value: "m-yin",
-                  label: "Semicircle",
-                  description: t("loaders.m-yin"),
-                  rightIcon: renderLoaderIcon("m-yin"),
-                },
-                {
-                  value: "m-diamond",
-                  label: "Diamond Pulse",
-                  description: t("loaders.m-diamond"),
-                  rightIcon: renderLoaderIcon("m-diamond"),
-                },
-                {
-                  value: "m-clock",
-                  label: "Clock Hand",
-                  description: t("loaders.m-clock"),
-                  rightIcon: renderLoaderIcon("m-clock"),
-                },
-                {
-                  value: "m-expand",
-                  label: "Bar Expand",
-                  description:
-                    t("loaders.m-expand"),
-                  rightIcon: renderLoaderIcon("m-expand"),
-                },
-              ]}
-              triggerVariant="pill"
-              triggerSize="md"
-              popoverWidth="w-[300px]"
-              data-testid="loader-style-selector"
-            />
-          }
-          descriptionExtra={
-            <button
-              type="button"
-              onClick={() => setShowcaseOpen(true)}
-              className="mt-1 text-[11px] text-primary hover:underline"
-            >
-              Ver todos animados →
-            </button>
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowcaseOpen(true);
+                }}
+                className="px-4 py-1.5 typo-select rounded-lg hover:bg-primary/10 transition-colors duration-200 cursor-pointer flex items-center gap-2"
+              >
+                <span>
+                  {t(`loadersLabels.${settings?.loaderStyle || "orbital"}`)}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </div>
           }
         />
 
-        {/* Escaparate temporal — modal con todos los loaders animados (forceAnimate) */}
+        {/* Modal escaparate — todos los loaders animados (forceAnimate) */}
         <Dialog open={showcaseOpen} onOpenChange={setShowcaseOpen}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+          <DialogContent className="max-w-[78rem] w-[96vw] sm:max-w-[78rem] max-h-[88vh] overflow-auto">
             <DialogHeader>
-              <DialogTitle>Loaders — escaparate (temporal)</DialogTitle>
+              <DialogTitle>{t("settingsItems.estilo_de_animacion_de_carga")}</DialogTitle>
             </DialogHeader>
             <LoaderShowcaseGrid
               activeValue={settings?.loaderStyle || "orbital"}
               color={activeColorHex}
               onSelect={handleShowcaseSelect}
+              getLabel={(id) => t(`loadersLabels.${id}`)}
             />
           </DialogContent>
         </Dialog>
@@ -1876,8 +1607,18 @@ export function WorkflowSettings({
   );
 }
 
-// ── Escaparate temporal de loaders ─────────────────────────────
-function LoaderShowcaseGrid({ activeValue, color, onSelect }: { activeValue: string; color: string; onSelect: (v: string) => void }) {
+// ── Escaparate de loaders (modal) ─────────────────────────────
+function LoaderShowcaseGrid({
+  activeValue,
+  color,
+  onSelect,
+  getLabel,
+}: {
+  activeValue: string;
+  color: string;
+  onSelect: (v: string) => void;
+  getLabel: (id: string) => string;
+}) {
   const STYLES = [
     "orbital","aurora","wave","jelly","spark","equalizer","infinity","grid","brackets","terminal","server","morph","matrix","glow","voice","packet","sonar","blocks","nodes","glowring",
     "m-dots","m-radar","m-sine","m-orbit","m-eq","m-pulse","m-cross","m-flip","m-blink","m-breathe","m-swap","m-sonar","m-pie","m-scan","m-hour","m-yin","m-diamond","m-clock","m-expand",
@@ -1885,16 +1626,22 @@ function LoaderShowcaseGrid({ activeValue, color, onSelect }: { activeValue: str
   return (
     <>
       <LoaderStyles />
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-4 pt-2">
+      <div className="grid w-full grid-cols-3 gap-4 pt-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
         {STYLES.map((value) => (
           <button
             key={value}
             type="button"
             onClick={() => onSelect(value)}
-            className={"flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-xs transition " + (activeValue===value ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40")}
+            title={getLabel(value)}
+            className={
+              "flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-xs transition " +
+              (activeValue === value
+                ? "border-primary bg-primary/10"
+                : "border-border hover:bg-muted/40")
+            }
           >
             <ActiveLoader style={value} color={color} size={20} forceAnimate />
-            <span className="text-muted-foreground">{value}</span>
+            <span className="text-muted-foreground">{getLabel(value)}</span>
           </button>
         ))}
       </div>

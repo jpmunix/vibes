@@ -128,9 +128,15 @@ function buildDefaultFilterState(): Record<string, FilterValue> {
 interface AddModelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Provider cuyos modelos se listan/editan. Default: openrouter. */
+  providerId?: string;
 }
 
-export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
+export function AddModelDialog({
+  open,
+  onOpenChange,
+  providerId = "openrouter",
+}: AddModelDialogProps) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, FilterValue>>(
     buildDefaultFilterState,
@@ -145,21 +151,23 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
   const { aliases, setAlias, removeAlias } = useModelAliases();
 
   const enabledModels =
-    settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+    settings?.enabledModels ?? DEFAULT_ENABLED_MODELS;
 
   const allModels = useMemo(
-    () => modelsByProviders?.["openrouter"] ?? [],
-    [modelsByProviders],
+    () => modelsByProviders?.[providerId] ?? [],
+    [modelsByProviders, providerId],
   );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await ipc.languageModel.refreshOpenRouterModels();
+      if (providerId === "openrouter") {
+        await ipc.languageModel.refreshOpenRouterModels();
+      } else {
+        await ipc.languageModel.refreshCustomProviderModels({ providerId });
+      }
       queryClient.invalidateQueries({
-        queryKey: queryKeys.languageModels.forProvider({
-          providerId: "openrouter",
-        }),
+        queryKey: queryKeys.languageModels.forProvider({ providerId }),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.languageModels.byProviders,
@@ -214,13 +222,13 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
   }, [allModels, filters, enabledFilter, enabledModels, search]);
 
   const handleToggle = (modelApiName: string, enabled: boolean) => {
-    const current = settings?.enabledOpenRouterModels ?? [
+    const current = settings?.enabledModels ?? [
       ...DEFAULT_ENABLED_MODELS,
     ];
     const newEnabled = enabled
       ? [...current, modelApiName]
       : current.filter((id) => id !== modelApiName);
-    updateSettings({ enabledOpenRouterModels: newEnabled });
+    updateSettings({ enabledModels: newEnabled });
   };
 
   const setFilter = (id: string, value: FilterValue) => {

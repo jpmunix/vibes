@@ -96,9 +96,20 @@ export function registerLanguageModelHandlers() {
 
       const updates: Record<string, any> = { customProviders: filtered };
 
-      // If deleting the active provider, fall back to openrouter
+      // Bug 4 (Card #160): if deleting the active provider, fall back to the
+      // first available provider — don't blindly reset to OpenRouter if it's
+      // not configured.
       if (settings.activeProviderId === params.providerId) {
-        updates.activeProviderId = undefined;
+        const orSettings = (settings.providerSettings as any)?.["openrouter"];
+        const openRouterConfigured =
+          (orSettings?.keys?.length ?? 0) > 0 || !!orSettings?.apiKey?.value;
+        if (openRouterConfigured) {
+          updates.activeProviderId = undefined; // OpenRouter is the default
+        } else if (settings.ollamaEnabled !== false) {
+          updates.activeProviderId = "ollama";
+        } else {
+          updates.activeProviderId = undefined; // No provider — wizard handles it
+        }
       }
 
       // Clean up provider model config snapshot

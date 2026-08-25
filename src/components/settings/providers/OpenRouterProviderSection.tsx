@@ -37,6 +37,7 @@ import { CreateCustomModelDialog } from "@/components/CreateCustomModelDialog";
 import { ProviderHeader } from "./ProviderHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/lib/i18n";
+import { isLastConfiguredProvider } from "./CustomProviderSection";
 
 export function OpenRouterProviderSection() {
   const { t, tPlural } = useI18n();
@@ -56,6 +57,53 @@ export function OpenRouterProviderSection() {
   const openAddModelsRef = useRef<(() => void) | null>(null);
 
   const disabledProviders = settings?.disabledProviders ?? [];
+  const enabled = !disabledProviders.includes(providerId);
+  const isLastProvider = isLastConfiguredProvider(settings);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const handleToggle = async (on: boolean) => {
+    const current = settings?.disabledProviders ?? [];
+    const updated = on
+      ? current.filter((id) => id !== providerId)
+      : [...current, providerId];
+    await updateSettings({ disabledProviders: updated });
+  };
+
+  const handleRemoveProvider = async () => {
+    if (isLastProvider) {
+      showError(t("customProvider.cannotDeleteLast"));
+      return;
+    }
+    const cleanDisabled = (settings?.disabledProviders ?? []).filter(
+      (id) => id !== providerId,
+    );
+    const updates: Record<string, any> = {
+      providerSettings: { ...settings?.providerSettings, openrouter: undefined },
+      disabledProviders: cleanDisabled,
+    };
+    // Bug 4: si OpenRouter era el activeProviderId, caer al primer provider válido
+    if (
+      !settings?.activeProviderId ||
+      settings.activeProviderId === "openrouter"
+    ) {
+      const customs = settings?.customProviders ?? [];
+      const ollamaOn = settings?.ollamaEnabled !== false;
+      if (customs.length > 0) {
+        updates.activeProviderId = customs[0].id;
+      } else if (ollamaOn) {
+        updates.activeProviderId = "ollama";
+      }
+      // Si no hay otro provider, activeProviderId queda undefined — el wizard (T10) lo gestiona
+    }
+    await updateSettings(updates);
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.languageModels.providers,
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.languageModels.byProviders,
+    });
+    showSuccess(t("openRouter.removed"));
+  };
 
   // Keys management
   const openRouterSettings = settings?.providerSettings?.[providerId] as any;
@@ -169,14 +217,33 @@ export function OpenRouterProviderSection() {
       <div className="rounded-xl border border-border overflow-hidden">
         <ProviderHeader
           name="OpenRouter"
-          enabled={true}
-          onToggle={null}
+          enabled={enabled}
+          onToggle={handleToggle}
+          toggleDisabled={isLastProvider && enabled}
           expanded={expanded}
           onToggleExpand={() => setExpanded((e) => !e)}
           subtitle={
             keys.length > 0
               ? tPlural("openRouter.keysCount", keys.length)
               : t("openRouter.notConfigured")
+          }
+          rightActions={
+            <button
+              type="button"
+              disabled={isLastProvider}
+              title={
+                isLastProvider
+                  ? t("customProvider.cannotDeleteLast")
+                  : t("common.delete")
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmRemove(true);
+              }}
+              className="p-1.5 rounded-md text-muted-foreground/40 hover:!text-red-600 hover:!bg-red-100 dark:hover:!bg-red-900/20 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           }
         />
 
@@ -470,6 +537,30 @@ export function OpenRouterProviderSection() {
               className="bg-destructive hover:bg-destructive/90 text-white"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove OpenRouter Provider Dialog (Card #160 T9) */}
+      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("openRouter.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("openRouter.deleteDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleRemoveProvider();
+                setConfirmRemove(false);
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {t("openRouter.deleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
