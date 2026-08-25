@@ -239,7 +239,6 @@ export type {
   DoesReleaseNoteExistParams,
   UserBudgetInfo,
   TelemetryEventPayload,
-  OpenRouterCredits,
 } from "./system";
 
 // Version types

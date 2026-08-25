@@ -16,6 +16,7 @@ import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { useSetAtom } from "jotai";
 import { userAtom, VibesUser } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface ProfileModalProps {
 }
 
 export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(user?.displayName || "");
   const [photoURL, setPhotoURL] = useState(user?.photoUrl || "");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,10 +48,10 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
       });
 
       setUser(updatedUser);
-      toast.success("Perfil actualizado correctamente");
+      toast.success(t("accountSettings.profileUpdated"));
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Error al actualizar el perfil");
+      toast.error(error.message || t("accountSettings.profileUpdateError"));
     } finally {
       setIsLoading(false);
     }
@@ -82,9 +84,9 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
       setUser(updatedUser);
       setPhotoURL(url);
-      toast.success("Imagen subida correctamente");
+      toast.success(t("accountSettings.imageUploaded"));
     } catch (error: any) {
-      toast.error("Error al subir la imagen");
+      toast.error(t("accountSettings.imageUploadError"));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -94,7 +96,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
   const handleUpdatePassword = async () => {
     if (!user) return;
     if (newPassword !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden");
+      toast.error(t("accountSettings.passwordsDoNotMatch"));
       return;
     }
 
@@ -105,13 +107,13 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
         currentPassword,
         newPassword,
       });
-      toast.success("Contraseña actualizada correctamente");
+      toast.success(t("accountSettings.passwordUpdated"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Error al actualizar la contraseña");
+      toast.error(error.message || t("accountSettings.passwordUpdateError"));
     } finally {
       setIsLoading(false);
     }
@@ -123,9 +125,9 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
         <div className="p-6 space-y-4">
           <DialogHeader className="flex flex-row items-center justify-between">
             <div className="space-y-1">
-              <DialogTitle>Configuración de cuenta</DialogTitle>
+              <DialogTitle>{t("accountSettings.title")}</DialogTitle>
               <DialogDescription className="typo-caption">
-                Administra tu perfil y configuración de seguridad
+                {t("accountSettings.description")}
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -137,14 +139,14 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                 className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none typo-tab"
               >
                 <User className="h-4 w-4" />
-                Perfil
+                {t("accountSettings.tabProfile")}
               </TabsTrigger>
               <TabsTrigger
                 value="password"
                 className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none typo-tab"
               >
                 <Lock className="h-4 w-4" />
-                Contraseña
+                {t("accountSettings.tabPassword")}
               </TabsTrigger>
             </TabsList>
 
@@ -167,7 +169,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                   disabled={isLoading}
                 >
                   <Upload className="h-4 w-4" />
-                  Cambiar foto
+                  {t("accountSettings.changePhoto")}
                 </Button>
                 <input
                   type="file"
@@ -181,47 +183,46 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="displayName" className="typo-label">
-                    Nombre visible
+                    {t("accountSettings.displayName")}
                   </Label>
                   <Input
                     id="displayName"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre"
+                    placeholder={t("accountSettings.displayNamePlaceholder")}
                     className="h-10"
                   />
                 </div>
                 <div className="p-4 rounded-lg border bg-muted/30 space-y-1">
                   <p className="typo-caption">
-                    Tu dirección de email:{" "}
+                    {t("accountSettings.yourEmail")}{" "}
                     <span className="font-bold">{user?.email}</span>
                   </p>
                   <p className="typo-micro uppercase">
-                    El email no se puede cambiar por razones de seguridad
+                    {t("accountSettings.emailCannotChange")}
                   </p>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={onClose}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleUpdateProfile}
                   disabled={isLoading}
                   className="bg-[#1a1f2e] hover:bg-[#2a2f3e] text-white"
                 >
-                  Guardar cambios
+                  {t("accountSettings.saveChanges")}
                 </Button>
               </div>
             </TabsContent>
 
             <TabsContent value="password" className="space-y-4 pt-6">
               <div className="space-y-1">
-                <h3 className="typo-label">Cambiar contraseña</h3>
+                <h3 className="typo-label">{t("accountSettings.changePasswordTitle")}</h3>
                 <p className="typo-caption">
-                  Para cambiar tu contraseña, por favor confirma tu contraseña
-                  actual y establece una nueva
+                  {t("accountSettings.changePasswordDesc")}
                 </p>
               </div>
 
@@ -231,12 +232,12 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                     htmlFor="current"
                     className="typo-micro uppercase tracking-wider"
                   >
-                    Contraseña actual
+                    {t("accountSettings.currentPassword")}
                   </Label>
                   <Input
                     id="current"
                     type="password"
-                    placeholder="Ingresa tu contraseña actual"
+                    placeholder={t("accountSettings.currentPasswordPlaceholder")}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
@@ -246,12 +247,12 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                     htmlFor="new"
                     className="typo-micro uppercase tracking-wider"
                   >
-                    Nueva contraseña
+                    {t("accountSettings.newPassword")}
                   </Label>
                   <Input
                     id="new"
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder={t("accountSettings.newPasswordPlaceholder")}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
@@ -261,12 +262,12 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                     htmlFor="confirm"
                     className="typo-micro uppercase tracking-wider"
                   >
-                    Confirmar nueva contraseña
+                    {t("accountSettings.confirmNewPassword")}
                   </Label>
                   <Input
                     id="confirm"
                     type="password"
-                    placeholder="Repite la nueva contraseña"
+                    placeholder={t("accountSettings.confirmNewPasswordPlaceholder")}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
@@ -275,22 +276,21 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
               <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 p-4 rounded-lg">
                 <p className="typo-caption">
-                  <span className="font-bold">Importante:</span> Después de
-                  cambiar la contraseña, necesitarás usarla para iniciar sesión
-                  la próxima vez.
+                  <span className="font-bold">{t("accountSettings.importantNotePrefix")}</span>{" "}
+                  {t("accountSettings.importantNote")}
                 </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={onClose}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleUpdatePassword}
                   disabled={isLoading}
                   className="bg-[#1a1f2e] hover:bg-[#2a2f3e] text-white shadow-none"
                 >
-                  Cambiar contraseña
+                  {t("accountSettings.changePasswordButton")}
                 </Button>
               </div>
             </TabsContent>

@@ -23,7 +23,6 @@ import {
   Rocket,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
@@ -387,7 +386,7 @@ export function TopNavbar() {
               <DropdownMenuTrigger asChild>
                 <button
                   className="no-app-region-drag cursor-pointer relative flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/30 transition-all w-8 h-8"
-                  title={user.displayName || user.email || "Usuario"}
+                  title={user.displayName || user.email || t("common.user")}
                 >
                   <SimpleAvatar
                     src={(user as any).photoUrl || undefined}
@@ -406,7 +405,7 @@ export function TopNavbar() {
                 className="w-64 p-2 shadow-xl border-border/50"
               >
                 <DropdownMenuLabel className="typo-micro uppercase tracking-wider px-2 py-1">
-                  Cuenta
+                  {t("common.account")}
                 </DropdownMenuLabel>
                 <div className="flex items-center gap-3 px-2 py-3">
                   <div className="h-10 w-10">
@@ -421,19 +420,18 @@ export function TopNavbar() {
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="typo-label !text-sm truncate">
-                      {user.displayName || "Usuario"}
+                      {user.displayName || t("common.user")}
                     </span>
                     <span className="typo-micro truncate">{user.email}</span>
                   </div>
                 </div>
-                <OpenRouterCreditsButton />
                 <div className="h-px bg-border/50 my-1 mx-1" />
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent"
                   onClick={() => setIsProfileModalOpen(true)}
                 >
                   <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
-                  <span className="typo-tab">Editar Perfil</span>
+                  <span className="typo-tab">{t("common.editProfile")}</span>
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem
@@ -446,7 +444,7 @@ export function TopNavbar() {
                     }}
                   >
                     <BookOpen className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="typo-tab">Documentación</span>
+                    <span className="typo-tab">{t("common.documentation")}</span>
                   </DropdownMenuItem>
                 )}
                 {isAdmin && (
@@ -455,7 +453,7 @@ export function TopNavbar() {
                     onClick={handleOpenAdmin}
                   >
                     <ShieldCheck className="mr-3 h-4 w-4 text-muted-foreground" />
-                    <span className="typo-tab">Admin</span>
+                    <span className="typo-tab">{t("common.admin")}</span>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
@@ -463,7 +461,7 @@ export function TopNavbar() {
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-3 h-4 w-4 text-muted-foreground" />
-                  <span className="typo-tab">Cerrar sesión</span>
+                  <span className="typo-tab">{t("common.logout")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

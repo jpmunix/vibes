@@ -92,15 +92,6 @@ export const ForceCloseDetectedPayloadSchema = z.object({
   recentLogs: z.string().optional(),
 });
 
-export const OpenRouterCreditsSchema = z.object({
-  totalCredits: z.number(),
-  totalUsage: z.number(),
-  availableCredits: z.number(),
-  label: z.string().optional(),
-});
-
-export type OpenRouterCredits = z.infer<typeof OpenRouterCreditsSchema>;
-
 // =============================================================================
 // System Contracts
 // =============================================================================
@@ -278,13 +269,6 @@ export const systemContracts = {
     channel: "system:restart-opencode-server",
     input: z.void(),
     output: z.void(),
-  }),
-
-  // OpenRouter credits
-  getOpenRouterCredits: defineContract({
-    channel: "system:get-openrouter-credits",
-    input: z.void(),
-    output: OpenRouterCreditsSchema,
   }),
 
   // Database viewer window

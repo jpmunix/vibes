@@ -118,10 +118,6 @@ export function OpenRouterProviderSection() {
           },
         },
       });
-      if (keys.length === 0)
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.system.openRouterCredits,
-        });
       setNewKeyInput("");
       setNewKeyAlias("");
       setShowAddKeyForm(false);
@@ -150,9 +146,6 @@ export function OpenRouterProviderSection() {
           },
         },
       });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.system.openRouterCredits,
-      });
       showSuccess(t("openRouter.keyDeleted"));
     } catch {
       showError(t("openRouter.deleteKeyError"));
@@ -167,9 +160,6 @@ export function OpenRouterProviderSection() {
         ...settings?.providerSettings,
         [providerId]: { ...openRouterSettings, selectedKeyId: id },
       },
-    });
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.system.openRouterCredits,
     });
     showSuccess(t("openRouter.keySelected"));
   };
