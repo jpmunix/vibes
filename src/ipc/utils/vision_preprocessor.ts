@@ -7,7 +7,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import log from "electron-log";
-import { DEFAULT_VISION_PROMPT } from "../shared/vision_constants";
+import { getSystemPrompt } from "./prompt_utils";
 
 const logger = log.scope("vision-preprocessor");
 
@@ -84,7 +84,45 @@ export async function preprocessImages(
   }
 
   const visionModelStr = settings.visionPreprocessorModel || "openrouter::google/gemini-2.5-pro";
-  const promptTemplate = settings.visionPreprocessorPrompt || DEFAULT_VISION_PROMPT;
+  // Card #195: el prompt de visión es un prompt de sistema.
+  // Prioridad: override en DB > override legado en settings > default del
+  // código. El override legado (editado en la vieja UI VisionPromptGroup) se
+  // migra de forma perezosa e idempotente a una fila de DB la primera vez que
+  // hay un chat con imágenes: desde entonces la nueva UI lo gestiona (edit +
+  // restaurar) y el value legado deja de importar. El contenido resultante
+  // es idéntico al de antes, así el hash del cache de imágenes no cambia.
+  const legacyVisionOverride = settings.visionPreprocessorPrompt?.trim();
+  const db = getRemoteDb();
+  let promptTemplate = await getSystemPrompt("vision", userId);
+  if (legacyVisionOverride) {
+    const existingRows = await db
+      .select({ id: remoteSchema.prompts.id })
+      .from(remoteSchema.prompts)
+      .where(
+        and(
+          eq(remoteSchema.prompts.userId, userId),
+          eq(remoteSchema.prompts.systemId, "vision"),
+        ),
+      )
+      .limit(1);
+    if (existingRows.length === 0) {
+      promptTemplate = legacyVisionOverride;
+      try {
+        await db.insert(remoteSchema.prompts).values({
+          userId,
+          systemId: "vision",
+          title: "Prompt de visión",
+          content: legacyVisionOverride,
+          enabled: 1,
+          scope: "all",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (e) {
+        logger.error("Error migrating legacy vision prompt override to DB", e);
+      }
+    }
+  }
 
   const shortName = visionModelStr.split("::").pop() || visionModelStr;
   const prefix = `🖼️ [Imagen analizada por ${shortName}]:\n---\n`;
@@ -92,7 +130,6 @@ export async function preprocessImages(
 
   let finalDescription = "";
   const newMessages: ModelMessage[] = [];
-  const db = getRemoteDb();
 
   const userPrompt = extractUserPrompt(messages);
   const fullPrompt = `${promptTemplate}\n\n---\n\nIntención/Prompt original del usuario:\n${userPrompt || "(no se proporcionó texto)"}\n\n---\n\nAnaliza la(s) imagen(es) adjunta(s) según las directrices anteriores.`;

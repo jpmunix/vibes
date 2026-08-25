@@ -129,7 +129,9 @@ export function registerPromptHandlers() {
     for (const [systemId, defaultContent] of Object.entries(DEFAULT_PROMPTS)) {
       const override = overridesBySystemId.get(systemId);
       if (override) {
-        // Override del usuario: content/enabled/scope pueden diferir del default.
+        // Override del usuario: el contenido puede diferir; enabled siempre
+        // true para los de sistema (los switches se quitaron — retroactivo via
+        // harden en el map, no escribimos DB para evitar spam de writes).
         result.push({
           id: Number(override.id),
           categoryId:
@@ -139,7 +141,7 @@ export function registerPromptHandlers() {
           description:
             PROMPT_DESCRIPTIONS[systemId as keyof typeof PROMPT_DESCRIPTIONS] ?? null,
           content: override.content,
-          enabled: override.enabled === 1,
+          enabled: true,
           scope: override.scope ?? "all",
           hasDefault: true,
           isModified: override.content !== defaultContent,

@@ -6,39 +6,10 @@ import { ipc } from "@/ipc/types";
 import { DEFAULT_STRATEGIST_MODEL } from "@/lib/schemas";
 import { Sparkles, Loader2, Check, X } from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
-
-const SKILL_SYSTEM_PROMPT = `Eres un Ingeniero de AI y Diseñador de Instrucciones experto. Tu tarea es generar o perfeccionar un archivo de directrices de comportamiento para un agente AI (llamado "Skill").
-
-El resultado DEBE estar en formato Markdown e incluir obligatoriamente el siguiente bloque frontmatter YAML al principio, delimitado por "---":
----
-name: slug-en-minusculas (usa solo letras minúsculas, números y guiones)
-description: Breve descripción de una sola línea de para qué sirve este skill
-allowed-tools:
-  - herramienta_1
-  - herramienta_2
----
-
-A continuación del frontmatter, el contenido DEBE estructurarse bajo un encabezado principal "# Instrucciones", donde especificarás con máximo detalle, claridad y rigor el comportamiento, restricciones y reglas del agente al interactuar con el código o realizar la tarea encomendada.
-
-Reglas críticas de formato y contenido:
-- Mantén las reglas y descripciones sumamente claras, sin ambigüedades.
-- No uses marcadores de posición ni placeholders.
-- Estructura las instrucciones usando secciones claras, viñetas y ejemplos de buenas prácticas.
-- El frontmatter YAML es obligatorio al principio y debe ser sintácticamente válido.
-- Responde ÚNICAMENTE con el contenido final del archivo SKILL.md generado, sin introducciones ni comentarios explicativos fuera del Markdown.`;
-
-const PROMPT_SYSTEM_PROMPT = `Eres un Ingeniero de Prompts experto. Tu tarea es generar o perfeccionar un prompt de sistema o instrucciones para un modelo de lenguaje (LLM).
-
-El prompt generado debe ser estructurado, claro y altamente efectivo. Debe definir claramente:
-1. El Rol o Actitud del agente.
-2. El Objetivo o Tarea principal.
-3. Las Reglas y Restricciones detalladas que debe seguir el modelo.
-4. El Formato de Salida esperado (si aplica, con ejemplos).
-
-Reglas críticas:
-- Escribe de forma directa y asertiva, utilizando imperativos claros ("Haz", "Evita", "Debes").
-- Estructura el texto con Markdown limpio (encabezados, listas de viñetas, bloques de código).
-- Evita explicaciones meta-lingüísticas; responde ÚNICAMENTE con el prompt optimizado final, sin preámbulos ni comentarios.`;
+import {
+  SKILL_SYSTEM_PROMPT,
+  PROMPT_SYSTEM_PROMPT,
+} from "@/prompts/strategist";
 
 import {
   Dialog,

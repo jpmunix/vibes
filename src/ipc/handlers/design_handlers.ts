@@ -8,6 +8,7 @@ import { promises as fsPromises } from "node:fs";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { DESIGN_SYSTEMS_SYSTEM_PROMPT } from "../../prompts/design_systems";
 
 const execFileAsync = promisify(execFile);
 const logger = log.scope("design_handlers");
@@ -270,91 +271,7 @@ export function registerDesignHandlers() {
       );
 
       const { openRouterCompletion } = await import("../utils/openrouter");
-
-      const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
-
-Tu objetivo: Analizar la captura de pantalla adjunta y aplicar ingeniería inversa para generar un archivo DESIGN.md completo, adhiriéndote estrictamente a la especificación estándar de DESIGN.md. Este archivo será la fuente de verdad tanto para humanos como para agentes de IA.
-
-REGLA ESTRICTA DE SALIDA: No devuelvas NINGUNA introducción, saludo, conclusión, ni texto adicional fuera del archivo generado. Devuelve ÚNICA Y EXCLUSIVAMENTE el contenido del archivo DESIGN.md puro. SIN bloques de código envolventes (no uses \\\`\\\`\\\`markdown ni \\\`\\\`\\\`).
-
-REGLA DE NEUTRALIDAD: Bajo ningún concepto incluyas nombres comerciales, marcas registradas o frameworks específicos (ej. Material, Tailwind, Bootstrap). Basa tu resultado EXCLUSIVAMENTE en la evidencia visual.
-
-### 1. Fase de Análisis e Inferencia Visual
-Antes de generar el contenido, infiere de la captura de pantalla:
-* Atmósfera y Brand: ¿Es denso, espacioso, minimalista, corporativo, lúdico?
-* Colores: Identifica roles semánticos (primary, secondary, neutral, etc.). Usa nombres evocadores en la prosa.
-* Tipografía: Infiere las fuentes (o equivalentes genéricas), tamaños, pesos y alturas de línea para titulares (headlines) y cuerpo (body).
-* Layout y Espaciado: ¿Usa una escala de 8px? ¿Márgenes amplios o compactos?
-* Formas (Shapes) y Elevación: Observa los radios de borde (border-radius) y cómo las sombras construyen jerarquía (flat vs. sombras profundas).
-
-### 2. Estructura Exacta de Salida
-El archivo DESIGN.md debe tener exactamente estas dos partes, en este orden:
-
-#### PARTE 1: YAML Front Matter (Machine-readable tokens)
-Debe estar al inicio del archivo, delimitado por --- arriba y abajo. Usa los valores inferidos y referencias de tokens (ej. {colors.primary}). Sigue este esquema estricto:
-
----
-version: alpha
-name: [Nombre neutral inferido]
-colors:
-  primary: "#HEX"
-  secondary: "#HEX"
-  neutral: "#HEX"
-typography:
-  headline-md:
-    fontFamily: [Fuente Inferida]
-    fontSize: [Tamaño px/rem]
-    fontWeight: [Peso]
-    lineHeight: [Número/Dimensión]
-    letterSpacing: [Dimensión]
-  body-md:
-    # ...
-rounded:
-  sm: 4px
-  md: 8px
-  full: 9999px
-spacing:
-  base: 16px
-  sm: 8px
-  lg: 32px
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "#FFFFFF"
-    rounded: "{rounded.md}"
----
-
-#### PARTE 2: Markdown Body (Semantic & Human-readable)
-Explica la lógica y proporciona contexto para aplicar los tokens. Puedes usar un encabezado # para el título del documento. DEBES usar los siguientes encabezados ## EXACTAMENTE en este orden (omite los irrelevantes, pero mantén la secuencia):
-
-## Overview
-Visión holística del look and feel, personalidad y respuesta emocional de la UI.
-
-## Colors
-Explica la paleta. Usa colores semánticos como: primary, secondary, tertiary, neutral.
-
-## Typography
-Describe la estrategia tipográfica, pesos y jerarquías (Headlines, Body, Labels).
-
-## Layout
-Modelo de diseño (grilla fluida, anchos fijos) y ritmo de espaciado.
-
-## Elevation & Depth
-Estrategia de sombras, capas tonales o bordes para lograr jerarquía visual.
-
-## Shapes
-Lenguaje de las formas (ej. Arquitectura afilada con esquinas de 0px, o bordes amigables de 8px).
-
-## Components
-Guía de estilo para componentes atómicos observados en la imagen (Botones, Inputs, Chips, etc.). Define variantes si es posible (ej. button-primary, button-secondary).
-
-## Do's and Don'ts
-Lineamientos prácticos, mejores prácticas de contraste y errores a evitar.
-
-### 3. Límites (Guardrails)
-* CERO RELLENO CONVERSACIONAL: Empieza directamente con --- y termina con el último texto del markdown.
-* Sé preciso: Usa valores exactos (HEX, px, rem) entre paréntesis en la prosa cuando sea útil.
-* Sé funcional y evocativo en las descripciones.`;
+      const SYSTEM_PROMPT = DESIGN_SYSTEMS_SYSTEM_PROMPT;
 
       try {
         const data = await openRouterCompletion({

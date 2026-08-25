@@ -9,6 +9,7 @@ import { generateText, streamText } from "ai";
 import { readSettings } from "../../main/settings";
 import { safeSend } from "../utils/safe_sender";
 import log from "electron-log";
+import { PLAYGROUND_EVALUATOR_SYSTEM_PROMPT } from "../../prompts/playground_evaluator";
 
 const logger = log.scope("playground");
 
@@ -196,43 +197,7 @@ ${r.text}`;
         })
         .join("\n\n---\n\n");
 
-      const systemPrompt = `Eres un analista experto en evaluar respuestas de modelos de inteligencia artificial. Tu trabajo es analizar las respuestas dadas por múltiples modelos al mismo prompt y determinar cuál es el mejor.
-
-Tu análisis DEBE ser en formato JSON estricto con esta estructura exacta:
-{
-  "summary": "Resumen ejecutivo del análisis en 2-3 frases",
-  "bestQualityTime": {
-    "modelApiName": "nombre_api_del_modelo",
-    "modelDisplayName": "Nombre visible",
-    "score": 85,
-    "justification": "Explicación de por qué gana en relación calidad/tiempo"
-  },
-  "bestQualityOnly": {
-    "modelApiName": "nombre_api_del_modelo",
-    "modelDisplayName": "Nombre visible",
-    "score": 92,
-    "justification": "Explicación de por qué gana en calidad pura"
-  },
-  "rankings": [
-    {
-      "position": 1,
-      "modelApiName": "nombre_api_del_modelo",
-      "modelDisplayName": "Nombre visible",
-      "qualityScore": 92,
-      "speedScore": 78,
-      "overallScore": 87,
-      "shortVerdict": "Breve veredicto de 1 frase"
-    }
-  ]
-}
-
-Criterios de evaluación:
-- **Calidad**: precisión, completitud, claridad, estructura y relevancia de la respuesta
-- **Velocidad**: tiempo de respuesta (latencia) — menor es mejor
-- **Relación calidad/tiempo**: el balance óptimo entre ambos factores
-- Los scores van de 0 a 100
-- El ranking debe incluir TODOS los modelos ordenados por overallScore descendente
-- Responde ÚNICAMENTE con el JSON, sin texto adicional`;
+      const systemPrompt = PLAYGROUND_EVALUATOR_SYSTEM_PROMPT;
 
       const userMessage = `Prompt original del usuario:
 "${originalPrompt}"

@@ -511,6 +511,11 @@ export const UserSettingsSchema = z
     // the runtime bridge is validated (see phase1-tasks.md).
     runtimeBridgeEnabled: z.boolean().optional(),
     visionPreprocessorModel: z.string().optional(),
+    // DEPRECATED (card #195): el prompt de visión es ahora un prompt de
+    // sistema (systemId="vision", default en DEFAULT_PROMPTS + override en la
+    // tabla prompts). Este campo se conserva SOLO como fuente de lectura para
+    // la migración perezosa del override legado (vision_preprocessor.ts);
+    // ningún writer lo sigue usando. No borrar hasta retirar la migración.
     visionPreprocessorPrompt: z.string().optional(),
     // DEPRECATED — openCodePermissions (v1 defaults). Superseded by `permissions`.
     openCodePermissions: OpenCodePermissionsConfigSchema.optional(),

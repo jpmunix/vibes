@@ -23,6 +23,7 @@ import { createTypedHandler, HandlerContext } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
+import { CONDENSE_CHAT_SYSTEM_PROMPT } from "../../prompts/condense_chat";
 
 const logger = log.scope("chat_handlers");
 
@@ -1060,8 +1061,7 @@ function broadcastChatDeleted(chatId: number): void {
           messages: [
             {
               role: "system",
-              content:
-                "Eres un analista técnico de primer nivel. Tu tarea es condensar el historial de esta conversación en un resumen denso y estructurado. Incluye contexto técnico, decisiones tomadas, estado final y próximos pasos. Este resumen se usará como contexto inicial para continuar el trabajo en una nueva sesión. Devuelve SOLO el markdown del resumen, sin saludos, sin intros ni despedidas.\n\nIMPORTANTE: Si mencionas archivos de artefactos/planificaciones, usa SIEMPRE la ruta completa con el directorio .vibes/ (ej: `.vibes/plan-internacionalizacion-1715123456.md`), nunca solo el nombre del archivo suelto. Esto permite que la interfaz los detecte y abra correctamente.",
+              content: CONDENSE_CHAT_SYSTEM_PROMPT,
             },
             {
               role: "user",

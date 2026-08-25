@@ -27,7 +27,6 @@ import { SYSTEM_PROMPT_GROUPS } from "@/prompts/index";
 import {
   getPromptEditorLock,
   isAgentCorePrompt,
-  isSystemPrompt,
 } from "./prompt_guard";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
@@ -77,7 +76,6 @@ function PromptEditor({
   const [localTitle, setLocalTitle] = useState(prompt.title);
   const [localDesc, setLocalDesc] = useState(prompt.description || "");
   const [localContent, setLocalContent] = useState(prompt.content);
-  const [localEnabled, setLocalEnabled] = useState(prompt.enabled);
   const [localCategoryId, setLocalCategoryId] = useState<number | null>(
     prompt.categoryId ?? null,
   );
@@ -87,9 +85,8 @@ function PromptEditor({
   const [isRestoring, setIsRestoring] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // El prompt base del runtime es obligatorio: no se puede desactivar, pero
-  // su contenido sí se puede editar y restaurar (card #117 follow-up).
-  const canToggle = canDisablePrompt(prompt.systemId);
+  // Card #195+: los prompts del sistema siempre están activos — sin switches
+  // ni candados. La enabled flag existe en la DB por compat pero se fuerza a 1.
 
   // Card #183: para el prompt del sistema solo se deja editar el contenido;
   // los demás campos (categoría, scope, título, descripción, Generar con IA)
@@ -185,13 +182,13 @@ function PromptEditor({
     setIsSaving(true);
     try {
       if (prompt.id !== null) {
-        // Override existente: actualizar fila del usuario.
+        // Override existente: actualizar fila — siempre habilitado (sin switches).
         await ipc.prompt.update({
           id: prompt.id,
           title: localTitle,
           description: localDesc,
           content: localContent,
-          enabled: localEnabled,
+          enabled: true,
           categoryId: localCategoryId,
           scope: localScope,
         });
@@ -204,7 +201,7 @@ function PromptEditor({
           content: localContent,
           categoryId: localCategoryId,
           systemId: prompt.systemId ?? undefined,
-          enabled: localEnabled,
+          enabled: true,
           scope: localScope,
         });
       }
@@ -254,77 +251,13 @@ function PromptEditor({
   return (
     <>
       <div
-        className={cn(
-          "flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4",
-          !localEnabled && "opacity-50",
-        )}
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
         onClick={() => setIsOpen(true)}
       >
         <div className="flex-1 flex items-center gap-3">
-          <div
-            className={cn(
-              "flex items-center",
-              !canToggle && "cursor-not-allowed",
-            )}
-            title={
-              canToggle
-                ? undefined
-                : t("prompts.requiredTitle")
-            }
-          >
-            <Switch
-              checked={canToggle ? localEnabled : true}
-              disabled={!canToggle}
-              onCheckedChange={async (c) => {
-                if (!canToggle) {
-                  // El prompt base no se desactiva nunca (card #117 follow-up).
-                  setLocalEnabled(true);
-                  toast.info(t("prompts.requiredToast"));
-                  return;
-                }
-                setLocalEnabled(c);
-                try {
-                  if (prompt.id !== null) {
-                    await ipc.prompt.update({ id: prompt.id, enabled: c });
-                  } else {
-                    // id === null: crear override (handler hace upsert por systemId).
-                    await ipc.prompt.create({
-                      title: prompt.title,
-                      content: prompt.content,
-                      systemId: prompt.systemId ?? undefined,
-                      categoryId: prompt.categoryId ?? undefined,
-                      enabled: c,
-                      scope: prompt.scope || "all",
-                    });
-                  }
-                  onUpdate();
-                  toast.success(
-                    c
-                      ? t("prompts.activated")
-                      : t("prompts.deactivated"),
-                  );
-                } catch {
-                  setLocalEnabled(!c);
-                  toast.error(t("prompts.statusUpdateError"));
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-            {!canToggle && (
-              <Lock
-                className="size-4 text-muted-foreground/70 ml-2"
-                aria-label={t("prompts.requiredTitle")}
-              />
-            )}
-          </div>
           <div>
             <h3 className="typo-label flex items-center gap-2 text-sm font-medium">
               {getSystemLabel()}
-              {!localEnabled && (
-                <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">
-                  {t("prompts.disabled")}
-                </span>
-              )}
               {prompt.hasDefault && prompt.isModified && (
                 <span
                   className="inline-flex items-center gap-1.5 typo-micro px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20"

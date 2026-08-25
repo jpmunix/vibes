@@ -3,23 +3,26 @@ import {
   canDisablePrompt,
   getPromptEditorLock,
   isAgentCorePrompt,
+  isSystemPrompt,
   LOCKED_PROMPT_SYSTEM_IDS,
 } from "./prompt_guard";
+import { DEFAULT_PROMPTS } from "@/prompts/defaults";
 
-// Card #117 follow-up: el prompt base del runtime es obligatorio. Su switch
-// no se puede desactivar; los demás sí.
+// ────────────────────────────────────────────────────────────────────────────
+// Card #117: el prompt base del runtime es obligatorio (no desactivable).
+// ────────────────────────────────────────────────────────────────────────────
 
-describe("canDisablePrompt — regla de prompts bloqueados", () => {
+describe("canDisablePrompt — regla de prompts no desactivables", () => {
   it("el prompt base del runtime NO se puede desactivar", () => {
     expect(canDisablePrompt("runtime_agent_base")).toBe(false);
     expect(LOCKED_PROMPT_SYSTEM_IDS.has("runtime_agent_base")).toBe(true);
   });
 
-  it("los prompts ctx_* SÍ se pueden desactivar", () => {
-    expect(canDisablePrompt("ctx_language")).toBe(true);
-    expect(canDisablePrompt("ctx_task_management")).toBe(true);
-    expect(canDisablePrompt("ctx_plan_mode")).toBe(true);
-    expect(canDisablePrompt("ctx_build_walkthrough")).toBe(true);
+  it("los demás prompts de sistema SÍ se pueden desactivar", () => {
+    for (const id of Object.keys(DEFAULT_PROMPTS)) {
+      if (id === "runtime_agent_base") continue;
+      expect(canDisablePrompt(id)).toBe(true);
+    }
   });
 
   it("los prompts custom (sin systemId) sí se pueden desactivar", () => {
@@ -28,28 +31,20 @@ describe("canDisablePrompt — regla de prompts bloqueados", () => {
   });
 });
 
-// Card #183: el prompt del sistema solo permite editar su contenido. El resto
-// de campos del editor (categoría, scope, título, descripción, Generar con IA)
-// quedan ocultos o en solo lectura.
+// ────────────────────────────────────────────────────────────────────────────
+// Card #195: TODOS los prompts de sistema solo permiten editar su contenido.
+// (Antes, card #183, solo runtime_agent_base quedaba restringido.)
+// ────────────────────────────────────────────────────────────────────────────
 
-describe("getPromptEditorLock — campos del editor por prompt", () => {
-  it("el prompt del sistema bloquea todos los campos excepto el contenido", () => {
-    const lock = getPromptEditorLock("runtime_agent_base");
-    expect(lock.hideCategory).toBe(true);
-    expect(lock.hideScope).toBe(true);
-    expect(lock.titleReadonly).toBe(true);
-    expect(lock.descriptionReadonly).toBe(true);
-    expect(lock.hideAiGenerate).toBe(true);
-  });
-
-  it("los prompts ctx_* conservan todos los campos editables", () => {
-    for (const id of ["ctx_language", "ctx_task_management", "ctx_plan_mode", "ctx_build_walkthrough"]) {
+describe("getPromptEditorLock — campos del editor por prompt (card #195)", () => {
+  it("CADA prompt de sistema bloquea todos los campos excepto el contenido", () => {
+    for (const id of Object.keys(DEFAULT_PROMPTS)) {
       const lock = getPromptEditorLock(id);
-      expect(lock.hideCategory).toBe(false);
-      expect(lock.hideScope).toBe(false);
-      expect(lock.titleReadonly).toBe(false);
-      expect(lock.descriptionReadonly).toBe(false);
-      expect(lock.hideAiGenerate).toBe(false);
+      expect(lock.hideCategory, `${id}: hideCategory`).toBe(true);
+      expect(lock.hideScope, `${id}: hideScope`).toBe(true);
+      expect(lock.titleReadonly, `${id}: titleReadonly`).toBe(true);
+      expect(lock.descriptionReadonly, `${id}: descriptionReadonly`).toBe(true);
+      expect(lock.hideAiGenerate, `${id}: hideAiGenerate`).toBe(true);
     }
   });
 
@@ -65,16 +60,29 @@ describe("getPromptEditorLock — campos del editor por prompt", () => {
   });
 });
 
-// Card #182: aviso informativo de verbosidad en el editor del Núcleo del agente.
+describe("isSystemPrompt — detección de prompts de sistema (card #195)", () => {
+  it("todo systemId con default en el código es de sistema", () => {
+    for (const id of Object.keys(DEFAULT_PROMPTS)) {
+      expect(isSystemPrompt(id)).toBe(true);
+    }
+  });
+
+  it("los prompts custom (sin systemId) no son de sistema", () => {
+    expect(isSystemPrompt(null)).toBe(false);
+    expect(isSystemPrompt(undefined)).toBe(false);
+    expect(isSystemPrompt("mi_prompt_personal")).toBe(false);
+  });
+});
 
 describe("isAgentCorePrompt — detección del prompt del Núcleo del agente", () => {
   it("runtime_agent_base es el núcleo", () => {
     expect(isAgentCorePrompt("runtime_agent_base")).toBe(true);
   });
 
-  it("los ctx_* no son el núcleo", () => {
+  it("los demás prompts de sistema no son el núcleo", () => {
     expect(isAgentCorePrompt("ctx_language")).toBe(false);
     expect(isAgentCorePrompt("ctx_build_walkthrough")).toBe(false);
+    expect(isAgentCorePrompt("vision")).toBe(false);
   });
 
   it("los prompts custom (sin systemId) no son el núcleo", () => {

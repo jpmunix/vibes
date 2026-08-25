@@ -51,10 +51,10 @@ describe("getSystemPrompt — override de la DB > default del código", () => {
     );
   });
 
-  it("devuelve cadena vacía si la fila existe pero está deshabilitada (el usuario lo apagó)", async () => {
+  it("devuelve el override aunque la fila esté legacy deshabilitada (card #195+: siempre activo)", async () => {
     hoisted.promptRow = { content: "responde en español", enabled: 0 };
     await expect(getSystemPrompt("ctx_language", "user-1")).resolves.toBe(
-      "",
+      "responde en español",
     );
   });
 
@@ -62,6 +62,41 @@ describe("getSystemPrompt — override de la DB > default del código", () => {
     hoisted.promptRow = null;
     await expect(getSystemPrompt("prompt_inexistente", "user-1")).resolves.toBe(
       "",
+    );
+  });
+});
+
+// Card #195: la visión es un prompt de sistema más. Misma semántica de
+// override que el resto (default en código > override en DB > deshabilitado).
+describe("getSystemPrompt('vision') — visión como prompt de sistema (card #195)", () => {
+  beforeEach(() => {
+    hoisted.promptRow = null;
+  });
+
+  const DEFAULT_VISION = DEFAULT_PROMPTS.vision;
+
+  it("devuelve el default de fábrica si no hay override en DB", async () => {
+    await expect(getSystemPrompt("vision", "user-1")).resolves.toBe(DEFAULT_VISION);
+  });
+
+  it("devuelve el override de la DB si la fila existe y está habilitada", async () => {
+    hoisted.promptRow = { content: "describe solo los colores", enabled: 1 };
+    await expect(getSystemPrompt("vision", "user-1")).resolves.toBe(
+      "describe solo los colores",
+    );
+  });
+
+  it("devuelve el override de visión aunque legacy deshabilitado (card #195+: siempre activo)", async () => {
+    hoisted.promptRow = { content: "describe solo los colores", enabled: 0 };
+    await expect(getSystemPrompt("vision", "user-1")).resolves.toBe("describe solo los colores");
+  });
+
+  it("el default de fábrica conserva el texto historico (no se reescribio, solo se movio)", () => {
+    // Regla de oro N1 del GDD: el contenido default NO cambia.
+    expect(DEFAULT_VISION).toContain("expert visual processor");
+    expect(DEFAULT_VISION).toContain("INTENT ALIGNMENT");
+    expect(DEFAULT_VISION).toContain(
+      "Your only job is to provide the visual raw material in text form.",
     );
   });
 });

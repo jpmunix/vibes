@@ -33,7 +33,9 @@ export async function getSystemPrompt(
     });
 
     if (!promptRow) return codeDefault;
-    if (promptRow.enabled !== 1) return ""; // deshabilitado explícitamente
+    // Card #195+: los prompts del sistema siempre están activos — el flag
+    // enabled=0 legacy se ignora (harden retroactivo). No se borra la fila
+    // para no tocar historia; simplemente se considera habilitada.
     return promptRow.content || codeDefault;
   } catch (error) {
     logger.error(`Error fetching system prompt ${systemId}:`, error);
