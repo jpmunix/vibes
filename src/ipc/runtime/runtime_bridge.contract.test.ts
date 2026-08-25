@@ -38,6 +38,7 @@ import {
   NOOP_LOGGER,
 } from "@vibes/runtime";
 import { createFsWorkspace } from "@vibes/workspace";
+import { toWireMessages } from "@vibes/providers/openai-compatible";
 import { createBuiltInRegistry } from "@vibes/tools";
 import { createOpenAICompatibleProvider } from "@vibes/providers/openai-compatible";
 
@@ -315,6 +316,163 @@ describe("handleRuntimeStream contract — return shape", () => {
     expect(result.outputTokens).toBe(5);
     expect(result.costUsd).toBeNull(); // v1 has no cost accounting (post-MVP)
     expect(calls.length).toBeGreaterThan(0);
+  });
+
+  it("accepts an image-only turn and forwards media to the runtime session", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      {
+        chatId: 196,
+        prompt: "",
+        attachments: [{
+          name: "screenshot.png",
+          type: "image/png",
+          data: "data:image/png;base64,QUJD",
+          attachmentType: "chat-context",
+        }],
+      } as any,
+      new AbortController(),
+      makeOptions({ chatMessages: [] }),
+    );
+
+    expect(result.success).toBe(true);
+    const record = [...storage.records.values()][0]!;
+    const seededUser = [...record.messages].reverse().find((message) => message.role === "user")!;
+    expect(seededUser.role).toBe("user");
+    expect(seededUser.content).toEqual([
+      { type: "image", mediaType: "image/png", data: "QUJD" },
+      { type: "text", text: "" },
+    ]);
+  });
+
+  it("rehydrates persisted image parts from aiMessagesJson", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const persistedImage = "data:image/jpeg;base64,REVG";
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 197, prompt: "follow up" },
+      new AbortController(),
+      makeOptions({
+        chatMessages: [{
+          id: 7,
+          role: "user",
+          content: "describe the previous image",
+          aiMessagesJson: JSON.stringify([{
+            role: "user",
+            content: [
+              { type: "text", text: "describe the previous image" },
+              { type: "image", image: persistedImage, mediaType: "image/jpeg" },
+            ],
+          }]),
+        }],
+      }),
+    );
+
+    expect(result.success).toBe(true);
+    const record = [...storage.records.values()][0]!;
+    expect(record.messages[0]!.content).toEqual([
+      { type: "text", text: "describe the previous image" },
+      { type: "image", mediaType: "image/jpeg", data: "REVG" },
+    ]);
+  });
+
+  it("rehydrates a persisted CDN URL image by re-inlining the bytes as base64", async () => {
+    // aiMessagesJson stores the Bunny CDN URL after a successful upload.
+    // Base64 data URLs are the universal wire representation (local providers
+    // never fetch external URLs), so hydration re-downloads the CDN image.
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const cdnUrl = "https://vibes-cdn.b-cdn.net/chat-attachments/u1/6063cb76e50ddccacaa5490e3a6436aa.png";
+    // The PNG magic bytes; base64 = iVBORw0=
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const fetchSpy = vi.fn(async () => new Response(pngBytes, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      const result = await handleRuntimeStream(
+        { sender } as any,
+        { chatId: 198, prompt: "follow up" },
+        new AbortController(),
+        makeOptions({
+          chatMessages: [{
+            id: 8,
+            role: "user",
+            content: "que ves en esta captura?",
+            aiMessagesJson: JSON.stringify([{
+              role: "user",
+              content: [
+                { type: "text", text: "que ves en esta captura?" },
+                { type: "image", image: cdnUrl, mediaType: "image/png" },
+              ],
+            }]),
+          }],
+        }),
+      );
+
+      expect(result.success).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(cdnUrl, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      const record = [...storage.records.values()][0]!;
+      expect(record.messages[0]!.content).toEqual([
+        { type: "text", text: "que ves en esta captura?" },
+        { type: "image", mediaType: "image/png", data: "iVBORw0KGgo=" },
+      ]);
+      // The wire the provider emits carries the inline data URL, never the URL.
+      const wire = JSON.stringify(
+        toWireMessages({
+          model: "test-model",
+          systemPrompt: "",
+          messages: record.messages,
+        }),
+      );
+      expect(wire).toContain("data:image/png;base64,iVBORw0KGgo=");
+      expect(wire).not.toContain(cdnUrl);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("falls back to the url part when the CDN re-download fails (offline)", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    const cdnUrl = "https://vibes-cdn.b-cdn.net/chat-attachments/u1/deadbeef.png";
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("ENOTFOUND"); }));
+    try {
+      const result = await handleRuntimeStream(
+        { sender } as any,
+        { chatId: 199, prompt: "follow up" },
+        new AbortController(),
+        makeOptions({
+          chatMessages: [{
+            id: 9,
+            role: "user",
+            content: "que ves en esta captura?",
+            aiMessagesJson: JSON.stringify([{
+              role: "user",
+              content: [
+                { type: "text", text: "que ves en esta captura?" },
+                { type: "image", image: cdnUrl, mediaType: "image/png" },
+              ],
+            }]),
+          }],
+        }),
+      );
+
+      // Hydration never throws on an unreachable CDN; the URL part survives
+      // for providers that accept direct references.
+      expect(result.success).toBe(true);
+      const record = [...storage.records.values()][0]!;
+      expect(record.messages[0]!.content).toEqual([
+        { type: "text", text: "que ves en esta captura?" },
+        { type: "image", mediaType: "image/png", url: cdnUrl },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("fails fast with a friendly message when no model target is configured", async () => {

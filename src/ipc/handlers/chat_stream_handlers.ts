@@ -129,6 +129,7 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { uploadChatAttachment } from "./bunny_handlers";
+import { persistedImageToDataUrl } from "../runtime/attachments_media";
 import { bufferChatRound } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
@@ -526,7 +527,11 @@ function registerChatStreamHandlers() {
               );
             }
 
-            // Recover attachments from aiMessagesJson if present
+            // Recover attachments from aiMessagesJson if present. The
+            // persisted representation is heterogeneous (CDN URL when the
+            // upload succeeded, dataURL/base64 as fallback); resolve each to
+            // a complete data URL so the renderer can rebuild File objects
+            // from real bytes (atob() cannot decode a CDN URL).
             const attachmentsToRestore: any[] = [];
             const aiMessagesJson = lastUserMessage.aiMessagesJson as any;
             if (aiMessagesJson) {
@@ -536,16 +541,21 @@ function registerChatStreamHandlers() {
               if (aiMessages && Array.isArray(aiMessages)) {
                 const userMsg = aiMessages.find((m: any) => m.role === "user");
                 if (userMsg && Array.isArray(userMsg.content)) {
-                  userMsg.content.forEach((part: any, i: number) => {
-                    if (part.type === "image" && part.image) {
-                      attachmentsToRestore.push({
-                        type: part.type,
-                        image: part.image,
-                        mediaType:
-                          part.mediaType || part.mimeType || "image/png",
-                      });
-                    }
-                  });
+                  for (const part of userMsg.content) {
+                    if (part?.type !== "image" || !part.image) continue;
+                    const dataUrl = await persistedImageToDataUrl({
+                      raw: part.image,
+                      mediaType:
+                        part.mediaType || part.mimeType || "image/png",
+                    });
+                    if (!dataUrl) continue;
+                    attachmentsToRestore.push({
+                      type: part.type,
+                      image: dataUrl,
+                      mediaType:
+                        part.mediaType || part.mimeType || "image/png",
+                    });
+                  }
                 }
               }
             }

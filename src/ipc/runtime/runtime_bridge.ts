@@ -51,6 +51,7 @@ import {
 } from "./permission_state";
 import { getVibesAppPath } from "../../paths/paths";
 import { attachToSystemPrompt } from "./prompt_attach";
+import { attachmentsToImageParts, resolvePersistedImage } from "./attachments_media";
 import { safeSend } from "../utils/safe_sender";
 import { resolveRuntimeModelTarget } from "./model_resolver";
 
@@ -105,10 +106,10 @@ export type RuntimeStreamResult = {
  *   - The current user prompt is dropped if it matches the tail — it will be
  *     re-seeded by createSession (avoids duplication).
  */
-function convertHistoryToRuntimeMessages(
+async function convertHistoryToRuntimeMessages(
   chatMessages: any[],
   currentPrompt: string,
-): Message[] {
+): Promise<Message[]> {
   const messages: Message[] = [];
   for (const msg of chatMessages ?? []) {
     const role = msg?.role;
@@ -134,20 +135,70 @@ function convertHistoryToRuntimeMessages(
     }
 
     if (!finalText) continue;
+
+    const content: Message["content"] = [{ type: "text", text: finalText }];
+    if (role === "user") {
+      // Persisted chat rows keep the provider-facing representation in
+      // aiMessagesJson so thumbnails and previous turns can be reconstructed.
+      // Restore only image parts; the current textual path above remains the
+      // canonical source for the visible prompt and summary tags.
+      let persisted: unknown = msg.aiMessagesJson;
+      if (typeof persisted === "string") {
+        try {
+          persisted = JSON.parse(persisted);
+        } catch {
+          persisted = undefined;
+        }
+      }
+      const persistedMessages = Array.isArray(persisted)
+        ? persisted
+        : persisted && typeof persisted === "object" && Array.isArray((persisted as { messages?: unknown }).messages)
+          ? (persisted as { messages: unknown[] }).messages
+          : [];
+      const persistedUser = persistedMessages.find((candidate: any) => candidate?.role === "user") as any;
+      if (Array.isArray(persistedUser?.content)) {
+        for (const part of persistedUser.content) {
+          if (part?.type !== "image") continue;
+          // The persisted representation is heterogeneous: CDN URL when the
+          // upload succeeded, inline dataURL/base64 as fallback. The resolver
+          // maps each to the correct ImageContentPart shape and re-inlines
+          // CDN URLs as base64 (the universal wire representation).
+          const normalized = await resolvePersistedImage({
+            raw:
+              typeof part.data === "string"
+                ? part.data
+                : typeof part.image === "string"
+                  ? part.image
+                  : undefined,
+            mediaType:
+              typeof part.mediaType === "string"
+                ? part.mediaType
+                : typeof part.mimeType === "string"
+                  ? part.mimeType
+                  : "image/png",
+          });
+          if (normalized) content.push(normalized);
+        }
+      }
+    }
+
     messages.push({
       role,
-      content: [{ type: "text", text: finalText }],
+      content,
       ts: typeof msg.createdAt === "number" ? msg.createdAt : undefined,
     });
   }
   // Drop the current prompt if it's the trailing user message.
   const last = messages[messages.length - 1];
+  const lastText =
+    last?.role === "user"
+      ? last.content.find((part) => part.type === "text")
+      : undefined;
   if (
     last &&
     last.role === "user" &&
-    last.content.length === 1 &&
-    last.content[0].type === "text" &&
-    last.content[0].text.trim() === currentPrompt.trim()
+    lastText?.type === "text" &&
+    lastText.text.trim() === currentPrompt.trim()
   ) {
     messages.pop();
   }
@@ -210,8 +261,14 @@ export async function handleRuntimeStream(
   // diagnóstico (chatId, longitudes y banderas) para cazar la vía por la que
   // se perdió el texto. undoRedo sin prompt es un flujo legítimo (solo
   // deshacer), se respeta.
+  // #196: an image-only turn is a valid user request even when the text
+  // prompt is empty. Convert once here so the guard and createSession share
+  // exactly the same validity decision.
+  const mediaParts = attachmentsToImageParts(req.attachments);
+  const hasValidImage = mediaParts.length > 0;
+
   const promptLen = (req.prompt ?? "").length;
-  if (!req.prompt?.trim() && !req.undoRedo) {
+  if (!req.prompt?.trim() && !hasValidImage && !req.undoRedo) {
     logger.warn(
       `[RuntimeBridge] Empty prompt guard tripped (chat ${req.chatId}): ` +
         `promptLen=${promptLen} attachments=${req.attachments?.length ?? 0} ` +
@@ -329,7 +386,12 @@ export async function handleRuntimeStream(
         ? { tools: toolsForAgent(agentId) as string[] }
         : {}),
     },
-    messages: convertHistoryToRuntimeMessages(chatMessages, req.prompt),
+    messages: await convertHistoryToRuntimeMessages(chatMessages, req.prompt),
+    // #196: hand the turn's image attachments over to the runtime as media
+    // parts. The runtime merges them into the seeded user message (image
+    // parts first, then the text prompt) — P1: the runtime only sees
+    // MessageContentPart media and does no vision preprocessing.
+    media: mediaParts,
     // #95: pass all roots; the runtime picks multi vs single based on length.
     workspaceRoots,
   });
