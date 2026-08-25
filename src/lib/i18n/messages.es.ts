@@ -153,6 +153,12 @@ export const messagesEs: Messages = {
     saving: "Guardando...",
     unlabeled: "Sin nombre",
     selectModel: "Selecciona un modelo",
+    account: "Cuenta",
+    editProfile: "Editar Perfil",
+    documentation: "Documentación",
+    admin: "Admin",
+    logout: "Cerrar sesión",
+    user: "Usuario",
   },
   plural: {
     models: { one: "{count} modelo", many: "{count} modelos" },
@@ -1040,7 +1046,6 @@ export const messagesEs: Messages = {
         memory_selection: "Selección de Memorias",
         memory_onboarding: "Bootstrap de Memorias",
         ctx_language: "Idioma de respuesta",
-        ctx_no_run_locally: "No mostrar ejecución",
         ctx_task_management: "Gestión de tareas",
         ctx_plan_mode: "Planificación interactiva",
         ctx_build_walkthrough: "Resumen de cambios",
@@ -1062,8 +1067,6 @@ export const messagesEs: Messages = {
           "Instrucciones del Bootstrap: analiza archivos de configuración del proyecto para generar memorias fundacionales.",
         ctx_language:
           "Fuerza al agente a responder siempre en el idioma seleccionado. Usa {{LANGUAGE}} como placeholder.",
-        ctx_no_run_locally:
-          "Impide que el agente explique cómo ejecutar la app (npm run dev, etc.)",
         ctx_task_management:
           "Cuándo debe el agente usar todowrite para organizar tareas complejas.",
         ctx_plan_mode:
@@ -1188,6 +1191,17 @@ export const messagesEs: Messages = {
     scopeLabel: "Ámbito (Scope)",
     scopeHelp: "Dónde guardar el skill.",
     contentLabel: "Contenido (SKILL.md)",
+    newSkillTemplate: `---
+name: nombre-del-skill
+description: Breve descripción de para qué sirve este skill
+allowed-tools:
+  - read
+  - write
+---
+
+# Instrucciones
+
+Escribe aquí cómo debe comportarse el agente cuando use este skill...`,
     saveSkill: "Guardar Skill",
   },
   wizard: {

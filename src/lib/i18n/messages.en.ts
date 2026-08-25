@@ -134,6 +134,12 @@ export const messagesEn: Messages = {
     saving: "Saving...",
     unlabeled: "Untitled",
     selectModel: "Select a model",
+    account: "Account",
+    editProfile: "Edit Profile",
+    documentation: "Documentation",
+    admin: "Admin",
+    logout: "Sign out",
+    user: "User",
   },
   plural: {
     models: { one: "{count} model", many: "{count} models" },
@@ -1016,7 +1022,6 @@ export const messagesEn: Messages = {
         memory_selection: "Memory Selection",
         memory_onboarding: "Memory Bootstrap",
         ctx_language: "Response language",
-        ctx_no_run_locally: "Do not show execution",
         ctx_task_management: "Task management",
         ctx_plan_mode: "Interactive planning",
         ctx_build_walkthrough: "Changes summary",
@@ -1038,8 +1043,6 @@ export const messagesEn: Messages = {
           "Bootstrap instructions: analyze project config files to generate foundational memories.",
         ctx_language:
           "Forces the agent to always respond in the selected language. Uses {{LANGUAGE}} as placeholder.",
-        ctx_no_run_locally:
-          "Prevents the agent from explaining how to run the app (npm run dev, etc.)",
         ctx_task_management:
           "When the agent should use todowrite to organize complex tasks.",
         ctx_plan_mode:
@@ -1164,6 +1167,17 @@ export const messagesEn: Messages = {
     scopeLabel: "Scope",
     scopeHelp: "Where to store the skill.",
     contentLabel: "Content (SKILL.md)",
+    newSkillTemplate: `---
+name: skill-name
+description: Brief description of what this skill is for
+allowed-tools:
+  - read
+  - write
+---
+
+# Instructions
+
+Write here how the agent should behave when using this skill...`,
     saveSkill: "Save Skill",
   },
   wizard: {

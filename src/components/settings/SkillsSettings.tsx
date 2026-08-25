@@ -371,17 +371,7 @@ function SkillDialog({
       } else {
         setName("");
         setScope("global");
-        setContent(`---
-name: nombre-del-skill
-description: Breve descripción de para qué sirve este skill
-allowed-tools:
-  - read
-  - write
----
-
-# Instrucciones
-
-Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
+        setContent(t("skills.newSkillTemplate"));
       }
     }
   }, [open, existingSkill, existingScope, currentAppId]);
