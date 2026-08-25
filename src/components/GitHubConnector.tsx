@@ -559,7 +559,7 @@ function ConnectedGitHubConnector({
             </div>
             <Input
               id="commit-message"
-              placeholder="Describe tus cambios..."
+              placeholder={t("integrations.commitPlaceholder")}
               value={commitMessage}
               onChange={(e) => {
                 setCommitMessage(e.target.value);
@@ -902,45 +902,42 @@ function ConnectedGitHubConnector({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-              Advertencia de forzar subida
+              {t("integrations.forcePushWarning")}
             </DialogTitle>
             <DialogDescription>
               <div className="space-y-3">
                 <p>
-                  Estás a punto de realizar un{" "}
-                  <strong>forzado de subida</strong> a tu repositorio de GitHub.
+                  {t("integrations.forcePushDesc1")}
                 </p>
                 <div className="bg-accent p-3 rounded-md border border-border">
                   <p className="text-sm text-foreground">
                     <strong>
-                      Esto es peligroso e irreversible y hará lo siguiente:
+                      {t("integrations.forcePushDanger")}
                     </strong>
                   </p>
                   <ul className="typo-caption list-disc list-inside mt-2 space-y-1">
                     <li>{t("integrations.githubOverwrite")}</li>
                     <li>
-                      Eliminar permanentemente los commits que existen en el
-                      remoto pero no localmente
+                      {t("integrations.forcePushDeleteRemote")}
                     </li>
                   </ul>
                 </div>
                 <p className="text-sm">
-                  Solo procede si estás seguro de que esto es lo que quieres
-                  hacer.
+                  {t("integrations.forcePushOnlyProceed")}
                 </p>
               </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForceDialog(false)}>
-              Cancelar
+              {t("dialogs.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={() => handleSyncToGithub({ force: true })}
               disabled={isSyncing}
             >
-              {isSyncing ? "Forzando subida..." : "Forzar subida"}
+              {isSyncing ? t("integrations.forcePushing") : t("integrations.forcePush")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1461,7 +1458,7 @@ export function UnconnectedGitHubConnector({
 
             {/* Branch Selection */}
             <div>
-              <Label className="block text-sm font-medium">Rama</Label>
+              <Label className="block text-sm font-medium">{t("integrations.branch")}</Label>
               {repoSetupMode === "existing" && selectedRepo ? (
                 <div className="space-y-2">
                   <UnifiedSelector
@@ -1504,7 +1501,7 @@ export function UnconnectedGitHubConnector({
                       className="w-full"
                       value={customBranchName}
                       onChange={(e) => setCustomBranchName(e.target.value)}
-                      placeholder="Introduce el nombre de la rama (ej., feature/nueva-rama)"
+                      placeholder={t("integrations.newBranchPlaceholder")}
                       disabled={isCreatingRepo}
                     />
                   )}

@@ -420,7 +420,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
           ? attributes.tool
           : undefined
         : undefined);
-    const { toolDescription } = useI18n();
+    const { t, toolDescription } = useI18n();
     const description = resolvedToolId
       ? toolDescription(resolvedToolId)
       : "";
@@ -438,7 +438,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
               <CircleX size={14} className="text-red-500" />
             </div>
           </TooltipTrigger>
-          <TooltipContent>{meta.label} — no terminado</TooltipContent>
+          <TooltipContent>{toolLabel(meta.label, t)} — {t("badges.notFinished")}</TooltipContent>
         </Tooltip>
       );
     }
@@ -456,7 +456,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            {meta.label}
+            {toolLabel(meta.label, t)}
             {detail ? ` · ${detail}` : ""}
           </TooltipContent>
         </Tooltip>
@@ -466,7 +466,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
             <DialogHeader>
               <DialogTitle className={`flex items-center gap-2 ${meta.color}`}>
                 <Icon size={20} />
-                {meta.label}
+                {toolLabel(meta.label, t)}
                 {detail && (
                   <span className="typo-caption ml-1 text-muted-foreground">
                     {detail}
@@ -488,6 +488,93 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(
     );
   },
 );
+
+/**
+ * Maps a TOOL_META Spanish label to its i18n key (badges.*), falling back
+ * to the raw label when no translation exists.
+ */
+const TOOL_LABEL_KEYS: Record<string, string> = {
+  Escrito: "badges.written",
+  Escribiendo: "badges.writing",
+  Editado: "badges.edited",
+  Editando: "badges.editing",
+  Reemplazado: "badges.replaced",
+  Reemplazando: "badges.replacing",
+  Parcheado: "badges.patched",
+  Parcheando: "badges.patching",
+  Renombrado: "badges.renamed",
+  Renombrando: "badges.renaming",
+  Eliminado: "badges.deleted",
+  Eliminando: "badges.deleting",
+  Leído: "badges.read",
+  Leyendo: "badges.reading",
+  Grep: "badges.grep",
+  Buscando: "badges.searching",
+  Búsqueda: "badges.search",
+  "Buscando código": "badges.searchingCode",
+  Resultado: "badges.result",
+  Listado: "badges.listing",
+  Listando: "badges.listing",
+  "Búsqueda web": "badges.webSearch",
+  "Buscando web": "badges.webSearching",
+  Dependencia: "badges.dependency",
+  Instalando: "badges.installing",
+  Integración: "badges.integration",
+  Integrando: "badges.integrating",
+  SQL: "badges.sql",
+  "Ejecutando SQL": "badges.sqlPending",
+  Logs: "badges.logs",
+  "Leyendo logs": "badges.logsPending",
+  Contexto: "badges.context",
+  "Cargando contexto": "badges.contextPending",
+  "Esquema BD": "badges.schema",
+  "Cargando esquema": "badges.schemaPending",
+  Tabla: "badges.table",
+  "Cargando tabla": "badges.tablePending",
+  Supabase: "badges.supabase",
+  "Cargando Supabase": "badges.supabasePending",
+  PocketBase: "badges.pocketbase",
+  "Cargando PocketBase": "badges.pocketbasePending",
+  "PocketBase Storage": "badges.pocketbaseStorage",
+  "Cargando Storage": "badges.pocketbaseStoragePending",
+  "Bunny DB": "badges.bunnyDb",
+  "Cargando Bunny DB": "badges.bunnyDbPending",
+  "Bunny Storage": "badges.bunnyStorage",
+  Estado: "badges.status",
+  Comprobando: "badges.statusPending",
+  MCP: "badges.mcp",
+  "Ejecutando herramienta": "badges.mcpPending",
+  Pregunta: "badges.question",
+  "Esperando respuesta": "badges.questionPending",
+  Tareas: "badges.todos",
+  "Actualizando tareas": "badges.todosPending",
+  Pensamiento: "badges.thinking",
+  Trabajando: "badges.thinkingPending",
+  Git: "badges.git",
+  "Ejecutando Git": "badges.gitPending",
+  "Esperando respuesta del usuario": "badges.askUserPending",
+  Comando: "badges.command",
+  Ejecutando: "badges.commandPending",
+  Proceso: "badges.process",
+  "Iniciando proceso": "badges.processPending",
+  Detenido: "badges.stopped",
+  "Deteniendo proceso": "badges.stopping",
+  Procesos: "badges.processes",
+  "Listando procesos": "badges.processesPending",
+  "HTTP Check": "badges.httpCheck",
+  "Esperando HTTP": "badges.httpCheckPending",
+  "Uso de Tokens": "badges.tokenUsage",
+  Visión: "badges.vision",
+  "Analizando la imagen": "badges.visionPending",
+  Info: "badges.info",
+  "con errores": "badges.withErrors",
+  "sin errores": "badges.noErrors",
+};
+
+function toolLabel(label: string, t: (k: string) => string): string {
+  const key = TOOL_LABEL_KEYS[label];
+  return key ? t(key) : label;
+}
 
 /** Returns true if this tag should be rendered as a compact tool badge */
 export function isCompactableTag(tag: string): boolean {

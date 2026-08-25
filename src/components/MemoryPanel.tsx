@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 // =============================================================================
 // Types
@@ -87,6 +88,7 @@ function computeScore(mem: MemoryEntry): { score: number; recency: number } {
 // =============================================================================
 
 export function MemoryPanel({ appId }: { appId: number }) {
+  const { t } = useI18n();
   const [memories, setMemories] = useState<MemoryWithScore[]>([]);
   const [contextPreview, setContextPreview] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -300,8 +302,8 @@ export function MemoryPanel({ appId }: { appId: number }) {
             triggerClassName="min-w-[140px]"
             showCheckmark
             options={[
-              { value: "all", label: `Todas (${stats.total})` },
-              { value: "disabled", label: `Desactivadas (${stats.disabled})` },
+              { value: "all", label: t("memoryPanel.allCount", { count: stats.total }) },
+              { value: "disabled", label: t("memoryPanel.disabledCount", { count: stats.disabled }) },
             ]}
           />
           <UnifiedSelector
@@ -312,12 +314,12 @@ export function MemoryPanel({ appId }: { appId: number }) {
             triggerClassName="min-w-[140px]"
             showCheckmark
             options={[
-              { value: "score", label: "Score ↓" },
-              { value: "score_asc", label: "Score ↑" },
-              { value: "imp_desc", label: "Importancia ↓" },
-              { value: "imp_asc", label: "Importancia ↑" },
-              { value: "date", label: "Más recientes" },
-              { value: "date_asc", label: "Más antiguas" },
+              { value: "score", label: t("memoryPanel.scoreDesc") },
+              { value: "score_asc", label: t("memoryPanel.scoreAsc") },
+              { value: "imp_desc", label: t("memoryPanel.importanceDesc") },
+              { value: "imp_asc", label: t("memoryPanel.importanceAsc") },
+              { value: "date", label: t("memoryPanel.mostRecent") },
+              { value: "date_asc", label: t("memoryPanel.oldest") },
             ]}
           />
         </div>
@@ -327,7 +329,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
             onClick={() => setIsCreateOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Nueva directriz
+            {t("memoryPanel.newGuideline")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -342,20 +344,20 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <DropdownMenuContent align="end" className="min-w-[200px]">
               <DropdownMenuItem onClick={loadMemories}>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Refrescar
+                {t("memoryPanel.refresh")}
               </DropdownMenuItem>
 
               {stats.total > 0 && (
                 <DeleteConfirmationDialog
-                  itemName={`las ${stats.total} directrices de esta app`}
+                  itemName={t("memoryPanel.deleteAllConfirm", { count: stats.total })}
                   itemType="directrices"
                   onDelete={async () => {
                     try {
                       const count = await ipc.memory.deleteAllMemories(appId);
-                      toast.success(`${count} directrices eliminadas`);
+                      toast.success(t("memoryPanel.deletedCount", { count }));
                       await loadMemories();
                     } catch (err: any) {
-                      toast.error(`Error: ${err.message}`);
+                      toast.error(t("memoryPanel.errorPrefix", { message: err.message }));
                     }
                   }}
                   trigger={
@@ -364,7 +366,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
                       onSelect={(e) => e.preventDefault()}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Eliminar todas
+                      {t("memoryPanel.deleteAll")}
                     </DropdownMenuItem>
                   }
                 />
@@ -377,14 +379,16 @@ export function MemoryPanel({ appId }: { appId: number }) {
       {/* Stats bar — subtle, inline */}
       <div className="flex items-center gap-4 typo-micro text-muted-foreground px-1">
         <span>
-          {stats.total} {stats.total === 1 ? "directriz" : "directrices"}
+          {stats.total === 1
+            ? t("memoryPanel.guidelineCount", { count: stats.total })
+            : t("memoryPanel.guidelineCountPlural", { count: stats.total })}
         </span>
         <span className="h-3 w-px bg-border" />
-        <span>{stats.enabled} activas</span>
+        <span>{t("memoryPanel.activeCount", { count: stats.enabled })}</span>
         {stats.disabled > 0 && (
           <>
             <span className="h-3 w-px bg-border" />
-            <span>{stats.disabled} desactivadas</span>
+            <span>{t("memoryPanel.disabledCountStat", { count: stats.disabled })}</span>
           </>
         )}
       </div>
@@ -401,7 +405,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <ChevronRight className="h-3.5 w-3.5" />
           )}
           <Sparkles className="h-3.5 w-3.5" />
-          Contexto inyectado
+          {t("memoryPanel.injectedContext")}
         </button>
         {isContextOpen && (
           <div className="px-4 py-3 border-t border-border bg-muted/20 max-h-[300px] overflow-y-auto rounded-b-xl">
@@ -411,7 +415,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
               </pre>
             ) : (
               <p className="typo-caption text-muted-foreground italic">
-                Sin directrices activas para inyectar
+                {t("memoryPanel.noActiveGuidelines")}
               </p>
             )}
           </div>
@@ -423,15 +427,15 @@ export function MemoryPanel({ appId }: { appId: number }) {
         {isLoading && memories.length === 0 && (
           <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground typo-caption">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Cargando directrices...
+            {t("memoryPanel.loadingGuidelines")}
           </div>
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-10 space-y-3">
             <p className="text-muted-foreground typo-caption">
               {memories.length === 0
-                ? "Sin directrices aún"
-                : "Ninguna directriz coincide con los filtros"}
+                ? t("memoryPanel.noGuidelines")
+                : t("memoryPanel.noMatchFilters")}
             </p>
           </div>
         )}
@@ -447,12 +451,12 @@ export function MemoryPanel({ appId }: { appId: number }) {
                   : "bg-muted-foreground/30";
           const impLabel =
             imp >= 90
-              ? "Crítico"
+              ? t("memoryPanel.critical")
               : imp >= 70
-                ? "Alto"
+                ? t("memoryPanel.high")
                 : imp >= 50
-                  ? "Medio"
-                  : "Bajo";
+                  ? t("memoryPanel.medium")
+                  : t("memoryPanel.low");
 
           return (
             <div
@@ -491,7 +495,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
                         });
                       }}
                       className="p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                      title="Editar"
+                      title={t("memoryPanel.edit")}
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
@@ -516,7 +520,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
                       trigger={
                         <button
                           className="p-1.5 text-destructive/50 hover:bg-destructive/10 rounded-lg transition-colors"
-                          title="Eliminar"
+                          title={t("memoryPanel.delete")}
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -547,30 +551,30 @@ export function MemoryPanel({ appId }: { appId: number }) {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>Nueva directriz</DialogTitle>
+            <DialogTitle>{t("memoryPanel.newGuideline")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="typo-label">Key (opcional)</label>
+              <label className="typo-label">{t("memoryPanel.keyOptional")}</label>
               <Input
                 value={createForm.key}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, key: e.target.value }))
                 }
-                placeholder="ej: backend_stack"
+                placeholder={t("memoryPanel.keyPlaceholder")}
               />
               <p className="typo-caption">
-                Identificador único para sobrescribir directrices duplicadas
+                {t("memoryPanel.keyHint")}
               </p>
             </div>
             <div className="space-y-2">
-              <label className="typo-label">Contenido</label>
+              <label className="typo-label">{t("memoryPanel.content")}</label>
               <textarea
                 value={createForm.content}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, content: e.target.value }))
                 }
-                placeholder="Contenido de la directriz..."
+                placeholder={t("memoryPanel.guidelinePlaceholder")}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-body ring-offset-background placeholder:opacity-50 resize-none"
               />
             </div>
@@ -634,7 +638,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancelar
+              {t("dialogs.cancel")}
             </Button>
             <Button
               onClick={handleCreate}
@@ -645,7 +649,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
               ) : (
                 <Check className="h-4 w-4 mr-2" />
               )}
-              Crear
+              {t("dialogs.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -658,21 +662,23 @@ export function MemoryPanel({ appId }: { appId: number }) {
       >
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
-            <DialogTitle>Editar directriz #{editMemory?.id}</DialogTitle>
+            <DialogTitle>
+              {t("memoryPanel.editGuideline", { id: editMemory?.id ?? "" })}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="typo-label">Key</label>
+              <label className="typo-label">{t("memoryPanel.key")}</label>
               <Input
                 value={editForm.key}
                 onChange={(e) =>
                   setEditForm((f) => ({ ...f, key: e.target.value }))
                 }
-                placeholder="Key"
+                placeholder={t("memoryPanel.key")}
               />
             </div>
             <div className="space-y-2">
-              <label className="typo-label">Contenido</label>
+              <label className="typo-label">{t("memoryPanel.content")}</label>
               <textarea
                 value={editForm.content}
                 onChange={(e) =>
@@ -683,7 +689,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
             </div>
             <div className="space-y-2">
               <label className="typo-label flex justify-between">
-                Importancia
+                {t("memoryPanel.importance")}
                 <span
                   className={`typo-caption font-semibold ${
                     editForm.importance >= 90
@@ -745,11 +751,11 @@ export function MemoryPanel({ appId }: { appId: number }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditMemory(null)}>
-              Cancelar
+              {t("dialogs.cancel")}
             </Button>
             <Button onClick={handleUpdate}>
               <Check className="h-4 w-4 mr-2" />
-              Guardar
+              {t("workspace.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

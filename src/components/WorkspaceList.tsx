@@ -665,7 +665,7 @@ function LabelDialog({
                   className="flex h-10 w-full rounded-xl border border-input bg-background/50 pl-10 pr-4 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:bg-background"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar o escribir nueva etiqueta..."
+                  placeholder={t("workspace.searchOrCreateLabel")}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -680,7 +680,7 @@ function LabelDialog({
               <div className="flex flex-col gap-3 p-3 bg-muted/40 border border-border/60 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
                 <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                   <Pencil size={12} className="text-primary" />
-                  Editar etiqueta global
+                  {t("workspace.editGlobalLabel")}
                 </span>
                 <div className="flex flex-col gap-2">
                   <input
@@ -688,7 +688,7 @@ function LabelDialog({
                     className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Nombre de la etiqueta..."
+                    placeholder={t("workspace.labelNamePlaceholder")}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -2427,7 +2427,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   </div>
                   <div>
                     <span className="text-sm font-semibold block">
-                      Chats archivados
+                      {t("workspace.archivedChats")}
                     </span>
                     <span className="text-xs text-muted-foreground/60">
                       {app.name}
@@ -2512,7 +2512,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         <input
                           type="text"
                           className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
-                          placeholder="Buscar chats archivados..."
+                          placeholder={t("workspace.searchArchivedChats")}
                           value={archivedSearchQuery}
                           onChange={(e) =>
                             setArchivedSearchQuery(e.target.value)
@@ -2547,10 +2547,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           </div>
                           <div className="text-center">
                             <p className="text-sm font-medium text-muted-foreground/70">
-                              Sin chats archivados
+                              {t("workspace.noArchivedChats")}
                             </p>
                             <p className="text-xs mt-0.5 text-muted-foreground/40">
-                              Los chats archivados de {app.name} aparecerán aquí
+                              {t("workspace.archivedChatsHint", { name: app.name })}
                             </p>
                           </div>
                         </div>
@@ -2711,10 +2711,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   </div>
                   <div>
                     <span className="text-sm font-semibold block">
-                      Planes del workspace
+                      {t("workspace.workspacePlans")}
                     </span>
                     <span className="text-xs text-muted-foreground/60">
-                      {app.name} · Más recientes primero
+                      {app.name} · {t("workspace.recentFirst")}
                     </span>
                   </div>
                 </div>
@@ -2754,7 +2754,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                             ? `Chat: ${previewPlan.chatTitle}`
                             : previewPlan?.chatId
                               ? `Chat #${previewPlan.chatId}`
-                              : "Sin chat asociado"}
+                              : t("workspace.noAssociatedChat")}
                           {previewPlan?.createdAt
                             ? ` · ${formatDistanceToNow(safeDate(previewPlan.createdAt), { addSuffix: true, locale: dateLocale() })}`
                             : ""}
@@ -2763,7 +2763,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <div className="flex items-center gap-1.5 shrink-0">
                         {previewPlan?.accepted ? (
                           <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                            Aceptado
+                            {t("workspace.accepted")}
                           </span>
                         ) : null}
                         {/* Attach */}
@@ -2806,7 +2806,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               }}
                               title={t("common.attachToCurrentChat")}
                             >
-                              Adjuntar a este chat
+                              {t("workspace.attachToChat")}
                             </button>
                           )}
                       </div>
@@ -2827,7 +2827,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         </div>
                       ) : (
                         <div className="text-muted-foreground text-sm text-center mt-10">
-                          No se encontró contenido.
+                          {t("workspace.noContent")}
                         </div>
                       )}
                     </div>
@@ -2847,10 +2847,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium text-muted-foreground/70">
-                            Sin planes
+                            {t("workspace.noPlans")}
                           </p>
                           <p className="text-xs mt-0.5 text-muted-foreground/40">
-                            Los planes generados en .vibes/ aparecerán aquí
+                            {t("workspace.noPlansHint")}
                           </p>
                         </div>
                       </div>
@@ -2873,7 +2873,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 </span>
                                 {plan.accepted ? (
                                   <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                                    Aceptado
+                                    {t("workspace.accepted")}
                                   </span>
                                 ) : null}
                                 {selectedChatId &&
@@ -3835,7 +3835,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
             <FolderX size={15} className="text-primary shrink-0" />
             <span className="typo-caption font-semibold text-primary">
-              Seleccionar para cerrar
+              {t("workspace.selectToClose")}
             </span>
             <div className="ml-auto flex items-center gap-1">
               <button
@@ -3845,7 +3845,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   selectedIds.size === apps.length ? deselectAllWs : selectAllWs
                 }
               >
-                {selectedIds.size === apps.length ? "Ninguno" : "Todos"}
+                {selectedIds.size === apps.length ? t("workspace.none") : t("workspace.all")}
               </button>
               <button
                 type="button"
@@ -4106,7 +4106,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             {/* ── Workspaces section ── */}
             <div className="flex items-center gap-1.5 px-3 py-1.5">
               <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
-                Workspaces
+                {t("workspace.workspaces")}
               </span>
             </div>
 
@@ -4120,7 +4120,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 <input
                   type="text"
                   className="workspace-search-input typo-input pr-8"
-                  placeholder="Buscar workspace..."
+                  placeholder={t("workspace.searchWorkspace")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -4148,17 +4148,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             {/* Apps list */}
             {loading ? (
               <div className="py-3 px-2 typo-micro opacity-60 text-center">
-                Cargando aplicaciones...
+                {t("workspace.appLoading")}
               </div>
             ) : error ? (
               <div className="py-3 px-2 text-xs text-destructive text-center">
-                Error al cargar las aplicaciones
+                {t("workspace.appLoadingError")}
               </div>
             ) : filteredApps.length === 0 ? (
               <div className="py-3 px-2 typo-micro opacity-60 text-center">
                 {searchQuery
-                  ? "Sin resultados"
-                  : "No se encontraron aplicaciones"}
+                  ? t("workspace.noSearchResults")
+                  : t("workspace.noAppsFound")}
               </div>
             ) : (
               <div className="mt-1">
@@ -4244,7 +4244,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 <ChevronRight size={12} />
               )}
               <Archive size={12} className="opacity-60" />
-              Archivados
+              {t("workspace.archived")}
               {archivedApps.length > 0 && (
                 <span className="ml-auto text-[10px] text-muted-foreground/40">
                   {archivedApps.length}
@@ -4256,7 +4256,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               <div className="mt-1 pl-2">
                 {archivedApps.length === 0 ? (
                   <div className="py-3 px-2 typo-micro opacity-40 text-center">
-                    Sin workspaces archivados
+                    {t("workspace.noArchived")}
                   </div>
                 ) : (
                   archivedApps.map((app) => (
@@ -4301,7 +4301,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       {selectionMode && (
         <div className="bulk-toolbar">
           <span className="bulk-toolbar-count">
-            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+            {t("workspace.selectedCount", {
+              count: selectedIds.size,
+            })}
           </span>
           <Button
             variant="ghost"
@@ -4309,7 +4311,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             onClick={exitSelectionMode}
             className="h-7 text-xs"
           >
-            Cancelar
+            {t("dialogs.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -4319,7 +4321,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             className="h-7 text-xs flex items-center gap-1"
           >
             <FolderX size={13} />
-            Cerrar ({selectedIds.size})
+            {t("workspace.closeCount", { count: selectedIds.size })}
           </Button>
         </div>
       )}
@@ -4338,11 +4340,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              ¿Cerrar workspace "{closeAppName}"?
+              {t("workspace.closeWorkspaceTitle", { name: closeAppName })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              El workspace se desvinculará de Vibes. Los archivos en disco se
-              conservarán.
+              {t("workspace.closeWorkspaceDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center space-x-2">
@@ -4358,7 +4359,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               htmlFor="ws-delete-files-check"
               className="typo-caption text-muted-foreground cursor-pointer"
             >
-              Eliminar también los archivos del disco
+              {t("workspace.deleteFilesToo")}
             </label>
           </div>
           <AlertDialogFooter>
@@ -4369,7 +4370,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               }}
               disabled={isClosing}
             >
-              Cancelar
+              {t("dialogs.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmClose}
@@ -4383,12 +4384,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               {isClosing ? (
                 <span className="flex items-center gap-1">
                   <Loader2 size={12} className="animate-spin" />
-                  Cerrando...
+                  {t("workspace.closing")}
                 </span>
               ) : deleteFiles ? (
-                "Eliminar workspace y archivos"
+                t("workspace.deleteWorkspaceAndFiles")
               ) : (
-                "Cerrar workspace"
+                t("workspace.closeWorkspace")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -4404,7 +4405,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar chat?</AlertDialogTitle>
+            <AlertDialogTitle>{t("workspace.deleteChat")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("workspace.deleteChatConfirm", { name: deleteChatTitle })}
               <br />
@@ -4415,13 +4416,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDeleteChatDialogOpen(false)}>
-              Cancelar
+              {t("dialogs.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDeleteChat}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              Eliminar chat
+              {t("workspace.deleteChat")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4454,7 +4455,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             disabled={isRenamingApp}
             autoFocus
             className="w-full bg-transparent border border-border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30"
-            placeholder="Nuevo nombre del workspace"
+            placeholder={t("workspace.newWorkspaceName")}
           />
           <DialogFooter>
             <Button
@@ -4462,7 +4463,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               onClick={() => setIsRenameAppDialogOpen(false)}
               disabled={isRenamingApp}
             >
-              Cancelar
+              {t("dialogs.cancel")}
             </Button>
             <Button
               onClick={handleConfirmRenameApp}
@@ -4475,10 +4476,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               {isRenamingApp ? (
                 <>
                   <Loader2 size={12} className="animate-spin mr-1.5" />
-                  Guardando...
+                  {t("workspace.saving")}
                 </>
               ) : (
-                "Guardar"
+                t("workspace.save")
               )}
             </Button>
           </DialogFooter>
@@ -4500,15 +4501,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             <DialogTitle>{t("dialogs.newProject")}</DialogTitle>
           </DialogHeader>
           <p className="typo-caption text-muted-foreground">
-            Se creará un proyecto con el scaffold del template seleccionado,
-            listo para usar.
+            {t("workspace.createProjectScaffold")}
           </p>
           <form onSubmit={handleCreateEmptyApp}>
             <input
               type="text"
               value={emptyAppName}
               onChange={(e) => setEmptyAppName(e.target.value)}
-              placeholder="Nombre del proyecto..."
+              placeholder={t("workspace.projectNamePlaceholder")}
               disabled={isCreatingEmptyApp}
               autoFocus
               className={`w-full mb-2 bg-transparent border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30 ${

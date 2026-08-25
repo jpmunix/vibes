@@ -38,6 +38,7 @@ import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 // ── Zod schema introspection ────────────────────────────────────────────────
 // Walk UserSettingsSchema.shape to extract enum values, number types, etc.
@@ -405,7 +406,24 @@ interface PrefEntry {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
+/** Maps CATEGORY_LABELS Spanish label to its i18n key (userPrefs.section*). */
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  "Modelos y Proveedores": "userPrefs.sectionModels",
+  "Claves API e Integraciones": "userPrefs.sectionApiKeys",
+  "Apariencia y Layout": "userPrefs.sectionAppearance",
+  Comportamiento: "userPrefs.sectionBehavior",
+  "Estado Interno": "userPrefs.sectionInternal",
+  "Prompts y Contexto": "userPrefs.sectionPrompts",
+  Otros: "userPrefs.sectionOther",
+};
+
+function categoryLabel(label: string, t: (k: string) => string): string {
+  const key = CATEGORY_LABEL_KEYS[label];
+  return key ? t(key) : label;
+}
+
 export function UserPreferencesEditor({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const [prefs, setPrefs] = useState<PrefEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -449,7 +467,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
       entries.sort((a, b) => a.key.localeCompare(b.key));
       setPrefs(entries);
     } catch (err: any) {
-      setError(err.message || "Error al cargar preferencias");
+      setError(err.message || t("userPrefs.loadError"));
     } finally {
       setLoading(false);
     }
@@ -519,7 +537,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
       );
       toast.success(`${key} guardado`);
     } catch (err: any) {
-      toast.error(err.message || "Error al guardar");
+      toast.error(err.message || t("userPrefs.saveError"));
     }
   };
 
@@ -529,7 +547,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
       setPrefs((prev) => prev.filter((p) => p.key !== key));
       toast.success(`${key} eliminado`);
     } catch (err: any) {
-      toast.error(err.message || "Error al eliminar");
+      toast.error(err.message || t("userPrefs.deleteError"));
     }
   };
 
@@ -537,7 +555,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
     return (
       <div className="p-4 rounded-xl border border-border/50 flex items-center gap-2">
         <Loader2 size={14} className="animate-spin text-muted-foreground" />
-        <span className="typo-caption">Cargando preferencias…</span>
+        <span className="typo-caption">{t("userPrefs.loading")}</span>
       </div>
     );
   }
@@ -553,7 +571,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
   if (prefs.length === 0) {
     return (
       <div className="p-4 rounded-xl border border-border/50">
-        <p className="typo-caption">Sin preferencias guardadas</p>
+        <p className="typo-caption">{t("userPrefs.noPrefs")}</p>
       </div>
     );
   }
@@ -604,7 +622,7 @@ export function UserPreferencesEditor({ userId }: { userId: string }) {
             >
               <span className="typo-label flex items-center gap-2">
                 <info.icon size={14} className="text-muted-foreground" />
-                {info.label}
+                {categoryLabel(info.label, t)}
                 <span className="typo-caption text-muted-foreground/60 ml-1">
                   ({entries.length})
                 </span>
@@ -687,6 +705,7 @@ function PrefRow({
   onDelete: (key: string) => Promise<void>;
   allModels: LanguageModel[];
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(pref.value);
   const [saving, setSaving] = useState(false);
@@ -1126,7 +1145,7 @@ function PrefRow({
               triggerSize="sm"
               showCheckmark
               searchable
-              searchPlaceholder="Buscar template…"
+              searchPlaceholder={t("userPrefs.searchTemplate")}
             />
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
@@ -1174,7 +1193,7 @@ function PrefRow({
               triggerSize="sm"
               showCheckmark
               searchable
-              searchPlaceholder="Buscar fuente…"
+              searchPlaceholder={t("userPrefs.searchFont")}
             />
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
@@ -1294,7 +1313,7 @@ function PrefRow({
           type="button"
           className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           onClick={handleCopy}
-          title="Copiar valor"
+          title={t("userPrefs.copyValue")}
         >
           <Copy size={12} />
         </button>
@@ -1302,7 +1321,7 @@ function PrefRow({
           type="button"
           className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           onClick={handleStartEdit}
-          title="Editar"
+          title={t("userPrefs.edit")}
         >
           <Pencil size={12} />
         </button>
@@ -1310,7 +1329,7 @@ function PrefRow({
           type="button"
           className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
           onClick={() => setConfirmDelete(true)}
-          title="Eliminar"
+          title={t("userPrefs.delete")}
         >
           <Trash2 size={12} />
         </button>
@@ -1318,10 +1337,10 @@ function PrefRow({
 
       <ConfirmationDialog
         isOpen={confirmDelete}
-        title="Eliminar preferencia"
+        title={t("userPrefs.deletePref")}
         message={`¿Seguro que quieres eliminar "${pref.key}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
+        confirmText={t("userPrefs.delete")}
+        cancelText={t("userPrefs.cancel")}
         onConfirm={() => {
           setConfirmDelete(false);
           onDelete(pref.key);

@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { UserPreferencesEditor } from "@/components/admin_window/UserPreferencesEditor";
 import { PreferencesCopyDialog } from "@/components/admin_window/PreferencesCopyDialog";
+import { useI18n } from "@/lib/i18n";
 
 // ── Password generator ──────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ function generatePassword(): string {
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AdminListUsers() {
+  const { t } = useI18n();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function AdminListUsers() {
       const result = await ipc.admin.listUsers({});
       setUsers(result.users);
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar usuarios");
+      toast.error(err.message || t("adminUsers.loadError"));
     } finally {
       setLoading(false);
     }
@@ -124,9 +126,9 @@ export function AdminListUsers() {
       });
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
       setEditingId(null);
-      toast.success("Usuario actualizado");
+      toast.success(t("adminUsers.userUpdated"));
     } catch (err: any) {
-      toast.error(err.message || "Error al actualizar");
+      toast.error(err.message || t("adminUsers.updateError"));
     } finally {
       setSaving(false);
     }
@@ -134,7 +136,7 @@ export function AdminListUsers() {
 
   const savePassword = async () => {
     if (!passwordResetId || newPassword.length < 6) {
-      toast.error("La contraseña debe tener al menos 6 caracteres");
+      toast.error(t("adminUsers.passwordMinLength"));
       return;
     }
     setSaving(true);
@@ -142,9 +144,9 @@ export function AdminListUsers() {
       await ipc.admin.resetPassword({ userId: passwordResetId, newPassword });
       setPasswordResetId(null);
       setNewPassword("");
-      toast.success("Contraseña actualizada");
+      toast.success(t("adminUsers.passwordUpdated"));
     } catch (err: any) {
-      toast.error(err.message || "Error al cambiar contraseña");
+      toast.error(err.message || t("adminUsers.passwordChangeError"));
     } finally {
       setSaving(false);
     }
@@ -162,22 +164,22 @@ export function AdminListUsers() {
     if (!createForm.password) return;
     await navigator.clipboard.writeText(createForm.password);
     setCopied(true);
-    toast.success("Contraseña copiada");
+    toast.success(t("adminUsers.passwordCopied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.displayName.trim()) {
-      toast.error("El nombre es obligatorio");
+      toast.error(t("adminUsers.nameRequired"));
       return;
     }
     if (!createForm.email.trim()) {
-      toast.error("El email es obligatorio");
+      toast.error(t("adminUsers.emailRequired"));
       return;
     }
     if (createForm.password.length < 6) {
-      toast.error("La contraseña debe tener al menos 6 caracteres");
+      toast.error(t("adminUsers.passwordMinLength"));
       return;
     }
 
@@ -188,13 +190,13 @@ export function AdminListUsers() {
         email: createForm.email.trim(),
         password: createForm.password,
       });
-      toast.success(`Usuario "${user.displayName}" creado`);
+      toast.success(t("adminUsers.userCreated", { name: user.displayName }));
       setCreateForm({ displayName: "", email: "", password: "" });
       setShowCreatePassword(false);
       setShowCreateForm(false);
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || "Error al crear usuario");
+      toast.error(err.message || t("adminUsers.userCreateError"));
     } finally {
       setCreating(false);
     }
@@ -209,7 +211,7 @@ export function AdminListUsers() {
     try {
       const result = await ipc.admin.getUserPreferences({ userId });
       if (!result.preferences || result.preferences.length === 0) {
-        toast.error("Este usuario no tiene configuración guardada");
+        toast.error(t("adminUsers.noSavedConfig"));
         return;
       }
       // Reconstruct a JSON object from KV pairs, parsing values intelligently
@@ -253,7 +255,7 @@ export function AdminListUsers() {
       downloadFile(`${safeName}-preferences.json`, json, "application/json");
       toast.success(`${safeName}-preferences.json descargado`);
     } catch (err: any) {
-      toast.error(err.message || "Error al descargar configuración");
+      toast.error(err.message || t("adminUsers.downloadError"));
     }
   };
 
@@ -288,7 +290,7 @@ export function AdminListUsers() {
             onClick={() => setShowCreateForm((prev) => !prev)}
           >
             <div className="flex-1">
-              <h3 className="typo-label">Crear usuario</h3>
+              <h3 className="typo-label">{t("adminUsers.createUser")}</h3>
               <p className="typo-caption mt-1">
                 Registra una nueva cuenta con nombre, email y contraseña
               </p>
@@ -317,7 +319,7 @@ export function AdminListUsers() {
                 <input
                   id="admin-name"
                   type="text"
-                  placeholder="Nombre del usuario"
+                  placeholder={t("adminUsers.namePlaceholder")}
                   value={createForm.displayName}
                   onChange={(e) =>
                     setCreateForm((f) => ({
@@ -344,7 +346,7 @@ export function AdminListUsers() {
                 <input
                   id="admin-email"
                   type="email"
-                  placeholder="usuario@email.com"
+                  placeholder={t("adminUsers.emailPlaceholder")}
                   value={createForm.email}
                   onChange={(e) =>
                     setCreateForm((f) => ({ ...f, email: e.target.value }))
@@ -367,7 +369,7 @@ export function AdminListUsers() {
                     <input
                       id="admin-password"
                       type={showCreatePassword ? "text" : "password"}
-                      placeholder="Contraseña"
+                      placeholder={t("adminUsers.passwordPlaceholder")}
                       value={createForm.password}
                       onChange={(e) =>
                         setCreateForm((f) => ({
@@ -470,7 +472,7 @@ export function AdminListUsers() {
                         setExpandedUserId(user.id);
                         startEdit(user);
                       }}
-                      title="Editar"
+                      title={t("adminUsers.edit")}
                     >
                       <Pencil size={14} />
                     </button>
@@ -485,7 +487,7 @@ export function AdminListUsers() {
                         setNewPassword("");
                         setEditingId(null);
                       }}
-                      title="Cambiar contraseña"
+                      title={t("adminUsers.changePassword")}
                     >
                       <Lock size={14} />
                     </button>
@@ -497,7 +499,7 @@ export function AdminListUsers() {
                         e.stopPropagation();
                         setCopySourceUser(user);
                       }}
-                      title="Copiar preferencias a otros usuarios"
+                      title={t("adminUsers.copyPreferences")}
                     >
                       <ArrowRightLeft size={14} />
                     </button>
@@ -509,7 +511,7 @@ export function AdminListUsers() {
                         e.stopPropagation();
                         handleDownloadUserSettings(user.id, user.displayName);
                       }}
-                      title="Descargar configuración (.json)"
+                      title={t("adminUsers.downloadConfig")}
                     >
                       <Download size={14} />
                     </button>
@@ -537,7 +539,7 @@ export function AdminListUsers() {
                             }))
                           }
                           className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
-                          placeholder="Nombre"
+                          placeholder={t("adminUsers.namePlaceholder")}
                           autoFocus
                         />
                         <input
@@ -549,7 +551,7 @@ export function AdminListUsers() {
                             }))
                           }
                           className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
-                          placeholder="Email"
+                          placeholder={t("adminUsers.emailPlaceholder")}
                         />
                         <button
                           type="button"
@@ -580,7 +582,7 @@ export function AdminListUsers() {
                           type="text"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Nueva contraseña (mín. 6 caracteres)"
+                          placeholder={t("adminUsers.newPasswordPlaceholder")}
                           className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
                           autoFocus
                         />
