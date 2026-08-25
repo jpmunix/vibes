@@ -18,6 +18,7 @@ import {
   EyeOff,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import type { AdminUser } from "@/ipc/types/admin";
 
@@ -303,6 +304,7 @@ function maskValue(value: string): string {
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AdminApiKeys() {
+  const { t } = useI18n();
   const [data, setData] = useState<UserKeys[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -341,11 +343,11 @@ export function AdminApiKeys() {
 
       setData(results.filter((u) => u.keys.length > 0));
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar API keys");
+      toast.error(err.message || t("adminApiKeys.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -357,7 +359,7 @@ export function AdminApiKeys() {
 
   const handleCopy = async (value: string) => {
     await navigator.clipboard.writeText(value);
-    toast.success("Copiado al portapapeles");
+    toast.success(t("adminApiKeys.copied"));
   };
 
   if (loading) {
@@ -375,7 +377,7 @@ export function AdminApiKeys() {
           <div>
             <h2 className="typo-section-title">API Keys</h2>
             <p className="typo-caption mt-1">
-              Claves de integración y tokens de todos los usuarios
+              {t("adminApiKeys.subtitle")}
             </p>
           </div>
           {data.length > 0 && (
@@ -386,11 +388,11 @@ export function AdminApiKeys() {
                 onClick={() => {
                   const md = generateMarkdown(data);
                   downloadFile("api-keys.md", md, "text/markdown");
-                  toast.success("api-keys.md descargado");
+                  toast.success(t("adminApiKeys.downloadSuccess"));
                 }}
               >
                 <Download size={14} />
-                Descargar
+                {t("adminApiKeys.download")}
               </button>
               <button
                 type="button"
@@ -404,14 +406,14 @@ export function AdminApiKeys() {
                       format: "md",
                     });
                     await navigator.clipboard.writeText(result.data.share_url);
-                    toast.success("URL copiada al portapapeles");
+                    toast.success(t("adminApiKeys.urlCopied"));
                   } catch (e: any) {
-                    toast.error(e.message || "Error al compartir");
+                    toast.error(e.message || t("adminApiKeys.shareError"));
                   }
                 }}
               >
                 <Share2 size={14} />
-                Compartir
+                {t("adminApiKeys.share")}
               </button>
             </div>
           )}
@@ -420,7 +422,7 @@ export function AdminApiKeys() {
         <div className="space-y-4">
           {data.length === 0 ? (
             <p className="typo-caption text-muted-foreground">
-              Ningún usuario tiene API keys configuradas.
+              {t("adminApiKeys.noKeys")}
             </p>
           ) : (
             data.map((user) => {
@@ -439,8 +441,10 @@ export function AdminApiKeys() {
                         {user.displayName}
                       </h3>
                       <p className="typo-caption mt-0.5">
-                        {user.email} · {user.keys.length} clave
-                        {user.keys.length !== 1 ? "s" : ""}
+                        {user.email} · {user.keys.length}{" "}
+                        {t("adminApiKeys.keysCount", {
+                          s: user.keys.length !== 1 ? "s" : "",
+                        })}
                       </p>
                     </div>
                     <ChevronRight
@@ -504,6 +508,7 @@ function ApiKeyRow({
   userId: string;
   onCopy: (value: string) => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(keyEntry.value);
   const [saving, setSaving] = useState(false);
@@ -524,9 +529,7 @@ function ApiKeyRow({
       keyEntry.prefKey === "providerSettings" ||
       keyEntry.prefKey === "supabase"
     ) {
-      toast.error(
-        "Usa el editor de preferencias del usuario para editar este campo",
-      );
+      toast.error(t("adminApiKeys.usePrefsEditor"));
       setEditing(false);
       return;
     }
@@ -544,10 +547,10 @@ function ApiKeyRow({
         value: wrappedValue,
       });
       keyEntry.value = editValue; // Optimistic update
-      toast.success("Clave actualizada");
+      toast.success(t("adminApiKeys.keyUpdated"));
       setEditing(false);
     } catch (err: any) {
-      toast.error(err.message || "Error al guardar");
+      toast.error(err.message || t("adminApiKeys.saveError"));
     } finally {
       setSaving(false);
     }
