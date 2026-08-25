@@ -1236,6 +1236,10 @@ export const messagesEn: Messages = {
     packagesAdded: "Packages added",
     filesChanged: "Files changed",
     noChanges: "No changes",
+    scaffoldPhase1: "Preparing project base structure…",
+    scaffoldPhase2: "Installing required dependencies…",
+    scaffoldPhase3: "Applying configuration and styles…",
+    scaffoldPhase4: "Initializing development environment…",
   },
   appDetails: {
     notFound: "Application not found",

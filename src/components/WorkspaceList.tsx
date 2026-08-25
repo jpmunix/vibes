@@ -4532,7 +4532,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 }}
                 disabled={isCreatingEmptyApp}
               >
-                Cancelar
+                {t("dialogs.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -4545,10 +4545,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 {isCreatingEmptyApp ? (
                   <>
                     <Loader2 size={12} className="animate-spin mr-1.5" />
-                    Creando...
+                    {t("workspace.creating")}
                   </>
                 ) : (
-                  "Crear proyecto"
+                  t("workspace.createProject")
                 )}
               </Button>
             </DialogFooter>

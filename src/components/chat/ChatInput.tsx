@@ -569,9 +569,9 @@ export function ChatInput({
         .map((q) => {
           const roleLabel =
             q.role === "console"
-              ? "Consola"
+              ? t("chat.console")
               : q.role === "user"
-                ? "Usuario"
+                ? t("chat.user")
                 : "IA";
           // Prefix EVERY line with > to form a proper markdown blockquote
           const quotedLines = q.content
@@ -626,10 +626,10 @@ export function ChatInput({
       setIsStreaming(true);
 
       const CREATION_PHASES = [
-        "Preparando la estructura base del proyecto…",
-        "Instalando dependencias necesarias…",
-        "Aplicando configuración y estilos…",
-        "Inicializando el entorno de desarrollo…",
+        t("chatInput.scaffoldPhase1"),
+        t("chatInput.scaffoldPhase2"),
+        t("chatInput.scaffoldPhase3"),
+        t("chatInput.scaffoldPhase4"),
       ];
 
       const fakeUserMsgId = -Date.now();
@@ -849,7 +849,7 @@ export function ChatInput({
                   </svg>
                   <span className="text-sm text-muted-foreground/70 flex-1 truncate">
                     {msg.prompt || (
-                      <em className="text-muted-foreground/40">Sin texto</em>
+                      <em className="text-muted-foreground/40">{t("chat.noText")}</em>
                     )}
                   </span>
                   {msg.attachments && msg.attachments.length > 0 && (
@@ -893,7 +893,7 @@ export function ChatInput({
                       });
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:text-foreground text-muted-foreground/50 cursor-pointer"
-                    title="Eliminar mensaje pendiente"
+                    title={t("chat.deletePending")}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1597,6 +1597,7 @@ function ProposalSummary({
 
 // SQL Query item with expandable functionality
 function SqlQueryItem({ query }: { query: SqlQuery }) {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const queryContent = query.content;
@@ -1611,7 +1612,7 @@ function SqlQueryItem({ query }: { query: SqlQuery }) {
         <div className="flex items-center gap-2">
           <Database size={16} className="text-muted-foreground flex-shrink-0" />
           <span className="text-sm font-medium">
-            {queryDescription || "Consulta SQL"}
+            {queryDescription || t("chat.sqlQuery")}
           </span>
         </div>
         <div>
