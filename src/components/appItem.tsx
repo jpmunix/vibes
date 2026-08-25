@@ -47,7 +47,7 @@ export function AppItem({
   onArchive,
 }: AppItemProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -97,7 +97,7 @@ export function AppItem({
               handleAppClick(app.id);
             }
           }}
-          className={`justify-start h-auto w-full min-w-0 shrink text-left cursor-pointer rounded-xl py-2 transition-all duration-150 ${selectionMode ? "pr-3" : "pr-1"}
+          className={`justify-start h-auto w-full min-w-0 shrink text-left cursor-pointer rounded-xl py-2 transition-colors duration-150 ${selectionMode ? "pr-3" : "pr-1"}
             ${
               selectionMode && isSelected
                 ? "bg-primary/10 text-primary ring-1 ring-primary/20"
@@ -119,7 +119,7 @@ export function AppItem({
                 <AlertTriangle
                   size={14}
                   className="text-red-500 flex-shrink-0 animate-pulse ml-1"
-                  title="Archivos locales no encontrados"
+                  title={t("common.localFilesNotFound")}
                 />
               )}
             </div>
@@ -194,7 +194,7 @@ export function AppItem({
                 onClick={(e) => handleOpenChat(app.id, e)}
                 className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-foreground cursor-pointer"
                 data-testid="open-chat-button"
-                title="Abrir en Chat"
+                title={t("common.openInChat")}
               >
                 <ExternalLink size={15} />
               </SidebarMenuAction>

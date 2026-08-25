@@ -24,6 +24,7 @@ import { useGitPanel } from "@/hooks/useGitPanel";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 
 interface FilesChangedBarProps {
   files: number;
@@ -133,6 +134,7 @@ function InlineCommitPanel({
   chatId,
   scopedBasenames,
 }: InlineCommitPanelProps) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [localMessage, setLocalMessage] = useState("");
@@ -313,7 +315,7 @@ function InlineCommitPanel({
         </span>
       </div>
 
-      <div className="flex flex-col border border-border/60 bg-background/40 rounded-lg overflow-hidden focus-within:ring-1 focus-within:border-primary/50 focus-within:ring-primary/20 transition-all shadow-sm">
+      <div className="flex flex-col border border-border/60 bg-background/40 rounded-lg overflow-hidden focus-within:ring-1 focus-within:border-primary/50 focus-within:ring-primary/20 transition-[border-color,box-shadow] shadow-sm">
         <Textarea
           value={localMessage}
           onChange={(e) => setLocalMessage(e.target.value)}
@@ -338,7 +340,7 @@ function InlineCommitPanel({
               onClick={handleGenerateMessage}
               disabled={busy}
               className="flex items-center gap-1.5 px-3 py-2 text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent rounded-md text-xs font-medium transition-colors"
-              title="Generar mensaje con IA (solo estos archivos)"
+              title={t("chat.generateAIMessage")}
             >
               {isLocalGenerating ? (
                 <>

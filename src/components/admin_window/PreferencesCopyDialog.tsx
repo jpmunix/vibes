@@ -458,7 +458,7 @@ export function PreferencesCopyDialog({
                 type="button"
                 disabled={selectedKeys.size === 0}
                 onClick={() => setStep("select-users")}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Users size={12} />
                 Elegir usuarios
@@ -468,7 +468,7 @@ export function PreferencesCopyDialog({
                 type="button"
                 disabled={targetUserIds.size === 0 || executing}
                 onClick={handleExecute}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 {executing ? (
                   <Loader2 size={12} className="animate-spin" />

@@ -262,7 +262,7 @@ export function OpenRouterProviderSection() {
                   <button
                     type="button"
                     onClick={() => setShowAddKeyForm(true)}
-                    className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
+                    className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] duration-200"
                   >
                     {t("aiProviders.addKey")}
                   </button>
@@ -271,7 +271,7 @@ export function OpenRouterProviderSection() {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="border-0 bg-primary text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto typo-select hover:brightness-110 transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center"
+                        className="border-0 bg-primary text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto typo-select hover:brightness-110 transition-[filter] duration-200 w-auto gap-2 cursor-pointer flex items-center"
                       >
                         {keys.find((k) => k.id === selectedKeyId)?.alias ||
                           t("openRouter.select")}
@@ -361,7 +361,7 @@ export function OpenRouterProviderSection() {
               <button
                 type="button"
                 onClick={() => setIsCustomModelDialogOpen(true)}
-                className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
+                className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] duration-200"
               >
                 {t("common.create")}
               </button>
@@ -403,7 +403,7 @@ export function OpenRouterProviderSection() {
                       e.stopPropagation();
                       openAddModelsRef.current?.();
                     }}
-                    className="px-3 py-1 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-1.5 text-xs"
+                    className="px-3 py-1 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] duration-200 flex items-center gap-1.5 text-xs"
                   >
                     <Plus className="h-3 w-3" /> {t("common.add")}
                   </button>

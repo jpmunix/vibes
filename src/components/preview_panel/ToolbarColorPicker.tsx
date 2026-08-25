@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/lib/i18n";
 
 interface ToolbarColorPickerProps {
   color: string;
@@ -22,6 +23,7 @@ export const ToolbarColorPicker = ({
   color,
   onChange,
 }: ToolbarColorPickerProps) => {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -78,8 +80,8 @@ export const ToolbarColorPicker = ({
           display: "block",
           padding: 0,
         }}
-        title="Elegir color"
-        aria-label="Elegir color"
+        title={t("preview.chooseColor")}
+        aria-label={t("preview.chooseColor")}
       />
       {open &&
         createPortal(

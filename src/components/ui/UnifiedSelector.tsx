@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -125,6 +125,8 @@ export interface UnifiedSelectorProps {
   className?: string;
   /** Whether to disable the font-bold formatting on selected items */
   disableBoldSelection?: boolean;
+  /** When true, cmdk does not filter internally (caller filters externally). Used by ModelSelector for instant open. */
+  disableInternalFilter?: boolean;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -146,9 +148,9 @@ const VARIANT_CLASSES: Record<
 > = {
   default:
     "border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 rounded-md shadow-none transition-colors",
-  pill: "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-all duration-200",
+  pill: "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-colors duration-200",
   pillSoft:
-    "border-0 !bg-primary/20 !text-primary !border-primary/20 shadow-sm rounded-lg hover:!bg-primary/30 transition-all duration-200",
+    "border-0 !bg-primary/20 !text-primary !border-primary/20 shadow-sm rounded-lg hover:!bg-primary/30 transition-colors duration-200",
   ghost:
     "border-0 bg-transparent hover:bg-muted/50 rounded-md transition-colors",
   minimal:
@@ -183,6 +185,7 @@ export function UnifiedSelector({
   popoverMaxHeight = "max-h-[300px]",
   popoverClassName,
   popoverStyle,
+  rightPanel,
   showCheckmark: showCheckmarkProp,
   itemLayout = "default",
   renderItem,
@@ -192,6 +195,7 @@ export function UnifiedSelector({
   onOpenChange: controlledOnOpenChange,
   className,
   disableBoldSelection = false,
+  disableInternalFilter = false,
   ...rest
 }: UnifiedSelectorProps) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -236,19 +240,28 @@ export function UnifiedSelector({
           />
         ));
 
-  // Group items
-  const hasGroups = groups && groups.length > 0;
-  const ungroupedItems = hasGroups ? options.filter((o) => !o.group) : options;
-  const groupedMap = new Map<string, SelectorOption[]>();
-  if (hasGroups) {
+  // ── Grouped data (memoized: avoids rebuilding 600 CommandItem wrappers per keystroke)
+  const hasGroups = !!(groups && groups.length > 0);
+  const groupedData = useMemo(() => {
+    if (!hasGroups) {
+      return {
+        ungroupedItems: options,
+        groupedMap: new Map<string, SelectorOption[]>(),
+      };
+    }
+    const ungrouped = options.filter((o) => !o.group);
+    const map = new Map<string, SelectorOption[]>();
     for (const opt of options) {
       if (opt.group) {
-        const arr = groupedMap.get(opt.group) || [];
+        const arr = map.get(opt.group) || [];
         arr.push(opt);
-        groupedMap.set(opt.group, arr);
+        map.set(opt.group, arr);
       }
     }
-  }
+    return { ungroupedItems: ungrouped, groupedMap: map };
+  }, [hasGroups, options, groups]);
+
+  const { ungroupedItems, groupedMap } = groupedData;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -300,14 +313,7 @@ export function UnifiedSelector({
               rightPanel ? "flex-1 border-r border-border/40" : "flex-1",
             )}
           >
-            <Command
-              filter={(value, search, keywords) => {
-                const haystack = [value, ...(keywords || [])]
-                  .join(" ")
-                  .toLowerCase();
-                return haystack.includes(search.toLowerCase()) ? 1 : 0;
-              }}
-            >
+            <Command shouldFilter={disableInternalFilter ? false : undefined}>
               {/* Optional header */}
               {header && (
                 <div className="px-3 py-2 border-b border-border/40">

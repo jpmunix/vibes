@@ -5,8 +5,10 @@ import {
 } from "@/atoms/previewAtoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Code2, X } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 export function SelectedComponentsDisplay() {
+  const { t } = useI18n();
   const [selectedComponents, setSelectedComponents] = useAtom(
     selectedComponentsPreviewAtom,
   );
@@ -60,7 +62,7 @@ export function SelectedComponentsDisplay() {
         <button
           onClick={handleClearAll}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          title="Borrar todos los componentes seleccionados"
+          title={t("chat.clearAllComponents")}
         >
           Borrar todo
         </button>
@@ -92,7 +94,7 @@ export function SelectedComponentsDisplay() {
             <button
               onClick={() => handleRemoveComponent(index)}
               className="ml-2 flex-shrink-0 rounded-full p-0.5 hover:bg-indigo-600/20"
-              title="Deseleccionar componente"
+              title={t("chat.deselectComponent")}
             >
               <X size={18} className="text-indigo-600 dark:text-indigo-400" />
             </button>

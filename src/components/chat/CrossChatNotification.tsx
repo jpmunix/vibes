@@ -21,6 +21,7 @@ import { MessageCircleQuestion, ShieldCheck, X } from "@/components/ui/icons";
 import { useNavigate } from "@tanstack/react-router";
 import { sendAppNotification } from "@/lib/notification-sound";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ interface CrossChatItem {
 // ── Component ───────────────────────────────────────────────────────────
 
 export function CrossChatNotification() {
+  const { t } = useI18n();
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
   const pendingConsents = useAtomValue(pendingAgentConsentsAtom);
@@ -229,7 +231,7 @@ export function CrossChatNotification() {
               {/* Actions */}
               <button
                 onClick={() => switchToChat(chatId)}
-                className="vibes-permission-banner__btn flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
+                className="vibes-permission-banner__btn flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors duration-150 cursor-pointer"
               >
                 Ir al chat
               </button>
@@ -237,8 +239,8 @@ export function CrossChatNotification() {
                 onClick={() =>
                   setDismissedChatIds((prev) => new Set([...prev, chatId]))
                 }
-                className="vibes-permission-banner__btn flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-150 cursor-pointer"
-                title="Ignorar"
+                className="vibes-permission-banner__btn flex items-center justify-center w-7 h-7 rounded-lg transition-colors duration-150 cursor-pointer"
+                title={t("chat.ignore")}
               >
                 <X size={13} />
               </button>

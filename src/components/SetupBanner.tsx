@@ -290,7 +290,7 @@ export function SetupBanner() {
                       className="w-4 h-4"
                     />
                   }
-                  title="Configurar clave API de OpenRouter"
+                  title={t("openRouter.configureApiKey")}
                   chip={<>Necesario</>}
                 />
               </div>
@@ -437,6 +437,7 @@ export const OpenRouterSetupBanner = ({
 }: {
   className?: string;
 }) => {
+  const { t } = useI18n();
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   const { isProviderSetup } = useLanguageModelProviders();
 
@@ -455,7 +456,7 @@ export const OpenRouterSetupBanner = ({
       leadingIcon={
         <img src={openrouterLogo} alt="OpenRouter" className="w-4 h-4" />
       }
-      title="Configurar clave API de OpenRouter"
+      title={t("openRouter.configureApiKey")}
       chip={<></>}
     />
   );

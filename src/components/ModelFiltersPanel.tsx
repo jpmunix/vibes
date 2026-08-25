@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Image, RotateCcw, Sparkles, Circle, Zap, Crosshair } from "@/components/ui/icons";
+import { Image, RotateCcw, Sparkles } from "@/components/ui/icons";
 import {
   Select,
   SelectContent,
@@ -206,7 +206,7 @@ function PremiumSlider({
 
         {/* Custom thumb */}
         <div
-          className="absolute h-3.5 w-3.5 rounded-full bg-primary shadow-sm shadow-primary/30 ring-2 ring-background transition-all duration-150 z-10 pointer-events-none group-active:scale-110"
+          className="absolute h-3.5 w-3.5 rounded-full bg-primary shadow-sm shadow-primary/30 ring-2 ring-background transition-colors duration-150 z-10 pointer-events-none group-active:scale-110"
           style={{ left: `calc(${activePercentage}% - 7px)` }}
         />
 
@@ -286,7 +286,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "px-2 py-0.5 rounded-md text-[11px] font-medium transition-all duration-150 cursor-pointer",
+        "px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors duration-150 cursor-pointer",
         "border whitespace-nowrap",
         active
           ? "bg-primary/15 text-primary border-primary/30 shadow-sm shadow-primary/5"
@@ -324,12 +324,6 @@ interface ModelFiltersPanelProps {
   availableProviders: { id: string; label: string }[];
   filteredCount: number;
   totalCount: number;
-  /** Current OpenRouter variant suffix (e.g. ":nitro", "" for standard) */
-  selectedVariant?: string;
-  /** Called when user changes the variant */
-  onVariantChange?: (suffix: string) => void;
-  /** Whether OpenRouter is among the available providers */
-  showVariants?: boolean;
 }
 
 export function ModelFiltersPanel({
@@ -338,9 +332,6 @@ export function ModelFiltersPanel({
   availableProviders,
   filteredCount,
   totalCount,
-  selectedVariant = "",
-  onVariantChange,
-  showVariants = false,
 }: ModelFiltersPanelProps) {
   const isDefault = useMemo(() => isDefaultFilters(filters), [filters]);
   const isFiltering = !isDefault;
@@ -511,55 +502,6 @@ export function ModelFiltersPanel({
               ))}
             </div>
           </FilterSection>
-        )}
-        {/* ── OpenRouter Variant ─────────────────────────────── */}
-        {showVariants && onVariantChange && (
-          <>
-            <div className="my-1 border-t border-border/20" />
-            <FilterSection label="Variante OpenRouter">
-              <div className="space-y-0.5">
-                {[
-                  { suffix: "", label: "Estándar", desc: "Enrutamiento por defecto", Icon: Circle },
-                  { suffix: ":nitro", label: "Nitro", desc: "Velocidad máxima", Icon: Zap },
-                  { suffix: ":exacto", label: "Exacto", desc: "Tool-calling fiable", Icon: Crosshair },
-                ].map(({ suffix, label, desc, Icon }) => {
-                  const isActive = selectedVariant === suffix;
-                  return (
-                    <button
-                      key={suffix}
-                      type="button"
-                      onClick={() => onVariantChange(suffix)}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left transition-all duration-150 cursor-pointer",
-                        "border",
-                        isActive
-                          ? "bg-primary/8 border-primary/25 shadow-sm shadow-primary/5"
-                          : "bg-transparent border-transparent hover:bg-muted/40",
-                      )}
-                    >
-                      <div className={cn(
-                        "w-3 h-3 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors duration-150",
-                        isActive ? "border-primary" : "border-muted-foreground/30",
-                      )}>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                      </div>
-                      <Icon size={12} className={cn(
-                        "shrink-0 transition-colors duration-150",
-                        isActive ? "text-primary" : "text-muted-foreground/40",
-                      )} />
-                      <div className="min-w-0">
-                        <div className={cn(
-                          "text-[11px] font-semibold leading-tight transition-colors duration-150",
-                          isActive ? "text-primary" : "text-foreground/70",
-                        )}>{label}</div>
-                        <div className="text-[9px] text-muted-foreground/50 leading-tight">{desc}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </FilterSection>
-          </>
         )}
       </div>
     </div>

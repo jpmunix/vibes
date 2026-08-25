@@ -273,7 +273,7 @@ function VercelSetupDialog({
               className={cn(
                 "group w-full flex items-center gap-3 p-3.5 rounded-lg border border-border",
                 "bg-muted/20 hover:bg-accent hover:border-primary/20",
-                "transition-all duration-200 cursor-pointer text-left",
+                "transition-colors duration-200 cursor-pointer text-left",
               )}
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground group-hover:bg-primary/10 transition-colors">
@@ -293,7 +293,7 @@ function VercelSetupDialog({
               className={cn(
                 "group w-full flex items-center gap-3 p-3.5 rounded-lg border border-border",
                 "bg-muted/20 hover:bg-accent hover:border-primary/20",
-                "transition-all duration-200 cursor-pointer text-left",
+                "transition-colors duration-200 cursor-pointer text-left",
               )}
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
@@ -501,7 +501,7 @@ function DeploymentBadge({ state }: { state: string }) {
         className={cn(
           "h-1.5 w-1.5 rounded-full",
           isReady && "bg-primary",
-          isBuilding && "bg-primary animate-pulse",
+          isBuilding && "bg-primary",
           isError && "bg-destructive",
           !isReady && !isBuilding && !isError && "bg-muted-foreground",
         )}
@@ -566,7 +566,7 @@ export function VercelPublishButton({
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold",
                 "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
-                "transition-all duration-200 cursor-pointer border border-border",
+                "transition-colors duration-200 cursor-pointer border border-border",
               )}
             >
               <Triangle size={12} />
@@ -592,7 +592,7 @@ export function VercelPublishButton({
         <button
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold",
-            "transition-all duration-200 cursor-pointer border",
+            "transition-colors duration-200 cursor-pointer border",
             isDeploying
               ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15"
               : latestDeployment?.readyState === "READY"

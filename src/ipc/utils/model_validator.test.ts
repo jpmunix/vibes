@@ -206,6 +206,13 @@ describe("enabledModels", () => {
     expect(r.settings.enabledModels).toContain("custom::id::name");
     expect(containsAny(r.migrated, "enabledModels: removed")).toBe(false);
   });
+
+  it("elimina la clave muerta selectedModelVariant (variantes extirpadas, card #193)", () => {
+    const s = base({ selectedModelVariant: ":nitro" });
+    const r = validateModelReferences(s, deps);
+    expect(r.settings).not.toHaveProperty("selectedModelVariant");
+    expect(containsAny(r.migrated, "selectedModelVariant")).toBe(true);
+  });
 });
 
 // ─── Invariancia general ───────────────────────────────────────────────────

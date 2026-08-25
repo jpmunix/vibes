@@ -254,7 +254,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
                   <button
                     key={i}
                     onClick={() => handleOptionSelect(optionLabel)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150 cursor-pointer group"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-150 cursor-pointer group"
                     style={{
                       background: isSelected
                         ? "var(--accent-teal-selected-bg)"
@@ -362,7 +362,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
               {/* Custom text option */}
               <button
                 onClick={handleCustomToggle}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150 cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-150 cursor-pointer"
                 style={{
                   background: useCustom
                     ? "var(--accent-teal-selected-bg)"
@@ -433,7 +433,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
                   if (e.key === "Enter" && canSend) handleSubmit();
                 }}
                 placeholder="Escribe tu respuesta..."
-                className="w-full px-3 py-2 text-[13px] rounded-lg outline-none transition-all"
+                className="w-full px-3 py-2 text-[13px] rounded-lg outline-none transition-[border-color,box-shadow]"
                 style={{
                   background: "var(--accent-teal-input-bg)",
                   border: "1px solid var(--accent-teal-input-border)",
@@ -472,7 +472,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({
             <button
               onClick={handleSubmit}
               disabled={!canSend || isSending}
-              className="flex items-center gap-2 px-4 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors duration-150 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
               style={{
                 background: canSend
                   ? "linear-gradient(135deg, var(--accent-teal-btn-gradient-from), var(--accent-teal-btn-gradient-to))"

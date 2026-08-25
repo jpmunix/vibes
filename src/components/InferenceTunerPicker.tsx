@@ -244,7 +244,7 @@ export function InferenceTunerPicker() {
                     type="button"
                     onClick={() => handleReasoningChange(option.value)}
                     className={cn(
-                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-all duration-150",
+                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors duration-150",
                       "cursor-pointer",
                       isActive
                         ? "bg-primary/10 ring-1 ring-primary/30"

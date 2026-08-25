@@ -878,9 +878,9 @@ function FileContentViewer({
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
-            title="Ver archivo completo"
+            title={t("git.viewFullFile")}
           >
-            Completo
+            {t("git.complete")}
           </button>
           <button
             onClick={() => setViewMode("diff")}
@@ -890,9 +890,9 @@ function FileContentViewer({
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
-            title="Ver solo diferencias"
+            title={t("git.viewOnlyDiff")}
           >
-            Diff
+            {t("git.diff")}
           </button>
         </div>
       </div>

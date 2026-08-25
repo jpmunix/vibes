@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, memo, useCallback } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useI18n } from "@/lib/i18n";
 import {
   Copy,
   Check,
@@ -57,6 +58,7 @@ export const MermaidBlock = memo(function MermaidBlock({
   const [copied, setCopied] = useState(false);
   const [maximized, setMaximized] = useState(false);
   const { isDarkMode } = useTheme();
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -123,14 +125,14 @@ export const MermaidBlock = memo(function MermaidBlock({
           ) : (
             <Copy size={12} />
           )}
-          <span>{copied ? "Copiado" : "Copiar"}</span>
+          <span>{copied ? t("chat.copied") : t("chat.copy")}</span>
         </button>
         {!isModal && svg && (
           <button
             className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/10"
             onClick={() => setMaximized(true)}
             type="button"
-            title="Ver a pantalla completa"
+            title={t("chat.fullscreen")}
           >
             <Maximize2 size={12} />
           </button>

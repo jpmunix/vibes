@@ -720,7 +720,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             <button
               onClick={handleCollapseAll}
               className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title="Colapsar todo"
+              title={t("workspace.ftCollapseAll")}
             >
               <ChevronsDownUp size={14} />
             </button>

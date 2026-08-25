@@ -347,7 +347,7 @@ export function VisualEditingToolbar({
         <>
           <StylePopover
             icon={<Move size={16} />}
-            title="Margen"
+            title={t("preview.margin")}
             tooltip="Margen"
           >
             <div className="grid grid-cols-1 gap-2">
@@ -370,7 +370,7 @@ export function VisualEditingToolbar({
 
           <StylePopover
             icon={<Box size={16} />}
-            title="Relleno"
+            title={t("preview.padding")}
             tooltip="Relleno"
           >
             <div className="grid grid-cols-1 gap-2">
@@ -393,7 +393,7 @@ export function VisualEditingToolbar({
 
           <StylePopover
             icon={<Square size={16} />}
-            title="Borde"
+            title={t("preview.border")}
             tooltip="Borde"
           >
             <div className="space-y-2">
@@ -427,7 +427,7 @@ export function VisualEditingToolbar({
 
           <StylePopover
             icon={<Palette size={16} />}
-            title="Elegir color de fondo"
+            title={t("preview.bgColor")}
             tooltip="Fondo"
           >
             <div>
@@ -449,7 +449,7 @@ export function VisualEditingToolbar({
           {hasStaticText && (
             <StylePopover
               icon={<Type size={16} />}
-              title="Estilo de texto"
+              title={t("preview.textStyle")}
               tooltip="Estilo de texto"
             >
               <div className="space-y-2">

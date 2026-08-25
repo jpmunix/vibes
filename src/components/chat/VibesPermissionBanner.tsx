@@ -116,21 +116,21 @@ export function VibesPermissionBanner({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onResponse("always")}
-            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
+            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-colors duration-150 cursor-pointer"
           >
             <ShieldCheck size={13} />
             {t("chat.allowAlways")}
           </button>
           <button
             onClick={() => onResponse("once")}
-            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
+            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-colors duration-150 cursor-pointer"
           >
             <Check size={13} />
             {t("chat.allowOnce")}
           </button>
           <button
             onClick={() => onResponse("reject")}
-            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer"
+            className="vibes-permission-banner__btn flex items-center gap-2 px-4 py-2 text-[12px] font-medium rounded-lg transition-colors duration-150 cursor-pointer"
           >
             <Ban size={13} />
             {t("chat.reject")}

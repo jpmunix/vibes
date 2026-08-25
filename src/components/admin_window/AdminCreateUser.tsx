@@ -209,7 +209,7 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium cursor-pointer transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
+          className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium cursor-pointer transition-[opacity,color] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
         >
           {saving ? (
             <>

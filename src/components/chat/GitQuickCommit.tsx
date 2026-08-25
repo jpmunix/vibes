@@ -3,6 +3,7 @@ import { useGitPanel } from "@/hooks/useGitPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSetAtom } from "jotai";
@@ -27,6 +28,7 @@ export function GitQuickCommit({
   chatId,
   onDismiss: _onDismiss,
 }: GitQuickCommitProps) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -141,7 +143,7 @@ export function GitQuickCommit({
       {/* Expanded Actions Panel */}
       {isExpanded && (
         <div className="px-3 pb-3 pt-2 animate-in slide-in-from-top-1 duration-150">
-          <div className="flex flex-col border border-border/60 bg-background/40 rounded-lg overflow-hidden focus-within:ring-1 focus-within:border-primary/50 focus-within:ring-primary/20 transition-all shadow-sm">
+          <div className="flex flex-col border border-border/60 bg-background/40 rounded-lg overflow-hidden focus-within:ring-1 focus-within:border-primary/50 focus-within:ring-primary/20 transition-[border-color,box-shadow] shadow-sm">
             <Textarea
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
@@ -166,7 +168,7 @@ export function GitQuickCommit({
                   onClick={() => generateCommitMessage()}
                   disabled={isGeneratingMessage || isCommitting || isPushing}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent rounded-md text-[11px] font-medium transition-colors"
-                  title="Regenerar mensaje con IA"
+                  title={t("chat.regenerateAI")}
                 >
                   {isGeneratingMessage ? (
                     <>

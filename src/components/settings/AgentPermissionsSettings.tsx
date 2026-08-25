@@ -352,7 +352,7 @@ export function AgentPermissionsSettings() {
                           onClick={addCustomRule}
                           disabled={!newRulePattern.trim()}
                           className={cn(
-                            "px-4 py-1.5 typo-select rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-all duration-200 flex items-center gap-2",
+                            "px-4 py-1.5 typo-select rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-colors duration-200 flex items-center gap-2",
                             !newRulePattern.trim() &&
                               "opacity-30 pointer-events-none",
                           )}

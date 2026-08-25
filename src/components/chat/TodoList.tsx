@@ -194,7 +194,7 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
       {/* Progress bar */}
       <div className="h-[2px] w-full bg-muted/50">
         <div
-          className="h-full bg-primary transition-all duration-500 ease-out"
+          className="h-full bg-primary transition-[width] duration-500 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>

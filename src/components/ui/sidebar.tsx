@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { type VariantProps, cva } from "class-variance-authority";
 import { Menu, GripVertical } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -294,6 +295,7 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
+  const { t } = useI18n();
   const { toggleSidebar, setWidth, setIsResizing } = useSidebar();
   const draggingRef = React.useRef(false);
 
@@ -342,7 +344,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
         else toggleSidebar();
       }}
       onMouseDown={onMouseDown}
-      title="Alternar barra lateral"
+      title={t("common.toggleSidebar")}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-colors ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex items-center justify-center cursor-col-resize",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2",

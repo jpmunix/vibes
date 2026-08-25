@@ -235,7 +235,7 @@ export function GitRemoteSetupDialog({
               className={cn(
                 "group w-full flex items-center gap-3 p-3.5 rounded-lg border border-border",
                 "bg-muted/20 hover:bg-green-500/5 hover:border-green-500/30",
-                "transition-all duration-200 cursor-pointer text-left",
+                "transition-colors duration-200 cursor-pointer text-left",
               )}
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-500 group-hover:bg-green-500/15 transition-colors">
@@ -255,7 +255,7 @@ export function GitRemoteSetupDialog({
               className={cn(
                 "group w-full flex items-center gap-3 p-3.5 rounded-lg border border-border",
                 "bg-muted/20 hover:bg-blue-500/5 hover:border-blue-500/30",
-                "transition-all duration-200 cursor-pointer text-left",
+                "transition-colors duration-200 cursor-pointer text-left",
               )}
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/15 transition-colors">

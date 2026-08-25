@@ -140,7 +140,7 @@ export const ConsoleFilters = ({
             <button
               onClick={onExportLogs}
               className="p-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
-              title="Exportar logs"
+              title={t("preview.exportLogs")}
             >
               <Download size={14} />
             </button>

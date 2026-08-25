@@ -524,7 +524,7 @@ export function PrimaryColorPicker({
         type="button"
         onClick={() => setIsOpen((o) => !o)}
         className={cn(
-          "px-4 py-1.5 typo-select !font-bold transition-all duration-200 cursor-pointer select-none",
+          "px-4 py-1.5 typo-select !font-bold transition-colors duration-200 cursor-pointer select-none",
           pillPosition === "first" && "rounded-l-lg",
           pillPosition === "last" && "rounded-r-lg",
           !pillPosition && "rounded-lg",
@@ -545,7 +545,7 @@ export function PrimaryColorPicker({
           "absolute z-50 right-0 top-full mt-2",
           "bg-popover border border-border rounded-2xl shadow-2xl",
           "p-5 origin-top-right",
-          "transition-all duration-200 ease-out",
+          "transition-[opacity,transform] duration-200 ease-out",
           isOpen
             ? "opacity-100 scale-100 pointer-events-auto translate-y-0"
             : "opacity-0 scale-95 pointer-events-none -translate-y-1",
@@ -564,7 +564,7 @@ export function PrimaryColorPicker({
                 }}
                 title={color.name}
                 className={cn(
-                  "w-8 h-8 rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer",
+                  "w-8 h-8 rounded-full transition-transform duration-150 flex items-center justify-center cursor-pointer",
                   "hover:scale-110 hover:ring-2 hover:ring-offset-2 hover:ring-offset-background",
                   isSelected
                     ? "ring-2 ring-offset-2 ring-offset-background scale-110"

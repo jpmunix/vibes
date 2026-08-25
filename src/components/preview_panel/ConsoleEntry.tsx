@@ -6,6 +6,7 @@ import {
   ChevronUp,
 } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 
 interface ConsoleEntryProps {
   type: "server" | "client" | "edge-function" | "network-requests";
@@ -38,6 +39,7 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
     onToggleExpand,
     appId,
   } = props;
+  const { t } = useI18n();
 
   const isTruncated = message.length > MAX_MESSAGE_LENGTH;
   const displayMessage =
@@ -123,7 +125,7 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
       </div>
       <button
         onClick={handleSendToChat}
-        title="Enviar al chat"
+        title={t("preview.sendToChat")}
         className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
         data-testid="send-to-chat"
       >

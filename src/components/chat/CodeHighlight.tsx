@@ -12,6 +12,7 @@ import ShikiHighlighter, {
   createHighlighterCore,
   createJavaScriptRegexEngine,
 } from "react-shiki/core";
+import { useI18n } from "@/lib/i18n";
 
 const MermaidBlock = lazy(() =>
   import("./MermaidBlock").then((m) => ({ default: m.MermaidBlock })),
@@ -266,6 +267,7 @@ function FileViewerModal({
   filePath: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const appId = useAtomValue(selectedAppIdAtom);
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -339,7 +341,7 @@ function FileViewerModal({
       onClick={onClose}
     >
       <div
-        className={`relative flex flex-col bg-background border border-border/60 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 transition-all ${
+        className={`relative flex flex-col bg-background border border-border/60 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 transition-[opacity,transform] ${
           isMaximized
             ? "w-full h-full rounded-none"
             : "w-[92vw] max-w-6xl max-h-[85vh] rounded-2xl"
@@ -364,10 +366,10 @@ function FileViewerModal({
               className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
               onClick={handleOpenWithSystem}
               type="button"
-              title="Abrir con la aplicación predeterminada del sistema"
+              title={t("chat.openWithDefaultApp")}
             >
               <ExternalLink size={12} />
-              <span>Abrir</span>
+              <span>{t("common.open")}</span>
             </button>
             {content && (
               <button

@@ -429,7 +429,7 @@ export function AdminListUsers() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {creating && <Loader2 size={14} className="animate-spin" />}
                   Crear usuario

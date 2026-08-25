@@ -256,6 +256,14 @@ export function validateModelReferences(
     migrated.push("enabledOpenRouterModels → enabledModels");
   }
 
+  // ── 3b. selectedModelVariant (variantes OpenRouter) — extirpado (card #193) ──
+  // La feature se eliminó por acoplamiento a OpenRouter; la clave que la UI
+  // escribía (":nitro"/":exacto") ya no tiene consumidores. Se borra al boot.
+  if ("selectedModelVariant" in (next as Record<string, any>)) {
+    delete (next as Record<string, any>).selectedModelVariant;
+    migrated.push("selectedModelVariant: removed (variantes OpenRouter extirpadas)");
+  }
+
   const enabled = next.enabledModels;
   if (enabled && Array.isArray(enabled)) {
     const keep: string[] = [];

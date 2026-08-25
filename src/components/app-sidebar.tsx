@@ -376,7 +376,7 @@ export function TopNavbar() {
               }}
             >
               <Rocket size={17} />
-              <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full " />
             </button>
           )}
 
@@ -385,7 +385,7 @@ export function TopNavbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="no-app-region-drag cursor-pointer relative flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/30 transition-all w-8 h-8"
+                  className="no-app-region-drag cursor-pointer relative flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/30 transition-[border-color,box-shadow] w-8 h-8"
                   title={user.displayName || user.email || t("common.user")}
                 >
                   <SimpleAvatar

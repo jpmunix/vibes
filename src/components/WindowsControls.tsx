@@ -62,7 +62,7 @@ export function WindowsControls({
   };
 
   const baseButtonStyle =
-    "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all cursor-pointer mx-0.5";
+    "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors cursor-pointer mx-0.5";
 
   return (
     <div

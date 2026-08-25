@@ -618,7 +618,7 @@ function LabelDialog({
           {deletingLabel !== null && (
             <div className="flex flex-col gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
               <span className="text-xs font-semibold text-destructive flex items-center gap-1.5">
-                <Trash2 size={12} className="text-destructive animate-pulse" />
+                <Trash2 size={12} className="text-destructive" />
                 {t("labels.deletePerm")}
               </span>
               <p className="text-xs text-muted-foreground leading-normal">
@@ -657,7 +657,7 @@ function LabelDialog({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <input
                   autoFocus
-                  className="flex h-10 w-full rounded-xl border border-input bg-background/50 pl-10 pr-4 py-2 text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:bg-background"
+                  className="flex h-10 w-full rounded-xl border border-input bg-background/50 pl-10 pr-4 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:bg-background"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("workspace.searchOrCreateLabel")}
@@ -702,7 +702,7 @@ function LabelDialog({
                           type="button"
                           onClick={() => setEditColor(c.hex)}
                           title={c.name}
-                          className={`w-[30px] h-[30px] rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
+                          className={`w-[30px] h-[30px] rounded-full transition-[transform,background-color,color] duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
                           style={{
                             backgroundColor: c.hex,
                             ...(isSelected
@@ -785,7 +785,7 @@ function LabelDialog({
                         type="button"
                         onClick={() => setSelectedColor(c.hex)}
                         title={c.name}
-                        className={`w-[30px] h-[30px] rounded-full transition-all duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
+                        className={`w-[30px] h-[30px] rounded-full transition-[transform,background-color,color] duration-150 flex items-center justify-center cursor-pointer hover:scale-110 ${isSelected ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-80 hover:opacity-100"}`}
                         style={{
                           backgroundColor: c.hex,
                           ...(isSelected
@@ -843,7 +843,7 @@ function LabelDialog({
                     return (
                       <div
                         key={gLabel.id}
-                        className={`group flex items-center justify-between w-full p-2 text-left rounded-lg transition-all hover:bg-muted/85 ${isSelected ? "bg-muted/60 font-medium" : ""}`}
+                        className={`group flex items-center justify-between w-full p-2 text-left rounded-lg transition-colors hover:bg-muted/85 ${isSelected ? "bg-muted/60 font-medium" : ""}`}
                       >
                         <button
                           type="button"
@@ -1202,7 +1202,7 @@ const AppChats = memo(function AppChats({
                           {hasPendingInteraction ? (
                             <MessageCircleQuestion
                               size={13}
-                              className="text-primary animate-pulse"
+                              className="text-primary"
                             />
                           ) : streaming ? (
                             <Loader2
@@ -1210,7 +1210,7 @@ const AppChats = memo(function AppChats({
                               className="animate-spin text-primary"
                             />
                           ) : unread ? (
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary " />
                           ) : null}
                         </div>
                       )}
@@ -1247,7 +1247,7 @@ const AppChats = memo(function AppChats({
                       {/* Pin/Unpin quick action */}
                       <button
                         type="button"
-                        className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                        className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                         title={
                           pinnedChatIds.has(chat.id) ? t("common.unpin") : t("common.pin")
                         }
@@ -1273,7 +1273,7 @@ const AppChats = memo(function AppChats({
                       {/* Archive quick action */}
                       <button
                         type="button"
-                        className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                        className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                         title={t("common.archive")}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1289,7 +1289,7 @@ const AppChats = memo(function AppChats({
                           else menuBtnRefs.current.delete(chat.id);
                         }}
                         type="button"
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                         title={t("common.options")}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1412,7 +1412,7 @@ const SidebarGitDot = memo(function SidebarGitDot({
   if (!hasUnpushedChanges) return null;
 
   return (
-    <GitBranch className="w-3.5 h-3.5 text-muted-foreground animate-pulse shrink-0 ml-1.5" />
+    <GitBranch className="w-3.5 h-3.5 text-muted-foreground shrink-0 ml-1.5" />
   );
 });
 
@@ -1429,7 +1429,7 @@ const SidebarServerDot = memo(function SidebarServerDot({
 
   return (
     <span
-      className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1 animate-pulse"
+      className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1 "
       style={{ boxShadow: "0 0 6px 1px rgba(16,185,129,0.45)" }}
       title={t("common.serverActive")}
     />
@@ -1862,7 +1862,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     <>
       <div className="mb-3">
         <div
-          className={`group/app-row relative flex items-center rounded-xl transition-all duration-150 ${
+          className={`group/app-row relative flex items-center rounded-xl transition-colors duration-150 ${
             isActive ? "bg-primary/8" : "hover:bg-sidebar-accent/60"
           } ${menuOpen ? "bg-sidebar-accent/60" : ""}`}
         >
@@ -1918,7 +1918,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             ref={menuBtnRef}
             type="button"
-            className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/app-row:opacity-100"}`}
+            className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${menuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/app-row:opacity-100"}`}
             title={t("common.options")}
             onClick={(e) => {
               e.stopPropagation();
@@ -1931,7 +1931,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           {/* Archive button */}
           <button
             type="button"
-            className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+            className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
             title={t("common.archive")}
             onClick={(e) => {
               e.stopPropagation();
@@ -1944,7 +1944,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           {/* New chat (Plus) button */}
           <button
             type="button"
-            className={`absolute right-[3.75rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+            className={`absolute right-[3.75rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
             title={t("workspaceMenu.newChat")}
             onClick={(e) => {
               e.stopPropagation();
@@ -2407,7 +2407,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               onClick={() => setArchivePanelOpen(false)}
             />
             <div
-              className={`fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${
+              className={`fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-[opacity,transform,width,height] duration-300 ${
                 previewChatId
                   ? "w-[90vw] max-w-[1200px] h-[85vh]"
                   : "w-[720px] max-w-[90vw]"
@@ -2506,7 +2506,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         />
                         <input
                           type="text"
-                          className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
+                          className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors placeholder:text-muted-foreground/50"
                           placeholder={t("workspace.searchArchivedChats")}
                           value={archivedSearchQuery}
                           onChange={(e) =>
@@ -2633,7 +2633,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                               >
                                 <button
                                   type="button"
-                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-[opacity,background-color,color] duration-150 cursor-pointer opacity-0 group-hover/arc:opacity-100"
                                   onClick={() => handleUnarchive(chat.id)}
                                   disabled={unarchivingId === chat.id}
                                   title={t("common.restore")}
@@ -3955,7 +3955,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                 {hasPendingInteraction ? (
                                   <MessageCircleQuestion
                                     size={13}
-                                    className="text-primary animate-pulse"
+                                    className="text-primary"
                                   />
                                 ) : streaming ? (
                                   <Loader2
@@ -3963,7 +3963,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                     className="animate-spin text-primary"
                                   />
                                 ) : isPinnedUnread ? (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary " />
                                 ) : null}
                               </div>
                             )}
@@ -3997,7 +3997,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                             {/* Unpin quick action */}
                             <button
                               type="button"
-                              className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                              className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
                               title={t("common.unpin")}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -4009,7 +4009,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                             {/* Archive quick action */}
                             <button
                               type="button"
-                              className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                              className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/pin-row:opacity-100"}`}
                               title={t("common.archive")}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -4030,7 +4030,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                                   pinnedMenuBtnRefs.current.delete(pinned.id);
                               }}
                               type="button"
-                              className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/pin-row:opacity-100"}`}
+                              className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-[opacity,background-color,color] duration-150 cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/pin-row:opacity-100"}`}
                               title={t("common.options")}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -4272,7 +4272,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                       </div>
                       <button
                         type="button"
-                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-[opacity,background-color,color] duration-150 cursor-pointer opacity-0 group-hover/arc:opacity-100"
                         onClick={() => handleUnarchiveApp(app.id)}
                         disabled={unarchivingId === app.id}
                         title={t("common.restore")}

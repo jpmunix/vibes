@@ -199,7 +199,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
               <CopyErrorMessage errorMessage={error.message} />
               <button
                 onClick={onAIFix}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-[box-shadow,background-color,color] shadow-md hover:shadow-lg"
               >
                 <Sparkles size={16} />
                 <span>{t("previewPanel.fixWithAI")}</span>

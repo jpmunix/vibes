@@ -244,8 +244,7 @@ async function routerSelect(
 ): Promise<MemoryRow[] | null> {
   try {
     const baseModel = settings.memoriesRouterModelV2 || DEFAULT_SELECTION_MODEL;
-    // Transparent nitro: use fastest provider for memory calls
-    const model = baseModel.includes(":") ? baseModel : baseModel + ":nitro";
+    const model = baseModel;
     const maxSelection = settings.memoriesMaxSelection || DEFAULT_MAX_SELECTION;
 
     // Build structured user message matching the prompt format

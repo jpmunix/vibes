@@ -94,7 +94,7 @@ function SkillGroup({
               <div
                 key={skill.path}
                 className={cn(
-                  "flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 group gap-4",
+                  "flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/30 transition-colors duration-200 group gap-4",
                   !skill.enabled && "opacity-60",
                 )}
               >

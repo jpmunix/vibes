@@ -52,7 +52,7 @@ export function ChatPreviewThread({
           <div
             key={msg.id}
             id={`msg-preview-${msg.id}`}
-            className={`transition-all duration-300 rounded-2xl p-1 ${
+            className={`transition-colors duration-300 rounded-2xl p-1 ${
               msg.id === targetMessageId
                 ? "ring-2 ring-primary/45 bg-primary/5 shadow-xs"
                 : ""

@@ -5,6 +5,7 @@ import { useLoadApp } from "@/hooks/useLoadApp";
 import { RefreshCw, Maximize2, Minimize2 } from "@/components/ui/icons";
 import { useAtomValue } from "jotai";
 import { selectedFileAtom } from "@/atoms/viewAtoms";
+import { useI18n } from "@/lib/i18n";
 
 interface App {
   id?: number;
@@ -18,6 +19,7 @@ export interface CodeViewProps {
 
 // Code view component that displays app files or status messages
 export const CodeView = ({ loading, app }: CodeViewProps) => {
+  const { t } = useI18n();
   const selectedFile = useAtomValue(selectedFileAtom);
   const { refreshApp } = useLoadApp(app?.id ?? null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -67,7 +69,7 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
             onClick={() => refreshApp()}
             className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading || !app.id}
-            title="Actualizar archivos"
+            title={t("preview.refreshFiles")}
           >
             <RefreshCw size={16} />
           </button>

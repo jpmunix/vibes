@@ -218,7 +218,7 @@ export function ModelInfoDialog({
                   }}
                   onBlur={confirmAlias}
                   placeholder={model.displayName}
-                  className="flex-1 min-w-0 bg-background border border-border rounded-md px-3 py-1 text-base font-semibold outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-all"
+                  className="flex-1 min-w-0 bg-background border border-border rounded-md px-3 py-1 text-base font-semibold outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-[border-color,box-shadow]"
                 />
                 <button
                   type="button"
@@ -227,7 +227,7 @@ export function ModelInfoDialog({
                     confirmAlias();
                   }}
                   className="p-1.5 rounded-md hover:bg-primary/10 text-primary transition-colors cursor-pointer"
-                  title="Guardar (Enter)"
+                  title={t("common.saveEnter")}
                 >
                   <Check size={16} />
                 </button>

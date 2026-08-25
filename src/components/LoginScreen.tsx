@@ -104,7 +104,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg typo-button cursor-pointer transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg typo-button cursor-pointer transition-[opacity,color] duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
           >
             {isLoading ? "Cargando..." : "Entrar"}
           </button>

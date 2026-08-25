@@ -224,13 +224,13 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const playIconClass = cn(
     "h-3.5 w-3.5 transition-colors duration-300",
     isStopped && "text-zinc-400 dark:text-zinc-500",
-    isStarting && "text-amber-400 animate-pulse",
+    isStarting && "text-amber-400",
     isActive && "text-emerald-500",
     isError && "text-red-500",
   );
 
   const btnBase = cn(
-    "p-1.5 rounded-md transition-all duration-200",
+    "p-1.5 rounded-md transition-colors duration-200",
     "text-muted-foreground hover:text-foreground",
     "hover:bg-accent/50",
     "cursor-pointer",

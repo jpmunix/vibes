@@ -262,7 +262,7 @@ export function AddModelDialog({
               type="button"
               onClick={() => onChange(opt.value)}
               className={cn(
-                "px-2.5 py-1 text-xs rounded-md transition-all duration-150 cursor-pointer whitespace-nowrap",
+                "px-2.5 py-1 text-xs rounded-md transition-colors duration-150 cursor-pointer whitespace-nowrap",
                 value === opt.value
                   ? "bg-background shadow-sm text-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
@@ -292,7 +292,7 @@ export function AddModelDialog({
                   type="button"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="p-2 rounded-md opacity-60 hover:opacity-100 hover:bg-muted transition-all duration-200 cursor-pointer disabled:opacity-30"
+                  className="p-2 rounded-md opacity-60 hover:opacity-100 hover:bg-muted transition-[opacity,background-color] duration-200 cursor-pointer disabled:opacity-30"
                   title={t("addModel.refreshList")}
                 >
                   <RefreshCw
@@ -302,7 +302,7 @@ export function AddModelDialog({
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="p-2 rounded-md opacity-60 hover:opacity-100 hover:bg-muted transition-all duration-200 cursor-pointer"
+                  className="p-2 rounded-md opacity-60 hover:opacity-100 hover:bg-muted transition-[opacity,background-color] duration-200 cursor-pointer"
                 >
                   <svg
                     width="15"

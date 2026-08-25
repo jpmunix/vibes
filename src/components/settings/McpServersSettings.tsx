@@ -108,7 +108,7 @@ function McpServerCard({
   return (
     <div
       className={cn(
-        "border border-border/40 bg-card/30 rounded-xl overflow-hidden transition-all duration-200",
+        "border border-border/40 bg-card/30 rounded-xl overflow-hidden transition-colors duration-200",
         !server.enabled && "opacity-70 grayscale-[20%]",
       )}
     >

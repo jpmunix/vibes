@@ -176,7 +176,7 @@ export function HomeChatInput({
                   {isStreaming ? (
                     <button
                       className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors cursor-pointer"
-                      title="Cancelar generación (no disponible aquí)"
+                      title={t("chat.cancelGenNotAvailable")}
                     >
                       <StopCircleIcon size={18} />
                     </button>

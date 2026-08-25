@@ -55,7 +55,7 @@ export function AppList({ show }: { show?: boolean }) {
     useAddAppToFavorite();
   const { createApp } = useCreateApp();
   const { theme, intensity } = useTheme();
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
 
@@ -477,13 +477,13 @@ export function AppList({ show }: { show?: boolean }) {
                       selectedIds.size === apps.length ? deselectAll : selectAll
                     }
                   >
-                    {selectedIds.size === apps.length ? "Ninguna" : "Todas"}
+                    {selectedIds.size === apps.length ? t("workspace.none") : t("workspace.all")}
                   </button>
                   <button
                     type="button"
                     className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
                     onClick={exitSelectionMode}
-                    title="Cancelar"
+                    title={t("common.cancel")}
                   >
                     <X size={14} className="text-muted-foreground" />
                   </button>
@@ -580,10 +580,10 @@ export function AppList({ show }: { show?: boolean }) {
                             </div>
                             <button
                               type="button"
-                              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-[opacity,background-color,color] duration-150 cursor-pointer opacity-0 group-hover/arc:opacity-100"
                               onClick={() => handleUnarchiveApp(app.id)}
                               disabled={unarchivingId === app.id}
-                              title="Restaurar"
+                              title={t("common.restore")}
                             >
                               {unarchivingId === app.id ? (
                                 <Loader2 size={15} className="animate-spin" />

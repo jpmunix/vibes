@@ -493,6 +493,19 @@ body[data-scroll-locked] .app-region-drag {
   transition: none !important;
 }
 
+/* #VIBES-204: respeta la preferencia de movimiento reducido del sistema
+   operativo. Desactiva todas las animaciones y transiciones CSS cuando
+   el usuario tiene configurada motion reducida. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Hide scrollbar for toolbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

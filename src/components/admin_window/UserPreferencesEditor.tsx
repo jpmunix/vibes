@@ -330,7 +330,6 @@ function categorizeKey(key: string): string {
   if (
     MODEL_KEYS.has(key) ||
     key === "selectedModel" ||
-    key === "selectedModelVariant" ||
     key === "activeProviderId" ||
     key === "agentModels" ||
     key === "model_aliases" ||
@@ -811,7 +810,7 @@ function PrefRow({
           type="button"
           onClick={handleToggleBoolean}
           className={cn(
-            "px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer",
+            "px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
             value === "true"
               ? "bg-primary/15 text-primary hover:bg-primary/25"
               : "bg-muted/50 text-muted-foreground hover:bg-muted/80",
@@ -1578,7 +1577,7 @@ function RecursiveJsonPropEditor({
         type="button"
         onClick={() => onPropChange(!propValue)}
         className={cn(
-          "px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer",
+          "px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer",
           propValue
             ? "bg-primary/15 text-primary hover:bg-primary/25"
             : "bg-muted/50 text-muted-foreground hover:bg-muted/80",

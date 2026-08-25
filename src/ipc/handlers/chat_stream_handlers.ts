@@ -39,6 +39,7 @@ import {
   POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/pocketbase_prompt";
 import { getVibesAppPath } from "../../paths/paths";
+import { buildAgentsMdBlock } from "./agents_md_context";
 import { readSettings } from "../../main/settings";
 import type { ChatResponseEnd, ChatStreamParams } from "@/ipc/types";
 import {
@@ -1321,6 +1322,23 @@ This conversation includes one or more image attachments. When the user uploads 
 `;
         }
 
+        // ── AGENTS.md context (card #96/#111) ────────────────────────────────
+        // The workspace may have one or more AGENTS.md files defining the
+        // working contract for the agent. We scan the workspace recursively
+        // (up to depth 3, ignoring node_modules/.git/etc.) and inject ALL
+        // found files as a single block at the END of the system prompt
+        // (policy: LLM prompt cache — keeping it last avoids invalidating
+        // the cached prefix across sessions).
+        try {
+          const workspaceRoot = getVibesAppPath(updatedChat.app.path);
+          const agentsBlock = buildAgentsMdBlock(workspaceRoot);
+          if (agentsBlock) {
+            systemPrompt += `\n\n${agentsBlock}`;
+          }
+        } catch {
+          /* ignore — AGENTS.md is optional */
+        }
+
         const codebasePrefix = isEngineEnabled
           ? // No codebase prefix if engine is set, we will take of it there.
             []
@@ -2023,6 +2041,24 @@ This conversation includes one or more image attachments. When the user uploads 
             }
           } catch (memErr: any) {
             logger.warn(`🧠 [MEMORY] Context build failed: ${memErr.message}`);
+          }
+
+          // ── AGENTS.md context (card #96/#111) ──────────────────────────────
+          // The workspace may have one or more AGENTS.md files defining the
+          // working contract for the agent. We scan the workspace recursively
+          // (up to depth 3, ignoring node_modules/.git/etc.) and inject ALL
+          // found files as a single block as the LAST contextInstruction
+          // (policy: LLM prompt cache — keeping it last avoids invalidating
+          // the cached prefix across sessions).
+          try {
+            const workspaceRoot = getVibesAppPath(updatedChat.app.path);
+            const agentsBlock = buildAgentsMdBlock(workspaceRoot);
+            if (agentsBlock) {
+              contextInstructions.push(agentsBlock);
+              logger.log("[OPENCODE] Injected workspace AGENTS.md as context");
+            }
+          } catch {
+            /* ignore — AGENTS.md is optional */
           }
 
           const integrationEnvVars: Record<string, string> = {};

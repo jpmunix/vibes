@@ -299,7 +299,7 @@ export const ActionHeader = () => {
 
   // Button style for the 3 main groups
   const groupButtonBase =
-    "no-app-region-drag cursor-pointer relative flex items-center gap-1.5 px-4 h-8 rounded-lg typo-tab z-10 transition-all duration-150";
+    "no-app-region-drag cursor-pointer relative flex items-center gap-1.5 px-4 h-8 rounded-lg typo-tab z-10 transition-colors duration-150";
   const groupButtonClass = (isActive: boolean) =>
     `${groupButtonBase} ${isActive && isPreviewOpen ? "text-primary" : "hover:bg-sidebar-accent"}`;
 

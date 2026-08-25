@@ -115,7 +115,7 @@ const PasteModal: React.FC<{
           }}
           disabled={content.trim().length === 0}
           className={cn(
-            "px-3 py-1 rounded-md typo-select font-medium transition-all",
+            "px-3 py-1 rounded-md typo-select font-medium transition-colors",
             content.trim().length > 0
               ? "bg-primary text-primary-foreground hover:brightness-110 cursor-pointer"
               : "bg-muted text-muted-foreground cursor-not-allowed",
@@ -258,7 +258,7 @@ const ScreenshotModal: React.FC<{
             className={cn(
               "w-full h-full rounded-md border-2 border-dashed border-border/60",
               "flex flex-col items-center justify-center gap-2 cursor-pointer",
-              "hover:border-primary/40 hover:bg-muted/30 transition-all",
+              "hover:border-primary/40 hover:bg-muted/30 transition-colors",
             )}
           >
             <Camera size={24} className="text-muted-foreground" />
@@ -282,7 +282,7 @@ const ScreenshotModal: React.FC<{
           onClick={() => preview && onSubmit(preview)}
           disabled={!preview || loading}
           className={cn(
-            "px-3 py-1 rounded-md typo-select font-medium transition-all",
+            "px-3 py-1 rounded-md typo-select font-medium transition-colors",
             preview && !loading
               ? "bg-primary text-primary-foreground hover:brightness-110 cursor-pointer"
               : "bg-muted text-muted-foreground cursor-not-allowed",
@@ -644,7 +644,7 @@ export const DesignPicker: React.FC = () => {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-all duration-150",
+                    "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors duration-150",
                     "cursor-pointer hover:bg-muted/60",
                   )}
                 >
@@ -664,7 +664,7 @@ export const DesignPicker: React.FC = () => {
                   type="button"
                   onClick={() => setPasteOpen(true)}
                   className={cn(
-                    "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-all duration-150",
+                    "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors duration-150",
                     "cursor-pointer hover:bg-muted/60",
                   )}
                 >
@@ -688,7 +688,7 @@ export const DesignPicker: React.FC = () => {
                     type="button"
                     onClick={() => setScreenshotOpen(true)}
                     className={cn(
-                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-all duration-150",
+                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors duration-150",
                       "cursor-pointer hover:bg-muted/60",
                     )}
                   >

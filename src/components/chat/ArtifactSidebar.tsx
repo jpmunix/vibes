@@ -791,7 +791,7 @@ export function ArtifactSidebar() {
               className="h-7 w-7"
               onClick={handleShare}
               disabled={isSharing || !content}
-              title="Compartir artefacto"
+              title={t("common.shareArtifact")}
             >
               {isSharing ? (
                 <Loader2 className="animate-spin" size={14} />
@@ -1048,7 +1048,7 @@ export function ArtifactSidebar() {
                   <button
                     key={c.id}
                     onClick={() => scrollToHighlight(c.id)}
-                    className="w-full text-left group rounded-lg border border-border/40 hover:border-primary/30 bg-card/30 hover:bg-card/60 p-2.5 text-sm transition-all cursor-pointer"
+                    className="w-full text-left group rounded-lg border border-border/40 hover:border-primary/30 bg-card/30 hover:bg-card/60 p-2.5 text-sm transition-colors cursor-pointer"
                   >
                     {c.blockRef && (
                       <div className="text-[10px] font-medium text-primary/60 mb-0.5 uppercase tracking-wide">

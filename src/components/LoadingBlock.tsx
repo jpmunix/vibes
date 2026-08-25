@@ -90,12 +90,10 @@ function ChatLoader() {
         0.8 + (index / (displayText.length || 1)) * 0.2,
         1,
       );
-      const isEmoji = /\p{Emoji}/u.test(char);
       return (
         <span
           key={index}
           style={{ opacity }}
-          className={isEmoji ? "inline-block animate-emoji-bounce" : ""}
         >
           {char}
         </span>
@@ -105,19 +103,11 @@ function ChatLoader() {
 
   return (
     <div className="flex flex-col items-center justify-center p-4">
-      <style>{`
-        @keyframes blink { from, to { opacity: 0 } 50% { opacity: 1 } }
-        @keyframes emoji-bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
-        @keyframes text-pulse { 0%, 100% { opacity: .85 } 50% { opacity: 1 } }
-        .animate-blink { animation: blink 1s steps(2, start) infinite; }
-        .animate-emoji-bounce { animation: emoji-bounce 1.2s ease-in-out infinite; }
-        .animate-text-pulse { animation: text-pulse 1.8s ease-in-out infinite; }
-      `}</style>
-      <div className="text-center animate-text-pulse">
+      <div className="text-center">
         <div className="inline-block">
           <p className="text-sm text-muted-foreground font-medium">
             {renderFadingText()}
-            <span className="ml-1 inline-block w-2 h-4 bg-gray-500 dark:bg-gray-400 animate-blink" />
+            <span className="ml-1 inline-block w-2 h-4 bg-muted-foreground/60" />
           </p>
         </div>
       </div>

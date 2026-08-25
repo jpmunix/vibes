@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, GripVertical } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 interface DraggableTextInputProps {
   input: {
@@ -43,6 +44,7 @@ export const DraggableTextInput = ({
   color,
   containerRef,
 }: DraggableTextInputProps) => {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const elementRef = useRef<HTMLDivElement>(null);
@@ -112,7 +114,7 @@ export const DraggableTextInput = ({
             e.preventDefault();
             e.stopPropagation();
           }}
-          title="Arrastrar para mover"
+          title={t("preview.dragToMove")}
         >
           {/* Grip dots icon - smaller and more subtle */}
           <GripVertical className="w-3 h-3 text-muted-foreground/70" />
@@ -152,7 +154,7 @@ export const DraggableTextInput = ({
             e.stopPropagation();
             onRemove(input.id);
           }}
-          title="Eliminar entrada de texto"
+          title={t("preview.deleteTextEntry")}
           type="button"
         >
           <X className="w-3 h-3 text-muted-foreground/70 group-hover:text-red-600 dark:group-hover:text-red-400" />

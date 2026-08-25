@@ -918,7 +918,7 @@ export function ChatInput({
       )}
 
       <div className="p-4" data-testid="chat-input-container">
-        <div className={`mx-auto relative transition-all duration-300 ease-in-out ${isExpanded ? "max-w-[60rem]" : "max-w-3xl"}`}>
+        <div className={`mx-auto relative transition-[max-width] duration-300 ease-in-out ${isExpanded ? "max-w-[60rem]" : "max-w-3xl"}`}>
           <div
             className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{

@@ -461,7 +461,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
           return (
             <div
               key={mem.id}
-              className={`group border rounded-xl overflow-hidden transition-all hover:bg-muted/20 ${
+              className={`group border rounded-xl overflow-hidden transition-colors hover:bg-muted/20 ${
                 mem.enabled ? "border-border" : "border-border/50 opacity-50"
               }`}
             >

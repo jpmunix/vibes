@@ -251,7 +251,7 @@ export function CustomAgentEditor({
   return (
     <div
       className={cn(
-        "border border-border/60 bg-card rounded-2xl overflow-hidden transition-all duration-200",
+        "border border-border/60 bg-card rounded-2xl overflow-hidden transition-colors duration-200",
         expanded && "border-primary/20 shadow-md bg-card",
       )}
     >
@@ -712,7 +712,7 @@ export function CustomAgentCreator({
   };
 
   return (
-    <div className="border border-dashed border-primary/45 bg-card rounded-2xl overflow-hidden transition-all duration-200 shadow-sm">
+    <div className="border border-dashed border-primary/45 bg-card rounded-2xl overflow-hidden transition-colors duration-200 shadow-sm">
       <div className="p-4 bg-primary/5 border-b border-border/40 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-primary text-sm">
           <Plus className="size-4" />
@@ -1048,7 +1048,7 @@ export function CustomAgentsSection() {
       {!loading && customAgents.length > 0 && !isCreating && (
         <Button
           variant="outline"
-          className="w-full border-dashed border-border/80 hover:bg-muted/30 rounded-2xl py-6 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          className="w-full border-dashed border-border/80 hover:bg-muted/30 rounded-2xl py-6 flex items-center justify-center gap-2 cursor-pointer transition-colors"
           onClick={() => setIsCreating(true)}
         >
           <Plus className="size-4 text-muted-foreground" />

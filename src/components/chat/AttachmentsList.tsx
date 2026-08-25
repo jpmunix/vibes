@@ -150,7 +150,7 @@ function ImageAttachment({
           e.stopPropagation();
           onRemove();
         }}
-        className="absolute top-1 right-1 p-0.5 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
+        className="absolute top-1 right-1 p-0.5 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100 transition-[opacity,background-color,color] duration-200 cursor-pointer"
         aria-label={t("chatActions.removeCapture")}
       >
         <X size={10} />

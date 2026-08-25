@@ -7,6 +7,7 @@ import {
 } from "@/atoms/uiAtoms";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { FileText } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ export function ChatTitleBar() {
 }
 
 function TitleBarArtifactsDropdown({ chatId }: { chatId: number | null }) {
+  const { t } = useI18n();
   const { artifacts } = useChatArtifacts(chatId);
   const setSidebarOpen = useSetAtom(artifactsSidebarOpenAtom);
   const setSelectedPath = useSetAtom(selectedArtifactPathAtom);
@@ -46,7 +48,7 @@ function TitleBarArtifactsDropdown({ chatId }: { chatId: number | null }) {
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          title="Ver planificaciones y artefactos"
+          title={t("chat.viewPlans")}
         >
           <FileText size={15} />
         </Button>

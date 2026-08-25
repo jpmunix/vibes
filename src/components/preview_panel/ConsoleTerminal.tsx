@@ -424,7 +424,7 @@ export const ConsoleTerminal = () => {
                   className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs
                                         text-muted-foreground hover:text-muted-foreground/50 hover:bg-gray-800
                                         disabled:opacity-30 disabled:cursor-not-allowed
-                                        transition-all duration-150"
+                                        transition-colors duration-150"
                 >
                   {action.icon}
                   {action.label}
@@ -497,7 +497,7 @@ export const ConsoleTerminal = () => {
             type="button"
             onClick={handleCancel}
             className="text-red-500 hover:text-red-400 transition-colors p-1 rounded hover:bg-gray-800"
-            title="Cancelar comando"
+            title={t("preview.cancelCommand")}
           >
             <Square size={14} />
           </button>

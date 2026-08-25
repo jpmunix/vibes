@@ -382,7 +382,7 @@ export function ChatHeader({
                                   );
                                 }
                               }}
-                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-[opacity,background-color,color] shrink-0"
                             >
                               <Minimize2
                                 size={12}
@@ -398,7 +398,7 @@ export function ChatHeader({
                                   title: chat.title || `Chat ${chat.id}`,
                                 });
                               }}
-                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-[opacity,background-color,color] shrink-0"
                             >
                               <Pencil
                                 size={12}
@@ -414,7 +414,7 @@ export function ChatHeader({
                                   title: chat.title || `Chat ${chat.id}`,
                                 });
                               }}
-                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-[opacity,background-color,color] shrink-0"
                             >
                               <Trash2 size={12} className="text-destructive" />
                             </button>
@@ -559,7 +559,7 @@ function SessionCostBadge({ chatId }: { chatId: number | null }) {
           className="inline-flex items-center px-2 py-0.5 rounded-md typo-badge
             bg-muted text-muted-foreground
             border border-border
-            transition-all duration-200 select-none cursor-default"
+            transition-colors duration-200 select-none cursor-default"
           aria-label={`Gasto de sesión: ${fullPrecision}`}
         >
           <span className="tabular-nums tracking-tight">{shortDisplay}</span>
@@ -816,7 +816,7 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
                         path: artifact.path,
                       });
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 text-muted-foreground/60"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-[opacity,background-color,color] shrink-0 text-muted-foreground/60"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

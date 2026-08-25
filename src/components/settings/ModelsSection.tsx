@@ -158,7 +158,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
           {enabledModels.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className="p-3 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
+              className="p-3 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:border-primary/30 transition-[border-color,box-shadow] flex flex-col"
               onClick={() => setInfoModel(model)}
             >
               <div className="flex justify-between items-start gap-2">

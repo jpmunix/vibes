@@ -93,7 +93,6 @@ import {
 import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
-import { isFreeModel } from "@/ipc/shared/model_variants";
 import { ModelSelector } from "@/components/unified/ModelSelector";
 import {
   useMultiProviderModels,
@@ -269,7 +268,7 @@ function MemoryResponseContent({ text }: { text: string }) {
         {operations.map((op: any, i: number) => (
           <div
             key={i}
-            className="border rounded-xl px-4 py-3 transition-all hover:bg-muted/30 border-border"
+            className="border rounded-xl px-4 py-3 transition-colors hover:bg-muted/30 border-border"
           >
             <div className="flex items-start gap-3">
               <span className="shrink-0 px-2 py-0.5 typo-micro rounded-md bg-muted text-muted-foreground border border-border">
@@ -662,7 +661,6 @@ function PlaygroundPanel() {
   >("speed-asc");
   const [retryingModel, setRetryingModel] = useState<string | null>(null);
   const viewMode = "raw" as const;
-  const [nitroActive, setNitroActive] = useState(false);
   const [timeoutSeconds, setTimeoutSeconds] = useState(300);
   const { aliases } = useModelAliases();
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -1025,7 +1023,6 @@ function PlaygroundPanel() {
     setCurrentModelIndex(-1);
     setRetryingModel(null);
     setInputCollapsed(false);
-    setNitroActive(false);
     setPrompt("");
     setActivePresetName(null);
     setActivePromptPreset(null);
@@ -1102,13 +1099,9 @@ function PlaygroundPanel() {
       const modelDisplayName =
         modelDisplayNameMap.get(modelApiName) || modelApiName;
 
-      const modelForApi = (() => {
-        const m = allModels.find((x) => x.apiName === modelApiName);
-        const base = m?.apiName ?? modelApiName;
-        return nitroActive && !base.includes(":") && m && !isFreeModel(m)
-          ? base + ":nitro"
-          : base;
-      })();
+      const modelForApi =
+        allModels.find((x) => x.apiName === modelApiName)?.apiName ??
+        modelApiName;
 
       const startTime = performance.now();
       setStreamingModel(modelApiName);
@@ -1188,13 +1181,9 @@ function PlaygroundPanel() {
       const modelDisplayName =
         modelDisplayNameMap.get(modelApiName) || modelApiName;
 
-      const modelForApi = (() => {
-        const m = allModels.find((x) => x.apiName === modelApiName);
-        const base = m?.apiName ?? modelApiName;
-        return nitroActive && !base.includes(":") && m && !isFreeModel(m)
-          ? base + ":nitro"
-          : base;
-      })();
+      const modelForApi =
+        allModels.find((x) => x.apiName === modelApiName)?.apiName ??
+        modelApiName;
 
       const startTime = performance.now();
       let durationMs = 0;

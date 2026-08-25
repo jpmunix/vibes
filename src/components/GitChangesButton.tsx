@@ -69,7 +69,7 @@ export function GitChangesButton({ appId }: GitChangesButtonProps) {
       id="git-changes-btn"
       onClick={handleOpenGitWindow}
       className={cn(
-        "relative p-1.5 rounded-md transition-all duration-200",
+        "relative p-1.5 rounded-md transition-colors duration-200",
         "text-muted-foreground hover:text-foreground",
         "hover:bg-accent/50",
       )}
@@ -81,7 +81,7 @@ export function GitChangesButton({ appId }: GitChangesButtonProps) {
         className={cn(
           "absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full",
           "bg-orange-500 shadow-[0_0_4px_1px_rgba(249,115,22,0.4)]",
-          "animate-pulse",
+          
         )}
       />
     </button>

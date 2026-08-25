@@ -587,7 +587,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                 handleDevelop(hasChecked && !allChecked);
               }}
               className={cn(
-                "text-xs h-7 px-3 gap-1.5 text-white transition-all",
+                "text-xs h-7 px-3 gap-1.5 text-white transition-colors",
                 isStreaming && "opacity-50 cursor-not-allowed",
                 "bg-primary hover:bg-primary/90",
               )}
