@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "../SettingsModelSelector";
+import { ModelSelector } from "../unified/ModelSelector";
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
@@ -28,10 +28,10 @@ export function VisionModelSelector() {
   );
 
   return (
-    <SettingsModelSelector
-      variant="pill"
-      selectedModel={currentValue}
-      onModelSelect={handleChange}
+    <ModelSelector
+      variant="pillSoft"
+      value={currentValue}
+      onChange={handleChange}
       models={filteredModels}
       loading={isLoading}
       placeholder={t("common.selectModel")}

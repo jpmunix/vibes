@@ -15,7 +15,7 @@ export default defineConfig({
   },
   build: {
     minify: true,
-    sourcemap: true, // Te ayudará a ver errores reales en la consola
+    // sourcemap: true // #VIBES-203: quitar sourcemaps en dev para reducir heap (se regeneran en prod)
     rollupOptions: {
       external: [
         "better-sqlite3",

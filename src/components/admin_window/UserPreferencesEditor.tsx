@@ -7,7 +7,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ipc, type LanguageModel } from "@/ipc/types";
-import { SettingsModelSelector } from "@/components/SettingsModelSelector";
+import { ModelSelector } from "@/components/unified/ModelSelector";
 import { UserSettingsSchema } from "@/lib/schemas";
 import {
   PrimaryColorPicker,
@@ -957,9 +957,9 @@ function PrefRow({
             {renderKey()}
           </div>
           <div className="flex-1 flex justify-end">
-            <SettingsModelSelector
-              selectedModel={editValue}
-              onModelSelect={async (apiName) => {
+            <ModelSelector
+              value={editValue}
+              onChange={async (apiName) => {
                 setEditValue(apiName);
                 setSaving(true);
                 try {
@@ -971,7 +971,7 @@ function PrefRow({
               }}
               models={allModels}
               disableEnabledFilter
-              placeholder="Selecciona un modelo"
+              placeholder={t?.("common.selectModel") ?? "Selecciona un modelo"}
               size="sm"
             />
           </div>
@@ -1648,9 +1648,9 @@ function RecursiveJsonPropEditor({
       propValue.includes("/")
     ) {
       return (
-        <SettingsModelSelector
-          selectedModel={propValue}
-          onModelSelect={(apiName) => onPropChange(apiName)}
+        <ModelSelector
+          value={propValue}
+          onChange={(apiName) => onPropChange(apiName)}
           models={allModels}
           disableEnabledFilter
           placeholder="Modelo"

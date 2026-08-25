@@ -67,7 +67,7 @@ export interface UnifiedSelectorProps {
    *  - "ghost"    → no border, transparent
    *  - "minimal"  → compact inline, icon-only capable
    */
-  triggerVariant?: "default" | "pill" | "ghost" | "minimal" | "inline";
+  triggerVariant?: "default" | "pill" | "pillSoft" | "ghost" | "minimal" | "inline";
   triggerSize?: "xs" | "sm" | "md";
   /** Additional classes for the trigger */
   triggerClassName?: string;
@@ -96,6 +96,8 @@ export interface UnifiedSelectorProps {
   popoverClassName?: string;
   /** Inline styles on PopoverContent (bypasses tailwind-merge) */
   popoverStyle?: React.CSSProperties;
+  /** Optional right-side panel (e.g. filters). Turns the popover into a two-pane layout. */
+  rightPanel?: React.ReactNode;
 
   /* ── Items ───────────────────────────────────────────────────────────── */
   /** Show a checkmark on the selected item */
@@ -145,6 +147,8 @@ const VARIANT_CLASSES: Record<
   default:
     "border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 rounded-md shadow-none transition-colors",
   pill: "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-all duration-200",
+  pillSoft:
+    "border-0 !bg-primary/20 !text-primary !border-primary/20 shadow-sm rounded-lg hover:!bg-primary/30 transition-all duration-200",
   ghost:
     "border-0 bg-transparent hover:bg-muted/50 rounded-md transition-colors",
   minimal:
@@ -205,7 +209,7 @@ export function UnifiedSelector({
   };
 
   /* ── Variant-driven defaults ─────────────────────────────────────────── */
-  const isPill = triggerVariant === "pill";
+  const isPill = triggerVariant === "pill" || triggerVariant === "pillSoft";
   const isInline = triggerVariant === "inline";
   const align = alignProp ?? "start";
   const showCheckmark = showCheckmarkProp ?? (isPill ? true : false);
@@ -289,90 +293,113 @@ export function UnifiedSelector({
         style={popoverStyle}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <Command
-          filter={(value, search, keywords) => {
-            const haystack = [value, ...(keywords || [])]
-              .join(" ")
-              .toLowerCase();
-            return haystack.includes(search.toLowerCase()) ? 1 : 0;
-          }}
-        >
-          {/* Optional header */}
-          {header && (
-            <div className="px-3 py-2 border-b border-border/40">{header}</div>
-          )}
-
-          {/* Optional search bar */}
-          {searchable && (
-            <CommandInput
-              placeholder={searchPlaceholder}
-              onValueChange={onSearchChange}
-            />
-          )}
-
-          <CommandList className={popoverMaxHeight}>
-            <CommandEmpty className="py-4 text-center typo-caption">
-              {emptyMessage}
-            </CommandEmpty>
-
-            {/* Ungrouped items */}
-            {!hasGroups && (
-              <CommandGroup>
-                {ungroupedItems.map((option) => (
-                  <SelectorRow
-                    key={option.value}
-                    option={option}
-                    isSelected={value === option.value}
-                    showCheckmark={showCheckmark}
-                    itemLayout={itemLayout}
-                    renderItem={renderItem}
-                    noTruncate={noTruncate}
-                    disableBoldSelection={disableBoldSelection}
-                    onSelect={() => {
-                      onChange(option.value);
-                      setOpen(false);
-                    }}
-                  />
-                ))}
-              </CommandGroup>
+        <div className={cn("flex", rightPanel ? "h-[min(400px,65vh)]" : "")}>
+          <div
+            className={cn(
+              "flex flex-col min-w-0",
+              rightPanel ? "flex-1 border-r border-border/40" : "flex-1",
             )}
+          >
+            <Command
+              filter={(value, search, keywords) => {
+                const haystack = [value, ...(keywords || [])]
+                  .join(" ")
+                  .toLowerCase();
+                return haystack.includes(search.toLowerCase()) ? 1 : 0;
+              }}
+            >
+              {/* Optional header */}
+              {header && (
+                <div className="px-3 py-2 border-b border-border/40">
+                  {header}
+                </div>
+              )}
 
-            {/* Grouped items */}
-            {hasGroups &&
-              groups!.map((group, gi) => {
-                const items = groupedMap.get(group.id) || [];
-                if (items.length === 0) return null;
-                return (
-                  <React.Fragment key={group.id}>
-                    {gi > 0 && <CommandSeparator />}
-                    <CommandGroup heading={group.heading}>
-                      {items.map((option) => (
-                        <SelectorRow
-                          key={option.value}
-                          option={option}
-                          isSelected={value === option.value}
-                          showCheckmark={showCheckmark}
-                          itemLayout={itemLayout}
-                          renderItem={renderItem}
-                          noTruncate={noTruncate}
-                          disableBoldSelection={disableBoldSelection}
-                          onSelect={() => {
-                            onChange(option.value);
-                            setOpen(false);
-                          }}
-                        />
-                      ))}
-                    </CommandGroup>
-                  </React.Fragment>
-                );
-              })}
-          </CommandList>
+              {/* Optional search bar */}
+              {searchable && (
+                <CommandInput
+                  placeholder={searchPlaceholder}
+                  onValueChange={onSearchChange}
+                />
+              )}
 
-          {/* Optional footer */}
-          {footer && (
-            <div className="border-t border-border/40 p-1">{footer}</div>
+              <CommandList
+                className={cn(
+                  popoverMaxHeight,
+                  rightPanel && "max-h-none flex-1 overflow-y-auto",
+                )}
+              >
+                <CommandEmpty className="py-4 text-center typo-caption">
+                  {emptyMessage}
+                </CommandEmpty>
+
+                {/* Ungrouped items */}
+                {!hasGroups && (
+                  <CommandGroup>
+                    {ungroupedItems.map((option) => (
+                      <SelectorRow
+                        key={option.value}
+                        option={option}
+                        isSelected={value === option.value}
+                        showCheckmark={showCheckmark}
+                        itemLayout={itemLayout}
+                        renderItem={renderItem}
+                        noTruncate={noTruncate}
+                        disableBoldSelection={disableBoldSelection}
+                        onSelect={() => {
+                          onChange(option.value);
+                          setOpen(false);
+                        }}
+                      />
+                    ))}
+                  </CommandGroup>
+                )}
+
+                {/* Grouped items */}
+                {hasGroups &&
+                  groups!.map((group, gi) => {
+                    const items = groupedMap.get(group.id) || [];
+                    if (items.length === 0) return null;
+                    return (
+                      <React.Fragment key={group.id}>
+                        {gi > 0 && <CommandSeparator />}
+                        <CommandGroup heading={group.heading}>
+                          {items.map((option) => (
+                            <SelectorRow
+                              key={option.value}
+                              option={option}
+                              isSelected={value === option.value}
+                              showCheckmark={showCheckmark}
+                              itemLayout={itemLayout}
+                              renderItem={renderItem}
+                              noTruncate={noTruncate}
+                              disableBoldSelection={disableBoldSelection}
+                              onSelect={() => {
+                                onChange(option.value);
+                                setOpen(false);
+                              }}
+                            />
+                          ))}
+                        </CommandGroup>
+                      </React.Fragment>
+                    );
+                  })}
+              </CommandList>
+
+              {/* Optional footer */}
+              {footer && (
+                <div className="border-t border-border/40 p-1">{footer}</div>
+              )}
+            </Command>
+          </div>
+
+          {/* Optional right panel (e.g. filters) */}
+          {rightPanel && (
+            <div className="w-[280px] shrink-0 flex flex-col bg-muted/20">
+              {rightPanel}
+            </div>
           )}
-        </Command>
+        </div>
       </PopoverContent>
     </Popover>
   );

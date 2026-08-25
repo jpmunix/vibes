@@ -354,24 +354,24 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[98vh] overflow-y-auto flex flex-col p-0">
         <DialogHeader className="sticky top-0 bg-background border-b px-6 py-4">
-          <DialogTitle>Importar App</DialogTitle>
+          <DialogTitle>{t("importApp.title")}</DialogTitle>
           <DialogDescription>
-            Importa una aplicación existente desde un directorio local o clónala
-            desde Github.
+              {t("importApp.description")}
+            
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
           <Tabs defaultValue="local-folder" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger value="local-folder" className="typo-body px-2 py-2">
-                Directorio local
+                {t("importApp.localFolder")}
               </TabsTrigger>
               <TabsTrigger value="github-repos" className="typo-body px-2 py-2">
                 <span className="hidden sm:inline">{t("integrations.myGithubRepos")}</span>
                 <span className="sm:hidden">GitHub</span>
               </TabsTrigger>
               <TabsTrigger value="github-url" className="typo-body px-2 py-2">
-                GitHub URL
+                {t("importApp.githubUrl")}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="local-folder" className="space-y-4">
@@ -388,8 +388,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Folder className="mr-2 h-4 w-4" />
                     )}
                     {selectFolderMutation.isPending
-                      ? "Seleccionando directorio..."
-                      : "Seleccionar directorio"}
+                      ? t("importApp.selectingFolder")
+                      : t("importApp.selectFolder")}
                   </Button>
                 ) : (
                   <div className="space-y-4">
@@ -397,7 +397,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="typo-label mb-1">
-                            Directorio seleccionado:
+                            {t("importApp.selectedFolder")}
                           </p>
                           <p className="typo-body text-muted-foreground break-words">
                             {selectedPath}
@@ -419,13 +419,13 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <div className="space-y-2">
                       {nameExists && !existingAppId && (
                         <p className="typo-body text-yellow-500">
-                          Ya existe una aplicación con este nombre. Por favor,
-                          elige un nombre diferente:
+                            {t("importApp.nameExists")}
+                          
                         </p>
                       )}
                       {nameExists && existingAppId && (
                         <p className="typo-body text-blue-500">
-                          Esta app ya está registrada. Se abrirá directamente.
+                          {t("importApp.alreadyRegistered")}
                         </p>
                       )}
                       <div className="relative">
@@ -435,7 +435,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                         <Input
                           value={customAppName}
                           onChange={handleAppNameChange}
-                          placeholder="Introduce el nombre de la app"
+                          placeholder={t("importApp.appNamePlaceholder")}
                           className="w-full pr-8 text-sm"
                           disabled={importAppMutation.isPending}
                         />
@@ -450,12 +450,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <Accordion type="single" collapsible>
                       <AccordionItem value="advanced-options">
                         <AccordionTrigger className="typo-body hover:no-underline">
-                          Opciones avanzadas
+                          {t("importApp.advancedOptions")}
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4">
                           <div className="grid gap-2">
                             <Label className="typo-body ml-2 mb-2">
-                              Comando de instalación
+                              {t("importApp.installCommand")}
                             </Label>
                             <Input
                               value={installCommand}
@@ -469,7 +469,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           </div>
                           <div className="grid gap-2">
                             <Label className="typo-body ml-2 mb-2">
-                              Comando de inicio
+                              {t("importApp.startCommandLabel")}
                             </Label>
                             <Input
                               value={startCommand}
@@ -481,7 +481,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           </div>
                           {!commandsValid && (
                             <p className="typo-body text-red-500">
-                              Ambos comandos son obligatorios al personalizar.
+                              {t("importApp.commandsRequired")}
                             </p>
                           )}
                         </AccordionContent>
@@ -497,15 +497,13 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="typo-caption">
-                                AI_RULES.md le dice a Vibes qué tecnologías usar
-                                para editar la app
+                                {t("importApp.aiRulesTooltip")}
                               </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <AlertDescription className="typo-body">
-                          No se encontró AI_RULES.md. Vibes generará uno
-                          automáticamente después de importar.
+                          {t("importApp.aiRulesMissing")}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -513,7 +511,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     {importAppMutation.isPending && (
                       <div className="flex items-center justify-center space-x-2 text-xs sm:text-sm text-muted-foreground animate-pulse">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Importando app...</span>
+                        <span>{t("importApp.importing")}</span>
                       </div>
                     )}
                   </div>
@@ -527,7 +525,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   disabled={importAppMutation.isPending}
                   className="w-full sm:w-auto"
                 >
-                  Cancelar
+                  {t("dialogs.cancel")}
                 </Button>
                 <Button
                   onClick={() => {
@@ -552,11 +550,11 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   className="w-full sm:w-auto min-w-[80px]"
                 >
                   {importAppMutation.isPending ? (
-                    <>Importando...</>
+                    <>{t("importApp.importingEllipsis")}</>
                   ) : existingAppId ? (
-                    "Abrir"
+                    t("importApp.open")
                   ) : (
-                    "Importar"
+                    t("importApp.import")
                   )}
                 </Button>
               </DialogFooter>
@@ -581,12 +579,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                   <div className="space-y-2">
                     <Label className="typo-body ml-2 mb-2">
-                      Nombre de la aplicación (opcional)
+                      {t("importApp.appNameOptional")}
                     </Label>
                     <Input
                       value={githubAppName}
                       onChange={handleGithubAppNameChange}
-                      placeholder="Deja vacío para usar el nombre del repositorio"
+                      placeholder={t("importApp.repoNamePlaceholder")}
                       className="w-full pr-8 text-sm"
                       disabled={importing}
                     />
@@ -597,8 +595,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     )}
                     {githubNameExists && (
                       <p className="typo-body text-yellow-500">
-                        Ya existe una aplicación con este nombre. Por favor,
-                        elige un nombre diferente.
+                        {t("importApp.nameExists")}
                       </p>
                     )}
                   </div>
@@ -606,7 +603,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   <div className="flex flex-col space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
                     {!loading && repos.length === 0 && (
                       <p className="typo-body text-muted-foreground text-center py-4">
-                        No se encontraron repositorios
+                        {t("importApp.noReposFound")}
                       </p>
                     )}
                     {repos.map((repo) => (
@@ -690,7 +687,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
-                <Label className="typo-body">URL del repositorio</Label>
+                <Label className="typo-body">{t("importApp.repoUrlLabel")}</Label>
                 <Input
                   placeholder="https://github.com/user/repo.git"
                   value={url}
@@ -707,7 +704,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 <Input
                   value={githubAppName}
                   onChange={handleGithubAppNameChange}
-                  placeholder="Deja vacío para usar el nombre del repositorio"
+                  placeholder={t("importApp.repoNamePlaceholder")}
                   disabled={importing}
                   className="typo-label"
                 />

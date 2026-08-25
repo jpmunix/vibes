@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "../SettingsModelSelector";
+import { ModelSelector } from "../unified/ModelSelector";
 import {
   DEFAULT_EXECUTOR_MODEL,
   MODEL_PROVIDER_SEPARATOR,
@@ -43,10 +43,10 @@ export function ExecutorModelSelector() {
   );
 
   return (
-    <SettingsModelSelector
-      variant="pill"
-      selectedModel={currentValue}
-      onModelSelect={handleChange}
+    <ModelSelector
+      variant="pillSoft"
+      value={currentValue}
+      onChange={handleChange}
       models={filteredModels}
       loading={isLoading}
       placeholder={t("common.selectModel")}

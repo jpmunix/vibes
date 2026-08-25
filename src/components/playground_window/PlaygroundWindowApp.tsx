@@ -94,7 +94,7 @@ import { Check } from "@/components/ui/icons";
 import { usePlaygroundPresets } from "@/hooks/usePlaygroundPresets";
 import { matchesModelSearch } from "@/lib/modelSearch";
 import { isFreeModel } from "@/ipc/shared/model_variants";
-import { SettingsModelSelector } from "@/components/SettingsModelSelector";
+import { ModelSelector } from "@/components/unified/ModelSelector";
 import {
   useMultiProviderModels,
   type MultiProviderModel,
@@ -2506,9 +2506,9 @@ function PlaygroundPanel() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <SettingsModelSelector
-                    selectedModel={analysisModel}
-                    onModelSelect={setAnalysisModel}
+                  <ModelSelector
+                    value={analysisModel}
+                    onChange={setAnalysisModel}
                     models={[...allModels].sort((a, b) => {
                       if (a.apiName === analysisModel) return -1;
                       if (b.apiName === analysisModel) return 1;
@@ -2516,7 +2516,7 @@ function PlaygroundPanel() {
                     })}
                     placeholder={t("playground.analystModel")}
                     size="sm"
-                    variant="pill"
+                    variant="pillSoft"
                     disableEnabledFilter
                   />
                   <button

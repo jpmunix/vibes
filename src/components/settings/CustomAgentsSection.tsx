@@ -19,7 +19,7 @@ import {
 import { showSuccess, showError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "@/components/SettingsModelSelector";
+import { ModelSelector } from "@/components/unified/ModelSelector";
 import { useI18n } from "@/lib/i18n";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -434,11 +434,11 @@ export function CustomAgentEditor({
                 <Label className="typo-label">
                   {t("customAgents.selectStaticModel")}
                 </Label>
-                <SettingsModelSelector
+                <ModelSelector
                   variant="default"
                   size="md"
-                  selectedModel={model}
-                  onModelSelect={(val) => setModel(val)}
+                  value={model}
+                  onChange={(val) => setModel(val)}
                   models={allModels || []}
                   loading={modelsLoading}
                   placeholder={t("customAgents.selectModelPlaceholder")}
@@ -838,11 +838,11 @@ export function CustomAgentCreator({
           {modelSource === "static" ? (
             <div className="space-y-1.5">
               <Label className="typo-label">{t("customAgents.selectStaticModel")}</Label>
-              <SettingsModelSelector
+              <ModelSelector
                 variant="default"
                 size="md"
-                selectedModel={model}
-                onModelSelect={(val) => setModel(val)}
+                value={model}
+                onChange={(val) => setModel(val)}
                 models={allModels || []}
                 loading={modelsLoading}
                 placeholder={t("customAgents.selectModelPlaceholder")}

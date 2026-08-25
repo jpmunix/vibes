@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "../SettingsModelSelector";
+import { ModelSelector } from "../unified/ModelSelector";
 import { DEFAULT_AGENT_MODEL } from "@/lib/schemas";
 
 /** All supported agent IDs that can have model overrides */
@@ -49,10 +49,10 @@ export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
   );
 
   return (
-    <SettingsModelSelector
-      variant="pill"
-      selectedModel={currentValue}
-      onModelSelect={handleChange}
+    <ModelSelector
+      variant="pillSoft"
+      value={currentValue}
+      onChange={handleChange}
       models={(allModels || []).filter(
         (m) => m.apiName !== DEFAULT_AGENT_MODEL,
       )}

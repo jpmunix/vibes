@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "../SettingsModelSelector";
+import { ModelSelector } from "../unified/ModelSelector";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
 const DEFAULT_MODEL = DEFAULT_STANDARD_MODEL;
@@ -30,10 +30,10 @@ export function StandardModeModelSelector() {
   );
 
   return (
-    <SettingsModelSelector
-      variant="pill"
-      selectedModel={currentValue}
-      onModelSelect={handleChange}
+    <ModelSelector
+      variant="pillSoft"
+      value={currentValue}
+      onChange={handleChange}
       models={(allModels || []).filter(
         (m) => m.apiName !== DEFAULT_MODEL,
       )}

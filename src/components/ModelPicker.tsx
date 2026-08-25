@@ -7,9 +7,8 @@ import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { AutoRouterBadge } from "@/components/AutoRouterBadge";
-import { ModelItemContent } from "@/components/ModelItemContent";
-import { ModelVariantPicker } from "@/components/ModelVariantPicker";
+import { ModelSelector } from "@/components/unified/ModelSelector";
+import { ModelFiltersPanel } from "@/components/ModelFiltersPanel";
 
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { matchesModelSearch } from "@/lib/modelSearch";
@@ -225,94 +224,68 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
   });
 
   return (
-    <>
-      <ModelVariantPicker
-        models={sortedModels}
-        selectedValue={
-          (() => {
-            // Prefer the prefixed apiName from the list so selection matches
-            // the CommandItem value (custom::id::name, ollama::name).
-            const selectedEntry = sortedModels.find(
-              (sm) =>
-                sm.provider === selectedModel.provider &&
-                (sm.model.apiName === selectedModel.name ||
-                  sm.model.apiName.endsWith(`::${selectedModel.name}`)),
-            );
-            return selectedEntry
-              ? `${selectedEntry.provider}|||${selectedEntry.model.apiName}`
-              : `${selectedModel.provider}|||${selectedModel.name}`;
-          })()
+    <ModelSelector
+      value={(() => {
+        // Prefer the prefixed apiName from the list so selection matches
+        // the CommandItem value (custom::id::name, ollama::name).
+        const selectedEntry = sortedModels.find(
+          (sm) =>
+            sm.provider === selectedModel.provider &&
+            (sm.model.apiName === selectedModel.name ||
+              sm.model.apiName.endsWith(`::${selectedModel.name}`)),
+        );
+        return selectedEntry
+          ? selectedEntry.model.apiName
+          : (selectedModel.name as string);
+      })()}
+      onChange={(val) => {
+        const apiName = val;
+        const found = sortedModels.find(
+          (sm) => sm.model.apiName === apiName,
+        );
+        if (found) {
+          const customModelId =
+            found.model.type === "custom" ? found.model.id : undefined;
+          // Strip the provider prefix when storing {provider, name} —
+          // the provider is explicit, the name is the raw model id.
+          const storedName = apiName.includes("::")
+            ? apiName.slice(apiName.lastIndexOf("::") + 2)
+            : apiName;
+          onModelSelect({
+            name: storedName,
+            provider: found.provider as any,
+            customModelId,
+          });
         }
-        onModelSelect={(val) => {
-          const sepIdx = val.indexOf("|||");
-          const prov = val.slice(0, sepIdx);
-          const apiName = val.slice(sepIdx + 3);
-          const found = sortedModels.find(
-            (sm) => sm.provider === prov && sm.model.apiName === apiName,
-          );
-          if (found) {
-            const customModelId =
-              found.model.type === "custom" ? found.model.id : undefined;
-            // Strip the provider prefix when storing {provider, name} —
-            // the provider is explicit, the name is the raw model id.
-            const storedName = apiName.includes("::")
-              ? apiName.slice(apiName.lastIndexOf("::") + 2)
-              : apiName;
-            onModelSelect({
-              name: storedName,
-              provider: prov as any,
-              customModelId,
-            });
+      }}
+      models={sortedModels.map(({ provider, model }) => ({
+        ...model,
+        sourceProvider: provider,
+        sourceProviderLabel: getProviderLabel(provider, customProviders as any),
+      }))}
+      loading={loading}
+      placeholder={modelDisplayName}
+      searchPlaceholder="Buscar modelos..."
+      onSearchChange={setSearch}
+      align="center"
+      side="top"
+      showProviderBadge={false}
+      rightPanel={
+        <ModelFiltersPanel
+          filters={filters}
+          onChange={setFilters}
+          availableProviders={availableProvidersForPanel}
+          filteredCount={filteredModels.length}
+          totalCount={totalModelCount}
+          selectedVariant={settings.selectedModelVariant ?? ""}
+          onVariantChange={(suffix) =>
+            updateSettings({ selectedModelVariant: suffix })
           }
-        }}
-        filters={filters}
-        onFiltersChange={setFilters}
-        availableProviders={availableProvidersForPanel}
-        totalModelCount={totalModelCount}
-        selectedVariant={settings.selectedModelVariant ?? ""}
-        onVariantChange={(suffix) => updateSettings({ selectedModelVariant: suffix })}
-        showVariants={availableProvidersForPanel.some((p) => p.id === "openrouter")}
-        triggerContent={
-          <div className="flex items-center gap-0.5 min-w-0 flex-1">
-            <span className="truncate typo-select text-left">
-              {modelDisplayName}
-            </span>
-            {selectedModel.provider === "auto-router" &&
-              selectedModel.name === "auto" && <AutoRouterBadge />}
-          </div>
-        }
-        renderModelItem={({ provider, model }, _isSelected) => {
-          const isSelectedReal =
-            selectedModel.provider === provider &&
-            (selectedModel.name === model.apiName ||
-              model.apiName.endsWith(`::${selectedModel.name}`));
-
-          const showProviderLabel =
-            provider !== "openrouter" && provider !== "auto-router";
-          const providerLabel = showProviderLabel
-            ? getProviderLabel(provider, customProviders as any)
-            : undefined;
-
-          return (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1 min-w-0">
-                <ModelItemContent
-                  model={model}
-                  showAutoRouterBadge={provider === "auto-router"}
-                  isAutoRouter={provider === "auto-router"}
-                  onRemoveClick={undefined}
-                  providerLabel={providerLabel}
-                />
-              </div>
-            </div>
-          );
-        }}
-        searchPlaceholder="Buscar modelos..."
-        onSearchChange={setSearch}
-        emptyMessage={
-          loading ? "Cargando modelos..." : "No hay modelos disponibles"
-        }
-      />
-    </>
+          showVariants={availableProvidersForPanel.some(
+            (p) => p.id === "openrouter",
+          )}
+        />
+      }
+    />
   );
 }

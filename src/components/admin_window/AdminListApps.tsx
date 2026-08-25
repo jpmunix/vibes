@@ -58,7 +58,7 @@ interface ChatSummary {
 }
 
 function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState<ChatSummary | null>(null);
@@ -76,13 +76,13 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
     return (
       <div className="flex items-center gap-2 p-4 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="typo-caption">Cargando chats...</span>
+        <span className="typo-caption">{t("adminApps.loadingChats")}</span>
       </div>
     );
   if (chats.length === 0)
     return (
       <div className="p-4">
-        <p className="typo-caption text-muted-foreground">Sin chats.</p>
+        <p className="typo-caption text-muted-foreground">{t("adminApps.noChats")}</p>
       </div>
     );
 
@@ -98,7 +98,7 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
             <MessageSquare className="size-3.5 text-muted-foreground/40 shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="typo-label truncate block">
-                {chat.title || "Sin título"}
+                {chat.title || t("workspace.noTitle")}
               </span>
             </div>
             <span className="typo-micro text-muted-foreground shrink-0">
@@ -110,7 +110,7 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
             </span>
             <button
               type="button"
-              title="Compartir"
+              title={t("adminApps.share")}
               className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0"
               onClick={async (e) => {
                 e.stopPropagation();
@@ -119,18 +119,18 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
                     chatId: chat.id,
                   });
                   const markdown = buildShareMarkdown(
-                    chat.title || "Sin título",
+                    chat.title || t("workspace.noTitle"),
                     fullChat.messages,
                   );
                   const result = await ipc.markdownShare.uploadDocument({
-                    title: chat.title || "Sin título",
+                    title: chat.title || t("workspace.noTitle"),
                     content: markdown,
                     format: "md",
                   });
                   await navigator.clipboard.writeText(result.data.share_url);
-                  toast.success("URL copiada al portapapeles");
+                  toast.success(t("adminApps.urlCopied"));
                 } catch (err: any) {
-                  toast.error(err.message || "Error al compartir");
+                  toast.error(err.message || t("adminApps.shareError"));
                 }
               }}
             >
@@ -143,7 +143,7 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
       {selectedChat && (
         <ChatModal
           chatId={selectedChat.id}
-          title={selectedChat.title || "Sin título"}
+          title={selectedChat.title || t("workspace.noTitle")}
           user={user}
           onClose={() => setSelectedChat(null)}
         />
@@ -184,6 +184,7 @@ function ChatModal({
   user?: UserInfo;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const { settings } = useSettings();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,7 +251,7 @@ function ChatModal({
             </div>
           ) : messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="typo-caption text-muted-foreground">Chat vacío.</p>
+              <p className="typo-caption text-muted-foreground">{t("adminApps.emptyChat")}</p>
             </div>
           ) : (
             <div className="py-4">
@@ -416,7 +417,7 @@ function formatDuration(ms: number) {
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AdminListApps() {
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const [apps, setApps] = useState<AdminApp[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -430,7 +431,7 @@ export function AdminListApps() {
       setApps(result.apps);
       setUsers(result.users);
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar aplicaciones");
+      toast.error(err.message || t("adminApps.loadError"));
     } finally {
       setLoading(false);
     }
@@ -584,7 +585,7 @@ export function AdminListApps() {
           })}
           {usersWithoutApps.length > 0 && (
             <div className="p-4 rounded-xl border border-border/50 opacity-60">
-              <p className="typo-label">Sin aplicaciones</p>
+              <p className="typo-label">{t("adminApps.noApps")}</p>
               <p className="typo-caption mt-0.5">
                 {usersWithoutApps.map((u) => u.displayName).join(", ")}
               </p>

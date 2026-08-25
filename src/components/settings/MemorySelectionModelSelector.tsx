@@ -1,7 +1,7 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
-import { SettingsModelSelector } from "../SettingsModelSelector";
+import { ModelSelector } from "../unified/ModelSelector";
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
@@ -26,10 +26,10 @@ export function MemorySelectionModelSelector() {
   };
 
   return (
-    <SettingsModelSelector
-      variant="pill"
-      selectedModel={currentValue}
-      onModelSelect={handleChange}
+    <ModelSelector
+      variant="pillSoft"
+      value={currentValue}
+      onChange={handleChange}
       models={allModels || []}
       loading={isLoading}
       placeholder={t("common.selectModel")}

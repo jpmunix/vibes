@@ -3,6 +3,7 @@
  * Form with name, email, and password (manual or auto-generated).
  */
 import { useState, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 import { ipc } from "@/ipc/types";
 import {
   Eye,
@@ -50,6 +51,7 @@ interface AdminCreateUserProps {
 }
 
 export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
+  const { t } = useI18n();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,23 +69,23 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
     if (!password) return;
     await navigator.clipboard.writeText(password);
     setCopied(true);
-    toast.success("Contraseña copiada");
+    toast.success(t("adminUsers.passwordCopied"));
     setTimeout(() => setCopied(false), 2000);
-  }, [password]);
+  }, [password, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!displayName.trim()) {
-      toast.error("El nombre es obligatorio");
+      toast.error(t("adminUsers.nameRequired"));
       return;
     }
     if (!email.trim()) {
-      toast.error("El email es obligatorio");
+      toast.error(t("adminUsers.emailRequired"));
       return;
     }
     if (password.length < 6) {
-      toast.error("La contraseña debe tener al menos 6 caracteres");
+      toast.error(t("adminUsers.passwordMinLength"));
       return;
     }
 
@@ -94,7 +96,7 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
         email: email.trim(),
         password,
       });
-      toast.success(`Usuario "${user.displayName}" creado`);
+      toast.success(t("adminUsers.userCreated", { name: user.displayName }));
       // Reset form
       setDisplayName("");
       setEmail("");
@@ -102,7 +104,7 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
       setShowPassword(false);
       onCreated?.();
     } catch (err: any) {
-      toast.error(err.message || "Error al crear usuario");
+      toast.error(err.message || t("adminUsers.userCreateError"));
     } finally {
       setSaving(false);
     }
@@ -114,18 +116,18 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
   return (
     <div className="p-6 max-w-lg mx-auto w-full">
       {/* Header */}
-      <h2 className="typo-section-title mb-6">Crear usuario</h2>
+      <h2 className="typo-section-title mb-6">{t("adminUsers.createUser")}</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name */}
         <div className="space-y-1.5">
           <label htmlFor="admin-name" className="typo-label">
-            Nombre
+            {t("adminUsers.nameLabel")}
           </label>
           <input
             id="admin-name"
             type="text"
-            placeholder="Nombre del usuario"
+            placeholder={t("adminUsers.adminAppNamePlaceholder")}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             required
@@ -137,7 +139,7 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
         {/* Email */}
         <div className="space-y-1.5">
           <label htmlFor="admin-email" className="typo-label">
-            Email
+            {t("adminUsers.emailLabel")}
           </label>
           <input
             id="admin-email"
@@ -153,14 +155,14 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
         {/* Password */}
         <div className="space-y-1.5">
           <label htmlFor="admin-password" className="typo-label">
-            Contraseña
+            {t("adminUsers.passwordLabel")}
           </label>
           <div className="flex gap-1.5">
             <div className="relative flex-1">
               <input
                 id="admin-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t("adminUsers.minCharsPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -180,10 +182,10 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
               type="button"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-accent text-xs transition-colors cursor-pointer shrink-0"
               onClick={handleGenerate}
-              title="Generar contraseña segura"
+              title={t("adminUsers.generatePassword")}
             >
               <RefreshCw size={12} />
-              Generar
+              {t("adminUsers.generate")}
             </button>
             {/* Copy button */}
             {password && (
@@ -191,7 +193,7 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
                 type="button"
                 className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-accent text-xs transition-colors cursor-pointer shrink-0"
                 onClick={handleCopy}
-                title="Copiar contraseña"
+                title={t("adminUsers.copyPassword")}
               >
                 {copied ? (
                   <Check size={12} className="text-primary" />
@@ -212,10 +214,10 @@ export function AdminCreateUser({ onCreated }: AdminCreateUserProps) {
           {saving ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              Creando...
+              {t("adminUsers.creatingUser")}
             </>
           ) : (
-            "Crear usuario"
+            t("adminUsers.createUser")
           )}
         </button>
       </form>
