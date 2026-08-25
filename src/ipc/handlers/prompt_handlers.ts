@@ -5,7 +5,12 @@ import { eq, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { promptContracts } from "../types/prompts";
 import { DEFAULT_PROMPTS } from "@/prompts/defaults";
-import { PROMPT_LABELS, PROMPT_DESCRIPTIONS } from "@/prompts/index";
+import {
+  PROMPT_LABELS,
+  PROMPT_DESCRIPTIONS,
+  SYSTEM_PROMPT_GROUP_BY_ID,
+  type PromptId,
+} from "@/prompts/index";
 
 const _logger = log.scope("prompt_handlers");
 
@@ -86,20 +91,11 @@ export function registerPromptHandlers() {
       "Prompts de fábrica del sistema. Editables bajo tu criterio.",
       true,
     );
-    // Categoría "revisar" — prompts que NO llegan a vibes-core (los leen
-    // otros handlers: títulos de chat, commits, memoria, etc.).
-    const revisarCategoryId = await findOrCreateCategory(
-      "review",
-      "revisar",
-      "Prompts que NO llegan a vibes-core. Los usan otros handlers (títulos de chat, commits, memoria, etc.).",
-      false,
-    );
-
-    // Regla de clasificación (P1: solo ctx_* + runtime_agent_base llegan a
-    // vibes-core como agent.systemPrompt; el resto se queda en DEFAULT_PROMPTS
-    // pero lo leen otros handlers vía getSystemPrompt).
-    const isRuntimeSystemId = (systemId: string): boolean =>
-      systemId.startsWith("ctx_") || systemId === "runtime_agent_base";
+    // Card #195: la antigua categoría "revisar" (prompts que no llegan a
+    // vibes-core) deja de existir: TODOS los prompts de sistema —incluidos
+    // títulos, commits y memoria— caen en "Prompts del sistema" y se
+    // agrupan por grupo (groupKey, metadato de código). La fila de la
+    // categoría se elimina de la DB con el DML al cerrar la tarea.
 
     const result: Array<{
       id: number | null;
@@ -112,11 +108,24 @@ export function registerPromptHandlers() {
       scope: string;
       hasDefault: boolean;
       isModified: boolean;
+      // Card #195: grupo de la jerarquía a 2 niveles (System prompts →
+      // Core/Títulos y nombres/Git/Sistema de memoria/Procesamiento de
+      // imágenes). Metadato de código (SYSTEM_PROMPT_GROUP_BY_ID); null para
+      // prompts custom y para systemIds sin grupo (no debería ocurrir).
+      groupKey: string | null;
       createdAt: Date | null;
       updatedAt: Date | null;
     }> = [];
 
     // 1) Para cada default del código, sintetizar una entrada (con o sin override).
+    // Card #195: TODOS los prompts de sistema caen en el bucket "Prompts del
+    // sistema" (systemCategoryId). La antigua distinción runtime vs. "review"
+    // deja de existir como clasificación de UI: la estructura se rinde por
+    // grupo (groupKey) y el grupo es metadato de código. El "revisar" de la
+    // categoría se elimina de la base de datos al cerrar la tarea (DML).
+    const groupKeyOf = (systemId: string | null): string | null =>
+      systemId ? (SYSTEM_PROMPT_GROUP_BY_ID.get(systemId as PromptId) ?? null) : null;
+
     for (const [systemId, defaultContent] of Object.entries(DEFAULT_PROMPTS)) {
       const override = overridesBySystemId.get(systemId);
       if (override) {
@@ -134,20 +143,16 @@ export function registerPromptHandlers() {
           scope: override.scope ?? "all",
           hasDefault: true,
           isModified: override.content !== defaultContent,
+          groupKey: groupKeyOf(systemId),
           createdAt: override.createdAt,
           updatedAt: override.updatedAt,
         });
       } else {
         // Sin override: leer del default del código directamente. id:null porque NO hay fila.
-        // La categoría depende de si el prompt llega a vibes-core o no.
-        const targetCategoryId = isRuntimeSystemId(systemId)
-          ? systemCategoryId
-          : revisarCategoryId;
+        // Card #195: todos al bucket "systemPrompts" (antes se dividía runtime vs. "review").
         result.push({
           id: null,
-          categoryId: targetCategoryId
-            ? Number(targetCategoryId)
-            : null,
+          categoryId: systemCategoryId ? Number(systemCategoryId) : null,
           systemId,
           title: PROMPT_LABELS[systemId as keyof typeof PROMPT_LABELS] ?? systemId,
           description:
@@ -157,13 +162,14 @@ export function registerPromptHandlers() {
           scope: "all",
           hasDefault: true,
           isModified: false,
+          groupKey: groupKeyOf(systemId),
           createdAt: null,
           updatedAt: null,
         });
       }
     }
 
-    // 2) Prompts custom del usuario (sin systemId). No tienen default.
+    // 2) Prompts custom del usuario (sin systemId). No tienen default ni grupo.
     for (const r of customRows) {
       result.push({
         id: Number(r.id),
@@ -176,6 +182,7 @@ export function registerPromptHandlers() {
         scope: r.scope ?? "all",
         hasDefault: false,
         isModified: false,
+        groupKey: null,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
       });

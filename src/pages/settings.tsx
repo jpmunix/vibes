@@ -49,7 +49,6 @@ import { McpServersSettings } from "@/components/settings/McpServersSettings";
 import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
-import { VisionPromptGroup } from "@/components/settings/VisionPromptGroup";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -181,6 +180,7 @@ function TogglePill({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
       {([false, true] as const).map((value) => (
@@ -194,7 +194,7 @@ function TogglePill({
               : "hover:bg-primary/10",
           )}
         >
-          {value ? "Activado" : "Desactivado"}
+          {value ? t("common.enabled") : t("common.disabled")}
         </button>
       ))}
     </div>
@@ -714,9 +714,6 @@ export default function SettingsPage() {
             )}
 
             <PromptsSection refreshKey={promptsRefreshKey} />
-
-            {/* ── Procesamiento de Imágenes ── */}
-            <VisionPromptGroup />
           </div>
 
           <div
@@ -1755,10 +1752,10 @@ export function WorkflowSettings({
                       )}
                     >
                       {option === "off"
-                        ? "Desactivado"
+                        ? t("common.disabled")
                         : option === "right"
-                          ? "Derecha"
-                          : "Izquierda"}
+                          ? t("settingsItems.vista_previa_posicion_derecha")
+                          : t("settingsItems.vista_previa_posicion_izquierda")}
                     </button>
                   );
                 })}

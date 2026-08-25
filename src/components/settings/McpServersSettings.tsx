@@ -37,7 +37,7 @@ function McpToolsList({ serverId }: { serverId: number }) {
     return (
       <div className="flex items-center gap-2 typo-caption p-3">
         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-        Cargando tools...
+        {t("mcp.loadingTools")}
       </div>
     );
   }
@@ -45,17 +45,14 @@ function McpToolsList({ serverId }: { serverId: number }) {
   if (isError) {
     return (
       <div className="typo-caption text-red-500/80 p-3 flex flex-col gap-2 border border-red-500/20 rounded-lg bg-red-500/5 mt-2">
-        <span>
-          Error al conectar para obtener las tools. Asegúrate de que la
-          configuración sea correcta y el servidor esté corriendo.
-        </span>
+        <span>{t("mcp.toolsError")}</span>
         <Button
           variant={"outline"}
           size={"sm"}
           onClick={() => refetch()}
           className="w-fit"
         >
-          Reintentar
+          {t("common.retry")}
         </Button>
       </div>
     );
@@ -63,14 +60,14 @@ function McpToolsList({ serverId }: { serverId: number }) {
 
   if (!tools || tools.length === 0) {
     return (
-      <div className="typo-caption p-3">No tools found for this server.</div>
+      <div className="typo-caption p-3">{t("mcp.noTools")}</div>
     );
   }
 
   return (
     <div className="pt-3">
       <div className="typo-micro uppercase tracking-wider flex items-center justify-between mb-3">
-        <span>{tools.length} TOOLS DISPONIBLES</span>
+        <span>{tools.length} {t("mcp.availableTools")}</span>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -156,7 +153,7 @@ function McpServerCard({
             {server.name !== "context7" && (
               <DeleteConfirmationDialog
                 itemName={server.name}
-                itemType="servidor"
+                itemType={t("mcp.serverItem")}
                 onDelete={() => onDelete(server.id)}
                 trigger={
                   <Button
@@ -364,7 +361,7 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
         ) : (
           <Button size="sm" className="gap-2">
             <Plus className="h-4 w-4" />
-            Añadir Servidor
+            {t("mcp.addServerButton")}
           </Button>
         )}
       </DialogTrigger>
@@ -372,7 +369,7 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
         <DialogHeader>
           <DialogTitle>
             {isContext7
-              ? "Editar Instrucciones de Context7"
+              ? t("mcp.editContext7Title")
               : existingServer
                 ? t("mcp.editServer")
                 : t("mcp.addServer")}
@@ -383,19 +380,16 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
           {isContext7 ? (
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl mb-2 text-sm text-muted-foreground">
               <p>
-                <strong>Context7</strong> es un servicio integrado que puedes
-                activar o desactivar. No se puede eliminar, pero puedes
-                desactivarlo desde el interruptor de la lista. Aquí puedes
-                personalizar las instrucciones de inyección del agente para
-                guiar su interacción con las herramientas de Context7.
+                <strong>Context7</strong>{" "}
+                {t("mcp.context7Description")}
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <label className="typo-label">Nombre</label>
+                <label className="typo-label">{t("mcp.nameLabel")}</label>
                 <Input
-                  placeholder="github, notion, postgres..."
+                  placeholder={t("mcp.namePlaceholder")}
                   value={name}
                   onChange={(e) =>
                     setName(
@@ -404,18 +398,18 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
                   }
                 />
                 <p className="typo-caption">
-                  Usado en referencias de tools. Usa minúsculas y guiones.
+                  {t("mcp.nameHelp")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="typo-label">Tipo</label>
+                <label className="typo-label">{t("mcp.typeLabel")}</label>
                 <UnifiedSelector
                   value={transport}
                   onChange={(v) => setTransport(v as "stdio" | "http")}
                   options={[
-                    { value: "stdio", label: "Local (Stdio / Comando)" },
-                    { value: "http", label: "Remoto (HTTP / SSE)" },
+                    { value: "stdio", label: t("mcp.typeStdio") },
+                    { value: "http", label: t("mcp.typeHttp") },
                   ]}
                   triggerVariant="default"
                   triggerSize="md"
@@ -427,9 +421,11 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
               {transport === "stdio" ? (
                 <>
                   <div className="space-y-2">
-                    <label className="typo-label">Comando</label>
+                    <label className="typo-label">
+                      {t("mcp.commandLabel")}
+                    </label>
                     <Input
-                      placeholder="npx, python, docker..."
+                      placeholder={t("mcp.commandPlaceholder")}
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
                     />
@@ -446,18 +442,18 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
                       onChange={(e) => setArgsStr(e.target.value)}
                     />
                     <p className="typo-caption opacity-70">
-                      Variables disponibles:{" "}
+                      {t("mcp.variablesAvailable")}{" "}
                       <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded">
                         {"{{PROJECT_PATH}}"}
                       </code>{" "}
-                      — se sustituye por la ruta del proyecto activo.
+                      {t("mcp.projectPathSubstituted")}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <label className="typo-label flex justify-between">
-                      Variables de Entorno{" "}
+                      {t("mcp.envVarsLabel")}{" "}
                       <span className="typo-caption">
-                        Opcional, KEY=value por línea
+                        {t("mcp.envVarsOptional")}
                       </span>
                     </label>
                     <textarea
@@ -471,7 +467,7 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <label className="typo-label">URL</label>
+                    <label className="typo-label">{t("mcp.urlLabel")}</label>
                     <Input
                       placeholder="https://..."
                       value={url}
@@ -480,9 +476,9 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
                   </div>
                   <div className="space-y-2">
                     <label className="typo-label flex justify-between">
-                      Cabeceras HTTP (Headers){" "}
+                      {t("mcp.headersLabel")}{" "}
                       <span className="typo-caption">
-                        Opcional, KEY: value por línea
+                        {t("mcp.headersOptional")}
                       </span>
                     </label>
                     <textarea
@@ -499,8 +495,8 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
 
           <div className="space-y-2">
             <label className="typo-label flex justify-between">
-              Instrucciones del Agente
-              <span className="typo-caption">Opcional</span>
+              {t("mcp.agentInstructionsLabel")}
+              <span className="typo-caption">{t("mcp.optional")}</span>
             </label>
             <textarea
               className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -509,22 +505,22 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
               onChange={(e) => setInstructionsStr(e.target.value)}
             />
             <p className="typo-caption opacity-70">
-              Se inyecta como contexto al agente. Variables:
+              {t("mcp.instructionsInjectedHelp")}
               <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded mx-1">
                 {"{{SERVER_PREFIX}}"}
               </code>{" "}
-              — prefijo de tools,
+              {t("mcp.instructionsPrefixHelp")}
               <code className="typo-mono-xs bg-muted/60 px-1 py-0.5 rounded mx-1">
                 {"{{PROJECT_PATH}}"}
               </code>{" "}
-              — ruta activa.
+              {t("mcp.instructionsPathHelp")}
             </p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={handleSave}
@@ -535,7 +531,7 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
               isUpdating
             }
           >
-            <Check className="h-4 w-4 mr-2" /> Guardar
+            <Check className="h-4 w-4 mr-2" /> {t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -544,16 +540,16 @@ function McpServerDialog({ existingServer }: { existingServer?: McpServer }) {
 }
 
 export function McpServersSettings() {
+  const { t } = useI18n();
   const { servers, updateServer, deleteServer } = useMcpServers();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="typo-subsection-title">Servidores instalados</h3>
+          <h3 className="typo-subsection-title">{t("mcp.installed")}</h3>
           <p className="typo-caption mt-1">
-            Activa y desactiva servidores de Model Context Protocol (MCP). Los
-            cambios se aplican automáticamente sin reiniciar el agente.
+            {t("mcp.installedDesc")}
           </p>
         </div>
         <McpServerDialog />
@@ -564,10 +560,9 @@ export function McpServersSettings() {
           <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <Server className="h-6 w-6 text-primary" />
           </div>
-          <h4 className="typo-label mb-1">No hay servidores MCP</h4>
+          <h4 className="typo-label mb-1">{t("mcp.noServers")}</h4>
           <p className="typo-caption max-w-sm mx-auto">
-            Añade tu primer servidor para dar nuevas habilidades matemáticas, de
-            conexión o herramientas al agente.
+            {t("mcp.noServersDesc")}
           </p>
         </div>
       ) : (

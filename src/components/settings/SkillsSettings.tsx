@@ -58,6 +58,7 @@ function SkillGroup({
   onToggleEnabled,
   onRefresh,
 }: SkillGroupProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -86,7 +87,7 @@ function SkillGroup({
         <div className="pl-4 space-y-2">
           {skills.length === 0 ? (
             <p className="text-xs text-muted-foreground italic py-2 pl-2">
-              No hay skills creados.
+              {t("skills.noSkillsInGroup")}
             </p>
           ) : (
             skills.map((skill) => (
@@ -109,7 +110,7 @@ function SkillGroup({
                       {skill.name}
                       {!skill.enabled && (
                         <span className="typo-micro px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-normal">
-                          DESACTIVADO
+                          {t("skills.disabledBadge")}
                         </span>
                       )}
                     </h4>
@@ -129,7 +130,7 @@ function SkillGroup({
                   />
                   <DeleteConfirmationDialog
                     itemName={skill.name}
-                    itemType="Skill"
+                    itemType={t("skills.skillItem")}
                     onDelete={() => onDelete(skill, scope)}
                     trigger={
                       <Button
@@ -247,7 +248,6 @@ export function SkillsSettings() {
     scope: string,
     checked: boolean,
   ) => {
-    const { t } = useI18n();
     try {
       const oldName = checked ? "SKILL.disabled" : "SKILL.md";
       const newName = checked ? "SKILL.md" : "SKILL.disabled";
@@ -284,7 +284,7 @@ export function SkillsSettings() {
       {/* List Section */}
       {loading ? (
         <div className="py-12 text-center text-muted-foreground typo-caption">
-          Cargando skills...
+          {t("skills.loading")}
         </div>
       ) : globalSkills.length === 0 && projectsWithSkills.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-border/80 rounded-xl bg-muted/10">
@@ -296,7 +296,7 @@ export function SkillsSettings() {
         <div className="space-y-3">
           {/* Global Skill Group */}
           <SkillGroup
-            title="Global"
+            title={t("skills.global")}
             skills={globalSkills}
             scope="global"
             apps={apps}
@@ -309,7 +309,7 @@ export function SkillsSettings() {
           {projectsWithSkills.map((project) => (
             <SkillGroup
               key={project.app.id}
-              title={`Proyecto: ${project.app.name}`}
+              title={t("skills.projectPrefix", { name: project.app.name })}
               skills={project.skills}
               scope={String(project.app.id)}
               apps={apps}
@@ -455,7 +455,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
       setOpen(false);
       onSave();
     } catch (e: any) {
-      showError("Error al guardar: " + e.message);
+      showError(t("skills.saveError", { error: e.message }));
     } finally {
       setIsLoading(false);
     }
@@ -475,7 +475,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
         ) : (
           <Button size="sm" className="gap-2 rounded-lg font-medium">
             <Plus className="h-4 w-4" />
-            Crear Skill
+            {t("skills.createButton")}
           </Button>
         )}
       </DialogTrigger>
@@ -490,10 +490,10 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Nombre del Skill
+                {t("skills.nameLabel")}
               </label>
               <Input
-                placeholder="ej: mis-preferencias-de-codigo"
+                placeholder={t("skills.namePlaceholder")}
                 value={name}
                 onChange={(e) =>
                   setName(
@@ -504,13 +504,13 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                 className="rounded-lg border-border"
               />
               <p className="typo-caption text-muted-foreground/75">
-                Letras, números y guiones.
+                {t("skills.nameHelp")}
               </p>
             </div>
 
             <div className="space-y-1.5">
               <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Ámbito (Scope)
+                {t("skills.scopeLabel")}
               </label>
               <Select
                 value={scope}
@@ -524,13 +524,13 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
                   <SelectItem value="global">{t("skills.global")}</SelectItem>
                   {apps.map((app) => (
                     <SelectItem key={app.id} value={String(app.id)}>
-                      Proyecto: {app.name}
+                      {t("skills.projectPrefix", { name: app.name })}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="typo-caption text-muted-foreground/75">
-                Dónde guardar el skill.
+                {t("skills.scopeHelp")}
               </p>
             </div>
           </div>
@@ -538,7 +538,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
           <div className="space-y-1.5 flex-1 flex flex-col min-h-[350px]">
             <div className="flex justify-between items-center mb-3">
               <label className="typo-label text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Contenido (SKILL.md)
+                {t("skills.contentLabel")}
               </label>
               <AiStrategistAssistant
                 type="skill"
@@ -563,14 +563,14 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`);
             onClick={() => setOpen(false)}
             disabled={isLoading}
           >
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button
             className="rounded-lg"
             onClick={handleSave}
             disabled={!name.trim() || !content.trim() || isLoading}
           >
-            <Check className="h-4 w-4 mr-2" /> Guardar Skill
+            <Check className="h-4 w-4 mr-2" /> {t("skills.saveSkill")}
           </Button>
         </DialogFooter>
       </DialogContent>

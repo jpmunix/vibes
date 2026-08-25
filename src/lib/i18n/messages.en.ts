@@ -535,10 +535,18 @@ export const messagesEn: Messages = {
     ancho_de_burbujaDesc: "Percentage of the container (100% = full width)",
     modo_de_chat_predeterminado: "Default chat mode",
     modo_de_chat_predeterminadoDesc: "The chat mode used for creating new chats",
+    modo_de_chat_predeterminadoAgent: "Agent",
+    modo_de_chat_predeterminadoAgentDesc: "Develop, edit and debug with tool access",
+    modo_de_chat_predeterminadoPlan: "Plan",
+    modo_de_chat_predeterminadoPlanDesc: "Design an action plan before implementing",
+    modo_de_chat_predeterminadoAsk: "Ask",
+    modo_de_chat_predeterminadoAskDesc: "Query your code without making changes",
     confirmar_cambios_en_git: "Auto-commit git changes",
     confirmar_cambios_en_gitDesc: "Automatically commits AI changes in git. If disabled, changes stay pending.",
     expandir_vista_previa: "Expand preview",
     expandir_vista_previaDesc: "Automatically opens the side preview panel when code changes.",
+    vista_previa_posicion_derecha: "Right",
+    vista_previa_posicion_izquierda: "Left",
     notificaciones_de_respuesta: "Response notifications",
     notificaciones_de_respuestaDesc: "Shows a native system notification when the chat finishes generating.",
     reproducir_sonido: "Play sound",
@@ -765,6 +773,17 @@ export const messagesEn: Messages = {
       "e.g. 'add rules to format with Prettier, structured and clear'",
     examplePrompt:
       "e.g. 'make it respond formally and structured in markdown format'",
+    generateButton: "Generate with AI",
+    dialogTitle: "Generate with AI",
+    instructionLabel: "What do you want the model to do?",
+    generateError: "Error generating the proposal: {error}",
+    proposalApplied: "Proposal applied to the editor",
+    proposalLabel: "Strategist's Proposal:",
+    generating: "Generating...",
+    generateProposal: "Generate Proposal",
+    discard: "Discard",
+    regenerate: "Regenerate",
+    acceptApply: "Accept and Apply",
   },
   customProvider: {
     deleted: "Provider deleted",
@@ -877,10 +896,46 @@ export const messagesEn: Messages = {
     context7Disabled: "Context7 — disable it if you don't need it",
     editServer: "Edit MCP Server",
     addServer: "Add MCP Server",
+    addServerButton: "Add Server",
     instructionsPlaceholder:
       "Instructions for the agent when this MCP server is active. Use {{SERVER_PREFIX}} to refer to this server's tools.",
     args: "Arguments",
     onePerLine: "One per line",
+    installed: "Installed Servers",
+    installedDesc:
+      "Enable and disable Model Context Protocol (MCP) servers. Changes apply automatically without restarting the agent.",
+    noServers: "No MCP servers",
+    noServersDesc:
+      "Add your first server to give the agent new math, connection or tool capabilities.",
+    serverItem: "server",
+    editContext7Title: "Edit Context7 Instructions",
+    context7Description:
+      "Context7 is an integrated service that you can enable or disable. It cannot be deleted, but you can turn it off from the list toggle. Here you can customize the agent injection instructions to guide its interaction with Context7's tools.",
+    nameLabel: "Name",
+    namePlaceholder: "github, notion, postgres...",
+    nameHelp: "Used in tool references. Use lowercase and hyphens.",
+    typeLabel: "Type",
+    typeStdio: "Local (Stdio / Command)",
+    typeHttp: "Remote (HTTP / SSE)",
+    commandLabel: "Command",
+    commandPlaceholder: "npx, python, docker...",
+    variablesAvailable: "Available variables:",
+    projectPathSubstituted: "is substituted with the active project path.",
+    envVarsLabel: "Environment Variables",
+    envVarsOptional: "Optional, KEY=value per line",
+    urlLabel: "URL",
+    headersLabel: "HTTP Headers",
+    headersOptional: "Optional, KEY: value per line",
+    agentInstructionsLabel: "Agent Instructions",
+    optional: "Optional",
+    instructionsInjectedHelp: "Injected as context to the agent. Variables:",
+    instructionsPrefixHelp: "— tools prefix,",
+    instructionsPathHelp: "— active path.",
+    loadingTools: "Loading tools...",
+    toolsError:
+      "Error connecting to fetch the tools. Make sure the configuration is correct and the server is running.",
+    noTools: "No tools found for this server.",
+    availableTools: "AVAILABLE TOOLS",
   },
   prompts: {
     needCategory: "You must select a category for the prompt.",
@@ -940,10 +995,16 @@ export const messagesEn: Messages = {
     categories: {
       systemPrompts: "System Prompts",
       systemPromptsDesc:
-        "Factory system prompts. Editable at your discretion.",
-      review: "Review",
-      reviewDesc:
-        "Prompts that do NOT reach the runtime. Other handlers use them (chat titles, commits, memory, etc.).",
+        "Factory system prompts. Editable at your discretion (content only).",
+    },
+    // Card #195: sub-groups of the 2-level hierarchy (code metadata
+    // SYSTEM_PROMPT_GROUPS). The "review" bucket no longer exists.
+    groups: {
+      core: "Core",
+      titles: "Titles & names",
+      git: "Git",
+      memory: "Memory system",
+      vision: "Image processing",
     },
     system: {
       labels: {
@@ -960,6 +1021,7 @@ export const messagesEn: Messages = {
         ctx_plan_mode: "Interactive planning",
         ctx_build_walkthrough: "Changes summary",
         runtime_agent_base: "Agent core",
+        vision: "Vision prompt",
       },
       descs: {
         chat_title:
@@ -986,6 +1048,8 @@ export const messagesEn: Messages = {
           "Instructions to generate a changes summary in the .vibes/ folder when finishing complex tasks in build mode.",
         runtime_agent_base:
           "Agent core: tool usage rules the model receives every session. The shell composes it; the runtime executes it.",
+        vision:
+          "Processes attached images into highly detailed textual descriptions for models that cannot see.",
       },
     },
   },
@@ -1087,7 +1151,20 @@ export const messagesEn: Messages = {
     deactivated: "Skill disabled",
     editSkill: "Edit Skill",
     createSkill: "Create Skill",
-    empty: "No skills configured. Click \"Create Skill\" to get started.",
+    empty: 'No skills configured. Click "Create Skill" to get started.',
+    createButton: "Create Skill",
+    loading: "Loading skills...",
+    noSkillsInGroup: "No skills created yet.",
+    disabledBadge: "DISABLED",
+    skillItem: "Skill",
+    projectPrefix: "Project: {name}",
+    nameLabel: "Skill Name",
+    namePlaceholder: "e.g.: my-code-preferences",
+    nameHelp: "Letters, numbers and hyphens.",
+    scopeLabel: "Scope",
+    scopeHelp: "Where to store the skill.",
+    contentLabel: "Content (SKILL.md)",
+    saveSkill: "Save Skill",
   },
   wizard: {
     registerFree: "Free registration with Google or GitHub",

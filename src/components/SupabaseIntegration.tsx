@@ -17,6 +17,7 @@ function TogglePill({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
       {([false, true] as const).map((value) => (
@@ -30,7 +31,7 @@ function TogglePill({
               : "text-muted-foreground hover:text-primary hover:bg-primary/10",
           )}
         >
-          {value ? "Activado" : "Desactivado"}
+          {value ? t("common.enabled") : t("common.disabled")}
         </button>
       ))}
     </div>

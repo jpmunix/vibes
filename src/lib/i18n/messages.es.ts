@@ -559,10 +559,18 @@ export const messagesEs: Messages = {
     ancho_de_burbujaDesc: "Porcentaje del contenedor (100% = ancho total)",
     modo_de_chat_predeterminado: "Modo de chat predeterminado",
     modo_de_chat_predeterminadoDesc: "El modo de chat usado para crear nuevos chats",
+    modo_de_chat_predeterminadoAgent: "Agente",
+    modo_de_chat_predeterminadoAgentDesc: "Desarrolla, edita y depura con acceso a herramientas",
+    modo_de_chat_predeterminadoPlan: "Planificar",
+    modo_de_chat_predeterminadoPlanDesc: "Diseña un plan de acción antes de implementar",
+    modo_de_chat_predeterminadoAsk: "Preguntar",
+    modo_de_chat_predeterminadoAskDesc: "Consulta sobre tu código sin realizar cambios",
     confirmar_cambios_en_git: "Confirmar cambios en git",
     confirmar_cambios_en_gitDesc: "Confirma automáticamente los cambios de la IA en git. Si se desactiva, los cambios quedan pendientes.",
     expandir_vista_previa: "Expandir vista previa",
     expandir_vista_previaDesc: "Abre automáticamente el panel de vista previa lateral cuando el código cambia.",
+    vista_previa_posicion_derecha: "Derecha",
+    vista_previa_posicion_izquierda: "Izquierda",
     notificaciones_de_respuesta: "Notificaciones de respuesta",
     notificaciones_de_respuestaDesc: "Muestra una notificación nativa del sistema cuando el chat termina de generar.",
     reproducir_sonido: "Reproducir sonido",
@@ -789,6 +797,17 @@ export const messagesEs: Messages = {
       "ej: 'añade reglas para formatear con Prettier, estructurado y claro'",
     examplePrompt:
       "ej: 'haz que responda de manera formal y estructurada en formato markdown'",
+    generateButton: "Generar con IA",
+    dialogTitle: "Generar con IA",
+    instructionLabel: "¿Qué deseas que haga el modelo?",
+    generateError: "Error al generar la propuesta: {error}",
+    proposalApplied: "Propuesta aplicada al editor",
+    proposalLabel: "Propuesta del Estratega:",
+    generating: "Generando...",
+    generateProposal: "Generar Propuesta",
+    discard: "Descartar",
+    regenerate: "Regenerar",
+    acceptApply: "Aceptar y Aplicar",
   },
   customProvider: {
     deleted: "Proveedor eliminado",
@@ -901,10 +920,46 @@ export const messagesEs: Messages = {
     context7Disabled: "Context7 — desactívalo si no lo necesitas",
     editServer: "Editar Servidor MCP",
     addServer: "Añadir Servidor MCP",
+    addServerButton: "Añadir Servidor",
     instructionsPlaceholder:
       "Instrucciones para el agente cuando este servidor MCP esté activo. Usa {{SERVER_PREFIX}} para referirte a los tools de este servidor.",
     args: "Argumentos",
     onePerLine: "Uno por línea",
+    installed: "Servidores instalados",
+    installedDesc:
+      "Activa y desactiva servidores de Model Context Protocol (MCP). Los cambios se aplican automáticamente sin reiniciar el agente.",
+    noServers: "No hay servidores MCP",
+    noServersDesc:
+      "Añade tu primer servidor para dar nuevas habilidades matemáticas, de conexión o herramientas al agente.",
+    serverItem: "servidor",
+    editContext7Title: "Editar Instrucciones de Context7",
+    context7Description:
+      "Context7 es un servicio integrado que puedes activar o desactivar. No se puede eliminar, pero puedes desactivarlo desde el interruptor de la lista. Aquí puedes personalizar las instrucciones de inyección del agente para guiar su interacción con las herramientas de Context7.",
+    nameLabel: "Nombre",
+    namePlaceholder: "github, notion, postgres...",
+    nameHelp: "Usado en referencias de tools. Usa minúsculas y guiones.",
+    typeLabel: "Tipo",
+    typeStdio: "Local (Stdio / Comando)",
+    typeHttp: "Remoto (HTTP / SSE)",
+    commandLabel: "Comando",
+    commandPlaceholder: "npx, python, docker...",
+    variablesAvailable: "Variables disponibles:",
+    projectPathSubstituted: "se sustituye por la ruta del proyecto activo.",
+    envVarsLabel: "Variables de Entorno",
+    envVarsOptional: "Opcional, KEY=value por línea",
+    urlLabel: "URL",
+    headersLabel: "Cabeceras HTTP (Headers)",
+    headersOptional: "Opcional, KEY: value por línea",
+    agentInstructionsLabel: "Instrucciones del Agente",
+    optional: "Opcional",
+    instructionsInjectedHelp: "Se inyecta como contexto al agente. Variables:",
+    instructionsPrefixHelp: "— prefijo de tools,",
+    instructionsPathHelp: "— ruta activa.",
+    loadingTools: "Cargando tools...",
+    toolsError:
+      "Error al conectar para obtener las tools. Asegúrate de que la configuración sea correcta y el servidor esté corriendo.",
+    noTools: "No se encontraron tools para este servidor.",
+    availableTools: "TOOLS DISPONIBLES",
   },
   prompts: {
     needCategory: "Debes seleccionar una categoría para el prompt.",
@@ -964,10 +1019,16 @@ export const messagesEs: Messages = {
     categories: {
       systemPrompts: "Prompts del sistema",
       systemPromptsDesc:
-        "Prompts de fábrica del sistema. Editables bajo tu criterio.",
-      review: "Revisar",
-      reviewDesc:
-        "Prompts que NO llegan a vibes-core. Los usan otros handlers (títulos de chat, commits, memoria, etc.).",
+        "Prompts de fábrica del sistema. Editables bajo tu criterio (solo contenido).",
+    },
+    // Card #195: sub-grupos de la jerarquía a 2 niveles (metadato de código
+    // SYSTEM_PROMPT_GROUPS). El bucket "review" dejó de existir.
+    groups: {
+      core: "Core",
+      titles: "Títulos y nombres",
+      git: "Git",
+      memory: "Sistema de memoria",
+      vision: "Procesamiento de imágenes",
     },
     system: {
       labels: {
@@ -984,6 +1045,7 @@ export const messagesEs: Messages = {
         ctx_plan_mode: "Planificación interactiva",
         ctx_build_walkthrough: "Resumen de cambios",
         runtime_agent_base: "Núcleo del agente",
+        vision: "Prompt de visión",
       },
       descs: {
         chat_title:
@@ -1010,6 +1072,8 @@ export const messagesEs: Messages = {
           "Instrucciones para generar un resumen de cambios en la carpeta .vibes/ al finalizar tareas complejas en modo build.",
         runtime_agent_base:
           "Núcleo del agente: reglas de uso de herramientas que el modelo recibe en cada sesión. La carcasa lo compone; el runtime lo ejecuta.",
+        vision:
+          "Procesa las imágenes adjuntas en descripciones textuales hiperdetalladas para modelos que no pueden ver.",
       },
     },
   },
@@ -1111,7 +1175,20 @@ export const messagesEs: Messages = {
     deactivated: "Skill desactivado",
     editSkill: "Editar Skill",
     createSkill: "Crear Skill",
-    empty: "No hay ningún skill configurado. Haz clic en \"Crear Skill\" para empezar.",
+    empty: 'No hay ningún skill configurado. Haz clic en "Crear Skill" para empezar.',
+    createButton: "Crear Skill",
+    loading: "Cargando skills...",
+    noSkillsInGroup: "No hay skills creados.",
+    disabledBadge: "DESACTIVADO",
+    skillItem: "Skill",
+    projectPrefix: "Proyecto: {name}",
+    nameLabel: "Nombre del Skill",
+    namePlaceholder: "ej: mis-preferencias-de-codigo",
+    nameHelp: "Letras, números y guiones.",
+    scopeLabel: "Ámbito (Scope)",
+    scopeHelp: "Dónde guardar el skill.",
+    contentLabel: "Contenido (SKILL.md)",
+    saveSkill: "Guardar Skill",
   },
   wizard: {
     registerFree: "Registro gratuito con Google o GitHub",

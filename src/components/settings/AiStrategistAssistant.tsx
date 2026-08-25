@@ -103,7 +103,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
       }
     } catch (e: any) {
       console.error(e);
-      showError("Error al generar propuesta: " + e.message);
+      showError(t("aiStrategist.generateError", { error: e.message }));
     } finally {
       setIsGenerating(false);
     }
@@ -115,7 +115,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
       setProposal(null);
       setInstruction("");
       setIsOpen(false);
-      showSuccess("Propuesta aplicada al editor");
+      showSuccess(t("aiStrategist.proposalApplied"));
     }
   };
 
@@ -142,14 +142,14 @@ Instrucciones del usuario para modificar o refinar este contenido:
           className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/40 rounded-lg h-7 font-medium"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Generar con IA
+          {t("aiStrategist.generateButton")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[875px] max-h-[80vh] p-6 rounded-2xl shadow-2xl bg-popover border border-border flex flex-col">
         <DialogHeader className="pb-3 border-b border-border/50">
           <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-            Generar con IA
+            {t("aiStrategist.dialogTitle")}
           </DialogTitle>
         </DialogHeader>
 
@@ -158,7 +158,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
             <div className="space-y-3 flex-1 flex flex-col min-h-0">
               <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  ¿Qué deseas que haga el modelo?
+                  {t("aiStrategist.instructionLabel")}
                 </label>
                 <textarea
                   className="w-full flex-1 min-h-[220px] rounded-xl border border-border bg-muted/10 px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans leading-relaxed custom-scrollbar"
@@ -177,7 +177,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
             <div className="space-y-3 flex-1 flex flex-col min-h-0">
               <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Propuesta del Estratega:
+                  {t("aiStrategist.proposalLabel")}
                 </label>
                 <textarea
                   readOnly
@@ -206,7 +206,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   onClick={() => handleOpenChange(false)}
                   disabled={isGenerating}
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -217,12 +217,12 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Generando...
+                      {t("aiStrategist.generating")}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-3.5 w-3.5" />
-                      Generar Propuesta
+                      {t("aiStrategist.generateProposal")}
                     </>
                   )}
                 </Button>
@@ -236,7 +236,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   onClick={handleDiscard}
                   disabled={isGenerating}
                 >
-                  Descartar
+                  {t("aiStrategist.discard")}
                 </Button>
                 <Button
                   variant="outline"
@@ -250,7 +250,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   ) : (
                     <Sparkles className="h-3.5 w-3.5" />
                   )}
-                  Regenerar
+                  {t("aiStrategist.regenerate")}
                 </Button>
                 <Button
                   size="sm"
@@ -259,7 +259,7 @@ Instrucciones del usuario para modificar o refinar este contenido:
                   disabled={isGenerating}
                 >
                   <Check className="h-3.5 w-3.5" />
-                  Aceptar y Aplicar
+                  {t("aiStrategist.acceptApply")}
                 </Button>
               </>
             )}

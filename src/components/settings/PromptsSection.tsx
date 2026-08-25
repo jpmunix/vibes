@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AiStrategistAssistant } from "./AiStrategistAssistant";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -21,14 +20,14 @@ import {
   Trash2,
   Edit2,
   ChevronDown,
-  Lock,
 } from "@/components/ui/icons";
 import { toast } from "sonner";
 import type { PromptDto, PromptCategoryDto } from "@/ipc/types";
+import { SYSTEM_PROMPT_GROUPS } from "@/prompts/index";
 import {
-  canDisablePrompt,
   getPromptEditorLock,
   isAgentCorePrompt,
+  isSystemPrompt,
 } from "./prompt_guard";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
@@ -838,6 +837,105 @@ function PromptGroup({
   );
 }
 
+/**
+ * Card #195: sección "Prompts del sistema" a 2 niveles.
+ *
+ * Nivel 1: "Prompts del sistema" (colapsable).
+ * Nivel 2: sub-grupos definidos en SYSTEM_PROMPT_GROUPS (código): Core,
+ * Títulos y nombres, Git, Sistema de memoria, Procesamiento de imágenes.
+ *
+ * La clasificación NO usa categoryId: usa `groupKey` (metadato de código que
+ * el handler `list` expone en el DTO). Los prompts de sistema NO se muestran
+ * bajo categorías de usuario.
+ */
+function SystemPromptsGroup({
+  prompts,
+  categories,
+  onRefresh,
+}: {
+  prompts: PromptDto[];
+  categories: PromptCategoryDto[];
+  onRefresh: () => void;
+}) {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+
+  // Sub-grupos en el orden de SYSTEM_PROMPT_GROUPS (metadato de código).
+  const groups = SYSTEM_PROMPT_GROUPS.map((g) => ({
+    groupKey: g.groupKey,
+    prompts: g.promptIds
+      .map((id) => prompts.find((p) => p.systemId === id))
+      .filter((p): p is PromptDto => Boolean(p)),
+  })).filter((g) => g.prompts.length > 0);
+
+  // Fallback defensivo: systemIds sin grupo (no debería ocurrir — el test de
+  // regla de oro en prompts/index.test.ts lo impide). Se muestran al final
+  // para que no desaparezcan.
+  const knownIds = new Set(SYSTEM_PROMPT_GROUPS.flatMap((g) => g.promptIds));
+  const ungrouped = prompts.filter((p) => p.systemId && !knownIds.has(p.systemId as never));
+
+  return (
+    <div>
+      <div
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border transition-colors gap-4 bg-muted/20 hover:bg-muted/50"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <div className="flex-1">
+          <h3 className="typo-label flex items-center gap-2">
+            {t("prompts.categories.systemPrompts")}
+            <span className="text-muted-foreground typo-caption">
+              ({prompts.length})
+            </span>
+          </h3>
+          <p className="typo-caption mt-1">{t("prompts.categories.systemPromptsDesc")}</p>
+        </div>
+        <ChevronRight
+          className={cn(
+            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+            expanded && "rotate-90",
+          )}
+        />
+      </div>
+
+      {expanded && (
+        <div className="pl-4 space-y-4">
+          {groups.map((g) => (
+            <div key={g.groupKey}>
+              <h4 className="typo-micro font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1">
+                {t(`prompts.groups.${g.groupKey}`)}
+              </h4>
+              <div className="space-y-2">
+                {g.prompts.map((p) => (
+                  <PromptEditor
+                    key={p.id ?? `default-${p.systemId}`}
+                    prompt={p}
+                    categories={categories}
+                    onUpdate={onRefresh}
+                    onDelete={onRefresh}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+          {ungrouped.length > 0 && (
+            <div className="space-y-2">
+              {ungrouped.map((p) => (
+                <PromptEditor
+                  key={p.id ?? `default-${p.systemId}`}
+                  prompt={p}
+                  categories={categories}
+                  onUpdate={onRefresh}
+                  onDelete={onRefresh}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
   const { t } = useI18n();
   const [categories, setCategories] = useState<PromptCategoryDto[]>([]);
@@ -878,36 +976,37 @@ export function PromptsSection({ refreshKey }: { refreshKey?: number }) {
     );
   }
 
-  const uncategorizedPrompts = prompts.filter((p) => !p.categoryId);
+  // Card #195: dos mundos. Los prompts de sistema (con systemId) se rinden
+  // por grupo (groupKey, metadato de código) bajo "Prompts del sistema".
+  // Las categorías de usuario (isSystem=0) solo agrupan prompts custom.
+  const systemPrompts = prompts.filter((p) => p.systemId);
+  const customPrompts = prompts.filter((p) => !p.systemId);
 
-  // "Prompts del sistema" (isSystem) always first, then the rest by id
-  const sortedCategories = [...categories].sort((a, b) => {
-    if (a.isSystem && !b.isSystem) return -1;
-    if (!a.isSystem && b.isSystem) return 1;
-    return a.id - b.id;
-  });
+  // Categorías de usuario (no system), por id.
+  const userCategories = [...categories]
+    .filter((c) => !c.isSystem)
+    .sort((a, b) => a.id - b.id);
 
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {sortedCategories.map((cat) => (
-          <PromptGroup
-            key={cat.id}
-            category={cat}
-            prompts={prompts.filter((p) => p.categoryId === cat.id)}
-            categories={categories}
-            onRefresh={fetchData}
-          />
-        ))}
-
-        {(uncategorizedPrompts.length > 0 || categories.length === 0) && (
-          <PromptGroup
-            category={null}
-            prompts={uncategorizedPrompts}
+        {systemPrompts.length > 0 && (
+          <SystemPromptsGroup
+            prompts={systemPrompts}
             categories={categories}
             onRefresh={fetchData}
           />
         )}
+
+        {userCategories.map((cat) => (
+          <PromptGroup
+            key={cat.id}
+            category={cat}
+            prompts={customPrompts.filter((p) => p.categoryId === cat.id)}
+            categories={categories}
+            onRefresh={fetchData}
+          />
+        ))}
       </div>
     </div>
   );

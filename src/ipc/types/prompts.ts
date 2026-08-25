@@ -19,6 +19,10 @@ export const PromptDtoSchema = z.object({
   // Restore-defaults: si hay un default de fábrica y difiere del actual
   hasDefault: z.boolean().optional(),
   isModified: z.boolean().optional(),
+  // Card #195: grupo de la jerarquía a 2 niveles bajo "Prompts del sistema"
+  // (core | titles | git | memory | vision). Metadato de código; null para
+  // prompts custom.
+  groupKey: z.string().nullable().optional(),
   createdAt: z.date().nullable().optional(),
   updatedAt: z.date().nullable().optional(),
 });
