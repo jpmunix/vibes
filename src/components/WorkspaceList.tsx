@@ -606,11 +606,10 @@ function LabelDialog({
         <DialogHeader className="mb-4">
           <DialogTitle className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
             <Hash size={18} className="text-primary" />
-            Gestionar etiquetas del chat
+            {t("labels.manageTitle")}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Asigna etiquetas existentes o crea nuevas con colores
-            personalizados.
+            {t("labels.manageDesc")}
           </p>
         </DialogHeader>
 
@@ -620,12 +619,10 @@ function LabelDialog({
             <div className="flex flex-col gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
               <span className="text-xs font-semibold text-destructive flex items-center gap-1.5">
                 <Trash2 size={12} className="text-destructive animate-pulse" />
-                ¿Eliminar etiqueta permanentemente?
+                {t("labels.deletePerm")}
               </span>
               <p className="text-xs text-muted-foreground leading-normal">
-                ¿Estás seguro de que quieres eliminar la etiqueta{" "}
-                <strong>"{deletingLabel.name}"</strong>? Se quitará de todos los
-                chats de todos los proyectos. Esta acción no se puede deshacer.
+                {t("labels.deleteConfirm", { name: deletingLabel.name })}
               </p>
               <div className="flex gap-2 mt-1">
                 <Button
@@ -635,7 +632,7 @@ function LabelDialog({
                   onClick={() => setDeletingLabel(null)}
                   className="flex-1 rounded-lg h-8 text-xs font-medium cursor-pointer"
                 >
-                  Cancelar
+                  {t("labels.cancel")}
                 </Button>
                 <Button
                   type="button"
@@ -647,7 +644,7 @@ function LabelDialog({
                   }}
                   className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg h-8 text-xs font-medium cursor-pointer"
                 >
-                  Eliminar
+                  {t("labels.delete")}
                 </Button>
               </div>
             </div>
@@ -740,7 +737,7 @@ function LabelDialog({
                     onClick={() => setEditingLabelId(null)}
                     className="flex-1 rounded-lg h-8 text-xs font-medium cursor-pointer"
                   >
-                    Cancelar
+                    {t("labels.cancel")}
                   </Button>
                   <Button
                     type="button"
@@ -749,7 +746,7 @@ function LabelDialog({
                     disabled={!editName.trim()}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg h-8 text-xs font-medium cursor-pointer"
                   >
-                    Guardar
+                    {t("labels.save")}
                   </Button>
                 </div>
               </div>
@@ -762,7 +759,7 @@ function LabelDialog({
             !exactMatch && (
               <div className="flex flex-col gap-3 p-3 bg-muted/40 border border-border/60 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
                 <span className="text-xs font-semibold text-muted-foreground">
-                  Crear nueva etiqueta:
+                  {t("labels.createNew")}
                 </span>
                 <div className="flex items-center gap-3">
                   <span
@@ -776,7 +773,7 @@ function LabelDialog({
                     {search.trim()}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    elegir color:
+                    {t("labels.chooseColor")}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -820,7 +817,7 @@ function LabelDialog({
                   onClick={handleCreateAndAdd}
                   className="w-full mt-1 flex items-center justify-center gap-1 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl h-8 text-xs font-medium cursor-pointer"
                 >
-                  <Plus size={14} /> Crear y seleccionar
+                  <Plus size={14} /> {t("labels.createAndSelect")}
                 </Button>
               </div>
             )}
@@ -829,13 +826,13 @@ function LabelDialog({
           {deletingLabel === null && editingLabelId === null && (
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold text-muted-foreground">
-                Etiquetas disponibles:
+                {t("labels.available")}
               </span>
               {filteredGlobalLabels.length === 0 ? (
                 <div className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border/60 rounded-xl bg-muted/20">
                   {search.trim()
-                    ? "No se encontraron etiquetas"
-                    : "No hay etiquetas creadas todavía"}
+                    ? t("labels.noResults")
+                    : t("labels.noneYet")}
                 </div>
               ) : (
                 <div className="max-h-[240px] overflow-y-auto pr-1 flex flex-col gap-1.5 border border-border/40 rounded-xl p-2 bg-muted/10">
@@ -905,11 +902,11 @@ function LabelDialog({
           {/* Selected Tags list */}
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-muted-foreground">
-              Seleccionadas ({selectedLabels.length}):
+              {t("labels.selected", { count: String(selectedLabels.length) })}
             </span>
             {selectedLabels.length === 0 ? (
               <div className="text-xs text-muted-foreground py-2 text-center border border-dashed border-border/60 rounded-xl bg-muted/20">
-                Ninguna etiqueta seleccionada
+                {t("labels.noneSelected")}
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto p-2 bg-muted/25 rounded-xl border border-border/40">
@@ -949,7 +946,7 @@ function LabelDialog({
             onClick={onClose}
             disabled={saving}
           >
-            Cancelar
+            {t("labels.cancel")}
           </Button>
           <Button
             onClick={handleSave}
@@ -957,7 +954,7 @@ function LabelDialog({
             className="rounded-xl h-9 bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-1.5 cursor-pointer"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            Guardar cambios
+            {t("labels.saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>
