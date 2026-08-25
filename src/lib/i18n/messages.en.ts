@@ -809,6 +809,8 @@ export const messagesEn: Messages = {
   },
   customProvider: {
     deleted: "Provider deleted",
+    cannotDeleteLast:
+      "You can't delete the last configured provider. Add another one first.",
     connected: {
       one: "Connection successful — 1 model",
       many: "Connection successful — {count} models",

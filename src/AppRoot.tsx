@@ -15,12 +15,24 @@ import {
 import { selectedAppIdAtom } from "./atoms/appAtoms";
 import { queryKeys } from "./lib/queryKeys";
 import { useUpdateChecker } from "./hooks/useUpdateChecker";
+import { useAnimationsPaused } from "./hooks/useAnimationsPaused";
 import { UpdateAvailableDialog } from "./components/UpdateAvailableDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { showError } from "./lib/toast";
 
 export default function AppRoot() {
   const queryClient = useQueryClient();
+  const animationsPaused = useAnimationsPaused();
+
+  // #VIBES-202: congela las animaciones CSS cuando la app no se está mirando
+  // (ventana oculta o en reposo sin foco). La clase raíz permite
+  // `animation-play-state: paused` global sin desmontar el DOM.
+  useEffect(() => {
+    document.documentElement.classList.toggle(
+      "animations-paused",
+      animationsPaused,
+    );
+  }, [animationsPaused]);
 
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);

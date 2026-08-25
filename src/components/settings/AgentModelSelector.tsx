@@ -1,6 +1,6 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
-import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import { DEFAULT_AGENT_MODEL } from "@/lib/schemas";
 
@@ -26,8 +26,7 @@ interface AgentModelSelectorProps {
 export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
-  const { data: openRouterModels, isLoading } =
-    useLanguageModelsForProvider("openrouter");
+  const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue = settings?.agentModels?.[agentId] ?? DEFAULT_AGENT_MODEL;
 
@@ -45,7 +44,7 @@ export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
     );
   };
 
-  const defaultModelInList = openRouterModels?.find(
+  const defaultModelInList = allModels?.find(
     (m) => m.apiName === DEFAULT_AGENT_MODEL,
   );
 
@@ -54,12 +53,13 @@ export function AgentModelSelector({ agentId }: AgentModelSelectorProps) {
       variant="pill"
       selectedModel={currentValue}
       onModelSelect={handleChange}
-      models={(openRouterModels || []).filter(
+      models={(allModels || []).filter(
         (m) => m.apiName !== DEFAULT_AGENT_MODEL,
       )}
       loading={isLoading}
       placeholder={t("common.selectModel")}
       disableEnabledFilter
+      showProviderBadge
       specialOptions={[
         {
           value: DEFAULT_AGENT_MODEL,

@@ -482,6 +482,17 @@ body[data-scroll-locked] .app-region-drag {
   animation: marquee 2s linear infinite;
 }
 
+/* #VIBES-202: congelar todas las animaciones CSS cuando la app está en
+   reposo (ventana oculta o sin foco). La clase se togglea desde
+   AppRoot vía useAnimationsPaused. No desmonta el DOM: solo pausa el
+   compositor, así el coste de CPU cae a ~0 sin saltos visuales al volver. */
+.animations-paused *,
+.animations-paused *::before,
+.animations-paused *::after {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
 /* Hide scrollbar for toolbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSettings } from "@/hooks/useSettings";
+import { useAnimationsPaused } from "@/hooks/useAnimationsPaused";
 
 interface StreamingLoadingAnimationProps {
   variant: "initial" | "streaming";
@@ -113,93 +114,20 @@ function resolveColor(textClass?: string): string {
 // ─── Orbital Loader ───────────────────────────────────────────────────────────
 
 /**
- * Premium orbital particle loader.
- * Three luminous particles orbit an invisible center with glowing trails.
- * Color-reactive: matches the current streaming action.
+ * Loader orbital por defecto, en CSS puro (compositor GPU).
+ *
+ * #VIBES-202: el original usaba 3 partículas de framer-motion orbitando con
+ * glow (rAF en el main thread). Ahora es un anillo `conic-gradient` girando
+ * vía `transform: rotate` en keyframes → lo anima el compositor sin tocar
+ * layout/paint ni bloquear el main thread. Visualmente más simple (aprobado
+ * por munix) y con el color de la label para que siga casando con la UI.
  */
 function OrbitalLoader({ color, size = 24 }: { color: string; size?: number }) {
-  const r = size / 2; // orbit radius
-  const particleSize = 2;
-
   return (
     <div
-      className="relative flex items-center justify-center overflow-hidden shrink-0"
-      style={{ width: size, height: size }}
-    >
-      {/* Glow backdrop */}
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: size * 0.4,
-          height: size * 0.4,
-          background: color,
-          filter: "blur(3px)",
-        }}
-        animate={{ opacity: [0.15, 0.35, 0.15], scale: [0.8, 1.1, 0.8] }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {/* Center dot */}
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: particleSize,
-          height: particleSize,
-          background: color,
-        }}
-        animate={{ opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {/* Orbiting particles */}
-      {[0, 1, 2].map((i) => {
-        const delay = i * (1.2 / 3);
-        const orbitDuration = 1.2;
-        // Each particle has a slightly different orbit radius for depth
-        const orbitR = r - 1 + i * 1.2;
-
-        return (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: particleSize + (2 - i) * 0.5,
-              height: particleSize + (2 - i) * 0.5,
-              background: color,
-              boxShadow: `0 0 ${4 + i * 2}px ${color}80, 0 0 ${8 + i * 3}px ${color}40`,
-              top: "50%",
-              left: "50%",
-              marginTop: -(particleSize + (2 - i) * 0.5) / 2,
-              marginLeft: -(particleSize + (2 - i) * 0.5) / 2,
-            }}
-            animate={{
-              x: [
-                Math.cos(0) * orbitR,
-                Math.cos(Math.PI * 0.5) * orbitR,
-                Math.cos(Math.PI) * orbitR,
-                Math.cos(Math.PI * 1.5) * orbitR,
-                Math.cos(Math.PI * 2) * orbitR,
-              ],
-              y: [
-                Math.sin(0) * orbitR,
-                Math.sin(Math.PI * 0.5) * orbitR,
-                Math.sin(Math.PI) * orbitR,
-                Math.sin(Math.PI * 1.5) * orbitR,
-                Math.sin(Math.PI * 2) * orbitR,
-              ],
-              opacity: [0.5, 1, 0.7, 1, 0.5],
-              scale: [0.8, 1.3, 0.9, 1.2, 0.8],
-            }}
-            transition={{
-              duration: orbitDuration,
-              delay,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-        );
-      })}
-    </div>
+      className="orbital-loader shrink-0"
+      style={{ "--m-color": color, width: size, height: size } as React.CSSProperties}
+    />
   );
 }
 
@@ -278,6 +206,8 @@ function GlitchTypewriter({
   const prevTextRef = useRef(text);
   const frameRef = useRef<number | null>(null);
 
+  const paused = useAnimationsPaused();
+
   // When text changes (new excerpt), animate the new characters in
   useEffect(() => {
     const prevLen =
@@ -289,6 +219,15 @@ function GlitchTypewriter({
 
     // Cancel any pending animation
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
+
+    // #VIBES-202: si la app está en reposo (oculta/sin foco), no animamos el
+    // typewriter — mostramos el texto completo de golpe y salimos. Evita
+    // setState por frame (rAF) en background, que es lo que quema CPU.
+    if (paused) {
+      setRevealCount(text.length);
+      setGlitchIndices(new Set());
+      return;
+    }
 
     const totalChars = text.length;
     const charsToReveal = totalChars - prevLen;
@@ -333,7 +272,7 @@ function GlitchTypewriter({
       clearTimeout(startTimeout);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [text]);
+  }, [text, paused]);
 
   // Build the rendered string with glitch substitutions
   const rendered = useMemo(() => {
@@ -395,11 +334,38 @@ export function ActiveLoader({
   style,
   color,
   size,
+  forceAnimate,
 }: {
   style: string;
   color: string;
   size?: number;
+  forceAnimate?: boolean;
 }) {
+  // forceAnimate=true ignora el estado de pausa (ventana oculta/sin foco)
+  // y fuerza la animación. Útil para el escaparate de previews.
+  const pausedRaw = useAnimationsPaused();
+  const paused = forceAnimate ? false : pausedRaw;
+
+  // #VIBES-202: en reposo (ventana oculta o sin foco) renderizamos una
+  // miniatura estática. La animación de framer-motion es costosa (rAF en el
+  // main thread); congelarla cuando no se mira reduce el CPU del renderer a
+  // ~0. Al volver el foco, se reanuda sola (el componente se re-renderiza).
+  if (paused) {
+    const staticSize = size ?? 24;
+    return (
+      <div
+        className="shrink-0 rounded-full"
+        style={{
+          width: staticSize,
+          height: staticSize,
+          background: color,
+          opacity: 0.45,
+        }}
+        aria-hidden
+      />
+    );
+  }
+
   const loaderElement = (() => {
     switch (style) {
       case "aurora":
@@ -1554,6 +1520,16 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({
 });
 
 export const MICRO_LOADER_CSS = `
+.orbital-loader {
+    position: relative;
+    display: inline-flex; justify-content: center; align-items: center;
+    color: inherit;
+    --m-color: currentColor;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--m-color) 22%, transparent);
+    border-top-color: var(--m-color);
+    animation: m-spin 0.85s linear infinite;
+}
 .micro-loader {
     width: 18px; height: 18px;
     position: relative;

@@ -15,7 +15,7 @@ Que el board de Trello sea **la única fuente de verdad** del estado del proyect
 
 - **Lo que está hecho** → `Done` (con su evidencia)
 - **Lo que toca ahora** → `To-do` / `Doing`
-- **Lo que está atascado** → `Blocked` (con el porqué)
+- **Lo que está atascado** → se documenta en la card con el comentario `🚧 [Atasco]` (no hay columna `Blocked`)
 - **Lo que falta por hacer** → `Backlog` (con su contexto)
 
 El agente **vive en el board**: cada card tiene una **descripción ejecutiva** (qué/por
@@ -37,13 +37,15 @@ técnico, decisiones, referencias a archivos — para el agente dentro de 6 mese
 | **Ideas** | Ideas sueltas, NO planificadas (fuera del flujo, no se priorizan) | munix las apunta; el agente no las toca |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
 | **Doing** | En curso ahora mismo | El agente (1-2 cards máximo) |
-| **Blocked** | Atascada (falta munix, falta decisión, falta dep) | El agente la mueve con motivo |
-| **Review** | Terminada, esperando revisión de munix | El agente la mueve al acabar |
-| **Manual tests** | En pruebas manuales antes de cerrar | munix (o el agente con su OK) tras validar en Review |
+| **Review** | Terminada, esperando revisión de munix (incluye las pruebas manuales) | **Solo munix** la mueve (el agente deja la evidencia y avisa) |
 | **Done** | Cerrada y verificada | El agente la mueve tras OK de munix |
 
+> **No hay columna `Blocked` ni `Manual tests`** (eliminadas 2026-08-25): los atascos
+> se documentan en la card con `🚧 [Atasco]` y las pruebas manuales las hace munix
+> dentro de `Review` antes de dar el OK.
+
 **Regla de oro:** el agente NO trabaja en más de 1-2 cards a la vez. Si está en
-`Doing`, no coge otra hasta cerrar o bloquear la actual.
+`Doing`, no coge otra hasta cerrar o dejar la actual atascada (con `🚧 [Atasco]`).
 
 ---
 
@@ -146,9 +148,8 @@ node scripts/trello/list-cards.mjs --number 139 --detail > /tmp/card-139.json  #
 ```
 
 El agente **prioriza así**:
-1. Cards en `Blocked` que él pueda **desbloquear** (decidir algo, hacer algo)
-2. Cards en `To-do` que munix haya dejado
-3. La card más antigua de `Backlog` con mayor valor (labels `deuda` primero, luego fases)
+1. Cards en `To-do` que munix haya dejado
+2. La card más antigua de `Backlog` con mayor valor (labels `deuda` primero, luego fases)
 
 > [!NOTE]
 > La lista **`Ideas` queda FUERA del flujo**: son notas de munix sin planificar.
@@ -194,54 +195,39 @@ node scripts/trello/update-card.mjs --card "X" --check-all
 > El checklist de una card = sus **criterios de aceptación**. Marcar un item =
 > declarar que está cumplido con evidencia. No marcar a lo bruto.
 
-### 4️⃣ Encontrar un atasco (Doing → Blocked)
+### 4️⃣ Encontrar un atasco (sin columna — comentario `🚧 [Atasco]`)
 
-Si el agente no puede avanzar solo (falta decisión de munix, falta una dep, falta acceso), **NO se queda bloqueado en silencio**:
+Si el agente no puede avanzar solo (falta decisión de munix, falta una dep, falta acceso), **NO se queda bloqueado en silencio**. No hay columna `Blocked` (eliminada 2026-08-25): la card se queda en `Doing` con el atasco documentado:
 
 ```bash
 node scripts/trello/update-card.mjs \
   --card "X" \
-  --move "Blocked" \
-  --comment "🚧 [Blocked] Necesito que munix decida: A o B. Detalle: ..."
+  --comment "🚧 [Atasco] Necesito que munix decida: A o B. Detalle: ..."
 ```
 
-El comentario DEBE explicar **qué falta** y **qué se necesita** para desbloquear. munix lo ve, decide, y mueve la card de vuelta (o el agente la mueve cuando le den el OK).
+El comentario DEBE explicar **qué falta** y **qué se necesita** para desbloquear. El agente además avisa a munix por el chat. Cuando munix decide, la card ya está en `Doing` y el agente la retoma directamente.
 
-### 5️⃣ Terminar el trabajo (Doing → Review)
+### 5️⃣ Terminar el trabajo (Doing, con comentario `✅ [Review]` — NO se mueve)
 
-Cuando el código está listo y **verificado** (tests verdes, typecheck, etc.):
+Cuando el código está listo y **verificado** (tests verdes, typecheck, etc.), el agente **NO mueve la card a `Review`** — deja la evidencia en la card en `Doing` y avisa a munix:
 
 ```bash
 node scripts/trello/update-card.mjs \
   --card "X" \
-  --move "Review" \
   --comment "✅ [Review] Trabajo completado. Tests: N verdes (comando X). Archivos tocados: ..."
 ```
 
-El comentario de Review resume **qué se hizo** + **evidencia de verificación** (comandos y resultados). munix revisa el código, corre pruebas manuales, y da el OK.
+**Solo munix** mueve la card de `Doing` a `Review` cuando la acepta. El comentario de Review resume **qué se hizo** + **evidencia de verificación** (comandos y resultados). Si munix pide cambios, la card **vuelve a `Doing`** (la mueve munix o el agente con su OK) y el agente la retoma — **el desarrollo nunca ocurre estando la card en `Review`** (kanban: Review es inspección, no iteración).
 
-### 6️⃣ Probar manualmente (Review → Manual tests)
+### 6️⃣ Probar manualmente (dentro de `Review` — sin columna)
 
-Cuando el trabajo pasa la revisión de munix en Review, la card pasa a pruebas
-manuales antes de cerrarse:
+Las pruebas manuales las hace munix **dentro de `Review`** (no hay columna `Manual tests`, eliminada 2026-08-25), antes de dar el OK de cierre:
 
-```bash
-node scripts/trello/update-card.mjs \
-  --card "X" \
-  --move "Manual tests" \
-  --comment "🧪 [Manual tests] Pasa a pruebas manuales. Qué validar: ..."
-```
+- munix valida el comportamiento (los bullets del `feature_inventory` del proyecto)
+- si algo falla, la card vuelve a `Doing` con el feedback (paso 5)
+- si pasa, munix da el OK para cerrar
 
-El comentario de Manual tests lista **qué probar** y **qué validar** (los bullets
-del feature_inventory del proyecto). munix (o el agente con su OK) hace las
-pruebas manuales y da el visto bueno. Cuando las pruebas pasan, la card va a Done.
-
-> [!NOTE]
-> La lista **`Manual tests`** es un paso **intermedio** del flujo, entre `Review`
-> y `Done`: las cards pasan por pruebas manuales antes de cerrarse. No es un
-> vertedero de tarjetas paradas — la card no se queda ahí, se prueba y se mueve.
-
-### 7️⃣ Cerrar la card (Manual tests → Done) — el momento CRÍTICO
+### 7️⃣ Cerrar la card (Review → Done) — el momento CRÍTICO
 
 Cuando munix da el OK (verbalmente, tras las pruebas manuales, o moviendo él la card):
 
@@ -276,7 +262,7 @@ Usa **prefijos emoji + etiqueta** para que sean escaneables:
 | Prefijo | Uso | Ejemplo |
 |---|---|---|
 | `🔄 [Doing]` | Inicio de trabajo (plan) | `🔄 [Doing] Empiezo. Plan: migrar X a Y, tests A/B/C` |
-| `🚧 [Blocked]` | Atasco (qué falta) | `🚧 [Blocked] Falta decisión munix: ¿SQLite o Postgres?` |
+| `🚧 [Atasco]` | Atasco (qué falta) | `🚧 [Atasco] Falta decisión munix: ¿SQLite o Postgres?` |
 | `✅ [Review]` | Trabajo listo (evidencia) | `✅ [Review] Tests: 12 verdes (pnpm test). Archivos: 3` |
 | `🏁 [Done]` | Cierre con OK | `🏁 [Done] OK munix. Cerrada.` |
 | `🧠 Contexto` | Decisión/porqué técnico | `🧠 Contexto: elegimos X sobre Y porque ...` |
@@ -371,10 +357,10 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 2. **Proponer**: comenta *"Propongo mover esta card a To-do para trabajarla"* → munix OK (o el agente la mueve si munix dijo "hazla").
 3. **Coger**: `--move "Doing" --comment "🔄 [Doing] Plan: estimator → summarizer → compactor → hook en loop → tests"`
 4. **Trabajar**: código + tests. Marca checklist: `--check-item "Compactor.ts (Modo A)"`.
-5. **Atasco** (ej. duda de diseño): `--move "Blocked" --comment "🚧 [Blocked] ¿El buffer reservado debe ser % o tokens? Necesito decisión de munix."`
-6. **Desbloqueo**: munix decide → mover a Doing con `🔄` de nuevo.
-7. **Terminar**: `--move "Review" --comment "✅ [Review] Implementado. Tests: 14 verdes (pnpm test). Archivos: estimator.ts, summarizer.ts, compactor.ts, loop.ts"`
-8. **Probar manualmente**: munix revisa → `--move "Manual tests" --comment "🧪 [Manual tests] Qué validar: compactar un chat largo, verificar el resumen."` → munix prueba.
+5. **Atasco** (ej. duda de diseño): `--comment "🚧 [Atasco] ¿El buffer reservado debe ser % o tokens? Necesito decisión de munix."` (la card se queda en Doing) + aviso a munix por el chat.
+6. **Desbloqueo**: munix decide → el agente retoma la card directamente (sigue en Doing).
+7. **Terminar**: `--comment "✅ [Review] Implementado. Tests: 14 verdes (pnpm test). Archivos: estimator.ts, summarizer.ts, compactor.ts, loop.ts"` → la card se queda en Doing con la evidencia; el agente avisa a munix.
+8. **Munix revisa**: munix mueve la card a `Review`, revisa el código y hace las pruebas manuales dentro de Review (no hay columna Manual tests). Si algo falla → vuelve a Doing.
 9. **Cerrar**: munix da OK tras las pruebas → `--move "Done" --comment "🏁 [Done] OK munix. Cerrada."` + `🧠 Contexto` si hubo decisiones.
 
 > [!IMPORTANT]
@@ -400,7 +386,8 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
     node scripts/trello/update-card.mjs --card "X" --archive --comment "🗄️ [Archivada] Motivo..."
     ```
   - ⚠️ Archivar oculta la card del board activo pero conserva su historial/comentarios. **Recuperable** si hiciera falta. Siempre deja un comentario que diga **a qué card nueva (o por qué) se archiva**, para no perder la trazabilidad.
-- ❌ **NO** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11): solo munix la llena; el agente no la toca.
+- ❌ **NO** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11): solo munix la llena; el agente no la toca. `Blocked` y `Manual tests` fueron **eliminadas** (2026-08-25).
+- ❌ **NO** mover la card a `Review`: el agente deja la evidencia (`✅ [Review]`) en la card en `Doing` y avisa; **solo munix** la mueve a `Review`.
 - ❌ **NO** marcar checklist items sin haber verificado.
 - ✅ **SÍ** documentar SIEMPRE con comentarios (inicio, atasco, review, cierre).
 - ✅ **SÍ** proponer (comentar) antes de mover cosas de Backlog.
@@ -411,14 +398,14 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 ## 📌 Resumen para el agente (cheatsheet)
 
 ```
-1. LEE el board (list-cards --light) → prioriza: Blocked desbloqueable > To-do > Backlog propuesto
+1. LEE el board (list-cards --light) → prioriza: To-do > Backlog propuesto
    · Para una card concreta: list-cards --number 139 --detail > /tmp/card-139.json
 2. COGE la card (--move Doing + comentario plan)
 3. TRABAJA (AGENTS.md: slices, tests, contract golden) + marca checklist
-4. SI te atascas → Blocked con motivo claro (no silencio)
-5. AL TERMINAR → Review con evidencia (tests, archivos)
-6. TRAS validar en Review → Manual tests con comentario de qué validar (pruebas manuales)
-7. CON OK de munix (tras pruebas manuales) → Done con comentario de cierre + bitácora si hay decisiones
+4. SI te atascas → comentario 🚧 [Atasco] en la card (sigue en Doing) + avisa a munix (no silencio)
+5. AL TERMINAR → comentario ✅ [Review] con evidencia (tests, archivos); NO muevas la card (la mueve munix a Review)
+6. MUNIX revisa y hace las pruebas manuales EN Review (no hay columna Manual tests); si pide cambios → vuelve a Doing
+7. CON OK de munix (tras las pruebas en Review) → Done con comentario de cierre + bitácora si hay decisiones
 8. DEUDA nueva → create-card en Backlog (no la arregles en caliente)
 9. LABELS: toda card que creas/coges lleva labels coherentes (deuda/dimensión/fase) — vocabulario en AGENTS.md §1.10.9
 ```

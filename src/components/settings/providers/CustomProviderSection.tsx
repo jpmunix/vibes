@@ -27,7 +27,26 @@ import {
 import { showError, showSuccess } from "@/lib/toast";
 import { ProviderHeader } from "./ProviderHeader";
 import { VerifiedModelsList } from "./VerifiedModelsList";
-import type { CustomProviderConfig } from "@/lib/schemas";
+import type { CustomProviderConfig, UserSettings } from "@/lib/schemas";
+
+/**
+ * ¿Es el provider actual el único configurado?
+ * Ollama cuenta como activo salvo que esté explícitamente desactivado
+ * (ollamaEnabled === false). Card #160 — guard D5.
+ */
+export function isLastConfiguredProvider(
+  settings: UserSettings | null | undefined,
+): boolean {
+  const orSettings = (settings?.providerSettings as any)?.["openrouter"];
+  const openRouterConfigured =
+    (orSettings?.keys?.length ?? 0) > 0 || !!orSettings?.apiKey?.value;
+  const ollamaConfigured = settings?.ollamaEnabled !== false;
+  const activeCount =
+    (openRouterConfigured ? 1 : 0) +
+    ((settings?.customProviders as any[])?.length ?? 0) +
+    (ollamaConfigured ? 1 : 0);
+  return activeCount <= 1;
+}
 
 export function CustomProviderSection({
   provider,
@@ -50,6 +69,7 @@ export function CustomProviderSection({
   const disabledProviders = settings?.disabledProviders ?? [];
   const enabled = !disabledProviders.includes(provider.id);
   const customProviders = settings?.customProviders ?? [];
+  const isLastProvider = isLastConfiguredProvider(settings);
 
   const handleToggle = async (on: boolean) => {
     const current = settings?.disabledProviders ?? [];
@@ -78,6 +98,10 @@ export function CustomProviderSection({
   };
 
   const handleDelete = async () => {
+    if (isLastProvider) {
+      showError(t("customProvider.cannotDeleteLast"));
+      return;
+    }
     const filtered = customProviders.filter((p) => p.id !== provider.id);
     const updates: Record<string, any> = { customProviders: filtered };
     // Clean disabled list
@@ -127,12 +151,17 @@ export function CustomProviderSection({
           rightActions={
             <button
               type="button"
+              disabled={isLastProvider}
+              title={
+                isLastProvider
+                  ? t("customProvider.cannotDeleteLast")
+                  : t("common.delete")
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 setConfirmDelete(true);
               }}
-              className="p-1.5 rounded-md text-muted-foreground/40 hover:!text-red-600 hover:!bg-red-100 dark:hover:!bg-red-900/20 transition-colors cursor-pointer"
-              title={t("common.delete")}
+              className="p-1.5 rounded-md text-muted-foreground/40 hover:!text-red-600 hover:!bg-red-100 dark:hover:!bg-red-900/20 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

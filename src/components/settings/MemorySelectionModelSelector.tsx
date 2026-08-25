@@ -1,6 +1,6 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
-import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
@@ -14,8 +14,7 @@ const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 export function MemorySelectionModelSelector() {
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
-  const { data: openRouterModels, isLoading } =
-    useLanguageModelsForProvider("openrouter");
+  const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue =
     !settings?.memoriesRouterModelV2 || settings?.memoriesRouterModelV2 === ""
@@ -31,10 +30,11 @@ export function MemorySelectionModelSelector() {
       variant="pill"
       selectedModel={currentValue}
       onModelSelect={handleChange}
-      models={openRouterModels || []}
+      models={allModels || []}
       loading={isLoading}
       placeholder={t("common.selectModel")}
       disableEnabledFilter
+      showProviderBadge
     />
   );
 }

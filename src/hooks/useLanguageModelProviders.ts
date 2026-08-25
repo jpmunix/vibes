@@ -30,6 +30,13 @@ export function useLanguageModelProviders() {
   };
 
   const isAnyProviderSetup = () => {
+    // Ollama no requiere API key: cuenta como "configurado" si no está
+    // explícitamente desactivado (ollamaEnabled !== false).
+    // (Card #160 — T0: antes Ollama no contaba y el wizard no cerraba al elegirlo.)
+    if (settings?.ollamaEnabled !== false) {
+      return true;
+    }
+
     // Check hardcoded cloud providers
     if (cloudProviders.some((provider) => isProviderSetup(provider))) {
       return true;

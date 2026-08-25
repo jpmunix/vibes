@@ -55,7 +55,7 @@ import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
-import { ActiveLoader } from "@/components/chat/StreamingLoadingAnimation";
+import { ActiveLoader, LoaderStyles } from "@/components/chat/StreamingLoadingAnimation";
 
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
@@ -829,11 +829,24 @@ export function GeneralSettings({
   const activeColorHex =
     getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
 
-  const renderLoaderIcon = (style: string, size: number = 18) => (
-    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner">
-      <ActiveLoader style={style} color={activeColorHex} size={size} />
-    </div>
-  );
+  // #VIBES-202: miniaturas estáticas — cada loader tiene su silueta
+  // característica pero ninguna se anima (evitamos 30+ rAF solo para el
+  // desplegable). Las siluetas usan el color activo.
+  const renderLoaderIcon = (style: string, size: number = 18) => {
+    const baseStyle: React.CSSProperties = { width: size, height: size, color: activeColorHex } as React.CSSProperties;
+    // import dinámico del CSS de loaders si no está cargado
+    let inner: React.ReactNode;
+    if (style === "wave") {
+      inner = (<div className="flex items-center gap-1" style={baseStyle}>{[0,1,2].map(i=>(<span key={i} className="rounded-full shrink-0" style={{ width: 2.5, height: 2.5, background: activeColorHex }}/>))}</div>);
+    } else if (style === "orbital") {
+      inner = (<div className="orbital-loader shrink-0" style={baseStyle} />);
+    } else if (style.startsWith("m-")) {
+      inner = (<div className={"micro-loader " + style.replace(/^m-/, "m-") + " shrink-0"} style={{ "--m-color": activeColorHex, width: size, height: size } as React.CSSProperties}>{(style==="m-dots"||style==="m-eq"||style==="m-swap")&&(<><div/><div/><div/></>)}</div>);
+    } else {
+      inner = (<div className="rounded-full shrink-0" style={{ width: size*0.55, height: size*0.55, background: activeColorHex, opacity: 0.8 }} aria-hidden />);
+    }
+    return (<div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner" aria-hidden>{inner}</div>);
+  };
 
   useEffect(() => {
     if (settings?.theme !== undefined && settings.theme !== theme) {
@@ -859,6 +872,16 @@ export function GeneralSettings({
       setThemeFlavorLight(settings.themeFlavorLight);
     }
   }, [settings?.themeFlavorLight, setThemeFlavorLight, themeFlavorLight]);
+
+  // ── Escaparate temporal de loaders (#VIBES-202) ───────────────────────
+  // TODO: temporal — borrar cuando munix haya elegido el/los loader(s).
+  const [showcaseOpen, setShowcaseOpen] = useState(false);
+
+
+  const handleShowcaseSelect = async (value: string) => {
+    await updateSettings({ loaderStyle: value }, { showToast: true });
+    setShowcaseOpen(false);
+  };
 
   // Apply primary colors from settings on load
   useEffect(() => {
@@ -1447,7 +1470,30 @@ export function GeneralSettings({
               data-testid="loader-style-selector"
             />
           }
+          descriptionExtra={
+            <button
+              type="button"
+              onClick={() => setShowcaseOpen(true)}
+              className="mt-1 text-[11px] text-primary hover:underline"
+            >
+              Ver todos animados →
+            </button>
+          }
         />
+
+        {/* Escaparate temporal — modal con todos los loaders animados (forceAnimate) */}
+        <Dialog open={showcaseOpen} onOpenChange={setShowcaseOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>Loaders — escaparate (temporal)</DialogTitle>
+            </DialogHeader>
+            <LoaderShowcaseGrid
+              activeValue={settings?.loaderStyle || "orbital"}
+              color={activeColorHex}
+              onSelect={handleShowcaseSelect}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Font Selector */}
         <SettingItem
@@ -1827,5 +1873,31 @@ export function WorkflowSettings({
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Escaparate temporal de loaders ─────────────────────────────
+function LoaderShowcaseGrid({ activeValue, color, onSelect }: { activeValue: string; color: string; onSelect: (v: string) => void }) {
+  const STYLES = [
+    "orbital","aurora","wave","jelly","spark","equalizer","infinity","grid","brackets","terminal","server","morph","matrix","glow","voice","packet","sonar","blocks","nodes","glowring",
+    "m-dots","m-radar","m-sine","m-orbit","m-eq","m-pulse","m-cross","m-flip","m-blink","m-breathe","m-swap","m-sonar","m-pie","m-scan","m-hour","m-yin","m-diamond","m-clock","m-expand",
+  ];
+  return (
+    <>
+      <LoaderStyles />
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-4 pt-2">
+        {STYLES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onSelect(value)}
+            className={"flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-xs transition " + (activeValue===value ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40")}
+          >
+            <ActiveLoader style={value} color={color} size={20} forceAnimate />
+            <span className="text-muted-foreground">{value}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

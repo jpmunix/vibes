@@ -146,11 +146,14 @@ app.commandLine.appendSwitch("enable-zero-copy");
 // Ignore GPU blocklist — use GPU even on "unsupported" configs (VS Code does this)
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
 
-// Prevent Chromium from throttling the renderer process when window is not focused
-app.commandLine.appendSwitch("disable-renderer-backgrounding");
-
 // Enable smooth scrolling at Chromium level
 app.commandLine.appendSwitch("enable-smooth-scrolling");
+
+// #VIBES-202: se ELIMINÓ disable-renderer-backgrounding (decisión munix).
+// Ese flag impedía que Chromium throttlease los renderers en segundo plano,
+// causando que la app siguiera quemando CPU (20-30%) sin foco ni streaming.
+// Ahora Chromium puede pausar los timers/animaciones de renderers ocultos.
+// El Pilar B (useAnimationsPaused) garantiza la reactividad cuando hace falta.
 
 const logger = log.scope("main");
 
@@ -519,8 +522,12 @@ const createWindow = () => {
       v8CacheOptions: "bypassHeatCheck",
       // Disable spellcheck to reduce CPU overhead (we handle it ourselves)
       spellcheck: false,
-      // Prevent Chromium from throttling timers/animations when window loses focus
-      backgroundThrottling: false,
+      // #VIBES-202: backgroundThrottling: true (default de Chromium) para que
+      // los timers/animaciones de renderers en segundo plano se pausen. Antes
+      // estaba en false, lo que impedía el throttling y quemaba CPU sin foco.
+      // El backend (proceso main/bridge) sigue corriendo aunque el paint se
+      // congele; el Pilar B reanuda las animaciones al volver el foco.
+      backgroundThrottling: true,
     },
     icon: path.join(
       app.getAppPath(),

@@ -1,6 +1,6 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useI18n } from "@/lib/i18n";
-import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
@@ -14,8 +14,7 @@ const DEFAULT_MODEL = DEFAULT_STANDARD_MODEL;
 export function StandardModeModelSelector() {
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
-  const { data: openRouterModels, isLoading } =
-    useLanguageModelsForProvider("openrouter");
+  const { data: allModels, isLoading } = useMultiProviderModels();
 
   const currentValue =
     !settings?.standardModeModel || settings?.standardModeModel === ""
@@ -26,7 +25,7 @@ export function StandardModeModelSelector() {
     await updateSettings({ standardModeModel: value }, { showToast: true });
   };
 
-  const defaultModelInList = openRouterModels?.find(
+  const defaultModelInList = allModels?.find(
     (m) => m.apiName === DEFAULT_MODEL,
   );
 
@@ -35,12 +34,13 @@ export function StandardModeModelSelector() {
       variant="pill"
       selectedModel={currentValue}
       onModelSelect={handleChange}
-      models={(openRouterModels || []).filter(
+      models={(allModels || []).filter(
         (m) => m.apiName !== DEFAULT_MODEL,
       )}
       loading={isLoading}
       placeholder={t("common.selectModel")}
       disableEnabledFilter
+      showProviderBadge
       specialOptions={[
         {
           value: DEFAULT_MODEL,

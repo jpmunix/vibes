@@ -175,28 +175,29 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 | **Bitácoras** | Resúmenes ejecutivos de auditorías, inventarios y snapshots del proyecto (no es del flujo de trabajo normal) | El agente al entregar; munix la revisa |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
 | **Doing** | En curso (máx 1-2) | El agente |
-| **Blocked** | Atascada (falta munix/decisión/dep) | El agente con motivo |
-| **Review** | Terminada, esperando OK de munix | El agente al terminar |
-| **Manual tests** | En pruebas manuales antes de cerrar | munix (o el agente con su OK) tras validar en Review |
+| **Review** | Terminada, esperando OK de munix | **Solo munix** (el agente deja la evidencia en la card y avisa; **nunca** mueve a Review) |
 | **Done** | Cerrada y verificada | El agente tras OK explícito de munix |
+
+> **No hay columna `Blocked` ni `Manual tests`** (eliminadas 2026-08-25): un atasco se documenta en la card con el comentario `🚧 [Atasco]` (paso 4) y las pruebas manuales las hace munix durante `Review` antes de dar el OK.
 
 #### 1.10.2 El flujo obligatorio (cada card que se trabaja)
 
-1. **Leer el board** (`list-cards --light`) antes de trabajar. Priorizar: Blocked desbloqueable → To-do → Backlog propuesto.
+1. **Leer el board** (`list-cards --light`) antes de trabajar. Priorizar: To-do → Backlog propuesto.
 2. **Coger la card**: `update-card --move Doing --comment "🔄 [Doing] Plan: ..."` — el comentario de inicio documenta el plan (1-2 líneas).
 3. **Trabajar** siguiendo AGENTS.md (slices verticales, tests, contract golden). Marcar checklist con `--check-item` conforme se cumplen criterios (no a lo bruto).
-4. **Atasco** → `--move Blocked --comment "🚧 [Blocked] Falta: ..."` — **nunca silencio**. El comentario dice qué falta y qué se necesita para desbloquear.
-5. **Terminar** → `--move Review --comment "✅ [Review] Tests: N verdes (cmd). Archivos: ..."` — con evidencia de verificación.
-6. **Probar manualmente** → tras validar en Review, `--move "Manual tests" --comment "🧪 [Manual tests] Qué validar: ..."` — pruebas manuales antes de cerrar.
-7. **Cerrar** → `--move Done` **SOLO con OK explícito de munix** (tras las pruebas manuales) + comentario de cierre `🏁 [Done]` + bitácora si hubo decisiones.
+4. **Atasco** → no hay columna `Blocked` (eliminada 2026-08-25): dejar la card en `Doing` con el comentario `🚧 [Atasco] Falta: ...` — **nunca silencio**. El comentario dice qué falta y qué se necesita para desbloquear, y el agente avisa a munix por el chat.
+5. **Terminar** → el agente **NO mueve la card a `Review`**: deja el comentario `✅ [Review] Tests: N verdes (cmd). Archivos: ...` con la evidencia de verificación y avisa a munix. **Solo munix** mueve la card a `Review` cuando la acepta.
+6. **Probar manualmente** → las pruebas manuales las hace munix **dentro de `Review`** (no hay columna `Manual tests`, eliminada 2026-08-25), tras lo cual da el OK para cerrar.
+7. **Cerrar** → `--move Done` **SOLO con OK explícito de munix** (tras las pruebas manuales en Review) + comentario de cierre `🏁 [Done]` + bitácora si hubo decisiones.
 
 #### 1.10.3 Reglas duras del board
 
 - ❌ **NUNCA** mover a `Done` sin OK explícito de munix + evidencia (tests verdes / verificación manual).
+- ❌ **NUNCA** mover la card a `Review`: el agente termina, deja el comentario `✅ [Review]` con evidencia y avisa; **el movimiento a Review lo hace solo munix**. Si munix pide cambios, la card **vuelve a `Doing`** (la mueve munix o el agente con su OK) y el agente la retoma — **el desarrollo nunca ocurre estando la card en `Review`** (kanban: Review es inspección, no iteración).
 - ❌ **NUNCA** trabajar en más de 1-2 cards a la vez (si estás en Doing, no coges otra).
 - ❌ **NUNCA** crear cards duplicadas (los scripts son idempotentes; mirar antes con list-cards).
 - ❌ **NUNCA** archivar/borrar cards sin decírselo a munix (archivar = perder evidencia).
-- ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluidas `Ideas` (2026-08-11: solo munix la llena; el agente no la toca) y `Manual tests` (2026-08-19: paso intermedio de pruebas manuales entre Review y Done; el agente la usa con OK de munix).
+- ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11: solo munix la llena; el agente no la toca). `Blocked` y `Manual tests` fueron **eliminadas** (2026-08-25).
 - ❌ **NUNCA** marcar checklist sin haber verificado el criterio.
 - ✅ **SIEMPRE** documentar con comentarios (inicio, atasco, review, cierre).
 - ✅ **SIEMPRE** proponer (comentar) antes de mover cosas de Backlog — el backlog es prioridad de munix.
@@ -210,9 +211,8 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 | Prefijo | Uso | Ejemplo |
 |---|---|---|
 | `🔄 [Doing]` | Inicio (plan) | `🔄 [Doing] Plan: migrar X a Y, tests A/B` |
-| `🚧 [Blocked]` | Atasco (qué falta) | `🚧 [Blocked] Falta decisión munix: ¿SQLite o Postgres?` |
+| `🚧 [Atasco]` | Atasco (qué falta) | `🚧 [Atasco] Falta decisión munix: ¿SQLite o Postgres?` |
 | `✅ [Review]` | Listo (evidencia) | `✅ [Review] Tests: 12 verdes (pnpm test). Archivos: 3` |
-| `🧪 [Manual tests]` | Pruebas manuales antes de cerrar (qué validar) | `🧪 [Manual tests] Qué validar: ...` |
 | `🏁 [Done]` | Cierre con OK | `🏁 [Done] OK munix. Cerrada.` |
 | `🧠 Contexto` | Decisión/porqué técnico | `🧠 Contexto: elegimos X sobre Y porque ...` |
 | `📌 Para el agente` | Nota para el futuro | `📌 Para el agente: si tocas esto, ojo con Z` |
@@ -234,13 +234,13 @@ node scripts/trello/create-card.mjs --title "Deuda: ..." --desc "**Qué:** ...\n
 
 #### 1.10.6 Cierre de card (checklist de verificación)
 
-Antes de mover a Done, la card pasa por **`Manual tests`** (pruebas manuales) y el agente verifica TODOS:
-1. ¿Pasó las pruebas manuales y OK explícito de munix? (verbal o moviendo él la card)
+Antes de mover a Done, la card pasa por **`Review`** (donde munix hace las pruebas manuales) y el agente verifica TODOS:
+1. ¿Pasó las pruebas manuales (dentro de Review) y OK explícito de munix? (verbal o moviendo él la card)
 2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
 3. ¿Checklist completo? — `list-cards --number <N> --detail > /tmp/card-<N>.json` expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
 4. ¿Comentario-bitácora si hubo decisiones no obvias?
 
-Si falta algo → la card se queda en `Manual tests` (o `Review` si aún no pasó las pruebas).
+Si falta algo → la card se queda en `Review` hasta que esté completo.
 
 #### 1.10.7 Roadmap, tareas y planes — Trello es la fuente de verdad — **INNEGOCIABLE**
 
@@ -497,7 +497,7 @@ artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
 >    (`<tipo>-vibes-<cardNumber>.md`), NO como documento del repo. Vive en el
 >    directorio de artifacts del agente (p. ej. `brain/<conversation-id>/`), fuera
 >    del working tree. Es un borrador de trabajo que puede iterarse con munix.
-> 2. **Al terminar la tarea** (al mover la card a `Review`), el artifact se
+> 2. **Al terminar la tarea** (dejar el comentario `✅ [Review]` con evidencia; la card NO se mueve a `Review`, eso lo hace solo munix), el artifact se
 >    **sube como adjunto a la card** (`node scripts/trello/attach-file.mjs --card
 >    "Título" --file "<ruta-del-artifact>/plan-vibes-NN.md"`).
 > 3. **Tras subirlo, se elimina** del working tree. El plan ya no vive en el

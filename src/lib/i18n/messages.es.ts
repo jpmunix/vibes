@@ -833,6 +833,8 @@ export const messagesEs: Messages = {
   },
   customProvider: {
     deleted: "Proveedor eliminado",
+    cannotDeleteLast:
+      "No puedes eliminar el último proveedor configurado. Añade otro antes de borrar este.",
     connected: {
       one: "Conexión exitosa — 1 modelo",
       many: "Conexión exitosa — {count} modelos",
