@@ -224,11 +224,11 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
         >
           {isPinned ? (
             <>
-              <PinOff size={14} className="opacity-60 shrink-0" /> Desfijar
+              <PinOff size={14} className="opacity-60 shrink-0" /> {t("workspace.unpin")}
             </>
           ) : (
             <>
-              <Pin size={14} className="opacity-60 shrink-0" /> Fijar
+              <Pin size={14} className="opacity-60 shrink-0" /> {t("workspace.pin")}
             </>
           )}
         </button>
@@ -243,13 +243,11 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
         >
           {isUnread ? (
             <>
-              <Bell size={14} className="opacity-60 shrink-0" /> Marcar como
-              leído
+              <Bell size={14} className="opacity-60 shrink-0" /> {t("workspace.markRead")}
             </>
           ) : (
             <>
-              <BellOff size={14} className="opacity-60 shrink-0" /> Marcar como
-              no leído
+              <BellOff size={14} className="opacity-60 shrink-0" /> {t("workspace.markUnread")}
             </>
           )}
         </button>
@@ -263,7 +261,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           }}
         >
           <Pencil size={14} className="opacity-60 shrink-0" />
-          Renombrar
+          {t("workspace.rename")}
         </button>
         {/* Label */}
         <button
@@ -275,7 +273,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           }}
         >
           <Hash size={14} className="opacity-60 shrink-0" />
-          Añadir etiqueta
+          {t("workspace.addLabel")}
         </button>
         {/* Share */}
         <button
@@ -286,11 +284,11 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
             try {
               const fullChat = await ipc.chat.getChat(chatId);
               const markdown = buildShareMarkdown(
-                fullChat.title || "Chat sin título",
+                fullChat.title || t("workspace.noTitle"),
                 fullChat.messages,
               );
               const result = await ipc.markdownShare.uploadDocument({
-                title: fullChat.title || "Chat sin título",
+                title: fullChat.title || t("workspace.noTitle"),
                 content: markdown,
                 format: "md",
               });
@@ -302,7 +300,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           }}
         >
           <Share2 size={14} className="opacity-60 shrink-0" />
-          Compartir chat
+          {t("workspace.shareChat")}
         </button>
 
         {/* Summarize to new chat */}
@@ -312,7 +310,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           onClick={async () => {
             onClose();
             const tid = toast.loading(
-              "Generando resumen y creando chat nuevo...",
+              t("workspace.summarizing"),
             );
             try {
               const newChatId = await ipc.chat.summarizeToNewChat({
@@ -321,16 +319,16 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
               });
               queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
               onChatClick(appId, newChatId);
-              toast.success("Resumen completado con éxito", { id: tid });
+              toast.success(t("workspace.summarizeSuccess"), { id: tid });
             } catch (e) {
-              toast.error(`Error al resumir chat: ${(e as any).toString()}`, {
+              toast.error(t("workspace.summarizeError", { error: (e as any).toString() }), {
                 id: tid,
               });
             }
           }}
         >
           <Minimize2 size={14} className="opacity-60 shrink-0" />
-          Resumir a chat nuevo
+          {t("workspace.summarizeToNew")}
         </button>
         {/* Archive */}
         <button
@@ -342,7 +340,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           }}
         >
           <Archive size={14} className="opacity-60 shrink-0" />
-          Archivar
+          {t("workspace.archive")}
         </button>
         {/* Delete */}
         <button
@@ -354,7 +352,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           }}
         >
           <Trash2 size={14} className="shrink-0" />
-          Eliminar
+          {t("dialogs.delete")}
         </button>
       </div>
     </>,
