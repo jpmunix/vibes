@@ -235,7 +235,7 @@ export default function SettingsPage() {
 
   const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, refreshSettings } = useSettings();
   const { t, language } = useI18n();
 
   // Localized settings search index (rebuilds when language changes)
@@ -307,11 +307,17 @@ export default function SettingsPage() {
     setSearchQuery("");
   };
 
+  // Card #200: reset SOLO de settings (user_preferences + prompts custom +
+  // overrides). No toca apps, chats, sesiones ni archivos de apps.
   const handleResetEverything = async () => {
     setIsResetting(true);
     try {
-      await ipc.system.resetAll();
-      showSuccess(t("toasts.resetAllSuccess"));
+      await ipc.system.resetSettings();
+      // Refrescar settings (vuelven los defaults) y prompts (re-sintetiza los
+      // defaults de código sin overrides).
+      await refreshSettings();
+      setPromptsRefreshKey((k) => k + 1);
+      showSuccess(t("toasts.resetSettingsSuccess"));
     } catch (error) {
       console.error("Error resetting:", error);
       showError(

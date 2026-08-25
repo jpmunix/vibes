@@ -71,6 +71,7 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
 import { detectProjectLanguage } from "../utils/detect_language";
+import { resetAllRegisteredSettings } from "../../main/settings-registry";
 
 const logger = log.scope("app_handlers");
 
@@ -1639,6 +1640,16 @@ export function registerAppHandlers() {
         );
       }
     });
+  });
+
+  // Card #200: reset SOLO de settings — user_preferences (claves registradas)
+  // + prompts (custom + overrides). Sin apps, chats, sesiones ni archivos.
+  createTypedHandler(systemContracts.resetSettings, async (_event, _input, context) => {
+    const userId = context.userId;
+    if (!userId) throw new Error("Unauthorized: no user session");
+    logger.log("start: resetting settings (registry scope).");
+    await resetAllRegisteredSettings(userId);
+    logger.log("settings reset complete.");
   });
 
   createTypedHandler(systemContracts.resetAll, async () => {

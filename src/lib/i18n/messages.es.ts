@@ -317,7 +317,8 @@ export const messagesEs: Messages = {
       },
       resetAll: {
         label: "Valores por defecto",
-        description: "Restaurar toda la configuración a valores por defecto",
+        description:
+          "Restablecer ajustes y prompts personalizados a los valores por defecto (no afecta a apps ni chats)",
       },
       customAgents: {
         label: "Agentes Personalizados",
@@ -445,7 +446,7 @@ export const messagesEs: Messages = {
     cancel: "Cancelar",
     newProject: "Nuevo proyecto",
     resetDefaultsTitle: "Valores por defecto",
-    resetDefaultsMessage: "¿Estás seguro de que quieres restaurar los valores por defecto? Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer.",
+    resetDefaultsMessage: "¿Estás seguro de que quieres restablecer tus ajustes y prompts personalizados a los valores por defecto? Tus aplicaciones y chats no se modificarán. Esta acción no se puede deshacer.",
     resetDefaultsConfirm: "Restaurar valores por defecto",
     deleteTitle: "Eliminar {type}",
     deleteTooltip: "Eliminar {type}",
@@ -1114,6 +1115,7 @@ export const messagesEs: Messages = {
     planAttached: "Plan adjuntado al chat actual",
     planDetached: "Plan desacoplado del chat",
     resetAllSuccess: "Se ha reseteado todo correctamente. Reinicia la aplicación.",
+    resetSettingsSuccess: "Ajustes y prompts restablecidos a los valores por defecto.",
     unknownError: "Ocurrió un error desconocido",
     configImported: "Configuración importada correctamente. Recarga la página para ver todos los cambios.",
     importConfigError: "Error al importar la configuración. Verifica el formato del archivo.",

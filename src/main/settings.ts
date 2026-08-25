@@ -3,15 +3,10 @@ import {
   UserSettingsSchema,
   type UserSettings,
   Secret,
-  DEFAULT_EXECUTOR_MODEL,
-  DEFAULT_STRATEGIST_MODEL,
 } from "../lib/schemas";
 import { safeStorage } from "electron";
-import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
-import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 
-import { FALLBACK_SELECTED_MODEL } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 import { preferencesCache } from "./preferences-cache";
 import { readSession, writeSession, clearSession } from "./session";
@@ -26,54 +21,10 @@ import { getUserDataPath } from "../paths/paths";
 
 const logger = log.scope("settings");
 
-export const DEFAULT_SETTINGS: UserSettings = {
-  selectedModel: {
-    name: FALLBACK_SELECTED_MODEL,
-    provider: "openrouter",
-  },
-  providerSettings: {},
-  strategistModel: DEFAULT_STRATEGIST_MODEL,
-  executorModel: DEFAULT_EXECUTOR_MODEL,
-  telemetryConsent: "unset",
-  telemetryUserId: uuidv4(),
-  hasRunBefore: false,
-  enableProLazyEditsMode: true,
-  enableProSmartFilesContextMode: true,
-  enableGithubAutoCommit: true,
-  enableChatCompletionNotifications: true,
-  enableNotificationSound: true,
-  selectedChatMode: "agent",
-  selectedTemplateId: DEFAULT_TEMPLATE_ID,
-  isRunning: false,
-  lastKnownPerformance: undefined,
-  enableNativeGit: true,
-  autoApproveChanges: true,
-  autoExpandPreviewPanel: false,
-  previewPosition: "right",
-  chatLanguage: "es",
-  showTokenBar: false,
-  aiQueryLogRotationThreshold: "200",
-  windowState: undefined,
-  reasoningEffort: "medium",
-  inferenceTemperature: 0.2,
-  inferenceTopP: 0.95,
-  inferenceRepetitionPenalty: 1.05,
-  textVerbosity: "low",
-  embeddingsEnabled: true,
-  embeddingsModel: "openai/text-embedding-3-small",
-  memoriesEnabled: true,
-  memoriesRouterModelV2: "mistralai/devstral-small",
-  memoriesMaxSelection: 5,
-  enableWebSearch: true,
-  chatRenderMode: "zen",
-  selectedFont: "bricolage-grotesque",
-  selectedChatFont: "jetbrains-mono",
-  fontScaleUI: 1,
-  fontScaleSidebar: 1,
-  fontScaleChat: 1,
-  fontScaleBubbleWidth: 65,
-  loaderStyle: "orbital",
-};
+// Card #200: DEFAULT_SETTINGS vive en settings-defaults.ts (módulo puro) para
+// que el settings registry pueda tiparse contra sus claves sin ciclos.
+import { DEFAULT_SETTINGS } from "./settings-defaults";
+export { DEFAULT_SETTINGS };
 
 // In-memory cache for composed settings to avoid recomputing every time
 let cachedSettings: UserSettings | null = null;

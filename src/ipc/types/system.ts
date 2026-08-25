@@ -223,6 +223,14 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Card #200: reset SOLO de settings (user_preferences + prompts), sin tocar
+  // apps, chats, sesiones runtime ni archivos de apps.
+  resetSettings: defineContract({
+    channel: "reset-settings",
+    input: z.void(),
+    output: z.void(),
+  }),
+
   reloadEnvPath: defineContract({
     channel: "reload-env-path",
     input: z.void(),

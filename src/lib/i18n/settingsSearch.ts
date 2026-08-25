@@ -328,7 +328,7 @@ export const SETTINGS_SEARCH_ENTRIES: SearchEntry[] = [
   {
     id: "reset-all",
     key: "resetAll",
-    keywords: ["reset", "resetear", "eliminar", "borrar", "todo", "defecto", "restaurar", "default", "restore"],
+    keywords: ["reset", "resetear", "ajustes", "prompts", "personalizados", "defecto", "restaurar", "restablecer", "default", "restore"],
     sectionKey: "general",
     sectionId: "general-settings",
   },

@@ -297,7 +297,8 @@ export const messagesEn: Messages = {
       },
       resetAll: {
         label: "Default values",
-        description: "Restore all settings to default values",
+        description:
+          "Reset settings and custom prompts to default values (does not affect apps or chats)",
       },
       customAgents: {
         label: "Custom Agents",
@@ -504,7 +505,7 @@ export const messagesEn: Messages = {
     cancel: "Cancel",
     newProject: "New project",
     resetDefaultsTitle: "Default values",
-    resetDefaultsMessage: "Are you sure you want to restore the default values? This will delete all your apps, chats and settings. This action cannot be undone.",
+    resetDefaultsMessage: "Are you sure you want to reset your settings and custom prompts to the default values? Your apps and chats will not be modified. This action cannot be undone.",
     resetDefaultsConfirm: "Restore default values",
     deleteTitle: "Delete {type}",
     deleteTooltip: "Delete {type}",
@@ -1090,6 +1091,7 @@ export const messagesEn: Messages = {
     planAttached: "Plan attached to the current chat",
     planDetached: "Plan detached from the chat",
     resetAllSuccess: "Everything has been reset correctly. Restart the application.",
+    resetSettingsSuccess: "Settings and prompts reset to default values.",
     unknownError: "An unknown error occurred",
     configImported: "Settings imported correctly. Reload the page to see all changes.",
     importConfigError: "Error importing settings. Check the file format.",
