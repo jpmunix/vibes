@@ -275,6 +275,7 @@ function FileContextMenu({
   onRefresh,
   onRequestDelete,
 }: ContextMenuProps) {
+  const { t } = useI18n();
   const setSelectedFile = useSetAtom(selectedFileAtom);
   const menuRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<MenuMode>({ type: "idle" });
@@ -404,10 +405,10 @@ function FileContextMenu({
   ) {
     const label =
       mode.type === "new-file"
-        ? "Nuevo archivo"
+        ? t("workspace.ftNewFile")
         : mode.type === "new-folder"
-          ? "Nueva carpeta"
-          : "Renombrar";
+          ? t("workspace.ftNewFolder")
+          : t("workspace.ftRename");
 
     return (
       <div
@@ -436,7 +437,7 @@ function FileContextMenu({
             className="px-2.5 py-1 text-xs rounded border hover:bg-accent transition-colors"
             disabled={loading}
           >
-            Cancelar
+            {t("workspace.ftCancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -444,10 +445,10 @@ function FileContextMenu({
             disabled={!inputValue.trim() || loading}
           >
             {loading
-              ? "Creando…"
+              ? t("workspace.ftCreating")
               : mode.type === "rename"
-                ? "Renombrar"
-                : "Crear"}
+                ? t("workspace.ftRename")
+                : t("workspace.ftCreate")}
           </button>
         </div>
       </div>
@@ -462,7 +463,7 @@ function FileContextMenu({
     destructive?: boolean;
   } | null)[] = [
     {
-      label: "Nuevo archivo",
+      label: t("workspace.ftNewFile"),
       icon: <FilePlus size={14} />,
       action: () => {
         setInputValue("");
@@ -470,7 +471,7 @@ function FileContextMenu({
       },
     },
     {
-      label: "Nueva carpeta",
+      label: t("workspace.ftNewFolder"),
       icon: <FolderPlus size={14} />,
       action: () => {
         setInputValue("");
@@ -479,7 +480,7 @@ function FileContextMenu({
     },
     null, // separator
     {
-      label: "Abrir externamente",
+      label: t("workspace.ftOpenExternal"),
       icon: <ExternalLink size={14} />,
       action: () => {
         onClose();
@@ -497,7 +498,7 @@ function FileContextMenu({
     menuItems.push(
       null, // separator
       {
-        label: "Renombrar",
+        label: t("workspace.ftRename"),
         icon: <Pencil size={14} />,
         action: () => {
           setInputValue(oldName);
@@ -505,7 +506,7 @@ function FileContextMenu({
         },
       },
       {
-        label: "Eliminar",
+        label: t("workspace.ftDelete"),
         icon: <Trash2 size={14} />,
         action: () => {
           onClose();
@@ -661,8 +662,8 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder={
               searchMode === "name"
-                ? "Buscar por nombre"
-                : "Buscar en contenido"
+                ? t("workspace.ftSearchName")
+                : t("workspace.ftSearchContent")
             }
             className="h-8 pl-7 pr-16 text-sm"
             data-testid="file-tree-search"
@@ -672,7 +673,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setSearchValue("")}
-              aria-label="Borrar búsqueda"
+              aria-label={t("workspace.ftClearSearch")}
             >
               <X size={14} />
             </button>
@@ -726,7 +727,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             <button
               onClick={handleExpandFirstLevel}
               className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title="Expandir primer nivel"
+              title={t("workspace.ftExpandFirst")}
             >
               <ChevronsUpDown size={14} />
             </button>

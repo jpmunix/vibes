@@ -5,6 +5,7 @@ import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 import { selectedDesignAtom } from "@/atoms/chatAtoms";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
 import { useSettings } from "@/hooks/useSettings";
 import {
@@ -61,6 +62,7 @@ const PasteModal: React.FC<{
   onClose: () => void;
   onSubmit: (content: string) => void;
 }> = ({ open, onClose, onSubmit }) => {
+  const { t } = useI18n();
   const [content, setContent] = useState("");
 
   if (!open) return null;
@@ -71,14 +73,14 @@ const PasteModal: React.FC<{
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
         <div className="flex items-center gap-2">
           <ClipboardPaste size={14} className="text-primary" />
-          <span className="typo-select font-medium">Pegar DESIGN.md</span>
+          <span className="typo-select font-medium">{t("workspace.designPaste")}</span>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="typo-micro text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          Cancelar
+          {t("dialogs.cancel")}
         </button>
       </div>
 
@@ -87,7 +89,7 @@ const PasteModal: React.FC<{
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Pega aquí el contenido de tu archivo DESIGN.md…"
+          placeholder={t("workspace.designPastePlaceholder")}
           className={cn(
             "w-full h-full resize-none rounded-md bg-muted/30 border border-border/40",
             "px-3 py-2 typo-caption text-foreground placeholder:text-muted-foreground/50",
@@ -101,7 +103,7 @@ const PasteModal: React.FC<{
       {/* Footer */}
       <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border/40">
         <span className="typo-micro text-muted-foreground mr-auto">
-          {content.length > 0 ? `${content.length} caracteres` : "Vacío"}
+          {content.length > 0 ? t("workspace.designChars", { count: content.length }) : t("workspace.designEmpty")}
         </span>
         <button
           type="button"
@@ -135,6 +137,7 @@ const ScreenshotModal: React.FC<{
   onSubmit: (dataUrl: string) => void;
   onClearError: () => void;
 }> = ({ open, loading, error, onClose, onSubmit, onClearError }) => {
+  const { t } = useI18n();
   const [preview, setPreview] = useState<string | null>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -193,7 +196,7 @@ const ScreenshotModal: React.FC<{
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
         <div className="flex items-center gap-2">
           <Camera size={14} className="text-primary" />
-          <span className="typo-select font-medium">Generar desde captura</span>
+          <span className="typo-select font-medium">{t("workspace.designFromCapture")}</span>
         </div>
         <button
           type="button"
@@ -201,7 +204,7 @@ const ScreenshotModal: React.FC<{
           disabled={loading}
           className="typo-micro text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
         >
-          Cancelar
+          {t("dialogs.cancel")}
         </button>
       </div>
 
@@ -210,7 +213,7 @@ const ScreenshotModal: React.FC<{
         {error ? (
           <div className="flex flex-col items-center gap-3 text-center px-3">
             <AlertTriangle size={28} className="text-destructive" />
-            <span className="typo-select font-medium">No se pudo generar</span>
+            <span className="typo-select font-medium">{t("workspace.designGenerateFailed")}</span>
             <span className="typo-micro text-muted-foreground max-w-[280px] leading-relaxed">
               {error}
             </span>
@@ -222,23 +225,22 @@ const ScreenshotModal: React.FC<{
               }}
               className="mt-1 px-3 py-1 rounded-md typo-select font-medium bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
             >
-              Intentar de nuevo
+              {t("workspace.designRetry")}
             </button>
           </div>
         ) : loading ? (
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 size={28} className="text-primary animate-spin" />
-            <span className="typo-select font-medium">Analizando captura…</span>
+            <span className="typo-select font-medium">{t("workspace.designAnalyzing")}</span>
             <span className="typo-micro text-muted-foreground max-w-[260px]">
-              La IA está extrayendo colores, tipografía, componentes y generando
-              tu DESIGN.md
+              {t("workspace.designAnalyzingDesc")}
             </span>
           </div>
         ) : preview ? (
           <div className="w-full h-full flex flex-col items-center gap-2">
             <img
               src={preview}
-              alt="Captura"
+              alt={t("workspace.designCaptureAlt")}
               className="max-h-[220px] max-w-full rounded-md border border-border/40 object-contain"
             />
             <button
@@ -305,6 +307,7 @@ const ScreenshotModal: React.FC<{
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export const DesignPicker: React.FC = () => {
+  const { t } = useI18n();
   const [selected, setSelected] = useAtom(selectedDesignAtom);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -350,7 +353,7 @@ export const DesignPicker: React.FC = () => {
       const file = e.target.files?.[0];
       if (!file) return;
       if (!file.name.endsWith(".md")) {
-        alert("Solo se aceptan archivos con extensión .md");
+        alert(t("workspace.designOnlyMd"));
         return;
       }
       const reader = new FileReader();
@@ -360,7 +363,7 @@ export const DesignPicker: React.FC = () => {
           const trimmed = content.trim();
           setSelected({
             id: "__custom__",
-            description: "Diseño personalizado",
+            description: t("workspace.designCustom"),
             customContent: trimmed,
           });
           setOpen(false);
@@ -378,7 +381,7 @@ export const DesignPicker: React.FC = () => {
     (content: string) => {
       setSelected({
         id: "__custom__",
-        description: "Diseño personalizado",
+        description: t("workspace.designCustom"),
         customContent: content,
       });
       setPasteOpen(false);
@@ -403,7 +406,7 @@ export const DesignPicker: React.FC = () => {
         if (result.content) {
           setSelected({
             id: "__custom__",
-            description: "Diseño personalizado",
+            description: t("workspace.designCustom"),
             customContent: result.content,
           });
           setScreenshotOpen(false);
@@ -411,7 +414,7 @@ export const DesignPicker: React.FC = () => {
         }
       } catch (err: any) {
         // Extract the meaningful part of the error (strip IPC wrapper chain)
-        const raw = err.message || "Error desconocido";
+        const raw = err.message || t("workspace.designUnknownError");
         const clean = raw.replace(/^.*Error:\s*/i, "").trim();
         setScreenshotError(clean);
       } finally {
@@ -428,7 +431,7 @@ export const DesignPicker: React.FC = () => {
   // Trigger label
   const triggerLabel = selected
     ? selected.id === "__custom__"
-      ? "Personalizado"
+      ? t("workspace.designPersonalized")
       : selected.id.charAt(0).toUpperCase() + selected.id.slice(1)
     : null;
 
@@ -513,7 +516,7 @@ export const DesignPicker: React.FC = () => {
                 }}
               >
                 <CommandInput
-                  placeholder="Buscar diseño…"
+                  placeholder={t("workspace.designSearch")}
                   value={search}
                   onValueChange={setSearch}
                 />
@@ -540,7 +543,7 @@ export const DesignPicker: React.FC = () => {
                       </span>
                       <XSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
                       <div className="flex flex-col gap-0 flex-1 min-w-0">
-                        <span className="truncate">Ninguno</span>
+                        <span className="truncate">{t("workspace.designNone")}</span>
                         <span className="typo-caption leading-tight opacity-70 truncate">
                           Sin sistema de diseño predefinido
                         </span>
@@ -563,12 +566,12 @@ export const DesignPicker: React.FC = () => {
                         </span>
                         <FileText className="w-4 h-4 shrink-0 text-primary" />
                         <div className="flex flex-col gap-0 flex-1 min-w-0">
-                          <span className="truncate">Diseño personalizado</span>
+                          <span className="truncate">{t("workspace.designCustom")}</span>
                           <span className="typo-caption leading-tight opacity-70 truncate">
                             {(
                               selected.customContent?.length ?? 0
                             ).toLocaleString()}{" "}
-                            caracteres cargados
+                            {t("workspace.designCharsLoaded")}
                           </span>
                         </div>
                       </CommandItem>
@@ -728,7 +731,7 @@ export const DesignPicker: React.FC = () => {
               {/* Current custom indicator */}
               {selected?.id === "__custom__" && (
                 <div className="px-3 py-2 border-t border-border/40 typo-micro text-primary/80 text-center">
-                  Diseño personalizado cargado
+                  {t("workspace.designCustomLoaded")}
                 </div>
               )}
             </div>
