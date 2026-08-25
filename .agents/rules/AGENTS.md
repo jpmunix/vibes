@@ -384,6 +384,8 @@ Cuando se genere o modifique UI (cualquier componente React, cualquier string qu
 
 **Reglas duras:**
 - ❌ **NUNCA** escribir strings literales en el JSX: `>Guardar<`, `placeholder="Selecciona un modelo"`, `title="Eliminar"`, `label: "Con razonamiento"`.
+- ❌ **NUNCA** dar por terminada una slice/tarea de UI (ni marcarla `✅ [Review]` ni proponer movimiento a `Done`) con algún texto visible sin localizar en los archivos tocados. **Es criterio de aceptación, no una opción**: si hay un string sin localizar, la tarea no está terminada, punto.
+- ❌ **NUNCA** dejar pasar en silencio un string sin localizar encontrado en un archivo que se está tocando, aunque no sea de la tarea actual (scope creep, §6): **preguntar a munix si se localiza** antes de seguir. Ni arreglarlo en caliente por libre ni ignorarlo como si no se hubiera visto.
 - ✅ **SIEMPRE** usar `t("namespace.key")` o `tPlural("namespace.key", count)` para todo texto que el usuario vea.
 - ✅ Cada string nuevo va en **AMBOS diccionarios** (es + en) o el test de paridad falla.
 - ✅ Si el string está en un array/const a nivel de módulo (fuera del componente), convertirlo a función que recibe `t`: `getOptions(t)`.
@@ -391,7 +393,7 @@ Cuando se genere o modifique UI (cualquier componente React, cualquier string qu
 - ✅ Si el texto es un valor de datos que se persiste en BD (alias de claves, nombres de usuario), **no se traduce** — se deja como valor del usuario. Pero el placeholder, label y descripción del campo SÍ se traducen.
 - ❌ "Es un string trivial, no necesita i18n" **no es una respuesta aceptable**. Si el usuario lo ve, va al diccionario.
 
-> **Por qué:** Vibes está en producción y ya tiene sistema i18n con paridad es/en. Hardcodear strings en español rompe el cambio de idioma: el usuario cambia a English y ve mitad de la UI en español. Un string que no está en el diccionario es un string que se cuela sin traducir y que el siguiente agente no sabe que existe. La paridad (31/31) existe precisamente para cazar esto — si añadimos un string sin diccionario, perdemos la garantía de que todo está localizado.
+> **Por qué:** Vibes está en producción y ya tiene sistema i18n con paridad es/en. Hardcodear strings en español rompe el cambio de idioma: el usuario cambia a English y ve mitad de la UI en español. Un string que no está en el diccionario es un string que se cuela sin traducir y que el siguiente agente no sabe que existe. La paridad existe precisamente para cazar esto — si añadimos un string sin diccionario, perdemos la garantía de que todo está localizado. Y un string ajeno sin localizar visto de paso es deuda: se pregunta a munix, se documenta (card de deuda, §1.10.5) y se decide — nunca se cuece en silencio ni se arregla en caliente fuera de scope.
 
 ---
 
@@ -562,5 +564,5 @@ node scripts/ag-chats.mjs show <cascadeId> --steps
 
 ---
 
-**Última actualización:** 2026-08-24 (§1.5 reforzado: typecheck en Vibes SIEMPRE con `pnpm ts:main` / `-p tsconfig.app.json`, nunca contra el solution file `tsconfig.json`. Fallo documentado: 132 errores no detectados por usar `tsc --noEmit` + `head` + `$?` del pipe).
+**Última actualización:** 2026-08-25 (§1.15 reforzado: criterio de aceptación — ninguna tarea de UI se da por terminada con strings sin localizar; y si se encuentra un string ajeno sin localizar en un archivo tocado, se pregunta a munix si se localiza).
 **Mantenedor:** munix.
