@@ -28,9 +28,9 @@ import {
 } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
 
-const OpenRouterSetupWizard = lazy(() =>
-  import("@/components/onboarding/OpenRouterSetupWizard").then((m) => ({
-    default: m.OpenRouterSetupWizard,
+const SetupWizard = lazy(() =>
+  import("@/components/onboarding/SetupWizard").then((m) => ({
+    default: m.SetupWizard,
   })),
 );
 
@@ -221,9 +221,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <>
       <ThemeProvider>
         <DeepLinkProvider>
-          {/* Blocking wizard: shown after login if OpenRouter is not configured */}
+          {/* Blocking wizard: shown after login if no provider is configured */}
           <Suspense fallback={null}>
-            <OpenRouterSetupWizard />
+            <SetupWizard />
           </Suspense>
           <SidebarProvider>
             <TitleBar />
