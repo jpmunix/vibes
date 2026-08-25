@@ -4,6 +4,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useMemo } from "react";
 import { useSettings } from "./useSettings";
 import { MODEL_PROVIDER_SEPARATOR } from "@/lib/schemas";
+import { CUSTOM_PROVIDER_PREFIX } from "@/ipc/shared/language_model_constants";
 
 /** A model with its provider source clearly identified */
 export interface MultiProviderModel extends LanguageModel {
@@ -97,6 +98,10 @@ export function useMultiProviderModels() {
     }
 
     // Custom provider models — skip disabled ones
+    // Note: custom provider ids ALREADY carry the CUSTOM_PROVIDER_PREFIX
+    // ("custom::openference" — see AddCustomProviderButton). Do NOT re-prefix,
+    // or you get "custom::custom::openference" (double prefix) which breaks
+    // provider lookup + labels + the validator's :: parsing.
     if (customModelsMap) {
       for (const [providerId, models] of Object.entries(customModelsMap)) {
         if (disabledProviders.includes(providerId)) continue;
@@ -104,11 +109,14 @@ export function useMultiProviderModels() {
           (cp: any) => cp.id === providerId,
         );
         const providerLabel = providerConfig?.name || providerId;
+        const providerKey = providerId.startsWith(CUSTOM_PROVIDER_PREFIX)
+          ? providerId
+          : `${CUSTOM_PROVIDER_PREFIX}${providerId}`;
         for (const m of models) {
           result.push({
             ...m,
-            apiName: `custom::${providerId}${MODEL_PROVIDER_SEPARATOR}${m.apiName}`,
-            sourceProvider: `custom::${providerId}`,
+            apiName: `${providerKey}${MODEL_PROVIDER_SEPARATOR}${m.apiName}`,
+            sourceProvider: providerKey,
             sourceProviderLabel: providerLabel,
           });
         }

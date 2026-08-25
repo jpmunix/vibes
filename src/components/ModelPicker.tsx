@@ -1,19 +1,17 @@
 import { type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
 import { useState, useEffect, useRef } from "react";
-import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
+import { useMultiProviderModels } from "@/hooks/useMultiProviderModels";
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { ipc } from "@/ipc/types";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
 
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
-import { useModelAliases } from "@/hooks/useModelAliases";
 import { matchesModelSearch } from "@/lib/modelSearch";
 import { useChatPreference } from "@/hooks/useChatPreferences";
 import {
@@ -40,7 +38,6 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
   const queryClient = useQueryClient();
 
   const { stats, incrementUsage } = useModelUsageStats();
-  const { aliases, setAlias, removeAlias } = useModelAliases();
   const [search, setSearch] = useState("");
 
   // ── Per-chat model persistence ────────────────────────────────────────
@@ -91,53 +88,26 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
     setChatModel(model);
   };
 
-  // Cloud models from providers
-  const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
-    useLanguageModelsByProviders();
+  // ── Multi-provider models (unified hook: OpenRouter + custom + Ollama) ──
+  const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
 
   const { isLoading: providersLoading } = useLanguageModelProviders();
 
-  // Ollama models (local) — graceful when server is offline
-  const { data: ollamaResult } = useQuery({
-    queryKey: ["ollama-models"],
-    queryFn: () => ipc.languageModel.listOllamaModels(),
-    refetchInterval: 30_000,
-    retry: false,
-    enabled: settings?.ollamaEnabled !== false,
-  });
-
-  const loading = modelsByProvidersLoading || providersLoading;
+  const loading = modelsLoading || providersLoading;
 
   // Get display name for the selected model
   const getModelDisplayName = () => {
-    // Check for user-defined alias first
-    const aliasName = aliases[selectedModel.name];
-    if (aliasName) return aliasName;
-
-    // For cloud models, look up in the modelsByProviders data
-    if (modelsByProviders && modelsByProviders[selectedModel.provider]) {
-      const customFoundModel = modelsByProviders[selectedModel.provider].find(
-        (model) =>
-          model.type === "custom" && model.id === selectedModel.customModelId,
+    // Look up in the unified models list (apiName carries the provider prefix).
+    // selectedModel.name is stored WITHOUT the provider prefix ({provider, name}),
+    // so for custom::/ollama:: models match by the raw name suffix.
+    const found = (allModels || []).find((m) => {
+      if (m.sourceProvider !== selectedModel.provider) return false;
+      return (
+        m.apiName === selectedModel.name ||
+        m.apiName.endsWith(`::${selectedModel.name}`)
       );
-      if (customFoundModel) {
-        return customFoundModel.displayName;
-      }
-      const foundModel = modelsByProviders[selectedModel.provider].find(
-        (model) => model.apiName === selectedModel.name,
-      );
-      if (foundModel) {
-        return foundModel.displayName;
-      }
-    }
-
-    // Check Ollama models
-    if (selectedModel.provider === "ollama" && ollamaResult?.models) {
-      const ollamaModel = ollamaResult.models.find(
-        (m) => m.modelName === selectedModel.name,
-      );
-      if (ollamaModel) return ollamaModel.displayName;
-    }
+    });
+    if (found) return found.displayName;
 
     // Fallback if not found
     return selectedModel.name;
@@ -156,58 +126,30 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
 
   const searchLower = search.toLowerCase();
   const customProviders = settings.customProviders ?? [];
-  const disabledProviders = settings.disabledProviders ?? [];
-  const ollamaEnabled = settings.ollamaEnabled !== false;
-
-  const isProviderDisabled = (id: string) => disabledProviders.includes(id);
 
   const doesModelMatchSearch = (m: LanguageModel) => {
     if (!searchLower) return true;
-    const alias = aliases[m.apiName];
-    return matchesModelSearch(search, m.displayName, m.apiName, alias);
+    return matchesModelSearch(search, m.displayName, m.apiName);
   };
 
-  // Auto-router — only when OpenRouter is active
-  if (!isProviderDisabled("openrouter") && modelsByProviders?.["auto-router"]) {
-    modelsByProviders["auto-router"].forEach((model) => {
-      if (!searchLower || doesModelMatchSearch(model)) {
-        allAvailableModels.push({ provider: "auto-router", model });
-      }
-    });
-  }
-
-  // OpenRouter models (all models, skip disabled provider)
-  if (!isProviderDisabled("openrouter") && modelsByProviders?.["openrouter"]) {
-    modelsByProviders["openrouter"].forEach((model) => {
-      if (!searchLower || doesModelMatchSearch(model)) {
-        allAvailableModels.push({ provider: "openrouter", model });
-      }
-    });
-  }
-
-  // Custom provider models (all models, skip disabled)
-  for (const cp of customProviders) {
-    if (isProviderDisabled(cp.id)) continue;
-    if (modelsByProviders?.[cp.id]) {
-      modelsByProviders[cp.id].forEach((model) => {
-        if (!searchLower || doesModelMatchSearch(model)) {
-          allAvailableModels.push({ provider: cp.id, model });
-        }
-      });
+  // Build the picker list from the unified hook (OpenRouter + custom + Ollama).
+  // The hook already resolves providers, skips disabled ones, and collapses
+  // custom/Ollama into prefixed apiName (custom::id::name, ollama::name).
+  // We keep `provider` = sourceProvider so the picker can badge/filter by origin.
+  for (const m of allModels || []) {
+    if (!searchLower || doesModelMatchSearch(m)) {
+      allAvailableModels.push({ provider: m.sourceProvider, model: m });
     }
   }
 
-  // Ollama models (skip if disabled)
-  if (ollamaEnabled && ollamaResult?.models && ollamaResult.models.length > 0) {
-    for (const m of ollamaResult.models) {
-      const syntheticModel: LanguageModel = {
-        apiName: m.modelName,
-        displayName: m.displayName,
-        description: `Ollama local · ${m.modelName}`,
-        type: "local",
-      };
-      if (!searchLower || doesModelMatchSearch(syntheticModel)) {
-        allAvailableModels.push({ provider: "ollama", model: syntheticModel });
+  // Auto-router — pseudo-provider (only when present; disabled upstream for now)
+  const autoRouterModels = (allModels || []).filter(
+    (m) => m.sourceProvider === "auto-router",
+  );
+  if (autoRouterModels.length > 0) {
+    for (const m of autoRouterModels) {
+      if (!searchLower || doesModelMatchSearch(m)) {
+        allAvailableModels.push({ provider: "auto-router", model: m });
       }
     }
   }
@@ -286,8 +228,21 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
     <>
       <ModelVariantPicker
         models={sortedModels}
-        selectedValue={`${selectedModel.provider}|||${selectedModel.name}`}
-        modelAliases={aliases}
+        selectedValue={
+          (() => {
+            // Prefer the prefixed apiName from the list so selection matches
+            // the CommandItem value (custom::id::name, ollama::name).
+            const selectedEntry = sortedModels.find(
+              (sm) =>
+                sm.provider === selectedModel.provider &&
+                (sm.model.apiName === selectedModel.name ||
+                  sm.model.apiName.endsWith(`::${selectedModel.name}`)),
+            );
+            return selectedEntry
+              ? `${selectedEntry.provider}|||${selectedEntry.model.apiName}`
+              : `${selectedModel.provider}|||${selectedModel.name}`;
+          })()
+        }
         onModelSelect={(val) => {
           const sepIdx = val.indexOf("|||");
           const prov = val.slice(0, sepIdx);
@@ -298,8 +253,13 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
           if (found) {
             const customModelId =
               found.model.type === "custom" ? found.model.id : undefined;
+            // Strip the provider prefix when storing {provider, name} —
+            // the provider is explicit, the name is the raw model id.
+            const storedName = apiName.includes("::")
+              ? apiName.slice(apiName.lastIndexOf("::") + 2)
+              : apiName;
             onModelSelect({
-              name: found.model.apiName,
+              name: storedName,
               provider: prov as any,
               customModelId,
             });
@@ -324,7 +284,8 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
         renderModelItem={({ provider, model }, _isSelected) => {
           const isSelectedReal =
             selectedModel.provider === provider &&
-            selectedModel.name === model.apiName;
+            (selectedModel.name === model.apiName ||
+              model.apiName.endsWith(`::${selectedModel.name}`));
 
           const showProviderLabel =
             provider !== "openrouter" && provider !== "auto-router";
@@ -340,11 +301,6 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
                   showAutoRouterBadge={provider === "auto-router"}
                   isAutoRouter={provider === "auto-router"}
                   onRemoveClick={undefined}
-                  alias={aliases[model.apiName]}
-                  onSetAlias={(m, newAlias) =>
-                    setAlias({ modelId: m.apiName, alias: newAlias })
-                  }
-                  onRemoveAlias={(m) => removeAlias(m.apiName)}
                   providerLabel={providerLabel}
                 />
               </div>
