@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useI18n } from "@/lib/i18n";
 
 interface DeleteChatDialogProps {
   isOpen: boolean;
@@ -22,11 +23,12 @@ export function DeleteChatDialog({
   onConfirmDelete,
   chatTitle,
 }: DeleteChatDialogProps) {
+  const { t } = useI18n();
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar chat</AlertDialogTitle>
+          <AlertDialogTitle>{t("chatActions.deleteChat")}</AlertDialogTitle>
           <AlertDialogDescription>
             ¿Estás seguro de que quieres eliminar "{chatTitle || "este chat"}"?
             Esta acción no se puede deshacer y todos los mensajes de este chat
@@ -38,12 +40,12 @@ export function DeleteChatDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{t("chatActions.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirmDelete}
             className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:text-white dark:hover:bg-red-700"
           >
-            Eliminar chat
+            {t("chatActions.deleteChat")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

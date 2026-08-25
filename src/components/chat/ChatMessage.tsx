@@ -691,7 +691,7 @@ const ChatMessage = ({
                     onClick={handleCopyUserMessage}
                     title={userCopied ? "¡Copiado!" : "Copiar"}
                     className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                    aria-label="Copiar mensaje"
+                    aria-label={t("chatActions.copyMessage")}
                   >
                     {userCopied ? (
                       <Check size={13} className="text-primary" />
@@ -889,7 +889,7 @@ const ChatMessage = ({
                               onClick={handleCopyFormatted}
                               title={copied ? "¡Copiado!" : "Copiar"}
                               className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                              aria-label="Copiar respuesta"
+                              aria-label={t("chatActions.copyResponse")}
                             >
                               {copied ? (
                                 <Check size={12} className="text-primary" />
@@ -1004,7 +1004,7 @@ const ChatMessage = ({
                           onClick={handleCopyFormatted}
                           title={copied ? "¡Copiado!" : "Copiar"}
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                          aria-label="Copiar respuesta"
+                          aria-label={t("chatActions.copyResponse")}
                         >
                           {copied ? (
                             <Check size={12} className="text-primary" />

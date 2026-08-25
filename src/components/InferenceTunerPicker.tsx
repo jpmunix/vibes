@@ -8,6 +8,7 @@ import {
 import { ChevronDown, Zap, Brain, RotateCcw, Cog } from "@/components/ui/icons";
 import { Scale } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,62 @@ function hasCustomHyperParams(settings: any): boolean {
 
 export function InferenceTunerPicker() {
   const { settings, updateSettings } = useSettings();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
+
+  const reasoningOptions: ReasoningOption[] = [
+    {
+      value: "low",
+      label: t("inferenceTuner.low"),
+      description: t("inferenceTuner.lowDesc"),
+      icon: Zap,
+    },
+    {
+      value: "medium",
+      label: t("inferenceTuner.medium"),
+      description: t("inferenceTuner.mediumDesc"),
+      icon: Scale,
+    },
+    {
+      value: "high",
+      label: t("inferenceTuner.high"),
+      description: t("inferenceTuner.highDesc"),
+      icon: Brain,
+    },
+  ];
+
+  const hyperParams: HyperParam[] = [
+    {
+      key: "inferenceTemperature",
+      label: t("inferenceTuner.temperature"),
+      description: t("inferenceTuner.temperatureDesc"),
+      min: 0,
+      max: 2,
+      step: 0.05,
+      defaultValue: 0.2,
+      format: (v) => v.toFixed(2),
+    },
+    {
+      key: "inferenceTopP",
+      label: t("inferenceTuner.topP"),
+      description: t("inferenceTuner.topPDesc"),
+      min: 0,
+      max: 1,
+      step: 0.05,
+      defaultValue: 0.95,
+      format: (v) => v.toFixed(2),
+    },
+    {
+      key: "inferenceRepetitionPenalty",
+      label: t("inferenceTuner.repetitionPenalty"),
+      description: t("inferenceTuner.repetitionPenaltyDesc"),
+      min: 0.5,
+      max: 2,
+      step: 0.05,
+      defaultValue: 1.05,
+      format: (v) => v.toFixed(2),
+    },
+  ];
 
   const currentReasoning = settings?.reasoningEffort || "medium";
   const hasCustom = hasCustomHyperParams(settings);
@@ -137,9 +193,9 @@ export function InferenceTunerPicker() {
     ? Cog
     : REASONING_ICONS[currentReasoning] || Scale;
   const triggerText = hasCustom
-    ? "Ajustes"
-    : REASONING_OPTIONS.find((o) => o.value === currentReasoning)?.label ||
-      "Medio";
+    ? t("inferenceTuner.settings")
+    : reasoningOptions.find((o) => o.value === currentReasoning)?.label ||
+      t("inferenceTuner.medium");
   const triggerLabel = (
     <span className="flex items-center gap-1">
       <TriggerIcon size={13} className="shrink-0 opacity-80" />
@@ -176,11 +232,11 @@ export function InferenceTunerPicker() {
           <div className="flex-1 min-w-0 flex flex-col border-r border-border/40">
             <div className="px-3 py-2 h-10 flex items-center border-b border-border/40">
               <span className="typo-menu-header uppercase tracking-wider opacity-70">
-                Razonamiento
+                {t("inferenceTuner.reasoning")}
               </span>
             </div>
             <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-              {REASONING_OPTIONS.map((option) => {
+              {reasoningOptions.map((option) => {
                 const isActive = currentReasoning === option.value;
                 return (
                   <button
@@ -235,7 +291,7 @@ export function InferenceTunerPicker() {
           <div className="w-[220px] shrink-0 flex flex-col">
             <div className="px-3 py-2 h-10 flex items-center justify-between border-b border-border/40">
               <span className="typo-menu-header uppercase tracking-wider opacity-70">
-                Hiperparámetros
+                {t("inferenceTuner.hyperparameters")}
               </span>
               <button
                 type="button"
@@ -247,13 +303,13 @@ export function InferenceTunerPicker() {
                     ? "text-primary hover:bg-primary/10"
                     : "text-muted-foreground/30 cursor-default",
                 )}
-                title="Restaurar valores por defecto"
+                title={t("inferenceTuner.resetDefaults")}
               >
                 <RotateCcw size={12} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              {HYPER_PARAMS.map((param) => {
+              {hyperParams.map((param) => {
                 const rawValue = (settings as any)?.[param.key];
                 const value =
                   rawValue !== undefined ? rawValue : param.defaultValue;

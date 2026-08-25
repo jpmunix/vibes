@@ -352,7 +352,7 @@ export function ChatHeader({
                             </span>
 
                             <button
-                              title="Resumir a chat nuevo"
+                              title={t("chatActions.summarizeToNewChat")}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 if (!appId) return;
@@ -406,7 +406,7 @@ export function ChatHeader({
                               />
                             </button>
                             <button
-                              title="Eliminar chat"
+                              title={t("chatActions.deleteChat")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setChatToDelete({
@@ -448,10 +448,10 @@ export function ChatHeader({
 
       <ConfirmationDialog
         isOpen={!!chatToDelete}
-        title="¿Eliminar chat?"
+        title={t("chatActions.deleteChatTitle")}
         message={`Se eliminará el chat "${chatToDelete?.title}" de forma permanente. No se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
+        confirmText={t("chatActions.deleteChat")}
+        cancelText={t("chatActions.cancel")}
         confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
         showOverlay={false}
         onConfirm={async () => {
@@ -529,9 +529,9 @@ export function ChatHeader({
                 variant="ghost"
                 onClick={() => setChatToRename(null)}
               >
-                Cancelar
+                {t("chatActions.cancel")}
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{t("chatActions.save")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -864,10 +864,10 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
 
       <ConfirmationDialog
         isOpen={!!artifactToDecouple}
-        title="¿Desacoplar plan?"
+        title={t("chatActions.detachPlan")}
         message={`Se quitará la relación del plan "${artifactToDecouple?.title}" con este chat. Esto no eliminará el archivo en el disco, pero sí borrará los comentarios asociados en este chat.`}
         confirmText="Desacoplar"
-        cancelText="Cancelar"
+        cancelText={t("chatActions.cancel")}
         confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
         showOverlay={false}
         onConfirm={async () => {

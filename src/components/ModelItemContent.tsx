@@ -7,6 +7,7 @@ import {
     TooltipTrigger,
     TooltipContent,
 } from "@/components/ui/tooltip";
+import { useI18n } from "@/lib/i18n";
 
 interface ModelItemContentProps {
     model: LanguageModel;
@@ -86,6 +87,7 @@ export function ModelItemContent({
     onRemoveAlias,
     providerLabel,
 }: ModelItemContentProps) {
+    const { t } = useI18n();
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
@@ -163,9 +165,9 @@ export function ModelItemContent({
                                     e.stopPropagation();
                                     confirmEdit();
                                 }}
-                                className="p-0.5 hover:bg-primary/10 rounded text-primary transition-colors cursor-pointer"
+                                className="p-1 hover:bg-primary/10 rounded text-primary transition-colors cursor-pointer"
                             >
-                                <Check size={12} />
+                                <Check size={13} />
                             </button>
                         </div>
                     ) : (
@@ -177,16 +179,17 @@ export function ModelItemContent({
                 </div>
                 <div className="flex items-center justify-between w-full min-w-0 typo-caption leading-tight mt-0.5">
                     {isAutoRouter ? (
-                        <span className="truncate">Gestión automática</span>
+                        <span className="truncate">{t("modelItem.autoManage")}</span>
                     ) : (
                         <>
                             <div className="flex items-center gap-1 min-w-0 truncate">
                                 {model.inputModalities?.includes("image") && (
-                                    <Image
-                                        className="shrink-0 text-primary/70"
-                                        style={{ width: 10, height: 10 }}
-                                        title="Soporta imágenes"
-                                    />
+                                    <span title={t("modelItem.supportsImages")}>
+                                        <Image
+                                            className="shrink-0 text-primary/70"
+                                            size={10}
+                                        />
+                                    </span>
                                 )}
                                 {model.contextWindow && model.contextWindow > 0 ? (
                                     <span className="text-foreground/80 truncate">
@@ -236,7 +239,7 @@ export function ModelItemContent({
                                 onRemoveClick(model);
                             }}
                             className="p-1 hover:bg-red-500/10 rounded text-muted-foreground/50 hover:text-red-500 transition-colors cursor-pointer mr-0.5"
-                            title="Eliminar de recientes"
+                            title={t("modelItem.removeFromRecents")}
                         >
                             <X size={14} />
                         </button>
@@ -301,7 +304,7 @@ export function ModelItemContent({
                                         <span className="text-muted-foreground">Contexto</span>
                                         <span className="font-semibold tabular-nums">{formatTokens(model.contextWindow)}</span>
                                         <span className="text-muted-foreground/30">·</span>
-                                        <span className="text-muted-foreground">Máx. salida</span>
+                                        <span className="text-muted-foreground">{t("modelItem.maxOutput")}</span>
                                         <span className="font-semibold tabular-nums">{formatTokens(model.maxOutputTokens)}</span>
                                     </div>
 

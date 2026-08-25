@@ -1,6 +1,7 @@
 import { FileText, X, Upload } from "@/components/ui/icons";
 import type { FileAttachment } from "@/ipc/types";
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface AttachmentsListProps {
   attachments: FileAttachment[];
@@ -11,6 +12,7 @@ export function AttachmentsList({
   attachments,
   onRemove,
 }: AttachmentsListProps) {
+  const { t } = useI18n();
   // Expanded image state (shared across all attachments)
   const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
 
@@ -66,7 +68,7 @@ export function AttachmentsList({
                 <button
                   onClick={() => onRemove(index)}
                   className="cursor-pointer p-0.5 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-accent transition-colors shrink-0"
-                  aria-label="Eliminar adjunto"
+                  aria-label={t("chatActions.removeAttachment")}
                 >
                   <X size={11} />
                 </button>
@@ -111,6 +113,7 @@ function ImageAttachment({
   onRemove: () => void;
   onExpand: (url: string) => void;
 }) {
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -148,7 +151,7 @@ function ImageAttachment({
           onRemove();
         }}
         className="absolute top-1 right-1 p-0.5 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
-        aria-label="Eliminar captura"
+        aria-label={t("chatActions.removeCapture")}
       >
         <X size={10} />
       </button>

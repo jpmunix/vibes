@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useI18n } from "@/lib/i18n";
 
 /** Accepted file types: images + plain text formats */
 const ACCEPTED_FILE_TYPES = [
@@ -35,6 +36,7 @@ interface AuxiliaryActionsMenuProps {
 export function AuxiliaryActionsMenu({
   onFileSelect,
 }: AuxiliaryActionsMenuProps) {
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -44,7 +46,8 @@ export function AuxiliaryActionsMenu({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       onFileSelect(e.target.files, "chat-context");
-      e.target.value = ""; // Reset for re-selection
+      // Reset the input value so the same file can be selected again
+      e.target.value = "";
     }
   };
 
@@ -66,7 +69,7 @@ export function AuxiliaryActionsMenu({
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Adjuntar imágenes o archivos de texto</p>
+            <p>{t("chatActions.attachMediaOrFiles")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
