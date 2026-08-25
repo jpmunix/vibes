@@ -71,7 +71,7 @@ export default function WorkspacePage() {
   const [appsList] = useAtom(appsListAtom);
   const restoredRef = useRef(false);
   const queryClient = useQueryClient();
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
@@ -169,10 +169,10 @@ export default function WorkspacePage() {
       <div className="flex flex-col items-center justify-center h-full w-full text-muted-foreground gap-3">
         <MessagesSquare className="h-10 w-10 opacity-20" />
         <h2 className="text-base font-medium text-foreground/60">
-          Selecciona un chat
+          {t("workspace.selectChat")}
         </h2>
         <p className="text-xs text-muted-foreground/50 max-w-xs text-center">
-          Elige un chat de la barra lateral para empezar.
+          {t("workspace.selectChatHint")}
         </p>
       </div>
     );

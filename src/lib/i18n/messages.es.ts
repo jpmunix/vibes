@@ -548,6 +548,8 @@ export const messagesEs: Messages = {
     renameAppError: "Error al renombrar la app: {error}",
     createChatError: "Error al crear chat: {error}",
     loading: "Cargando...",
+    selectChat: "Selecciona un chat",
+    selectChatHint: "Elige un chat de la barra lateral para empezar.",
     note: "Nota:",
     noteChangesAccepted: "Los cambios de código ya aceptados se mantendrán.",
     deleteChatConfirm: "Se eliminará \"{name}\" de forma permanente. Esta acción no se puede deshacer.",

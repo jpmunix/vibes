@@ -377,6 +377,8 @@ export const messagesEn: Messages = {
     renameAppError: "Error renaming the app: {error}",
     createChatError: "Error creating chat: {error}",
     loading: "Loading...",
+    selectChat: "Select a chat",
+    selectChatHint: "Pick a chat from the sidebar to get started.",
     note: "Note:",
     noteChangesAccepted: "Accepted code changes will be kept.",
     deleteChatConfirm: "\"{name}\" will be permanently deleted. This action cannot be undone.",
