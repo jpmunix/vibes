@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCustomAgents } from "@/hooks/useCustomAgents";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -199,6 +200,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
   aiMessagesJson,
   hideImages,
 }: UserMessageContentProps) {
+  const { t } = useI18n();
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
   // Parse attached images from aiMessagesJson
@@ -270,30 +272,30 @@ export const UserMessageContent = React.memo(function UserMessageContent({
     if (lowerCmd === "agent" || lowerCmd === "build") {
       return {
         rawMatch: match[0],
-        label: "Agente",
-        description: "Desarrolla, edita y depura con herramientas avanzadas",
+        label: t("chatModes.agent"),
+        description: t("chatModes.agentDesc"),
         slashCommand: `/${lowerCmd}`,
       };
     }
     if (lowerCmd === "plan") {
       return {
         rawMatch: match[0],
-        label: "Planificar",
-        description: "Diseña un plan de acción antes de implementar",
+        label: t("chatModes.plan"),
+        description: t("chatModes.planDesc"),
         slashCommand: "/plan",
       };
     }
     if (lowerCmd === "ask" || lowerCmd === "explore") {
       return {
         rawMatch: match[0],
-        label: "Preguntar",
-        description: "Consulta sobre tu código sin realizar cambios",
+        label: t("chatModes.ask"),
+        description: t("chatModes.askDesc"),
         slashCommand: `/${lowerCmd}`,
       };
     }
 
     return null;
-  }, [cleanContent, customAgents]);
+  }, [cleanContent, customAgents, t]);
 
   const { badgeContent, restOfContent } = useMemo(() => {
     if (!commandMatch) {

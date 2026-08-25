@@ -13,6 +13,7 @@ import { LexicalChatInput } from "./LexicalChatInput";
 import { useChatModeToggle } from "@/hooks/useChatModeToggle";
 import { useTypingPlaceholder } from "@/hooks/useTypingPlaceholder";
 import { AuxiliaryActionsMenu } from "./AuxiliaryActionsMenu";
+import { useI18n } from "@/lib/i18n";
 
 export function HomeChatInput({
   onSubmit,
@@ -21,6 +22,7 @@ export function HomeChatInput({
 }) {
   const [inputValue, setInputValue] = useAtom(homeChatInputValueAtom);
   const { settings } = useSettings();
+  const { t } = useI18n();
   const { isStreaming } = useStreamChat({
     hasChatId: false,
   }); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -31,7 +33,7 @@ export function HomeChatInput({
     "una página de información...",
     "una landing page...",
   ]);
-  const placeholder = `Pídele a vibes que haga ${typingText ?? ""}`;
+  const placeholder = t("chat.askVibesWith", { action: typingText ?? "" });
 
   // Use the attachments hook
   const {
@@ -183,7 +185,7 @@ export function HomeChatInput({
                       onClick={handleCustomSubmit}
                       disabled={!inputValue.trim() && attachments.length === 0}
                       className="home-send-btn p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
-                      title="Enviar mensaje"
+                      title={t("chat.sendMessage")}
                     >
                       <SendHorizontalIcon size={18} />
                     </button>

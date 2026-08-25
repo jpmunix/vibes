@@ -32,6 +32,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
+import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/hooks/useSettings";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { PromoMessage } from "./PromoMessage";
@@ -140,6 +141,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const { isStreaming, streamMessage } = useStreamChat();
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
     const { settings, updateSettings } = useSettings();
+    const { t } = useI18n();
     const [todoId, setTodoId] = useState<number | null>(null);
     const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
@@ -302,11 +304,11 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       return (
         <div className="flex flex-col items-center justify-center h-full min-h-[50vh] max-w-2xl mx-auto">
           <div className="flex flex-1 items-center justify-center typo-body text-muted-foreground">
-            Aún no hay mensajes
+            {t("chat.noMessages")}
           </div>
         </div>
       );
-    }, [renderSetupBanner]);
+    }, [renderSetupBanner, t]);
 
     return (
       <div

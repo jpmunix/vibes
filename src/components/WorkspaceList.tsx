@@ -1223,7 +1223,7 @@ const AppChats = memo(function AppChats({
                         <span
                           className={`break-words whitespace-normal ${unread ? "font-semibold" : ""}`}
                         >
-                          {chat.title || "Nuevo chat"}
+                          {chat.title === "Nuevo chat" ? t("workspaceMenu.newChat") : chat.title || t("workspaceMenu.newChat")}
                         </span>
                         <ChatRowLabels
                           labels={(chat as any).labels}
@@ -1317,7 +1317,7 @@ const AppChats = memo(function AppChats({
                   setShowAll((prev) => !prev);
                 }}
               >
-                {showAll ? "Ver menos" : `Ver todos (${allSortedChats.length})`}
+                {showAll ? t("chat.seeLess") : t("chat.seeAll", { count: allSortedChats.length })}
               </button>
             )}
           </>
@@ -3976,7 +3976,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               <span
                                 className={`break-words whitespace-normal ${isPinnedUnread ? "font-semibold" : ""}`}
                               >
-                                {pinned.title || "Nuevo chat"}
+                                {pinned.title === "Nuevo chat" ? t("workspaceMenu.newChat") : pinned.title || t("workspaceMenu.newChat")}
                               </span>
                               <ChatRowLabels
                                 labels={pinned.labels}

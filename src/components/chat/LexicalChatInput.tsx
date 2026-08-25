@@ -39,6 +39,7 @@ import { useLoadApp } from "@/hooks/useLoadApp";
 import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
 import { FileText, Database, Code, Search } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 // Define the theme for mentions
 const beautifulMentionsTheme: BeautifulMentionsTheme = {
@@ -408,12 +409,14 @@ export function LexicalChatInput({
   onSubmit,
   onPaste,
   excludeCurrentApp,
-  placeholder = "Pídele a vibes que haga...",
+  placeholder,
   disabled = false,
   disableSendButton,
   compact = false,
   expanded = false,
 }: LexicalChatInputProps) {
+  const { t } = useI18n();
+  const placeholderText = placeholder ?? t("chat.askVibes");
   const { prompts } = usePrompts();
   const [shouldClear, setShouldClear] = useState(false);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -596,10 +599,10 @@ export function LexicalChatInput({
                     ? "min-h-[38px] max-h-[192px]"
                     : "min-h-[96px] max-h-[216px]"
               }`}
-              aria-placeholder={placeholder}
+              aria-placeholder={placeholderText}
               placeholder={
                 <div className="absolute top-4 left-4 typo-body text-muted-foreground pointer-events-none select-none">
-                  {placeholder}
+                  {placeholderText}
                 </div>
               }
               onPaste={onPaste}

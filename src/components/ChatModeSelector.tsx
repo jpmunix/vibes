@@ -6,6 +6,7 @@ import { detectIsMac } from "@/hooks/useChatModeToggle";
 import { chatClient } from "@/ipc/types/chat";
 import { useCustomAgents, getUltimateBaseAgent } from "@/hooks/useCustomAgents";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 
 interface ChatModeSelectorProps {
   chatId?: number;
@@ -14,6 +15,7 @@ interface ChatModeSelectorProps {
 export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
   const { settings, updateSettings } = useSettings();
   const { customAgents } = useCustomAgents();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
 
   // Load chat data to query current chatMode if we are in a specific chat
@@ -75,18 +77,18 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
   const getModeDisplayName = (mode: string) => {
     switch (mode) {
       case "plan":
-        return "Planificar";
+        return t("chatModes.plan");
       case "ask":
-        return "Preguntar";
+        return t("chatModes.ask");
       case "agent":
-        return "Agente";
+        return t("chatModes.agent");
       default:
         if (mode.startsWith("custom-agent::")) {
           const id = parseInt(mode.split("::")[1]);
           const agent = customAgents.find((ca) => ca.id === id);
-          return agent ? agent.name : "Agente";
+          return agent ? agent.name : t("chatModes.agent");
         }
-        return "Agente";
+        return t("chatModes.agent");
     }
   };
 
@@ -94,22 +96,22 @@ export function ChatModeSelector({ chatId }: ChatModeSelectorProps) {
     {
       key: "build",
       value: "agent",
-      label: "Agente",
-      description: "Desarrolla, edita y depura con herramientas avanzadas",
+      label: t("chatModes.agent"),
+      description: t("chatModes.agentDesc"),
       command: "/agent",
     },
     {
       key: "plan",
       value: "plan",
-      label: "Planificar",
-      description: "Diseña un plan de acción antes de implementar",
+      label: t("chatModes.plan"),
+      description: t("chatModes.planDesc"),
       command: "/plan",
     },
     {
       key: "explore",
       value: "ask",
-      label: "Preguntar",
-      description: "Consulta sobre tu código sin realizar cambios",
+      label: t("chatModes.ask"),
+      description: t("chatModes.askDesc"),
       command: "/ask",
     },
   ].map((baseOpt) => {

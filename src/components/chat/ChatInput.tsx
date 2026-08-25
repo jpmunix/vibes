@@ -1051,7 +1051,7 @@ export function ChatInput({
                 <button
                   onClick={() => setIsExpanded((v) => !v)}
                   className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                  title={isExpanded ? "Reducir editor" : "Expandir editor"}
+                  title={isExpanded ? t("chat.collapseEditor") : t("chat.expandEditor")}
                 >
                   {isExpanded ? (
                     <Minimize2 size={13} />
@@ -1064,7 +1064,7 @@ export function ChatInput({
                   onChange={setInputValue}
                   onSubmit={handleSubmit}
                   onPaste={handlePaste}
-                  placeholder="Pídele a vibes que haga..."
+                  placeholder={t("chat.askVibes")}
                   excludeCurrentApp={true}
                   disableSendButton={disableSendButton}
                   compact={workspaceMode}
@@ -1126,7 +1126,7 @@ export function ChatInput({
                                 await performUndo({ messageOnly: false });
                               }}
                               className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
-                              title="Deshacer"
+                              title={t("chat.undo")}
                             >
                               {isUndoLoading ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -1135,7 +1135,7 @@ export function ChatInput({
                               )}
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent>Deshacer</TooltipContent>
+                          <TooltipContent>{t("chat.undo")}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}
@@ -1159,7 +1159,7 @@ export function ChatInput({
                     <button
                       onClick={handleCancel}
                       className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors cursor-pointer"
-                      title="Cancelar generación"
+                      title={t("chat.cancelGeneration")}
                     >
                       <StopCircleIcon size={18} />
                     </button>
@@ -1171,7 +1171,7 @@ export function ChatInput({
                         disableSendButton
                       }
                       className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
-                      title="Enviar mensaje"
+                      title={t("chat.sendMessage")}
                     >
                       <SendHorizontalIcon size={18} />
                     </button>
