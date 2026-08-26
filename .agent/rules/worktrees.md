@@ -27,6 +27,25 @@ Otras señales: `.git` es un **archivo** (no un directorio) con una línea `gitd
 - Los commits locales en el worktree son seguros (viven en la rama del worktree). El `git push` y el merge siguen requiriendo OK explícito de munix (AGENTS.md §1.5).
 - El worktree es un andamio desechable para la tarea: si munix pide fusionar, se fusiona y se elimina; si no le gusta, se descarta sin más.
 
+## Integración del worktree — flujo real (sin PRs)
+
+> **munix es el único developer del proyecto.** No se abren PRs ni se hace merge vía GitHub. El flujo de integración de un worktree es directo: **merge fast-forward en `feature/vibes-core` + push**, ejecutado por el agente cuando munix lo pide explícitamente ("haz el push", "integra el worktree" o similar).
+
+```bash
+# 1. Desde el repo principal (NUNCA desde el worktree):
+cd /home/munix/Desarrollo/GitRepo/Vibes
+git merge --ff-only <rama-worktree>        # p. ej. vibes-204-auditoria-ui
+
+# 2. Push de la rama principal:
+git push origin feature/vibes-core
+```
+
+Consideraciones:
+- **Fast-forward siempre**: el worktree cuelga de la punta de `feature/vibes-core` (se creó derivado de esa rama). Si el ff-only falla (el main avanzó por otro lado), **parar y avisar a munix** — nunca hacer merge con 3-way sin OK.
+- **Push de la rama del worktree**: si se pusheó la rama del worktree (p. ej. `git push -u origin vibes-204-auditoria-ui`), tras integrarla en `feature/vibes-core` se **borra la rama remota** del worktree (`git push origin --delete <rama-worktree>`) para no dejar ramas huérfanas.
+- **Eliminar el worktree local** tras integrar: `git worktree remove <ruta-worktree>` + limpiar la rama local (`git branch -d <rama-worktree>`), con OK de munix (es acción destructiva, AGENTS.md §1.5).
+- **El estado del PR no existe**: `feature/vibes-core` es el destino final y la única rama que se mantiene en remoto.
+
 ## Al empezar una card — crear worktree SOLO si no se está ya en uno
 
 1. **Detectar primero** (ver arriba).
