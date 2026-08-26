@@ -45,7 +45,6 @@
     "pre:e2e": "cross-env E2E_TEST_BUILD=true npm run package",
     "e2e": "playwright test",
     "e2e:shard": "playwright test --shard",
-    "rebuild:sqlite": "electron-rebuild -f -w better-sqlite3",
     "dev:web-api": "VIBES_CLOUD_MODE=1 VIBES_API_PORT=4800 node --import tsx --import ./server/src/register-hooks.mjs --watch server/src/index.ts",
     "dev:web": "vite --config vite.web.config.mts",
     "dev:web-all": "concurrently -n api,web -c blue,green \"npm:dev:web-api\" \"npm:dev:web\"",
@@ -92,7 +91,6 @@
     "adm-zip": "^0.5.16",
     "ai": "^6.0.68",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -151,7 +149,6 @@
     "@electron-forge/plugin-vite": "^7.11.1",
     "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
-    "@electron/rebuild": "^4.2.0",
     "@playwright/test": "^1.52.0",
     "@types/adm-zip": "^0.5.7",
     "@types/bcryptjs": "^2.4.6",
@@ -187,7 +184,8 @@
   "overrides": {
     "@vercel/sdk": {
       "@modelcontextprotocol/sdk": "$@modelcontextprotocol/sdk"
-    }
+    },
+    "better-sqlite3": "npm:noop@0.1.0"
   },
   "engines": {
     "node": ">=20"

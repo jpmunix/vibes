@@ -18,7 +18,6 @@ export default defineConfig({
     // sourcemap: true // #VIBES-203: quitar sourcemaps en dev para reducir heap (se regeneran en prod)
     rollupOptions: {
       external: [
-        "better-sqlite3",
         "@huggingface/jinja",
         "sharp",
         "semver",
