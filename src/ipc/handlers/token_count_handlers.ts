@@ -2,9 +2,9 @@
  * Token Count Handlers — Lightweight stub
  *
  * In agent mode, OpenCode manages its own context window and token usage.
- * This handler now returns only the values that the ContextLimitBanner
- * and MessagesList need: actualMaxTokens (from the last assistant message)
- * and contextWindow (from token_utils). No codebase extraction.
+ * This handler returns the values that the InputContextGauge and MessagesList
+ * need: contextWindow (from token_utils) and actualMaxTokens (from the last
+ * assistant message). No codebase extraction.
  */
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";

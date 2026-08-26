@@ -36,7 +36,6 @@ import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/hooks/useSettings";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { PromoMessage } from "./PromoMessage";
-import { ContextLimitBanner } from "./ContextLimitBanner";
 import { useCountTokens } from "@/hooks/useCountTokens";
 import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
 
@@ -92,13 +91,8 @@ const FooterComponent = React.memo(function FooterComponent({
 
   return (
     <>
-      {/* Show context limit banner when close to token limit */}
-      {!isStreaming && tokenCountResult && messages.length > 0 && (
-        <ContextLimitBanner
-          totalTokens={tokenCountResult.actualMaxTokens}
-          contextWindow={tokenCountResult.contextWindow}
-        />
-      )}
+      {/* Context gauge #207: sustituye al antiguo ContextLimitBanner (jubilado).
+          La rueda donut vive en ChatPanel, sobre el input. */}
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
