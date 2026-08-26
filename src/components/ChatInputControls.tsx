@@ -4,6 +4,7 @@ import { ChatModeSelector } from "./ChatModeSelector";
 import { InferenceTunerPicker } from "./InferenceTunerPicker";
 import { TemplatePicker } from "./TemplatePicker";
 import { DesignPicker } from "./DesignPicker";
+import { InputContextGauge } from "./chat/InputContextGauge";
 
 export function ChatInputControls({
   showContextFilesPicker = false,
@@ -21,6 +22,7 @@ export function ChatInputControls({
       <ChatModeSelector chatId={chatId} />
       <ModelPicker chatId={chatId} />
       <InferenceTunerPicker />
+      <InputContextGauge chatId={chatId} />
       {showTemplatePicker && <TemplatePicker variant="compact" />}
       {showDesignPicker && <DesignPicker />}
       {showContextFilesPicker && (

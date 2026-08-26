@@ -115,6 +115,16 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
+### Context gauge (card #207) — tokens de sesión y umbrales
+
+| Archivo | Líneas | Qué cubre |
+|---|---|---|
+| [useSessionTokens.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/hooks/useSessionTokens.test.ts) | 22 | **Funciones puras del context gauge (patrón del repo: sin montar React).** `extractMessageTokenUsage` (parseo de tags `<vibes-token-usage>`: input/output/cached, suma multi-tag, tag-less → sin usage), `computeSessionTokens` (solo assistant, salta legacy sin tag, empty summary), `computeGauge` (pct usado/restante, niveles ok/warn/critical, aviso al 15% restante, compactar al 70% consumido, clamp 100%, inerte sin ventana o sin datos), `formatTokenCount` ("12.4k"/"1.2M"/números), helpers de donut (`DONUT_CIRCUMFERENCE`, `computeDonutDashOffset`: arco 100%→0, 0%→circunferencia, 50%→media, clamps). |
+
+**Cuándo usarlos:** Si se toca `src/hooks/useSessionTokens.ts`, `src/components/chat/ContextGauge.tsx` o los umbrales del gauge (constantes `GAUGE_WARN_PCT_REMAINING` / `GAUGE_COMPACT_PCT_USED`). Cambiar los umbrales o el parseo de tags requiere actualizar estos tests.
+
+---
+
 ## Tests E2E (Playwright) — 103 specs + 244 snapshots
 
 ### Infraestructura
@@ -135,7 +145,7 @@ npm run e2e:shard   # playwright test --shard
 |---|---|---|
 | `local_agent_*` | 16 | **La más densa.** Modo local agent: tool calls multi-turn, permisos consent, mention apps/files, code search, grep, summarize, run type checks, MCP integration. |
 | `engine`, `lm_studio`, `ollama`, `azure_*` | ~8 | Routing de mensajes a engines (OpenRouter/Anthropic/OpenAI/Claude/LM Studio/Ollama/Azure). |
-| `context_*`, `smart_context_*` | ~6 | Context management, exclude paths, smart context deep/balanced, context window. |
+| `context_*`, `smart_context_*`, `context_gauge` | ~7 | Context management, exclude paths, smart context deep/balanced, context window, **context gauge** (card #207: rueda donut de tokens + resumir a chat nuevo; renombrado desde `context_limit_banner`, banner jubilado). |
 | `theme_selection`, `themes_management`, `toggle_screen_sizes` | ~3 | UI de temas y viewport. |
 | `git_collaboration`, `github*` | ~5 | Git branches, GitHub repo create/sync/import/disconnect. |
 | `mcp` | 1+ | MCP servers (HTTP transport, calculator tool, auth headers). |
