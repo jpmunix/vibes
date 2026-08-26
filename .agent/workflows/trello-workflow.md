@@ -439,6 +439,95 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 
 ---
 
+## 🏷️ Labels del board — vocabulario canónico (AGENTS.md §1.10.9)
+
+Toda card que cree el agente (o munix, como convención compartida) lleva **al menos un label** que refleje su naturaleza, y opcionalmente los complementarios (fase/dimensión). Una card sin labels (o con labels incoherentes con su contenido) es una card mal clasificada: rompe el filtrado y las agrupaciones del board.
+
+**Reglas:**
+- Si la card es de **deuda** (revisión, bug no arreglado, refactor pendiente) → label `deuda` siempre.
+- Si toca una **dimensión** reconocible → añadir ese label, aunque sea transversal.
+- Si pertenece a una **fase** → añadir el de fase.
+- No abusar: 1-3 labels por card, los que la describen de verdad. No etiquetar por etiquetar.
+
+**Vocabulario canónico de labels** (no inventar nuevos sin motivo — crear label nuevo solo si ninguno existente encaja y merece la pena):
+- Dimensiones: `tools`, `prompts`, `runtime`, `ui`, `sdk`, `permisos`, `mcp`, `db`, `modelos`, `workspace`, `compactacion`, `resiliencia`, `subagentes`, `attachments`, `migracion`, `arneses`, `research`
+- Fases: `fase-2`, `fase-3`, `fase-4`, `fase-5`, `mvp`
+- Transversales: `deuda`, `ops`, `idea`
+
+**Cuándo:** al **crear** la card (junto al `🔄 [Doing]`), no en un paso posterior. Si se hereda una card sin labels o con labels rotos → corregirlos al cogerla.
+
+> **Por qué:** el board es la única fuente de verdad (§1.10.7). Sin labels coherentes, el filtrado por dimensión (p. ej. "qué deuda de tools tenemos") es imposible y el board pierde su valor como instrumento de gestión.
+
+---
+
+## 🔗 Ref-line: trazabilidad card ↔ conversación ↔ repo (AGENTS.md §1.10.10)
+
+Toda card que se mueva a `Doing` lleva, en su **primer comentario** (el `🔄 [Doing]`), una **ref-line** estándar que ancla la card a la conversación de Antigravity y al estado del repo. Se inyecta con la bandera `--ref` (repetible) de `update-card.mjs` / `create-card.mjs`, que antepone la ref-line al comentario automáticamente:
+
+```bash
+node scripts/trello/update-card.mjs --card "Título" --move Doing \
+  --ref "conv=e7ab9384-..." \
+  --ref "#VIBES-92" \
+  --ref "feat/vibes-92-x@a1b2c3d" \
+  --ref "contract=B6" \
+  --comment "🔄 [Doing] Plan: ..."
+```
+
+Formato canónico de la ref-line (construido por `buildRefLine()` en `lib.mjs`; los campos vacíos se omiten sin dejar separadores colgando):
+
+```
+🔗 Refs: conv=<conversation-id> | #VIBES-NN | <rama>@<commit> | contract=<c> | artifact=<ruta>
+```
+
+**Campos y de dónde salen:**
+
+| Campo | Qué ancla | De dónde se saca |
+|---|---|---|
+| `conv` | Conversación de Antigravity | El ID de la sesión activa (contexto del agente). Ver `ag-chats.mjs` |
+| `#VIBES-NN` | idShort de la card | `list-cards --light` (`idShort`). En `create-card` se auto-inyecta al crear |
+| `<rama>@<commit>` | Estado del repo asociado | `git rev-parse --abbrev-ref HEAD` + `git rev-parse --short HEAD` — **explícito**, no autodetección |
+| `contract` | Contrato tocado (A1-A4, B6…) | `docs/TESTING.md` / Roadmap, si aplica |
+| `artifact` | Walkthrough/plan asociado | Ruta del artifact en el brain, si aplica |
+
+**Reglas:**
+- La ref-line va **siempre al inicio** del comentario (antes del prefijo `🔄/🚧/✅/🏁`), separada por una línea en blanco.
+- Se **actualiza** la ref-line en el comentario `✅ [Review]` si la rama o el commit cambiaron durante la slice (nuevo comentario con las refs actualizadas).
+- El walkthrough/plan asociado a la card lleva al final un bloque `## Trazabilidad` con la misma ref-line (verificación cruzada).
+- Las refs de **git son explícitas**: el agente las pasa a mano, no hay autodetección mágica del CWD (decisión de munix).
+- `create-card.mjs` añade el comentario ancla **solo si se pasa `--ref`** (no en toda card nueva: sería ruido redundante).
+- Cualquier búsqueda de "de dónde viene esta card" empieza por la ref-line del primer comentario.
+
+> **Por qué:** una card sin ref-line es un nodo huérfano: munix abre Antigravity desde el móvil y no sabe qué chat corresponde; abre Trello y no sabe qué conversación tiene el contexto. La ref-line hace el board **navegable de ida y de vuelta**.
+
+> [!NOTE]
+> Tests del helper: [`scripts/trello/__tests__/build-ref-line.test.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/__tests__/build-ref-line.test.mjs) — se ejecutan con `node --test "scripts/trello/__tests__/*.test.mjs"` (runner nativo, sin deps).
+
+---
+
+## ✅ Checklist de cierre de card (AGENTS.md §1.10.6)
+
+Antes de mover a Done, la card pasa por **`Review`** (donde munix hace las pruebas manuales) y el agente verifica TODOS:
+
+1. ¿Pasó las pruebas manuales (dentro de Review) y OK explícito de munix? (verbal o moviendo él la card)
+2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
+3. ¿Checklist completo? — `list-cards --number <N> --detail > /tmp/card-<N>.json` expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
+4. ¿Comentario-bitácora si hubo decisiones no obvias?
+
+Si falta algo → la card se queda en `Review` hasta que esté completo.
+
+---
+
+## 📜 Historial de decisiones del board
+
+Arqueología de los cambios de estructura (para que un agente futuro entienda el porqué sin excavar conversaciones):
+
+- **2026-08-25** — Se **eliminan las columnas `Blocked` y `Manual tests`**. Un atasco se documenta con el comentario `🚧 [Atasco]` (la card sigue en Doing) y las pruebas manuales las hace munix dentro de `Review` antes de dar el OK. Motivo: ambas columnas generaban fricción sin aportar información que un comentario no cubriera.
+- **2026-08-11** — La lista `Ideas` pasa a ser **solo de munix**: el agente no la llena ni la toca. Ideas sueltas NO planificadas, fuera del flujo.
+- **El `#idShort` va en el título** (`#XXX - título`) porque la app de Trello para Android **no muestra el número** de card en ningún sitio (ni listado ni detalle) — solo en la URL. Con el `#XXX` en el título, cualquier card es referenciable desde el móvil.
+- **Refs de git explícitas en la ref-line** (sin autodetección del CWD): decisión de munix, porque el agente puede estar en un worktree y la autodetección anclaría la ref al sitio equivocado.
+
+---
+
 ## ⚠️ Reglas duras (anti-patterns)
 
 - ❌ **NO** mover una card a Done sin OK de munix + evidencia.

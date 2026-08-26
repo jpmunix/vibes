@@ -144,17 +144,9 @@ El inventario completo y detallado de todos los tests del repo vive en [`docs/TE
 
 ### 1.9 Inventario de features listas para probar — **VITAL**
 
-Cada feature cerrada en verde se anota en el artifact [`brain/feature_inventory.md`](file:///home/munix/.gemini/antigravity/brain/4a8ac19e-2d71-470d-8f53-f0c0dd1c7614/feature_inventory.md) con bullets cortos (qué probar, qué validar, resultado esperado). Es la **lista viva** de qué se puede testear a fondo antes de fusionar / deployar.
+Cada feature cerrada en verde se anota en el artifact [`brain/feature_inventory.md`](file:///home/munix/.gemini/antigravity/brain/4a8ac19e-2d71-470d-8f53-f0c0dd1c7614/feature_inventory.md): bullets cortos, una acción verificable por línea, sección final "Próximo test flight". Si el artifact no se actualiza con cada slice, perdemos el rastro de qué testear primero.
 
-**Reglas:**
-- Cada vez que se cierra una feature (slice / fix / refactor) → añadir bullets al artifact en el mismo cambio.
-- Formato: **bullets cortos**, una línea por bullet. Sin prosa larga, sin párrafos descriptivos.
-- Cada bullet = **una acción verificable** ("pulsar X", "verificar Y", "esperar Z").
-- Si la feature se subdivide en sub-slices (Slice 3.8 → 3.8.1/3.8.2/3.8.3/3.8.4) → agrupar visualmente con el mismo nivel de indentación.
-- Si un bullet cambia de comportamiento (regresión, fix) → actualizar el bullet en lugar de añadir uno nuevo con "(fix)".
-- El artifact incluye una sección final **"Próximo test flight"** con los 5-10 bullets más críticos para probar primero.
-
-> **Por qué:** munix necesita tener siempre a la vista qué se puede probar y qué cubre cada feature, sin releer el walkthrough entero. Si el artifact no se actualiza con cada slice, perdemos el rastro de qué testear primero.
+📖 **CUÁNDO:** al cerrar una slice en verde → [`artifacts.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/artifacts.md) (formato completo).
 
 ---
 
@@ -204,160 +196,61 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 
 #### 1.10.4 Comentarios-bitácora (lo que separa el oro de la mierda)
 
-> **Por qué:** dentro de 6 meses, un agente (o munix) debe leer una card de Done y entender TODO sin hablar con nadie. La memoria del proyecto vive en los comentarios del board, no en las conversaciones.
+Dentro de 6 meses, un agente (o munix) debe leer una card de Done y entender TODO sin hablar con nadie. **La memoria del proyecto vive en los comentarios del board, no en las conversaciones.** Los comentarios llevan prefijos escaneables (`🔄 [Doing]`, `🚧 [Atasco]`, `✅ [Review]`, `🏁 [Done]`, `🧠 Contexto`, `📌 Para el agente`, `♻️ Deuda`).
 
-**Formato (prefijos escaneables):**
-
-| Prefijo | Uso | Ejemplo |
-|---|---|---|
-| `🔄 [Doing]` | Inicio (plan) | `🔄 [Doing] Plan: migrar X a Y, tests A/B` |
-| `🚧 [Atasco]` | Atasco (qué falta) | `🚧 [Atasco] Falta decisión munix: ¿SQLite o Postgres?` |
-| `✅ [Review]` | Listo (evidencia) | `✅ [Review] Tests: 12 verdes (pnpm test). Archivos: 3` |
-| `🏁 [Done]` | Cierre con OK | `🏁 [Done] OK munix. Cerrada.` |
-| `🧠 Contexto` | Decisión/porqué técnico | `🧠 Contexto: elegimos X sobre Y porque ...` |
-| `📌 Para el agente` | Nota para el futuro | `📌 Para el agente: si tocas esto, ojo con Z` |
-| `♻️ Deuda` | Deuda detectada | `♻️ Deuda: al hacer X, Y quedó sin testear → card nueva` |
-
-**Qué escribir:** decisiones y su porqué, alternativas descartadas, referencias a archivos clave, bugs cazados y cómo, cosas no obvias que el código no dice.
-**Qué NO escribir:** "he hecho la card", repetir la descripción, detalles que ya están en el código/commits.
-
-> [!TIP]
-> Regla del pulgar: **si un agente futuro leyera SOLO los comentarios de la card, ¿podría retomar el trabajo sin hablar con nadie?** Si no, falta contexto.
+📖 **CUÁNDO:** al comentar cualquier card → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §📝 (tabla de prefijos, qué escribir y qué no).
 
 #### 1.10.5 Detección de deuda (el agente como detector)
 
-Mientras trabaja, si encuentra un bug que no arregla (fuera de scope), una feature que se rompe, o un refactor necesario → **crea card nueva** en Backlog con label `deuda` y checklist de criterios. **No lo arregla en caliente** (scope creep, §6). La card ES la documentación de la deuda.
+Si encuentra un bug que no arregla (fuera de scope), una feature que se rompe, o un refactor necesario → **crea card nueva** en Backlog con label `deuda` y checklist de criterios. **No lo arregla en caliente** (scope creep, §6). La card ES la documentación de la deuda.
 
-```bash
-node scripts/trello/create-card.mjs --title "Deuda: ..." --desc "**Qué:** ...\n**Por qué importa:** ...\n**Checklist:** ..." --list "Backlog" --labels "deuda" --checklist "Criterio 1|Criterio 2"
-```
+📖 **CUÁNDO:** al detectar deuda → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §🆕 (comando de ejemplo).
 
 #### 1.10.6 Cierre de card (checklist de verificación)
 
-Antes de mover a Done, la card pasa por **`Review`** (donde munix hace las pruebas manuales) y el agente verifica TODOS:
-1. ¿Pasó las pruebas manuales (dentro de Review) y OK explícito de munix? (verbal o moviendo él la card)
-2. ¿Comentario de cierre con evidencia? (tests verdes, verificación manual)
-3. ¿Checklist completo? — `list-cards --number <N> --detail > /tmp/card-<N>.json` expone `checklists[].items[].state`; el agente **debe** confirmar que todos están `complete` antes de mover. Si alguno está `incomplete` → no se mueve a Done. La bandera `--check-all` de `update-card.mjs` marca todos los items de todos los checklists como `complete` en un solo paso (usar tras verificarlos manualmente, no a ciegas).
-4. ¿Comentario-bitácora si hubo decisiones no obvias?
+Antes de mover a Done: (1) pruebas manuales en Review + OK explícito de munix; (2) comentario de cierre con evidencia; (3) checklist **completo** (verificar `checklists[].items[].state` todos `complete` antes de mover); (4) comentario-bitácora si hubo decisiones. Si falta algo → la card se queda en `Review`.
 
-Si falta algo → la card se queda en `Review` hasta que esté completo.
+📖 **CUÁNDO:** al cerrar una card → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §✅ (detalle mecánico del checklist).
 
 #### 1.10.7 Roadmap, tareas y planes — Trello es la fuente de verdad — **INNEGOCIABLE**
 
-Cuando munix pregunte por el estado del roadmap, las tareas pendientes, los planes de trabajo o el progreso general, **siempre nos referimos al board de Trello** como la única fuente de verdad. No se contestan preguntas de roadmap mirando documentos estáticos, artifacts, ni la memoria de la conversación.
-
-- **Consultar el board** (`node scripts/trello/list-cards.mjs --light`) es el primer paso antes de responder cualquier pregunta sobre qué hay pendiente, qué está en curso, o qué se planea.
-- **Los artifacts temporales** (plans, walkthroughs, análisis) son **borradores de trabajo** que el agente crea mientras pelotea una tarea (como artifact, no como documento del repo). **Siempre acaban reflejados en Trello** como card, comentario, adjunto o actualización de checklist. Al terminar la tarea, el plan se **sube a la card y se elimina** del working tree (ver §1.12).
-- Si existe un artifact de plan que no tiene card equivalente en Trello → **crear la card** o preguntar a munix si debe existir.
-- **Nunca** mantener un "roadmap paralelo" en documentos, artifacts o conversaciones que no esté sincronizado con Trello.
-
-> [!IMPORTANT]
-> **Por qué:** Si la fuente de verdad vive en dos sitios (Trello + un documento), acaba divergiendo y perdemos la trazabilidad. Un plan en un artifact sin card en Trello es un plan que no existe. Los artifacts son el borrador; Trello es el contrato.
+Cuando munix pregunte por roadmap, tareas pendientes, planes o progreso, **siempre se consulta el board** (`node scripts/trello/list-cards.mjs --light`). No se contestan preguntas de roadmap mirando documentos estáticos, artifacts, ni la memoria de la conversación. Los artifacts temporales (plans, walkthroughs) son borradores que **siempre acaban reflejados en Trello** (ver §1.12); un plan en un artifact sin card en Trello es un plan que no existe. Nunca mantener un "roadmap paralelo" fuera del board.
 
 #### 1.10.8 Artifacts de una tarea → se suben SOLOS a la card — **INNEGOCIABLE**
 
-Todo artifact que se genere durante el trabajo de una card (plan, walkthrough, análisis, informe de tests, captura, fixture, documento de apoyo) se sube **automáticamente** como adjunto a la card correspondiente, **sin intervención del usuario**: el agente no espera a que munix lo pida ni pregunta "¿subo esto?". Si se generó durante la tarea, se adjunta.
+Todo artifact que se genere durante el trabajo de una card se sube **automáticamente** como adjunto, **sin intervención del usuario**: el agente no pregunta "¿subo esto?". Si se generó durante la tarea, se adjunta (al terminar, junto con el `✅ [Review]`; límite 10 MB por fichero; el código fuente no se sube salvo que sea evidencia).
 
-```bash
-node scripts/trello/attach-file.mjs --card "Título de la card" --file "<ruta-del-artifact>/plan-vibes-NN.md,./captura.png"
-```
-
-- **Cuándo:** al terminar el trabajo (junto con el `✅ [Review]`), o antes si el artifact es grande o muestra progreso.
-- **Card correspondiente:** la card en la que se está trabajando (la de Doing). Si un artifact no tiene card propia, se adjunta a la card de la tarea.
-- **Límite:** 10 MB por fichero (API de Trello). Si un artifact lo excede, se avisa en el comentario (nunca se omite en silencio).
-- **Código fuente:** no se sube al board (vive en el repo); solo se adjunta si es evidencia relevante (p. ej. el script entregable).
+📖 **CUÁNDO:** al terminar una tarea con artifacts → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §📎 (comando `attach-file.mjs` y detalles).
 
 #### 1.10.9 Labels del board — toda card lleva labels coherentes — **INNEGOCIABLE**
 
-Toda card que cree el agente (o munix, como convención compartida) lleva **al menos un label** que refleje su naturaleza, y opcionalmente los complementarios (fase/dimensión). Una card sin labels (o con labels incoherentes con su contenido) es una card mal clasificada: rompe el filtrado y las agrupaciones del board.
+Toda card que cree el agente lleva **al menos un label** que refleje su naturaleza (deuda/dimensión/fase), 1-3 labels, puestos al **crear** la card. Card sin labels o incoherentes = mal clasificada: rompe el filtrado del board.
 
-**Reglas:**
-- Si la card es de **deuda** (revisión, bug no arreglado, refactor pendiente) → label `deuda` siempre.
-- Si toca una **dimensión** reconocible (tools, prompts, runtime, ui, sdk, permisos, mcp, db, modelos, workspace, compactacion, resiliencia, subagentes, attachments, migracion, arneses, research, etc.) → añadir ese label, aunque sea transversal.
-- Si pertenece a una **fase** (fase-2, fase-3, fase-4, fase-5) → añadir el de fase.
-- No abusar: 1-3 labels por card, los que la describen de verdad. No etiquetar por etiquetar.
-
-**Vocabulario canónico de labels** (no inventar nuevos sin motivo — crear label nuevo solo si ninguno existente encaja y merece la pena):
-- Dimensiones: `tools`, `prompts`, `runtime`, `ui`, `sdk`, `permisos`, `mcp`, `db`, `modelos`, `workspace`, `compactacion`, `resiliencia`, `subagentes`, `attachments`, `migracion`, `arneses`, `research`
-- Fases: `fase-2`, `fase-3`, `fase-4`, `fase-5`, `mvp`
-- Transversales: `deuda`, `ops`, `idea`
-
-**Cuándo:** al **crear** la card (junto al `🔄 [Doing]`), no en un paso posterior. Si se hereda una card sin labels o con labels rotos → corregirlos al cogerla.
-
-> **Por qué:** el board es la única fuente de verdad (§1.10.7). Sin labels coherentes, el filtrado por dimensión (p. ej. "qué deuda de tools tenemos") es imposible y el board pierde su valor como instrumento de gestión.
+📖 **CUÁNDO:** al crear o coger cualquier card → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §🏷️ (vocabulario canónico completo).
 
 #### 1.10.10 Trazabilidad card ↔ conversación ↔ repo — **INNEGOCIABLE**
 
-Toda card que se mueva a `Doing` lleva, en su **primer comentario** (el `🔄 [Doing]`), una **ref-line** estándar que ancla la card a la conversación de Antigravity y al estado del repo. Se inyecta con la bandera `--ref` (repetible) de `update-card.mjs` / `create-card.mjs`, que antepone la ref-line al comentario automáticamente:
+Todo movimiento a `Doing` lleva, en el primer comentario, la **ref-line** `🔗 Refs: conv=<id> | #VIBES-NN | <rama>@<commit> | contract=<c> | artifact=<ruta>`, inyectada con `--ref` antes del prefijo. Las refs de **git son explícitas** (las pasa el agente, sin autodetección — decisión de munix). La ref-line se actualiza en el `✅ [Review]` si la rama/commit cambió durante la slice.
 
-```bash
-node scripts/trello/update-card.mjs --card "Título" --move Doing \
-  --ref "conv=e7ab9384-..." \
-  --ref "#VIBES-92" \
-  --ref "feat/vibes-92-x@a1b2c3d" \
-  --ref "contract=B6" \
-  --comment "🔄 [Doing] Plan: ..."
-```
-
-Formato canónico de la ref-line (construido por `buildRefLine()` en `lib.mjs`; los campos vacíos se omiten sin dejar separadores colgando):
-
-```
-🔗 Refs: conv=<conversation-id> | #VIBES-NN | <rama>@<commit> | contract=<c> | artifact=<ruta>
-```
-
-**Campos y de dónde salen:**
-
-| Campo | Qué ancla | De dónde se saca |
-|---|---|---|
-| `conv` | Conversación de Antigravity | El ID de la sesión activa (contexto del agente). Ver §1.13 (`ag-chats.mjs`) |
-| `#VIBES-NN` | idShort de la card | `list-cards --light` (`idShort`). En `create-card` se auto-inyecta al crear |
-| `<rama>@<commit>` | Estado del repo asociado | `git rev-parse --abbrev-ref HEAD` + `git rev-parse --short HEAD` — **explícito**, no autodetección |
-| `contract` | Contrato tocado (A1-A4, B6…) | `docs/TESTING.md` / Roadmap, si aplica |
-| `artifact` | Walkthrough/plan asociado | Ruta del artifact en el brain, si aplica |
-
-**Reglas:**
-- La ref-line va **siempre al inicio** del comentario (antes del prefijo `🔄/🚧/✅/🏁`), separada por una línea en blanco.
-- Se **actualiza** la ref-line en el comentario `✅ [Review]` si la rama o el commit cambiaron durante la slice (nuevo comentario con las refs actualizadas).
-- El walkthrough/plan asociado a la card lleva al final un bloque `## Trazabilidad` con la misma ref-line (verificación cruzada).
-- Las refs de **git son explícitas**: el agente las pasa a mano, no hay autodetección mágica del CWD (decisión de munix).
-- `create-card.mjs` añade el comentario ancla **solo si se pasa `--ref`** (no en toda card nueva: sería ruido redundante).
-- Cualquier búsqueda de "de dónde viene esta card" empieza por la ref-line del primer comentario.
-
-> **Por qué:** una card sin ref-line es un nodo huérfano: munix abre Antigravity desde el móvil y no sabe qué chat corresponde; abre Trello y no sabe qué conversación tiene el contexto. La ref-line hace el board **navegable de ida y de vuelta**.
-
-> [!NOTE]
-> Tests del helper: [`scripts/trello/__tests__/build-ref-line.test.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/trello/__tests__/build-ref-line.test.mjs) — se ejecutan con `node --test "scripts/trello/__tests__/*.test.mjs"` (runner nativo, sin deps).
+📖 **CUÁNDO:** al mover una card a Doing → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §🔗 (tabla de campos, ejemplo bash).
 
 #### 1.10.11 El número de card va en el título — `#XXX - título` — **INNEGOCIABLE**
 
-Toda card del board lleva su **número (`idShort`) en el título**, en formato `#XXX - título` (p. ej. `#131 - Ajustes para expertos: parámetros avanzados`). El número **siempre al principio**, precediendo a cualquier otro prefijo (incluidos `Deuda:` o `Review:` → pasan a ser `#XX - Deuda: ...`).
+Toda card lleva su **número (`idShort`) en el título**, formato `#XXX - título` (p. ej. `#131 - Ajustes para expertos`), **siempre al principio** (precediendo incluso `Deuda:` o `Review:`). No usar `#VIBES-` en el título (queda para ref-line y commits): basta `#XX`.
 
-**Por qué:** la app de Trello para Android **no muestra el número** de card en ningún sitio (ni en el listado, ni en el detalle) — solo aparece en la URL, que en el móvil es incómoda de consultar. Con el `#XXX` en el título, cualquier card es referenciable y trazable desde el móvil sin abrir la URL.
+**Una vez creada la card, el agente DEBE verificar que el `#idShort` está al principio del título. Si no lo tiene, DEBE actualizarla para añadirlo — siempre, sin excepción. Es innegociable.** No se da una card por creada hasta que su título empieza por `#<idShort> - `.
 
-**Reglas:**
-- Toda card **nueva** se crea ya con el `#XXX` en el título (tras `create-card`, el `idShort` asignado se antepone al título con `update-card --name "#XXX - <título>"`).
-- **Una vez creada la card, el agente DEBE verificar que el `#idShort` está al principio del título. Si no lo tiene, DEBE actualizarla para añadirlo — siempre, sin excepción. Es innegociable.** No se da una card por creada hasta que su título empieza por `#<idShort> - `.
-- Toda card **renombrada** conserva el `#XXX` al principio.
-- El `idShort` es el que expone `list-cards --light` (el mismo `#VIBES-NN` de la ref-line, §1.10.10).
-- No usar `#VIBES-` como prefijo en el título (`#VIBES-XX` queda solo para la ref-line de los comentarios y los commits): en el título basta `#XX`.
-- El formato es `#<idShort> - <título>` (almohadilla, número, espacio, guion, espacio).
-
-> **Por qué:** sin el número en el título, desde Android no hay manera de saber qué card es cuál al hablar de ellas (\"la de los prompts\", \"esa que estaba en Doing\"...). El `#XXX` en el título es la **referencia visible universal**, en móvil y en escritorio.
+> El `idShort` lo expone `list-cards --light`. La arqueología del porqué (app Android) está en [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §📜.
 
 #### 1.10.12 Trabajo sin card: captura progresiva — **INNEGOCIABLE**
 
-Cuando munix pide **empezar a trabajar sin especificar una card** (dice una idea, un problema, o simplemente "vamos a hacer X" sin referenciar el board), el agente **no inventa ni se lanza a lo loco**: entra en modo **captura progresiva** — espera la cantidad de mensajes de munix que haga falta hasta que la idea esté lo bastante clara para formalizarla.
+Cuando munix pide trabajar sin especificar card, el agente **no inventa ni se lanza a lo loco**:
 
-**Reglas:**
+- **Idea difusa → esperar.** Sin scope ni criterio de "hecho", el agente NO crea la card ni trabaja: espera los mensajes de munix que hagan falta (o pregunta lo mínimo para desambiguar).
+- **Idea clara → crear y avisar.** Card con los **4 campos mínimos** (título, qué, por qué, criterio de aceptación) → `#idShort` en el título (§1.10.11) → `Doing` con plan + ref-line (§1.10.10) + labels (§1.10.9) → **avisar a munix por el chat**.
+- **Nunca trabajar con la idea difusa.** Sin card en `Doing` no hay plan, sin plan no hay código. (Excepción: one-shots/scripts que munix pida explícitamente — §1.4 — pero si se convierten en tarea, acaban en card.)
 
-- **Idea difusa → esperar.** Si en el primer mensaje la idea es difusa (falta scope, falta qué archivos tocar, falta el criterio de qué es "hecho"), el agente NO crea la card ni empieza a trabajar: espera el siguiente mensaje de munix (o pregunta lo mínimo para desambiguar, sin soltar una chapa de 40 preguntas). La card se crea **solo cuando la idea es formalizable**.
-- **Idea clara → crear y avisar.** Cuando la idea ya se puede formalizar, el agente crea la card con los **4 campos mínimos** (título, qué, por qué, criterio de aceptación), la mueve a `Doing` con el comentario `🔄 [Doing] Plan: ...` + ref-line (regla §1.10.10) y los labels coherentes (§1.10.9), y **avisa a munix por el chat** de que ya está creada y en Doing.
-- **Nunca trabajar con la idea difusa.** Sin card creada y en `Doing` no hay trabajo: sin card no hay plan, sin plan no hay código. (Excepción: los one-shots y scripts que munix pida explícitamente sí se ejecutan directamente — ver §1.4 — pero si el script se convierte en tarea, acaba en card.)
-- **Secuencia canónica de creación** (mismo patrón en `create-card → update-card`):
-  1. `create-card` en `To-do` con título, desc (`**Qué:** ...\n\n**Por qué:** ...\n\n**Criterio:** ...`), labels y checklist (si aplica).
-  2. `update-card --name "#<idShort> - <título>"` (regla §1.10.11, innegociable).
-  3. `update-card --move Doing --comment "🔄 [Doing] Plan: ..."` + ref-line `🔗 Refs: conv=<id> | #VIBES-NN | <rama>@<commit>` (§1.10.10).
-  4. Avisar a munix: card creada, número y título (`#NN - ...`), lista, enlace. Y a trabajar.
+📖 **CUÁNDO:** al crear una card desde cero → [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) §0️⃣ (secuencia canónica de comandos).
 
 > **Por qué:** el board es la única fuente de verdad (§1.10.7) y el checklist de una card son sus criterios de aceptación (§1.10.6). Si el agente se pone a picar código con una idea de tres frases sin card, el trabajo no es trazable, no tiene criterio de "hecho" y el board deja de reflejar la realidad. Esperar uno o dos mensajes más cuesta 30 segundos; inventarse una card que no era lo que munix quería cuesta una tarde.
 
@@ -397,60 +290,38 @@ El código es nuestro. No mencionamos a ningún proyecto de terceros (OpenCode, 
 
 ### 1.15 i18n en UI — todo texto visible va a diccionarios — **INNEGOCIABLE**
 
-Cuando se genere o modifique UI (cualquier componente React, cualquier string que el usuario vea), **todo texto visible debe ir a los diccionarios i18n** (`messages.es.ts` / `messages.en.ts`), nunca hardcoded en español (ni en inglés) directamente en el JSX.
+Todo texto visible va a los diccionarios i18n (`messages.es.ts` / `messages.en.ts`) vía `t("namespace.key")`, **nunca hardcoded en el JSX**. Cada string nuevo en AMBOS diccionarios. **Ninguna tarea de UI se cierra con strings sin localizar — es criterio de aceptación.** Si al tocar un archivo aparece un string ajeno sin localizar, se pregunta a munix (ni se arregla en caliente ni se ignora). "Es un string trivial" no es respuesta aceptable.
 
-**Reglas duras:**
-- ❌ **NUNCA** escribir strings literales en el JSX: `>Guardar<`, `placeholder="Selecciona un modelo"`, `title="Eliminar"`, `label: "Con razonamiento"`.
-- ❌ **NUNCA** dar por terminada una slice/tarea de UI (ni marcarla `✅ [Review]` ni proponer movimiento a `Done`) con algún texto visible sin localizar en los archivos tocados. **Es criterio de aceptación, no una opción**: si hay un string sin localizar, la tarea no está terminada, punto.
-- ❌ **NUNCA** dejar pasar en silencio un string sin localizar encontrado en un archivo que se está tocando, aunque no sea de la tarea actual (scope creep, §6): **preguntar a munix si se localiza** antes de seguir. Ni arreglarlo en caliente por libre ni ignorarlo como si no se hubiera visto.
-- ✅ **SIEMPRE** usar `t("namespace.key")` o `tPlural("namespace.key", count)` para todo texto que el usuario vea.
-- ✅ Cada string nuevo va en **AMBOS diccionarios** (es + en) o el test de paridad falla.
-- ✅ Si el string está en un array/const a nivel de módulo (fuera del componente), convertirlo a función que recibe `t`: `getOptions(t)`.
-- ✅ Si el string está en un subcomponente (función no exportada en el mismo archivo), ese subcomponente necesita su PROPIO `useI18n()` — el hook del padre no lo cubre.
-- ✅ Si el texto es un valor de datos que se persiste en BD (alias de claves, nombres de usuario), **no se traduce** — se deja como valor del usuario. Pero el placeholder, label y descripción del campo SÍ se traducen.
-- ❌ "Es un string trivial, no necesita i18n" **no es una respuesta aceptable**. Si el usuario lo ve, va al diccionario.
-
-> **Por qué:** Vibes está en producción y ya tiene sistema i18n con paridad es/en. Hardcodear strings en español rompe el cambio de idioma: el usuario cambia a English y ve mitad de la UI en español. Un string que no está en el diccionario es un string que se cuela sin traducir y que el siguiente agente no sabe que existe. La paridad existe precisamente para cazar esto — si añadimos un string sin diccionario, perdemos la garantía de que todo está localizado. Y un string ajeno sin localizar visto de paso es deuda: se pregunta a munix, se documenta (card de deuda, §1.10.5) y se decide — nunca se cuece en silencio ni se arregla en caliente fuera de scope.
+📖 **CUÁNDO:** al crear/modificar cualquier `.tsx` o string visible → [`i18n.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/i18n.md) (reglas completas, `getOptions(t)`, `useI18n()` en subcomponentes).
 
 ---
 
 ### 1.16 Worktrees — detección y limpieza — **INNEGOCIABLE**
 
-Gemelo de §1.16 en [vibes-core/AGENTS.md](file:///home/munix/Desarrollo/GitRepo/vibes-core/.agents/rules/AGENTS.md). El agente puede trabajar en un **worktree de git** (checkout aislado del repo, con su propia rama y su propio working tree, compartiendo el `.git` del repo principal).
+Gemelo de §1.16 en [vibes-core/AGENTS.md](file:///home/munix/Desarrollo/GitRepo/vibes-core/.agents/rules/AGENTS.md). El agente puede trabajar en un **worktree de git** (checkout aislado con su propia rama, compartiendo el `.git` del repo principal).
 
-**Detección — SIEMPRE al empezar a trabajar:**
+**Esencias:**
+- **Detección SIEMPRE** antes de cualquier operación git: `git rev-parse --git-dir` → si contiene `worktrees`, estás en uno. No es automático que Antigravity meta al agente en un worktree; se detecta cada vez.
+- Desde un worktree: **NUNCA** push, merge, borrar ramas ni tocar el repo principal. Commits locales en la rama del worktree son seguros.
+- **Crear worktree por card:** SOLO si no se está ya en uno, derivado de la rama checkouteada en el repo principal, y **con OK explícito de munix** cada vez.
+- **Prune (3 días):** worktrees sin movimiento en 3 días → reportar a munix y proponer `git worktree remove`; nunca borrar por libre.
 
-Antes de cualquier operación git, ejecutar:
+📖 **CUÁNDO:** antes de cualquier operación git → [`worktrees.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md) (detección completa, creación por card, comandos de limpieza).
 
-```bash
-git rev-parse --git-dir
-```
+---
 
-- Si la salida **contiene `worktrees`** (p. ej. `.../.git/worktrees/<rama>`), estás en un worktree.
-- Si la salida es `.git` o una ruta normal, estás en el repo principal.
+### 1.17 Tabla de triggers — cuándo consultar cada doc de detalle
 
-Otra señal: `.git` es un **archivo** (no un directorio) con una línea `gitdir: <ruta>` que apunta al gitdir real, y el `--show-toplevel` apunta al worktree (no al repo principal).
+El detalle procedimental de las reglas de dominio vive en docs autocontenidos (`Vibes/.agent/rules/` y `workflows/`). El índice solo lleva la esencia; el doc se consulta **bajo demanda** cuando salta su trigger. Ante la duda, se consulta el doc — nunca se aplica la regla de memoria.
 
-**Reglas cuando se trabaja en un worktree:**
-- El repo principal es el checkout normal (`/home/munix/Desarrollo/GitRepo/Vibes`). **NUNCA** hacer push, merge, borrar ramas ni tocar el repo principal desde el worktree.
-- Los commits locales en el worktree son seguros (viven en la rama del worktree). El `git push` y el merge siguen requiriendo OK explícito de munix (regla §1.5).
-- El worktree es un andamio desechable para la tarea: si munix pide fusionar, se fusiona y se elimina; si no le gusta, se descarta sin más.
-
-**Al empezar una card — crear worktree SOLO si no se está ya en uno:**
-
-- **Primero detectar** (ver arriba): ¿se está ya en un worktree? **No es automático que Antigravity meta al agente en un worktree** — puede estar trabajando directamente en el repo principal. La detección es obligatoria cada vez, no se asume.
-- **Si ya se está en un worktree** → usar ese como espacio aislado de la card. **No crear otro** (evitar duplicar worktrees para la misma tarea).
-- **Si NO se está en un worktree** (se está en el repo principal) → proponer crear uno **derivado de la rama checkouteada en el repo principal en ese momento** (no siempre de `main`). P. ej. si el repo principal está en `feature/vibes-core`, la rama del worktree sale de ahí.
-- **Pedir OK explícito de munix cada vez** antes de ejecutar `git worktree add` + `git checkout -b` (es acción que crea ramas, regla §1.5: requiere OK). No se crea por libre.
-- Naming sugerido para la rama del worktree: `vibes-<idShort>-<slug>` (limpio y trazable a la card), p. ej. `vibes-92-fix-permisos`.
-
-**Limpieza — prune de worktrees sin movimiento (regla de los 3 días):**
-
-- Si al inspeccionar el repo se detectan worktrees **sin movimiento en los últimos 3 días** (sin commits, sin cambios en el working tree), el agente **lo reporta a munix** con la lista y propone `git worktree remove` de los muertos.
-- El agente **no borra worktrees por su cuenta**: primero avisa y espera OK (son acción destructiva, regla §1.5). La excepción es el worktree de la tarea actual tras fusión/descarte aprobado por munix.
-- Para detectar worktrees sin movimiento: `git worktree list` y revisar la fecha del último commit de cada rama (`git log -1 --format=%ci <rama>`) y el estado del working tree.
-
-> **Por qué:** el trabajo en paralelo con muchos agentes genera worktrees/ramas efímeros. Sin limpieza, se acumulan y el repo se convierte en un cementerio. Un worktree sin movimiento en 3 días es basura o una tarea atascada que hay que reportar, no conservar.
+| Doc | Trigger (comprobable) |
+|---|---|
+| [`worktrees.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md) | Antes de cualquier operación git: `git rev-parse --git-dir` |
+| [`i18n.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/i18n.md) | Si se crea/modifica cualquier `.tsx` o string visible |
+| [`artifacts.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/artifacts.md) | Al crear un artifact o cerrar una slice |
+| [`ag-chats.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/ag-chats.md) | Si se necesita leer conversaciones pasadas de Antigravity |
+| [`trello-workflow.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/workflows/trello-workflow.md) | Al crear/mover/comentar/cerrar una card de Trello |
+| [`docs/TESTING.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/TESTING.md) | Antes de tocar cualquier test |
 
 ---
 
@@ -495,6 +366,7 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 1. Actualiza el documento de la slice con: archivos tocados, criterios de aceptación logrados/no logrados, tests añadidos.
 2. Reporta a munix con resumen corto (no parafrasea el doc, apunta al doc).
 3. No declara éxito sin haber visto tests verdes en output real (no basta "debería funcionar").
+4. **Checklist de reglas de dominio:** repasa los archivos tocados y confirma qué docs de la tabla de triggers (§1.17) aplicaban (i18n si tocó UI, worktrees si tocó git, Trello si tocó cards, artifacts si creó artifacts) y si se consultaron. Si un doc aplicaba y no se consultó → consultarlo ahora, antes de cerrar.
 
 ### 3.4 Errores y excepciones
 
@@ -539,87 +411,21 @@ Estas se mencionan pero no se deciden todavía. Si salen en conversación, el ag
 
 ### 1.12 Nombrado de artifacts por card de Trello
 
-Cuando un plan o walkthrough está atado a una card del board de Trello, el
-artifact se nombra `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el
-`idShort` que Trello expone (el número mostrado por el power-up como `#VIBES-92`
-→ `92`).
+Los artifacts atados a una card se nombran `<tipo>-vibes-<cardNumber>.md`, donde `cardNumber` es el `idShort` de la card (p. ej. `plan-vibes-92.md`, `walkthrough-vibes-92.md`). Si la card no tiene número claro, **preguntar antes** de crear el artifact; si munix dice que no hay card, artifact normal sin sufijo.
 
-- Tipo `plan` → para plans (`implementation_plan.md`).
-- Tipo `walkthrough` → para walkthroughs (`walkthrough.md`).
-- Ejemplos: `plan-vibes-92.md`, `walkthrough-vibes-92.md`.
-- Si la card no tiene número claro, **preguntar antes** de crear el artifact. Si
-  munix dice que no hay card, se crea un artifact normal sin sufijo.
+**Ciclo de vida:** el plan es un artifact (borrador fuera del working tree) mientras se pelotea la tarea → al terminar se **sube como adjunto a la card** (`attach-file.mjs`) → y se **elimina** del working tree. El board de Trello es el único lugar donde persisten los planes.
 
-> [!IMPORTANT]
-> **Ciclo de vida del artifact de plan (convención):**
-> 1. **Mientras se pelotea la tarea**, el agente crea el plan como **artifact**
->    (`<tipo>-vibes-<cardNumber>.md`), NO como documento del repo. Vive en el
->    directorio de artifacts del agente (p. ej. `brain/<conversation-id>/`), fuera
->    del working tree. Es un borrador de trabajo que puede iterarse con munix.
-> 2. **Al terminar la tarea** (dejar el comentario `✅ [Review]` con evidencia; la card NO se mueve a `Review`, eso lo hace solo munix), el artifact se
->    **sube como adjunto a la card** (`node scripts/trello/attach-file.mjs --card
->    "Título" --file "<ruta-del-artifact>/plan-vibes-NN.md"`).
-> 3. **Tras subirlo, se elimina** del working tree. El plan ya no vive en el
->    repo: su destino final es Trello (la fuente de verdad).
-> 4. El board de Trello es el **único** lugar donde persisten los planes. No se
->    acumulan artifacts de planes terminados en el repo.
-
-El `cardNumber` es el `idShort`, visible en la salida de
-`node scripts/trello/list-cards.mjs --light` (cada card lleva su `idShort`).
-Si necesitas confirmarlo con detalle, redirige a fichero tmp:
-`node scripts/trello/list-cards.mjs --number <N> --detail > /tmp/card-<N>.json`
-y léelo con `view_file`. **Nunca pipes a `jq` ni `python`** (se trunca el
-output y produce parse errors — ver trello-workflow.md §1.1). También está
-`resolveCard` en `scripts/trello/lib.mjs`.
+📖 **CUÁNDO:** al crear un artifact o confirmar un `idShort` → [`artifacts.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/artifacts.md) (naming completo, ciclo de vida, nunca pipes a `jq`).
 
 
 ### 1.13 Consulta de conversaciones de Antigravity (script `ag-chats.mjs`) — **INNEGOCIABLE**
 
-Para revisar los chats del proyecto (incluido el estado **archivado**) y el contenido de cada conversación **sin abrir Antigravity** — p. ej. cuando munix se va al móvil y el agente debe consultar datos de conversaciones pasadas — usar el script [`scripts/ag-chats.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/ag-chats.mjs).
+Para revisar los chats del proyecto (incluido el estado **archivado**) y el contenido de cada conversación **sin abrir Antigravity** — p. ej. cuando munix se va al móvil y el agente debe consultar datos de conversaciones pasadas — usar el script [`scripts/ag-chats.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/ag-chats.mjs). Es **solo lectura** sobre `~/.gemini/antigravity/`.
 
-**Qué hace:** replica la lectura del tracker del proxy de Antigravity ([antigravity-tracker.ts](file:///home/munix/Desarrollo/GitRepo/antigravity-proxy/proxy/src/antigravity-tracker.ts)) sobre `~/.gemini/antigravity/` (los `.db` de conversaciones, el índice `.pb` para el estado archivado, y el `transcript.jsonl` para el contenido). Es **solo lectura**: no borra ni modifica nada de Antigravity.
-
-**Uso (salida en JSON):**
-
-```bash
-# Por defecto lista los workspaces activos del repo Vibes:
-#   Vibes (corpus jpmunix/vibes), arneses (sin corpus, detectado por workspaceUri) y vibes-core.
-node scripts/ag-chats.mjs list
-
-# Todos los proyectos del workspace
-node scripts/ag-chats.mjs list --all
-
-# Otro proyecto concreto (uno o varios separados por coma)
-node scripts/ag-chats.mjs list --project <nombre>
-node scripts/ag-chats.mjs list --project cinco-villas,totem-admin
-
-# Filtrar por estado
-node scripts/ag-chats.mjs list --archived
-node scripts/ag-chats.mjs list --active
-
-# Leer el transcript de una conversación concreta (cascadeId = campo `cascadeId` del list)
-node scripts/ag-chats.mjs show <cascadeId>
-
-# Solo mensajes de usuario de una conversación
-node scripts/ag-chats.mjs show <cascadeId> --type USER_INPUT
-
-# Incluir también pasos de sistema/herramientas
-node scripts/ag-chats.mjs show <cascadeId> --steps
-```
-
-> [!NOTE]
-> El proyecto actual de trabajo se referencia como **Vibes** (corpus `jpmunix/vibes` / workspace `/Vibes`).
-> **Ojo con `arneses`:** no tiene `corpusName` (campo vacío); se detecta por `workspaceUri` que termine en `/arneses`.
-> Por defecto `list` devuelve los 3 workspaces activos del repo: Vibes, arneses y vibes-core.
-> Para revisarlos, `list` es el primer paso (devuelve `cascadeId`, título, última actividad y `archived`), y `show` lee el contenido de una sola.
-> El script depende de la CLI `sqlite3` del sistema (no usa `better-sqlite3`, que en Vibes está compilada para Electron).
-
-> [!IMPORTANT]
-> El campo `title` de cada conversación es el **resumen autogenerado por Antigravity** (el nombre que se ve en el panel izquierdo, p. ej. "Workspace Conversation Access"), leído del índice `agyhub_summaries_proto.pb`. No es un truncado del primer prompt.
-> Si una conversación no tiene summary en el `.pb`, el script cae al primer `USER_INPUT` del transcript y, en última instancia, al `step_payload`.
+📖 **CUÁNDO:** al necesitar datos de conversaciones pasadas → [`ag-chats.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/ag-chats.md) (uso completo, opciones, notas).
 
 
 ---
 
-**Última actualización:** 2026-08-26 (§1.16 ampliado: creación de worktree por card SOLO si no se está ya en uno, derivado de la rama checkouteada en el repo principal, con OK explícito de munix; y prune de worktrees sin movimiento en 3 días).
+**Última actualización:** 2026-08-26 (refactor de presentación: el detalle procedimental se extrae a docs autocontenidos en `.agent/rules/` y `workflows/trello-workflow.md`; el índice conserva las esencias + tabla de triggers §1.17 + checklist de cierre §3.3.4. Ninguna regla cambia de contenido ni de número).
 **Mantenedor:** munix.
