@@ -78,6 +78,7 @@ export const ChatSummarySchema = z.object({
   isPlan: z.boolean().optional().default(false),
   isRead: z.boolean().optional().default(true),
   lastReadAt: z.date().nullable().optional(),
+  messageCount: z.number().optional().default(0),
   labels: z
     .array(
       z.object({

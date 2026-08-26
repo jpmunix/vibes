@@ -27,6 +27,36 @@ import { CONDENSE_CHAT_SYSTEM_PROMPT } from "../../prompts/condense_chat";
 
 const logger = log.scope("chat_handlers");
 
+/**
+ * Maps a raw chats row (with aggregated messageCount) + its labels to a
+ * ChatSummary. Pure function — extracted for unit testing without Electron.
+ */
+export function mapChatRowToSummary(
+  row: {
+    id: number;
+    title: string | null;
+    createdAt: Date;
+    appId: number | null;
+    isPlan: number | boolean | null;
+    isRead: number | boolean | null;
+    lastReadAt: Date | null;
+    messageCount: number | string | null;
+  },
+  labels: { id: number; label: string; color: string }[],
+): ChatSummary {
+  return {
+    id: row.id,
+    appId: row.appId as number,
+    title: row.title,
+    createdAt: row.createdAt,
+    isPlan: row.isPlan ? true : false,
+    isRead: row.isRead !== 0 && row.isRead !== false,
+    lastReadAt: row.lastReadAt,
+    messageCount: Number(row.messageCount) || 0,
+    labels,
+  };
+}
+
 export function registerChatHandlers() {
   createTypedHandler(chatContracts.createChat, async (_, appId, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -123,66 +153,58 @@ export function registerChatHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    // If appId is provided, filter chats for that app
-    const query = appId
-      ? db.query.chats.findMany({
-          where: and(
-            eq(remoteSchema.chats.appId, appId),
-            eq(remoteSchema.chats.userId, context.userId!),
-            eq(remoteSchema.chats.isArchived, 0),
-          ),
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-            isPlan: true,
-            isRead: true,
-            lastReadAt: true,
-          },
-          with: {
-            labels: {
-              columns: {
-                id: true,
-                label: true,
-                color: true,
-              },
-            },
-          },
-          orderBy: [desc(remoteSchema.chats.createdAt)],
-        })
-      : db.query.chats.findMany({
-          where: and(
-            eq(remoteSchema.chats.userId, context.userId!),
-            eq(remoteSchema.chats.isArchived, 0),
-          ),
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-            isPlan: true,
-            isRead: true,
-            lastReadAt: true,
-          },
-          with: {
-            labels: {
-              columns: {
-                id: true,
-                label: true,
-                color: true,
-              },
-            },
-          },
-          orderBy: [desc(remoteSchema.chats.createdAt)],
-        });
+    // Per-chat message count via LEFT JOIN aggregate.
+    // Using a join (not a subquery) keeps SQLite happy and stays
+    // compatible with both the appId and global variants.
+    const where = and(
+      appId ? eq(remoteSchema.chats.appId, appId) : undefined,
+      eq(remoteSchema.chats.userId, context.userId!),
+      eq(remoteSchema.chats.isArchived, 0),
+    );
 
-    const allChats = await query;
-    return allChats.map((chat) => ({
-      ...chat,
-      isPlan: chat.isPlan ? true : false,
-      isRead: chat.isRead !== 0,
-    })) as unknown as ChatSummary[];
+    const rows = await db
+      .select({
+        id: remoteSchema.chats.id,
+        title: remoteSchema.chats.title,
+        createdAt: remoteSchema.chats.createdAt,
+        appId: remoteSchema.chats.appId,
+        isPlan: remoteSchema.chats.isPlan,
+        isRead: remoteSchema.chats.isRead,
+        lastReadAt: remoteSchema.chats.lastReadAt,
+        messageCount: sql<number>`count(${remoteSchema.messages.id})`.as(
+          "messageCount",
+        ),
+      })
+      .from(remoteSchema.chats)
+      .leftJoin(
+        remoteSchema.messages,
+        eq(remoteSchema.messages.chatId, remoteSchema.chats.id),
+      )
+      .where(where)
+      .groupBy(remoteSchema.chats.id)
+      .orderBy(desc(remoteSchema.chats.createdAt));
+
+    // Labels are fetched separately (drizzle with-relations don't mix
+    // with raw groupBy aggregates).
+    const labelsRows = await db.query.chats.findMany({
+      where,
+      columns: { id: true },
+      with: {
+        labels: {
+          columns: { id: true, label: true, color: true },
+        },
+      },
+    });
+    const labelsByChat = new Map(
+      labelsRows.map((c) => [c.id, c.labels]),
+    );
+
+    return rows.map((chat) =>
+      mapChatRowToSummary(
+        chat,
+        labelsByChat.get(chat.id) || [],
+      ),
+    ) as unknown as ChatSummary[];
   });
 
 /** Slice 3.10: broadcast to every window that a chat was deleted so the
@@ -963,33 +985,56 @@ function broadcastChatDeleted(chatId: number): void {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
-      const pinnedChats = await db.query.chats.findMany({
+      const pinnedChats = await db
+        .select({
+          id: remoteSchema.chats.id,
+          appId: remoteSchema.chats.appId,
+          title: remoteSchema.chats.title,
+          createdAt: remoteSchema.chats.createdAt,
+          isRead: remoteSchema.chats.isRead,
+          appName: remoteSchema.apps.name,
+          messageCount: sql<number>`count(${remoteSchema.messages.id})`.as(
+            "messageCount",
+          ),
+        })
+        .from(remoteSchema.chats)
+        .leftJoin(
+          remoteSchema.messages,
+          eq(remoteSchema.messages.chatId, remoteSchema.chats.id),
+        )
+        .leftJoin(remoteSchema.apps, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
+        .where(
+          and(
+            eq(remoteSchema.chats.userId, context.userId!),
+            eq(remoteSchema.chats.isPinned, 1),
+          ),
+        )
+        .groupBy(remoteSchema.chats.id)
+        .orderBy(desc(remoteSchema.chats.createdAt));
+
+      const labelsRows = await db.query.chats.findMany({
         where: and(
           eq(remoteSchema.chats.userId, context.userId!),
           eq(remoteSchema.chats.isPinned, 1),
         ),
-        columns: {
-          id: true,
-          appId: true,
-          title: true,
-          createdAt: true,
-          isRead: true,
-        },
+        columns: { id: true },
         with: {
-          app: { columns: { name: true } },
           labels: { columns: { id: true, label: true, color: true } },
         },
-        orderBy: [desc(remoteSchema.chats.createdAt)],
       });
+      const labelsByChat = new Map(
+        labelsRows.map((c) => [c.id, c.labels]),
+      );
 
       return pinnedChats.map((c) => ({
         id: c.id,
-        appId: c.appId,
-        appName: (c as any).app?.name || "",
+        appId: c.appId as number,
+        appName: c.appName || "",
         title: c.title,
         createdAt: c.createdAt,
         isRead: c.isRead !== 0,
-        labels: (c as any).labels || [],
+        messageCount: Number(c.messageCount) || 0,
+        labels: labelsByChat.get(c.id) || [],
       })) as any;
     },
   );

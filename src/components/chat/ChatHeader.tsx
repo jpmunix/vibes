@@ -351,44 +351,46 @@ export function ChatHeader({
                               {chat.title || `Chat ${chat.id}`}
                             </span>
 
-                            <button
-                              title={t("chatActions.summarizeToNewChat")}
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!appId) return;
-                                const tid = toast.loading(
-                                  t("workspace.summarizing"),
-                                );
-                                try {
-                                  const newChatId =
-                                    await ipc.chat.summarizeToNewChat({
-                                      appId,
-                                      chatId: chat.id,
+                            {(chat.messageCount ?? 0) > 0 && (
+                              <button
+                                title={t("chatActions.summarizeToNewChat")}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!appId) return;
+                                  const tid = toast.loading(
+                                    t("workspace.summarizing"),
+                                  );
+                                  try {
+                                    const newChatId =
+                                      await ipc.chat.summarizeToNewChat({
+                                        appId,
+                                        chatId: chat.id,
+                                      });
+                                    await invalidateChats();
+                                    setSelectedChatId(newChatId);
+                                    navigate({
+                                      to: "/chat",
+                                      search: { id: newChatId },
                                     });
-                                  await invalidateChats();
-                                  setSelectedChatId(newChatId);
-                                  navigate({
-                                    to: "/chat",
-                                    search: { id: newChatId },
-                                  });
-                                  toast.success(
-                                    t("workspace.summarizeSuccess"),
-                                    { id: tid },
-                                  );
-                                } catch (err) {
-                                  toast.error(
-                                    `Error: ${(err as any).toString()}`,
-                                    { id: tid },
-                                  );
-                                }
-                              }}
-                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-[opacity,background-color,color] shrink-0"
-                            >
-                              <Minimize2
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                            </button>
+                                    toast.success(
+                                      t("workspace.summarizeSuccess"),
+                                      { id: tid },
+                                    );
+                                  } catch (err) {
+                                    toast.error(
+                                      `Error: ${(err as any).toString()}`,
+                                      { id: tid },
+                                    );
+                                  }
+                                }}
+                                className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-[opacity,background-color,color] shrink-0"
+                              >
+                                <Minimize2
+                                  size={12}
+                                  className="text-muted-foreground"
+                                />
+                              </button>
+                            )}
                             <button
                               title={t("chat.renameChat")}
                               onClick={(e) => {

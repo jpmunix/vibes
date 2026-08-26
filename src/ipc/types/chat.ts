@@ -261,6 +261,7 @@ export const chatContracts = {
         isPlan: z.boolean().optional().default(false),
         isRead: z.boolean().optional().default(true),
         lastReadAt: z.date().nullable().optional(),
+        messageCount: z.number().optional().default(0),
         labels: z
           .array(
             z.object({
@@ -455,6 +456,7 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         isRead: z.boolean().optional().default(true),
+        messageCount: z.number().optional().default(0),
         labels: z
           .array(
             z.object({

@@ -169,6 +169,7 @@ interface ChatMenuAction {
   chatTitle: string;
   isPinned: boolean;
   isUnread: boolean;
+  messageCount: number;
   pos: { top: number; left: number };
   onClose: () => void;
   onPin: (chatId: number, appId: number, chatTitle: string) => void;
@@ -188,6 +189,7 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
   chatTitle,
   isPinned,
   isUnread,
+  messageCount,
   pos,
   onClose,
   onPin,
@@ -303,33 +305,35 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           {t("workspace.shareChat")}
         </button>
 
-        {/* Summarize to new chat */}
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-          onClick={async () => {
-            onClose();
-            const tid = toast.loading(
-              t("workspace.summarizing"),
-            );
-            try {
-              const newChatId = await ipc.chat.summarizeToNewChat({
-                appId,
-                chatId,
-              });
-              queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
-              onChatClick(appId, newChatId);
-              toast.success(t("workspace.summarizeSuccess"), { id: tid });
-            } catch (e) {
-              toast.error(t("workspace.summarizeError", { error: (e as any).toString() }), {
-                id: tid,
-              });
-            }
-          }}
-        >
-          <Minimize2 size={14} className="opacity-60 shrink-0" />
-          {t("workspace.summarizeToNew")}
-        </button>
+        {/* Summarize to new chat — only for chats with messages */}
+        {messageCount > 0 && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              onClose();
+              const tid = toast.loading(
+                t("workspace.summarizing"),
+              );
+              try {
+                const newChatId = await ipc.chat.summarizeToNewChat({
+                  appId,
+                  chatId,
+                });
+                queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+                onChatClick(appId, newChatId);
+                toast.success(t("workspace.summarizeSuccess"), { id: tid });
+              } catch (e) {
+                toast.error(t("workspace.summarizeError", { error: (e as any).toString() }), {
+                  id: tid,
+                });
+              }
+            }}
+          >
+            <Minimize2 size={14} className="opacity-60 shrink-0" />
+            {t("workspace.summarizeToNew")}
+          </button>
+        )}
         {/* Archive */}
         <button
           type="button"
@@ -1331,6 +1335,7 @@ const AppChats = memo(function AppChats({
               chatTitle={chat?.title || "Nuevo chat"}
               isPinned={pinnedChatIds.has(openMenuId)}
               isUnread={isChatUnread(openMenuId)}
+              messageCount={(chat as any)?.messageCount ?? 0}
               pos={menuPos}
               onClose={closeMenu}
               onPin={onPinChat}
@@ -3227,6 +3232,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     title: string | null;
     createdAt: Date;
     isRead?: boolean;
+    messageCount?: number;
     labels?: LabelEntry[];
   };
   const { data: pinnedChatsRaw = [] } = useQuery<PinnedChatRow[]>({
@@ -4066,6 +4072,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         chatTitle={pin.title || "Nuevo chat"}
                         isPinned={true}
                         isUnread={isUnread}
+                        messageCount={pin.messageCount ?? 0}
                         pos={pinnedMenuPos}
                         onClose={closePinnedMenu}
                         onPin={handlePinChat}
