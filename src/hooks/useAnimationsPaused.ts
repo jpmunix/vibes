@@ -27,6 +27,52 @@ export function shouldPauseAnimations({
 }
 
 /**
+ * Decisión de pausa de polling en reposo (#VIBES-204).
+ *
+ * A diferencia de las animaciones (que pueden seguir con foco perdido si hay
+ * streaming visible), el polling IPC es trabajo puro: si el usuario no está
+ * mirando y no hay streaming activo, cada tick es CPU/IPC quemada sin nadie
+ * mirando. Reglas:
+ * - Documento oculto → pausar SIEMPRE.
+ * - Sin foco + streaming activo → mantener polling.
+ * - Sin foco + sin streaming → pausar.
+ */
+export function shouldPausePolling({
+  isDocumentHidden,
+  hasWindowFocus,
+  hasActiveStream,
+}: {
+  isDocumentHidden: boolean;
+  hasWindowFocus: boolean;
+  hasActiveStream: boolean;
+}): boolean {
+  return shouldPauseAnimations({ isDocumentHidden, hasWindowFocus, hasActiveStream });
+}
+
+/**
+ * Hook: ¿debe pausarse un interval de polling cuando la app está en reposo?
+ *
+ * #VIBES-204: ServerControlButton hacía polling IPC cada 2s incondicionalmente.
+ * Ahora se pausa cuando la ventana está oculta o sin foco (salvo streaming).
+ * El primer fetch ocurre siempre al montar; los ticks posteriores se saltan
+ * mientras paused=true. Al volver el foco, fetchStatus() se re-ejecuta para
+ * refrescar sin esperar al siguiente tick.
+ *
+ * Uso:
+ *   const paused = usePollingPaused();
+ *   useEffect(() => {
+ *     fetchStatus();
+ *     if (!paused) {
+ *       const id = setInterval(fetchStatus, 2000);
+ *       return () => clearInterval(id);
+ *     }
+ *   }, [paused, fetchStatus]);
+ */
+export function usePollingPaused(): boolean {
+  return useAnimationsPaused();
+}
+
+/**
  * Hook: ¿deben pausarse las animaciones ahora mismo?
  *
  * Escucha los eventos de visibilidad y foco de la ventana, y lee el estado

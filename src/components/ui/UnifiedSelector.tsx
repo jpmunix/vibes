@@ -263,6 +263,76 @@ export function UnifiedSelector({
 
   const { ungroupedItems, groupedMap } = groupedData;
 
+  // ── Progressive rendering (#VIBES-204)
+  // Con ~417 modelos de OpenRouter, cmdk monta todos los CommandItem de golpe
+  // (no virtualiza — ver docs: "we still allocate memory for N instances of
+  // the Item component"). Eso congela el primer frame ~500ms.
+  // Estrategia: pintamos INITIAL_CHUNK síncrono (lo que cabe en viewport) y
+  // el resto en chunks de CHUNK_SIZE vía requestIdleCallback (con fallback a
+  // setTimeout para Safari). Solo se activa si totalItems > CHUNK_THRESHOLD;
+  // selectores pequeños quedan intactos.
+  const INITIAL_CHUNK = 30;
+  const CHUNK_SIZE = 50;
+  const CHUNK_THRESHOLD = 50;
+
+  const totalItems = useMemo(() => {
+    if (!hasGroups) return ungroupedItems.length;
+    let n = 0;
+    for (const g of groups!) n += (groupedMap.get(g.id) || []).length;
+    return n;
+  }, [hasGroups, ungroupedItems, groups, groupedMap]);
+
+  const needsChunking = totalItems > CHUNK_THRESHOLD;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_CHUNK);
+
+  // Reset al abrir/cerrar el popover y al cambiar el total (búsqueda externa).
+  useEffect(() => {
+    if (!needsChunking) {
+      setVisibleCount(totalItems);
+    } else if (open) {
+      setVisibleCount(INITIAL_CHUNK);
+    }
+  }, [open, needsChunking, totalItems, options.length]);
+
+  // Programa el siguiente chunk mientras haya items pendientes y el popover
+  // esté abierto. requestIdleCallback con timeout 100ms para que Chromium
+  // pinte el chunk cuando el main thread respire; setTimeout(16ms) fallback.
+  useEffect(() => {
+    if (!open || !needsChunking) return;
+    if (visibleCount >= totalItems) return;
+
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout: number }) => number)
+      | undefined;
+
+    const tick = () =>
+      setVisibleCount((c) => Math.min(c + CHUNK_SIZE, totalItems));
+
+    if (ric) {
+      const id = ric(tick, { timeout: 100 });
+      return () => (window as any).cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(tick, 16);
+      return () => clearTimeout(id);
+    }
+  }, [open, visibleCount, totalItems, needsChunking]);
+
+  // Budget de items por grupo: reparte los visibleCount respetando el orden
+  // de groups. Si un grupo no tiene budget, se salta en el render.
+  const groupBudgets = useMemo(() => {
+    const budgets = new Map<string, number>();
+    if (!hasGroups) return budgets;
+    let remaining = visibleCount;
+    for (const g of groups!) {
+      const items = groupedMap.get(g.id) || [];
+      const take = Math.min(items.length, remaining);
+      budgets.set(g.id, take);
+      remaining -= take;
+      if (remaining <= 0) break;
+    }
+    return budgets;
+  }, [hasGroups, visibleCount, groups, groupedMap]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -342,7 +412,7 @@ export function UnifiedSelector({
                 {/* Ungrouped items */}
                 {!hasGroups && (
                   <CommandGroup>
-                    {ungroupedItems.map((option) => (
+                    {(needsChunking ? ungroupedItems.slice(0, visibleCount) : ungroupedItems).map((option) => (
                       <SelectorRow
                         key={option.value}
                         option={option}
@@ -366,11 +436,14 @@ export function UnifiedSelector({
                   groups!.map((group, gi) => {
                     const items = groupedMap.get(group.id) || [];
                     if (items.length === 0) return null;
+                    const budget = needsChunking ? (groupBudgets.get(group.id) || 0) : items.length;
+                    if (needsChunking && budget <= 0) return null;
+                    const visibleItems = needsChunking ? items.slice(0, budget) : items;
                     return (
                       <React.Fragment key={group.id}>
                         {gi > 0 && <CommandSeparator />}
                         <CommandGroup heading={group.heading}>
-                          {items.map((option) => (
+                          {visibleItems.map((option) => (
                             <SelectorRow
                               key={option.value}
                               option={option}

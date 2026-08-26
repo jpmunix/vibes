@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
+import { usePollingPaused } from "@/hooks/useAnimationsPaused";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import {
@@ -64,8 +65,11 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const [scriptsLoading, setScriptsLoading] = useState(false);
   const scriptsLoadedRef = useRef(false);
 
-  // Poll server status every 2 seconds
+  // Poll server status every 2 seconds — solo con la ventana visible y
+  // enfocada (#VIBES-204): en reposo el interval no corre y cada tick de IPC
+  // quemado sin nadie mirando desaparece.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingPaused = usePollingPaused();
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -80,14 +84,17 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
 
   useEffect(() => {
     fetchStatus();
-    pollRef.current = setInterval(fetchStatus, 2000);
+    if (!pollingPaused) {
+      pollRef.current = setInterval(fetchStatus, 2000);
 
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-      }
-    };
-  }, [fetchStatus]);
+      return () => {
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      };
+    }
+  }, [fetchStatus, pollingPaused]);
 
   // When appId changes, reset state and fetch fresh
   useEffect(() => {

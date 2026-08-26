@@ -558,9 +558,6 @@ export const UserSettingsSchema = z
     // Card #160 — clave neutral multi-provider (antes: enabledOpenRouterModels).
     // El validator migra la clave legacy → esta al boot.
     enabledModels: z.array(z.string()).optional(),
-    // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")
-    // Applied globally; ignored for free models at runtime.
-    selectedModelVariant: z.string().optional(),
 
     // ── Multi-provider support ──
     // Active provider for all AI operations. "openrouter" when undefined (backward-compat).
@@ -748,9 +745,6 @@ export const UserSettingsSchema = z
     planSidebarSize: z.number().optional(),
     // Show/hide cost display in chat headers and message footers (data is always saved)
     showCostDisplay: z.boolean().optional(),
-    // Caveman mode — forces the agent into ultra-terse, minimal-token communication
-    // to save ~20-30% of output tokens. Off by default.
-    enableCavemanMode: z.boolean().optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

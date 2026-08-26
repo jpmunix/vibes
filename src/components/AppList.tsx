@@ -801,10 +801,9 @@ export function AppList({ show }: { show?: boolean }) {
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Crear workspace</DialogTitle>
+            <DialogTitle>{t("dialogs.createWorkspace")}</DialogTitle>
             <DialogDescription>
-              Se creará un workspace con el scaffold por defecto, listo para
-              editar.
+              {t("dialogs.createWorkspaceDesc")}
             </DialogDescription>
           </DialogHeader>
 

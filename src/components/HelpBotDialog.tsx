@@ -10,6 +10,7 @@ import { ipc } from "@/ipc/types";
 import { v4 as uuidv4 } from "uuid";
 import { LoadingBlock, VanillaMarkdownParser } from "@/components/LoadingBlock";
 import { X } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 interface HelpBotDialogProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface Message {
 }
 
 export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
+  const { t } = useI18n();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -164,7 +166,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Bot de ayuda de Vibes</DialogTitle>
+          <DialogTitle>{t("dialogs.helpBot")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 h-[480px]">
           {error && (
@@ -237,7 +239,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
               }}
             />
             <Button onClick={handleSend} disabled={streaming || !input.trim()}>
-              {streaming ? "Enviando..." : "Enviar"}
+              {streaming ? t("common.sending") : t("common.send")}
             </Button>
           </div>
         </div>

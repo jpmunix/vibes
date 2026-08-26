@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 function getFileStatusIcon(status: string) {
   switch (status) {
@@ -202,6 +203,7 @@ export function GitCommitHistory({
 }: {
   initialCommitHash?: string;
 }) {
+  const { t } = useI18n();
   const appId = useAtomValue(selectedAppIdAtom);
   const {
     commits,
@@ -655,13 +657,11 @@ export function GitCommitHistory({
           data-testid="revert-commit-dialog"
         >
           <DialogHeader>
-            <DialogTitle>Revertir commit</DialogTitle>
+            <DialogTitle>{t("dialogs.revertCommit")}</DialogTitle>
             <DialogDescription>
-              Se creará un nuevo commit que deshace los cambios de{" "}
-              <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">
-                {commitDetail?.shortHash}
-              </code>
-              . El historial se mantiene intacto.
+              {t("dialogs.revertCommitDesc", {
+                hash: commitDetail?.shortHash ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
 

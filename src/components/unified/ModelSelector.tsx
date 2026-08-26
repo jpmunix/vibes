@@ -49,6 +49,9 @@ export interface ModelSelectorProps {
   align?: "start" | "center" | "end";
   side?: "top" | "bottom";
   popoverMaxHeight?: string;
+  /** Controlled open state — forwarded to UnifiedSelector (#VIBES-204). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ModelSelector({
@@ -70,6 +73,8 @@ export function ModelSelector({
   align,
   side,
   popoverMaxHeight,
+  open,
+  onOpenChange,
 }: ModelSelectorProps) {
   const { t } = useI18n();
   const { settings } = useSettings();
@@ -134,6 +139,7 @@ export function ModelSelector({
             isAutoRouter={sp === "auto-router"}
             showAutoRouterBadge={sp === "auto-router"}
             providerLabel={showProviderBadge || sp === "auto-router" ? sl : sp === "openrouter" ? undefined : sl}
+            t={t}
           />
         </div>
       </div>
@@ -152,7 +158,8 @@ export function ModelSelector({
       searchable={searchable}
       searchPlaceholder={searchPlaceholder ?? t("common.selectModel")}
       onSearchChange={onSearchChange}
-      popoverWidth={rightPanel ? "w-[660px]" : "w-[380px]"}
+      popoverWidth={rightPanel ? "w-[760px]" : "w-[440px]"}
+      popoverStyle={rightPanel ? { minWidth: 760 } : { minWidth: 440 }}
       popoverMaxHeight={rightPanel ? undefined : popoverMaxHeight}
       align={align}
       side={side}
@@ -160,6 +167,8 @@ export function ModelSelector({
       disableInternalFilter
       itemLayout="custom"
       renderItem={renderItem}
+      open={open}
+      onOpenChange={onOpenChange}
     />
   );
 }

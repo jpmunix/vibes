@@ -64,7 +64,6 @@ Desde **Ajustes → OpenRouter → Modelos habilitados** puedes:
 | **Esfuerzo de razonamiento** | Ajustes → Agente           | Controla cuánto "piensa" el modelo antes de responder |
 | **Verbosidad**               | Ajustes → Agente           | Cuánto detalle incluye en las respuestas              |
 | **Búsqueda web**             | Ajustes → Flujo de trabajo | Permite al modelo buscar en internet                  |
-| **Modo Cavernas**            | Ajustes → Agente           | Fuerza respuestas ultra-breves para ahorrar tokens    |
 
 ## Ver el gasto
 

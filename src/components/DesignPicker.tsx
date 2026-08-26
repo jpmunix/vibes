@@ -53,7 +53,6 @@ const BrandAvatar: React.FC<{ id: string; className?: string }> = ({
       alt={id}
       className={`${className} rounded-full object-cover`}
       onError={() => setError(true)}
-      loading="lazy"
     />
   );
 };

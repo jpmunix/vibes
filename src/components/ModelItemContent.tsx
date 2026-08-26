@@ -2,7 +2,7 @@ import React from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
 import { X, Image } from "@/components/ui/icons";
-import { useI18n } from "@/lib/i18n";
+import type { I18nApi } from "@/lib/i18n";
 
 interface ModelItemContentProps {
     model: LanguageModel;
@@ -10,6 +10,12 @@ interface ModelItemContentProps {
     isAutoRouter?: boolean;
     onRemoveClick?: (model: LanguageModel) => void;
     providerLabel?: string;
+    /**
+     * Función de traducción inyectada desde el padre (#VIBES-204).
+     * Hoist del hook useI18n: con ~400 modelos en el selector, llamar al hook
+     * dentro de cada item suponía ~400 subscripciones a Jotai por apertura.
+     */
+    t: I18nApi["t"];
 }
 
 /**
@@ -34,9 +40,8 @@ export function ModelItemContent({
     isAutoRouter = false,
     onRemoveClick,
     providerLabel,
+    t,
 }: ModelItemContentProps) {
-    const { t } = useI18n();
-
     return (
         <div className="flex items-center justify-between w-full gap-2 py-0.5 group">
             <div className="flex flex-col gap-0 overflow-hidden flex-1 min-w-0">
