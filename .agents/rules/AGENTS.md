@@ -344,6 +344,23 @@ Toda card del board lleva su **número (`idShort`) en el título**, en formato `
 
 > **Por qué:** sin el número en el título, desde Android no hay manera de saber qué card es cuál al hablar de ellas (\"la de los prompts\", \"esa que estaba en Doing\"...). El `#XXX` en el título es la **referencia visible universal**, en móvil y en escritorio.
 
+#### 1.10.12 Trabajo sin card: captura progresiva — **INNEGOCIABLE**
+
+Cuando munix pide **empezar a trabajar sin especificar una card** (dice una idea, un problema, o simplemente "vamos a hacer X" sin referenciar el board), el agente **no inventa ni se lanza a lo loco**: entra en modo **captura progresiva** — espera la cantidad de mensajes de munix que haga falta hasta que la idea esté lo bastante clara para formalizarla.
+
+**Reglas:**
+
+- **Idea difusa → esperar.** Si en el primer mensaje la idea es difusa (falta scope, falta qué archivos tocar, falta el criterio de qué es "hecho"), el agente NO crea la card ni empieza a trabajar: espera el siguiente mensaje de munix (o pregunta lo mínimo para desambiguar, sin soltar una chapa de 40 preguntas). La card se crea **solo cuando la idea es formalizable**.
+- **Idea clara → crear y avisar.** Cuando la idea ya se puede formalizar, el agente crea la card con los **4 campos mínimos** (título, qué, por qué, criterio de aceptación), la mueve a `Doing` con el comentario `🔄 [Doing] Plan: ...` + ref-line (regla §1.10.10) y los labels coherentes (§1.10.9), y **avisa a munix por el chat** de que ya está creada y en Doing.
+- **Nunca trabajar con la idea difusa.** Sin card creada y en `Doing` no hay trabajo: sin card no hay plan, sin plan no hay código. (Excepción: los one-shots y scripts que munix pida explícitamente sí se ejecutan directamente — ver §1.4 — pero si el script se convierte en tarea, acaba en card.)
+- **Secuencia canónica de creación** (mismo patrón en `create-card → update-card`):
+  1. `create-card` en `To-do` con título, desc (`**Qué:** ...\n\n**Por qué:** ...\n\n**Criterio:** ...`), labels y checklist (si aplica).
+  2. `update-card --name "#<idShort> - <título>"` (regla §1.10.11, innegociable).
+  3. `update-card --move Doing --comment "🔄 [Doing] Plan: ..."` + ref-line `🔗 Refs: conv=<id> | #VIBES-NN | <rama>@<commit>` (§1.10.10).
+  4. Avisar a munix: card creada, número y título (`#NN - ...`), lista, enlace. Y a trabajar.
+
+> **Por qué:** el board es la única fuente de verdad (§1.10.7) y el checklist de una card son sus criterios de aceptación (§1.10.6). Si el agente se pone a picar código con una idea de tres frases sin card, el trabajo no es trazable, no tiene criterio de "hecho" y el board deja de reflejar la realidad. Esperar uno o dos mensajes más cuesta 30 segundos; inventarse una card que no era lo que munix quería cuesta una tarde.
+
 ---
 
 ### 1.11 Repos de referencia "los arneses" — sitio de consulta — **INNEGOCIABLE**

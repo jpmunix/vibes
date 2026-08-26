@@ -92,6 +92,70 @@ Ejemplos: `--card #92`, `--card 92`, `--card sQM17O2M`,
 
 ---
 
+## 0️⃣ Captura progresiva: empezar a trabajar SIN card
+
+Cuando munix pide **empezar a trabajar sin especificar una card** — dice una idea,
+un problema, o simplemente "vamos a hacer X" sin referenciar el board — el agente
+**no se lanza a lo loco ni se inventa la card**. Entra en modo **captura progresiva**:
+espera la cantidad de mensajes que haga falta hasta que la idea sea formalizable.
+Regla en piedra en [AGENTS.md §1.10.12](file:///home/munix/Desarrollo/GitRepo/Vibes/.agents/rules/AGENTS.md#11012-trabajo-sin-card-captura-progresiva--innnegociable).
+
+### ¿Cuándo la idea es "formalizable"? (los 4 campos mínimos)
+
+La card se crea **solo cuando la idea tiene**:
+
+1. **Título** (qué es, en una frase).
+2. **Qué** se va a hacer (scope: archivos/áreas a tocar).
+3. **Por qué** (contexto / problema que resuelve).
+4. **Criterio de aceptación** (qué es "hecho" — el checklist de la card, si aplica).
+
+> Si en el primer mensaje falta alguno de estos → **no se crea la card**: se espera
+> el siguiente mensaje de munix (o se pregunta lo mínimo para desambiguar, sin
+> soltar una chapa de 40 preguntas). La idea difusa **nunca** se trabaja: sin card
+> no hay plan, y sin plan no hay código. Esperar un mensaje más cuesta 30 segundos;
+> inventarse una card que no era lo que munix quería cuesta una tarde.
+
+> [!NOTE]
+> **Excepción (one-shots):** los scripts y consultas que munix pide explícitamente
+> (consultas, migraciones, one-shots, dumps — AGENTS.md §1.4) se ejecutan
+> **directamente**, sin card ni espera. Pero si ese script se convierte en tarea
+> (refactor, feature, deuda), **acaba en card** con el flujo normal.
+
+### Secuencia canónica de creación (crear → nombrar → Doing → avisar)
+
+```bash
+# 1. Crear en To-do (labels coherentes §1.10.9; checklist = criterios si aplica)
+node scripts/trello/create-card.mjs \
+  --title "<Título claro en una frase>" \
+  --desc "**Qué:** <scope>\n\n**Por qué:** <contexto>\n\n**Criterio:** <qué es hecho>" \
+  --list "To-do" \
+  --labels "<label(s)>" \
+  --checklist "Criterio 1|Criterio 2"
+
+# 2. Anteponer el #idShort al título (innegociable, AGENTS.md §1.10.11)
+node scripts/trello/update-card.mjs --card "<Título>" --name "#<idShort> - <Título>"
+
+# 3. Mover a Doing con plan + ref-line (§1.10.10)
+node scripts/trello/update-card.mjs \
+  --card "#<idShort>" \
+  --move "Doing" \
+  --comment "🔄 [Doing] Plan: <1-2 líneas>" \
+  --ref "conv=<conversation_id> | #VIBES-<idShort> | <rama>@<commit>"
+
+# 4. Avisar a munix por el chat: card creada y en Doing
+#    (número, título, lista, enlace) — y a trabajar.
+```
+
+**Reglas duras de esta fase:**
+
+- ❌ **NO** crear la card con la idea difusa (falta scope/criterio) "por si acaso".
+- ❌ **NO** empezar a picar código sin card creada y en `Doing` (excepto one-shots de §1.4).
+- ❌ **NO** olvidar el `#<idShort>` en el título (paso 2) — innegociable (§1.10.11).
+- ❌ **NO** olvidar la ref-line en el comentario de Doing (paso 3) — innegociable (§1.10.10).
+- ✅ **SÍ** avisar a munix en cuanto la card esté en Doing (paso 4). El aviso es parte del flujo, no un extra.
+
+---
+
 ## 🔄 El ciclo de vida de una card (paso a paso)
 
 ### 1️⃣ Leer el board (punto de partida)
@@ -398,6 +462,7 @@ Supongamos que munix dice: *"haz la compactación Modo A"*.
 ## 📌 Resumen para el agente (cheatsheet)
 
 ```
+0. SIN CARD → captura progresiva: idea difusa = espera (no crees card); idea clara = create-card (To-do) → #idShort al título → Doing con plan+ref-line → AVISA a munix (AGENTS.md §1.10.12)
 1. LEE el board (list-cards --light) → prioriza: To-do > Backlog propuesto
    · Para una card concreta: list-cards --number 139 --detail > /tmp/card-139.json
 2. COGE la card (--move Doing + comentario plan)
