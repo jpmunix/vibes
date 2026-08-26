@@ -53,6 +53,7 @@ import { PromptsSection } from "@/components/settings/PromptsSection";
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
+import { DeferredSection, SectionSkeleton } from "@/components/settings/DeferredSection";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
 import { ActiveLoader, LoaderStyles } from "@/components/chat/StreamingLoadingAnimation";
@@ -660,7 +661,7 @@ export default function SettingsPage() {
             }
           />
 
-          {/* Custom Agents Section */}
+          {/* Custom Agents Section — deferred (below-fold, 41KB + multi-provider queries) */}
           <div
             id="custom-agents-settings"
             className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
@@ -671,10 +672,12 @@ export default function SettingsPage() {
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.customAgents")}</h2>
             <p className="typo-caption mb-8">{" "}{t("settings.sections.customAgentsDesc")}</p>
-            <CustomAgentsSection />
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <CustomAgentsSection />
+            </DeferredSection>
           </div>
 
-          {/* Prompts Section */}
+          {/* Prompts Section — deferred (949 líneas, 2 IPC list on mount) */}
           <div
             id="prompts-settings"
             className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
@@ -719,7 +722,9 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <PromptsSection refreshKey={promptsRefreshKey} />
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <PromptsSection refreshKey={promptsRefreshKey} />
+            </DeferredSection>
           </div>
 
           <div
@@ -732,14 +737,18 @@ export default function SettingsPage() {
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.guidelines")}</h2>
             <p className="typo-caption mb-8">{" "}{t("settings.sections.guidelinesDesc")}</p>
-            <MemorySettings />
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <MemorySettings />
+            </DeferredSection>
           </div>
 
-          <WorkflowSettings
-            isHighlighted={highlightedSection === "workflow-settings"}
-          />
+          <DeferredSection fallback={<SectionSkeleton />}>
+            <WorkflowSettings
+              isHighlighted={highlightedSection === "workflow-settings"}
+            />
+          </DeferredSection>
 
-          {/* Integrations Section */}
+          {/* Integrations Section — deferred */}
           <div
             id="integrations"
             className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
@@ -750,15 +759,17 @@ export default function SettingsPage() {
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.integrations")}</h2>
             <p className="typo-caption mb-8">{" "}{t("settings.sections.integrationsDesc")}</p>
-            <div className="space-y-6">
-              <GitHubIntegration />
-              <VercelIntegration />
-              <SupabaseIntegration />
-              <NeonIntegration />
-            </div>
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <div className="space-y-6">
+                <GitHubIntegration />
+                <VercelIntegration />
+                <SupabaseIntegration />
+                <NeonIntegration />
+              </div>
+            </DeferredSection>
           </div>
 
-          {/* MCP Tools Section */}
+          {/* MCP Tools Section — deferred (mcp:list-servers on mount) */}
           <div
             id="tools-mcp"
             className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
@@ -768,7 +779,9 @@ export default function SettingsPage() {
             }`}
           >
             <h2 className="typo-section-title mb-6">{t("settings.sections.mcp")}</h2>
-            <McpServersSettings />
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <McpServersSettings />
+            </DeferredSection>
           </div>
 
           <div
@@ -777,7 +790,9 @@ export default function SettingsPage() {
           >
             <h2 className="typo-section-title mb-2">{t("settings.sections.skills")}</h2>
             <p className="typo-caption mb-8">{" "}{t("settings.sections.skillsDesc")}</p>
-            <SkillsSettings />
+            <DeferredSection fallback={<SectionSkeleton />}>
+              <SkillsSettings />
+            </DeferredSection>
           </div>
         </div>
       </div>

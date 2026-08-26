@@ -401,7 +401,13 @@ export function OpenRouterProviderSection() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openAddModelsRef.current?.();
+                      if (!modelsExpanded) {
+                        setModelsExpanded(true);
+                        // ModelsSection se montará en el próximo frame; disparar cuando esté listo
+                        setTimeout(() => openAddModelsRef.current?.(), 80);
+                      } else {
+                        openAddModelsRef.current?.();
+                      }
                     }}
                     className="px-3 py-1 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-[filter] duration-200 flex items-center gap-1.5 text-xs"
                   >
@@ -417,16 +423,6 @@ export function OpenRouterProviderSection() {
               </div>
               {modelsExpanded && (
                 <div className="pl-8 pb-4">
-                  <ModelsSection
-                    providerId={providerId}
-                    onAddRef={(fn) => {
-                      openAddModelsRef.current = fn;
-                    }}
-                  />
-                </div>
-              )}
-              {!modelsExpanded && (
-                <div className="hidden">
                   <ModelsSection
                     providerId={providerId}
                     onAddRef={(fn) => {

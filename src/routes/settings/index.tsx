@@ -1,9 +1,16 @@
+import React, { Suspense } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { settingsRoute } from "../settings";
-import SettingsPage from "../../pages/settings";
+import { PageLoader } from "@/components/PageLoader";
+
+const SettingsPage = React.lazy(() => import("../../pages/settings"));
 
 export const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/",
-  component: SettingsPage,
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <SettingsPage />
+    </Suspense>
+  ),
 });
