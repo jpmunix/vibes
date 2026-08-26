@@ -1254,7 +1254,7 @@ export function GitPanel({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Pull</TooltipContent>
+            <TooltipContent>{t("gitPanel.pull")}</TooltipContent>
           </Tooltip>
           {/* Push icon button - only visible when commits ahead */}
           {(gitState?.ahead ?? 0) > 0 && (
@@ -1692,7 +1692,7 @@ export function GitPanel({
                       <textarea
                         value={commitMessage}
                         onChange={(e) => setCommitMessage(e.target.value)}
-                        placeholder="Mensaje de commit..."
+                        placeholder={t("gitPanel.commitMessage")}
                         className={cn(
                           "w-full flex-1 resize-none rounded border border-border bg-muted/20 px-2.5 py-2",
                           "typo-body leading-relaxed min-h-[60px]",
@@ -2088,7 +2088,7 @@ function MergeConflictSection({
                               <ArrowDownToLine size={11} />
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent>Suyo</TooltipContent>
+                          <TooltipContent>{t("gitPanel.theirs")}</TooltipContent>
                         </Tooltip>
                       </div>
                     </div>

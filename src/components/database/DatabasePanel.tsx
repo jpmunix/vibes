@@ -305,7 +305,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                   />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>SQL Editor</TooltipContent>
+              <TooltipContent>{t("db.sqlEditor")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -321,7 +321,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                   />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Actualizar</TooltipContent>
+              <TooltipContent>{t("db.refresh")}</TooltipContent>
             </Tooltip>
             {selectedAppId && !isWindow && (
               <Tooltip>
@@ -360,7 +360,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                   className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <Input
-                  placeholder="Buscar tabla..."
+                  placeholder={t("db.searchTable")}
                   value={tableSearch}
                   onChange={(e) => setTableSearch(e.target.value)}
                   className="h-7 pl-7 text-xs"

@@ -152,7 +152,6 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
       models={selectorModels as any}
       loading={loading}
       placeholder={modelDisplayName}
-      searchPlaceholder="Buscar modelos..."
       onSearchChange={setSearch}
       align="center"
       side="top"

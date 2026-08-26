@@ -1,5 +1,6 @@
 import { Copy, Check } from "@/components/ui/icons";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface CopyErrorMessageProps {
   errorMessage: string;
@@ -10,6 +11,7 @@ export const CopyErrorMessage = ({
   errorMessage,
   className = "",
 }: CopyErrorMessageProps) => {
+  const { t } = useI18n();
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -31,17 +33,17 @@ export const CopyErrorMessage = ({
           ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
           : "bg-gray-100 dark:bg-gray-700 text-foreground hover:bg-accent dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
       } ${className}`}
-      title={isCopied ? "¡Copiado!" : "Copiar mensaje de error"}
+      title={isCopied ? t("chat.copied") : t("chat.copy")}
     >
       {isCopied ? (
         <>
           <Check size={16} />
-          <span>Copiado</span>
+          <span>{t("chat.copied")}</span>
         </>
       ) : (
         <>
           <Copy size={16} />
-          <span>Copiar</span>
+          <span>{t("chat.copy")}</span>
         </>
       )}
     </button>

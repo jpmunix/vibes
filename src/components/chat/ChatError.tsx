@@ -1,5 +1,6 @@
 import React from "react";
 import { XCircle, AlertTriangle } from "@/components/ui/icons"; // Assuming lucide-react is used
+import { useI18n } from "@/lib/i18n";
 
 interface ChatErrorProps {
   error: string | null;
@@ -10,6 +11,7 @@ export const ChatError = React.memo(function ChatError({
   error,
   onDismiss,
 }: ChatErrorProps) {
+  const { t } = useI18n();
   if (!error) {
     return null;
   }
@@ -27,7 +29,7 @@ export const ChatError = React.memo(function ChatError({
       <button
         onClick={onDismiss}
         className="cursor-pointer absolute top-1 right-1 p-1 rounded-full hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-400"
-        aria-label="Dismiss error"
+        aria-label={t("errors.dismiss")}
       >
         <XCircle className="h-4 w-4 text-red-500 hover:text-red-700" />
       </button>

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 import {
   Trash2,
   UserPlus,
@@ -44,6 +45,7 @@ interface CollaboratorManagerProps {
 }
 
 export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
+  const { t } = useI18n();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [inviteUsername, setInviteUsername] = useState("");
@@ -141,7 +143,7 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
           {/* Invite Form */}
           <form onSubmit={handleInvite} className="flex gap-2">
             <Input
-              placeholder="Nombre de usuario de GitHub"
+              placeholder={t("gitPanel.githubUsername")}
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
               disabled={isInviting}

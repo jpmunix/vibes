@@ -422,7 +422,7 @@ export function GithubBranchManager({
                   <Button
                     variant="outline"
                     size="icon"
-                    title="Acciones de rama"
+                    title={t("dialogs.branchActions")}
                     data-testid="branch-actions-menu-trigger"
                   >
                     <EllipsisVertical className="h-4 w-4" />
@@ -457,7 +457,7 @@ export function GithubBranchManager({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t("dialogs.createNewBranch")}</DialogTitle>
-              <DialogDescription>Create a new branch.</DialogDescription>
+              <DialogDescription>{t("dialogs.createNewBranchDesc")}</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div>

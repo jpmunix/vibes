@@ -4,6 +4,7 @@ import {
   type SelectorOption,
 } from "@/components/ui/UnifiedSelector";
 import { useNavigate } from "@tanstack/react-router";
+import { useI18n } from "@/lib/i18n";
 import {
   ArrowLeft,
   GitBranch,
@@ -319,6 +320,7 @@ function DemoItem({
  * ──────────────────────────────────────────────────────────────────────────── */
 
 export default function SelectorsPlayground() {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   // Demo state
@@ -360,8 +362,8 @@ export default function SelectorsPlayground() {
       <div className="w-full mx-auto px-8 pt-8 pb-24 space-y-8">
         {/* ── 1. Model Picker (with search) ────────────────────────────── */}
         <DemoSection
-          title="Model Picker"
-          subtitle="Selector con búsqueda, subtítulos (context size), iconos de acción (Info) a la derecha."
+          title={t("playground.demoModelPicker")}
+          subtitle={t("playground.demoModelPickerDesc")}
           replicates="ModelPicker.tsx"
         >
           <DemoItem label="Default (searchable)">
@@ -397,8 +399,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 2. Chat Mode ─────────────────────────────────────────────── */}
         <DemoSection
-          title="Chat Mode Selector"
-          subtitle="Selector con subtítulos explicativos, sin búsqueda, con iconos a la izquierda."
+          title={t("playground.demoChatMode")}
+          subtitle={t("playground.demoChatModeDesc")}
           replicates="ChatModeSelector.tsx / DefaultChatModeSelector.tsx"
         >
           <DemoItem label="Compact (home bar)">
@@ -433,8 +435,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 3. Reasoning Effort ──────────────────────────────────────── */}
         <DemoSection
-          title="Reasoning Effort Selector"
-          subtitle="Selector con subtítulos, sin búsqueda. Variante compact con Popover y header."
+          title={t("playground.demoReasoning")}
+          subtitle={t("playground.demoReasoningDesc")}
           replicates="ReasoningEffortSelector.tsx"
         >
           <DemoItem label="Compact">
@@ -471,8 +473,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 4. Branch Switcher ───────────────────────────────────────── */}
         <DemoSection
-          title="Branch Switcher"
-          subtitle="Selector compacto con icono izquierdo, checkmark en la opción seleccionada, layout compact sin subtítulos."
+          title={t("playground.demoBranchSwitcher")}
+          subtitle={t("playground.demoBranchSwitcherDesc")}
           replicates="BranchSwitcher.tsx / AgentBranchSelector.tsx"
         >
           <DemoItem label="Branch pill">
@@ -511,8 +513,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 5. Language ──────────────────────────────────────────────── */}
         <DemoSection
-          title="Language Selector"
-          subtitle="Selector sencillo con subtítulo."
+          title={t("playground.demoLanguage")}
+          subtitle={t("playground.demoLanguageDesc")}
           replicates="ChatLanguageSelector.tsx"
         >
           <DemoItem label="Default">
@@ -544,8 +546,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 6. Text Verbosity ────────────────────────────────────────── */}
         <DemoSection
-          title="Verbosity Selector"
-          subtitle="Selector con pill settings, subtítulos en cada opción."
+          title={t("playground.demoVerbosity")}
+          subtitle={t("playground.demoVerbosityDesc")}
           replicates="TextVerbositySelector.tsx"
         >
           <DemoItem label="Settings pill">
@@ -565,8 +567,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 7. Max Chat Turns ────────────────────────────────────────── */}
         <DemoSection
-          title="Max Chat Turns"
-          subtitle="Selector compacto sin subtítulo visible en la lista."
+          title={t("playground.demoMaxChatTurns")}
+          subtitle={t("playground.demoMaxChatTurnsDesc")}
           replicates="MaxChatTurnsSelector.tsx"
         >
           <DemoItem label="Default">
@@ -583,8 +585,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 8. Template / Framework ──────────────────────────────────── */}
         <DemoSection
-          title="Template Picker"
-          subtitle="Selector con iconos de framework a la izquierda y subtítulo debajo."
+          title={t("playground.demoTemplatePicker")}
+          subtitle={t("playground.demoTemplatePickerDesc")}
           replicates="TemplatePicker.tsx"
         >
           <DemoItem label="Compact (icon trigger)">
@@ -623,8 +625,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 9. Grouped example ───────────────────────────────────────── */}
         <DemoSection
-          title="Grouped Items"
-          subtitle="Ejemplo con opciones separadas en grupos con encabezados."
+          title={t("playground.demoGrouped")}
+          subtitle={t("playground.demoGroupedDesc")}
           replicates="Patrón genérico con secciones"
         >
           <DemoItem label="Searchable + groups">
@@ -648,8 +650,8 @@ export default function SelectorsPlayground() {
 
         {/* ── 10. API Key Selector ─────────────────────────────────────── */}
         <DemoSection
-          title="API Key Selector"
-          subtitle="Selector pill con título + subtítulo (clave truncada), icono papelera a la derecha y footer para añadir."
+          title={t("playground.demoApiKey")}
+          subtitle={t("playground.demoApiKeyDesc")}
           replicates="OpenRouterSettings.tsx (API keys dropdown)"
         >
           <DemoItem label="Pill (settings)">
@@ -666,7 +668,7 @@ export default function SelectorsPlayground() {
               footer={
                 <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm typo-badge transition-colors text-left hover:bg-muted cursor-pointer">
                   <Plus size={14} />
-                  <span>Añadir nueva…</span>
+                  <span>{t("common.addNew")}</span>
                 </button>
               }
             />

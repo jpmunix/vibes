@@ -2183,7 +2183,7 @@ function PlaygroundPanel() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
@@ -2192,7 +2192,7 @@ function PlaygroundPanel() {
                     setPendingDeletePreset(null);
                   }}
                 >
-                  Eliminar
+                  {t("playground.delete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -2234,7 +2234,7 @@ function PlaygroundPanel() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={
                     !renameValue.trim() ||
@@ -2245,7 +2245,7 @@ function PlaygroundPanel() {
                       handleRenamePreset(pendingRenamePreset, renameValue);
                   }}
                 >
-                  Renombrar
+                  {t("common.rename")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -2275,7 +2275,7 @@ function PlaygroundPanel() {
                     title={t("playground.saveSelectionAsPreset")}
                   >
                     <Save size={13} />
-                    {activePresetName ? "Guardar como…" : "Guardar"}
+                    {activePresetName ? t("playground.saveAs") : t("common.save")}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -2317,7 +2317,7 @@ function PlaygroundPanel() {
                         disabled={!saveAsName.trim()}
                         onClick={() => handleSavePreset(saveAsName)}
                       >
-                        Guardar
+                        {t("common.save")}
                       </button>
                     </div>
                   </div>
@@ -2479,7 +2479,7 @@ function PlaygroundPanel() {
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <Brain size={16} className="text-primary shrink-0" />
                   <span className="typo-label text-sm font-semibold">
-                    Analizar resultados
+                    {t("playground.analyzeResults")}
                   </span>
                   <span className="typo-micro text-muted-foreground">
                     (
@@ -2517,11 +2517,11 @@ function PlaygroundPanel() {
                     {isAnalyzing ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />{" "}
-                        Analizando…
+                        {t("playground.analyzing")}
                       </>
                     ) : (
                       <>
-                        <BarChart3 size={14} /> Analizar
+                        <BarChart3 size={14} /> {t("playground.analyze")}
                       </>
                     )}
                   </button>
@@ -2597,15 +2597,15 @@ function PlaygroundPanel() {
                     analysisResult.rankings.length > 0 && (
                       <div className="playground-rankings">
                         <h4 className="typo-label text-xs uppercase tracking-wider opacity-60 mb-3 flex items-center gap-2">
-                          <Award size={13} /> Ranking completo
+                          <Award size={13} /> {t("playground.fullRanking")}
                         </h4>
                         <div className="rankings-grid">
                           <div className="rankings-header">
                             <span>#</span>
                             <span>{t("playground.model")}</span>
-                            <span>Calidad</span>
-                            <span>Velocidad</span>
-                            <span>Global</span>
+                            <span>{t("playground.quality")}</span>
+                            <span>{t("playground.speed")}</span>
+                            <span>{t("playground.globalRanking")}</span>
                           </div>
                           {analysisResult.rankings.map(
                             (r: any, idx: number) => (
@@ -2757,7 +2757,7 @@ function PlaygroundPanel() {
                       }}
                     >
                       <Plus size={13} className="mr-2" />
-                      Guardar prompt actual
+                      {t("playground.saveCurrentPrompt")}
                     </DropdownMenuItem>
                     <div className="h-px bg-border/50 my-1" />
                   </>
@@ -2938,7 +2938,7 @@ function PlaygroundPanel() {
             autoFocus
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={!promptSaveName.trim()}
               onClick={() => {
@@ -2948,7 +2948,7 @@ function PlaygroundPanel() {
                 setPromptSaveName("");
               }}
             >
-              Guardar
+              {t("common.save")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2987,7 +2987,7 @@ function PlaygroundPanel() {
             autoFocus
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={!promptRenameValue.trim()}
               onClick={() => {
@@ -3002,7 +3002,7 @@ function PlaygroundPanel() {
                 }
               }}
             >
-              Renombrar
+              {t("common.rename")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3024,7 +3024,7 @@ function PlaygroundPanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -3036,7 +3036,7 @@ function PlaygroundPanel() {
                 }
               }}
             >
-              Eliminar
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

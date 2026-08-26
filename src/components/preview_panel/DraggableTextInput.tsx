@@ -140,7 +140,7 @@ export const DraggableTextInput = ({
           onKeyDown={(e) => onKeyDown(input.id, e, index)}
           className="pl-8 pr-8 py-2 bg-[var(--background)] border-2 rounded-md shadow-lg text-foreground focus:outline-none min-w-[200px] cursor-text"
           style={{ borderColor: color }}
-          placeholder="Escribe texto..."
+          placeholder={t("previewPanel.writeText")}
           ref={(e) => {
             if (e) inputRef.current[index] = e;
           }}

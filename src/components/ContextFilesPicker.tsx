@@ -149,7 +149,7 @@ export function ContextFilesPicker() {
                         relevantes como contexto.
                       </p>
                     ) : (
-                      <p>Por defecto, Vibes usa todo tu código.</p>
+                      <p>{t("dialogs.contextDefault")}</p>
                     )}
                   </TooltipContent>
                 </Tooltip>

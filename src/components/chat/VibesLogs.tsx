@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { t } from "@/lib/i18n";
 
 interface VibesLogsProps {
   children?: ReactNode;
@@ -63,13 +64,13 @@ export const VibesLogs: React.FC<VibesLogsProps> = ({ children, node }) => {
           {inProgress && (
             <div className="flex items-center text-(--primary) text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Reading...</span>
+              <span>{t("chat.reading")}</span>
             </div>
           )}
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>No terminado</span>
+              <span>{t("chat.notFinished")}</span>
             </div>
           )}
         </div>

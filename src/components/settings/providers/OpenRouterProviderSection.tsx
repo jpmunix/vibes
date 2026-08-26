@@ -470,7 +470,7 @@ export function OpenRouterProviderSection() {
               </Label>
               <Input
                 id="alias"
-                placeholder="Ej: Clave Personal"
+                placeholder={t("openRouter.keyAliasPlaceholder")}
                 value={newKeyAlias}
                 onChange={(e) => setNewKeyAlias(e.target.value)}
                 className="h-10 bg-background typo-input"

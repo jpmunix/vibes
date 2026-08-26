@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { LightbulbIcon } from "@/components/ui/icons";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { ipc } from "@/ipc/types";
+import { useI18n } from "@/lib/i18n";
 
 export function ErrorBoundary({ error }: ErrorComponentProps) {
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -68,10 +70,10 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
         {error && (
           <div className="bg-muted p-4 rounded-md mb-6 max-h-[150px] overflow-auto">
             <p className="typo-body mb-1">
-              <strong>Nombre del error:</strong> {error.name}
+              <strong>{t("errors.errorName")}</strong> {error.name}
             </p>
             <p className="typo-body">
-              <strong>Mensaje del error:</strong> {error.message}
+              <strong>{t("errors.errorMessage")}</strong> {error.message}
             </p>
           </div>
         )}
@@ -85,15 +87,14 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
             disabled={isLoading}
             variant="outline"
           >
-            {isLoading ? "Copiando..." : isCopied ? "¡Copiado al portapapeles!" : "Copiar detalles del error"}
+            {isLoading ? t("chat.analyzing") : isCopied ? t("chat.copied") : t("errors.copyDetails")}
           </Button>
         </div>
 
         <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-md flex items-center gap-2">
           <LightbulbIcon className="h-4 w-4 text-primary flex-shrink-0" />
           <p className="typo-caption">
-            <strong>Consejo:</strong> Intenta cerrar y volver a abrir Vibes como
-            solución temporal.
+            {t("errors.tip")}
           </p>
         </div>
       </div>

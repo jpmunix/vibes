@@ -9,6 +9,7 @@ import {
 import { useState, useEffect } from "react";
 import { useSearchApps } from "@/hooks/useSearchApps";
 import type { AppSearchResult } from "@/lib/schemas";
+import { useI18n } from "@/lib/i18n";
 
 type AppSearchDialogProps = {
   open: boolean;
@@ -23,6 +24,7 @@ export function AppSearchDialog({
   onSelectApp,
   allApps,
 }: AppSearchDialogProps) {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState<string>("");
   function useDebouncedValue<T>(value: T, delay: number): T {
     const [debounced, setDebounced] = useState<T>(value);
@@ -105,7 +107,7 @@ export function AppSearchDialog({
       filter={commandFilter}
     >
       <CommandInput
-        placeholder="Buscar apps"
+        placeholder={t("common.searchApps")}
         value={searchQuery}
         onValueChange={setSearchQuery}
         data-testid="app-search-input"

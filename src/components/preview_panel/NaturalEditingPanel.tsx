@@ -601,7 +601,7 @@ export function NaturalEditingPanel({
         <button
           onClick={handleClose}
           className="nep-close-btn"
-          aria-label="Close panel"
+          aria-label={t("previewPanel.closePanel")}
         >
           <X size={16} />
         </button>
@@ -674,7 +674,7 @@ export function NaturalEditingPanel({
       {/* Text Content Section */}
       {showContent && (
         <Section
-          title="Content"
+          title={t("previewPanel.contentSection")}
           expanded={expandedSections.has("content")}
           onToggle={() => toggleSection("content")}
         >
@@ -700,7 +700,7 @@ export function NaturalEditingPanel({
                 handleTextContentChange(e.target.value);
                 sendTextPreview(e.target.value);
               }}
-              placeholder="Enter text content..."
+              placeholder={t("previewPanel.textContentPlaceholder")}
             />
           </div>
         </Section>
@@ -709,7 +709,7 @@ export function NaturalEditingPanel({
       {/* Typography Section */}
       {showTypography && (
         <Section
-          title="Typography"
+          title={t("previewPanel.typographySection")}
           expanded={expandedSections.has("typography")}
           onToggle={() => toggleSection("typography")}
         >
@@ -799,7 +799,7 @@ export function NaturalEditingPanel({
       {/* Layout Section (containers only) */}
       {showLayout && (
         <Section
-          title="Layout"
+          title={t("previewPanel.layoutSection")}
           expanded={expandedSections.has("layout")}
           onToggle={() => toggleSection("layout")}
         >
@@ -867,7 +867,7 @@ export function NaturalEditingPanel({
 
       {/* Spacing Section (all elements) */}
       <Section
-        title="Spacing"
+        title={t("previewPanel.spacingSection")}
         expanded={expandedSections.has("spacing")}
         onToggle={() => toggleSection("spacing")}
       >
@@ -907,7 +907,7 @@ export function NaturalEditingPanel({
 
       {/* Appearance Section (all elements) */}
       <Section
-        title="Appearance"
+        title={t("previewPanel.appearanceSection")}
         expanded={expandedSections.has("appearance")}
         onToggle={() => toggleSection("appearance")}
       >
@@ -1167,7 +1167,7 @@ function QuickEditChat({
             <button
               className="nep-close-btn"
               onClick={() => setIsExpanded(false)}
-              aria-label="Minimizar"
+              aria-label={t("previewPanel.minimize")}
               style={{ width: 24, height: 24 }}
             >
               <Minimize2 size={14} />
@@ -1217,7 +1217,7 @@ function QuickEditChat({
           <div className="nep-quick-chat-input-container">
             <textarea
               className={`nep-quick-chat-input${isExpanded ? " nep-quick-chat-input--expanded" : ""}`}
-              placeholder="Describe el cambio que necesitas..."
+              placeholder={t("previewPanel.describeChange")}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}

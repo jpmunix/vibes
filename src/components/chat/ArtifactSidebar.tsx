@@ -886,7 +886,7 @@ export function ArtifactSidebar() {
                         }
                         if (e.key === "Escape") setSelectionPopover(null);
                       }}
-                      placeholder="Deja un comentario…"
+                      placeholder={t("chat.leaveComment")}
                       className="w-full bg-transparent border border-border rounded-md px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary/30 resize-none"
                       rows={2}
                     />

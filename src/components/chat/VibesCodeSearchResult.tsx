@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { CodeHighlight } from "./CodeHighlight";
+import { t } from "@/lib/i18n";
 import {
   ChevronDown,
   ChevronUp,
@@ -60,7 +62,7 @@ export const VibesCodeSearchResult: React.FC<VibesCodeSearchResultProps> = ({
         style={{ zIndex: 1 }}
       >
         <FileCode size={16} className="text-purple-600" />
-        <span>Code Search Result</span>
+        <span>{t("chat.codeSearchResult")}</span>
       </div>
 
       {/* File count when collapsed */}

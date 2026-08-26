@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { t } from "@/lib/i18n";
 
 interface VibesExecuteSqlProps {
   children?: ReactNode;
@@ -51,13 +52,13 @@ export const VibesExecuteSql: React.FC<VibesExecuteSqlProps> = ({
           {inProgress && (
             <div className="flex items-center text-amber-600 text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Executing...</span>
+              <span>{t("chat.executing")}</span>
             </div>
           )}
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>No terminado</span>
+              <span>{t("chat.notFinished")}</span>
             </div>
           )}
         </div>

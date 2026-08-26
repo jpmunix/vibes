@@ -176,12 +176,12 @@ export function GitQuickCommit({
                         size={13}
                         className="animate-spin text-primary"
                       />
-                      <span className="text-primary">Analizando...</span>
+                      <span className="text-primary">{t("chat.analyzing")}</span>
                     </>
                   ) : (
                     <>
                       <Sparkles size={13} />
-                      <span>Autogenerar</span>
+                      <span>{t("chat.autogenerate")}</span>
                     </>
                   )}
                 </button>

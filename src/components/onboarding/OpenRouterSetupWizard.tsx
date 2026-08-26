@@ -105,12 +105,11 @@ export function OpenRouterSetupWizard() {
           <div className="text-center space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                Bienvenido a Vibes
+                {t("wizard.welcomeTitle")}
               </h1>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Para empezar necesitas una clave API de{" "}
-                <strong>OpenRouter</strong>, el servicio que conecta Vibes con
-                los mejores modelos de IA.
+                {t("wizard.openRouterIntro")}{" "}
+                <strong>OpenRouter</strong>, {t("wizard.openRouterIntro2")}
               </p>
             </div>
 
@@ -223,7 +222,7 @@ export function OpenRouterSetupWizard() {
               {verifyResult?.ok && (
                 <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
                   <CheckCircle className="h-4 w-4 shrink-0" />
-                  <span>API key verificada correctamente</span>
+                  <span>{t("wizard.apiKeyVerified")}</span>
                 </div>
               )}
             </div>

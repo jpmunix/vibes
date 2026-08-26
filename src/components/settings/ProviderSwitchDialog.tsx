@@ -130,13 +130,13 @@ export function ProviderSwitchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Configurar "{provider.name}"</DialogTitle>
+          <DialogTitle>{t("settings.configureProvider", { name: provider.name })}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-10">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="typo-caption">Detectando modelos...</p>
+            <p className="typo-caption">{t("chat.loading")}</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center gap-3 py-10">

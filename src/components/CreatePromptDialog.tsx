@@ -206,12 +206,12 @@ export function CreateOrEditPromptDialog({
         </DialogHeader>
         <div className="space-y-4">
           <Input
-            placeholder="Título"
+            placeholder={t("common.title")}
             value={draft.title}
             onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
           />
           <Input
-            placeholder="Descripción (opcional)"
+            placeholder={t("common.descriptionOptional")}
             value={draft.description}
             onChange={(e) =>
               setDraft((d) => ({ ...d, description: e.target.value }))
@@ -219,7 +219,7 @@ export function CreateOrEditPromptDialog({
           />
           <Textarea
             ref={textareaRef}
-            placeholder="Contenido"
+            placeholder={t("common.content")}
             value={draft.content}
             onChange={(e) => {
               setDraft((d) => ({ ...d, content: e.target.value }));

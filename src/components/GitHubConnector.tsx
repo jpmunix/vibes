@@ -1310,7 +1310,7 @@ export function UnconnectedGitHubConnector({
                           );
                       }
                     }}
-                    title="Copiar al portapapeles"
+                    title={t("previewPanel.copyClipboard")}
                   >
                     {codeCopied ? (
                       <Check className="h-4 w-4 text-muted-foreground" />

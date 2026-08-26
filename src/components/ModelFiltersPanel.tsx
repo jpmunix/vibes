@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Image, RotateCcw, Sparkles } from "@/components/ui/icons";
+import { Image, RotateCcw } from "@/components/ui/icons";
 import { useI18n } from "@/lib/i18n";
 import {
   Select,
@@ -18,8 +18,6 @@ export type SortOrder = "asc" | "desc";
 export interface ModelFilters {
   /** true = only show models that accept image input */
   imageInput: boolean;
-  /** true = show free models (default: true) */
-  showFree: boolean;
   /** Context window filter step index (0=all, 1=≤64K, 2=≤256K, 3=>256K) */
   contextStep: number;
   /** Max input price step index (0=$0.25, 1=$0.5, 2=$1, 3=all). Higher = more permissive. */
@@ -62,7 +60,6 @@ export const OUTPUT_PRICE_STEPS = [
 
 export const DEFAULT_MODEL_FILTERS: ModelFilters = {
   imageInput: false,
-  showFree: true,
   contextStep: 0, // "Todos"
   priceInputStep: INPUT_PRICE_STEPS.length - 1, // "Todos"
   priceOutputStep: OUTPUT_PRICE_STEPS.length - 1, // "Todos"
@@ -93,14 +90,6 @@ export function modelPassesFilters(
   // 1. Image input filter
   if (filters.imageInput) {
     if (!model.inputModalities?.includes("image")) return false;
-  }
-
-  // 1b. Free models filter: if showFree is explicitly false, hide free models
-  if (filters.showFree === false) {
-    const inPrice = model.pricingInput ? parseFloat(model.pricingInput) : 0;
-    const outPrice = model.pricingOutput ? parseFloat(model.pricingOutput) : 0;
-    const isFree = inPrice === 0 && outPrice === 0;
-    if (isFree) return false;
   }
 
   // 2. Context window filter
@@ -141,7 +130,6 @@ export function modelPassesFilters(
 export function isDefaultFilters(filters: ModelFilters): boolean {
   return (
     !filters.imageInput &&
-    filters.showFree !== false &&
     filters.contextStep === 0 &&
     filters.priceInputStep === INPUT_PRICE_STEPS.length - 1 &&
     filters.priceOutputStep === OUTPUT_PRICE_STEPS.length - 1 &&
@@ -364,7 +352,7 @@ export function ModelFiltersPanel({
       <div className="px-5 py-3 border-b border-border/40 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="typo-menu-header uppercase tracking-wider opacity-70">
-            Filtros
+            {t("modelsFilters.title")}
           </span>
           {isFiltering && (
             <span className="px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary border border-primary/20 text-[9px] font-semibold tracking-wider leading-none shadow-sm shadow-primary/5">
@@ -448,24 +436,13 @@ export function ModelFiltersPanel({
                 {t("modelsFilters.image")}
               </span>
             </FilterChip>
-            <FilterChip
-              active={filters.showFree !== false}
-              onClick={() =>
-                onChange({ ...filters, showFree: filters.showFree === false })
-              }
-            >
-              <span className="flex items-center gap-1.5">
-                <Sparkles style={{ width: 11, height: 11 }} />
-                {t("modelsFilters.freeModels")}
-              </span>
-            </FilterChip>
           </div>
         </FilterSection>
 
         {/* Input price — slider */}
         <FilterSection label={t("modelsFilters.inputPrice")}>
           <PremiumSlider
-            labels={INPUT_PRICE_STEPS.map((s) => s.label)}
+            labels={INPUT_PRICE_STEPS.map((s) => s.label === "Todos" ? t("modelsFilters.all") : s.label)}
             value={filters.priceInputStep}
             onChange={(step) => onChange({ ...filters, priceInputStep: step })}
           />
@@ -474,7 +451,7 @@ export function ModelFiltersPanel({
         {/* Output price — slider */}
         <FilterSection label={t("modelsFilters.outputPrice")}>
           <PremiumSlider
-            labels={OUTPUT_PRICE_STEPS.map((s) => s.label)}
+            labels={OUTPUT_PRICE_STEPS.map((s) => s.label === "Todos" ? t("modelsFilters.all") : s.label)}
             value={filters.priceOutputStep}
             onChange={(step) => onChange({ ...filters, priceOutputStep: step })}
           />
@@ -483,7 +460,7 @@ export function ModelFiltersPanel({
         {/* Context — slider */}
         <FilterSection label={t("modelsFilters.context")}>
           <PremiumSlider
-            labels={CONTEXT_STEPS.map((s) => s.label)}
+            labels={CONTEXT_STEPS.map((s) => s.label === "Todos" ? t("modelsFilters.all") : s.label)}
             value={filters.contextStep}
             onChange={(step) => onChange({ ...filters, contextStep: step })}
           />

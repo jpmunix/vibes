@@ -815,7 +815,7 @@ export function AppList({ show }: { show?: boolean }) {
                   id="emptyAppName"
                   value={emptyAppName}
                   onChange={(e) => setEmptyAppName(e.target.value)}
-                  placeholder="Nombre del workspace..."
+                  placeholder={t("workspace.namePlaceholder")}
                   className={emptyAppNameCheck?.exists ? "border-red-500" : ""}
                   disabled={isCreatingEmptyApp}
                   autoFocus

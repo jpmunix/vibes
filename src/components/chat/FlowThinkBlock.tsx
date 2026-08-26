@@ -1,6 +1,8 @@
 import React, { useRef, useLayoutEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { t } from "@/lib/i18n";
+import { CodeHighlight } from "./CodeHighlight";
 import { ChevronDown, ChevronUp } from "@/components/ui/icons";
 
 /** Height threshold for collapsing flow-mode think blocks (~4 lines at text-xs) */
@@ -103,12 +105,12 @@ export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
           {expanded ? (
             <>
               <ChevronUp size={12} />
-              <span>Menos</span>
+              <span>{t("chat.less")}</span>
             </>
           ) : (
             <>
               <ChevronDown size={12} />
-              <span>Más</span>
+              <span>{t("chat.more")}</span>
             </>
           )}
         </button>

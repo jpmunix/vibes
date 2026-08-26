@@ -255,7 +255,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             isRevertingVersion &&
                               "opacity-50 cursor-not-allowed",
                           )}
-                          aria-label="Restaurar a esta versión"
+                          aria-label={t("chat.restoreVersion")}
                         >
                           {isRevertingVersion ? (
                             <Loader2 size={12} className="animate-spin" />

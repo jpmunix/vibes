@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronUp, ChevronDown, Code2, FileText } from "@/components/ui/icons";
+import { CodeHighlight } from "./CodeHighlight";
+import { t } from "@/lib/i18n";
 import { CustomTagState } from "./stateTypes";
 
 interface VibesCodebaseContextProps {
@@ -49,7 +51,7 @@ export const VibesCodebaseContext: React.FC<VibesCodebaseContextProps> = ({
         style={{ zIndex: 1 }}
       >
         <Code2 size={16} className="text-primary" />
-        <span>Codebase Context</span>
+        <span>{t("chat.codebaseContext")}</span>
       </div>
 
       {/* File count when collapsed */}

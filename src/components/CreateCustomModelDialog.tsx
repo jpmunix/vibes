@@ -118,7 +118,7 @@ export function CreateCustomModelDialog({
                   setApiName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Debe coincidir con el nombre del modelo de la API"
+                placeholder={t("dialogs.modelIdPlaceholder")}
                 required
                 disabled={mutation.isPending}
               />
@@ -150,7 +150,7 @@ export function CreateCustomModelDialog({
                   setDescription(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: Describe las capacidades del modelo"
+                placeholder={t("dialogs.modelDescriptionPlaceholder")}
                 disabled={mutation.isPending}
               />
             </div>
@@ -166,7 +166,7 @@ export function CreateCustomModelDialog({
                   setMaxOutputTokens(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: ej., 4096"
+                placeholder={t("dialogs.optionalExample", { example: "4096" })}
                 disabled={mutation.isPending}
               />
             </div>
@@ -182,7 +182,7 @@ export function CreateCustomModelDialog({
                   setContextWindow(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: ej., 8192"
+                placeholder={t("dialogs.optionalExample", { example: "8192" })}
                 disabled={mutation.isPending}
               />
             </div>

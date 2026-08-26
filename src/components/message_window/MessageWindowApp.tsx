@@ -12,6 +12,7 @@ import {
   createMemoryHistory,
   RouterProvider,
 } from "@tanstack/react-router";
+import { useI18n } from "@/lib/i18n";
 
 import { Provider } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
@@ -93,6 +94,7 @@ function MessageWindowContent({
   chatId,
   messageId,
 }: MessageWindowAppProps) {
+  const { t } = useI18n();
   const {
     data: chat,
     isLoading,
@@ -109,7 +111,7 @@ function MessageWindowContent({
       return (
         <div className="flex flex-1 items-center justify-center p-8 text-foreground">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mr-3" />
-          <span className="text-muted-foreground">Cargando mensaje...</span>
+          <span className="text-muted-foreground">{t("messageWindow.loading")}</span>
         </div>
       );
     }
@@ -118,9 +120,9 @@ function MessageWindowContent({
       return (
         <div className="flex flex-1 items-center justify-center p-8 text-foreground">
           <div className="text-destructive text-center">
-            <p className="font-semibold mb-2">Error al cargar el mensaje</p>
+            <p className="font-semibold mb-2">{t("messageWindow.loadError")}</p>
             <p className="text-sm opacity-80">
-              {String(error || "Chat no encontrado")}
+              {String(error || t("messageWindow.chatNotFound"))}
             </p>
           </div>
         </div>
@@ -131,9 +133,9 @@ function MessageWindowContent({
       return (
         <div className="flex flex-1 items-center justify-center p-8 text-foreground">
           <div className="text-muted-foreground text-center">
-            <p className="font-semibold mb-2">Mensaje no encontrado</p>
+            <p className="font-semibold mb-2">{t("messageWindow.messageNotFound")}</p>
             <p className="text-sm opacity-80">
-              El mensaje con ID {messageId} no existe en este chat.
+              {t("messageWindow.messageNotFoundDesc", { id: messageId })}
             </p>
           </div>
         </div>
@@ -144,13 +146,13 @@ function MessageWindowContent({
       <div className="flex-1 overflow-y-auto p-6">
         {/* Header - full width */}
         <div className="mb-6 pb-4 border-b w-full">
-          <h1 className="text-lg font-medium">Debug de Mensaje</h1>
+          <h1 className="text-lg font-medium">{t("messageWindow.debugTitle")}</h1>
           <div className="text-xs text-muted-foreground flex gap-4 mt-2">
             <span>
-              Chat: {chat.title} (ID: {chatId})
+              {t("messageWindow.chatId", { title: chat.title, id: chatId })}
             </span>
-            <span>App ID: {appId}</span>
-            <span>Mensaje ID: {messageId}</span>
+            <span>{t("messageWindow.appId", { id: appId })}</span>
+            <span>{t("messageWindow.messageId", { id: messageId })}</span>
           </div>
         </div>
         {/* Message - min 80% width */}

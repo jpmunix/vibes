@@ -432,7 +432,7 @@ function AppAnalyzer({ userId, appId }: { userId: string; appId: number }) {
                 color="bg-emerald-500"
               />
               <div className="flex justify-between typo-caption">
-                <span>Llamadas al Router</span>
+                <span>{t("adminKnowledge.routerCalls")}</span>
                 <span className="font-medium">{routedCount}</span>
               </div>
             </div>

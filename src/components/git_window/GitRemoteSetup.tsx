@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { ipc } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 import {
   Github,
   Plus,
@@ -55,6 +56,7 @@ export function GitRemoteSetupDialog({
   autoPushAfterLink,
   pushFn,
 }: GitRemoteSetupDialogProps) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<"choose" | "create" | "existing">("choose");
   const [isWorking, setIsWorking] = useState(false);
 
@@ -296,7 +298,7 @@ export function GitRemoteSetupDialog({
                     setRepoName(e.target.value);
                     setRepoAvailable(null);
                   }}
-                  placeholder="nombre-del-repo"
+                  placeholder={t("gitPanel.repoNamePlaceholder")}
                   className={cn(
                     "h-9 text-sm pr-8",
                     repoAvailable === true &&
@@ -374,7 +376,7 @@ export function GitRemoteSetupDialog({
               <Input
                 value={repoSearch}
                 onChange={(e) => setRepoSearch(e.target.value)}
-                placeholder="Buscar repositorio..."
+                placeholder={t("gitPanel.searchRepo")}
                 className="h-8 text-sm pl-8"
                 disabled={isWorking}
                 autoFocus

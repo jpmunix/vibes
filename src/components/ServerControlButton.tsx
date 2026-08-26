@@ -11,6 +11,7 @@ import { useRunApp } from "@/hooks/useRunApp";
 import { usePollingPaused } from "@/hooks/useAnimationsPaused";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -53,6 +54,7 @@ interface ScriptEntry {
  * When stopped/error, clicking Play opens a popover to select a package.json script.
  */
 export function ServerControlButton({ appId }: ServerControlButtonProps) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<ServerStatus>("stopped");
   const [appUrl, setAppUrl] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -281,7 +283,7 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
                   sideOffset={4}
                 >
                   <Command>
-                    <CommandInput placeholder="Buscar script…" />
+                    <CommandInput placeholder={t("gitPanel.searchScript")} />
                     <CommandList>
                       <CommandEmpty>
                         {scriptsLoading

@@ -2,12 +2,14 @@ import React, { useCallback } from "react";
 import { useAtom } from "jotai";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
 import { X, Bot, User, Terminal } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * QuotePreview — tarjetas de cita apiladas que aparecen encima del ChatInput.
  * Soporta múltiples citas simultáneas; cada una es descartable individualmente.
  */
 export const QuotePreview = React.memo(function QuotePreview() {
+  const { t } = useI18n();
   const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
 
   const handleDismiss = useCallback(
@@ -63,7 +65,7 @@ export const QuotePreview = React.memo(function QuotePreview() {
               type="button"
               onClick={() => handleDismiss(q.id)}
               className="mt-0.5 shrink-0 p-1 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-accent cursor-pointer transition-colors"
-              aria-label="Eliminar cita"
+              aria-label={t("chat.removeQuote")}
             >
               <X size={11} />
             </button>

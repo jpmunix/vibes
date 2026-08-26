@@ -160,7 +160,7 @@ export function AppItem({
                 onClick={handleDownload}
                 disabled={isDownloading}
                 className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-primary hover:text-primary/80"
-                title="Descargar archivos desde GitHub"
+                title={t("integrations.downloadFromGithub")}
               >
                 {isDownloading ? (
                   <Loader2 size={15} className="animate-spin" />

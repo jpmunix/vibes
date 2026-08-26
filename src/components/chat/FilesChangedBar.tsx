@@ -345,12 +345,12 @@ function InlineCommitPanel({
               {isLocalGenerating ? (
                 <>
                   <Loader2 size={14} className="animate-spin text-primary" />
-                  <span className="text-primary">Analizando...</span>
+                  <span className="text-primary">{t("chat.analyzing")}</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={14} />
-                  <span>Autogenerar</span>
+                  <span>{t("chat.autogenerate")}</span>
                 </>
               )}
             </button>

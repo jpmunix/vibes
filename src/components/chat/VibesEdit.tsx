@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { t } from "@/lib/i18n";
 
 interface VibesEditProps {
   children?: ReactNode;
@@ -82,13 +83,13 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
           {inProgress && (
             <div className="flex items-center text-amber-600 text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Editando...</span>
+              <span>{t("chat.editing")}</span>
             </div>
           )}
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>No ha terminado</span>
+              <span>{t("chat.hasNotFinished")}</span>
             </div>
           )}
         </div>

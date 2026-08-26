@@ -9,6 +9,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { ipc } from "@/ipc/types";
 import type { BunnyConfig } from "@/ipc/types/bunny";
 import { Check } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 
 interface VibesAddIntegrationProps {
   node: {
@@ -25,6 +26,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
   node,
   children,
 }) => {
+  const { t } = useI18n();
   const { streamMessage, isStreaming } = useStreamChat();
 
   const { provider } = node.properties;
@@ -142,7 +144,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
             </span>
           </div>
           <div className="text-sm text-green-900 dark:text-green-100">
-            <p>Configurado: {parts.join(" y ")}</p>
+            <p>{t("chat.configured", { parts: parts.join(" y ") })}</p>
           </div>
           <Button
             onClick={() => handleKeepGoingClick("Bunny.net")}

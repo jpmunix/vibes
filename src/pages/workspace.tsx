@@ -291,7 +291,7 @@ export default function WorkspacePage() {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-center">
-                    <div>Gasto en esta sesión</div>
+                    <div>{t("workspace.sessionSpend")}</div>
                     <div className="font-semibold">
                       {formatWorkspaceCost(totalCostUsd)}
                     </div>
@@ -345,6 +345,7 @@ function WorkspaceArtifactsDropdown({
   appId: number | null;
   chatId: number | null;
 }) {
+  const { t } = useI18n();
   const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
   const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
   const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
@@ -405,7 +406,7 @@ function WorkspaceArtifactsDropdown({
         <DropdownMenuTrigger asChild>
           <button
             className="relative p-1.5 rounded-md transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer"
-            title="Ver planificaciones y artefactos"
+            title={t("workspace.viewPlans")}
           >
             <FileText className="h-3.5 w-3.5" />
             {hasUnreviewed && (
@@ -450,7 +451,7 @@ function WorkspaceArtifactsDropdown({
                     )}
                   </div>
                   <button
-                    title="Desacoplar plan del chat"
+                    title={t("workspace.detachPlan")}
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();

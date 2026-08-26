@@ -242,7 +242,7 @@ function VercelSetupDialog({
                 type="password"
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Token de acceso"
+                placeholder={t("gitPanel.accessToken")}
                 className="h-9 text-sm flex-1"
                 disabled={isSavingToken}
                 onKeyDown={(e) => {
@@ -410,7 +410,7 @@ function VercelSetupDialog({
               <Input
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                placeholder="Buscar proyecto..."
+                placeholder={t("gitPanel.searchProject")}
                 className="h-8 text-sm pl-8"
                 disabled={isWorking}
                 autoFocus

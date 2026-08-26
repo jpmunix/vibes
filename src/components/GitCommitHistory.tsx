@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useCommitHistory } from "@/hooks/useCommitHistory";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
   GitCommit as GitCommitIcon,
@@ -322,7 +323,7 @@ export function GitCommitHistory({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar commits..."
+              placeholder={t("dialogs.searchCommits")}
               className="h-7 text-xs pl-7 bg-muted/30 border-border/50 focus-visible:ring-1"
             />
             {searchQuery && (

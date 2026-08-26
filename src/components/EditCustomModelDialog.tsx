@@ -158,14 +158,14 @@ export function EditCustomModelDialog({
                   setApiName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Debe coincidir con el modelo esperado por la API"
+                placeholder={t("dialogs.modelIdPlaceholder")}
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-model-name" className="text-right">
-                Nombre*
+                {t("common.name")}*
               </Label>
               <Input
                 id="edit-model-name"
@@ -174,14 +174,14 @@ export function EditCustomModelDialog({
                   setDisplayName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Nombre amigable para el modelo"
+                placeholder={t("dialogs.customModelNamePlaceholder")}
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-description" className="text-right">
-                Descripción
+                {t("common.description")}
               </Label>
               <Input
                 id="edit-description"
@@ -190,13 +190,13 @@ export function EditCustomModelDialog({
                   setDescription(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: Describe las capacidades del modelo"
+                placeholder={t("dialogs.modelDescriptionPlaceholder")}
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-max-output-tokens" className="text-right">
-                Máx. Tokens de Salida
+                {t("dialogs.maxOutputTokens")}
               </Label>
               <Input
                 id="edit-max-output-tokens"
@@ -206,13 +206,13 @@ export function EditCustomModelDialog({
                   setMaxOutputTokens(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: ej., 4096"
+                placeholder={t("dialogs.optionalExample", { example: "4096" })}
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-context-window" className="text-right">
-                Ventana de Contexto
+                {t("dialogs.contextWindow")}
               </Label>
               <Input
                 id="edit-context-window"
@@ -222,7 +222,7 @@ export function EditCustomModelDialog({
                   setContextWindow(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Opcional: ej., 8192"
+                placeholder={t("dialogs.optionalExample", { example: "8192" })}
                 disabled={mutation.isPending}
               />
             </div>

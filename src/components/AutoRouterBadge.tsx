@@ -1,4 +1,5 @@
 import { Zap } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -16,6 +17,7 @@ export function AutoRouterBadge({
   reasoning,
   complexity,
 }: AutoRouterBadgeProps) {
+  const { t } = useI18n();
   const complexityLabel =
     complexity === 1 || complexity === 2
       ? "Simple"
@@ -32,7 +34,7 @@ export function AutoRouterBadge({
       <TooltipTrigger asChild>
         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
           <Zap className="w-3 h-3" />
-          <span>Auto</span>
+          <span>{t("chat.auto")}</span>
           <span className="text-xs leading-none uppercase tracking-wide rounded-sm bg-primary/20 px-1 py-0.5 border border-primary/30">
             Beta
           </span>

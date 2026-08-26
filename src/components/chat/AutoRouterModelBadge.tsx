@@ -1,4 +1,5 @@
 import { Bot } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
 import {
   Tooltip,
@@ -45,6 +46,7 @@ export function AutoRouterModelBadge({
   showInline = false,
   onClick,
 }: AutoRouterModelBadgeProps) {
+  const { t } = useI18n();
   // Get model display name from constants or use provider/name
   const fullModelPath = `${modelInfo.model.provider}/${modelInfo.model.name}`;
   const modelName = MODEL_DISPLAY_NAMES[fullModelPath] || modelInfo.model.name;
@@ -87,10 +89,10 @@ export function AutoRouterModelBadge({
         <TooltipContent>
           <div className="text-xs">
             <div>
-              <strong>Complejidad:</strong> {complexityLabel}
+              <strong>{t("chat.complexity")}:</strong> {complexityLabel}
             </div>
             <div>
-              <strong>Tipo:</strong> {taskTypeLabel}
+              <strong>{t("chat.taskType")}:</strong> {taskTypeLabel}
             </div>
             {modelInfo.reasoning && (
               <div className="mt-1 text-xs text-muted-foreground max-w-xs">

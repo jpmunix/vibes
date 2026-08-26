@@ -5,6 +5,7 @@ import iconDatabase from "@/data/lucide-icons.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useI18n } from "@/lib/i18n";
 
 interface IconSelectorProps {
   currentIcon: string;
@@ -17,6 +18,7 @@ export function IconSelector({
   onSelect,
   onClose,
 }: IconSelectorProps) {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter icons based on search query
@@ -65,7 +67,7 @@ export function IconSelector({
             />
             <Input
               type="text"
-              placeholder="Buscar iconos... (ej: 'casa', 'usuario', 'configuración')"
+              placeholder={t("previewPanel.searchIcons")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"

@@ -441,13 +441,13 @@ export const ConfigurePanel = () => {
                         <Input
                           value={editingKeyValue}
                           onChange={(e) => setEditingKeyValue(e.target.value)}
-                          placeholder="Clave"
+                          placeholder={t("previewPanel.key")}
                           className="h-8"
                         />
                         <Input
                           value={editingValue}
                           onChange={(e) => setEditingValue(e.target.value)}
-                          placeholder="Valor"
+                          placeholder={t("previewPanel.value")}
                           className="h-8"
                         />
                       </div>

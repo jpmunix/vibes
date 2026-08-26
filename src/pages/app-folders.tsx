@@ -257,7 +257,7 @@ export default function AppFoldersPage() {
                       onClick={() => removeMutation.mutate({ appId, folderId: f.id })}
                       disabled={removeMutation.isPending}
                       className="shrink-0 text-muted-foreground hover:text-destructive"
-                      title="Desvincular (no borra archivos)"
+                      title={t("appFolders.unlink")}
                     >
                       <X className="h-4 w-4" />
                     </Button>

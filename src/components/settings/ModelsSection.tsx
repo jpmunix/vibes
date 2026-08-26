@@ -149,7 +149,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
       {modelsError && (
         <Alert variant="destructive" className="mt-4">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error Loading Models</AlertTitle>
+          <AlertTitle>{t("settings.errorLoadingModels")}</AlertTitle>
           <AlertDescription>{modelsError.message}</AlertDescription>
         </Alert>
       )}
@@ -172,17 +172,17 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
                 {model.contextWindow || model.maxOutputTokens ? (
                   <>
                     {model.contextWindow ? (
-                      <span>Contexto: {formatTokens(model.contextWindow)}</span>
+                      <span>{t("settings.contextInfo", { tokens: formatTokens(model.contextWindow) })}</span>
                     ) : null}
                     {model.contextWindow && model.maxOutputTokens ? (
                       <span className="opacity-40">·</span>
                     ) : null}
                     {model.maxOutputTokens ? (
-                      <span>Salida: {formatTokens(model.maxOutputTokens)}</span>
+                      <span>{t("settings.outputInfo", { tokens: formatTokens(model.maxOutputTokens) })}</span>
                     ) : null}
                   </>
                 ) : model.type === "custom" ? (
-                  <span>Personalizado</span>
+                  <span>{t("settings.customBadge")}</span>
                 ) : null}
               </div>
 
@@ -191,12 +191,12 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
                 <div className="flex items-center gap-2">
                   {model.pricingInput || model.pricingOutput ? (
                     <div className="flex items-center gap-2 typo-caption opacity-50">
-                      <span>In</span>
+                      <span>{t("settings.inputTokens")}</span>
                       <span className="tabular-nums">
                         {formatPricePerMillion(model.pricingInput)}
                       </span>
                       <span className="opacity-40">·</span>
-                      <span>Out</span>
+                      <span>{t("settings.outputTokens")}</span>
                       <span className="tabular-nums">
                         {formatPricePerMillion(model.pricingOutput)}
                       </span>

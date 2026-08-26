@@ -328,7 +328,7 @@ export function VisualEditingToolbar({
             <button
               onClick={handleDeselectComponent}
               className="p-1 rounded hover:bg-accent dark:hover:bg-accent text-primary dark:text-foreground"
-              aria-label="Deseleccionar componente"
+              aria-label={t("previewPanel.deselectComponent")}
             >
               <X size={16} />
             </button>

@@ -409,12 +409,12 @@ export function AddModelDialog({
                       {/* Line 3: Pricing (input / output) */}
                       {(model.pricingInput || model.pricingOutput) && (
                         <div className="typo-caption truncate mt-0.5 flex items-center gap-2 opacity-50">
-                          <span>In</span>
+                          <span>{t("settings.inputTokens")}</span>
                           <span className="tabular-nums">
                             {formatPricePerMillion(model.pricingInput)}
                           </span>
                           <span className="opacity-40">·</span>
-                          <span>Out</span>
+                          <span>{t("settings.outputTokens")}</span>
                           <span className="tabular-nums">
                             {formatPricePerMillion(model.pricingOutput)}
                           </span>

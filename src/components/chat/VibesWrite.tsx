@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { t } from "@/lib/i18n";
 import { FileEditor } from "../preview_panel/FileEditor";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -82,13 +83,13 @@ export const VibesWrite: React.FC<VibesWriteProps> = ({
           {inProgress && (
             <div className="flex items-center text-amber-600 text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Writing...</span>
+              <span>{t("chat.writing")}</span>
             </div>
           )}
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>No terminado</span>
+              <span>{t("chat.notFinished")}</span>
             </div>
           )}
         </div>

@@ -399,7 +399,7 @@ function UnconnectedVercelConnector({
                 </Label>
                 <Input
                   type="password"
-                  placeholder="Introduce tu token de acceso de Vercel"
+                  placeholder={t("integrations.vercelTokenPlaceholder")}
                   value={accessToken}
                   onChange={(e) => setAccessToken(e.target.value)}
                   disabled={isSavingToken}

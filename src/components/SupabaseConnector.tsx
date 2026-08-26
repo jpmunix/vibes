@@ -208,7 +208,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             size="icon"
             onClick={() => refetchProjects()}
             disabled={isFetchingProjects}
-            title="Refrescar proyectos"
+            title={t("integrations.refreshProjects")}
           >
             <RefreshCw
               className={`h-4 w-4 ${isFetchingProjects ? "animate-spin" : ""}`}
@@ -244,7 +244,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
           <div className="space-y-4">
             {/* Connected organizations list */}
             <div className="space-y-2">
-              <Label>Organizaciones conectadas</Label>
+              <Label>{t("integrations.connectedOrgs")}</Label>
               <div className="space-y-1">
                 {organizations.map((org) => (
                   <div
@@ -306,7 +306,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                   )}
                   triggerVariant="outline"
                   triggerSize="md"
-                  placeholder="Selecciona un proyecto"
+                  placeholder={t("integrations.selectProject")}
                   data-testid="project-select"
                 />
               </div>

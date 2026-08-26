@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { t } from "@/lib/i18n";
 
 /** Maps git operation names to human-readable Spanish labels */
 const OPERATION_LABELS: Record<string, string> = {
@@ -90,13 +91,13 @@ export const VibesGit: React.FC<VibesGitProps> = ({ children, node }) => {
           {inProgress && (
             <div className="flex items-center text-orange-500 text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Consultando git...</span>
+              <span>{t("chat.consultingGit")}</span>
             </div>
           )}
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>No terminado</span>
+              <span>{t("chat.notFinished")}</span>
             </div>
           )}
         </div>

@@ -35,8 +35,7 @@ export function DeleteChatDialog({
             se perderán permanentemente.
             <br />
             <br />
-            <strong>Nota:</strong> Cualquier cambio de código que ya haya sido
-            aceptado se mantendrá.
+            <strong>{t("chat.note")}:</strong> {t("chat.deleteChatNote")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

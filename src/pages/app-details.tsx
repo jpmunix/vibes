@@ -459,7 +459,7 @@ export default function AppDetailsPage() {
                 <h1
                   className="typo-page-title text-center tracking-tight cursor-pointer hover:underline decoration-primary/40 underline-offset-4 transition-all"
                   onClick={handleOpenRenameDialog}
-                  title="Clic para renombrar"
+                  title={t("appDetails.clickToRename")}
                   data-testid="app-details-rename-app-button"
                 >
                   {selectedApp.name}
@@ -468,7 +468,7 @@ export default function AppDetailsPage() {
               </div>
               <span
                 className="typo-mono-xs text-muted-foreground/50 break-all text-center cursor-pointer hover:text-muted-foreground/80 transition-colors"
-                title="Abrir carpeta"
+                title={t("appDetails.openFolder")}
                 onClick={() => ipc.system.showItemInFolder(currentAppPath)}
               >
                 {currentAppPath}
@@ -516,7 +516,7 @@ export default function AppDetailsPage() {
                   }}
                   className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-transparent border-border hover:bg-muted/50 transition-colors"
                   size="lg"
-                  title="Gestionar carpetas vinculadas a este workspace"
+                  title={t("appDetails.manageFolders")}
                 >
                   <FolderOpen className="h-5 w-5" />
                   Folders
@@ -729,16 +729,15 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>Renombrar directorio del workspace</DialogTitle>
+                  <DialogTitle>{t("appDetails.renameDirTitle")}</DialogTitle>
                   <DialogDescription>
-                    Esto cambiará solo el nombre del directorio en disco, no el
-                    nombre del workspace.
+                    {t("appDetails.renameDirDesc")}
                   </DialogDescription>
                 </DialogHeader>
                 <Input
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Introduce el nuevo nombre del directorio"
+                  placeholder={t("appDetails.renameDirPlaceholder")}
                   className="my-2"
                   autoFocus
                 />
@@ -749,7 +748,7 @@ export default function AppDetailsPage() {
                     disabled={isRenamingFolder}
                     size="sm"
                   >
-                    Cancelar
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     onClick={handleRenameFolderOnly}
@@ -759,10 +758,10 @@ export default function AppDetailsPage() {
                     {isRenamingFolder ? (
                       <>
                         <Loader2 className="animate-spin h-3 w-3 mr-1" />
-                        Renombrando...
+                        {t("appDetails.renamingDir")}
                       </>
                     ) : (
-                      "Renombrar directorio"
+                      t("appDetails.renameDirButton")
                     )}
                   </Button>
                 </DialogFooter>
@@ -777,11 +776,10 @@ export default function AppDetailsPage() {
               >
                 <DialogContent className="max-w-md p-4">
                   <DialogHeader className="pb-2">
-                    <DialogTitle>Clonar "{selectedApp.name}"</DialogTitle>
+                    <DialogTitle>{t("appDetails.cloneTitle", { name: selectedApp.name })}</DialogTitle>
                     <DialogDescription>
                       <p>
-                        Crea una copia independiente de esta aplicación con un
-                        nuevo nombre.
+                        {t("appDetails.cloneDesc")}
                       </p>
                       <p>{t("appDetails.integrationsNotCloned")}</p>
                     </DialogDescription>

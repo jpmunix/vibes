@@ -1801,7 +1801,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         />
 
         {!appUrl ? (
-          <VibesInitLoader subtitle="Preparando el servidor..." />
+          <VibesInitLoader subtitle={t("previewPanel.preparingServer")} />
         ) : (
           <div
             className={cn(

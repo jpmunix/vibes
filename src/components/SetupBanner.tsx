@@ -380,8 +380,8 @@ function NodeJsHelpCallout() {
         .{" "}
       </p>
       <p className="mt-2">
-        ¿Sigues atascado? Haz clic en el botón de <b>Ayuda</b> en la esquina
-        inferior izquierda y luego en <b>{t("integrations.reportError")}</b>.
+        {t("integrations.stuckHelp")} <b>Ayuda</b> {t("integrations.stuckHelp2")}{" "}
+        <b>{t("integrations.reportError")}</b>.
       </p>
     </div>
   );

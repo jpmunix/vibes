@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/icons";
 import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface AutoRouterSelectedMessageProps {
   modelInfo?: AutoRouterModelInfo;
@@ -44,6 +45,7 @@ export function AutoRouterSelectedMessage({
   modelInfo,
   isSelecting = false,
 }: AutoRouterSelectedMessageProps) {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get model info if available
@@ -83,7 +85,7 @@ export function AutoRouterSelectedMessage({
               {isSelecting ? (
                 <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
                   <Loader size={14} className="mr-2 animate-spin" />
-                  <span className="font-medium">Seleccionando modelo...</span>
+                  <span className="font-medium">{t("chat.selectingModel")}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

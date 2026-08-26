@@ -10,12 +10,14 @@ import { userAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
 import { toast } from "sonner";
 import logoSrc from "../logo";
+import { useI18n } from "@/lib/i18n";
 
 interface LoginScreenProps {
   onAuthSuccess: () => void;
 }
 
 export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +68,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             <input
               id="email"
               type="email"
-              placeholder="tu@email.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -86,7 +88,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             <input
               id="password"
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder={t("auth.passwordMinPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
