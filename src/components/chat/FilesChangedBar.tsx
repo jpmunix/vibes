@@ -297,7 +297,7 @@ function InlineCommitPanel({
       <div className="px-3 pb-2.5 pt-1">
         <div className="flex items-center gap-2 text-[11px] text-green-500/80">
           <GitCommit size={12} />
-          <span>Estos archivos ya fueron committeados</span>
+          <span>{t("chat.alreadyCommitted")}</span>
         </div>
       </div>
     );

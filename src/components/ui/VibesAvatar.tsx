@@ -23,7 +23,7 @@ export function VibesAvatar({ className = "h-7 w-7" }: VibesAvatarProps) {
           "inset 0 0 0 1px rgba(168,85,247,0.35), 0 0 0 1px rgba(0,0,0,0.04)",
       }}
     >
-      <img
+      <img loading="lazy" decoding="async"
         src={logoSrc}
         alt="Vibes"
         className="w-[72%] h-[72%] object-contain select-none pointer-events-none"

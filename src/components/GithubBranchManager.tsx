@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { ipc } from "@/ipc/types";
 import {
@@ -72,6 +73,7 @@ export function GithubBranchManager({
   appId,
   onBranchChange,
 }: BranchManagerProps) {
+  const { t } = useI18n();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [branches, setBranches] = useState<string[]>([]);
@@ -427,7 +429,7 @@ export function GithubBranchManager({
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>Branch actions</TooltipContent>
+              <TooltipContent>{t("dialogs.branchActions")}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <DropdownMenuContent align="end">
@@ -436,7 +438,7 @@ export function GithubBranchManager({
               data-testid="create-branch-trigger"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create new branch
+              {t("dialogs.createNewBranch")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={loadBranches}
@@ -454,12 +456,12 @@ export function GithubBranchManager({
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Branch</DialogTitle>
+              <DialogTitle>{t("dialogs.createNewBranch")}</DialogTitle>
               <DialogDescription>Create a new branch.</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div>
-                <Label htmlFor="branch-name">Branch Name</Label>
+                <Label htmlFor="branch-name">{t("dialogs.branchName")}</Label>
                 <Input
                   id="branch-name"
                   value={newBranchName}
@@ -470,7 +472,7 @@ export function GithubBranchManager({
                 />
               </div>
               <div>
-                <Label htmlFor="source-branch">Source Branch</Label>
+                <Label htmlFor="source-branch">{t("dialogs.sourceBranch")}</Label>
                 <UnifiedSelector
                   value={sourceBranch}
                   onChange={(val) => setSourceBranch(String(val))}
@@ -481,7 +483,7 @@ export function GithubBranchManager({
                   triggerVariant="outline"
                   triggerSize="md"
                   triggerClassName="mt-2 w-full"
-                  placeholder="Seleccionar origen (opcional, por defecto HEAD)"
+                  placeholder={t("dialogs.sourceBranchPlaceholder")}
                   data-testid="source-branch-select-trigger"
                 />
               </div>
@@ -512,13 +514,13 @@ export function GithubBranchManager({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Branch</DialogTitle>
+            <DialogTitle>{t("dialogs.renameBranch")}</DialogTitle>
             <DialogDescription>
-              Enter a new name for branch '{branchToRename}'.
+              {t("dialogs.renameDesc", { branch: branchToRename ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="rename-branch-name">New Name</Label>
+            <Label htmlFor="rename-branch-name">{t("dialogs.renameNewName")}</Label>
             <Input
               id="rename-branch-name"
               value={renameBranchName}
@@ -550,22 +552,24 @@ export function GithubBranchManager({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Merge Branch</DialogTitle>
+            <DialogTitle>{t("dialogs.mergeBranch")}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to merge '{branchToMerge}' into '
-              {currentBranch}'?
+              {t("dialogs.mergeDesc", {
+                source: branchToMerge ?? "",
+                target: currentBranch ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBranchToMerge(null)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleMergeBranch}
               disabled={isMerging}
               data-testid="merge-branch-submit-button"
             >
-              {isMerging ? "Merging..." : "Merge"}
+              {isMerging ? t("common.merging") : t("common.merge")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -577,21 +581,20 @@ export function GithubBranchManager({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogs.deleteBranch")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the branch '{branchToDelete}'. This
-              action cannot be undone.
+              {t("dialogs.deleteBranchDesc", { branch: branchToDelete ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
-              Cancelar
+              {t("common.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDeleteBranch}
               disabled={isDeleting}
             >
-              {isDeleting ? "Eliminando..." : "Eliminar Rama"}
+              {isDeleting ? t("git.deleting") : t("git.deleteBranch")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

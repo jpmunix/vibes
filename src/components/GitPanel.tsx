@@ -1310,7 +1310,7 @@ export function GitPanel({
                   Sin remote
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Configurar repositorio remoto</TooltipContent>
+              <TooltipContent>{t("git.configureRemoteText")}</TooltipContent>
             </Tooltip>
           )}
 
@@ -1598,7 +1598,7 @@ export function GitPanel({
                                         <List size={14} />
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Vista plana</TooltipContent>
+                                    <TooltipContent>{t("git.flatView")}</TooltipContent>
                                   </Tooltip>
                                 )}
                                 {viewType === "tree" ? (

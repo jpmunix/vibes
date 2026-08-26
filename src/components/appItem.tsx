@@ -205,7 +205,7 @@ export function AppItem({
                 onClick={(e) => onArchive(app.id, app.name, e)}
                 className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-foreground cursor-pointer"
                 data-testid="archive-button"
-                title="Archivar"
+                title={t("common.archive")}
               >
                 <Archive size={15} />
               </SidebarMenuAction>

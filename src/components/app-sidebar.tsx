@@ -488,6 +488,7 @@ export function TopNavbar() {
  * Rendered alongside the main content area, collapsible via the toggle button.
  */
 export function SecondarySidebar() {
+  const { t } = useI18n();
   const { state, open, setOpen, setWidth, isResizing, setIsResizing } =
     useSidebar();
   const [activeTab] = useActiveTab();
@@ -697,7 +698,7 @@ export function SecondarySidebar() {
           type="button"
           className="sidebar-resize-handle"
           tabIndex={-1}
-          aria-label="Redimensionar panel"
+          aria-label={t("common.resizePanel")}
           onMouseDown={onMouseDown}
         >
           <div className="sidebar-resize-grip">

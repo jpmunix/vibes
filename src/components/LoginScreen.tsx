@@ -46,7 +46,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       <div className="w-full max-w-[400px] p-10 bg-card rounded-3xl border border-border shadow-lg no-app-region-drag">
         {/* Logo & Brand */}
         <div className="text-center mb-8">
-          <img
+          <img loading="lazy" decoding="async"
             src={logoSrc}
             alt="Vibes"
             className="w-12 h-12 mx-auto mb-4 rounded-lg"

@@ -31,7 +31,7 @@ export function SimpleAvatar({
       )}
     >
       {showImage ? (
-        <img
+        <img loading="lazy" decoding="async"
           src={src}
           alt={alt}
           className="h-full w-full object-cover"

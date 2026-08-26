@@ -2210,10 +2210,10 @@ function PlaygroundPanel() {
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Renombrar preset</AlertDialogTitle>
+                <AlertDialogTitle>{t("dialogs.renamePreset")}</AlertDialogTitle>
                 <AlertDialogDescription asChild>
                   <div className="space-y-3">
-                    <p>Escribe el nuevo nombre para "{pendingRenamePreset}":</p>
+                    <p>{t("dialogs.renamePresetDesc", { name: pendingRenamePreset ?? "" })}</p>
                     <input
                       type="text"
                       className="w-full px-3 py-1.5 typo-body text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
@@ -2800,7 +2800,7 @@ function PlaygroundPanel() {
                             setPromptRenameValue(pp.name);
                             setPromptPresetMenuOpen(false);
                           }}
-                          title="Renombrar"
+                          title={t("common.rename")}
                         >
                           <Pencil size={11} />
                         </button>
@@ -2963,7 +2963,7 @@ function PlaygroundPanel() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Renombrar preset de prompt</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogs.renamePromptPreset")}</AlertDialogTitle>
           </AlertDialogHeader>
           <input
             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground typo-body"

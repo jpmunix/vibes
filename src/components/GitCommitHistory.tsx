@@ -73,9 +73,8 @@ function getFileStatusColor(status: string) {
   }
 }
 
-function formatRelativeDate(dateStr: string): string {
+function formatRelativeDate(dateStr: string, now: Date = new Date()): string {
   const date = new Date(dateStr);
-  const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
@@ -107,9 +106,8 @@ function formatFullDate(dateStr: string): string {
   });
 }
 
-function getDateGroup(dateStr: string): string {
+function getDateGroup(dateStr: string, now: Date = new Date()): string {
   const date = new Date(dateStr);
-  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 86400000);
   const commitDay = new Date(
@@ -227,6 +225,11 @@ export function GitCommitHistory({
   const [isReverting, setIsReverting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Cachear `now` para la vida del componente: con N commits el componente
+  // antes llamaba a new Date() 3N veces por render (2 formatRelativeDate +
+  // 1 getDateGroup). Ahora es 1 por mount (#VIBES-204).
+  const now = useMemo(() => new Date(), []);
+
   // Filter commits by search
   const filteredCommits = useMemo(() => {
     if (!searchQuery.trim()) return commits;
@@ -245,7 +248,7 @@ export function GitCommitHistory({
     let currentGroup = "";
 
     for (const commit of filteredCommits) {
-      const group = getDateGroup(commit.date);
+      const group = getDateGroup(commit.date, now);
       if (group !== currentGroup) {
         currentGroup = group;
         groups.push({ label: group, commits: [commit] });
@@ -255,7 +258,7 @@ export function GitCommitHistory({
     }
 
     return groups;
-  }, [filteredCommits]);
+  }, [filteredCommits, now]);
 
   // Reset selection on page change
   useEffect(() => {
@@ -390,7 +393,7 @@ export function GitCommitHistory({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">
-                          {formatRelativeDate(commit.date)}
+                          {formatRelativeDate(commit.date, now)}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="text-xs">
@@ -499,7 +502,7 @@ export function GitCommitHistory({
                       <TooltipTrigger asChild>
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Clock size={12} />
-                          {formatRelativeDate(commitDetail.date)}
+                          {formatRelativeDate(commitDetail.date, now)}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -668,7 +671,7 @@ export function GitCommitHistory({
                 {commitDetail.message}
               </p>
               <p className="text-xs text-muted-foreground">
-                {commitDetail.author} · {formatRelativeDate(commitDetail.date)}{" "}
+                {commitDetail.author} · {formatRelativeDate(commitDetail.date, now)}{" "}
                 · {commitDetail.filesChanged} archivo
                 {commitDetail.filesChanged !== 1 ? "s" : ""}
               </p>

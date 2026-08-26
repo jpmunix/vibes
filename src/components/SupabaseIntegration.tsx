@@ -114,7 +114,7 @@ export function SupabaseIntegration() {
       >
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <img
+            <img loading="lazy" decoding="async"
               src={supabaseLogo}
               alt="Supabase"
               className="h-4 w-4 brightness-0 dark:invert opacity-70 shrink-0"

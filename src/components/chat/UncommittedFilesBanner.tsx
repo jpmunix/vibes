@@ -26,6 +26,7 @@ import { useCommitChanges } from "@/hooks/useCommitChanges";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 interface UncommittedFilesBannerProps {
   appId: number | null;
@@ -46,22 +47,22 @@ function getStatusIcon(status: UncommittedFile["status"]) {
   }
 }
 
-function getStatusLabel(status: UncommittedFile["status"]) {
+function getStatusLabel(status: UncommittedFile["status"], t: (key: string) => string) {
   switch (status) {
     case "added":
-      return "Añadido";
+      return t("git.added");
     case "modified":
-      return "Modificado";
+      return t("git.modified");
     case "deleted":
-      return "Eliminado";
+      return t("git.deleted");
     case "renamed":
-      return "Renombrado";
+      return t("git.renamed");
     default:
       return status;
   }
 }
 
-function generateDefaultCommitMessage(files: UncommittedFile[]): string {
+function generateDefaultCommitMessage(files: UncommittedFile[], t: (key: string) => string): string {
   if (files.length === 0) return "";
 
   const added = files.filter((f) => f.status === "added").length;
@@ -78,7 +79,7 @@ function generateDefaultCommitMessage(files: UncommittedFile[]): string {
   if (renamed > 0)
     parts.push(`renombrar ${renamed} archivo${renamed > 1 ? "s" : ""}`);
 
-  if (parts.length === 0) return "Actualizar archivos";
+  if (parts.length === 0) return t("git.updateFiles");
 
   // Capitalize first letter
   const message = parts.join(", ");
@@ -86,6 +87,7 @@ function generateDefaultCommitMessage(files: UncommittedFile[]): string {
 }
 
 export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
+  const { t } = useI18n();
   const { settings } = useSettings();
   const { uncommittedFiles, hasUncommittedFiles, isLoading } =
     useUncommittedFiles(appId);
@@ -116,7 +118,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
       appId
     ) {
       autoCommitTriggeredRef.current = true;
-      const message = generateDefaultCommitMessage(uncommittedFiles);
+      const message = generateDefaultCommitMessage(uncommittedFiles, t);
       commitChanges({ appId, message, silent: true })
         .then(() => {
           autoCommitFailCountRef.current = 0;
@@ -155,7 +157,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
   const handleOpenDialog = () => {
     // Set default commit message only when opening the dialog
     // This prevents overwriting user's custom message during polling
-    setCommitMessage(generateDefaultCommitMessage(uncommittedFiles));
+    setCommitMessage(generateDefaultCommitMessage(uncommittedFiles, t));
     setIsDialogOpen(true);
   };
 
@@ -175,7 +177,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
       toast.success(result.message);
       setIsDiscardDialogOpen(false);
     } catch (err: any) {
-      toast.error(err.message || "Error al descartar cambios");
+      toast.error(err.message || t("git.errorDiscard"));
     } finally {
       setIsDiscarding(false);
     }
@@ -227,7 +229,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
       >
         <DialogContent className="sm:max-w-lg" data-testid="commit-dialog">
           <DialogHeader>
-            <DialogTitle>Revisar y confirmar cambios</DialogTitle>
+            <DialogTitle>{t("dialogs.reviewCommitChanges")}</DialogTitle>
             <DialogDescription>
               Revisa tus cambios e introduce un mensaje de confirmación.
             </DialogDescription>
@@ -285,7 +287,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
                           "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
                       )}
                     >
-                      {getStatusLabel(file.status)}
+                      {getStatusLabel(file.status, t)}
                     </span>
                   </div>
                 ))}
@@ -306,7 +308,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
               disabled={!commitMessage.trim() || isCommitting}
               data-testid="commit-button"
             >
-              {isCommitting ? "Confirmando..." : "Confirmar"}
+              {isCommitting ? t("git.confirming") : t("git.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -322,7 +324,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
       >
         <DialogContent className="sm:max-w-md" data-testid="discard-dialog">
           <DialogHeader>
-            <DialogTitle>Descartar todos los cambios</DialogTitle>
+            <DialogTitle>{t("dialogs.discardAllChanges")}</DialogTitle>
             <DialogDescription>
               ¿Estás seguro? Se eliminarán{" "}
               <strong>{uncommittedFiles.length}</strong>{" "}
@@ -345,7 +347,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
               disabled={isDiscarding}
               data-testid="confirm-discard-button"
             >
-              {isDiscarding ? "Descartando..." : "Descartar cambios"}
+              {isDiscarding ? t("git.discarding") : t("git.discardChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>

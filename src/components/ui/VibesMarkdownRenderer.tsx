@@ -702,7 +702,7 @@ const DocsStrong = ({ children, ...props }: any) => (
 /** Images */
 const DocsImage = ({ src, alt, ...props }: any) => (
   <figure className="my-6 w-fit">
-    <img
+    <img loading="lazy" decoding="async"
       src={src}
       alt={alt}
       className="rounded-lg border border-border max-w-full"

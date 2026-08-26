@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { ipc } from "@/ipc/types";
 import { useMutation } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 interface CreateCustomModelDialogProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function CreateCustomModelDialog({
   onSuccess,
   providerId,
 }: CreateCustomModelDialogProps) {
+  const { t } = useI18n();
   const [apiName, setApiName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
@@ -98,10 +100,9 @@ export function CreateCustomModelDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Añadir modelo personalizado</DialogTitle>
+          <DialogTitle>{t("dialogs.addCustomModel")}</DialogTitle>
           <DialogDescription>
-            Configura un nuevo modelo de lenguaje para el proveedor
-            seleccionado.
+            {t("dialogs.addCustomModelDesc")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -133,7 +134,7 @@ export function CreateCustomModelDialog({
                   setDisplayName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Nombre amigable para el modelo"
+                placeholder={t("dialogs.customModelNamePlaceholder")}
                 required
                 disabled={mutation.isPending}
               />
@@ -196,7 +197,7 @@ export function CreateCustomModelDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Creando..." : "Crear modelo"}
+              {mutation.isPending ? t("common.creating") : t("dialogs.createModel")}
             </Button>
           </DialogFooter>
         </form>

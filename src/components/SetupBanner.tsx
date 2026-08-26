@@ -284,14 +284,14 @@ export function SetupBanner() {
                   onClick={handleOpenRouterSetupClick}
                   tabIndex={isNodeSetupComplete ? 0 : -1}
                   leadingIcon={
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={openrouterLogo}
                       alt="OpenRouter"
                       className="w-4 h-4"
                     />
                   }
                   title={t("openRouter.configureApiKey")}
-                  chip={<>Necesario</>}
+                  chip={t("common.required")}
                 />
               </div>
             </AccordionContent>
@@ -454,7 +454,7 @@ export const OpenRouterSetupBanner = ({
       }}
       tabIndex={0}
       leadingIcon={
-        <img src={openrouterLogo} alt="OpenRouter" className="w-4 h-4" />
+        <img loading="lazy" decoding="async" src={openrouterLogo} alt="OpenRouter" className="w-4 h-4" />
       }
       title={t("openRouter.configureApiKey")}
       chip={<></>}

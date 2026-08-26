@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 interface BranchSwitcherProps {
   appId: number;
@@ -45,6 +46,7 @@ export function BranchSwitcher({
   aheadCount,
   align = "end",
 }: BranchSwitcherProps) {
+  const { t } = useI18n();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -154,16 +156,16 @@ export function BranchSwitcher({
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Crear nueva rama</DialogTitle>
+            <DialogTitle>{t("dialogs.createBranch")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateBranch}>
             <div className="py-4">
               <label className="typo-label opacity-80 mb-1 block">
-                Nombre de la rama (basada en {currentBranch})
+                {t("dialogs.branchNameLabel", { branch: currentBranch })}
               </label>
               <Input
                 autoFocus
-                placeholder="ej: feature/nueva-ui"
+                placeholder={t("dialogs.branchNamePlaceholder")}
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
                 className="typo-body"
@@ -176,7 +178,7 @@ export function BranchSwitcher({
                 onClick={() => setShowCreateDialog(false)}
                 disabled={isCreating}
               >
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -185,7 +187,7 @@ export function BranchSwitcher({
                 {isCreating ? (
                   <Loader2 size={16} className="animate-spin mr-2" />
                 ) : null}
-                Crear y cambiar
+                {t("dialogs.createAndSwitch")}
               </Button>
             </DialogFooter>
           </form>

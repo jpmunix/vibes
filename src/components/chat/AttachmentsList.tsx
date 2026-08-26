@@ -91,7 +91,7 @@ export function AttachmentsList({
             >
               <X size={16} />
             </button>
-            <img
+            <img loading="lazy" decoding="async"
               src={expandedUrl}
               alt="Captura ampliada"
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
@@ -133,7 +133,7 @@ function ImageAttachment({
       style={{ width: 88, height: 88, flexShrink: 0 }}
       onClick={() => onExpand(url)}
     >
-      <img
+      <img loading="lazy" decoding="async"
         src={url}
         alt={file.name}
         className="block w-full h-full object-cover rounded-lg"

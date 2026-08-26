@@ -47,6 +47,8 @@ const BrandAvatar: React.FC<{ id: string; className?: string }> = ({
   }
   return (
     <img
+      loading="lazy"
+      decoding="async"
       src={brandAvatarUrl(id)}
       alt={id}
       className={`${className} rounded-full object-cover`}
@@ -239,6 +241,8 @@ const ScreenshotModal: React.FC<{
         ) : preview ? (
           <div className="w-full h-full flex flex-col items-center gap-2">
             <img
+              loading="lazy"
+              decoding="async"
               src={preview}
               alt={t("workspace.designCaptureAlt")}
               className="max-h-[220px] max-w-full rounded-md border border-border/40 object-contain"

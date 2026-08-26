@@ -55,7 +55,7 @@ const SupabaseIcon = ({
   size?: number;
   className?: string;
 }) => (
-  <img
+  <img loading="lazy" decoding="async"
     src={supabaseLogo}
     alt="Supabase"
     className={cn("brightness-0 dark:invert opacity-80", className)}
@@ -74,7 +74,7 @@ const PocketBaseIcon = ({
     className={cn("inline-flex items-center justify-center", className)}
     style={{ width: size || 14, height: size || 14 }}
   >
-    <img
+    <img loading="lazy" decoding="async"
       src={pocketbaseLogo}
       alt="PocketBase"
       className="brightness-0 dark:invert opacity-80 object-contain w-full h-full"

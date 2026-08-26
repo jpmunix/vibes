@@ -46,7 +46,7 @@ export function VibesSupabaseProjectInfo({
           ) : isAborted ? (
             <CircleX className="size-4 text-red-500" />
           ) : (
-            <img
+            <img loading="lazy" decoding="async"
               src={supabaseLogo}
               alt="Supabase"
               className="size-4 brightness-0 dark:invert opacity-70"

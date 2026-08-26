@@ -20,8 +20,10 @@ import {
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useSelectChat } from "@/hooks/useSelectChat";
 import { useChats } from "@/hooks/useChats";
+import { useI18n } from "@/lib/i18n";
 
 export function ChatActivityButton() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const isAnyStreaming = useMemo(() => {
@@ -48,7 +50,7 @@ export function ChatActivityButton() {
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>Actividad reciente del chat</TooltipContent>
+        <TooltipContent>{t("chat.recentActivity")}</TooltipContent>
       </Tooltip>
       <PopoverContent
         align="end"

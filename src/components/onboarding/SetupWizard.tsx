@@ -158,7 +158,7 @@ export function SetupWizard() {
               >
                 <span className="absolute top-3 right-3 text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">Recomendado</span>
                 <div className="flex items-center gap-3">
-                  <img src={openrouterLogo} alt="OpenRouter" className="h-8 w-8 rounded-lg" />
+                  <img loading="lazy" decoding="async" src={openrouterLogo} alt="OpenRouter" className="h-8 w-8 rounded-lg" />
                   <div>
                     <h3 className="font-semibold text-sm">OpenRouter</h3>
                     <p className="text-xs text-muted-foreground">300+ modelos en la nube</p>

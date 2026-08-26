@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useI18n } from "@/lib/i18n";
 
 interface CommunityCodeConsentDialogProps {
   isOpen: boolean;
@@ -19,31 +20,21 @@ interface CommunityCodeConsentDialogProps {
 export const CommunityCodeConsentDialog: React.FC<
   CommunityCodeConsentDialogProps
 > = ({ isOpen, onAccept, onCancel }) => {
+  const { t } = useI18n();
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Aviso de código de la comunidad</AlertDialogTitle>
+          <AlertDialogTitle>{t("dialogs.communityCodeNotice")}</AlertDialogTitle>
           <AlertDialogDescription className="space-y-3">
-            <p>
-              Este código fue creado por un miembro de la comunidad de Vibes, no
-              por nuestro equipo principal.
-            </p>
-            <p>
-              El código de la comunidad puede ser muy útil, pero como se
-              desarrolla de forma independiente, puede tener errores, riesgos de
-              seguridad o causar problemas en tu sistema. No podemos ofrecer
-              soporte oficial si surgen problemas.
-            </p>
-            <p>
-              Recomendamos revisar primero el código en GitHub. Procede solo si
-              te sientes cómodo con estos riesgos.
-            </p>
+            <p>{t("dialogs.communityCodeP1")}</p>
+            <p>{t("dialogs.communityCodeP2")}</p>
+            <p>{t("dialogs.communityCodeP3")}</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onAccept}>Aceptar</AlertDialogAction>
+          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={onAccept}>{t("common.accept")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

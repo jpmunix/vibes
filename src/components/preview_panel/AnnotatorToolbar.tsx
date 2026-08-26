@@ -114,7 +114,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onDelete}
-                aria-label="Eliminar"
+                aria-label={t("common.delete")}
                 className={actionClass}
                 disabled={!selectedId}
               >
@@ -132,7 +132,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onUndo}
-                aria-label="Deshacer"
+                aria-label={t("common.undo")}
                 className={actionClass}
                 disabled={historyStep === 0}
               >
@@ -148,7 +148,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onRedo}
-                aria-label="Rehacer"
+                aria-label={t("common.redo")}
                 className={actionClass}
                 disabled={historyStep === historyLength - 1}
               >
@@ -166,7 +166,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onCopyToClipboard}
-                aria-label="Copiar al portapapeles"
+                aria-label={t("common.copyToClipboard")}
                 className={actionClass}
               >
                 <Clipboard size={16} />
@@ -181,7 +181,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onSaveAsFile}
-                aria-label="Guardar como archivo"
+                aria-label={t("common.saveAsFile")}
                 className={actionClass}
               >
                 <Download size={16} />
@@ -198,7 +198,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onSubmit}
-                aria-label="Añadir al chat"
+                aria-label={t("common.addToChat")}
                 className={actionClass}
                 disabled={!hasSubmitHandler}
               >
@@ -213,7 +213,7 @@ export const AnnotatorToolbar = ({
             <TooltipTrigger asChild>
               <button
                 onClick={onDeactivate}
-                aria-label="Cerrar anotador"
+                aria-label={t("common.closeAnnotator")}
                 className="p-1 rounded transition-colors duration-200 text-primary hover:bg-primary/15"
               >
                 <X size={16} />

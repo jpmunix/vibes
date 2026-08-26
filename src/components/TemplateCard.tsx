@@ -81,7 +81,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         `}
       >
         <div className="relative">
-          <img
+          <img loading="lazy" decoding="async"
             src={template.imageUrl}
             alt={template.title}
             className={`w-full h-52 object-cover transition-opacity duration-300 group-hover:opacity-80 ${

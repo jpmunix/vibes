@@ -116,7 +116,7 @@ export function OpenRouterSetupWizard() {
 
             <div className="bg-card rounded-2xl border border-border p-6 text-left space-y-4">
               <div className="flex items-center gap-3">
-                <img
+                <img loading="lazy" decoding="async"
                   src={openrouterLogo}
                   alt="OpenRouter"
                   className="h-8 w-8 rounded-lg"

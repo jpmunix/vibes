@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WindowsControls } from "@/components/WindowsControls";
+import { useI18n } from "@/lib/i18n";
 
 // ── Inline Cell Editor ──
 function CellEditor({
@@ -147,6 +148,7 @@ function CellValue({ value }: { value: unknown }) {
 
 // ── Main Component ──
 export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
+  const { t } = useI18n();
   const db = useDatabase();
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [tableSearch, setTableSearch] = useState("");
@@ -256,7 +258,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
         >
           <div className="flex items-center gap-2">
             {db.dbType === "pocketbase" ? (
-              <img
+              <img loading="lazy" decoding="async"
                 src={pocketbaseLogo}
                 alt="PocketBase"
                 className="h-[14px] w-[14px] object-contain"
@@ -264,7 +266,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
             ) : db.dbType === "bunny" ? (
               <Database size={14} />
             ) : (
-              <img
+              <img loading="lazy" decoding="async"
                 src={supabaseLogo}
                 alt="Supabase"
                 className="h-[14px] w-[14px] brightness-0 dark:invert"
@@ -335,7 +337,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                     <ExternalLink size={13} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Abrir en ventana</TooltipContent>
+                <TooltipContent>{t("db.openInWindow")}</TooltipContent>
               </Tooltip>
             )}
             {isWindow && (
@@ -436,7 +438,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                             <Trash2 size={13} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Eliminar seleccionadas</TooltipContent>
+                        <TooltipContent>{t("db.deleteSelected")}</TooltipContent>
                       </Tooltip>
                     )}
                     <Tooltip>
@@ -453,7 +455,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                           <Plus size={13} />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Insertar fila</TooltipContent>
+                      <TooltipContent>{t("db.insertRow")}</TooltipContent>
                     </Tooltip>
                   </div>
                 </div>

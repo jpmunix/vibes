@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Image, RotateCcw, Sparkles } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
 import {
   Select,
   SelectContent,
@@ -333,6 +334,7 @@ export function ModelFiltersPanel({
   filteredCount,
   totalCount,
 }: ModelFiltersPanelProps) {
+  const { t } = useI18n();
   const isDefault = useMemo(() => isDefaultFilters(filters), [filters]);
   const isFiltering = !isDefault;
 
@@ -375,7 +377,7 @@ export function ModelFiltersPanel({
             type="button"
             onClick={resetFilters}
             className="p-1 rounded-md hover:bg-muted/60 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
-            title="Resetear filtros"
+            title={t("modelsFilters.resetFilters")}
           >
             <RotateCcw size={12} />
           </button>
@@ -385,7 +387,7 @@ export function ModelFiltersPanel({
       {/* Filter sections */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {/* Sort */}
-        <FilterSection label="Ordenar por">
+        <FilterSection label={t("modelsFilters.sortBy")}>
           <Select
             value={
               filters.sortBy === "default" || !filters.sortBy
@@ -406,34 +408,34 @@ export function ModelFiltersPanel({
             }}
           >
             <SelectTrigger className="w-full h-8 text-[11px] font-medium bg-muted/20 border-border/50">
-              <SelectValue placeholder="Recomendados" />
+              <SelectValue placeholder={t("modelsFilters.recommended")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Recomendados</SelectItem>
+              <SelectItem value="default">{t("modelsFilters.recommended")}</SelectItem>
               <SelectItem value="price_input-asc">
-                Precio entrada (Menor a mayor)
+                {t("modelsFilters.inputPriceAsc")}
               </SelectItem>
               <SelectItem value="price_input-desc">
-                Precio entrada (Mayor a menor)
+                {t("modelsFilters.inputPriceDesc")}
               </SelectItem>
               <SelectItem value="price_output-asc">
-                Precio salida (Menor a mayor)
+                {t("modelsFilters.outputPriceAsc")}
               </SelectItem>
               <SelectItem value="price_output-desc">
-                Precio salida (Mayor a menor)
+                {t("modelsFilters.outputPriceDesc")}
               </SelectItem>
               <SelectItem value="context-desc">
-                Contexto (Mayor a menor)
+                {t("modelsFilters.contextDesc")}
               </SelectItem>
               <SelectItem value="context-asc">
-                Contexto (Menor a mayor)
+                {t("modelsFilters.contextAsc")}
               </SelectItem>
             </SelectContent>
           </Select>
         </FilterSection>
 
         {/* Opciones adicionales */}
-        <FilterSection label="Opciones">
+        <FilterSection label={t("modelsFilters.options")}>
           <div className="flex flex-wrap gap-2">
             <FilterChip
               active={filters.imageInput}
@@ -443,7 +445,7 @@ export function ModelFiltersPanel({
             >
               <span className="flex items-center gap-1.5">
                 <Image style={{ width: 10, height: 10 }} />
-                Imagen
+                {t("modelsFilters.image")}
               </span>
             </FilterChip>
             <FilterChip
@@ -454,14 +456,14 @@ export function ModelFiltersPanel({
             >
               <span className="flex items-center gap-1.5">
                 <Sparkles style={{ width: 11, height: 11 }} />
-                Modelos gratis
+                {t("modelsFilters.freeModels")}
               </span>
             </FilterChip>
           </div>
         </FilterSection>
 
         {/* Input price — slider */}
-        <FilterSection label="Precio entrada ($/M)">
+        <FilterSection label={t("modelsFilters.inputPrice")}>
           <PremiumSlider
             labels={INPUT_PRICE_STEPS.map((s) => s.label)}
             value={filters.priceInputStep}
@@ -470,7 +472,7 @@ export function ModelFiltersPanel({
         </FilterSection>
 
         {/* Output price — slider */}
-        <FilterSection label="Precio salida ($/M)">
+        <FilterSection label={t("modelsFilters.outputPrice")}>
           <PremiumSlider
             labels={OUTPUT_PRICE_STEPS.map((s) => s.label)}
             value={filters.priceOutputStep}
@@ -479,7 +481,7 @@ export function ModelFiltersPanel({
         </FilterSection>
 
         {/* Context — slider */}
-        <FilterSection label="Contexto">
+        <FilterSection label={t("modelsFilters.context")}>
           <PremiumSlider
             labels={CONTEXT_STEPS.map((s) => s.label)}
             value={filters.contextStep}
@@ -489,7 +491,7 @@ export function ModelFiltersPanel({
 
         {/* Providers (only show if >1) */}
         {availableProviders.length > 1 && (
-          <FilterSection label="Proveedores">
+          <FilterSection label={t("modelsFilters.providers")}>
             <div className="flex flex-wrap gap-1">
               {availableProviders.map((prov) => (
                 <FilterChip

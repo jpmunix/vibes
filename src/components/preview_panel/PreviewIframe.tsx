@@ -362,7 +362,7 @@ export const DeviceModeButton = () => {
             }}
             variant="outline"
           >
-            <ToggleGroupItem value="desktop" aria-label="Vista de escritorio">
+            <ToggleGroupItem value="desktop" aria-label={t("preview.desktopView")}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex items-center justify-center">
@@ -374,7 +374,7 @@ export const DeviceModeButton = () => {
                 </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
-            <ToggleGroupItem value="tablet" aria-label="Vista de tableta">
+            <ToggleGroupItem value="tablet" aria-label={t("preview.tabletView")}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex items-center justify-center">
@@ -386,7 +386,7 @@ export const DeviceModeButton = () => {
                 </TooltipContent>
               </Tooltip>
             </ToggleGroupItem>
-            <ToggleGroupItem value="mobile" aria-label="Vista móvil">
+            <ToggleGroupItem value="mobile" aria-label={t("preview.mobileView")}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex items-center justify-center">

@@ -20,8 +20,10 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import { useContextPaths } from "@/hooks/useContextPaths";
 import type { ContextPathResult } from "@/lib/schemas";
+import { useI18n } from "@/lib/i18n";
 
 export function ContextFilesPicker() {
+  const { t } = useI18n();
   const { settings } = useSettings();
   const {
     contextPaths,
@@ -131,10 +133,10 @@ export function ContextFilesPicker() {
 
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Contexto del código</DialogTitle>
+          <DialogTitle>{t("dialogs.codeContext")}</DialogTitle>
           <DialogDescription>
             <span className="flex items-center gap-1">
-              Selecciona los archivos a usar como contexto.{" "}
+              {t("dialogs.codeContextDesc")}{" "}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

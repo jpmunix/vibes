@@ -22,6 +22,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { showError } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 interface ProblemItemProps {
   problem: Problem;
@@ -30,6 +31,7 @@ interface ProblemItemProps {
 }
 
 const ProblemItem = ({ problem, checked, onToggle }: ProblemItemProps) => {
+  const { t } = useI18n();
   return (
     <div
       role="checkbox"
@@ -43,7 +45,7 @@ const ProblemItem = ({ problem, checked, onToggle }: ProblemItemProps) => {
         onCheckedChange={onToggle}
         onClick={(e) => e.stopPropagation()}
         className="mt-0.5"
-        aria-label="Seleccionar problema"
+        aria-label={t("preview.selectProblem")}
       />
       <div className="flex-shrink-0 mt-0.5">
         <XCircle size={16} className="text-red-500" />
@@ -86,6 +88,7 @@ const RecheckButton = ({
   className = "h-7 px-3 text-xs",
   onBeforeRecheck,
 }: RecheckButtonProps) => {
+  const { t } = useI18n();
   const { checkProblems, isChecking } = useCheckProblems(appId);
   const [showingFeedback, setShowingFeedback] = useState(false);
 
@@ -119,7 +122,7 @@ const RecheckButton = ({
         size={14}
         className={`mr-1 ${isShowingChecking ? "animate-spin" : ""}`}
       />
-      {isShowingChecking ? "Comprobando..." : "Ejecutar comprobaciones"}
+      {isShowingChecking ? t("preview.checking") : t("preview.runChecks")}
     </Button>
   );
 };

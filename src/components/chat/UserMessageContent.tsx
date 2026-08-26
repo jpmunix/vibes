@@ -431,7 +431,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
                 style={{ width: 120, height: 120, flexShrink: 0 }}
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={img.src}
                   alt={`Captura ${index + 1}`}
                   className="block w-full h-full object-cover rounded-lg"
@@ -471,7 +471,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
             >
               <X size={16} />
             </button>
-            <img
+            <img loading="lazy" decoding="async"
               src={expandedImage}
               alt="Captura ampliada"
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
