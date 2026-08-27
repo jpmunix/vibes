@@ -29,22 +29,54 @@ Otras señales: `.git` es un **archivo** (no un directorio) con una línea `gitd
 
 ## Integración del worktree — flujo real (sin PRs)
 
-> **munix es el único developer del proyecto.** No se abren PRs ni se hace merge vía GitHub. El flujo de integración de un worktree es directo: **merge fast-forward en `feature/vibes-core` + push**, ejecutado por el agente cuando munix lo pide explícitamente ("haz el push", "integra el worktree" o similar).
+> **munix es el único developer del proyecto.** No se abren PRs ni se hace merge vía GitHub.
+> El flujo de integración de un worktree es directo: **merge fast-forward en la RAMA MADRE + push**.
+
+**RAMA DESTINO = la rama de la que nació el worktree** (la que estaba checkouteada en el repo principal al crearlo). NO es una rama fija hardcodeada: depende del repo.
+
+| Repo | Rama de trabajo (destino de integración) |
+|---|---|
+| **Vibes** (carcasa) | `feature/vibes-core` |
+| **vibes-core** (runtime) | `main` |
+
+> [!IMPORTANT]
+> Verificar SIEMPRE la rama madre real antes de integrar (es la que `git rev-parse --abbrev-ref HEAD` devuelve en el repo principal). No asumir el destino por el nombre del repo. Si el ff-only falla (la rama madre avanzó por otro lado), **parar y avisar a munix** — nunca merge con 3-way sin OK.
+
+### Método recomendado: script `integrate-worktree.mjs`
+
+```bash
+# Desde el repo principal (NUNCA desde el worktree):
+node scripts/git/integrate-worktree.mjs --branch <rama-worktree>   # p. ej. vibes-70-retry-semantico
+```
+
+El script hace el flujo completo y seguro: verifica que no estás en un worktree, comprueba ff-only, hace merge + push de la rama madre, borra la rama remota del worktree, y limpia rama local + worktree. Usa `--force` para **descartar** (sin merge) y `--yes` para no preguntar (uso del agente).
+
+> El agente lo invoca cuando munix dice **"sube" / "integra el worktree" / "haz el push"** — ese pedido es autorización implícita para todo el flujo (AGENTS §1.18).
+
+### Método manual (si no hay script disponible)
 
 ```bash
 # 1. Desde el repo principal (NUNCA desde el worktree):
-cd /home/munix/Desarrollo/GitRepo/Vibes
-git merge --ff-only <rama-worktree>        # p. ej. vibes-204-auditoria-ui
+cd <repo-principal>                        # Vibes o vibes-core
+git rev-parse --abbrev-ref HEAD            # ← esta es la RAMA MADRE (destino)
+git merge --ff-only <rama-worktree>        # p. ej. vibes-70-retry-semantico
 
-# 2. Push de la rama principal:
-git push origin feature/vibes-core
+# 2. Push de la rama madre:
+git push origin <rama-madre>
+
+# 3. Borrar la rama remota del worktree (si se llegó a pushear en working):
+git push origin --delete <rama-worktree>
+
+# 4. Limpiar rama local + worktree:
+git branch -d <rama-worktree>
+git worktree remove <ruta-worktree>
 ```
 
 Consideraciones:
-- **Fast-forward siempre**: el worktree cuelga de la punta de `feature/vibes-core` (se creó derivado de esa rama). Si el ff-only falla (el main avanzó por otro lado), **parar y avisar a munix** — nunca hacer merge con 3-way sin OK.
-- **Push de la rama del worktree**: si se pusheó la rama del worktree (p. ej. `git push -u origin vibes-204-auditoria-ui`), tras integrarla en `feature/vibes-core` se **borra la rama remota** del worktree (`git push origin --delete <rama-worktree>`) para no dejar ramas huérfanas.
-- **Eliminar el worktree local** tras integrar: `git worktree remove <ruta-worktree>` + limpiar la rama local (`git branch -d <rama-worktree>`), con OK de munix (es acción destructiva, AGENTS.md §1.5).
-- **El estado del PR no existe**: `feature/vibes-core` es el destino final y la única rama que se mantiene en remoto.
+- **Fast-forward siempre**: el worktree cuelga de la punta de la rama madre (se creó derivado de esa rama). Si el ff-only falla (la rama madre avanzó por otro lado), **parar y avisar a munix** — nunca merge con 3-way sin OK.
+- **La rama del worktree NUNCA se conserva viva** en remoto: si por trabajo en curso hubo que pushearla (`git push -u origin <rama>`), tras integrar se borra (paso 3) para no dejar ramas huérfanas.
+- **Descarte** (munix dice "descarta"): `git worktree remove --force` + `git branch -D <rama>` (forzado, no está mergeada) + `git push origin --delete` si se hubiera pusheado.
+- **El estado del PR no existe**: la rama madre (`feature/vibes-core` en Vibes, `main` en vibes-core) es el destino final y la única rama que se mantiene en remoto.
 
 ## Al empezar una card — crear worktree SOLO si no se está ya en uno
 

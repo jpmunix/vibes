@@ -316,7 +316,7 @@ El detalle procedimental de las reglas de dominio vive en docs autocontenidos (`
 
 | Doc | Trigger (comprobable) |
 |---|---|
-| [`worktrees.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md) | Antes de cualquier operación git: `git rev-parse --git-dir` |
+| [`worktrees.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md) | Antes de cualquier operación git: `git rev-parse --git-dir`; y cuando munix diga **"sube" / "integra el worktree" / "haz el push"** (§1.18) |
 | [`i18n.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/i18n.md) | Si se crea/modifica cualquier `.tsx` o string visible |
 | [`artifacts.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/artifacts.md) | Al crear un artifact o cerrar una slice |
 | [`ag-chats.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/ag-chats.md) | Si se necesita leer conversaciones pasadas de Antigravity |
@@ -324,6 +324,25 @@ El detalle procedimental de las reglas de dominio vive en docs autocontenidos (`
 | [`docs/TESTING.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/docs/TESTING.md) | Antes de tocar cualquier test |
 
 ---
+
+### 1.18 Vocabulario de integración de worktrees — **INNEGOCIABLE**
+
+Cuando munix diga **"sube"**, **"integra el worktree"**, **"haz el push"** o similar para una card que se trabajó en un worktree, el agente ejecuta el **flujo completo de integración** ([`worktrees.md` §Integración](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md)):
+
+1. Merge **fast-forward en la RAMA MADRE** (la rama de la que nació el worktree: `feature/vibes-core` en Vibes, `main` en vibes-core).
+2. Push de la rama madre.
+3. Borrar la rama remota del worktree.
+4. Limpiar rama local + worktree.
+
+Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El método recomendado es el script [`scripts/git/integrate-worktree.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/git/integrate-worktree.mjs).
+
+**Lo que NO es "sube":** pushear la rama del worktree como rama viva en remoto sin integrarla. La rama del worktree es efímera y **nunca se conserva como rama remota**.
+
+**Reglas duras:**
+- ❌ **NUNCA** integrar desde un worktree (siempre desde el repo principal).
+- ❌ **NUNCA** merge 3-way sin OK: si el ff-only falla (la rama madre avanzó), **parar y avisar**.
+- ❌ **NUNCA** dejar la rama del worktree viva en remoto tras integrar.
+- ✅ **SIEMPRE** verificar la rama madre real antes de integrar (no asumir por el nombre del repo).
 
 ## 2. Cosas que se hablan al post-MVP
 
