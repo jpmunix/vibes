@@ -70,6 +70,7 @@ const SYNTH_MODEL: Model = {
   modalities: { input: ["text", "image"], output: ["text"] },
   open_weights: false,
   limit: { context: 200000, output: 16384 },
+  // 3/15 USD por 1M → "0.000003"/"0.000015" por token (formato card #209)
   cost: { input: 3, output: 15, cache_read: 0.3 },
 } as unknown as Model;
 
@@ -86,8 +87,8 @@ afterEach(async () => {
 describe("pricingFromCost", () => {
   it("formatea USD/M y asigna la escala de $ según el output", () => {
     expect(pricingFromCost({ input: 3, output: 15 })).toEqual({
-      pricingInput: "$3.00/M",
-      pricingOutput: "$15.00/M",
+      pricingInput: "0.0000030000",
+      pricingOutput: "0.0000150000",
       dollarSigns: 3, // <=15
     });
     expect(pricingFromCost({ input: 1, output: 1 }).dollarSigns).toBe(1);
@@ -113,8 +114,8 @@ describe("toModelOption", () => {
     );
     expect(opt.tag).toBe("Reasoning");
     expect(opt.tagColor).toBe("purple");
-    expect(opt.pricingInput).toBe("$3.00/M");
-    expect(opt.pricingOutput).toBe("$15.00/M");
+    expect(opt.pricingInput).toBe("0.0000030000");
+    expect(opt.pricingOutput).toBe("0.0000150000");
     expect(opt.dollarSigns).toBe(3);
   });
 

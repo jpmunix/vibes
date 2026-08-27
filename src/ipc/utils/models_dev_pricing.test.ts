@@ -4,7 +4,8 @@
  * Testea la capa de precios:
  *   - resolveModelCost: resuelve el costo aplicable según context-size tiers
  *     (p. ej. openai/gpt-5.5 cobra más arriba de 272k).
- *   - pricingFromCost: USD/M → formato "$X.XX/M" + escala de $.
+ *   - pricingFromCost: USD/M → precio POR TOKEN (string numérico crudo,
+ *     convención de la carcasa — card #209) + escala de $.
  *   - Precedencia "el provider gana" (ya en enrichModelOption, ver Slice C):
  *     aquí se reafirma que toModelOption usa el costo del catálogo y el
  *     enriquecimiento NO lo pisa si el provider ya traía precio.
@@ -86,8 +87,8 @@ describe("resolveModelCost", () => {
 describe("pricingFromCost", () => {
   it("formatea y escala", () => {
     expect(pricingFromCost({ input: 5, output: 25 })).toEqual({
-      pricingInput: "$5.00/M",
-      pricingOutput: "$25.00/M",
+      pricingInput: "0.0000050000",
+      pricingOutput: "0.0000250000",
       dollarSigns: 4, // >15
     });
     expect(pricingFromCost({ input: 1, output: 0 }).dollarSigns).toBe(0);
@@ -108,8 +109,8 @@ describe("toModelOption (precio con tiers)", () => {
     });
     const opt = toModelOption(model);
     // 400k > 272k → precio del tier (10/45), no el base (5/25).
-    expect(opt.pricingInput).toBe("$10.00/M");
-    expect(opt.pricingOutput).toBe("$45.00/M");
+    expect(opt.pricingInput).toBe("0.0000100000");
+    expect(opt.pricingOutput).toBe("0.0000450000");
   });
 
   it("usa el costo base si el contexto no cruza el umbral", () => {
@@ -122,8 +123,8 @@ describe("toModelOption (precio con tiers)", () => {
       },
     });
     const opt = toModelOption(model);
-    expect(opt.pricingInput).toBe("$5.00/M");
-    expect(opt.pricingOutput).toBe("$25.00/M");
+    expect(opt.pricingInput).toBe("0.0000050000");
+    expect(opt.pricingOutput).toBe("0.0000250000");
   });
 
   it("sin cost → sin precio (nunca 'gratis' falso)", () => {

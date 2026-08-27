@@ -1,7 +1,3 @@
-export const PROVIDERS_THAT_SUPPORT_THINKING: (keyof typeof MODEL_OPTIONS)[] = [
-  "google",
-];
-
 export interface ModelOption {
   name: string;
   displayName: string;
@@ -23,7 +19,6 @@ export interface ModelOption {
 export const GPT_5_2_MODEL_NAME = "gpt-5.2";
 export const SONNET_4_5 = "claude-sonnet-4-5-20250929";
 export const GEMINI_3_FLASH = "gemini-3-flash-preview";
-export const GPT_5_MINI = "openai/gpt-5-mini";
 
 // ═══════════════════════════════════════════════════════════════════
 // CENTRALIZED MODEL DEFAULTS
@@ -40,190 +35,6 @@ export const FALLBACK_STANDARD_MODEL = "google/gemini-2.5-flash-lite";
 /** Default model for the main chat selector */
 export const FALLBACK_SELECTED_MODEL = "google/gemini-3-flash-preview";
 
-export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
-  // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
-  // "auto-router": [
-  //   {
-  //     name: "auto",
-  //     displayName: "Selección Automática",
-  //     description:
-  //       "La IA analiza tu tarea y selecciona automáticamente el mejor modelo según complejidad",
-  //     maxOutputTokens: undefined,
-  //     contextWindow: undefined,
-  //     temperature: 0,
-  //     dollarSigns: 2,
-  //     brainSigns: 2,
-  //     tag: "Auto",
-  //     tagColor: "blue",
-  //   },
-  // ],
-  openrouter: [
-    {
-      name: "google/gemini-3-flash-preview",
-      displayName: "Gemini 3 Flash",
-      description: "Ideal para el desarrollo diario",
-      maxOutputTokens: 65_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 2,
-      brainSigns: 2,
-    },
-    {
-      name: "google/gemini-3.1-pro-preview",
-      displayName: "Gemini 3 Pro",
-      description: "Ideal para resolver bugs o problemas más complejos",
-      maxOutputTokens: 65_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 3,
-      brainSigns: 3,
-    },
-    {
-      name: "google/gemini-2.5-pro",
-      displayName: "Gemini 2.5 Pro",
-      description:
-        "Élite en razonamiento lógico y código complejo; costo medio-alto con velocidad moderada",
-      maxOutputTokens: 65_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 3,
-      brainSigns: 2,
-    },
-    {
-      name: "google/gemini-2.5-flash",
-      displayName: "Gemini 2.5 Flash",
-      description:
-        "Equilibrio óptimo: código sólido, extremadamente rápido y el más económico de su clase.",
-      maxOutputTokens: 65_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 2,
-    },
-    {
-      name: "anthropic/claude-sonnet-4.5",
-      displayName: "Claude Sonnet 4.5",
-      description:
-        'El equilibrio perfecto; código con "sentido común", razonamiento humano superior y velocidad media a un precio altamente eficiente',
-      maxOutputTokens: 65_000,
-      contextWindow: 1000000,
-      temperature: 0,
-      dollarSigns: 3,
-      brainSigns: 3,
-    },
-    {
-      name: "anthropic/claude-opus-4.6",
-      displayName: "Claude Opus 4.6",
-      description:
-        "El modelo más potente de Anthropic para código y tareas profesionales de larga duración. Diseñado para agentes que operan en flujos de trabajo completos, destacando en codebases grandes, refactorizaciones complejas y debugging multi-paso. Mantiene coherencia excepcional en outputs muy largos y sesiones extendidas.",
-      maxOutputTokens: 128_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 4,
-      brainSigns: 3,
-    },
-    {
-      name: "openai/gpt-5.1-codex-mini",
-      displayName: "GPT 5.1 Codex mini",
-      description:
-        "Revolucionario en síntesis: código moderno, costo competitivo y gran rapidez",
-      maxOutputTokens: 100_000,
-      contextWindow: 400_000,
-      temperature: 0,
-      dollarSigns: 2,
-      brainSigns: 2,
-    },
-    {
-      name: "openai/gpt-5.1-codex-max",
-      displayName: "GPT 5.1 Codex Max",
-      description:
-        "La versión más potente de Codex 5.1: razonamiento extendido con presupuesto de tokens alto para las tareas de código más exigentes.",
-      maxOutputTokens: 128_000,
-      contextWindow: 400_000,
-      temperature: 0,
-      dollarSigns: 4,
-      brainSigns: 3,
-    },
-    {
-      name: "openai/gpt-5.2-codex",
-      displayName: "GPT 5.2 Codex",
-      description:
-        "La última generación de modelos de código de OpenAI. Máximo rendimiento en SWE-bench con razonamiento avanzado y agentes de largo aliento.",
-      maxOutputTokens: 128_000,
-      contextWindow: 400_000,
-      temperature: 0,
-      dollarSigns: 4,
-      brainSigns: 3,
-    },
-    {
-      name: GPT_5_MINI,
-      displayName: "GPT-5 Mini",
-      description:
-        "Versión compacta de GPT-5 para razonamiento ligero. Ofrece la misma precisión y seguridad que GPT-5 con menor latencia y costo. Sucesor de o4-mini.",
-      maxOutputTokens: 65_000,
-      contextWindow: 400_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 2,
-    },
-    {
-      name: "qwen/qwen-plus-2025-07-28:thinking",
-      displayName: "Qwen Plus",
-      description:
-        "La alternativa potente: excelente en algoritmos, muy económico y velocidad estable.",
-      maxOutputTokens: 32_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 2,
-      brainSigns: 2,
-    },
-    {
-      name: "x-ai/grok-4.1-fast",
-      displayName: "Grok 4.1 Fast",
-      description:
-        "Velocidad extrema y razonamiento agudo con una ventana de contexto de 2M; el futuro del tiempo real de xAI.",
-      maxOutputTokens: 30_000,
-      contextWindow: 2_000_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 1,
-    },
-    {
-      name: "moonshotai/kimi-k2.5",
-      displayName: "MoonshotAI: Kimi K2.5",
-      description:
-        "SOTA en visual coding y paradigma de agentes; excelente razonamiento general y multimodal.",
-      maxOutputTokens: 65_000,
-      contextWindow: 262_144,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 2,
-    },
-    {
-      name: "minimax/minimax-m2.5",
-      displayName: "MiniMax M2.5",
-      description:
-        "Modelo SOTA diseñado para productividad del mundo real. Experto en generación y operación de archivos Word, Excel y PowerPoint, cambiando fluidamente entre entornos de software diversos. Destaca en SWE-Bench (80.2%) y es altamente eficiente en tokens gracias a su entrenamiento en planificación optimizada.",
-      maxOutputTokens: 131_100,
-      contextWindow: 204_800,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 1,
-    },
-    {
-      name: "x-ai/grok-code-fast-1",
-      displayName: "Grok Code Fast 1",
-      description:
-        "Modelo de razonamiento rápido y económico especializado en coding agentic. Con trazas de razonamiento visibles en la respuesta, permite a los desarrolladores guiar a Grok Code para flujos de trabajo de alta calidad. Ideal para desarrollo ágil con balance entre velocidad y precisión.",
-      maxOutputTokens: 10_000,
-      contextWindow: 256_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 1,
-    },
-  ],
-};
-
 export const DEFAULT_ENABLED_MODELS: string[] = [
   "anthropic/claude-opus-4.6",
   "google/gemini-3.1-pro-preview",
@@ -236,10 +47,6 @@ export const DEFAULT_ENABLED_MODELS: string[] = [
   "minimax/minimax-m2.5",
   "qwen/qwen-plus-2025-07-28:thinking",
 ];
-
-export const FREE_OPENROUTER_MODEL_NAMES = MODEL_OPTIONS.openrouter
-  .filter((model) => model.name.endsWith(":free"))
-  .map((model) => model.name);
 
 export const PROVIDER_TO_ENV_VAR: Record<string, string> = {
   openai: "OPENAI_API_KEY",

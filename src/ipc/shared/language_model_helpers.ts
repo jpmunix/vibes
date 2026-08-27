@@ -2,11 +2,10 @@ import type { LanguageModelProvider, LanguageModel } from "@/ipc/types";
 import {
   LOCAL_PROVIDERS,
   CLOUD_PROVIDERS,
-  MODEL_OPTIONS,
   PROVIDER_TO_ENV_VAR,
   CUSTOM_PROVIDER_PREFIX,
 } from "./language_model_constants";
-import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
+import { getCatalogModels } from "../utils/models_dev_service";
 import { fetchCompatibleModels } from "../utils/openai_compatible_models_service";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
@@ -135,32 +134,15 @@ export async function getLanguageModels({
   // Get models for cloud providers
   let hardcodedModels: LanguageModel[] = [];
   if (provider.type === "cloud") {
-    if (providerId === "openrouter") {
-      // Dynamically fetch from OpenRouter API (cached)
-      const dynamicModels = await fetchOpenRouterModels();
-      if (dynamicModels.length > 0) {
-        hardcodedModels = dynamicModels.map((model) => ({
-          ...model,
-          apiName: model.name,
-          type: "cloud" as const,
-        }));
-      } else {
-        // Fallback to hardcoded models if API fetch fails
-        const fallback = MODEL_OPTIONS[providerId] || [];
-        hardcodedModels = fallback.map((model) => ({
-          ...model,
-          apiName: model.name,
-          type: "cloud" as const,
-        }));
-      }
-    } else if (providerId in MODEL_OPTIONS) {
-      const models = MODEL_OPTIONS[providerId] || [];
-      hardcodedModels = models.map((model) => ({
-        ...model,
-        apiName: model.name,
-        type: "cloud",
-      }));
-    }
+    // Catálogo multi-proveedor de models.dev: única fuente de verdad de
+    // modelos y precios (card #209). Nunca vacío offline: el snapshot
+    // embebido del SDK actúa de floor.
+    const catalogModels = await getCatalogModels(providerId);
+    hardcodedModels = catalogModels.map((model) => ({
+      ...model,
+      apiName: model.name,
+      type: "cloud" as const,
+    }));
   } else if (provider.type === "custom") {
     // Fetch from generic OpenAI-compatible endpoint
     const settings = readSettings();

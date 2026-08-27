@@ -287,15 +287,22 @@ function outputCostToSigns(outputPer1M: number): number {
   return 4;
 }
 
-/** Costo del catálogo (USD por 1M) → campos de precio de ModelOption. */
+/**
+ * Costo del catálogo (USD por 1M) → campos de precio de ModelOption.
+ *
+ * Formato: precio POR TOKEN como string numérico crudo (p. ej. "0.0000050000"),
+ * la convención de la carcasa: el badge de tokens, el sort y los filtros de
+ * modelos hacen `parseFloat` y multiplican ×1M por su cuenta. models.dev es la
+ * única fuente de verdad (card #209) y emite en el formato que ya se consume.
+ */
 export function pricingFromCost(cost: {
   input: number;
   output: number;
 }): { pricingInput?: string; pricingOutput?: string; dollarSigns?: number } {
   const dollarSigns = outputCostToSigns(cost.output);
   return {
-    pricingInput: `$${cost.input.toFixed(2)}/M`,
-    pricingOutput: `$${cost.output.toFixed(2)}/M`,
+    pricingInput: (cost.input / 1_000_000).toFixed(10),
+    pricingOutput: (cost.output / 1_000_000).toFixed(10),
     dollarSigns,
   };
 }
@@ -380,9 +387,8 @@ export function toModelOption(
 }
 
 /**
- * Filtro "relevante para coding agentic" (espejo del criterio de
- * openrouter_models_service): texto in/out, contexto ≥ 32k, soporta tools,
- * no deprecated.
+ * Filtro "relevante para coding agentic": texto in/out, contexto ≥ 32k,
+ * soporta tools, no deprecated.
  */
 export function isRelevantForCoding(model: Model): boolean {
   if (model.status === "deprecated") return false;
@@ -493,6 +499,40 @@ export function findModel(
   }
 
   return { meta };
+}
+
+// ─── Precio puntual vía catálogo (card #209) ───────────────────────────────
+
+/**
+ * Precio por-token de un modelo (formato del productor, card #209), resuelto
+ * vía catálogo multi-proveedor: models.dev es la única fuente de verdad.
+ *
+ * Nunca lanza y nunca devuelve undefined: sin datos devuelve strings vacías
+ * (el consumidor hace fallback al recuento de tokens sin coste). La
+ * resolución del modelo usa findModel (exacto → metadata → normalizado).
+ */
+export async function getCatalogModelPricing(
+  modelId: string,
+  opts?: { fetch?: typeof fetch },
+): Promise<{ priceIn: string; priceOut: string }> {
+  try {
+    const catalog = await resolveCatalog(opts);
+    const slash = modelId.indexOf("/");
+    const providerId = slash >= 0 ? modelId.slice(0, slash) : "";
+    const hit = findModel(catalog, providerId, modelId);
+    if (hit.model?.cost) {
+      const pricing = pricingFromCost(
+        hit.model.cost as { input: number; output: number },
+      );
+      return {
+        priceIn: pricing.pricingInput || "",
+        priceOut: pricing.pricingOutput || "",
+      };
+    }
+  } catch {
+    /* pricing unavailable — sin coste no se calcula nada */
+  }
+  return { priceIn: "", priceOut: "" };
 }
 
 // ─── Enriquecimiento: ModelOption de provider + huecos del catálogo ────────

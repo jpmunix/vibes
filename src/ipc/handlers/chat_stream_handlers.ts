@@ -58,6 +58,7 @@ import {
 } from "../utils/vision_preprocessor";
 import log from "electron-log";
 import { sendTelemetryEvent } from "../utils/telemetry";
+import { getCatalogModelPricing } from "../utils/models_dev_service";
 import {
   getSupabaseContext,
   getSupabaseClientCode,
@@ -237,6 +238,16 @@ function parseMcpToolKey(toolKey: string): {
   const serverName = toolKey.slice(0, lastIndex);
   const toolName = toolKey.slice(lastIndex + separator.length);
   return { serverName, toolName };
+}
+
+// ─── Precio de un modelo vía catálogo models.dev (card #209) ────────────────
+// Único fallback de precios para el badge <vibes-token-usage> cuando el
+// runtime no reporta coste directo. Nunca lanza: sin precios, el badge
+// muestra solo el recuento de tokens.
+function getModelPricingFromCatalog(
+  modelName: string,
+): Promise<{ priceIn: string; priceOut: string }> {
+  return getCatalogModelPricing(modelName);
 }
 
 // Ensure the temp directory exists
@@ -2232,24 +2243,15 @@ This conversation includes one or more image attachments. When the user uploads 
               ).length;
               // Prefer the real cost reported by OpenCode over manual token × price calculation.
               // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
-              // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
+              // the models.dev catalog price table (card #209: única fuente de verdad).
               let priceIn = "";
               let priceOut = "";
               const directCost = ocCostUsd; // USD reported by OpenCode itself
               if (directCost === null) {
-                // Fallback: derive from OpenRouter model pricing
-                try {
-                  const { fetchOpenRouterModels } =
-                    await import("../utils/openrouter_models_service");
-                  const models = await fetchOpenRouterModels();
-                  const modelData = models.find(
-                    (m) => m.name === settings.selectedModel.name,
-                  );
-                  priceIn = modelData?.pricingInput || "";
-                  priceOut = modelData?.pricingOutput || "";
-                } catch {
-                  /* pricing unavailable */
-                }
+                // Fallback: derive from models.dev catalog pricing
+                ({ priceIn, priceOut } = await getModelPricingFromCatalog(
+                  settings.selectedModel.name,
+                ));
               }
               const tokenXml =
                 directCost !== null
@@ -2359,24 +2361,15 @@ This conversation includes one or more image attachments. When the user uploads 
             ).length;
             // Prefer the real cost reported by OpenCode over manual token × price calculation.
             // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
-            // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
+            // the models.dev catalog price table (card #209: única fuente de verdad).
             let priceIn = "";
             let priceOut = "";
             const directCost = ocCostUsd; // USD reported by OpenCode itself
             if (directCost === null) {
-              // Fallback: derive from OpenRouter model pricing
-              try {
-                const { fetchOpenRouterModels } =
-                  await import("../utils/openrouter_models_service");
-                const models = await fetchOpenRouterModels();
-                const modelData = models.find(
-                  (m) => m.name === settings.selectedModel.name,
-                );
-                priceIn = modelData?.pricingInput || "";
-                priceOut = modelData?.pricingOutput || "";
-              } catch {
-                /* pricing unavailable */
-              }
+              // Fallback: derive from models.dev catalog pricing
+              ({ priceIn, priceOut } = await getModelPricingFromCatalog(
+                settings.selectedModel.name,
+              ));
             }
             const tokenXml =
               directCost !== null

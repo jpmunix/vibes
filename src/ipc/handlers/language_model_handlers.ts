@@ -244,13 +244,11 @@ export function registerLanguageModelHandlers() {
   );
 
   createTypedHandler(
-    languageModelContracts.refreshOpenRouterModels,
+    languageModelContracts.refreshProviderModels,
     async () => {
-      logger.info("Manual refresh of OpenRouter models requested");
-      const { clearOpenRouterModelsCache, fetchOpenRouterModels } =
-        await import("../utils/openrouter_models_service");
-      clearOpenRouterModelsCache();
-      await fetchOpenRouterModels();
+      logger.info("Manual catalog refresh requested");
+      const { refreshCatalog } = await import("../utils/models_dev_service");
+      await refreshCatalog();
     },
   );
 

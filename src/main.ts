@@ -172,6 +172,23 @@ const flavorUserData = path.join(
 app.setPath("userData", flavorUserData);
 app.name = activeFlavor.productName;
 
+// ─── Limpieza one-shot: cache legacy de modelos OpenRouter (card #209) ────
+// El listado de modelos y precios lo resuelve ahora el catálogo multi-
+// proveedor de models.dev (models-dev-catalog-cache.json). Este fichero ya
+// no se escribe; se borra si existe (idempotente, fire-and-forget).
+{
+  const legacyCachePath = path.join(
+    app.getPath("userData"),
+    "openrouter-models-cache.json",
+  );
+  if (fs.existsSync(legacyCachePath)) {
+    fs.unlink(legacyCachePath, (err) => {
+      if (err) logger.warn("No se pudo borrar la cache legacy de OpenRouter:", err);
+      else logger.info("Cache legacy de OpenRouter eliminada (card #209)");
+    });
+  }
+}
+
 // Load environment variables from .env file
 dotenv.config();
 

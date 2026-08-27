@@ -139,8 +139,8 @@ export const languageModelContracts = {
     output: z.void(),
   }),
 
-  refreshOpenRouterModels: defineContract({
-    channel: "refresh-openrouter-models",
+  refreshProviderModels: defineContract({
+    channel: "refresh-provider-models",
     input: z.void(),
     output: z.void(),
   }),

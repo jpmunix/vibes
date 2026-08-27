@@ -4,7 +4,6 @@ import type { LargeLanguageModel, UserSettings } from "../../lib/schemas";
 import { getEnvVar } from "./read_env";
 import log from "electron-log";
 import {
-  FREE_OPENROUTER_MODEL_NAMES,
   GEMINI_3_FLASH,
   GPT_5_2_MODEL_NAME,
   SONNET_4_5,
@@ -130,30 +129,6 @@ export async function getModelClient(
   }
   // Handle 'auto' provider by trying each model in AUTO_MODELS until one works
   if (model.provider === "auto") {
-    if (model.name === "free") {
-      const openRouterProvider = allProviders.find(
-        (p) => p.id === "openrouter",
-      );
-      if (!openRouterProvider) {
-        throw new Error("OpenRouter provider not found");
-      }
-      return {
-        modelClient: {
-          model: createFallback({
-            models: FREE_OPENROUTER_MODEL_NAMES.map(
-              (name: string) =>
-                getRegularModelClient(
-                  { provider: "openrouter", name },
-                  settings,
-                  openRouterProvider,
-                ).modelClient.model,
-            ),
-          }),
-          builtinProviderId: "openrouter",
-        },
-        isEngineEnabled: false,
-      };
-    }
     for (const autoModel of AUTO_MODELS) {
       const providerInfo = allProviders.find(
         (p) => p.id === autoModel.provider,

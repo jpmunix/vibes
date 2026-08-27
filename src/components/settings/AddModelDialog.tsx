@@ -161,10 +161,12 @@ export function AddModelDialog({
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      if (providerId === "openrouter") {
-        await ipc.languageModel.refreshOpenRouterModels();
-      } else {
+      // Custom providers: su propio endpoint /v1/models. El resto (cloud):
+      // catálogo multi-proveedor models.dev (única fuente de verdad, card #209).
+      if (providerId.startsWith("custom::")) {
         await ipc.languageModel.refreshCustomProviderModels({ providerId });
+      } else {
+        await ipc.languageModel.refreshProviderModels();
       }
       queryClient.invalidateQueries({
         queryKey: queryKeys.languageModels.forProvider({ providerId }),
