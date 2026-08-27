@@ -40,7 +40,7 @@ Otras señales: `.git` es un **archivo** (no un directorio) con una línea `gitd
 | **vibes-core** (runtime) | `main` |
 
 > [!IMPORTANT]
-> Verificar SIEMPRE la rama madre real antes de integrar (es la que `git rev-parse --abbrev-ref HEAD` devuelve en el repo principal). No asumir el destino por el nombre del repo. Si el ff-only falla (la rama madre avanzó por otro lado), **parar y avisar a munix** — nunca merge con 3-way sin OK.
+> Verificar SIEMPRE la rama madre real antes de integrar (es la que `git rev-parse --abbrev-ref HEAD` devuelve en el repo principal). No asumir el destino por el nombre del repo. **Concurrencia:** munix trabaja en varios worktrees a la vez. Si el ff-only falla porque la rama madre avanzó con los cambios de otro worktree, el agente **rebasea automáticamente** sobre la rama madre (conserva los cambios de los demás) y continúa. Solo **PARA y avisa** si el rebase produce **CONFLICTOS** — nunca resolver a lo bruto ni merge 3-way sin OK.
 
 ### Método recomendado: script `integrate-worktree.mjs`
 
@@ -73,7 +73,8 @@ git worktree remove <ruta-worktree>
 ```
 
 Consideraciones:
-- **Fast-forward siempre**: el worktree cuelga de la punta de la rama madre (se creó derivado de esa rama). Si el ff-only falla (la rama madre avanzó por otro lado), **parar y avisar a munix** — nunca merge con 3-way sin OK.
+- **Fast-forward siempre**: el worktree cuelga de la punta de la rama madre (se creó derivado de esa rama). Si el ff-only falla porque la rama madre avanzó por **otro worktree concurrente**, **rebasear automáticamente** sobre la rama madre (conserva los cambios de los demás) y continuar; solo **parar y avisar a munix** si el rebase tiene **conflictos** (nunca merge 3-way ni resolver a lo bruto sin OK).
+- **Commitea ANTES de integrar**: el rebase y el ff-only trabajan sobre commits — los cambios sin commitear del worktree deben commitearse primero.
 - **La rama del worktree NUNCA se conserva viva** en remoto: si por trabajo en curso hubo que pushearla (`git push -u origin <rama>`), tras integrar se borra (paso 3) para no dejar ramas huérfanas.
 - **Descarte** (munix dice "descarta"): `git worktree remove --force` + `git branch -D <rama>` (forzado, no está mergeada) + `git push origin --delete` si se hubiera pusheado.
 - **El estado del PR no existe**: la rama madre (`feature/vibes-core` en Vibes, `main` en vibes-core) es el destino final y la única rama que se mantiene en remoto.

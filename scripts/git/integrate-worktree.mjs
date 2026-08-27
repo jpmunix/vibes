@@ -7,11 +7,14 @@
  * checkouteada en el repo principal), y luego borra todos los restos:
  *
  *   1. Verifica que NO estás dentro de un worktree (nunca integrar desde uno).
- *   2. Comprueba que la rama madre es ancestro de la rama del worktree (ff-only).
- *   3. `git merge --ff-only <rama>` en la rama madre.
- *   4. `git push origin <rama-madre>`.
- *   5. Borra la rama remota del worktree (`git push origin --delete <rama>`).
- *   6. `git branch -d <rama>` + `git worktree remove <ruta>`.
+ *   2. Comprueba si la rama madre es ancestro de la rama del worktree (ff-only).
+ *   3. Si NO lo es (la rama madre avanzó por otro worktree concurrente), hace
+ *      `git rebase <rama-madre>` en la rama del worktree para coger los cambios
+ *      de los demás, y luego ff-only. Solo PARA si el rebase tiene conflictos.
+ *   4. `git merge --ff-only <rama>` en la rama madre.
+ *   5. `git push origin <rama-madre>`.
+ *   6. Borra la rama remota del worktree (`git push origin --delete <rama>`).
+ *   7. `git branch -d <rama>` + `git worktree remove <ruta>`.
  *
  * Uso:
  *   node scripts/git/integrate-worktree.mjs --branch <rama-worktree> [--cwd <repo>]
@@ -24,7 +27,9 @@
  *
  * Seguridad:
  *   - Se NUNCA ejecuta desde un worktree (error).
- *   - Si el ff-only falla (la rama madre avanzó), PARA y avisa — nunca merge 3-way.
+ *   - Trabajo concurrente: si ff-only falla, rebasea automáticamente sobre la
+ *     rama madre (los cambios de otros worktrees se conservan). Solo PARÁ y
+ *     avisa si el rebase tiene CONFLICTOS (nunca se resuelven a lo bruto).
  *   - Si --force y la rama no está mergeada, usa `branch -D` (descartar sin merge).
  *
  * ⚠️  Requiere OK explícito de munix antes de ejecutarlo (acción de repo, §1.5).
@@ -142,7 +147,7 @@ if (force) {
 
 // ---- modo INTEGRAR ----------------------------------------------------------
 
-// Verificar ff-only: la rama madre debe ser ancestro de la rama del worktree.
+// Verificar si ff-only es posible: la rama madre debe ser ancestro de la rama.
 const isAncestor = (() => {
   try {
     git(['merge-base', '--is-ancestor', mainBranch, branch], cwd);
@@ -151,13 +156,31 @@ const isAncestor = (() => {
     return false;
   }
 })();
+
 if (!isAncestor) {
-  console.error(`❌ '${mainBranch}' NO es ancestro de '${branch}' → merge NO es fast-forward.`);
-  console.error('   La rama madre avanzó por otro lado. PARA y avisa a munix — nunca merge 3-way.');
-  process.exit(1);
+  // Trabajo concurrente: la rama madre avanzó (p. ej. otro worktree se integró
+  // antes). NO paramos: rebaseamos la rama del worktree sobre la rama madre
+  // para coger los cambios de los demás, y luego el ff-only pasa. Solo paramos
+  // si el rebase produce conflictos (ahí sí hay que resolver a mano).
+  console.log(`ℹ️  ${mainBranch} avanzó — rebase de '${branch}' sobre '${mainBranch}' (cambios concurrentes)...`);
+  const prevHead = git(['rev-parse', '--short', 'HEAD'], cwd);
+  git(['checkout', branch], cwd);
+  try {
+    git(['rebase', mainBranch], cwd);
+  } catch (err) {
+    // Rebase con conflictos: abortar y volver al estado previo, parar y avisar.
+    git(['rebase', '--abort'], cwd).catch?.(() => {});
+    git(['checkout', mainBranch], cwd);
+    console.error(`❌ El rebase de '${branch}' sobre '${mainBranch}' tuvo CONFLICTOS.`);
+    console.error('   No se resuelve automáticamente — PARAR y avisar a munix.');
+    console.error(`   Estado previo restaurado (${mainBranch} en ${prevHead}). La rama '${branch}' sigue con sus cambios sin rebasear.`);
+    process.exit(1);
+  }
+  console.log(`   → '${branch}' rebaseado sobre ${mainBranch}`);
+  git(['checkout', mainBranch], cwd);
 }
 
-// 1. Merge ff-only
+// 1. Merge ff-only (ahora debe pasar, o ya es ancestro directo o tras rebase)
 console.log(`🔀 Integrando '${branch}' en '${mainBranch}' (ff-only)...`);
 git(['merge', '--ff-only', branch], cwd);
 const newHead = git(['rev-parse', '--short', 'HEAD'], cwd);

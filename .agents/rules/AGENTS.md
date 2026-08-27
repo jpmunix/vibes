@@ -336,13 +336,17 @@ Cuando munix diga **"sube"**, **"integra el worktree"**, **"haz el push"** o sim
 
 Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El método recomendado es el script [`scripts/git/integrate-worktree.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/git/integrate-worktree.mjs).
 
+**Trabajo concurrente (VARIOS worktrees):** munix trabaja en varios worktrees a la vez. Si al integrar el ff-only falla porque la rama madre avanzó con los cambios de **otro worktree ya integrado**, el agente **rebasea automáticamente** la rama del worktree sobre la rama madre (para coger los cambios de los demás) y continúa con el ff-only. **NO se para** por desfase de concurrencia.
+
 **Lo que NO es "sube":** pushear la rama del worktree como rama viva en remoto sin integrarla. La rama del worktree es efímera y **nunca se conserva como rama remota**.
 
 **Reglas duras:**
 - ❌ **NUNCA** integrar desde un worktree (siempre desde el repo principal).
-- ❌ **NUNCA** merge 3-way sin OK: si el ff-only falla (la rama madre avanzó), **parar y avisar**.
+- ❌ **NUNCA** merge 3-way sin OK: si el ff-only falla y el rebase automático no es posible o produce **CONFLICTOS**, **parar y avisar** — nunca resolver conflictos a lo bruto ni hacer 3-way.
 - ❌ **NUNCA** dejar la rama del worktree viva en remoto tras integrar.
 - ✅ **SIEMPRE** verificar la rama madre real antes de integrar (no asumir por el nombre del repo).
+- ✅ **SIEMPRE** rebasear automáticamente sobre la rama madre si el ff-only falla por concurrencia (los cambios de otros worktrees se conservan).
+- ✅ **SIEMPRE** commitea los cambios del worktree ANTES de integrar (el rebase y el ff-only trabajan sobre commits).
 
 ## 2. Cosas que se hablan al post-MVP
 
