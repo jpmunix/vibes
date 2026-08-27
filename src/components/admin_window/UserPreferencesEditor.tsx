@@ -168,7 +168,6 @@ const JSON_KEYS = new Set([
   "agentToolConsents",
   "windowState",
   "secondaryWindowStates",
-  "agentModels",
   "playgroundModelSets",
   "lastKnownPerformance",
   "githubUser",
@@ -331,7 +330,6 @@ function categorizeKey(key: string): string {
     MODEL_KEYS.has(key) ||
     key === "selectedModel" ||
     key === "activeProviderId" ||
-    key === "agentModels" ||
     key === "model_aliases" ||
     key === "model_usage_stats" ||
     key === "providerModelConfigs" ||

@@ -11,8 +11,6 @@
  * - executorModel           → app_handlers.ts (títulos de app) + commits
  * - visionPreprocessorModel → vision_preprocessor.ts
  * - memoriesRouterModelV2   → memory_context_builder.ts:246
- * - agentModels[*]          → SOLO mencionado en un comentario de
- *                             model_resolver.ts; ningún código lo lee
  * - standardModeModel       → sin lectores (selector ni siquiera renderizado)
  * - memoriesSynthesisModelV2→ solo validado en model_validator.ts; sin lectores
  */
@@ -28,10 +26,6 @@ export const MODEL_SELECTOR_STATUS: Record<string, ModelSelectorStatus> = {
   executorModel: { active: true },
   visionPreprocessorModel: { active: true },
   memoriesRouterModelV2: { active: true },
-  agentModels: {
-    active: false,
-    note: "Sin efecto aún: se enchufará al nuevo runtime (card #113)",
-  },
   standardModeModel: {
     active: false,
     note: "Sin lectores en el runtime; selector retirado de la UI",

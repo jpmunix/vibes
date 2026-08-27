@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { systemClient } from "@/ipc/types/system";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSettings } from "@/hooks/useSettings";
@@ -15,11 +15,8 @@ import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
 import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
 import { TextVerbositySelector } from "../TextVerbositySelector";
-import { AgentModelSelector } from "./AgentModelSelector";
-import type { AgentId } from "./AgentModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
 import { useI18n } from "@/lib/i18n";
-import { MODEL_SELECTOR_STATUS } from "./model_selector_status";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 // ─── Chat turns options ───
@@ -83,85 +80,9 @@ function SettingRow({
   );
 }
 
-// ─── Agent model definitions for the collapsible section ───
-const getAgentModelEntries = (
-  t: (k: string) => string,
-): { id: AgentId; label: string; description: string }[] => [
-  { id: "plan",       label: "Plan",        description: t("agentModels.plan") },
-  { id: "explore",    label: "Explore",     description: t("agentModels.explore") },
-  { id: "general",    label: "General",     description: t("agentModels.general") },
-  { id: "compaction", label: "Compaction",  description: t("agentModels.compaction") },
-  { id: "title",      label: "Title",       description: t("agentModels.title") },
-  { id: "summary",    label: "Summary",     description: t("agentModels.summary") },
-  { id: "mockup",     label: "Mockup",      description: t("agentModels.mockup") },
-];
-
-// ─── Chip de deuda visual (card #115) ───
-// Marca selectores configurables pero sin lectores en el runtime todavía.
-function InactiveChip({ note, label }: { note?: string; label: string }) {
-  return (
-    <span
-      title={note}
-      className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400 border border-red-200 dark:border-red-800/50 cursor-help"
-    >
-      {label}
-    </span>
-  );
-}
-
-// ─── Collapsible agent models section ───
-function AgentModelsSection() {
-  const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
-  const agentModelsStatus = MODEL_SELECTOR_STATUS.agentModels;
-
-  return (
-    <div className="space-y-4">
-      <div
-        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <div className="flex-1">
-          <h3 className="typo-label">
-            {t("agentSection.modelsByAgent")}
-            {!agentModelsStatus.active && (
-              <InactiveChip note={agentModelsStatus.note} label={t("agentSection.inactiveChip")} />
-            )}
-          </h3>
-          <p className="typo-caption mt-1">
-            {t("agentSection.modelsByAgentDesc")}
-            {!agentModelsStatus.active &&
-              t("agentSection.modelsByAgentInactive")}
-          </p>
-        </div>
-        <ChevronRight
-          className={cn(
-            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
-            expanded && "rotate-90",
-          )}
-        />
-      </div>
-
-      {expanded && (
-        <div
-          className={cn(
-            "pl-4 space-y-0",
-            !agentModelsStatus.active && "opacity-60",
-          )}
-        >
-          {getAgentModelEntries(t).map((entry) => (
-            <SettingRow
-              key={entry.id}
-              label={entry.label}
-              description={entry.description}
-              control={<AgentModelSelector agentId={entry.id} />}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// ─── Collapsible agent models section (REMOVED — card #113) ───────────────
+// agentModels[] se eliminó: el runtime (vibes-core) no maneja agentes, toda
+// sesión usa el modelo principal del chat. Deuda anotada en card #211.
 
 export function AIBehaviorSettings({
   isHighlighted,
@@ -283,10 +204,6 @@ export function AIBehaviorSettings({
           />
 
           {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
-
-          {/* ── Modelos por agente — collapsible section ── */}
-          <AgentModelsSection />
-
 
           {/* ── Modelo Estratega ── */}
           <SettingRow

@@ -691,19 +691,6 @@ export const UserSettingsSchema = z
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 
-    // DEPRECATED — per-agent model overrides. Superseded by strategistModel + executorModel.
-    agentModels: z
-      .object({
-        plan: z.string().optional(),
-        explore: z.string().optional(),
-        general: z.string().optional(),
-        compaction: z.string().optional(),
-        title: z.string().optional(),
-        summary: z.string().optional(),
-        mockup: z.string().optional(),
-      })
-      .optional(),
-
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),
     userId: z.string().optional(),

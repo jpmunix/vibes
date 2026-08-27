@@ -60,10 +60,12 @@ function pickApiKey(providerId: string, settings: UserSettings): string | undefi
  * Resolves the model target for a chat turn. Precedence:
  * custom static model > selectedModel.
  *
- * NOTA (card #115, auditoría 2026-08-12): settings.agentModels NO se lee
- * todavía en ninguna ruta — la precedencia "agentModels override > selectedModel"
- * que documentaba este comentario era de la época del adapter OpenCode
- * (resolveModelForAgent). El enchufe al runtime llega con la card #113.
+ * NOTA (card #113, 2026-08-27): settings.agentModels fue ELIMINADO — el
+ * runtime (vibes-core) no maneja agentes y toda sesión usa el modelo
+ * principal del chat. La precedencia "agentModels override > selectedModel"
+ * era de la época del adapter OpenCode (resolveModelForAgent). Deuda de
+ * reintroducir per-agent model en card #211 (AgentDefinition.model ya
+ * existe en vibes-core pero ningún código lo consume).
  *
  * Returns null when no usable OpenAI-compatible endpoint can be resolved
  * (e.g. only anthropic/google keys configured) — the caller decides how to
