@@ -10,6 +10,7 @@ import { ExecutorModelSelector } from "./ExecutorModelSelector";
 import { VisionModelSelector } from "./VisionModelSelector";
 import { AgentPermissionsSettings } from "./AgentPermissionsSettings";
 import { FallbackModelSelector } from "./FallbackModelSelector";
+import { CompactionModelSelector } from "./CompactionModelSelector";
 import { Switch } from "@/components/ui/switch";
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -219,6 +220,33 @@ export function AIBehaviorSettings({
             label={t("settingsItems.modelo_de_respaldo")}
             description={t("settingsItems.modelo_de_respaldoDesc")}
             control={<FallbackModelSelector />}
+          />
+
+          <SettingRow
+            label={t("settingsItems.modelo_de_compactacion")}
+            description={t("settingsItems.modelo_de_compactacionDesc")}
+            control={<CompactionModelSelector />}
+          />
+
+          <SettingRow
+            label={t("settingsItems.rondas_conservadas")}
+            description={t("settingsItems.rondas_conservadasDesc")}
+            control={
+              <UnifiedSelector
+                value={String(settings?.compactionMaxRoundsKept ?? 6)}
+                onChange={(value) => updateSettings({ compactionMaxRoundsKept: Number(value) })}
+                options={[
+                  { value: "3", label: "3" },
+                  { value: "6", label: "6" },
+                  { value: "10", label: "10" },
+                  { value: "20", label: "20" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-compaction-rounds-selector"
+              />
+            }
           />
 
           {/* ── Modelo Ejecutor ── */}

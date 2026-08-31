@@ -350,7 +350,13 @@ export function getRuntime(): Runtime {
  * Valores undefined / fuera de rango → se cae al default de vibes-core.
  */
 export function applyAgentLoopLimits(
-  settings: { agentMaxIterations?: number; agentMaxWallClockMinutes?: number; fallbackModel?: string } | null | undefined,
+  settings: {
+    agentMaxIterations?: number;
+    agentMaxWallClockMinutes?: number;
+    fallbackModel?: string;
+    compactionModel?: string;
+    compactionMaxRoundsKept?: number;
+  } | null | undefined,
 ): void {
   const maxIterations =
     typeof settings?.agentMaxIterations === "number" &&
@@ -387,12 +393,31 @@ export function applyAgentLoopLimits(
     }
   }
 
+  const compactionString = settings?.compactionModel;
+  let compactionProvider: ModelProvider | undefined;
+  if (compactionString) {
+    const target = resolveRuntimeFallbackTarget(
+      compactionString,
+      readSettings() as Parameters<typeof resolveRuntimeFallbackTarget>[1],
+    );
+    if (target) {
+      compactionProvider = createOpenAICompatibleProvider({
+        id: `vibes:compaction:${target.defaultModel}`,
+        baseUrl: target.baseUrl,
+        defaultModel: target.defaultModel,
+        apiKey: target.apiKey,
+      });
+    }
+  }
+
   // Solo mutamos si cambia (evita ruido en el log y trabajo innecesario).
   const fallbackChanged = lastFbString !== fbString;
   if (
     maxIterations === loopConfigMutable.maxIterations &&
     maxWallClockMs === loopConfigMutable.maxWallClockMs &&
-    !fallbackChanged
+    !fallbackChanged &&
+    loopConfigMutable.compaction?.summarizerModel === compactionProvider &&
+    loopConfigMutable.compaction?.maxRoundsKept === settings?.compactionMaxRoundsKept
   ) {
     return;
   }
@@ -400,6 +425,13 @@ export function applyAgentLoopLimits(
   loopConfigMutable.maxIterations = maxIterations;
   loopConfigMutable.maxWallClockMs = maxWallClockMs;
   loopConfigMutable.fallbackModel = fbProvider;
+  loopConfigMutable.compaction = {
+    ...loopConfigMutable.compaction,
+    summarizerModel: compactionProvider,
+    ...(typeof settings?.compactionMaxRoundsKept === "number"
+      ? { maxRoundsKept: Math.floor(settings.compactionMaxRoundsKept) }
+      : {}),
+  };
   lastFbString = fbString;
   logger.info(
     `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"}`,
@@ -414,11 +446,13 @@ export function getAgentLoopLimits(): {
   maxIterations: number;
   maxWallClockMs: number;
   fallbackModel?: ModelProvider;
+  compaction?: LoopConfig["compaction"];
 } {
   return {
     maxIterations: loopConfigMutable.maxIterations,
     maxWallClockMs: loopConfigMutable.maxWallClockMs,
     fallbackModel: loopConfigMutable.fallbackModel,
+    compaction: loopConfigMutable.compaction,
   };
 }
 

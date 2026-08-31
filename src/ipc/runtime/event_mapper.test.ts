@@ -536,3 +536,35 @@ describe("cleanResponseText — parity with adapter", () => {
     expect(cleanResponseText("<assistant_response>hi</assistant_response>")).toBe("hi");
   });
 });
+
+describe("VibesEventMapper — context.compacted (#63+#64)", () => {
+  it("no rompe el timeline y entra por el default (ignorado)", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "context.compacted",
+      sessionId: "s1",
+      iteration: 3,
+      tokensBefore: 30000,
+      tokensAfter: 5000,
+      compactedMessages: 40,
+      summary: "resumen denso",
+    });
+    expect(m.getTimeline()).toHaveLength(0);
+  });
+
+  it("context.compacted entre eventos normales no altera la acumulación", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.delta", sessionId: "s1", iteration: 1, text: "hola" });
+    m.handle({
+      type: "context.compacted",
+      sessionId: "s1",
+      iteration: 2,
+      tokensBefore: 30000,
+      tokensAfter: 5000,
+      compactedMessages: 40,
+      summary: "resumen",
+    });
+    m.handle({ type: "llm.delta", sessionId: "s1", iteration: 3, text: " mundo" });
+    expect(m.getTimeline()).toEqual([{ type: "text", text: "hola mundo" }]);
+  });
+});

@@ -159,3 +159,47 @@ describe("applyAgentLoopLimits — #215 fallbackModel", () => {
     expect(getAgentLoopLimits().fallbackModel).toBeUndefined();
   });
 });
+
+describe("applyAgentLoopLimits — #63+#64 compaction", () => {
+  it("sin compaction → se conserva el default del runtime (6) y sin summarizerModel", () => {
+    applyAgentLoopLimits({});
+    expect(getAgentLoopLimits().compaction?.maxRoundsKept).toBe(
+      DEFAULT_LOOP_CONFIG.compaction?.maxRoundsKept,
+    );
+    expect(getAgentLoopLimits().compaction?.summarizerModel).toBeUndefined();
+  });
+
+  it("compactionMaxRoundsKept válido → se aplica", () => {
+    applyAgentLoopLimits({ compactionMaxRoundsKept: 10 });
+    expect(getAgentLoopLimits().compaction?.maxRoundsKept).toBe(10);
+  });
+
+  it("compactionMaxRoundsKept decimales → se truncan (floor)", () => {
+    applyAgentLoopLimits({ compactionMaxRoundsKept: 7.9 });
+    expect(getAgentLoopLimits().compaction?.maxRoundsKept).toBe(7);
+  });
+
+  it("con compactionModel resoluble → summarizerModel aplicado", async () => {
+    const { resolveRuntimeFallbackTarget } = vi.mocked(
+      await import("./model_resolver"),
+    );
+    resolveRuntimeFallbackTarget.mockReturnValue({
+      protocol: "openai-compatible",
+      baseUrl: "http://localhost:11434/v1",
+      apiKey: "",
+      defaultModel: "qwen3",
+    });
+    applyAgentLoopLimits({ compactionModel: "ollama::qwen3" });
+    expect(getAgentLoopLimits().compaction?.summarizerModel).toBeDefined();
+    expect(getAgentLoopLimits().compaction?.summarizerModel?.id).toBe("vibes:compaction:qwen3");
+  });
+
+  it("con compactionModel no resoluble → sin summarizerModel (undefined)", async () => {
+    const { resolveRuntimeFallbackTarget } = vi.mocked(
+      await import("./model_resolver"),
+    );
+    resolveRuntimeFallbackTarget.mockReturnValue(null);
+    applyAgentLoopLimits({ compactionModel: "openrouter::no-key" });
+    expect(getAgentLoopLimits().compaction?.summarizerModel).toBeUndefined();
+  });
+});

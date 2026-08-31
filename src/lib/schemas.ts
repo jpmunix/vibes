@@ -553,6 +553,10 @@ export const UserSettingsSchema = z
     // sin fallback. Se resuelve a ModelProvider en runtime_host al aplicar
     // settings → runtime (hot-reload sobre loopConfigMutable.fallbackModel).
     fallbackModel: z.string().optional(),
+    // #63+#64: modelo que genera los resúmenes de compactación.
+    compactionModel: z.string().optional(),
+    // #63+#64: rondas recientes conservadas intactas durante compactación.
+    compactionMaxRoundsKept: z.number().min(1).max(50).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     // ── Inference hyperparameters (user-tunable from chat input) ──
     inferenceTemperature: z.number().min(0).max(2).optional(),
