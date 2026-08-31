@@ -42,18 +42,7 @@ Otras señales: `.git` es un **archivo** (no un directorio) con una línea `gitd
 > [!IMPORTANT]
 > Verificar SIEMPRE la rama madre real antes de integrar (es la que `git rev-parse --abbrev-ref HEAD` devuelve en el repo principal). No asumir el destino por el nombre del repo. **Concurrencia:** munix trabaja en varios worktrees a la vez. Si el ff-only falla porque la rama madre avanzó con los cambios de otro worktree, el agente **rebasea automáticamente** sobre la rama madre (conserva los cambios de los demás) y continúa. Solo **PARA y avisa** si el rebase produce **CONFLICTOS** — nunca resolver a lo bruto ni merge 3-way sin OK.
 
-### Método recomendado: script `integrate-worktree.mjs`
-
-```bash
-# Desde el repo principal (NUNCA desde el worktree):
-node scripts/git/integrate-worktree.mjs --branch <rama-worktree>   # p. ej. vibes-70-retry-semantico
-```
-
-El script hace el flujo completo y seguro: verifica que no estás en un worktree, comprueba ff-only, hace merge + push de la rama madre, borra la rama remota del worktree, y limpia rama local + worktree. Usa `--force` para **descartar** (sin merge) y `--yes` para no preguntar (uso del agente).
-
-> El agente lo invoca cuando munix dice **"sube" / "integra el worktree" / "haz el push"** — ese pedido es autorización implícita para todo el flujo (AGENTS §1.18).
-
-### Método manual (si no hay script disponible)
+### Flujo de integración (manual, a pelo)
 
 ```bash
 # 1. Desde el repo principal (NUNCA desde el worktree):
@@ -64,13 +53,16 @@ git merge --ff-only <rama-worktree>        # p. ej. vibes-70-retry-semantico
 # 2. Push de la rama madre:
 git push origin <rama-madre>
 
-# 3. Borrar la rama remota del worktree (si se llegó a pushear en working):
-git push origin --delete <rama-worktree>
+# 3. Borrar la rama remota del worktree (solo si se llegó a pushear en working):
+git push origin --delete <rama-worktree>   # puede no existir → error inofensivo, se ignora
 
-# 4. Limpiar rama local + worktree:
-git branch -d <rama-worktree>
+# 4. Limpiar rama local + worktree (SIEMPRE en este orden: worktree ANTES que la rama):
 git worktree remove <ruta-worktree>
+git branch -d <rama-worktree>
 ```
+
+> [!NOTE]
+> **Orden del paso 4:** `git worktree remove` ANTES que `git branch -d`. Git no deja borrar una rama que un worktree sigue usando.
 
 Consideraciones:
 - **Fast-forward siempre**: el worktree cuelga de la punta de la rama madre (se creó derivado de esa rama). Si el ff-only falla porque la rama madre avanzó por **otro worktree concurrente**, **rebasear automáticamente** sobre la rama madre (conserva los cambios de los demás) y continuar; solo **parar y avisar a munix** si el rebase tiene **conflictos** (nunca merge 3-way ni resolver a lo bruto sin OK).

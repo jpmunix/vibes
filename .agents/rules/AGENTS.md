@@ -334,7 +334,7 @@ Cuando munix diga **"sube"**, **"integra el worktree"**, **"haz el push"** o sim
 3. Borrar la rama remota del worktree.
 4. Limpiar rama local + worktree.
 
-Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El método recomendado es el script [`scripts/git/integrate-worktree.mjs`](file:///home/munix/Desarrollo/GitRepo/Vibes/scripts/git/integrate-worktree.mjs).
+Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El flujo es **manual, paso a paso** (ver [`worktrees.md` §Integración](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md)): desde el repo principal, `git merge --ff-only <rama-worktree>` sobre la rama madre, `git push origin <rama-madre>`, `git push origin --delete <rama-worktree>` (solo si se pusheó en working), `git worktree remove` y `git branch -d`. **Nunca se intentó automatizar con script: los scripts de integración se eliminaron por inútiles** (se colgaban).
 
 **Trabajo concurrente (VARIOS worktrees):** munix trabaja en varios worktrees a la vez. Si al integrar el ff-only falla porque la rama madre avanzó con los cambios de **otro worktree ya integrado**, el agente **rebasea automáticamente** la rama del worktree sobre la rama madre (para coger los cambios de los demás) y continúa con el ff-only. **NO se para** por desfase de concurrencia.
 
