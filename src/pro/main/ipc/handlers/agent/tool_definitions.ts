@@ -52,7 +52,6 @@ import {
 } from "./tools/types";
 import { AgentToolConsent } from "@/lib/schemas";
 import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
-import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   fileEditorTool,
   deleteFileTool,
@@ -253,16 +252,7 @@ async function processArgPlaceholders<T extends Record<string, any>>(
 
   let firebaseClientCode = "";
   if (hasFirebase && ctx.firebaseProjectId) {
-    const app = await getRemoteDb().query.apps.findFirst({
-      where: eq(remoteSchema.apps.id, ctx.appId),
-    });
-    if (app?.firebaseConfig) {
-      firebaseClientCode = await getFirebaseConfigCode({
-        appId: ctx.appId,
-        projectId: ctx.firebaseProjectId,
-        config: app.firebaseConfig,
-      });
-    }
+    firebaseClientCode = ""; // firebase_config eliminado: ya no se genera código de cliente desde la DB
   }
 
   const processValue = (value: any): any => {

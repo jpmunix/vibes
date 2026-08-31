@@ -128,7 +128,6 @@ export function registerFirebaseHandlers() {
         .update(remoteSchema.apps)
         .set({
           firebaseProjectId: projectId,
-          firebaseConfig: config,
         })
         .where(
           and(
@@ -153,7 +152,6 @@ export function registerFirebaseHandlers() {
         .update(remoteSchema.apps)
         .set({
           firebaseProjectId: null,
-          firebaseConfig: null,
         })
         .where(
           and(

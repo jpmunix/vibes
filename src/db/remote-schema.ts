@@ -78,7 +78,6 @@ export const apps = sqliteTable("apps", {
   vercelTeamId: text("vercel_team_id"),
   vercelDeploymentUrl: text("vercel_deployment_url"),
   firebaseProjectId: text("firebase_project_id"),
-  firebaseConfig: text("firebase_config", { mode: "json" }),
   bunnyConfig: text("bunny_config", { mode: "json" }),
   pocketbaseConfig: text("pocketbase_config", { mode: "json" }),
   installCommand: text("install_command"),

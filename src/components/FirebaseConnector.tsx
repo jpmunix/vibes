@@ -411,8 +411,7 @@ export function FirebaseConnector({
                     </p>
                   ) : (
                     webApps.map((wa) => {
-                      const isCurrentApp =
-                        app.firebaseConfig?.appId === wa.appId;
+                      const isCurrentApp = false;
                       return (
                         <Button
                           key={wa.appId}
@@ -458,32 +457,6 @@ export function FirebaseConnector({
                 </div>
               </div>
             )}
-          </div>
-        ) : app.firebaseConfig?.appId ? (
-          <div className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-muted/10">
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                App Web
-              </span>
-              <span className="text-sm font-medium truncate">
-                {app.firebaseConfig.webAppDisplayName ||
-                  app.firebaseConfig.appId}
-              </span>
-              {app.firebaseConfig.webAppDisplayName && (
-                <span className="text-xs text-muted-foreground font-mono truncate">
-                  {app.firebaseConfig.appId}
-                </span>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleManageWebApps}
-              className="h-7 text-xs shrink-0"
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Cambiar
-            </Button>
           </div>
         ) : (
           <Button
