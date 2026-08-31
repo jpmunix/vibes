@@ -25,6 +25,13 @@
  *   --force           Modo "descarta": borra worktree + rama local (-D) + remota sin merge.
  *   --yes             No preguntar confirmación (ideal para uso del agente).
  *
+ * Confirmación:
+ *   Sin --yes el script pide confirmación en terminal. El prompt tiene un
+ *   TIMEOUT de 10s: si no llega respuesta (agente en background sin TTY/teclado),
+ *   se CANCELA solo — nunca se cuelga leyendo stdin. Para uso no interactivo
+ *   (el agente) se usa SIEMPRE --yes: sin --yes en background el prompt
+ *   expira a los 10s y aborta la integración.
+ *
  * Seguridad:
  *   - Se NUNCA ejecuta desde un worktree (error).
  *   - Trabajo concurrente: si ff-only falla, rebasea automáticamente sobre la
@@ -62,8 +69,13 @@ function isWorktree(cwd) {
 function worktreePathFor(branch, cwd) {
   const lines = git(['worktree', 'list', '--porcelain'], cwd).split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i] === `branch refs/heads/${branch}` && lines[i - 1]?.startsWith('worktree ')) {
-      return lines[i - 1].slice('worktree '.length);
+    // En el porcelain, la secuencia por worktree es:
+    //   worktree <ruta>
+    //   HEAD <sha>
+    //   branch refs/heads/<rama>
+    // La ruta está DOS líneas antes de la rama, no una.
+    if (lines[i] === `branch refs/heads/${branch}` && lines[i - 2]?.startsWith('worktree ')) {
+      return lines[i - 2].slice('worktree '.length);
     }
   }
   return undefined;
@@ -116,13 +128,22 @@ console.log(`ℹ️  Rama del worktree encontrada: ${branch}`);
 if (!autoYes) {
   const accion = force ? 'DESCARTAR' : 'INTEGRAR en';
   console.log(`\n⚠️  Acción: ${accion} ${force ? 'la rama' : `'${branch}' en '${mainBranch}'`}.`);
-  process.stdout.write('¿Continuar? (s/N): ');
+
+  // Prompt con TIMEOUT: si no llega una respuesta en 10s (p. ej. agente en
+  // background sin humano al teclado), se cancela en vez de colgarse para
+  // siempre leyendo stdin. Uso no interactivo → --yes es el camino limpio.
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
   let resp = 'n';
   try {
-    resp = execSync('read -r line && echo "$line"', { stdio: [0, 'pipe', 'ignore'], encoding: 'utf8' }).trim().toLowerCase();
-  } catch { /* EOF */ }
-  if (resp !== 's' && resp !== 'y') {
-    console.log('❌ Cancelado.');
+    resp = await new Promise((resolve) => {
+      const timer = setTimeout(() => { try { rl.close(); } catch {} resolve('timeout'); }, 10_000);
+      rl.question('¿Continuar? (s/N): ', (answer) => { clearTimeout(timer); try { rl.close(); } catch {} resolve(answer); });
+    });
+  } finally { try { rl.close(); } catch {} }
+  if (String(resp).trim().toLowerCase() !== 's' && String(resp).trim().toLowerCase() !== 'y') {
+    if (resp === 'timeout') console.log('⏱️  Sin respuesta en 10s — cancelado (usa --yes si no es interactivo).');
+    else console.log('❌ Cancelado.');
     process.exit(0);
   }
 }
@@ -163,21 +184,42 @@ if (!isAncestor) {
   // para coger los cambios de los demás, y luego el ff-only pasa. Solo paramos
   // si el rebase produce conflictos (ahí sí hay que resolver a mano).
   console.log(`ℹ️  ${mainBranch} avanzó — rebase de '${branch}' sobre '${mainBranch}' (cambios concurrentes)...`);
-  const prevHead = git(['rev-parse', '--short', 'HEAD'], cwd);
-  git(['checkout', branch], cwd);
-  try {
-    git(['rebase', mainBranch], cwd);
-  } catch (err) {
-    // Rebase con conflictos: abortar y volver al estado previo, parar y avisar.
-    git(['rebase', '--abort'], cwd).catch?.(() => {});
+  const wtPath = worktreePathFor(branch, cwd);
+  if (wtPath) {
+    // El worktree SÍ existe: la rama está checked out ahí. Hacer el rebase
+    // DENTRO del worktree (git -C <wt> rebase) sin checkout desde el repo
+    // principal (git lo rechaza: "branch already used by worktree").
+    try {
+      git(['rebase', mainBranch], wtPath);
+    } catch (err) {
+      // Rebase con conflictos: abortar DENTRO del worktree, parar y avisar.
+      // El worktree conserva los commits sin rebasear; la rama madre no se tocó.
+      git(['rebase', '--abort'], wtPath).catch?.(() => {});
+      console.error(`❌ El rebase de '${branch}' sobre '${mainBranch}' tuvo CONFLICTOS.`);
+      console.error('   No se resuelve automáticamente — PARAR y avisar a munix.');
+      console.error(`   El worktree (${wtPath}) conserva los cambios sin rebasear. Resuelve los conflictos manualmente y re-ejecuta el script.`);
+      process.exit(1);
+    }
+    console.log(`   → '${branch}' rebaseado sobre ${mainBranch} (dentro de ${wtPath})`);
+  } else {
+    // Edge case: la rama local existe pero no tiene worktree (ya se eliminó
+    // a mano, p. ej. worktree remove manual). Entonces sí se puede checkoutear
+    // desde el repo principal (nadie la tiene en uso).
+    const prevHead = git(['rev-parse', '--short', 'HEAD'], cwd);
+    git(['checkout', branch], cwd);
+    try {
+      git(['rebase', mainBranch], cwd);
+    } catch (err) {
+      git(['rebase', '--abort'], cwd).catch?.(() => {});
+      git(['checkout', mainBranch], cwd);
+      console.error(`❌ El rebase de '${branch}' sobre '${mainBranch}' tuvo CONFLICTOS.`);
+      console.error('   No se resuelve automáticamente — PARAR y avisar a munix.');
+      console.error(`   Estado previo restaurado (${mainBranch} en ${prevHead}). La rama '${branch}' sigue con sus cambios sin rebasear.`);
+      process.exit(1);
+    }
+    console.log(`   → '${branch}' rebaseado sobre ${mainBranch}`);
     git(['checkout', mainBranch], cwd);
-    console.error(`❌ El rebase de '${branch}' sobre '${mainBranch}' tuvo CONFLICTOS.`);
-    console.error('   No se resuelve automáticamente — PARAR y avisar a munix.');
-    console.error(`   Estado previo restaurado (${mainBranch} en ${prevHead}). La rama '${branch}' sigue con sus cambios sin rebasear.`);
-    process.exit(1);
   }
-  console.log(`   → '${branch}' rebaseado sobre ${mainBranch}`);
-  git(['checkout', mainBranch], cwd);
 }
 
 // 1. Merge ff-only (ahora debe pasar, o ya es ancestro directo o tras rebase)
