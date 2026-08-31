@@ -12,14 +12,18 @@ import type { Server as HttpServer } from "node:http";
 // This is populated when executeApp() detects a dev server URL
 const getProxyMap = async () => {
   try {
-    const { proxyUrlByApp } = await import("../../../src/ipc/handlers/app_execution.ts");
+    const { proxyUrlByApp } =
+      await import("../../../src/ipc/handlers/app_execution.ts");
     return proxyUrlByApp;
   } catch {
     return new Map();
   }
 };
 
-export function registerPreviewProxy(app: FastifyInstance, httpServer: HttpServer) {
+export function registerPreviewProxy(
+  app: FastifyInstance,
+  httpServer: HttpServer,
+) {
   const proxy = httpProxy.createProxyServer({ ws: true });
 
   proxy.on("error", (err, _req, res) => {

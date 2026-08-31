@@ -9,11 +9,11 @@ import {
 interface ConsoleFiltersProps {
   levelFilter: "all" | "info" | "warn" | "error";
   typeFilter:
-  | "all"
-  | "server"
-  | "client"
-  | "edge-function"
-  | "network-requests";
+    | "all"
+    | "server"
+    | "client"
+    | "edge-function"
+    | "network-requests";
   sourceFilter: string;
   onLevelFilterChange: (value: "all" | "info" | "warn" | "error") => void;
   onTypeFilterChange: (
@@ -73,11 +73,11 @@ export const ConsoleFilters = ({
         onChange={(e) =>
           onTypeFilterChange(
             e.target.value as
-            | "all"
-            | "server"
-            | "client"
-            | "edge-function"
-            | "network-requests",
+              | "all"
+              | "server"
+              | "client"
+              | "edge-function"
+              | "network-requests",
           )
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
@@ -147,7 +147,9 @@ export const ConsoleFilters = ({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="ml-auto text-xs text-muted-foreground">{totalLogs} logs</div>
+      <div className="ml-auto text-xs text-muted-foreground">
+        {totalLogs} logs
+      </div>
     </div>
   );
 };

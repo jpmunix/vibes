@@ -1,5 +1,12 @@
 import { useState, useCallback, useMemo } from "react";
-import { GitBranch, Check, Plus, Loader2, ChevronDown, CloudDownload } from "@/components/ui/icons";
+import {
+  GitBranch,
+  Check,
+  Plus,
+  Loader2,
+  ChevronDown,
+  CloudDownload,
+} from "@/components/ui/icons";
 import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {
   Dialog,
@@ -90,27 +97,27 @@ export function BranchSwitcher({
             value: b,
             label: b,
             leftIcon: <GitBranch size={14} className="opacity-70" />,
-            group: "branches"
+            group: "branches",
           })),
           ...remoteOnlyBranches.map((b) => ({
             value: b,
             label: b,
             leftIcon: <CloudDownload size={14} className="opacity-50" />,
-            group: "remote"
+            group: "remote",
           })),
           {
             value: "__create__",
             label: "Crear nueva rama...",
             leftIcon: <Plus size={14} className="text-primary" />,
-            group: "actions"
-          }
+            group: "actions",
+          },
         ]}
         groups={[
           { id: "branches", heading: "Cambiar de rama" },
           ...(remoteOnlyBranches.length > 0
             ? [{ id: "remote", heading: "Ramas remotas" }]
             : []),
-          { id: "actions", heading: undefined }
+          { id: "actions", heading: undefined },
         ]}
         searchable
         searchPlaceholder="Buscar rama..."
@@ -118,12 +125,18 @@ export function BranchSwitcher({
         triggerSize="sm"
         triggerClassName={cn(
           "!bg-primary/10 !text-primary !shadow-none hover:!bg-primary/20",
-          isSwitchingBranch && "opacity-60 pointer-events-none"
+          isSwitchingBranch && "opacity-60 pointer-events-none",
         )}
         customTriggerLabel={
           <div className="flex items-center gap-1.5 min-w-0">
-            {isSwitchingBranch ? <Loader2 size={12} className="animate-spin" /> : <GitBranch size={12} />}
-            <span className="truncate max-w-[120px] typo-label">{currentBranch}</span>
+            {isSwitchingBranch ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <GitBranch size={12} />
+            )}
+            <span className="truncate max-w-[120px] typo-label">
+              {currentBranch}
+            </span>
             {aheadCount !== undefined && aheadCount > 0 && (
               <span className="ml-0.5 text-[10px] bg-primary/20 px-1 rounded-sm leading-tight inline-flex items-center">
                 ↑{aheadCount}
@@ -165,8 +178,13 @@ export function BranchSwitcher({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!newBranchName.trim() || isCreating}>
-                {isCreating ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              <Button
+                type="submit"
+                disabled={!newBranchName.trim() || isCreating}
+              >
+                {isCreating ? (
+                  <Loader2 size={16} className="animate-spin mr-2" />
+                ) : null}
                 Crear y cambiar
               </Button>
             </DialogFooter>

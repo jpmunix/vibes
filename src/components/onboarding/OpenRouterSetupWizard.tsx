@@ -25,18 +25,16 @@ type WizardStep = "welcome" | "key" | "verify";
  */
 export function OpenRouterSetupWizard() {
   const { settings, loading: settingsLoading, updateSettings } = useSettings();
-  const { isProviderSetup, isLoading: providersLoading } = useLanguageModelProviders();
+  const { isProviderSetup, isLoading: providersLoading } =
+    useLanguageModelProviders();
 
   const [step, setStep] = useState<WizardStep>("welcome");
   const [apiKey, setApiKey] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<{ ok: boolean; error?: string } | null>(null);
-
-  // Don't show the wizard while settings/providers are loading
-  if (settingsLoading || providersLoading) return null;
-
-  // If OpenRouter is already set up, don't show the wizard
-  if (isProviderSetup("openrouter")) return null;
+  const [verifyResult, setVerifyResult] = useState<{
+    ok: boolean;
+    error?: string;
+  } | null>(null);
 
   const handleVerify = useCallback(async () => {
     if (!apiKey.trim()) {
@@ -84,6 +82,12 @@ export function OpenRouterSetupWizard() {
     }
   }, [apiKey, settings, updateSettings]);
 
+  // Don't show the wizard while settings/providers are loading
+  if (settingsLoading || providersLoading) return null;
+
+  // If OpenRouter is already set up, don't show the wizard
+  if (isProviderSetup("openrouter")) return null;
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-md">
       <div className="w-full max-w-lg mx-4">
@@ -102,17 +106,24 @@ export function OpenRouterSetupWizard() {
                 Bienvenido a Vibes
               </h1>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Para empezar necesitas una clave API de <strong>OpenRouter</strong>, 
-                el servicio que conecta Vibes con los mejores modelos de IA.
+                Para empezar necesitas una clave API de{" "}
+                <strong>OpenRouter</strong>, el servicio que conecta Vibes con
+                los mejores modelos de IA.
               </p>
             </div>
 
             <div className="bg-card rounded-2xl border border-border p-6 text-left space-y-4">
               <div className="flex items-center gap-3">
-                <img src={openrouterLogo} alt="OpenRouter" className="h-8 w-8 rounded-lg" />
+                <img
+                  src={openrouterLogo}
+                  alt="OpenRouter"
+                  className="h-8 w-8 rounded-lg"
+                />
                 <div>
                   <h3 className="font-semibold text-sm">OpenRouter</h3>
-                  <p className="text-xs text-muted-foreground">Acceso a 300+ modelos de IA</p>
+                  <p className="text-xs text-muted-foreground">
+                    Acceso a 300+ modelos de IA
+                  </p>
                 </div>
               </div>
               <ul className="text-sm text-muted-foreground space-y-2">
@@ -176,7 +187,10 @@ export function OpenRouterSetupWizard() {
 
             <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="wizard-api-key" className="typo-label flex items-center gap-2">
+                <Label
+                  htmlFor="wizard-api-key"
+                  className="typo-label flex items-center gap-2"
+                >
                   <Key className="h-3.5 w-3.5" />
                   API Key
                 </Label>

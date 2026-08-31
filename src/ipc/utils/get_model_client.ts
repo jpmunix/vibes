@@ -1,10 +1,6 @@
-
 import type { LanguageModel } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type {
-  LargeLanguageModel,
-  UserSettings,
-} from "../../lib/schemas";
+import type { LargeLanguageModel, UserSettings } from "../../lib/schemas";
 import { getEnvVar } from "./read_env";
 import log from "electron-log";
 import {
@@ -97,7 +93,7 @@ export async function getModelClient(
             settings.selectedChatMode === "ask"
               ? false
               : settings.enableProLazyEditsMode &&
-              settings.proLazyEditsMode !== "v2",
+                settings.proLazyEditsMode !== "v2",
           enableSmartFilesContext,
         },
         settings,
@@ -223,10 +219,7 @@ function getProModelClient({
       builtinProviderId: "openai",
     };
   }
-  if (
-    settings.selectedChatMode === "agent" &&
-    model.provider === "openai"
-  ) {
+  if (settings.selectedChatMode === "agent" && model.provider === "openai") {
     return {
       model: provider.responses(modelId, { providerId: model.provider }),
       builtinProviderId: model.provider,
@@ -282,14 +275,15 @@ function getRegularModelClient(
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
         apiKey,
+        headers: {
+          "X-OpenRouter-Cache": "true",
+        },
         // Inject OpenRouter server tools (e.g. web_search) into the request body.
         // The SDK builds the standard `tools` array from AI SDK tool definitions;
         // we merge our server tools alongside them so both coexist in one request.
         transformRequestBody: webSearchEnabled
           ? (body: Record<string, any>) => {
-              const serverTools: any[] = [
-                { type: "openrouter:web_search" },
-              ];
+              const serverTools: any[] = [{ type: "openrouter:web_search" }];
               const existingTools = body.tools;
               return {
                 ...body,
@@ -338,9 +332,12 @@ function getRegularModelClient(
       // Handle custom providers
       if (providerConfig.type === "custom") {
         // Resolve apiKey and baseURL from customProviders[] config if needed
-        const customConfig = settings.customProviders?.find(p => p.id === model.provider);
+        const customConfig = settings.customProviders?.find(
+          (p) => p.id === model.provider,
+        );
         const effectiveApiKey = apiKey || customConfig?.apiKey?.value;
-        const effectiveBaseUrl = providerConfig.apiBaseUrl || customConfig?.apiBaseUrl;
+        const effectiveBaseUrl =
+          providerConfig.apiBaseUrl || customConfig?.apiBaseUrl;
 
         if (!effectiveBaseUrl) {
           throw new Error(

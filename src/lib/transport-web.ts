@@ -60,7 +60,8 @@ export function installWebTransport(): void {
         const params = (args[0] || {}) as Record<string, unknown>;
         const qs = new URLSearchParams({ window: windowType });
         if (params.theme) qs.set("theme", String(params.theme));
-        if (params.themeIntensity != null) qs.set("intensity", String(params.themeIntensity));
+        if (params.themeIntensity != null)
+          qs.set("intensity", String(params.themeIntensity));
         if (params.appId) qs.set("appId", String(params.appId));
         if (params.chatId) qs.set("chatId", String(params.chatId));
         if (params.messageId) qs.set("messageId", String(params.messageId));
@@ -76,7 +77,9 @@ export function installWebTransport(): void {
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || `IPC call failed: ${channel} (${res.status})`);
+        throw new Error(
+          errorText || `IPC call failed: ${channel} (${res.status})`,
+        );
       }
 
       const json = await res.json();
@@ -88,7 +91,10 @@ export function installWebTransport(): void {
      * Routes to Socket.io event subscription.
      * Returns an unsubscribe function (matching preload.ts behavior).
      */
-    on: (channel: string, listener: (...args: unknown[]) => void): (() => void) => {
+    on: (
+      channel: string,
+      listener: (...args: unknown[]) => void,
+    ): (() => void) => {
       const sock = getSocket();
       sock.on(channel, listener);
       return () => {
@@ -107,7 +113,10 @@ export function installWebTransport(): void {
     /**
      * Replaces ipcRenderer.removeListener(channel, listener).
      */
-    removeListener: (channel: string, listener: (...args: unknown[]) => void): void => {
+    removeListener: (
+      channel: string,
+      listener: (...args: unknown[]) => void,
+    ): void => {
       const sock = getSocket();
       sock.off(channel, listener);
     },

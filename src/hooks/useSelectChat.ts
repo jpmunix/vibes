@@ -27,7 +27,12 @@ export function useSelectChat() {
       }
 
       // Open chat in a dedicated window
-      ipc.system.openChatWindow({ appId, chatId, theme, themeIntensity: intensity });
+      ipc.system.openChatWindow({
+        appId,
+        chatId,
+        theme,
+        themeIntensity: intensity,
+      });
     },
   };
 }

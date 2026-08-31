@@ -9,266 +9,320 @@ import { defineContract, createClient } from "../contracts/core";
 // =============================================================================
 
 export const AdminUserSchema = z.object({
-    id: z.string(),
-    email: z.string(),
-    displayName: z.string(),
-    photoUrl: z.string().nullable(),
-    createdAt: z.number(),
-    lastLoginAt: z.number().nullable(),
+  id: z.string(),
+  email: z.string(),
+  displayName: z.string(),
+  photoUrl: z.string().nullable(),
+  createdAt: z.number(),
+  lastLoginAt: z.number().nullable(),
 });
 
 export type AdminUser = z.infer<typeof AdminUserSchema>;
+
+/**
+ * Which database the admin panel operates on.
+ * - "current": the production vibes database (default, always used by the
+ *   rest of the application).
+ * - "legacy": the old minube-vibes database, only reachable through admin
+ *   handlers (isolated connector).
+ */
+export const AdminDbTargetSchema = z.enum(["current", "legacy"]);
+export type AdminDbTarget = z.infer<typeof AdminDbTargetSchema>;
 
 // =============================================================================
 // Contracts
 // =============================================================================
 
 export const adminContracts = {
-    listUsers: defineContract({
-        channel: "admin:list-users",
-        input: z.object({}),
-        output: z.object({ users: z.array(AdminUserSchema) }),
-    }),
+  /**
+   * Set which database the admin panel operates on.
+   * Only persisted in the main-process handler state; the renderer keeps its
+   * own copy in localStorage.
+   */
+  setActiveDb: defineContract({
+    channel: "admin:set-active-db",
+    input: z.object({ target: AdminDbTargetSchema }),
+    output: z.object({ success: z.boolean() }),
+  }),
 
-    createUser: defineContract({
-        channel: "admin:create-user",
-        input: z.object({
-            email: z.string().min(1),
-            displayName: z.string().min(1),
-            password: z.string().min(6),
-        }),
-        output: AdminUserSchema,
-    }),
+  /** Get the currently active admin database target. */
+  getActiveDb: defineContract({
+    channel: "admin:get-active-db",
+    input: z.object({}),
+    output: z.object({ target: AdminDbTargetSchema }),
+  }),
 
-    updateUser: defineContract({
-        channel: "admin:update-user",
-        input: z.object({
-            userId: z.string(),
-            email: z.string().optional(),
-            displayName: z.string().optional(),
-        }),
-        output: AdminUserSchema,
-    }),
+  listUsers: defineContract({
+    channel: "admin:list-users",
+    input: z.object({}),
+    output: z.object({ users: z.array(AdminUserSchema) }),
+  }),
 
-    resetPassword: defineContract({
-        channel: "admin:reset-password",
-        input: z.object({
-            userId: z.string(),
-            newPassword: z.string().min(6),
-        }),
-        output: z.object({ success: z.boolean() }),
+  createUser: defineContract({
+    channel: "admin:create-user",
+    input: z.object({
+      email: z.string().min(1),
+      displayName: z.string().min(1),
+      password: z.string().min(6),
     }),
+    output: AdminUserSchema,
+  }),
 
-    listApps: defineContract({
-        channel: "admin:list-apps",
-        input: z.object({}),
-        output: z.object({
-            apps: z.array(z.object({
-                id: z.number(),
-                userId: z.string(),
-                name: z.string(),
-                path: z.string(),
-                createdAt: z.number(),
-                updatedAt: z.number(),
-                primaryLanguage: z.string().nullable(),
-                projectType: z.string().nullable(),
-                githubOrg: z.string().nullable(),
-                githubRepo: z.string().nullable(),
-            })),
-            users: z.array(AdminUserSchema),
-        }),
+  updateUser: defineContract({
+    channel: "admin:update-user",
+    input: z.object({
+      userId: z.string(),
+      email: z.string().optional(),
+      displayName: z.string().optional(),
     }),
+    output: AdminUserSchema,
+  }),
 
-    getUserSettings: defineContract({
-        channel: "admin:get-user-settings",
-        input: z.object({ userId: z.string() }),
-        output: z.object({ settings: z.record(z.string(), z.unknown()).nullable() }),
+  resetPassword: defineContract({
+    channel: "admin:reset-password",
+    input: z.object({
+      userId: z.string(),
+      newPassword: z.string().min(6),
     }),
+    output: z.object({ success: z.boolean() }),
+  }),
 
-    getAllUsersSettings: defineContract({
-        channel: "admin:get-all-users-settings",
-        input: z.object({}),
-        output: z.object({
-            usersSettings: z.array(z.object({
-                userId: z.string(),
-                displayName: z.string(),
-                email: z.string(),
-                settings: z.record(z.string(), z.unknown()).nullable(),
-            })),
+  listApps: defineContract({
+    channel: "admin:list-apps",
+    input: z.object({}),
+    output: z.object({
+      apps: z.array(
+        z.object({
+          id: z.number(),
+          userId: z.string(),
+          name: z.string(),
+          path: z.string(),
+          createdAt: z.number(),
+          updatedAt: z.number(),
+          primaryLanguage: z.string().nullable(),
+          projectType: z.string().nullable(),
+          githubOrg: z.string().nullable(),
+          githubRepo: z.string().nullable(),
         }),
+      ),
+      users: z.array(AdminUserSchema),
     }),
+  }),
 
-    /**
-     * Memory stats per user — same data as MemorySettings "Memorias por aplicación"
-     * Returns per-user per-app: total, enabled, disabled, auto, manual counts.
-     */
-    getAdminMemoryStats: defineContract({
-        channel: "admin:get-memory-stats",
-        input: z.object({}),
-        output: z.object({
-            users: z.array(z.object({
-                userId: z.string(),
-                displayName: z.string(),
-                apps: z.array(z.object({
-                    appId: z.number(),
-                    appName: z.string(),
-                    total: z.number(),
-                    enabled: z.number(),
-                    disabled: z.number(),
-                    autoCount: z.number(),
-                    manualCount: z.number(),
-                })),
-            })),
-        }),
+  getUserSettings: defineContract({
+    channel: "admin:get-user-settings",
+    input: z.object({ userId: z.string() }),
+    output: z.object({
+      settings: z.record(z.string(), z.unknown()).nullable(),
     }),
+  }),
 
-    /**
-     * Analyzer data per user — same data as MemorySettings "Analizador de memoria"
-     * Returns telemetry stats, recent events, and pipeline logs for a given user+app filter.
-     */
-    getAdminAnalyzerData: defineContract({
-        channel: "admin:get-analyzer-data",
-        input: z.object({
-            userId: z.string(),
-            appId: z.number().optional(), // 0 or omitted = all apps
+  getAllUsersSettings: defineContract({
+    channel: "admin:get-all-users-settings",
+    input: z.object({}),
+    output: z.object({
+      usersSettings: z.array(
+        z.object({
+          userId: z.string(),
+          displayName: z.string(),
+          email: z.string(),
+          settings: z.record(z.string(), z.unknown()).nullable(),
         }),
-        output: z.object({
-            apps: z.array(z.object({
-                id: z.number(),
-                name: z.string(),
-            })),
-            stats: z.array(z.object({
-                action: z.string(),
-                count: z.number(),
-            })),
-            recent: z.array(z.object({
-                action: z.string(),
-                reason: z.string().nullable(),
-                extractedKeys: z.string().nullable(),
-                createdAt: z.string(),
-            })),
-            pipelineLogs: z.array(z.object({
-                id: z.number(),
-                appId: z.number(),
-                chatId: z.number().nullable(),
-                stage: z.string(),
-                model: z.string().nullable(),
-                systemPrompt: z.string().nullable(),
-                userMessage: z.string().nullable(),
-                rawResponse: z.string().nullable(),
-                parsedResult: z.string().nullable(),
-                resultCount: z.number(),
-                durationMs: z.number().nullable(),
-                success: z.number(),
-                error: z.string().nullable(),
-                createdAt: z.string(),
-            })),
-        }),
+      ),
     }),
+  }),
 
-    /** List chats for a specific app (admin — no user scope). Newest first. */
-    getAppChats: defineContract({
-        channel: "admin:get-app-chats",
-        input: z.object({ appId: z.number() }),
-        output: z.array(z.object({
-            id: z.number(),
-            title: z.string().nullable(),
-            createdAt: z.string(),
-            messageCount: z.number(),
-        })),
+  /**
+   * Memory stats per user — same data as MemorySettings "Memorias por aplicación"
+   * Returns per-user per-app: total, enabled, disabled, auto, manual counts.
+   */
+  getAdminMemoryStats: defineContract({
+    channel: "admin:get-memory-stats",
+    input: z.object({}),
+    output: z.object({
+      users: z.array(
+        z.object({
+          userId: z.string(),
+          displayName: z.string(),
+          apps: z.array(
+            z.object({
+              appId: z.number(),
+              appName: z.string(),
+              total: z.number(),
+              enabled: z.number(),
+              disabled: z.number(),
+              autoCount: z.number(),
+              manualCount: z.number(),
+            }),
+          ),
+        }),
+      ),
     }),
+  }),
 
-    /** Get full chat with messages (admin — no user scope). Messages oldest first. */
-    getAdminChat: defineContract({
-        channel: "admin:get-chat",
-        input: z.object({ chatId: z.number() }),
-        output: z.object({
-            id: z.number(),
-            title: z.string().nullable(),
-            createdAt: z.string(),
-            messages: z.array(z.object({
-                id: z.number(),
-                role: z.enum(["user", "assistant"]),
-                content: z.string(),
-                model: z.string().nullable().optional(),
-                createdAt: z.string().nullable().optional(),
-                durationMs: z.number().nullable().optional(),
-                totalTokens: z.number().nullable().optional(),
-            })),
-        }),
+  /**
+   * Analyzer data per user — same data as MemorySettings "Analizador de memoria"
+   * Returns telemetry stats, recent events, and pipeline logs for a given user+app filter.
+   */
+  getAdminAnalyzerData: defineContract({
+    channel: "admin:get-analyzer-data",
+    input: z.object({
+      userId: z.string(),
+      appId: z.number().optional(), // 0 or omitted = all apps
     }),
+    output: z.object({
+      apps: z.array(
+        z.object({
+          id: z.number(),
+          name: z.string(),
+        }),
+      ),
+      stats: z.array(
+        z.object({
+          action: z.string(),
+          count: z.number(),
+        }),
+      ),
+      recent: z.array(
+        z.object({
+          action: z.string(),
+          reason: z.string().nullable(),
+          extractedKeys: z.string().nullable(),
+          createdAt: z.string(),
+        }),
+      ),
+      pipelineLogs: z.array(
+        z.object({
+          id: z.number(),
+          appId: z.number(),
+          chatId: z.number().nullable(),
+          stage: z.string(),
+          model: z.string().nullable(),
+          systemPrompt: z.string().nullable(),
+          userMessage: z.string().nullable(),
+          rawResponse: z.string().nullable(),
+          parsedResult: z.string().nullable(),
+          resultCount: z.number(),
+          durationMs: z.number().nullable(),
+          success: z.number(),
+          error: z.string().nullable(),
+          createdAt: z.string(),
+        }),
+      ),
+    }),
+  }),
 
-    /** Debug logs — complete markdown files from memory pipeline runs */
-    getAdminDebugLogs: defineContract({
-        channel: "admin:get-debug-logs",
-        input: z.object({
-            userId: z.string(),
-            appId: z.number().optional(),
-            limit: z.number().optional(),
-        }),
-        output: z.array(z.object({
-            id: z.number(),
-            appId: z.number(),
-            appName: z.string(),
-            filename: z.string(),
-            contentMd: z.string(),
-            createdAt: z.string(),
-        })),
-    }),
+  /** List chats for a specific app (admin — no user scope). Newest first. */
+  getAppChats: defineContract({
+    channel: "admin:get-app-chats",
+    input: z.object({ appId: z.number() }),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        title: z.string().nullable(),
+        createdAt: z.string(),
+        messageCount: z.number(),
+      }),
+    ),
+  }),
 
-    /** Get all key-value preferences for a user (from user_preferences table) */
-    getUserPreferences: defineContract({
-        channel: "admin:get-user-preferences",
-        input: z.object({ userId: z.string() }),
-        output: z.object({
-            preferences: z.array(z.object({
-                key: z.string(),
-                value: z.string(),
-                updatedAt: z.string().nullable(),
-                displayCategory: z.string().optional(),
-                displayName: z.string().optional(),
-            })),
+  /** Get full chat with messages (admin — no user scope). Messages oldest first. */
+  getAdminChat: defineContract({
+    channel: "admin:get-chat",
+    input: z.object({ chatId: z.number() }),
+    output: z.object({
+      id: z.number(),
+      title: z.string().nullable(),
+      createdAt: z.string(),
+      messages: z.array(
+        z.object({
+          id: z.number(),
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+          model: z.string().nullable().optional(),
+          createdAt: z.string().nullable().optional(),
+          durationMs: z.number().nullable().optional(),
+          totalTokens: z.number().nullable().optional(),
         }),
+      ),
     }),
+  }),
 
-    /** Set a single preference for a user (admin override) */
-    setUserPreference: defineContract({
-        channel: "admin:set-user-preference",
-        input: z.object({
-            userId: z.string(),
-            key: z.string(),
-            value: z.string(),
-        }),
-        output: z.object({ success: z.boolean() }),
+  /** Debug logs — complete markdown files from memory pipeline runs */
+  getAdminDebugLogs: defineContract({
+    channel: "admin:get-debug-logs",
+    input: z.object({
+      userId: z.string(),
+      appId: z.number().optional(),
+      limit: z.number().optional(),
     }),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        appId: z.number(),
+        appName: z.string(),
+        filename: z.string(),
+        contentMd: z.string(),
+        createdAt: z.string(),
+      }),
+    ),
+  }),
 
-    /** Delete a single preference for a user */
-    deleteUserPreference: defineContract({
-        channel: "admin:delete-user-preference",
-        input: z.object({
-            userId: z.string(),
-            key: z.string(),
+  /** Get all key-value preferences for a user (from user_preferences table) */
+  getUserPreferences: defineContract({
+    channel: "admin:get-user-preferences",
+    input: z.object({ userId: z.string() }),
+    output: z.object({
+      preferences: z.array(
+        z.object({
+          key: z.string(),
+          value: z.string(),
+          updatedAt: z.string().nullable(),
+          displayCategory: z.string().optional(),
+          displayName: z.string().optional(),
         }),
-        output: z.object({ success: z.boolean() }),
+      ),
     }),
+  }),
 
-    /** Copy/overwrite selected preferences from one user to multiple target users */
-    copyPreferencesToUsers: defineContract({
-        channel: "admin:copy-preferences-to-users",
-        input: z.object({
-            sourceUserId: z.string(),
-            targetUserIds: z.array(z.string()).min(1),
-            keys: z.array(z.string()).min(1),
-            mode: z.enum(["copy", "overwrite"]),
-        }),
-        output: z.object({
-            success: z.boolean(),
-            /** Number of preference writes actually performed */
-            written: z.number(),
-            /** Number of preferences skipped (copy mode, already existed) */
-            skipped: z.number(),
-        }),
+  /** Set a single preference for a user (admin override) */
+  setUserPreference: defineContract({
+    channel: "admin:set-user-preference",
+    input: z.object({
+      userId: z.string(),
+      key: z.string(),
+      value: z.string(),
     }),
+    output: z.object({ success: z.boolean() }),
+  }),
+
+  /** Delete a single preference for a user */
+  deleteUserPreference: defineContract({
+    channel: "admin:delete-user-preference",
+    input: z.object({
+      userId: z.string(),
+      key: z.string(),
+    }),
+    output: z.object({ success: z.boolean() }),
+  }),
+
+  /** Copy/overwrite selected preferences from one user to multiple target users */
+  copyPreferencesToUsers: defineContract({
+    channel: "admin:copy-preferences-to-users",
+    input: z.object({
+      sourceUserId: z.string(),
+      targetUserIds: z.array(z.string()).min(1),
+      keys: z.array(z.string()).min(1),
+      mode: z.enum(["copy", "overwrite"]),
+    }),
+    output: z.object({
+      success: z.boolean(),
+      /** Number of preference writes actually performed */
+      written: z.number(),
+      /** Number of preferences skipped (copy mode, already existed) */
+      skipped: z.number(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

@@ -53,8 +53,13 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   const openRouterSettings = settings.providerSettings?.openrouter as any;
 
   // Check multi-key system first
-  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
-    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+  if (
+    openRouterSettings?.selectedKeyId &&
+    openRouterSettings?.keys?.length > 0
+  ) {
+    const selectedKey = openRouterSettings.keys.find(
+      (k: any) => k.id === openRouterSettings.selectedKeyId,
+    );
     if (selectedKey?.key?.value?.trim()) {
       return selectedKey.key.value.trim();
     }
@@ -154,7 +159,8 @@ async function callTurboFileEditViaOpenRouter(
   } catch (error) {
     logger.error("OpenRouter turbo edit request timed out or failed", error);
     throw new Error(
-      `OpenRouter turbo file edit failed: ${error instanceof Error ? error.message : String(error)
+      `OpenRouter turbo file edit failed: ${
+        error instanceof Error ? error.message : String(error)
       }`,
     );
   }

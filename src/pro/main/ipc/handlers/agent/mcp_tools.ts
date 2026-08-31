@@ -13,9 +13,9 @@ import { mcpManager } from "@/ipc/utils/mcp_manager";
 import { requireMcpToolConsent } from "@/ipc/utils/mcp_consent";
 import { parseMcpToolKey, sanitizeMcpName } from "@/ipc/utils/mcp_tool_utils";
 import {
-    escapeXmlAttr,
-    escapeXmlContent,
-    type AgentContext,
+  escapeXmlAttr,
+  escapeXmlContent,
+  type AgentContext,
 } from "./tools/types";
 
 const logger = log.scope("mcp_tools");
@@ -25,79 +25,79 @@ const logger = log.scope("mcp_tools");
  * and wrapping their tools with consent, XML emission, and error handling.
  */
 export async function getMcpTools(
-    event: IpcMainInvokeEvent,
-    ctx: AgentContext,
+  event: IpcMainInvokeEvent,
+  ctx: AgentContext,
 ): Promise<ToolSet> {
-    const mcpToolSet: ToolSet = {};
+  const mcpToolSet: ToolSet = {};
 
-    try {
-        const servers = await getRemoteDb()
-            .select()
-            .from(remoteSchema.mcpServers)
-            .where(eq(remoteSchema.mcpServers.enabled, true as any));
+  try {
+    const servers = await getRemoteDb()
+      .select()
+      .from(remoteSchema.mcpServers)
+      .where(eq(remoteSchema.mcpServers.enabled, true as any));
 
-        for (const s of servers) {
-            const client = await mcpManager.getClient(s.id);
-            const toolSet = await client.tools();
+    for (const s of servers) {
+      const client = await mcpManager.getClient(s.id);
+      const toolSet = await client.tools();
 
-            for (const [name, mcpTool] of Object.entries(toolSet)) {
-                const key = `${sanitizeMcpName(s.name || "")}__${sanitizeMcpName(name)}`;
+      for (const [name, mcpTool] of Object.entries(toolSet)) {
+        const key = `${sanitizeMcpName(s.name || "")}__${sanitizeMcpName(name)}`;
 
-                mcpToolSet[key] = {
-                    description: mcpTool.description,
-                    inputSchema: mcpTool.inputSchema,
-                    execute: async (args: unknown, execCtx: ToolExecutionOptions) => {
-                        try {
-                            const inputPreview =
-                                typeof args === "string"
-                                    ? args
-                                    : Array.isArray(args)
-                                        ? args.join(" ")
-                                        : JSON.stringify(args).slice(0, 500);
+        mcpToolSet[key] = {
+          description: mcpTool.description,
+          inputSchema: mcpTool.inputSchema,
+          execute: async (args: unknown, execCtx: ToolExecutionOptions) => {
+            try {
+              const inputPreview =
+                typeof args === "string"
+                  ? args
+                  : Array.isArray(args)
+                    ? args.join(" ")
+                    : JSON.stringify(args).slice(0, 500);
 
-                            const ok = await requireMcpToolConsent(event, {
-                                serverId: s.id,
-                                serverName: s.name,
-                                toolName: name,
-                                toolDescription: mcpTool.description,
-                                inputPreview,
-                            });
+              const ok = await requireMcpToolConsent(event, {
+                serverId: s.id,
+                serverName: s.name,
+                toolName: name,
+                toolDescription: mcpTool.description,
+                inputPreview,
+              });
 
-                            if (!ok) throw new Error(`User declined running tool ${key}`);
+              if (!ok) throw new Error(`User declined running tool ${key}`);
 
-                            // Emit XML for UI (MCP tools don't stream, so use onXmlComplete directly)
-                            const { serverName, toolName } = parseMcpToolKey(key);
-                            const content = JSON.stringify(args, null, 2);
-                            ctx.onXmlComplete(
-                                `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>`,
-                            );
+              // Emit XML for UI (MCP tools don't stream, so use onXmlComplete directly)
+              const { serverName, toolName } = parseMcpToolKey(key);
+              const content = JSON.stringify(args, null, 2);
+              ctx.onXmlComplete(
+                `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>`,
+              );
 
-                            const res = await mcpTool.execute(args, execCtx);
-                            const resultStr =
-                                typeof res === "string" ? res : JSON.stringify(res);
+              const res = await mcpTool.execute(args, execCtx);
+              const resultStr =
+                typeof res === "string" ? res : JSON.stringify(res);
 
-                            ctx.onXmlComplete(
-                                `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</vibes-mcp-tool-result>`,
-                            );
+              ctx.onXmlComplete(
+                `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</vibes-mcp-tool-result>`,
+              );
 
-                            return resultStr;
-                        } catch (error) {
-                            const errorMessage =
-                                error instanceof Error ? error.message : String(error);
-                            const errorStack =
-                                error instanceof Error && error.stack ? error.stack : "";
-                            ctx.onXmlComplete(
-                                `<vibes-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</vibes-output>`,
-                            );
-                            throw error;
-                        }
-                    },
-                };
+              return resultStr;
+            } catch (error) {
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
+              const errorStack =
+                error instanceof Error && error.stack ? error.stack : "";
+              ctx.onXmlComplete(
+                `<vibes-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</vibes-output>`,
+              );
+              throw error;
             }
-        }
-    } catch (e) {
-        logger.warn("Failed building MCP toolset for local-agent", e);
+          },
+        };
+      }
     }
+  } catch (e) {
+    logger.warn("Failed building MCP toolset for local-agent", e);
+  }
 
-    return mcpToolSet;
+  return mcpToolSet;
 }

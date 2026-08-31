@@ -1,6 +1,6 @@
 import { type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
@@ -11,47 +11,85 @@ import { ipc } from "@/ipc/types";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
-import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
+
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
 import { useModelAliases } from "@/hooks/useModelAliases";
-import { getVariantLabel } from "@/ipc/shared/model_variants";
 import { matchesModelSearch } from "@/lib/modelSearch";
+import { useChatPreference } from "@/hooks/useChatPreferences";
+import {
+  type ModelFilters,
+  DEFAULT_MODEL_FILTERS,
+  modelPassesFilters,
+} from "@/components/ModelFiltersPanel";
 
-// ── Provider badge styles (same palette as SettingsModelSelector) ──────────
-const PROVIDER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
-    openrouter: { bg: "bg-sky-500/10", text: "text-sky-500", label: "OR" },
-    ollama: { bg: "bg-emerald-500/10", text: "text-emerald-500", label: "Ollama" },
-};
-
-function getProviderBadge(provider: string, customProviders?: any[]): { bg: string; text: string; label: string } | null {
-    if (PROVIDER_BADGES[provider]) return PROVIDER_BADGES[provider];
-    // Custom providers get a purple badge with their configured name
-    const cp = customProviders?.find((p: any) => p.id === provider);
-    if (cp) {
-        return { bg: "bg-purple-500/10", text: "text-purple-400", label: cp.name || provider };
-    }
-    return null;
+// ── Provider label map for filter panel ───────────────────────────────────────
+function getProviderLabel(provider: string, customProviders?: any[]): string {
+  if (provider === "openrouter") return "OpenRouter";
+  if (provider === "ollama") return "Ollama";
+  if (provider === "auto-router") return "Auto";
+  const cp = customProviders?.find((p: any) => p.id === provider);
+  return cp?.name || provider;
 }
 
-export function ModelPicker() {
+interface ModelPickerProps {
+  chatId?: number;
+}
+
+export function ModelPicker({ chatId }: ModelPickerProps) {
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
-  const isTrial = false;
-  
-  const { stats, incrementUsage, removeUsage } = useModelUsageStats();
-  const { aliases, setAlias, removeAlias, resolveDisplayName } = useModelAliases();
+
+  const { stats, incrementUsage } = useModelUsageStats();
+  const { aliases, setAlias, removeAlias } = useModelAliases();
   const [search, setSearch] = useState("");
 
+  // ── Per-chat model persistence ────────────────────────────────────────
+  const [chatModel, setChatModel, chatModelLoaded] =
+    useChatPreference<LargeLanguageModel | null>(
+      chatId ?? null,
+      "selectedModel",
+      null,
+    );
+
+  // ── Per-chat filter persistence ───────────────────────────────────────
+  const [filters, setFilters] = useChatPreference<ModelFilters>(
+    chatId ?? null,
+    "modelFilters",
+    DEFAULT_MODEL_FILTERS,
+  );
+
+  // Track if we've restored the model for the current chatId
+  const restoredChatIdRef = useRef<number | null>(null);
+
+  // Restore model when chat changes and per-chat preference is loaded
+  useEffect(() => {
+    if (!chatId || !chatModelLoaded || !settings) return;
+    if (restoredChatIdRef.current === chatId) return;
+    restoredChatIdRef.current = chatId;
+
+    if (chatModel) {
+      // Restore per-chat model (only if different from current)
+      const current = settings.selectedModel;
+      if (
+        current.name !== chatModel.name ||
+        current.provider !== chatModel.provider
+      ) {
+        updateSettings({ selectedModel: chatModel });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
+      }
+    }
+    // If no chatModel stored, use whatever global model is currently set
+  }, [chatId, chatModel, chatModelLoaded, settings]);
+
   // The model picker ALWAYS controls selectedModel, regardless of chat mode.
-  // Plan/ask modes use the same selectedModel as agent mode.
   const onModelSelect = (model: LargeLanguageModel) => {
     updateSettings({ selectedModel: model });
     incrementUsage(`${model.provider}:${model.name}`);
     // Invalidate token count when model changes since different models have different context windows
     queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
+    // Persist to per-chat preference
+    setChatModel(model);
   };
-
-
 
   // Cloud models from providers
   const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
@@ -111,14 +149,10 @@ export function ModelPicker() {
 
   // Always show the selectedModel — no mode-based switching
   const selectedModel = settings.selectedModel;
-  const selectedVariant = settings.selectedModelVariant ?? "";
   const modelDisplayName = getModelDisplayName();
 
-
-  // Variant display label for the trigger
-  const variantLabel = getVariantLabel(selectedVariant);
-
-  const allAvailableModels: Array<{ provider: string; model: LanguageModel }> = [];
+  const allAvailableModels: Array<{ provider: string; model: LanguageModel }> =
+    [];
 
   const searchLower = search.toLowerCase();
   const customProviders = settings.customProviders ?? [];
@@ -128,9 +162,9 @@ export function ModelPicker() {
   const isProviderDisabled = (id: string) => disabledProviders.includes(id);
 
   const doesModelMatchSearch = (m: LanguageModel) => {
-     if (!searchLower) return true;
-     const alias = aliases[m.apiName];
-     return matchesModelSearch(search, m.displayName, m.apiName, alias);
+    if (!searchLower) return true;
+    const alias = aliases[m.apiName];
+    return matchesModelSearch(search, m.displayName, m.apiName, alias);
   };
 
   // Auto-router — only when OpenRouter is active
@@ -142,22 +176,11 @@ export function ModelPicker() {
     });
   }
 
-  // OpenRouter models (filtered by enabled + usage)
+  // OpenRouter models (all models, skip disabled provider)
   if (!isProviderDisabled("openrouter") && modelsByProviders?.["openrouter"]) {
-    const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
     modelsByProviders["openrouter"].forEach((model) => {
-      const isCustom = model.type === "custom";
-      const isEnabled = enabledModels.includes(model.apiName);
-      const isUsed = (stats[`openrouter:${model.apiName}`] || 0) > 0;
-      
-      if (searchLower) {
-        if (doesModelMatchSearch(model)) {
-           allAvailableModels.push({ provider: "openrouter", model });
-        }
-      } else {
-        if (isCustom || isEnabled || isUsed) {
-           allAvailableModels.push({ provider: "openrouter", model });
-        }
+      if (!searchLower || doesModelMatchSearch(model)) {
+        allAvailableModels.push({ provider: "openrouter", model });
       }
     });
   }
@@ -189,8 +212,25 @@ export function ModelPicker() {
     }
   }
 
-  // Sort: selected first, then by most-recently-used (timestamp descending)
-  const sortedModels = [...allAvailableModels].sort((a, b) => {
+  // Save total count before filtering
+  const totalModelCount = allAvailableModels.length;
+
+  // Apply model filters
+  const filteredModels = allAvailableModels.filter(({ provider, model }) =>
+    modelPassesFilters(model, provider, filters),
+  );
+
+  // Compute unique providers for filter panel
+  const uniqueProviders = [
+    ...new Set(allAvailableModels.map((m) => m.provider)),
+  ];
+  const availableProvidersForPanel = uniqueProviders.map((id) => ({
+    id,
+    label: getProviderLabel(id, customProviders as any),
+  }));
+
+  // Sort: selected first, then by custom sort or most-recently-used
+  const sortedModels = [...filteredModels].sort((a, b) => {
     const isASelected =
       a.provider === selectedModel.provider &&
       a.model.apiName === selectedModel.name;
@@ -201,11 +241,38 @@ export function ModelPicker() {
     if (isASelected) return -1;
     if (isBSelected) return 1;
 
+    // Custom sorting
+    if (filters.sortBy && filters.sortBy !== "default") {
+      const orderMult = filters.sortOrder === "asc" ? 1 : -1;
+
+      if (filters.sortBy === "price_input") {
+        const pa = a.model.pricingInput
+          ? parseFloat(a.model.pricingInput)
+          : Infinity;
+        const pb = b.model.pricingInput
+          ? parseFloat(b.model.pricingInput)
+          : Infinity;
+        if (pa !== pb) return (pa - pb) * orderMult;
+      } else if (filters.sortBy === "price_output") {
+        const pa = a.model.pricingOutput
+          ? parseFloat(a.model.pricingOutput)
+          : Infinity;
+        const pb = b.model.pricingOutput
+          ? parseFloat(b.model.pricingOutput)
+          : Infinity;
+        if (pa !== pb) return (pa - pb) * orderMult;
+      } else if (filters.sortBy === "context") {
+        const ca = a.model.contextWindow ?? 0;
+        const cb = b.model.contextWindow ?? 0;
+        if (ca !== cb) return (ca - cb) * orderMult;
+      }
+    }
+
     const usageA = stats[`${a.provider}:${a.model.apiName}`] || 0;
     const usageB = stats[`${b.provider}:${b.model.apiName}`] || 0;
-    
+
     if (usageA !== usageB) {
-       return usageB - usageA;
+      return usageB - usageA;
     }
 
     // Fallback: auto-router first, then openrouter
@@ -215,16 +282,11 @@ export function ModelPicker() {
     return a.model.displayName.localeCompare(b.model.displayName);
   });
 
-  // Detect if we have multiple providers to show badges
-  const uniqueProviders = new Set(sortedModels.map((m) => m.provider));
-  const showBadges = uniqueProviders.size > 1;
-
   return (
     <>
       <ModelVariantPicker
         models={sortedModels}
         selectedValue={`${selectedModel.provider}|||${selectedModel.name}`}
-        selectedVariant={selectedVariant}
         modelAliases={aliases}
         onModelSelect={(val) => {
           const sepIdx = val.indexOf("|||");
@@ -243,27 +305,32 @@ export function ModelPicker() {
             });
           }
         }}
-        onVariantChange={(variant) => {
-          updateSettings({ selectedModelVariant: variant });
-        }}
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableProviders={availableProvidersForPanel}
+        totalModelCount={totalModelCount}
+        selectedVariant={settings.selectedModelVariant ?? ""}
+        onVariantChange={(suffix) => updateSettings({ selectedModelVariant: suffix })}
+        showVariants={availableProvidersForPanel.some((p) => p.id === "openrouter")}
         triggerContent={
           <div className="flex items-center gap-0.5 min-w-0 flex-1">
             <span className="truncate typo-select text-left">
               {modelDisplayName}
-              {variantLabel && (
-                <span className="opacity-60"> · {variantLabel}</span>
-              )}
             </span>
             {selectedModel.provider === "auto-router" &&
               selectedModel.name === "auto" && <AutoRouterBadge />}
           </div>
         }
-        renderModelItem={({ provider, model }, isSelected) => {
-          const isEnabled = provider === "openrouter" && 
-             (settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS).includes(model.apiName);
-          const isSelectedReal = selectedModel.provider === provider && selectedModel.name === model.apiName;
-          const isRemovable = provider === "openrouter" && !isEnabled && !isSelectedReal;
-          const badge = showBadges ? getProviderBadge(provider, customProviders as any) : null;
+        renderModelItem={({ provider, model }, _isSelected) => {
+          const isSelectedReal =
+            selectedModel.provider === provider &&
+            selectedModel.name === model.apiName;
+
+          const showProviderLabel =
+            provider !== "openrouter" && provider !== "auto-router";
+          const providerLabel = showProviderLabel
+            ? getProviderLabel(provider, customProviders as any)
+            : undefined;
 
           return (
             <div className="flex items-center gap-2 w-full">
@@ -272,17 +339,15 @@ export function ModelPicker() {
                   model={model}
                   showAutoRouterBadge={provider === "auto-router"}
                   isAutoRouter={provider === "auto-router"}
-                  onRemoveClick={isRemovable ? (m) => removeUsage(`${provider}:${m.apiName}`) : undefined}
+                  onRemoveClick={undefined}
                   alias={aliases[model.apiName]}
-                  onSetAlias={(m, newAlias) => setAlias({ modelId: m.apiName, alias: newAlias })}
+                  onSetAlias={(m, newAlias) =>
+                    setAlias({ modelId: m.apiName, alias: newAlias })
+                  }
                   onRemoveAlias={(m) => removeAlias(m.apiName)}
+                  providerLabel={providerLabel}
                 />
               </div>
-              {badge && (
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${badge.bg} ${badge.text}`}>
-                  {badge.label}
-                </span>
-              )}
             </div>
           );
         }}

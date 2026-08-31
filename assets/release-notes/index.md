@@ -3,6 +3,7 @@ title: "Notas de Versión"
 icon: "rocket"
 ---
 
+<!-- @section v9/ "Versión 9" -->
 <!-- @section v8/ "Versión 8" -->
 <!-- @section v7/ "Versión 7" -->
 <!-- @section v6/ "Versión 6" -->

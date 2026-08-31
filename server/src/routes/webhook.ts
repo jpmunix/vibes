@@ -9,7 +9,8 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
-const DEPLOY_SCRIPT = process.env.DEPLOY_SCRIPT || "/data/vibes/scripts/deploy.sh";
+const DEPLOY_SCRIPT =
+  process.env.DEPLOY_SCRIPT || "/data/vibes/scripts/deploy.sh";
 
 function verifyGitHubSignature(
   payload: string,
@@ -35,7 +36,9 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         return;
       }
 
-      const signature = request.headers["x-hub-signature-256"] as string | undefined;
+      const signature = request.headers["x-hub-signature-256"] as
+        | string
+        | undefined;
       const rawBody = JSON.stringify(request.body);
 
       if (!verifyGitHubSignature(rawBody, signature, WEBHOOK_SECRET)) {
@@ -49,7 +52,9 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         return;
       }
 
-      app.log.info(`[Deploy] Triggered by push to main: ${body.head_commit?.message || "unknown"}`);
+      app.log.info(
+        `[Deploy] Triggered by push to main: ${body.head_commit?.message || "unknown"}`,
+      );
 
       // Fire-and-forget: run deploy script
       const child = spawn("bash", [DEPLOY_SCRIPT], {

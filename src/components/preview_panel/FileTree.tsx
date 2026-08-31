@@ -54,20 +54,58 @@ interface TreeNode {
 // ═══════════════════════════════════════════════════════════════════
 
 const CODE_EXTENSIONS = new Set([
-  "ts", "tsx", "js", "jsx", "mjs", "cjs",
-  "php", "phtml",
-  "py", "rb", "go", "rs", "java", "cpp", "c", "h",
-  "vue", "svelte", "astro",
-  "sh", "bash", "zsh",
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "php",
+  "phtml",
+  "py",
+  "rb",
+  "go",
+  "rs",
+  "java",
+  "cpp",
+  "c",
+  "h",
+  "vue",
+  "svelte",
+  "astro",
+  "sh",
+  "bash",
+  "zsh",
 ]);
 
 const TEXT_EXTENSIONS = new Set([
-  "md", "mdx", "txt", "log", "csv",
-  "json", "yaml", "yml", "toml", "xml",
-  "html", "htm", "css", "scss", "sass", "less",
-  "twig", "volt",
-  "env", "gitignore", "dockerignore", "editorconfig",
-  "ini", "conf", "cfg", "htaccess", "neon",
+  "md",
+  "mdx",
+  "txt",
+  "log",
+  "csv",
+  "json",
+  "yaml",
+  "yml",
+  "toml",
+  "xml",
+  "html",
+  "htm",
+  "css",
+  "scss",
+  "sass",
+  "less",
+  "twig",
+  "volt",
+  "env",
+  "gitignore",
+  "dockerignore",
+  "editorconfig",
+  "ini",
+  "conf",
+  "cfg",
+  "htaccess",
+  "neon",
 ]);
 
 /** Color hint for file icons based on extension */
@@ -86,12 +124,21 @@ function getFileIconColor(name: string): string {
   if (ext === "html" || ext === "htm") return "text-orange-400";
   // Data
   if (ext === "json") return "text-yellow-500";
-  if (ext === "yaml" || ext === "yml" || ext === "toml") return "text-green-400";
+  if (ext === "yaml" || ext === "yml" || ext === "toml")
+    return "text-green-400";
   // Config
   if (ext === "md" || ext === "mdx") return "text-blue-300";
-  if (ext === "ini" || ext === "conf" || ext === "cfg" || ext === "htaccess" || ext === "neon") return "text-gray-400";
+  if (
+    ext === "ini" ||
+    ext === "conf" ||
+    ext === "cfg" ||
+    ext === "htaccess" ||
+    ext === "neon"
+  )
+    return "text-gray-400";
   // Images
-  if (["png", "jpg", "jpeg", "gif", "svg", "ico", "webp"].includes(ext)) return "text-purple-400";
+  if (["png", "jpg", "jpeg", "gif", "svg", "ico", "webp"].includes(ext))
+    return "text-purple-400";
   // SQL
   if (ext === "sql") return "text-cyan-400";
   return "text-muted-foreground";
@@ -220,7 +267,13 @@ interface ContextMenuProps {
   onRequestDelete: (node: TreeNode) => void;
 }
 
-function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: ContextMenuProps) {
+function FileContextMenu({
+  menu,
+  appId,
+  onClose,
+  onRefresh,
+  onRequestDelete,
+}: ContextMenuProps) {
   const setSelectedFile = useSetAtom(selectedFileAtom);
   const menuRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<MenuMode>({ type: "idle" });
@@ -255,14 +308,20 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
 
   // Auto-focus input when mode changes to an input mode
   useEffect(() => {
-    if (mode.type === "new-file" || mode.type === "new-folder" || mode.type === "rename") {
+    if (
+      mode.type === "new-file" ||
+      mode.type === "new-folder" ||
+      mode.type === "rename"
+    ) {
       // Small delay so the input is rendered first
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [mode]);
 
   const basePath = menu.node
-    ? (menu.node.isDirectory ? menu.node.path : menu.node.path.split("/").slice(0, -1).join("/"))
+    ? menu.node.isDirectory
+      ? menu.node.path
+      : menu.node.path.split("/").slice(0, -1).join("/")
     : "";
 
   const handleSubmit = async () => {
@@ -273,12 +332,22 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
     try {
       if (mode.type === "new-file") {
         const filePath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath, content: "", skipCommit: true });
+        await ipc.app.editAppFile({
+          appId,
+          filePath,
+          content: "",
+          skipCommit: true,
+        });
         onRefresh();
         setSelectedFile({ path: filePath, line: null });
       } else if (mode.type === "new-folder") {
         const folderPath = basePath ? `${basePath}/${name}` : name;
-        await ipc.app.editAppFile({ appId, filePath: `${folderPath}/.gitkeep`, content: "", skipCommit: true });
+        await ipc.app.editAppFile({
+          appId,
+          filePath: `${folderPath}/.gitkeep`,
+          content: "",
+          skipCommit: true,
+        });
         onRefresh();
       } else if (mode.type === "rename" && menu.node) {
         const parts = menu.node.path.split("/");
@@ -286,7 +355,11 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
         if (name !== oldName) {
           const parentPath = parts.slice(0, -1).join("/");
           const newPath = parentPath ? `${parentPath}/${name}` : name;
-          await ipc.app.renameAppFile({ appId, oldPath: menu.node.path, newPath });
+          await ipc.app.renameAppFile({
+            appId,
+            oldPath: menu.node.path,
+            newPath,
+          });
           onRefresh();
         }
       }
@@ -323,12 +396,17 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
   };
 
   // ── Input view (new-file, new-folder, rename) ──
-  if (mode.type === "new-file" || mode.type === "new-folder" || mode.type === "rename") {
-    const label = mode.type === "new-file"
-      ? "Nuevo archivo"
-      : mode.type === "new-folder"
-        ? "Nueva carpeta"
-        : "Renombrar";
+  if (
+    mode.type === "new-file" ||
+    mode.type === "new-folder" ||
+    mode.type === "rename"
+  ) {
+    const label =
+      mode.type === "new-file"
+        ? "Nuevo archivo"
+        : mode.type === "new-folder"
+          ? "Nueva carpeta"
+          : "Renombrar";
 
     return (
       <div
@@ -342,13 +420,18 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={mode.type === "new-folder" ? "nombre-carpeta" : "nombre.ext"}
+          placeholder={
+            mode.type === "new-folder" ? "nombre-carpeta" : "nombre.ext"
+          }
           className="w-full bg-background border rounded px-2 py-1 text-sm outline-none focus:border-primary transition-colors"
           disabled={loading}
         />
         <div className="flex gap-2 justify-end mt-2">
           <button
-            onClick={() => { setMode({ type: "idle" }); setInputValue(""); }}
+            onClick={() => {
+              setMode({ type: "idle" });
+              setInputValue("");
+            }}
             className="px-2.5 py-1 text-xs rounded border hover:bg-accent transition-colors"
             disabled={loading}
           >
@@ -359,7 +442,11 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
             className="px-2.5 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             disabled={!inputValue.trim() || loading}
           >
-            {loading ? "Creando…" : mode.type === "rename" ? "Renombrar" : "Crear"}
+            {loading
+              ? "Creando…"
+              : mode.type === "rename"
+                ? "Renombrar"
+                : "Crear"}
           </button>
         </div>
       </div>
@@ -376,12 +463,18 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
     {
       label: "Nuevo archivo",
       icon: <FilePlus size={14} />,
-      action: () => { setInputValue(""); setMode({ type: "new-file" }); },
+      action: () => {
+        setInputValue("");
+        setMode({ type: "new-file" });
+      },
     },
     {
       label: "Nueva carpeta",
       icon: <FolderPlus size={14} />,
-      action: () => { setInputValue(""); setMode({ type: "new-folder" }); },
+      action: () => {
+        setInputValue("");
+        setMode({ type: "new-folder" });
+      },
     },
     null, // separator
     {
@@ -390,7 +483,9 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
       action: () => {
         onClose();
         if (appId) {
-          ipc.app.openAppFile({ appId, filePath: menu.node?.path ?? "." }).catch(showError);
+          ipc.app
+            .openAppFile({ appId, filePath: menu.node?.path ?? "." })
+            .catch(showError);
         }
       },
     },
@@ -403,12 +498,18 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
       {
         label: "Renombrar",
         icon: <Pencil size={14} />,
-        action: () => { setInputValue(oldName); setMode({ type: "rename" }); },
+        action: () => {
+          setInputValue(oldName);
+          setMode({ type: "rename" });
+        },
       },
       {
         label: "Eliminar",
         icon: <Trash2 size={14} />,
-        action: () => { onClose(); onRequestDelete(menu.node!); },
+        action: () => {
+          onClose();
+          onRequestDelete(menu.node!);
+        },
         destructive: true,
       },
     );
@@ -428,7 +529,9 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
             key={item.label}
             onClick={item.action}
             className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent transition-colors ${
-              item.destructive ? "text-destructive hover:text-destructive" : "text-popover-foreground"
+              item.destructive
+                ? "text-destructive hover:text-destructive"
+                : "text-popover-foreground"
             }`}
           >
             {item.icon}
@@ -439,8 +542,6 @@ function FileContextMenu({ menu, appId, onClose, onRefresh, onRequestDelete }: C
     </div>
   );
 }
-
-
 
 // ═══════════════════════════════════════════════════════════════════
 // FileTree (main component)
@@ -464,8 +565,10 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
   }, [appId]);
 
   const debouncedSearch = useDebouncedValue(searchValue, 250);
-  const isContentSearch = searchMode === "content" && debouncedSearch.trim().length > 0;
-  const isNameSearch = searchMode === "name" && debouncedSearch.trim().length > 0;
+  const isContentSearch =
+    searchMode === "content" && debouncedSearch.trim().length > 0;
+  const isNameSearch =
+    searchMode === "name" && debouncedSearch.trim().length > 0;
 
   // Content search via IPC grep (only when in content mode)
   const {
@@ -554,7 +657,11 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           <Input
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder={searchMode === "name" ? "Buscar por nombre" : "Buscar en contenido"}
+            placeholder={
+              searchMode === "name"
+                ? "Buscar por nombre"
+                : "Buscar en contenido"
+            }
             className="h-8 pl-7 pr-16 text-sm"
             data-testid="file-tree-search"
             disabled={!appId}
@@ -579,7 +686,10 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
         {/* Search mode toggle + collapse/expand buttons */}
         <div className="mt-1.5 flex items-center gap-1">
           <button
-            onClick={() => { setSearchMode("name"); setSearchValue(""); }}
+            onClick={() => {
+              setSearchMode("name");
+              setSearchValue("");
+            }}
             className={`px-2 py-0.5 text-xs rounded transition-colors ${
               searchMode === "name"
                 ? "bg-primary/15 text-primary font-medium"
@@ -589,7 +699,10 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             Nombre
           </button>
           <button
-            onClick={() => { setSearchMode("content"); setSearchValue(""); }}
+            onClick={() => {
+              setSearchMode("content");
+              setSearchValue("");
+            }}
             className={`px-2 py-0.5 text-xs rounded transition-colors ${
               searchMode === "content"
                 ? "bg-primary/15 text-primary font-medium"
@@ -712,7 +825,9 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
       {/* Delete confirmation — standard AlertDialog */}
       <AlertDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -721,8 +836,8 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Se eliminará <strong>{deleteTarget?.name}</strong>
-              {deleteTarget?.isDirectory ? " y todo su contenido" : ""}.
-              Esta acción no se puede deshacer.
+              {deleteTarget?.isDirectory ? " y todo su contenido" : ""}. Esta
+              acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -731,7 +846,10 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
               onClick={async () => {
                 if (!deleteTarget || !appId) return;
                 try {
-                  await ipc.app.deleteAppFile({ appId, filePath: deleteTarget.path });
+                  await ipc.app.deleteAppFile({
+                    appId,
+                    filePath: deleteTarget.path,
+                  });
                   handleRefresh();
                 } catch (err) {
                   showError(err);

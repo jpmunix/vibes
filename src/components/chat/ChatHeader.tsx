@@ -26,18 +26,22 @@ import {
   FileText,
 } from "@/components/ui/icons";
 
-import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "@/components/ui/icons";
+import {
+  PanelRightClose,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "@/components/ui/icons";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, previewModeAtom } from "@/atoms/appAtoms";
 import { Button } from "../ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
+import {
+  selectedChatIdAtom,
+  isStreamingByIdAtom,
+  recentStreamChatIdsAtom,
+} from "@/atoms/chatAtoms";
 
 import { useChats } from "@/hooks/useChats";
 import { useChatArtifacts } from "@/hooks/useChatArtifacts";
@@ -64,7 +68,11 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 // KnowledgeBaseModal — REMOVED
-import { chatPositionAtom, artifactsSidebarOpenAtom, selectedArtifactPathAtom } from "@/atoms/uiAtoms";
+import {
+  chatPositionAtom,
+  artifactsSidebarOpenAtom,
+  selectedArtifactPathAtom,
+} from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
@@ -94,7 +102,6 @@ export function ChatHeader({
   const { chats, invalidateChats } = useChats(appId);
   const { isStreaming } = useStreamChat();
 
-
   const { settings } = useSettings();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -102,9 +109,14 @@ export function ChatHeader({
   const isAnyCheckoutVersionInProgress = useAtomValue(
     isAnyCheckoutVersionInProgressAtom,
   );
-  const [chatToDelete, setChatToDelete] = useState<{ id: number; title: string } | null>(null);
-  const [chatToRename, setChatToRename] = useState<{ id: number; title: string } | null>(null);
-
+  const [chatToDelete, setChatToDelete] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+  const [chatToRename, setChatToRename] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
 
   const {
     branchInfo,
@@ -127,7 +139,8 @@ export function ChatHeader({
     if (!appId) return;
     // Use the current branch instead of hardcoded "main"
     const rawBranch = branchInfo?.branch;
-    const currentBranch = (rawBranch && rawBranch !== "<no-branch>") ? rawBranch : "main";
+    const currentBranch =
+      rawBranch && rawBranch !== "<no-branch>" ? rawBranch : "main";
     await checkoutVersion({ appId, versionId: currentBranch });
   };
 
@@ -157,18 +170,18 @@ export function ChatHeader({
     }
   };
 
-
-
   // Detect if we're browsing versions (detached HEAD is expected in that case)
   const isBrowsingVersions = previewMode === "versions";
   const isDetachedHead = branchInfo?.branch === "<no-branch>";
 
   // Friendly banner for version browsing (detached HEAD while in versions mode)
-  const showVersionBrowsingBanner = isDetachedHead && !isAnyCheckoutVersionInProgress;
+  const showVersionBrowsingBanner =
+    isDetachedHead && !isAnyCheckoutVersionInProgress;
 
   // Only show the real branch warning for genuine issues: master branch (needs rename)
   // Detached HEAD is handled separately above. Normal feature branches should NOT warn.
-  const showBranchWarning = !isBrowsingVersions && branchInfo && branchInfo.branch === "master";
+  const showBranchWarning =
+    !isBrowsingVersions && branchInfo && branchInfo.branch === "master";
 
   const currentBranchName = branchInfo?.branch;
 
@@ -189,7 +202,10 @@ export function ChatHeader({
         <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-b border-sky-200 dark:border-sky-800/50">
           <div className="flex items-center gap-2 text-sm">
             <Eye size={16} className="shrink-0" />
-            <span>Estás viendo una versión anterior. Los cambios no se guardarán hasta que restaures o vuelvas al estado actual.</span>
+            <span>
+              Estás viendo una versión anterior. Los cambios no se guardarán
+              hasta que restaures o vuelvas al estado actual.
+            </span>
           </div>
           <Button
             variant="outline"
@@ -198,15 +214,10 @@ export function ChatHeader({
             disabled={isCheckingOutVersion || branchInfoLoading}
             className="mt-1 @sm:mt-0 shrink-0 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40"
           >
-            {isCheckingOutVersion
-              ? "Volviendo..."
-              : "Volver al estado actual"}
+            {isCheckingOutVersion ? "Volviendo..." : "Volver al estado actual"}
           </Button>
         </div>
       )}
-
-
-
 
       {/* Show uncommitted files banner when on a branch and there are uncommitted changes */}
       {/* Hide while streaming to avoid distracting the user */}
@@ -215,182 +226,224 @@ export function ChatHeader({
       )}
 
       {!workspaceMode && (
-      <div className="@container flex items-center px-3 py-2 border-b border-border bg-sidebar no-app-region-drag h-[45px]">
-        <div className="flex items-center shrink-0">
-          <Button
-            onClick={handleNewChat}
-            variant="ghost"
-            className="hidden @2xs:flex items-center justify-start gap-1.5 mx-1 px-4 h-8 rounded-lg typo-tab"
-          >
-            <MessageSquarePlus size={17} />
-            <span>Nuevo chat</span>
-          </Button>
-        </div>
-
-        {/* Chat selector dropdown — next to options on the left */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <div className="@container flex items-center px-3 py-2 border-b border-border bg-sidebar no-app-region-drag h-[45px]">
+          <div className="flex items-center shrink-0">
             <Button
+              onClick={handleNewChat}
               variant="ghost"
-              className="flex items-center gap-1.5 typo-tab px-4 h-8 rounded-lg"
+              className="hidden @2xs:flex items-center justify-start gap-1.5 mx-1 px-4 h-8 rounded-lg typo-tab"
             >
-              <span className="flex items-center gap-2">
-                {(() => {
-                  const currentChat = chats.find((c) => c.id === selectedChatId);
-                  if (currentChat?.isPlan) {
+              <MessageSquarePlus size={17} />
+              <span>Nuevo chat</span>
+            </Button>
+          </div>
+
+          {/* Chat selector dropdown — next to options on the left */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1.5 typo-tab px-4 h-8 rounded-lg"
+              >
+                <span className="flex items-center gap-2">
+                  {(() => {
+                    const currentChat = chats.find(
+                      (c) => c.id === selectedChatId,
+                    );
+                    if (currentChat?.isPlan) {
+                      return (
+                        <>
+                          <Brain size={14} className="text-primary" />
+                          <span className="font-semibold text-primary">
+                            {currentChat.title || "Planificación"}
+                          </span>
+                        </>
+                      );
+                    }
                     return (
                       <>
-                        <Brain size={14} className="text-primary" />
-                        <span className="font-semibold text-primary">
-                          {currentChat.title || "Planificación"}
-                        </span>
+                        {isStreaming ? (
+                          <Loader2
+                            size={14}
+                            className="shrink-0 animate-spin text-primary"
+                          />
+                        ) : (
+                          <MessageSquare size={14} className="shrink-0" />
+                        )}
+                        <span>{currentChat?.title || "Chat"}</span>
                       </>
                     );
-                  }
-                  return (
-                    <>
-                      {isStreaming ? (
-                        <Loader2 size={14} className="shrink-0 animate-spin text-primary" />
-                      ) : (
-                        <MessageSquare size={14} className="shrink-0" />
-                      )}
-                      <span>
-                        {currentChat?.title || "Chat"}
-                      </span>
-                    </>
-                  );
-                })()}
-              </span>
-              <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-fit min-w-[380px] max-w-[550px] max-h-[400px] overflow-y-auto">
-            {chats.length === 0 ? (
-              <DropdownMenuItem disabled>
-                <span className="typo-caption text-muted-foreground">Sin chats</span>
-              </DropdownMenuItem>
-            ) : (
-              [...chats]
-                .sort((a, b) => {
-                  if (a.isPlan && !b.isPlan) return -1;
-                  if (!a.isPlan && b.isPlan) return 1;
-                  return 0;
-                })
-                .map((chat) => {
-                  const chatStreaming = isStreamingById.get(chat.id) ?? false;
-                  const chatUnread = selectedChatId === chat.id
-                    ? chat.isRead === false
-                    : (recentStreamChatIds.has(chat.id) || chat.isRead === false);
-                  return (
-                  <DropdownMenuItem
-                    key={chat.id}
-                    onClick={() => {
-                      setSelectedChatId(chat.id);
-                      navigate({
-                        to: "/chat",
-                        search: { id: chat.id },
-                      });
-                    }}
-                    className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
-                  >
-                    {chat.isPlan ? (
-                      <>
-                        <Brain size={14} className="mr-2 shrink-0 text-primary" />
-                        <span className="flex-1 font-semibold text-primary">
-                          {chat.title || "Planificación"}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="w-4 mr-1 shrink-0 flex items-center justify-center">
-                          {selectedChatId === chat.id && <Check size={14} className="text-primary" />}
-                        </span>
-                        {chatStreaming ? (
-                          <Loader2 size={14} className="mr-2 shrink-0 animate-spin text-primary" />
-                        ) : chatUnread ? (
-                          <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                          </span>
-                        ) : null}
-                        <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
-                          {chat.title || `Chat ${chat.id}`}
-                        </span>
+                  })()}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className="shrink-0 text-muted-foreground/70"
+                />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-fit min-w-[380px] max-w-[550px] max-h-[400px] overflow-y-auto"
+            >
+              {chats.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  <span className="typo-caption text-muted-foreground">
+                    Sin chats
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                [...chats]
+                  .sort((a, b) => {
+                    if (a.isPlan && !b.isPlan) return -1;
+                    if (!a.isPlan && b.isPlan) return 1;
+                    return 0;
+                  })
+                  .map((chat) => {
+                    const chatStreaming = isStreamingById.get(chat.id) ?? false;
+                    const chatUnread =
+                      selectedChatId === chat.id
+                        ? chat.isRead === false
+                        : recentStreamChatIds.has(chat.id) ||
+                          chat.isRead === false;
+                    return (
+                      <DropdownMenuItem
+                        key={chat.id}
+                        onClick={() => {
+                          setSelectedChatId(chat.id);
+                          navigate({
+                            to: "/chat",
+                            search: { id: chat.id },
+                          });
+                        }}
+                        className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
+                      >
+                        {chat.isPlan ? (
+                          <>
+                            <Brain
+                              size={14}
+                              className="mr-2 shrink-0 text-primary"
+                            />
+                            <span className="flex-1 font-semibold text-primary">
+                              {chat.title || "Planificación"}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-4 mr-1 shrink-0 flex items-center justify-center">
+                              {selectedChatId === chat.id && (
+                                <Check size={14} className="text-primary" />
+                              )}
+                            </span>
+                            {chatStreaming ? (
+                              <Loader2
+                                size={14}
+                                className="mr-2 shrink-0 animate-spin text-primary"
+                              />
+                            ) : chatUnread ? (
+                              <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                              </span>
+                            ) : null}
+                            <span
+                              className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}
+                            >
+                              {chat.title || `Chat ${chat.id}`}
+                            </span>
 
+                            <button
+                              title="Resumir a chat nuevo"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!appId) return;
+                                const tid = toast.loading(
+                                  "Generando resumen y creando chat nuevo...",
+                                );
+                                try {
+                                  const newChatId =
+                                    await ipc.chat.summarizeToNewChat({
+                                      appId,
+                                      chatId: chat.id,
+                                    });
+                                  await invalidateChats();
+                                  setSelectedChatId(newChatId);
+                                  navigate({
+                                    to: "/chat",
+                                    search: { id: newChatId },
+                                  });
+                                  toast.success(
+                                    "Resumen completado con éxito",
+                                    { id: tid },
+                                  );
+                                } catch (err) {
+                                  toast.error(
+                                    `Error: ${(err as any).toString()}`,
+                                    { id: tid },
+                                  );
+                                }
+                              }}
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                            >
+                              <Minimize2
+                                size={12}
+                                className="text-muted-foreground"
+                              />
+                            </button>
+                            <button
+                              title="Renombrar chat"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setChatToRename({
+                                  id: chat.id,
+                                  title: chat.title || `Chat ${chat.id}`,
+                                });
+                              }}
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
+                            >
+                              <Pencil
+                                size={12}
+                                className="text-muted-foreground"
+                              />
+                            </button>
+                            <button
+                              title="Eliminar chat"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setChatToDelete({
+                                  id: chat.id,
+                                  title: chat.title || `Chat ${chat.id}`,
+                                });
+                              }}
+                              className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                            >
+                              <Trash2 size={12} className="text-destructive" />
+                            </button>
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-                        <button
-                          title="Resumir a chat nuevo"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!appId) return;
-                            const tid = toast.loading("Generando resumen y creando chat nuevo...");
-                            try {
-                              const newChatId = await ipc.chat.summarizeToNewChat({ appId, chatId: chat.id });
-                              await invalidateChats();
-                              setSelectedChatId(newChatId);
-                              navigate({ to: "/chat", search: { id: newChatId } });
-                              toast.success("Resumen completado con éxito", { id: tid });
-                            } catch (err) {
-                              toast.error(`Error: ${(err as any).toString()}`, { id: tid });
-                            }
-                          }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
-                        >
-                          <Minimize2 size={12} className="text-muted-foreground" />
-                        </button>
-                        <button
-                          title="Renombrar chat"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setChatToRename({
-                              id: chat.id,
-                              title: chat.title || `Chat ${chat.id}`,
-                            });
-                          }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
-                        >
-                          <Pencil size={12} className="text-muted-foreground" />
-                        </button>
-                        <button
-                          title="Eliminar chat"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setChatToDelete({
-                              id: chat.id,
-                              title: chat.title || `Chat ${chat.id}`,
-                            });
-                          }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-1 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
-                        >
-                          <Trash2 size={12} className="text-destructive" />
-                        </button>
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  );
-                })
+          {/* Right: Expand + Position toggle | Session cost | Artifacts */}
+          <div className="flex-1 flex items-center justify-end pr-1 gap-1.5">
+            <ArtifactsDropdown chatId={selectedChatId} />
+            {!workspaceMode && (
+              <ExpandChatButton
+                isPreviewOpen={isPreviewOpen}
+                onTogglePreview={onTogglePreview}
+              />
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Right: Expand + Position toggle | Session cost | Artifacts */}
-        <div className="flex-1 flex items-center justify-end pr-1 gap-1.5">
-          <ArtifactsDropdown chatId={selectedChatId} />
-          {!workspaceMode && (
-            <ExpandChatButton
-              isPreviewOpen={isPreviewOpen}
-              onTogglePreview={onTogglePreview}
-            />
-          )}
-          <ChatPositionToggleInline />
-          <div className="w-px h-4 bg-border/60 shrink-0" />
-          {/* Gasto de sesion — ver tambien workspace.tsx (comentario arriba del archivo) */}
-          {settings?.showCostDisplay && <SessionCostBadge chatId={selectedChatId} />}
+            <ChatPositionToggleInline />
+            <div className="w-px h-4 bg-border/60 shrink-0" />
+            {/* Gasto de sesion — ver tambien workspace.tsx (comentario arriba del archivo) */}
+            {settings?.showCostDisplay && (
+              <SessionCostBadge chatId={selectedChatId} />
+            )}
+          </div>
         </div>
-
-      </div>
       )}
-
-
 
       <ConfirmationDialog
         isOpen={!!chatToDelete}
@@ -421,7 +474,9 @@ export function ChatHeader({
             }
             showSuccess("Chat eliminado");
           } catch (error) {
-            showError(`Error al eliminar el chat: ${(error as any).toString()}`);
+            showError(
+              `Error al eliminar el chat: ${(error as any).toString()}`,
+            );
           } finally {
             setChatToDelete(null);
           }
@@ -429,7 +484,12 @@ export function ChatHeader({
         onCancel={() => setChatToDelete(null)}
       />
 
-      <Dialog open={!!chatToRename} onOpenChange={(open) => { if (!open) setChatToRename(null); }}>
+      <Dialog
+        open={!!chatToRename}
+        onOpenChange={(open) => {
+          if (!open) setChatToRename(null);
+        }}
+      >
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Renombrar chat</DialogTitle>
@@ -442,7 +502,10 @@ export function ChatHeader({
               const newTitle = (formData.get("title") as string).trim();
               if (newTitle && newTitle !== chatToRename.title) {
                 try {
-                  await ipc.chat.updateChat({ chatId: chatToRename.id, title: newTitle });
+                  await ipc.chat.updateChat({
+                    chatId: chatToRename.id,
+                    title: newTitle,
+                  });
                   await invalidateChats();
                   showSuccess("Título actualizado");
                 } catch (err) {
@@ -460,12 +523,14 @@ export function ChatHeader({
               placeholder="Título del chat"
             />
             <DialogFooter className="mt-4">
-              <Button type="button" variant="ghost" onClick={() => setChatToRename(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setChatToRename(null)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit">
-                Guardar
-              </Button>
+              <Button type="submit">Guardar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -499,9 +564,16 @@ function SessionCostBadge({ chatId }: { chatId: number | null }) {
           <span className="tabular-nums tracking-tight">{shortDisplay}</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-center p-3 rounded-xl shadow-lg border-border bg-popover text-popover-foreground">
-        <div className="typo-body text-muted-foreground mb-1">Gasto en esta sesión</div>
-        <div className="typo-mono text-lg font-bold text-foreground">{fullPrecision}</div>
+      <TooltipContent
+        side="bottom"
+        className="text-center p-3 rounded-xl shadow-lg border-border bg-popover text-popover-foreground"
+      >
+        <div className="typo-body text-muted-foreground mb-1">
+          Gasto en esta sesión
+        </div>
+        <div className="typo-mono text-lg font-bold text-foreground">
+          {fullPrecision}
+        </div>
       </TooltipContent>
     </Tooltip>
   );
@@ -627,7 +699,11 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
   const { artifacts, invalidateArtifacts } = useChatArtifacts(chatId);
   const [sidebarOpen, setSidebarOpen] = useAtom(artifactsSidebarOpenAtom);
   const [selectedPath, setSelectedPath] = useAtom(selectedArtifactPathAtom);
-  const [artifactToDecouple, setArtifactToDecouple] = useState<{ id: number; title: string; path: string } | null>(null);
+  const [artifactToDecouple, setArtifactToDecouple] = useState<{
+    id: number;
+    title: string;
+    path: string;
+  } | null>(null);
 
   const { data: appPlans = [], refetch: refetchAppPlans } = useQuery({
     queryKey: ["appPlans", appId],
@@ -638,14 +714,16 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
         if (!a.createdAt && !b.createdAt) return 0;
         if (!a.createdAt) return 1;
         if (!b.createdAt) return -1;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       });
     },
     enabled: !!appId,
   });
 
   const unattachedPlans = appPlans.filter(
-    (p) => !artifacts.some((a) => a.path === p.path)
+    (p) => !artifacts.some((a) => a.path === p.path),
   );
 
   const hasUnreviewed = artifacts.some((a) => !a.accepted);
@@ -676,12 +754,22 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative h-8 w-8" title="Ver planificaciones y artefactos">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-8 w-8"
+            title="Ver planificaciones y artefactos"
+          >
             <FileText size={16} />
-            {hasUnreviewed && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />}
+            {hasUnreviewed && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />
+            )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[280px] max-w-[560px] w-auto">
+        <DropdownMenuContent
+          align="end"
+          className="min-w-[280px] max-w-[560px] w-auto"
+        >
           {artifacts.length > 0 && (
             <div className="flex flex-col gap-0.5">
               <div className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider px-2 py-1.5">
@@ -697,10 +785,20 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
                   className="group cursor-pointer py-2 flex items-center justify-between gap-2"
                 >
                   <div className="flex flex-col gap-0.5 w-full min-w-0">
-                    <span className="font-medium text-sm break-words whitespace-normal">{artifact.title || artifact.path}</span>
+                    <span className="font-medium text-sm break-words whitespace-normal">
+                      {artifact.title || artifact.path}
+                    </span>
                     {artifact.createdAt && (
                       <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                        {new Date(artifact.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })} · {new Date(artifact.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(artifact.createdAt).toLocaleDateString(
+                          "es-ES",
+                          { day: "2-digit", month: "short" },
+                        )}{" "}
+                        ·{" "}
+                        {new Date(artifact.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     )}
                   </div>
@@ -740,7 +838,9 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
                   className="group cursor-pointer py-2 flex items-center justify-between gap-2"
                 >
                   <div className="flex flex-col gap-0.5 w-full min-w-0">
-                    <span className="font-medium text-sm break-words whitespace-normal">{plan.title || plan.path}</span>
+                    <span className="font-medium text-sm break-words whitespace-normal">
+                      {plan.title || plan.path}
+                    </span>
                     {plan.chatTitle && (
                       <span className="text-[10px] text-muted-foreground/60">
                         Asociado a: {plan.chatTitle}
@@ -780,7 +880,9 @@ function ArtifactsDropdown({ chatId }: { chatId: number | null }) {
             refetchAppPlans();
             showSuccess("Plan desacoplado del chat");
           } catch (error) {
-            showError(`Error al desacoplar el plan: ${(error as any).toString()}`);
+            showError(
+              `Error al desacoplar el plan: ${(error as any).toString()}`,
+            );
           } finally {
             setArtifactToDecouple(null);
           }

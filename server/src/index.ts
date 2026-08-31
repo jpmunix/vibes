@@ -146,7 +146,9 @@ app.get("/api/health", async () => ({ status: "ok", timestamp: Date.now() }));
 // Handle port-in-use gracefully (common during --watch restarts)
 httpServer.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.error(`⚠️  Port ${PORT} is in use. Waiting for file changes to retry...`);
+    console.error(
+      `⚠️  Port ${PORT} is in use. Waiting for file changes to retry...`,
+    );
   } else {
     console.error("Server error:", err);
     process.exit(1);

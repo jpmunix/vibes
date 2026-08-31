@@ -156,7 +156,7 @@ export function CrossChatNotification() {
             : primary.question
           : "El agente necesita tu respuesta en otro chat";
 
-      sendAppNotification({ title: "Vibes", body, settings: settings ?? null });
+      sendAppNotification({ title: "Vibes", body, settings: settings ?? null, chatId });
     }
 
     // Clean up chatIds that are no longer pending

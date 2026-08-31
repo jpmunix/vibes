@@ -1,15 +1,43 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ExternalLink, Play, RotateCcw, Square, Terminal } from "@/components/ui/icons";
+import {
+  ExternalLink,
+  Play,
+  RotateCcw,
+  Square,
+  Terminal,
+} from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 
 type ServerStatus = "running" | "stopped" | "error";
 
 interface ServerControlButtonProps {
   appId: number;
+}
+
+interface ScriptEntry {
+  name: string;
+  command: string;
 }
 
 /**
@@ -20,6 +48,8 @@ interface ServerControlButtonProps {
  * - Starting: amber Play icon (pulsing)
  * - Running:  green Play icon + Restart / Stop / Console icons appear
  * - Error:    red Play icon + Restart icon
+ *
+ * When stopped/error, clicking Play opens a popover to select a package.json script.
  */
 export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const [status, setStatus] = useState<ServerStatus>("stopped");
@@ -27,6 +57,12 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const [loading, setLoading] = useState(false);
   const { runApp, stopApp, restartApp } = useRunApp();
   const { theme, intensity } = useTheme();
+
+  // Script selector state
+  const [scriptPopoverOpen, setScriptPopoverOpen] = useState(false);
+  const [scripts, setScripts] = useState<ScriptEntry[]>([]);
+  const [scriptsLoading, setScriptsLoading] = useState(false);
+  const scriptsLoadedRef = useRef(false);
 
   // Poll server status every 2 seconds
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -43,10 +79,7 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   }, [appId]);
 
   useEffect(() => {
-    // Initial fetch
     fetchStatus();
-
-    // Start polling
     pollRef.current = setInterval(fetchStatus, 2000);
 
     return () => {
@@ -63,11 +96,79 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     fetchStatus();
   }, [appId, fetchStatus]);
 
-  const handleStart = useCallback(async () => {
+  // Fetch scripts from package.json (called once when popover opens)
+  const loadScripts = useCallback(async () => {
+    if (scriptsLoadedRef.current || scriptsLoading) return;
+    setScriptsLoading(true);
+    try {
+      const content = await ipc.app.readAppFile({
+        appId,
+        filePath: "package.json",
+      });
+      const pkg = JSON.parse(content);
+      const scriptEntries: ScriptEntry[] = [];
+      if (pkg.scripts && typeof pkg.scripts === "object") {
+        for (const [name, command] of Object.entries(pkg.scripts)) {
+          scriptEntries.push({ name, command: String(command) });
+        }
+      }
+      setScripts(scriptEntries);
+      scriptsLoadedRef.current = true;
+    } catch {
+      setScripts([]);
+      scriptsLoadedRef.current = true;
+    } finally {
+      setScriptsLoading(false);
+    }
+  }, [appId, scriptsLoading]);
+
+  // Reset scripts cache when appId changes
+  useEffect(() => {
+    scriptsLoadedRef.current = false;
+    setScripts([]);
+  }, [appId]);
+
+  const handlePopoverOpenChange = useCallback(
+    (open: boolean) => {
+      setScriptPopoverOpen(open);
+      if (open) {
+        loadScripts();
+      }
+    },
+    [loadScripts],
+  );
+
+  const handleStartWithScript = useCallback(
+    async (scriptName: string) => {
+      setScriptPopoverOpen(false);
+      setLoading(true);
+      try {
+        const resolvedCommand = `npm run ${scriptName}`;
+        await ipc.app.updateAppCommands({
+          appId,
+          installCommand: null,
+          startCommand: resolvedCommand,
+        });
+        await runApp(appId);
+      } catch {
+        // Let poll detect error status
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appId, runApp],
+  );
+
+  const handleStartDefault = useCallback(async () => {
+    setScriptPopoverOpen(false);
     setLoading(true);
     try {
+      await ipc.app.updateAppCommands({
+        appId,
+        installCommand: null,
+        startCommand: null,
+      });
       await runApp(appId);
-      // Don't optimistically set status — let poll detect the real state
     } catch {
       // Let poll detect error status
     } finally {
@@ -93,7 +194,6 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     setAppUrl(undefined);
     try {
       await restartApp();
-      // Don't optimistically set status — let poll detect the real state
     } catch {
       // Let poll detect error status
     } finally {
@@ -121,7 +221,6 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const isStopped = status === "stopped";
   const isError = status === "error";
 
-  // Determine play icon color + style
   const playIconClass = cn(
     "h-3.5 w-3.5 transition-colors duration-300",
     isStopped && "text-zinc-400 dark:text-zinc-500",
@@ -130,7 +229,6 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     isError && "text-red-500",
   );
 
-  // Shared icon-button style
   const btnBase = cn(
     "p-1.5 rounded-md transition-all duration-200",
     "text-muted-foreground hover:text-foreground",
@@ -139,29 +237,112 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     loading && "opacity-40 pointer-events-none",
   );
 
+  const showScriptSelector = isStopped || isError;
+
   return (
     <div className="flex items-center gap-0.5">
       {/* Play — only when stopped, starting, or error (disappears once fully active) */}
       {!isActive && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              className={cn(btnBase, "relative")}
-              onClick={isStopped || isError ? handleStart : undefined}
-              disabled={loading || isStarting}
-              style={{ cursor: isStopped || isError ? "pointer" : "default" }}
-            >
-              <Play
-                className={playIconClass}
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {isStopped ? "Iniciar servidor" :
-             isStarting ? "Iniciando…" :
-             isError ? "Error — clic para reiniciar" : ""}
-          </TooltipContent>
-        </Tooltip>
+        <>
+          {showScriptSelector ? (
+            <Tooltip>
+              <Popover
+                open={scriptPopoverOpen}
+                onOpenChange={handlePopoverOpenChange}
+              >
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(btnBase, "relative")}
+                      disabled={loading || isStarting}
+                    >
+                      <Play className={playIconClass} />
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {isStopped
+                    ? "Iniciar servidor"
+                    : isError
+                      ? "Error — clic para reiniciar"
+                      : ""}
+                </TooltipContent>
+                <PopoverContent
+                  align="end"
+                  side="bottom"
+                  className="w-72 p-0"
+                  sideOffset={4}
+                >
+                  <Command>
+                    <CommandInput placeholder="Buscar script…" />
+                    <CommandList>
+                      <CommandEmpty>
+                        {scriptsLoading
+                          ? "Cargando scripts…"
+                          : "No se encontraron scripts"}
+                      </CommandEmpty>
+                      {scripts.length > 0 && (
+                        <CommandGroup heading="Scripts del proyecto">
+                          {scripts.map((script) => (
+                            <CommandItem
+                              key={script.name}
+                              value={script.name}
+                              keywords={[script.name, script.command]}
+                              onSelect={() =>
+                                handleStartWithScript(script.name)
+                              }
+                              className="cursor-pointer"
+                            >
+                              <div className="flex flex-col gap-0 flex-1 min-w-0">
+                                <span className="whitespace-nowrap font-medium">
+                                  {script.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground/70 truncate">
+                                  {script.command}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                      <CommandGroup heading="General">
+                        <CommandItem
+                          value="__default__"
+                          keywords={["default", "npm run dev"]}
+                          onSelect={handleStartDefault}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex flex-col gap-0 flex-1 min-w-0">
+                            <span className="whitespace-nowrap font-medium">
+                              Default (npm run dev)
+                            </span>
+                            <span className="text-xs text-muted-foreground/70 truncate">
+                              Arranca con el comando por defecto
+                            </span>
+                          </div>
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className={cn(btnBase, "relative")}
+                  disabled={loading || isStarting}
+                >
+                  <Play className={playIconClass} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {isStarting ? "Iniciando…" : ""}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </>
       )}
 
       {/* Restart / Stop / Console / Browser — only once server is 100% active */}
@@ -178,7 +359,9 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
                 <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Reiniciar servidor</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Reiniciar servidor
+            </TooltipContent>
           </Tooltip>
 
           {/* Stop */}
@@ -192,33 +375,33 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
                 <Square className="h-3.5 w-3.5 text-red-500" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Detener servidor</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Detener servidor
+            </TooltipContent>
           </Tooltip>
 
           {/* Console */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                className={btnBase}
-                onClick={handleOpenConsole}
-              >
+              <button className={btnBase} onClick={handleOpenConsole}>
                 <Terminal className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Ver consola</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Ver consola
+            </TooltipContent>
           </Tooltip>
 
           {/* Open in browser */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                className={btnBase}
-                onClick={handleOpenInBrowser}
-              >
+              <button className={btnBase} onClick={handleOpenInBrowser}>
                 <ExternalLink className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Abrir en navegador</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Abrir en navegador
+            </TooltipContent>
           </Tooltip>
         </>
       )}

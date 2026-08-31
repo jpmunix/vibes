@@ -36,7 +36,6 @@ export const queryKeys = {
       ["chats", "search", appId, query] as const,
   },
 
-
   // ─────────────────────────────────────────────────────────────────────────────
   // Proposals
   // ─────────────────────────────────────────────────────────────────────────────
@@ -115,8 +114,6 @@ export const queryKeys = {
     check: ({ name }: { name: string }) => ["checkAppName", name] as const,
   },
 
-
-
   // ─────────────────────────────────────────────────────────────────────────────
   // Templates
   // ─────────────────────────────────────────────────────────────────────────────
@@ -154,7 +151,6 @@ export const queryKeys = {
   userBudget: {
     info: ["userBudgetInfo"] as const,
   },
-
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Vercel Deployments
@@ -256,7 +252,8 @@ export const queryKeys = {
   // ─────────────────────────────────────────────────────────────────────────────
   bunny: {
     all: ["bunny"] as const,
-    config: ({ appId }: { appId: number }) => ["bunny", "config", appId] as const,
+    config: ({ appId }: { appId: number }) =>
+      ["bunny", "config", appId] as const,
     dbTables: (appId: number) => ["bunny", "db-tables", appId] as const,
     dbTableData: (
       appId: number,
@@ -282,7 +279,8 @@ export const queryKeys = {
   // ─────────────────────────────────────────────────────────────────────────────
   pocketbase: {
     all: ["pocketbase"] as const,
-    config: ({ appId }: { appId: number }) => ["pocketbase", "config", appId] as const,
+    config: ({ appId }: { appId: number }) =>
+      ["pocketbase", "config", appId] as const,
     dbTables: (appId: number) => ["pocketbase", "db-tables", appId] as const,
     dbTableData: (
       appId: number,
@@ -320,8 +318,8 @@ export const queryKeys = {
 export type QueryKeyOf<T> = T extends readonly unknown[]
   ? T
   : T extends (...args: never[]) => infer R
-  ? R
-  : never;
+    ? R
+    : never;
 
 /** All possible query keys (useful for typing queryClient operations) */
 export type AppQueryKey =
@@ -331,12 +329,12 @@ export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.versions)[keyof typeof queryKeys.versions]>
   | QueryKeyOf<(typeof queryKeys.branches)[keyof typeof queryKeys.branches]>
   | QueryKeyOf<
-    (typeof queryKeys.uncommittedFiles)[keyof typeof queryKeys.uncommittedFiles]
-  >
+      (typeof queryKeys.uncommittedFiles)[keyof typeof queryKeys.uncommittedFiles]
+    >
   | QueryKeyOf<(typeof queryKeys.problems)[keyof typeof queryKeys.problems]>
   | QueryKeyOf<
-    (typeof queryKeys.contextPaths)[keyof typeof queryKeys.contextPaths]
-  >
+      (typeof queryKeys.contextPaths)[keyof typeof queryKeys.contextPaths]
+    >
   | QueryKeyOf<(typeof queryKeys.tokenCount)[keyof typeof queryKeys.tokenCount]>
   | QueryKeyOf<(typeof queryKeys.files)[keyof typeof queryKeys.files]>
   | QueryKeyOf<(typeof queryKeys.appName)[keyof typeof queryKeys.appName]>
@@ -344,17 +342,15 @@ export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.prompts)[keyof typeof queryKeys.prompts]>
   | QueryKeyOf<(typeof queryKeys.agentTools)[keyof typeof queryKeys.agentTools]>
   | QueryKeyOf<
-    (typeof queryKeys.languageModels)[keyof typeof queryKeys.languageModels]
-  >
+      (typeof queryKeys.languageModels)[keyof typeof queryKeys.languageModels]
+    >
   | QueryKeyOf<(typeof queryKeys.userBudget)[keyof typeof queryKeys.userBudget]>
   | QueryKeyOf<(typeof queryKeys.vercel)[keyof typeof queryKeys.vercel]>
   | QueryKeyOf<
-    (typeof queryKeys.appUpgrades)[keyof typeof queryKeys.appUpgrades]
-  >
+      (typeof queryKeys.appUpgrades)[keyof typeof queryKeys.appUpgrades]
+    >
   | QueryKeyOf<(typeof queryKeys.mcp)[keyof typeof queryKeys.mcp]>
   | QueryKeyOf<(typeof queryKeys.supabase)[keyof typeof queryKeys.supabase]>
   | QueryKeyOf<(typeof queryKeys.neon)[keyof typeof queryKeys.neon]>
-  | QueryKeyOf<
-    (typeof queryKeys.appEnvVars)[keyof typeof queryKeys.appEnvVars]
-  >
+  | QueryKeyOf<(typeof queryKeys.appEnvVars)[keyof typeof queryKeys.appEnvVars]>
   | QueryKeyOf<(typeof queryKeys.firebase)[keyof typeof queryKeys.firebase]>;

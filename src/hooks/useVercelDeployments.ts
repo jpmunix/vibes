@@ -2,7 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipc, type VercelDeployment } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function useVercelDeployments(appId: number, { enabled = true }: { enabled?: boolean } = {}) {
+export function useVercelDeployments(
+  appId: number,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const queryClient = useQueryClient();
 
   const {

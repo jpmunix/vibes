@@ -32,7 +32,9 @@ const httpFetchSchema = z.object({
   headers: z
     .record(z.string(), z.string())
     .optional()
-    .describe("Optional headers to send with the request (e.g. { \"Authorization\": \"Bearer ...\" })."),
+    .describe(
+      'Optional headers to send with the request (e.g. { "Authorization": "Bearer ..." }).',
+    ),
   body: z
     .string()
     .optional()
@@ -48,7 +50,9 @@ const httpFetchSchema = z.object({
     .int()
     .positive()
     .default(50_000)
-    .describe("Maximum response body size to return in characters (default: 50000). Larger responses will be truncated."),
+    .describe(
+      "Maximum response body size to return in characters (default: 50000). Larger responses will be truncated.",
+    ),
 });
 
 type HttpFetchArgs = z.infer<typeof httpFetchSchema>;
@@ -80,8 +84,7 @@ EXAMPLES:
   inputSchema: httpFetchSchema,
   defaultConsent: "ask",
 
-  getConsentPreview: (args) =>
-    `${args.method || "GET"} ${args.url}`,
+  getConsentPreview: (args) => `${args.method || "GET"} ${args.url}`,
 
   buildXml: (args, isComplete) => {
     if (!args.url) return undefined;
@@ -152,7 +155,9 @@ EXAMPLES:
       } else {
         const rawBody = await resp.text();
         if (rawBody.length > maxChars) {
-          bodyText = rawBody.slice(0, maxChars) + `\n\n--- Truncated (${rawBody.length} total chars, showing first ${maxChars}) ---`;
+          bodyText =
+            rawBody.slice(0, maxChars) +
+            `\n\n--- Truncated (${rawBody.length} total chars, showing first ${maxChars}) ---`;
         } else {
           bodyText = rawBody;
         }
@@ -186,7 +191,7 @@ EXAMPLES:
           ? `Request timed out after ${args.timeout_ms}ms`
           : err.code === "ECONNREFUSED"
             ? `Connection refused at ${args.url}`
-            : err.message ?? String(err);
+            : (err.message ?? String(err));
 
       const result = `❌ HTTP ${method} ${args.url} failed (${elapsed}ms): ${errorMsg}`;
       logger.warn(result);

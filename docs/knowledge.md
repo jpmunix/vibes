@@ -23,7 +23,7 @@ The Knowledge Base allows the AI to **automatically learn** project-specific con
   - 📐 **Convention** — Code standards (e.g., "use camelCase for TSX files")
   - 🔁 **Pattern** — Recurring architectural patterns (e.g., "use React Query for all API requests")
   - ⚙️ **Preference** — Stable dev preferences (e.g., "prefer CSS modules over Tailwind")
-  - 🚫 **Rule** — Absolute prohibitions (e.g., "NEVER use `any` type")  
+  - 🚫 **Rule** — Absolute prohibitions (e.g., "NEVER use `any` type")
   - 🧩 **Component** — Mandatory project components (e.g., "use our custom Dialog, not `confirm()`")
 - **Context-Aware**: The extractor sees existing knowledge and avoids semantic duplicates and contradictions
 - **Compressed Prompt Injection**: Active entries are injected into the system prompt in a dense format
@@ -34,16 +34,19 @@ The Knowledge Base allows the AI to **automatically learn** project-specific con
 The Knowledge Base is accessible from **Application Details → Base de Conocimientos IA** button.
 
 ### Tabs
+
 - **Activas**: Enabled entries grouped by category. Rules always appear regardless of cap.
 - **Pendientes**: Auto-extracted entries that need review (low confidence or `project-phase` durability)
 
 ### Actions
+
 - **Limpiar ruido**: AI-powered analysis that flags noise, redundancies, and contradictions
 - **Aprobar todas / Descartar todas**: Bulk actions for pending entries
 - **Manual add/edit/toggle/delete**: Full CRUD on individual entries
 
 ### Health Indicators
-- Active count vs MAX_ENTRIES cap (50)  
+
+- Active count vs MAX_ENTRIES cap (50)
 - Pending review count with pulse animation
 - Inline flags: 🟥 Noise, 🟡 Contradiction, 🟠 Redundant
 
@@ -53,20 +56,20 @@ The Knowledge Base is accessible from **Application Details → Base de Conocimi
 
 Stored in the `knowledge_entries` SQLite table (Drizzle ORM):
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | integer | Primary key |
-| `app_id` | integer | FK to apps |
-| `category` | text | convention, pattern, preference, rule, component |
-| `content` | text | The actual knowledge text |
-| `source` | text | manual, auto-extracted, inferred |
-| `confidence` | integer | 0-100 score |
-| `enabled` | boolean | Whether the entry is active |
-| `durability` | text | permanent, project-phase, temporary |
-| `superseded_by` | integer | ID of entry that replaced this one |
-| `last_confirmed_at` | timestamp | When user last manually confirmed |
-| `created_at` | timestamp | Creation time |
-| `updated_at` | timestamp | Last update time |
+| Column              | Type      | Description                                      |
+| ------------------- | --------- | ------------------------------------------------ |
+| `id`                | integer   | Primary key                                      |
+| `app_id`            | integer   | FK to apps                                       |
+| `category`          | text      | convention, pattern, preference, rule, component |
+| `content`           | text      | The actual knowledge text                        |
+| `source`            | text      | manual, auto-extracted, inferred                 |
+| `confidence`        | integer   | 0-100 score                                      |
+| `enabled`           | boolean   | Whether the entry is active                      |
+| `durability`        | text      | permanent, project-phase, temporary              |
+| `superseded_by`     | integer   | ID of entry that replaced this one               |
+| `last_confirmed_at` | timestamp | When user last manually confirmed                |
+| `created_at`        | timestamp | Creation time                                    |
+| `updated_at`        | timestamp | Last update time                                 |
 
 ### Flow
 

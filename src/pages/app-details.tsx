@@ -106,16 +106,21 @@ export default function AppDetailsPage() {
   const [isRenamingFolder, setIsRenamingFolder] = useState(false);
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isAddIntegrationOpen, setIsAddIntegrationOpen] = useState(false);
-  const [addingIntegration, setAddingIntegration] = useState<'github' | 'bunny' | 'supabase' | 'pocketbase' | null>(null);
-  const { toggleFavorite, isLoading: isFavoriteLoading } = useAddAppToFavorite();
+  const [addingIntegration, setAddingIntegration] = useState<
+    "github" | "bunny" | "supabase" | "pocketbase" | null
+  >(null);
+  const { toggleFavorite, isLoading: isFavoriteLoading } =
+    useAddAppToFavorite();
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [newCopyAppName, setNewCopyAppName] = useState("");
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
 
-
-  const [initialPrompt, setInitialPrompt] = useState<{ content: string | null; createdAt: Date | string | null } | null>(null);
+  const [initialPrompt, setInitialPrompt] = useState<{
+    content: string | null;
+    createdAt: Date | string | null;
+  } | null>(null);
   const [isLoadingInitialPrompt, setIsLoadingInitialPrompt] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
 
@@ -138,7 +143,8 @@ export default function AppDetailsPage() {
   useEffect(() => {
     if (appId && !initialPrompt && !isLoadingInitialPrompt) {
       setIsLoadingInitialPrompt(true);
-      ipc.chat.getInitialPrompt(appId)
+      ipc.chat
+        .getInitialPrompt(appId)
         .then((result) => {
           setInitialPrompt(result);
         })
@@ -439,7 +445,10 @@ export default function AppDetailsPage() {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-64"
-        style={{ background: 'radial-gradient(ellipse 60% 100% at 50% -20%, color-mix(in oklch, var(--primary) 8%, transparent), transparent)' }}
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 100% at 50% -20%, color-mix(in oklch, var(--primary) 8%, transparent), transparent)",
+        }}
       />
 
       <div className="absolute inset-0 overflow-y-auto overflow-x-hidden z-10">
@@ -470,19 +479,26 @@ export default function AppDetailsPage() {
             {/* Action buttons */}
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                {(!selectedApp.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage?.toLowerCase?.())) && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (!appId) return;
-                    ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
-                  }}
-                  className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-primary/10 border-primary/20 text-primary hover:bg-primary/15 transition-colors"
-                  size="lg"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  Abrir en Chat
-                </Button>
+                {(!selectedApp.primaryLanguage ||
+                  ["javascript", "typescript", "unknown"].includes(
+                    selectedApp.primaryLanguage?.toLowerCase?.(),
+                  )) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (!appId) return;
+                      ipc.system.openChatWindow({
+                        appId,
+                        theme,
+                        themeIntensity: intensity,
+                      });
+                    }}
+                    className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-primary/10 border-primary/20 text-primary hover:bg-primary/15 transition-colors"
+                    size="lg"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Abrir en Chat
+                  </Button>
                 )}
                 <Button
                   variant="outline"
@@ -510,12 +526,21 @@ export default function AppDetailsPage() {
                           <ChevronDown className="h-3 w-3 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="center" className="min-w-[160px]">
-                        <DropdownMenuItem onClick={handleDownloadDesign} className="cursor-pointer">
+                      <DropdownMenuContent
+                        align="center"
+                        className="min-w-[160px]"
+                      >
+                        <DropdownMenuItem
+                          onClick={handleDownloadDesign}
+                          className="cursor-pointer"
+                        >
                           <Download className="h-4 w-4" />
                           Descargar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleShareDesign} className="cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={handleShareDesign}
+                          className="cursor-pointer"
+                        >
                           <Share2 className="h-4 w-4" />
                           Compartir
                         </DropdownMenuItem>
@@ -535,12 +560,21 @@ export default function AppDetailsPage() {
                           <ChevronDown className="h-3 w-3 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="center" className="min-w-[160px]">
-                        <DropdownMenuItem onClick={handleDownloadAgentsMd} className="cursor-pointer">
+                      <DropdownMenuContent
+                        align="center"
+                        className="min-w-[160px]"
+                      >
+                        <DropdownMenuItem
+                          onClick={handleDownloadAgentsMd}
+                          className="cursor-pointer"
+                        >
                           <Download className="h-4 w-4" />
                           Descargar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleShareAgentsMd} className="cursor-pointer">
+                        <DropdownMenuItem
+                          onClick={handleShareAgentsMd}
+                          className="cursor-pointer"
+                        >
                           <Share2 className="h-4 w-4" />
                           Compartir
                         </DropdownMenuItem>
@@ -555,18 +589,25 @@ export default function AppDetailsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1.5 h-8 text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer self-center"
-                  onClick={() => ipc.system.openMemoryWindow({ appId, theme, themeIntensity: intensity })}
+                  onClick={() =>
+                    ipc.system.openMemoryWindow({
+                      appId,
+                      theme,
+                      themeIntensity: intensity,
+                    })
+                  }
                 >
                   <Database className="h-3.5 w-3.5" />
                   <span className="text-xs">Directrices</span>
                 </Button>
               )}
 
-
               {/* ── Integraciones ── */}
               <div className="mt-6">
                 <div className="flex items-center gap-2 mb-3 px-1">
-                  <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">Integraciones</span>
+                  <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
+                    Integraciones
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {/* ── Connected integrations ── */}
@@ -576,7 +617,10 @@ export default function AppDetailsPage() {
                       icon={<Github className="h-5 w-5" />}
                       description={`${selectedApp.githubOrg}/${selectedApp.githubRepo}`}
                     >
-                      <GitHubConnector appId={appId} folderName={selectedApp.path} />
+                      <GitHubConnector
+                        appId={appId}
+                        folderName={selectedApp.path}
+                      />
                       {appId && (
                         <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
                           <GithubCollaboratorManager appId={appId} />
@@ -584,9 +628,15 @@ export default function AppDetailsPage() {
                       )}
                     </CollapsibleCard>
                   )}
-                  {selectedApp.bunnyConfig && appId && <BunnyConnector appId={appId} />}
-                  {selectedApp.supabaseProjectId && appId && <SupabaseConnector appId={appId} />}
-                  {selectedApp.pocketbaseConfig && appId && <PocketBaseConnector appId={appId} />}
+                  {selectedApp.bunnyConfig && appId && (
+                    <BunnyConnector appId={appId} />
+                  )}
+                  {selectedApp.supabaseProjectId && appId && (
+                    <SupabaseConnector appId={appId} />
+                  )}
+                  {selectedApp.pocketbaseConfig && appId && (
+                    <PocketBaseConnector appId={appId} />
+                  )}
 
                   {/* ── Unconnected integrations (muted) ── */}
                   {!(selectedApp.githubOrg && selectedApp.githubRepo) && (
@@ -596,7 +646,10 @@ export default function AppDetailsPage() {
                         icon={<Github className="h-5 w-5" />}
                         description="No conectado"
                       >
-                        <GitHubConnector appId={appId} folderName={selectedApp.path} />
+                        <GitHubConnector
+                          appId={appId}
+                          folderName={selectedApp.path}
+                        />
                       </CollapsibleCard>
                     </div>
                   )}
@@ -615,17 +668,17 @@ export default function AppDetailsPage() {
                       <PocketBaseConnector appId={appId} />
                     </div>
                   )}
-
-
                 </div>
               </div>
-
 
               {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
             </div>
 
             {/* Rename Dialog */}
-            <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+            <Dialog
+              open={isRenameDialogOpen}
+              onOpenChange={setIsRenameDialogOpen}
+            >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
                   <DialogTitle>Renombrar aplicación</DialogTitle>
@@ -666,8 +719,8 @@ export default function AppDetailsPage() {
                 <DialogHeader className="pb-2">
                   <DialogTitle>Renombrar directorio del workspace</DialogTitle>
                   <DialogDescription>
-                    Esto cambiará solo el nombre del directorio en disco, no el nombre del
-                    workspace.
+                    Esto cambiará solo el nombre del directorio en disco, no el
+                    nombre del workspace.
                   </DialogDescription>
                 </DialogHeader>
                 <Input
@@ -704,19 +757,21 @@ export default function AppDetailsPage() {
               </DialogContent>
             </Dialog>
 
-
-
             {/* Copy App Dialog */}
             {selectedApp && (
-              <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
+              <Dialog
+                open={isCopyDialogOpen}
+                onOpenChange={setIsCopyDialogOpen}
+              >
                 <DialogContent className="max-w-md p-4">
                   <DialogHeader className="pb-2">
                     <DialogTitle>Clonar "{selectedApp.name}"</DialogTitle>
                     <DialogDescription>
-                      <p>Crea una copia independiente de esta aplicación con un nuevo nombre.</p>
                       <p>
-                        Las integraciones (Supabase, GitHub) no se clonan.
+                        Crea una copia independiente de esta aplicación con un
+                        nuevo nombre.
                       </p>
+                      <p>Las integraciones (Supabase, GitHub) no se clonan.</p>
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3 my-2">
@@ -742,8 +797,8 @@ export default function AppDetailsPage() {
 
                       {nameExists && (
                         <p className="typo-caption text-yellow-600 dark:text-yellow-500 mt-1">
-                          Ya existe una aplicación con este nombre. Por favor, elige
-                          otro nombre.
+                          Ya existe una aplicación con este nombre. Por favor,
+                          elige otro nombre.
                         </p>
                       )}
                     </div>
@@ -772,9 +827,7 @@ export default function AppDetailsPage() {
                           </span>
                         </div>
                         <div className="text-left">
-                          <p className="typo-label">
-                            Clonar con historial
-                          </p>
+                          <p className="typo-label">Clonar con historial</p>
                           <p className="typo-caption text-muted-foreground">
                             Clona toda la aplicación incluyendo el historial de
                             versiones.
@@ -800,12 +853,10 @@ export default function AppDetailsPage() {
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
                         <div className="text-left">
-                          <p className="typo-label">
-                            Clonar sin historial
-                          </p>
+                          <p className="typo-label">Clonar sin historial</p>
                           <p className="typo-caption text-muted-foreground">
-                            Solo clona el estado actual del código, sin versiones
-                            anteriores. Útil si hay problemas con Git.
+                            Solo clona el estado actual del código, sin
+                            versiones anteriores. Útil si hay problemas con Git.
                           </p>
                         </div>
                       </Button>
@@ -834,8 +885,8 @@ export default function AppDetailsPage() {
                 <DialogHeader className="pb-2">
                   <DialogTitle>Cambiar ubicación del workspace</DialogTitle>
                   <DialogDescription>
-                    Selecciona una ubicación donde se guardará este workspace. El
-                    nombre del directorio seguirá siendo el mismo.
+                    Selecciona una ubicación donde se guardará este workspace.
+                    El nombre del directorio seguirá siendo el mismo.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="pt-2">
@@ -866,15 +917,21 @@ export default function AppDetailsPage() {
             </Dialog>
 
             {/* Close Folder Confirmation Dialog */}
-            <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
-              setIsDeleteDialogOpen(open);
-              if (!open) setDeleteFiles(false);
-            }}>
+            <Dialog
+              open={isDeleteDialogOpen}
+              onOpenChange={(open) => {
+                setIsDeleteDialogOpen(open);
+                if (!open) setDeleteFiles(false);
+              }}
+            >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>¿Cerrar workspace "{selectedApp.name}"?</DialogTitle>
+                  <DialogTitle>
+                    ¿Cerrar workspace "{selectedApp.name}"?
+                  </DialogTitle>
                   <DialogDescription>
-                    El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
+                    El workspace se desvinculará de Vibes. Los archivos en disco
+                    se conservarán.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex items-center space-x-2 py-2">
@@ -886,7 +943,10 @@ export default function AppDetailsPage() {
                     disabled={isDeleting}
                     className="rounded border-border"
                   />
-                  <label htmlFor="delete-files-detail-check" className="text-xs text-muted-foreground cursor-pointer">
+                  <label
+                    htmlFor="delete-files-detail-check"
+                    className="text-xs text-muted-foreground cursor-pointer"
+                  >
                     Eliminar también los archivos del disco
                   </label>
                 </div>

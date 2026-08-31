@@ -10,11 +10,11 @@ import React, { Suspense } from "react";
 // Lazy load CodeView to defer Monaco Editor initialization (~3.4s CPU savings)
 // Monaco is only needed when user clicks the "Code" tab
 const CodeView = React.lazy(() =>
-  import("./CodeView").then((m) => ({ default: m.CodeView }))
+  import("./CodeView").then((m) => ({ default: m.CodeView })),
 );
 
 const PreviewIframe = React.lazy(() =>
-  import("./PreviewIframe").then((m) => ({ default: m.PreviewIframe }))
+  import("./PreviewIframe").then((m) => ({ default: m.PreviewIframe })),
 );
 import { Problems } from "./Problems";
 import { useEffect, useRef } from "react";
@@ -29,16 +29,17 @@ import {
   previewIframeRefAtom,
 } from "@/atoms/previewAtoms";
 
-
 // Lazy load heavy panels — they are only needed when user switches to their specific tab
 const ConfigurePanel = React.lazy(() =>
-  import("./ConfigurePanel").then((m) => ({ default: m.ConfigurePanel }))
+  import("./ConfigurePanel").then((m) => ({ default: m.ConfigurePanel })),
 );
 const PublishPanel = React.lazy(() =>
-  import("./PublishPanel").then((m) => ({ default: m.PublishPanel }))
+  import("./PublishPanel").then((m) => ({ default: m.PublishPanel })),
 );
 const NaturalEditingPanel = React.lazy(() =>
-  import("./NaturalEditingPanel").then((m) => ({ default: m.NaturalEditingPanel }))
+  import("./NaturalEditingPanel").then((m) => ({
+    default: m.NaturalEditingPanel,
+  })),
 );
 
 // Lightweight fallback for lazy-loaded panels
@@ -59,7 +60,9 @@ export function PreviewPanel() {
 
   // Natural Editing Panel atoms
   const naturalEditingPanelOpen = useAtomValue(naturalEditingPanelOpenAtom);
-  const visualEditingSelectedComponent = useAtomValue(visualEditingSelectedComponentAtom);
+  const visualEditingSelectedComponent = useAtomValue(
+    visualEditingSelectedComponentAtom,
+  );
   const previewIframeRef = useAtomValue(previewIframeRefAtom);
 
   useEffect(() => {
@@ -132,10 +135,20 @@ export function PreviewPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-hidden">
-        <div className={cn("h-full", previewMode === "versions" ? "overflow-hidden" : "overflow-y-auto")}>
+        <div
+          className={cn(
+            "h-full",
+            previewMode === "versions" ? "overflow-hidden" : "overflow-y-auto",
+          )}
+        >
           {previewMode === "versions" ? (
             <PanelGroup direction="horizontal">
-              <Panel id="version-list" defaultSize={35} minSize={20} maxSize={50}>
+              <Panel
+                id="version-list"
+                defaultSize={35}
+                minSize={20}
+                maxSize={50}
+              >
                 <VersionPane
                   isVisible={true}
                   onClose={() => setPreviewMode("preview")}
@@ -155,15 +168,14 @@ export function PreviewPanel() {
                   <PreviewIframe key={key} loading={loading} />
                 </Suspense>
               </div>
-              {naturalEditingPanelOpen &&
-                visualEditingSelectedComponent && (
-                  <Suspense fallback={<LazyFallback />}>
-                    <NaturalEditingPanel
-                      selectedComponent={visualEditingSelectedComponent}
-                      iframeRef={previewIframeRef}
-                    />
-                  </Suspense>
-                )}
+              {naturalEditingPanelOpen && visualEditingSelectedComponent && (
+                <Suspense fallback={<LazyFallback />}>
+                  <NaturalEditingPanel
+                    selectedComponent={visualEditingSelectedComponent}
+                    iframeRef={previewIframeRef}
+                  />
+                </Suspense>
+              )}
             </div>
           ) : previewMode === "code" ? (
             <Suspense fallback={<LazyFallback text="Cargando editor..." />}>

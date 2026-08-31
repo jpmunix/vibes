@@ -87,7 +87,13 @@ export function registerContextPathsHandlers() {
     return results;
   });
 
-  createTypedHandler(contextContracts.setContextPaths, async (_, { appId, chatContext }) => {
-    await getRemoteDb().update(remoteSchema.apps).set({ chatContext }).where(eq(remoteSchema.apps.id, appId));
-  });
+  createTypedHandler(
+    contextContracts.setContextPaths,
+    async (_, { appId, chatContext }) => {
+      await getRemoteDb()
+        .update(remoteSchema.apps)
+        .set({ chatContext })
+        .where(eq(remoteSchema.apps.id, appId));
+    },
+  );
 }

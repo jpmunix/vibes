@@ -1,12 +1,20 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
-import { forwardRef, useState, useCallback, useMemo, Suspense, useRef, useEffect } from "react";
+import {
+  forwardRef,
+  useState,
+  useCallback,
+  useMemo,
+  Suspense,
+  useRef,
+  useEffect,
+} from "react";
 import ChatMessage from "./ChatMessage";
 const SetupBanner = React.lazy(() =>
-  import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
+  import("../SetupBanner").then((m) => ({ default: m.SetupBanner })),
 );
 const OpenRouterSetupBanner = React.lazy(() =>
-  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner }))
+  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner })),
 );
 
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -60,11 +68,14 @@ interface FooterContext {
   onMarkTodoCompleted: () => void;
 }
 
-
 // Footer component - receives context via props (memoized to skip unnecessary renders)
 // IMPORTANT: This component must NOT use any hooks (useState, useEffect, etc.)
 // to avoid conditional hook calls when context is undefined.
-const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
+const FooterComponent = React.memo(function FooterComponent({
+  context,
+}: {
+  context?: FooterContext;
+}) {
   if (!context) return null;
 
   const {
@@ -90,7 +101,6 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-2 pb-4 justify-end">
-
           {todoId && (
             <Button
               variant="outline"
@@ -123,12 +133,7 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
 export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
   function MessagesList(
-    {
-      messages,
-      messagesEndRef,
-      hasMoreMessages,
-      onLoadMore,
-    },
+    { messages, messagesEndRef, hasMoreMessages, onLoadMore },
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
@@ -179,14 +184,11 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId, appId]);
 
-
     // Only fetch token count when not streaming
     const { result: tokenCountResult } = useCountTokens(
       !isStreaming ? selectedChatId : null,
       "",
     );
-
-
 
     // Stabilize renderSetupBanner with proper dependencies
     const renderSetupBanner = useCallback(() => {
@@ -325,40 +327,67 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
           {messages.length === 0 && renderEmptyState()}
 
-          {messages.map((message, index) => {
-            const isLastMessage = index === messages.length - 1;
-            const isLastUserMessage = message.role === "user" && isLastMessage;
-            const hasAssistantResponseAfter =
-              isLastMessage &&
-              messages.length > index + 1 &&
-              messages[index + 1]?.role === "assistant";
-            const shouldShowAutoRouter =
-              isLastUserMessage &&
-              !hasAssistantResponseAfter &&
-              (isSelectingModel ||
-                autoRouterModelInfo.get(selectedChatId ?? 0));
-            const currentAutoRouterInfo = selectedChatId
-              ? autoRouterModelInfo.get(selectedChatId)
-              : undefined;
+          {(() => {
+            // Group messages: each group starts with a user message (if any)
+            // and contains all following assistant/system messages.
+            const groups: Message[][] = [];
+            let currentGroup: Message[] = [];
+            for (const msg of messages) {
+              if (msg.role === "user") {
+                if (currentGroup.length > 0) groups.push(currentGroup);
+                currentGroup = [msg];
+              } else {
+                currentGroup.push(msg);
+              }
+            }
+            if (currentGroup.length > 0) groups.push(currentGroup);
 
-            return (
-              <div key={message.id}>
-                <div className="px-4">
-                  <MemoizedChatMessage
-                    message={message}
-                    isLastMessage={isLastMessage}
-                    user={user}
-                  />
-                </div>
-                {shouldShowAutoRouter && (
-                  <AutoRouterSelectedMessage
-                    modelInfo={currentAutoRouterInfo}
-                    isSelecting={isSelectingModel}
-                  />
-                )}
+            return groups.map((group, groupIndex) => (
+              <div key={group[0].id} className="relative">
+                {group.map((message) => {
+                  const globalIndex = messages.indexOf(message);
+                  const isLastMessage = globalIndex === messages.length - 1;
+                  const isLastUserMessage =
+                    message.role === "user" && isLastMessage;
+                  const hasAssistantResponseAfter =
+                    isLastMessage &&
+                    messages.length > globalIndex + 1 &&
+                    messages[globalIndex + 1]?.role === "assistant";
+                  const shouldShowAutoRouter =
+                    isLastUserMessage &&
+                    !hasAssistantResponseAfter &&
+                    (isSelectingModel ||
+                      autoRouterModelInfo.get(selectedChatId ?? 0));
+                  const currentAutoRouterInfo = selectedChatId
+                    ? autoRouterModelInfo.get(selectedChatId)
+                    : undefined;
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={
+                        message.role === "user" ? "sticky top-0 z-10" : ""
+                      }
+                    >
+                      <div className={message.role === "user" ? "" : "px-4"}>
+                        <MemoizedChatMessage
+                          message={message}
+                          isLastMessage={isLastMessage}
+                          user={user}
+                        />
+                      </div>
+                      {shouldShowAutoRouter && (
+                        <AutoRouterSelectedMessage
+                          modelInfo={currentAutoRouterInfo}
+                          isSelecting={isSelectingModel}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ));
+          })()}
 
           <FooterComponent context={footerContext} />
         </div>

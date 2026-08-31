@@ -139,19 +139,19 @@ async function detectFramework(
       file: string;
       framework: CreateProjectFramework;
     }> = [
-        { file: "next.config.js", framework: "nextjs" },
-        { file: "next.config.mjs", framework: "nextjs" },
-        { file: "next.config.ts", framework: "nextjs" },
-        { file: "vite.config.js", framework: "vite" },
-        { file: "vite.config.ts", framework: "vite" },
-        { file: "vite.config.mjs", framework: "vite" },
-        { file: "nuxt.config.js", framework: "nuxtjs" },
-        { file: "nuxt.config.ts", framework: "nuxtjs" },
-        { file: "astro.config.js", framework: "astro" },
-        { file: "astro.config.mjs", framework: "astro" },
-        { file: "astro.config.ts", framework: "astro" },
-        { file: "svelte.config.js", framework: "svelte" },
-      ];
+      { file: "next.config.js", framework: "nextjs" },
+      { file: "next.config.mjs", framework: "nextjs" },
+      { file: "next.config.ts", framework: "nextjs" },
+      { file: "vite.config.js", framework: "vite" },
+      { file: "vite.config.ts", framework: "vite" },
+      { file: "vite.config.mjs", framework: "vite" },
+      { file: "nuxt.config.js", framework: "nuxtjs" },
+      { file: "nuxt.config.ts", framework: "nuxtjs" },
+      { file: "astro.config.js", framework: "astro" },
+      { file: "astro.config.mjs", framework: "astro" },
+      { file: "astro.config.ts", framework: "astro" },
+      { file: "svelte.config.js", framework: "svelte" },
+    ];
 
     for (const { file, framework } of configFiles) {
       if (fs.existsSync(path.join(appPath, file))) {
@@ -302,7 +302,12 @@ async function handleCreateProject(
     logger.info(`Creating Vercel project: ${name} for app ${appId}`);
 
     // Get app details to determine the framework
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app) {
       throw new Error("App not found.");
     }
@@ -479,7 +484,12 @@ async function handleGetVercelDeployments(
       throw new Error("Not authenticated with Vercel.");
     }
 
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+    const app = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
     if (!app || !app.vercelProjectId) {
       throw new Error("App is not linked to a Vercel project.");
     }
@@ -566,7 +576,10 @@ async function handleDisconnectVercelProject(
   logger.log(`Disconnecting Vercel project for appId: ${appId}`);
 
   const app = await db.query.apps.findFirst({
-    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    where: and(
+      eq(remoteSchema.apps.id, appId),
+      eq(remoteSchema.apps.userId, context.userId),
+    ),
   });
 
   if (!app) {
@@ -582,7 +595,12 @@ async function handleDisconnectVercelProject(
       vercelTeamId: null,
       vercelDeploymentUrl: null,
     })
-    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+    .where(
+      and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    );
 }
 
 // --- Registration ---
@@ -603,9 +621,12 @@ export function registerVercelHandlers() {
     },
   );
 
-  createTypedHandler(vercelContracts.createProject, async (event, params, context) => {
-    await handleCreateProject(event, params, context);
-  });
+  createTypedHandler(
+    vercelContracts.createProject,
+    async (event, params, context) => {
+      await handleCreateProject(event, params, context);
+    },
+  );
 
   createTypedHandler(
     vercelContracts.connectExistingProject,
@@ -614,13 +635,19 @@ export function registerVercelHandlers() {
     },
   );
 
-  createTypedHandler(vercelContracts.getDeployments, async (event, params, context) => {
-    return handleGetVercelDeployments(event, params, context);
-  });
+  createTypedHandler(
+    vercelContracts.getDeployments,
+    async (event, params, context) => {
+      return handleGetVercelDeployments(event, params, context);
+    },
+  );
 
-  createTypedHandler(vercelContracts.disconnect, async (event, params, context) => {
-    await handleDisconnectVercelProject(event, params, context);
-  });
+  createTypedHandler(
+    vercelContracts.disconnect,
+    async (event, params, context) => {
+      await handleDisconnectVercelProject(event, params, context);
+    },
+  );
 
   logger.debug("Registered Vercel IPC handlers");
 }
@@ -649,5 +676,10 @@ export async function updateAppVercelProject({
       vercelTeamId: teamId,
       vercelDeploymentUrl: deploymentUrl,
     })
-    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
+    .where(
+      and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, userId),
+      ),
+    );
 }

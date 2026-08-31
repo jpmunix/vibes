@@ -24,7 +24,6 @@ export function ContextLimitBanner({
   totalTokens,
   contextWindow,
 }: ContextLimitBannerProps) {
-
   // Don't show banner if we don't have the necessary data
   if (!totalTokens || !contextWindow) {
     return null;

@@ -5,7 +5,6 @@ import { defineContract, createClient } from "../contracts/core";
 // Proposal Schemas
 // =============================================================================
 
-
 export const FileChangeSchema = z.object({
   name: z.string(),
   path: z.string(),

@@ -98,7 +98,10 @@ export function extractReadableError(errorInput: unknown): string {
   }
 
   // Double nested: { error: { error: { message: "..." } } }
-  if (obj.error?.error?.message && typeof obj.error.error.message === "string") {
+  if (
+    obj.error?.error?.message &&
+    typeof obj.error.error.message === "string"
+  ) {
     return obj.error.error.message;
   }
 
@@ -142,7 +145,11 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     recoverable: false,
     userMessage: "Parece que se agotaron los creditos de IA de tu cuenta.",
     actions: [
-      { type: "open_external", label: "Recargar creditos", url: "https://openrouter.ai/credits" },
+      {
+        type: "open_external",
+        label: "Recargar creditos",
+        url: "https://openrouter.ai/credits",
+      },
       { type: "navigate", label: "Cambiar modelo", route: "/settings" },
     ],
     autoFix: null,
@@ -151,17 +158,17 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /API key|unauthorized|authentication|forbidden|401|403/i,
     code: "auth_invalid",
     recoverable: false,
-    userMessage: "Parece que hay un problema con tu clave API. Revisala en ajustes.",
-    actions: [
-      { type: "navigate", label: "Abrir Ajustes", route: "/settings" },
-    ],
+    userMessage:
+      "Parece que hay un problema con tu clave API. Revisala en ajustes.",
+    actions: [{ type: "navigate", label: "Abrir Ajustes", route: "/settings" }],
     autoFix: null,
   },
   {
     test: /model.*not.*found|does not exist|invalid.*model|No endpoints found/i,
     code: "model_not_found",
     recoverable: false,
-    userMessage: "Parece que el modelo seleccionado no esta disponible. Prueba con otro.",
+    userMessage:
+      "Parece que el modelo seleccionado no esta disponible. Prueba con otro.",
     actions: [
       { type: "navigate", label: "Cambiar modelo", route: "/settings" },
     ],
@@ -171,7 +178,8 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /context.*(too long|exceeded|limit)|max.*tokens|token.*limit|context_length/i,
     code: "context_exceeded",
     recoverable: false,
-    userMessage: "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.",
+    userMessage:
+      "Parece que el chat es demasiado largo para el modelo. Abre un nuevo chat o cambia a un modelo con mayor ventana de contexto.",
     actions: [
       { type: "new_chat", label: "Nuevo chat" },
       { type: "navigate", label: "Cambiar modelo", route: "/settings" },
@@ -182,7 +190,8 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /content.*filter|safety|blocked|moderation|content_policy/i,
     code: "content_filtered",
     recoverable: false,
-    userMessage: "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.",
+    userMessage:
+      "Parece que el contenido fue bloqueado por los filtros de seguridad del modelo.",
     actions: [],
     autoFix: null,
   },
@@ -190,7 +199,8 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /spawn.*ENOENT|opencode.*not found|binary not found/i,
     code: "opencode_not_installed",
     recoverable: false,
-    userMessage: "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.",
+    userMessage:
+      "Parece que no se encontro el agente de IA. Reinicia Vibes para resolverlo.",
     actions: [],
     autoFix: null,
   },
@@ -198,7 +208,8 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /ENOSPC|no space left/i,
     code: "disk_full",
     recoverable: false,
-    userMessage: "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.",
+    userMessage:
+      "Parece que no queda espacio en disco. Libera espacio e intentalo de nuevo.",
     actions: [],
     autoFix: null,
   },
@@ -208,7 +219,8 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i,
     code: "rate_limit",
     recoverable: true,
-    userMessage: "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.",
+    userMessage:
+      "Se ha superado el limite de solicitudes. Espera un momento e intentalo de nuevo.",
     actions: [
       { type: "retry_delayed", label: "Reintentar en 10s", delayMs: 10_000 },
     ],
@@ -219,29 +231,25 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     code: "timeout",
     recoverable: true,
     userMessage: "La solicitud tardo demasiado. Intentalo de nuevo.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: null,
   },
   {
     test: /network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket|APIConnectionError/i,
     code: "network_error",
     recoverable: true,
-    userMessage: "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    userMessage:
+      "Error de conexion con el proveedor de IA. Comprueba tu conexion a internet.",
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: "restart_opencode",
   },
   {
     test: /server.*error|internal.*error|500|502|503|InternalServerError/i,
     code: "server_error",
     recoverable: true,
-    userMessage: "Error del servidor de IA. Intentalo de nuevo en unos segundos.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    userMessage:
+      "Error del servidor de IA. Intentalo de nuevo en unos segundos.",
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: null,
   },
   {
@@ -258,10 +266,9 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     test: /session.*not.*found|StorageNotFound|SessionNotFound|404.*session/i,
     code: "session_not_found",
     recoverable: true,
-    userMessage: "La sesion del agente se perdio. Se creara una nueva automaticamente.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    userMessage:
+      "La sesion del agente se perdio. Se creara una nueva automaticamente.",
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: "recreate_session",
   },
   {
@@ -269,19 +276,16 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     code: "session_not_found",
     recoverable: true,
     userMessage: "No se pudo crear la sesion del agente. Intentalo de nuevo.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: "recreate_session",
   },
   {
     test: /cannot access.*before initialization|ReferenceError/i,
     code: "server_crash",
     recoverable: true,
-    userMessage: "Error interno de la aplicacion. Reinicia Vibes para resolverlo.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    userMessage:
+      "Error interno de la aplicacion. Reinicia Vibes para resolverlo.",
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: "restart_opencode",
   },
   {
@@ -289,9 +293,7 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     code: "server_error",
     recoverable: true,
     userMessage: "El proveedor de IA devolvio un error. Intentalo de nuevo.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: null,
   },
   {
@@ -299,9 +301,7 @@ const ERROR_PATTERNS: ErrorPattern[] = [
     code: "server_error",
     recoverable: true,
     userMessage: "La IA no genero ninguna respuesta. Intentalo de nuevo.",
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: null,
   },
 ];
@@ -346,9 +346,7 @@ export function classifyError(error: unknown): ClassifiedError {
     userMessage: cleanMsg || "Ha ocurrido un error inesperado.",
     technicalDetail,
     recoverable: true,
-    actions: [
-      { type: "retry", label: "Reintentar" },
-    ],
+    actions: [{ type: "retry", label: "Reintentar" }],
     autoFix: null,
   };
 }

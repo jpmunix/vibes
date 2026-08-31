@@ -11,7 +11,6 @@ import { FONT_OPTIONS } from "@/shared/fonts";
 
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 
-
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
@@ -52,6 +51,7 @@ import { McpServersSettings } from "@/components/settings/McpServersSettings";
 import { SkillsSettings } from "@/components/settings/SkillsSettings";
 import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
+import { VisionPromptGroup } from "@/components/settings/VisionPromptGroup";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -90,7 +90,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "@/components/ui/icons";
 
-
 import Fuse from "fuse.js";
 
 import { cn } from "@/lib/utils";
@@ -113,10 +112,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Apariencia",
     description: "Define el tema visual principal de la interfaz",
     keywords: [
-      "tema", "mode", "dark", "light",
+      "tema",
+      "mode",
+      "dark",
+      "light",
       // sub-values (pill labels)
-      "claro", "oscuro",
-      "apariencia", "color",
+      "claro",
+      "oscuro",
+      "apariencia",
+      "color",
     ],
     section: "Tema",
     sectionId: "general-settings",
@@ -125,7 +129,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "primary-color",
     label: "Color primario",
     description: "Elige el color de acento principal para modo claro y oscuro",
-    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary", "chroma"],
+    keywords: [
+      "color",
+      "primario",
+      "acento",
+      "tema",
+      "personalizar",
+      "primary",
+      "chroma",
+    ],
     section: "Tema",
     sectionId: "general-settings",
   },
@@ -134,7 +146,11 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Tipografía de la Interfaz",
     description: "Elige la fuente para toda la interfaz (menús, botones)",
     keywords: [
-      "fuente", "tipografía", "font", "letra", "interfaz",
+      "fuente",
+      "tipografía",
+      "font",
+      "letra",
+      "interfaz",
       // sub-values: font names
       ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
     ],
@@ -146,7 +162,11 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Tipografía del Chat",
     description: "Elige la fuente base para los mensajes del chat",
     keywords: [
-      "fuente", "tipografía", "font", "chat", "mensajes",
+      "fuente",
+      "tipografía",
+      "font",
+      "chat",
+      "mensajes",
       // sub-values: font names
       ...FONT_OPTIONS.map((f) => f.name.toLowerCase()),
     ],
@@ -156,11 +176,21 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "font-scale",
     label: "Tamaño de fuente",
-    description: "Ajusta el tamaño del texto por zona (interfaz, sidebar, chat)",
+    description:
+      "Ajusta el tamaño del texto por zona (interfaz, sidebar, chat)",
     keywords: [
-      "tamaño", "fuente", "escala", "zoom", "scale",
-      "interfaz", "sidebar", "chat",
-      "ancho", "burbuja", "bubble", "width",
+      "tamaño",
+      "fuente",
+      "escala",
+      "zoom",
+      "scale",
+      "interfaz",
+      "sidebar",
+      "chat",
+      "ancho",
+      "burbuja",
+      "bubble",
+      "width",
     ],
     section: "Tema",
     sectionId: "general-settings",
@@ -178,18 +208,34 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "auto-approve",
     label: "Confirmar cambios en git",
     description: "Confirma automáticamente los cambios de la IA en git",
-    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar", "git", "commit", "confirmar"],
+    keywords: [
+      "aprobar",
+      "automatico",
+      "cambios",
+      "codigo",
+      "ejecutar",
+      "git",
+      "commit",
+      "confirmar",
+    ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "auto-expand-preview",
     label: "Expandir vista previa",
-    description: "Abre automáticamente el panel de vista previa lateral cuando el código cambia",
+    description:
+      "Abre automáticamente el panel de vista previa lateral cuando el código cambia",
     keywords: [
-      "expandir", "preview", "vista previa", "panel", "automatico",
+      "expandir",
+      "preview",
+      "vista previa",
+      "panel",
+      "automatico",
       // sub-values
-      "desactivado", "derecha", "izquierda",
+      "desactivado",
+      "derecha",
+      "izquierda",
     ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
@@ -197,7 +243,8 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "chat-completion-notification",
     label: "Notificaciones de respuesta",
-    description: "Muestra una notificación nativa del sistema cuando el chat termina de generar",
+    description:
+      "Muestra una notificación nativa del sistema cuando el chat termina de generar",
     keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
@@ -205,16 +252,34 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "notification-sound",
     label: "Reproducir sonido",
-    description: "Reproduce un sonido al terminar la respuesta (útil en apps sin firmar en macOS)",
-    keywords: ["sonido", "sound", "audio", "notificacion", "chime", "beep", "mac"],
+    description:
+      "Reproduce un sonido al terminar la respuesta (útil en apps sin firmar en macOS)",
+    keywords: [
+      "sonido",
+      "sound",
+      "audio",
+      "notificacion",
+      "chime",
+      "beep",
+      "mac",
+    ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
   {
     id: "web-search",
     label: "Búsqueda web",
-    description: "Permite al modelo buscar en internet cuando necesite información actualizada",
-    keywords: ["web", "search", "busqueda", "internet", "buscar", "openrouter", "online"],
+    description:
+      "Permite al modelo buscar en internet cuando necesite información actualizada",
+    keywords: [
+      "web",
+      "search",
+      "busqueda",
+      "internet",
+      "buscar",
+      "openrouter",
+      "online",
+    ],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
@@ -224,9 +289,13 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Idioma del chat",
     description: "Seleccionar el idioma para las respuestas del agente",
     keywords: [
-      "idioma", "language", "lenguaje",
+      "idioma",
+      "language",
+      "lenguaje",
       // sub-values
-      "español", "english", "ingles",
+      "español",
+      "english",
+      "ingles",
     ],
     section: "Agente",
     sectionId: "ai-behavior",
@@ -234,8 +303,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "reasoning-effort",
     label: "Esfuerzo de razonamiento",
-    description: "Controla cuánto razonamiento usa el modelo antes de responder",
-    keywords: ["reasoning", "effort", "esfuerzo", "razonamiento", "thinking", "openrouter"],
+    description:
+      "Controla cuánto razonamiento usa el modelo antes de responder",
+    keywords: [
+      "reasoning",
+      "effort",
+      "esfuerzo",
+      "razonamiento",
+      "thinking",
+      "openrouter",
+    ],
     section: "Agente",
     sectionId: "ai-behavior",
   },
@@ -251,12 +328,22 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "chat-view",
     label: "Vista del chat",
-    description: "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",
+    description:
+      "Respuestas limpias mostrando solo lo esencial o todos los pasos intermedios",
     keywords: [
-      "vista", "chat", "render", "modo", "view",
+      "vista",
+      "chat",
+      "render",
+      "modo",
+      "view",
       // sub-values (pill labels)
-      "completo", "flow", "zen",
-      "ligero", "rapido", "limpio", "esencial",
+      "completo",
+      "flow",
+      "zen",
+      "ligero",
+      "rapido",
+      "limpio",
+      "esencial",
     ],
     section: "Agente",
     sectionId: "ai-behavior",
@@ -266,8 +353,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Modelo para tareas internas",
     description: "Títulos, resúmenes y mantenimiento",
     keywords: [
-      "modelo", "tareas", "internas", "titulos", "resumenes",
-      "standard", "gemini", "flash", "lite",
+      "modelo",
+      "tareas",
+      "internas",
+      "titulos",
+      "resumenes",
+      "standard",
+      "gemini",
+      "flash",
+      "lite",
     ],
     section: "Agente",
     sectionId: "ai-behavior",
@@ -277,18 +371,38 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Permisos del Agente",
     description: "Configurar qué herramientas puede usar el agente",
     keywords: [
-      "permisos", "agente", "agent", "herramientas", "tools", "permissions",
+      "permisos",
+      "agente",
+      "agent",
+      "herramientas",
+      "tools",
+      "permissions",
       "seguridad",
       // sub-values: permission names
-      "editar archivos", "terminal", "bash",
-      "acceso web", "webfetch",
-      "búsqueda web", "websearch",
-      "diagnósticos", "lsp",
+      "editar archivos",
+      "terminal",
+      "bash",
+      "acceso web",
+      "webfetch",
+      "búsqueda web",
+      "websearch",
+      "diagnósticos",
+      "lsp",
       // sub-values: permission levels
-      "siempre", "preguntar", "nunca",
+      "siempre",
+      "preguntar",
+      "nunca",
       // sub-values: granular rules
-      "rm", "borrar", "git add", "git commit", "git push", "git reset",
-      "git checkout", "git restore", "git clean", "git rebase",
+      "rm",
+      "borrar",
+      "git add",
+      "git commit",
+      "git push",
+      "git reset",
+      "git checkout",
+      "git restore",
+      "git clean",
+      "git rebase",
     ],
     section: "Agente",
     sectionId: "ai-behavior",
@@ -298,7 +412,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "ai-providers",
     label: "Proveedores de IA",
     description: "Configurar y cambiar entre proveedores de modelos de IA",
-    keywords: ["proveedor", "provider", "proxy", "endpoint", "custom", "litellm", "openai", "compatible"],
+    keywords: [
+      "proveedor",
+      "provider",
+      "proxy",
+      "endpoint",
+      "custom",
+      "litellm",
+      "openai",
+      "compatible",
+    ],
     section: "Proveedores de IA",
     sectionId: "models-connectivity",
   },
@@ -307,7 +430,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "enabled-models",
     label: "Modelos habilitados",
     description: "Gestiona qué modelos aparecen en el selector del chat",
-    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
+    keywords: [
+      "modelos",
+      "models",
+      "habilitados",
+      "enabled",
+      "activar",
+      "desactivar",
+      "openrouter",
+      "añadir",
+    ],
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
@@ -322,8 +454,19 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "show-cost-display",
     label: "Mostrar gasto en chats",
-    description: "Muestra el coste acumulado en la cabecera y el coste por mensaje",
-    keywords: ["gasto", "coste", "cost", "precio", "dinero", "tokens", "openrouter", "mostrar", "ocultar"],
+    description:
+      "Muestra el coste acumulado en la cabecera y el coste por mensaje",
+    keywords: [
+      "gasto",
+      "coste",
+      "cost",
+      "precio",
+      "dinero",
+      "tokens",
+      "openrouter",
+      "mostrar",
+      "ocultar",
+    ],
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
@@ -357,7 +500,12 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Neon",
     description: "Integración con Neon Database",
     keywords: [
-      "neon", "database", "db", "postgres", "postgresql", "integracion",
+      "neon",
+      "database",
+      "db",
+      "postgres",
+      "postgresql",
+      "integracion",
     ],
     section: "Integraciones",
     sectionId: "integrations",
@@ -366,16 +514,34 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "mcp-servers",
     label: "Servidores MCP",
-    description: "Gestionar servidores Model Context Protocol para ampliar las herramientas del agente",
-    keywords: ["mcp", "tools", "herramientas", "servidor", "protocolo", "context", "plugin"],
+    description:
+      "Gestionar servidores Model Context Protocol para ampliar las herramientas del agente",
+    keywords: [
+      "mcp",
+      "tools",
+      "herramientas",
+      "servidor",
+      "protocolo",
+      "context",
+      "plugin",
+    ],
     section: "Herramientas MCP",
     sectionId: "tools-mcp",
   },
   {
     id: "skills-settings",
     label: "Skills del Proyecto",
-    description: "Gestionar agentes de conocimiento y directivas personalizadas (.claude/skills)",
-    keywords: ["skills", "opencode", "agentes", "conocimiento", "personalizar", "directivas", "markdown"],
+    description:
+      "Gestionar agentes de conocimiento y directivas personalizadas (.claude/skills)",
+    keywords: [
+      "skills",
+      "opencode",
+      "agentes",
+      "conocimiento",
+      "personalizar",
+      "directivas",
+      "markdown",
+    ],
     section: "Skills",
     sectionId: "tools-skills",
   },
@@ -385,7 +551,13 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Valores por defecto",
     description: "Restaurar toda la configuración a valores por defecto",
     keywords: [
-      "reset", "resetear", "eliminar", "borrar", "todo", "defecto", "restaurar",
+      "reset",
+      "resetear",
+      "eliminar",
+      "borrar",
+      "todo",
+      "defecto",
+      "restaurar",
     ],
     section: "Tema",
     sectionId: "general-settings",
@@ -394,8 +566,20 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   {
     id: "custom-agents",
     label: "Agentes Personalizados",
-    description: "Crea y administra tus propios agentes con instrucciones específicas y comandos slash personalizados",
-    keywords: ["agentes", "personalizados", "custom", "agents", "system", "prompt", "slash", "comando", "additive", "replace"],
+    description:
+      "Crea y administra tus propios agentes con instrucciones específicas y comandos slash personalizados",
+    keywords: [
+      "agentes",
+      "personalizados",
+      "custom",
+      "agents",
+      "system",
+      "prompt",
+      "slash",
+      "comando",
+      "additive",
+      "replace",
+    ],
     section: "Agentes Personalizados",
     sectionId: "custom-agents-settings",
   },
@@ -421,21 +605,21 @@ function SettingItem({
       )}
     >
       <div className="flex-1">
-        <h3 className="typo-label">
-          {label}
-        </h3>
-        {description && (
-          <p className="typo-caption mt-1">
-            {description}
-          </p>
-        )}
+        <h3 className="typo-label">{label}</h3>
+        {description && <p className="typo-caption mt-1">{description}</p>}
       </div>
       <div onClick={(e) => e.stopPropagation()}>{control}</div>
     </div>
   );
 }
 
-function TogglePill({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+function TogglePill({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
   return (
     <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
       {([false, true] as const).map((value) => (
@@ -464,7 +648,8 @@ export default function SettingsPage() {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null,
   );
-  const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
+  const [agentPermissionsExpanded, setAgentPermissionsExpanded] =
+    useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, intensity } = useTheme();
   const appVersion = useAppVersion();
@@ -487,7 +672,9 @@ export default function SettingsPage() {
     try {
       const info = await ipc.system.getVersionInfo();
       setVersionInfo(info);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   // Pre-fetch version info on mount (backend returns cached data instantly)
@@ -619,10 +806,14 @@ export default function SettingsPage() {
         // Update all settings
         await updateSettings(data.settings);
 
-        showSuccess("Configuración importada correctamente. Recarga la página para ver todos los cambios.");
+        showSuccess(
+          "Configuración importada correctamente. Recarga la página para ver todos los cambios.",
+        );
       } catch (err) {
         console.error("Import error:", err);
-        showError("Error al importar la configuración. Verifica el formato del archivo.");
+        showError(
+          "Error al importar la configuración. Verifica el formato del archivo.",
+        );
       }
     };
 
@@ -656,7 +847,6 @@ export default function SettingsPage() {
     >
       {/* Header Pill — sticky */}
       <div className="sticky top-0 z-50 w-full pt-6 pb-4 pointer-events-none">
-        
         {/* Solid background behind the pill */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-background" />
@@ -664,13 +854,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Aggressive fade overlay — only visible when scrolled */}
-        <div 
+        <div
           className="absolute left-0 right-0 -z-10 h-8"
-          style={{ 
-            top: '100%',
+          style={{
+            top: "100%",
             opacity: isScrolled ? 1 : 0,
-            background: 'linear-gradient(to bottom, var(--color-background), transparent)',
-            maskImage: 'linear-gradient(to bottom, black 20%, transparent)',
+            background:
+              "linear-gradient(to bottom, var(--color-background), transparent)",
+            maskImage: "linear-gradient(to bottom, black 20%, transparent)",
           }}
         >
           <div className="absolute inset-0 bg-background" />
@@ -679,7 +870,6 @@ export default function SettingsPage() {
 
         <div className="relative w-full mx-auto px-8 pointer-events-auto">
           <div className="flex justify-between items-center gap-4 bg-card border border-border rounded-2xl p-4 shadow-sm transition-[border-color,box-shadow] duration-300">
-            
             {/* Search Input */}
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
@@ -713,29 +903,52 @@ export default function SettingsPage() {
                     {appVersion ? `v${appVersion}` : "Info"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-[300px] p-4 rounded-xl border border-border shadow-2xl bg-card">
+                <PopoverContent
+                  align="end"
+                  className="w-[300px] p-4 rounded-xl border border-border shadow-2xl bg-card"
+                >
                   {versionInfo ? (
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-2.5 px-1">
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sistema</h4>
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Sistema
+                        </h4>
                         <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
                           <span className="text-muted-foreground">Vibes</span>
-                          <span className="font-mono font-medium text-primary">v{versionInfo.vibes}</span>
-                          <span className="text-muted-foreground">OpenCode</span>
-                          <span className="font-mono">{versionInfo.opencode ? `v${versionInfo.opencode}` : "N/A"}</span>
+                          <span className="font-mono font-medium text-primary">
+                            v{versionInfo.vibes}
+                          </span>
+                          <span className="text-muted-foreground">
+                            OpenCode
+                          </span>
+                          <span className="font-mono">
+                            {versionInfo.opencode
+                              ? `v${versionInfo.opencode}`
+                              : "N/A"}
+                          </span>
                           <div className="col-span-2 h-px bg-border/50 my-1" />
                           <span className="text-muted-foreground">Node.js</span>
-                          <span className="font-mono opacity-80">v{versionInfo.node}</span>
-                          <span className="text-muted-foreground">Electron</span>
-                          <span className="font-mono opacity-80">v{versionInfo.electron}</span>
-                          <span className="text-muted-foreground">Arquitectura</span>
-                          <span className="font-mono opacity-80">{versionInfo.platform}/{versionInfo.arch}</span>
+                          <span className="font-mono opacity-80">
+                            v{versionInfo.node}
+                          </span>
+                          <span className="text-muted-foreground">
+                            Electron
+                          </span>
+                          <span className="font-mono opacity-80">
+                            v{versionInfo.electron}
+                          </span>
+                          <span className="text-muted-foreground">
+                            Arquitectura
+                          </span>
+                          <span className="font-mono opacity-80">
+                            {versionInfo.platform}/{versionInfo.arch}
+                          </span>
                         </div>
                       </div>
-                      
+
                       <div className="pt-3 border-t border-border/50">
-                        <Button 
-                          onClick={() => { 
+                        <Button
+                          onClick={() => {
                             ipc.system.openReleaseNotesWindow({
                               theme: theme as "light" | "dark" | "system",
                               themeIntensity: intensity,
@@ -750,7 +963,9 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="py-6 flex justify-center text-sm text-muted-foreground">Cargando...</div>
+                    <div className="py-6 flex justify-center text-sm text-muted-foreground">
+                      Cargando...
+                    </div>
                   )}
                 </PopoverContent>
               </Popover>
@@ -768,25 +983,43 @@ export default function SettingsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleImportSettings} className="cursor-pointer gap-2">
+                  <DropdownMenuItem
+                    onClick={handleImportSettings}
+                    className="cursor-pointer gap-2"
+                  >
                     <Download className="h-4 w-4" />
                     Importar
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportSettings} className="cursor-pointer gap-2">
+                  <DropdownMenuItem
+                    onClick={handleExportSettings}
+                    className="cursor-pointer gap-2"
+                  >
                     <Upload className="h-4 w-4" />
                     Exportar
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleOpenLogs} className="cursor-pointer gap-2">
+                  <DropdownMenuItem
+                    onClick={handleOpenLogs}
+                    className="cursor-pointer gap-2"
+                  >
                     <FileText className="h-4 w-4" />
                     Ver logs
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleRestartOpenCode} className="cursor-pointer gap-2">
+                  <DropdownMenuItem
+                    onClick={handleRestartOpenCode}
+                    className="cursor-pointer gap-2"
+                  >
                     <RotateCcw className="h-4 w-4" />
                     Reiniciar OpenCode
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => sendAppNotification({ title: "Test", body: "Si escuchas esto, el sonido funciona correctamente", settings: settings ?? null })}
+                    onClick={() =>
+                      sendAppNotification({
+                        title: "Test",
+                        body: "Si escuchas esto, el sonido funciona correctamente",
+                        settings: settings ?? null,
+                      })
+                    }
                     className="cursor-pointer gap-2"
                   >
                     <Volume2 className="h-4 w-4" />
@@ -862,24 +1095,27 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "models-connectivity"}
           />
 
-
           <AIBehaviorSettings
-            isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
+            isHighlighted={
+              highlightedSection === "ai-behavior" ||
+              highlightedSection === "embeddings-settings"
+            }
           />
 
           {/* Custom Agents Section */}
           <div
             id="custom-agents-settings"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "custom-agents-settings"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
+              highlightedSection === "custom-agents-settings"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
-            <h2 className="typo-section-title mb-2">
-              Agentes Personalizados
-            </h2>
+            <h2 className="typo-section-title mb-2">Agentes Personalizados</h2>
             <p className="typo-caption mb-8">
-              Construye y administra tus propios agentes con instrucciones específicas. Puedes inyectar un system prompt aditivo o pisar completamente las instrucciones nativas.
+              Construye y administra tus propios agentes con instrucciones
+              específicas. Puedes inyectar un system prompt aditivo o pisar
+              completamente las instrucciones nativas.
             </p>
             <CustomAgentsSection />
           </div>
@@ -887,38 +1123,39 @@ export default function SettingsPage() {
           {/* Prompts Section */}
           <div
             id="prompts-settings"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "prompts-settings"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
+              highlightedSection === "prompts-settings"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
-            <h2 className="typo-section-title mb-2">
-              Prompts
-            </h2>
+            <h2 className="typo-section-title mb-2">Prompts</h2>
             <p className="typo-caption mb-8">
-              Personaliza las instrucciones que reciben los modelos AI para tareas internas,
-              generación de nombres y el sistema de directrices.
+              Personaliza las instrucciones que reciben los modelos AI para
+              tareas internas, generación de nombres y el sistema de
+              directrices.
             </p>
             <PromptsSection />
+
+            {/* ── Procesamiento de Imágenes ── */}
+            <VisionPromptGroup />
           </div>
 
           <div
             id="memory-settings"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "memory-settings"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
+              highlightedSection === "memory-settings"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
-            <h2 className="typo-section-title mb-2">
-              Directrices
-            </h2>
+            <h2 className="typo-section-title mb-2">Directrices</h2>
             <p className="typo-caption mb-8">
-              Define directrices que el agente recuerda entre sesiones para personalizar sus respuestas.
+              Define directrices que el agente recuerda entre sesiones para
+              personalizar sus respuestas.
             </p>
             <MemorySettings />
           </div>
-
-
 
           <WorkflowSettings
             isHighlighted={highlightedSection === "workflow-settings"}
@@ -927,14 +1164,13 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "integrations"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
+              highlightedSection === "integrations"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
-            <h2 className="typo-section-title mb-2">
-              Integraciones
-            </h2>
+            <h2 className="typo-section-title mb-2">Integraciones</h2>
             <p className="typo-caption mb-8">
               Conecta servicios externos para automatizar despliegues y bases de
               datos.
@@ -952,14 +1188,13 @@ export default function SettingsPage() {
           {/* MCP Tools Section */}
           <div
             id="tools-mcp"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "tools-mcp"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${
+              highlightedSection === "tools-mcp"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
-            <h2 className="typo-section-title mb-6">
-              Herramientas MCP
-            </h2>
+            <h2 className="typo-section-title mb-6">Herramientas MCP</h2>
             <McpServersSettings />
           </div>
 
@@ -967,11 +1202,10 @@ export default function SettingsPage() {
             id="tools-skills"
             className="bg-card rounded-2xl shadow-sm p-8 border border-border mt-8"
           >
-            <h2 className="typo-section-title mb-2">
-              Skills
-            </h2>
+            <h2 className="typo-section-title mb-2">Skills</h2>
             <p className="typo-caption mb-8">
-              Instrucciones y guías de comportamiento personalizadas para el agente, aplicadas de forma global o específicas por proyecto.
+              Instrucciones y guías de comportamiento personalizadas para el
+              agente, aplicadas de forma global o específicas por proyecto.
             </p>
             <SkillsSettings />
           </div>
@@ -987,8 +1221,6 @@ export default function SettingsPage() {
         onConfirm={handleResetEverything}
         onCancel={() => setIsResetDialogOpen(false)}
       />
-
-
     </div>
   );
 }
@@ -1000,13 +1232,31 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, applyBubbleWidth, currentFontId, currentChatFontId, fontScales, bubbleWidthPct, themeFlavorDark, setThemeFlavorDark, themeFlavorLight, setThemeFlavorLight, isDarkMode } = useTheme();
+  const {
+    theme,
+    setTheme,
+    applyPrimaryColors,
+    applyFont,
+    applyChatFont,
+    applyFontScale,
+    applyBubbleWidth,
+    currentFontId,
+    currentChatFontId,
+    fontScales,
+    bubbleWidthPct,
+    themeFlavorDark,
+    setThemeFlavorDark,
+    themeFlavorLight,
+    setThemeFlavorLight,
+    isDarkMode,
+  } = useTheme();
   const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
   const activeColorId = isDarkMode
-    ? (settings?.primaryColorDark || DEFAULT_DARK_COLOR)
-    : (settings?.primaryColorLight || DEFAULT_LIGHT_COLOR);
-  const activeColorHex = getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
+    ? settings?.primaryColorDark || DEFAULT_DARK_COLOR
+    : settings?.primaryColorLight || DEFAULT_LIGHT_COLOR;
+  const activeColorHex =
+    getColorById(activeColorId)?.[isDarkMode ? "dark" : "light"] || "#7c3aed";
 
   const renderLoaderIcon = (style: string, size: number = 18) => (
     <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center shrink-0 ml-3 shadow-inner">
@@ -1015,10 +1265,7 @@ export function GeneralSettings({
   );
 
   useEffect(() => {
-    if (
-      settings?.theme !== undefined &&
-      settings.theme !== theme
-    ) {
+    if (settings?.theme !== undefined && settings.theme !== theme) {
       setTheme(settings.theme);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1045,35 +1292,66 @@ export function GeneralSettings({
   // Apply primary colors from settings on load
   useEffect(() => {
     if (settings) {
-      applyPrimaryColors(settings.primaryColorLight, settings.primaryColorDark, settings.primaryChromaLight, settings.primaryChromaDark);
+      applyPrimaryColors(
+        settings.primaryColorLight,
+        settings.primaryColorDark,
+        settings.primaryChromaLight,
+        settings.primaryChromaDark,
+      );
     }
-  }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark, applyPrimaryColors]);
+  }, [
+    settings?.primaryColorLight,
+    settings?.primaryColorDark,
+    settings?.primaryChromaLight,
+    settings?.primaryChromaDark,
+    applyPrimaryColors,
+  ]);
 
   // Apply fonts from settings on load
   useEffect(() => {
     if (settings?.selectedFont && settings.selectedFont !== currentFontId) {
       applyFont(settings.selectedFont);
     }
-    if (settings?.selectedChatFont && settings.selectedChatFont !== currentChatFontId) {
+    if (
+      settings?.selectedChatFont &&
+      settings.selectedChatFont !== currentChatFontId
+    ) {
       applyChatFont(settings.selectedChatFont);
     }
   }, [settings?.selectedFont, settings?.selectedChatFont]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply font scales from settings on load
   useEffect(() => {
-    if (settings?.fontScaleUI !== undefined && settings.fontScaleUI !== fontScales.ui) {
+    if (
+      settings?.fontScaleUI !== undefined &&
+      settings.fontScaleUI !== fontScales.ui
+    ) {
       applyFontScale("ui", settings.fontScaleUI);
     }
-    if (settings?.fontScaleSidebar !== undefined && settings.fontScaleSidebar !== fontScales.sidebar) {
+    if (
+      settings?.fontScaleSidebar !== undefined &&
+      settings.fontScaleSidebar !== fontScales.sidebar
+    ) {
       applyFontScale("sidebar", settings.fontScaleSidebar);
     }
-    if (settings?.fontScaleChat !== undefined && settings.fontScaleChat !== fontScales.chat) {
+    if (
+      settings?.fontScaleChat !== undefined &&
+      settings.fontScaleChat !== fontScales.chat
+    ) {
       applyFontScale("chat", settings.fontScaleChat);
     }
-    if (settings?.fontScaleBubbleWidth !== undefined && settings.fontScaleBubbleWidth !== bubbleWidthPct) {
+    if (
+      settings?.fontScaleBubbleWidth !== undefined &&
+      settings.fontScaleBubbleWidth !== bubbleWidthPct
+    ) {
       applyBubbleWidth(settings.fontScaleBubbleWidth);
     }
-  }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    settings?.fontScaleUI,
+    settings?.fontScaleSidebar,
+    settings?.fontScaleChat,
+    settings?.fontScaleBubbleWidth,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -1085,9 +1363,7 @@ export function GeneralSettings({
           : "",
       )}
     >
-      <h2 className="typo-section-title mb-8">
-        Tema
-      </h2>
+      <h2 className="typo-section-title mb-8">Tema</h2>
 
       <div className="space-y-4">
         <SettingItem
@@ -1098,7 +1374,10 @@ export function GeneralSettings({
               {(["light", "dark"] as const).map((option) => (
                 <button
                   key={option}
-                  onClick={() => { setTheme(option); updateSettings({ theme: option }); }}
+                  onClick={() => {
+                    setTheme(option);
+                    updateSettings({ theme: option });
+                  }}
                   className={cn(
                     "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                     (option === "dark" ? isDarkMode : !isDarkMode)
@@ -1122,19 +1401,62 @@ export function GeneralSettings({
                 value={themeFlavorLight || "default"}
                 onChange={async (value) => {
                   setThemeFlavorLight(value);
-                  await updateSettings({ themeFlavorLight: value }, { showToast: true });
+                  await updateSettings(
+                    { themeFlavorLight: value },
+                    { showToast: true },
+                  );
                 }}
                 options={[
-                  { value: "default", label: "Claro Clásico", description: "Esquema de colores claro estándar" },
-                  { value: "github-light", label: "GitHub Light", description: "Estilo limpio al estilo de GitHub" },
-                  { value: "solarized-light", label: "Solarized Light", description: "Tono crema cálido de alta legibilidad" },
-                  { value: "gruvbox-light", label: "Gruvbox Light", description: "Esquema retro y cálido color crema/arena" },
-                  { value: "nord-light", label: "Nord Light", description: "Diseño nórdico de tonos claros y fríos" },
-                  { value: "cupcake", label: "Cupcake", description: "Paleta pastel dulce con tonos rosa y morado" },
-                  { value: "one-light", label: "One Light", description: "El tema claro limpio de Atom One" },
-                  { value: "forest-light", label: "Forest Light", description: "Fondo verde salvia muy relajante y suave" },
-                  { value: "papercolor-light", label: "PaperColor Light", description: "Fondo blanco puro de alto contraste" },
-                  { value: "catppuccin-latte", label: "Catppuccin Latte", description: "Paleta pastel moderna con tonos lavanda" },
+                  {
+                    value: "default",
+                    label: "Claro Clásico",
+                    description: "Esquema de colores claro estándar",
+                  },
+                  {
+                    value: "github-light",
+                    label: "GitHub Light",
+                    description: "Estilo limpio al estilo de GitHub",
+                  },
+                  {
+                    value: "solarized-light",
+                    label: "Solarized Light",
+                    description: "Tono crema cálido de alta legibilidad",
+                  },
+                  {
+                    value: "gruvbox-light",
+                    label: "Gruvbox Light",
+                    description: "Esquema retro y cálido color crema/arena",
+                  },
+                  {
+                    value: "nord-light",
+                    label: "Nord Light",
+                    description: "Diseño nórdico de tonos claros y fríos",
+                  },
+                  {
+                    value: "cupcake",
+                    label: "Cupcake",
+                    description: "Paleta pastel dulce con tonos rosa y morado",
+                  },
+                  {
+                    value: "one-light",
+                    label: "One Light",
+                    description: "El tema claro limpio de Atom One",
+                  },
+                  {
+                    value: "forest-light",
+                    label: "Forest Light",
+                    description: "Fondo verde salvia muy relajante y suave",
+                  },
+                  {
+                    value: "papercolor-light",
+                    label: "PaperColor Light",
+                    description: "Fondo blanco puro de alto contraste",
+                  },
+                  {
+                    value: "catppuccin-latte",
+                    label: "Catppuccin Latte",
+                    description: "Paleta pastel moderna con tonos lavanda",
+                  },
                 ]}
                 triggerVariant="pill"
                 triggerSize="md"
@@ -1152,19 +1474,63 @@ export function GeneralSettings({
                 value={themeFlavorDark || "default"}
                 onChange={async (value) => {
                   setThemeFlavorDark(value);
-                  await updateSettings({ themeFlavorDark: value }, { showToast: true });
+                  await updateSettings(
+                    { themeFlavorDark: value },
+                    { showToast: true },
+                  );
                 }}
                 options={[
-                  { value: "default", label: "Oscuro Clásico", description: "Esquema de colores oscuro estándar" },
-                  { value: "dracula", label: "Dracula", description: "Paleta violeta y gris oscuro de Dracula" },
-                  { value: "one-dark", label: "One Dark", description: "Tema clásico de Atom One Dark" },
-                  { value: "nord", label: "Nord Dark", description: "Tonos árticos azulados fríos y limpios" },
-                  { value: "monokai", label: "Monokai", description: "Fondo gris cálido con acentos neon clásicos" },
-                  { value: "solarized-dark", label: "Solarized Dark", description: "Fondo verde azulado profundo clásico" },
-                  { value: "gruvbox-dark", label: "Gruvbox Dark", description: "Paleta retro en marrón oscuro y arena" },
-                  { value: "synthwave84", label: "Synthwave '84", description: "Fondo morado y rosa neon de estética retro" },
-                  { value: "night-owl", label: "Night Owl", description: "Diseño azul marino profundo para uso nocturno" },
-                  { value: "tokyo-night", label: "Tokyo Night", description: "Paleta gris azulada elegante y limpia" },
+                  {
+                    value: "default",
+                    label: "Oscuro Clásico",
+                    description: "Esquema de colores oscuro estándar",
+                  },
+                  {
+                    value: "dracula",
+                    label: "Dracula",
+                    description: "Paleta violeta y gris oscuro de Dracula",
+                  },
+                  {
+                    value: "one-dark",
+                    label: "One Dark",
+                    description: "Tema clásico de Atom One Dark",
+                  },
+                  {
+                    value: "nord",
+                    label: "Nord Dark",
+                    description: "Tonos árticos azulados fríos y limpios",
+                  },
+                  {
+                    value: "monokai",
+                    label: "Monokai",
+                    description: "Fondo gris cálido con acentos neon clásicos",
+                  },
+                  {
+                    value: "solarized-dark",
+                    label: "Solarized Dark",
+                    description: "Fondo verde azulado profundo clásico",
+                  },
+                  {
+                    value: "gruvbox-dark",
+                    label: "Gruvbox Dark",
+                    description: "Paleta retro en marrón oscuro y arena",
+                  },
+                  {
+                    value: "synthwave84",
+                    label: "Synthwave '84",
+                    description: "Fondo morado y rosa neon de estética retro",
+                  },
+                  {
+                    value: "night-owl",
+                    label: "Night Owl",
+                    description:
+                      "Diseño azul marino profundo para uso nocturno",
+                  },
+                  {
+                    value: "tokyo-night",
+                    label: "Tokyo Night",
+                    description: "Paleta gris azulada elegante y limpia",
+                  },
                 ]}
                 triggerVariant="pill"
                 triggerSize="md"
@@ -1185,15 +1551,30 @@ export function GeneralSettings({
                 label="Claro"
                 pillPosition="first"
                 defaultColor={DEFAULT_LIGHT_COLOR}
-                selectedColor={settings?.primaryColorLight || DEFAULT_LIGHT_COLOR}
+                selectedColor={
+                  settings?.primaryColorLight || DEFAULT_LIGHT_COLOR
+                }
                 chroma={settings?.primaryChromaLight ?? 100}
                 onColorSelect={async (colorId) => {
-                  await updateSettings({ primaryColorLight: colorId }, { showToast: true });
-                  applyPrimaryColors(colorId, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark);
+                  await updateSettings(
+                    { primaryColorLight: colorId },
+                    { showToast: true },
+                  );
+                  applyPrimaryColors(
+                    colorId,
+                    settings?.primaryColorDark,
+                    settings?.primaryChromaLight,
+                    settings?.primaryChromaDark,
+                  );
                 }}
                 onChromaChange={async (value) => {
                   await updateSettings({ primaryChromaLight: value });
-                  applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, value, settings?.primaryChromaDark);
+                  applyPrimaryColors(
+                    settings?.primaryColorLight,
+                    settings?.primaryColorDark,
+                    value,
+                    settings?.primaryChromaDark,
+                  );
                 }}
               />
               <PrimaryColorPicker
@@ -1204,12 +1585,25 @@ export function GeneralSettings({
                 selectedColor={settings?.primaryColorDark || DEFAULT_DARK_COLOR}
                 chroma={settings?.primaryChromaDark ?? 100}
                 onColorSelect={async (colorId) => {
-                  await updateSettings({ primaryColorDark: colorId }, { showToast: true });
-                  applyPrimaryColors(settings?.primaryColorLight, colorId, settings?.primaryChromaLight, settings?.primaryChromaDark);
+                  await updateSettings(
+                    { primaryColorDark: colorId },
+                    { showToast: true },
+                  );
+                  applyPrimaryColors(
+                    settings?.primaryColorLight,
+                    colorId,
+                    settings?.primaryChromaLight,
+                    settings?.primaryChromaDark,
+                  );
                 }}
                 onChromaChange={async (value) => {
                   await updateSettings({ primaryChromaDark: value });
-                  applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, value);
+                  applyPrimaryColors(
+                    settings?.primaryColorLight,
+                    settings?.primaryColorDark,
+                    settings?.primaryChromaLight,
+                    value,
+                  );
                 }}
               />
             </div>
@@ -1224,243 +1618,253 @@ export function GeneralSettings({
             <UnifiedSelector
               value={settings?.loaderStyle || "orbital"}
               onChange={async (value) => {
-                await updateSettings({ loaderStyle: value }, { showToast: true });
+                await updateSettings(
+                  { loaderStyle: value },
+                  { showToast: true },
+                );
               }}
               options={[
                 {
                   value: "orbital",
                   label: "Orbital (Original)",
                   description: "Tres partículas luminosas en órbita con estela",
-                  rightIcon: renderLoaderIcon("orbital")
+                  rightIcon: renderLoaderIcon("orbital"),
                 },
                 {
                   value: "aurora",
                   label: "Aurora Pulse",
                   description: "Ondas circulares concéntricas y expansivas",
-                  rightIcon: renderLoaderIcon("aurora")
+                  rightIcon: renderLoaderIcon("aurora"),
                 },
                 {
                   value: "wave",
                   label: "Bouncing Wave",
                   description: "Cinco puntos rebotando en onda desfasada",
-                  rightIcon: renderLoaderIcon("wave")
+                  rightIcon: renderLoaderIcon("wave"),
                 },
                 {
                   value: "jelly",
                   label: "Morphing Jelly",
                   description: "Gota fluida orgánica en deformación constante",
-                  rightIcon: renderLoaderIcon("jelly")
+                  rightIcon: renderLoaderIcon("jelly"),
                 },
                 {
                   value: "spark",
                   label: "Pulse Spark",
                   description: "Chispas brillantes que nacen y se expanden",
-                  rightIcon: renderLoaderIcon("spark")
+                  rightIcon: renderLoaderIcon("spark"),
                 },
                 {
                   value: "equalizer",
                   label: "Bar Equalizer",
                   description: "Columnas de frecuencia que suben y bajan",
-                  rightIcon: renderLoaderIcon("equalizer")
+                  rightIcon: renderLoaderIcon("equalizer"),
                 },
                 {
                   value: "infinity",
                   label: "Infinity Loop",
                   description: "Partícula que dibuja el símbolo de infinito",
-                  rightIcon: renderLoaderIcon("infinity")
+                  rightIcon: renderLoaderIcon("infinity"),
                 },
                 {
                   value: "grid",
                   label: "Pixel Grid",
                   description: "Cuadrícula retro de micro-píxeles secuenciales",
-                  rightIcon: renderLoaderIcon("grid")
+                  rightIcon: renderLoaderIcon("grid"),
                 },
                 {
                   value: "brackets",
                   label: "Code Brackets",
                   description: "Corchetes de código en pulsación alternada",
-                  rightIcon: renderLoaderIcon("brackets")
+                  rightIcon: renderLoaderIcon("brackets"),
                 },
                 {
                   value: "terminal",
                   label: "Terminal Cursor",
                   description: "Cursor parpadeante de terminal de desarrollo",
-                  rightIcon: renderLoaderIcon("terminal")
+                  rightIcon: renderLoaderIcon("terminal"),
                 },
                 {
                   value: "server",
                   label: "Server Lights",
-                  description: "Indicadores LED parpadeantes estilo rack de servidores",
-                  rightIcon: renderLoaderIcon("server")
+                  description:
+                    "Indicadores LED parpadeantes estilo rack de servidores",
+                  rightIcon: renderLoaderIcon("server"),
                 },
                 {
                   value: "morph",
                   label: "Morphing AI Core",
-                  description: "Núcleo con rotación y cambio de forma geométrico",
-                  rightIcon: renderLoaderIcon("morph")
+                  description:
+                    "Núcleo con rotación y cambio de forma geométrico",
+                  rightIcon: renderLoaderIcon("morph"),
                 },
                 {
                   value: "matrix",
                   label: "Matrix Rain",
-                  description: "Flujo descendente de código binario estilo Matrix",
-                  rightIcon: renderLoaderIcon("matrix")
+                  description:
+                    "Flujo descendente de código binario estilo Matrix",
+                  rightIcon: renderLoaderIcon("matrix"),
                 },
                 {
                   value: "glow",
                   label: "Glowing Sphere",
                   description: "Esfera luminosa pulsante con brillo de neon",
-                  rightIcon: renderLoaderIcon("glow")
+                  rightIcon: renderLoaderIcon("glow"),
                 },
                 {
                   value: "voice",
                   label: "AI Voice",
                   description: "Barras de espectro de voz de asistente de IA",
-                  rightIcon: renderLoaderIcon("voice")
+                  rightIcon: renderLoaderIcon("voice"),
                 },
                 {
                   value: "packet",
                   label: "Network Packet",
                   description: "Envío de paquetes de datos a través de una red",
-                  rightIcon: renderLoaderIcon("packet")
+                  rightIcon: renderLoaderIcon("packet"),
                 },
                 {
                   value: "sonar",
                   label: "Sonar Ripple",
                   description: "Ondas de radar concéntricas estilo sonar",
-                  rightIcon: renderLoaderIcon("sonar")
+                  rightIcon: renderLoaderIcon("sonar"),
                 },
                 {
                   value: "blocks",
                   label: "Data Blocks",
-                  description: "Bloques de datos que se expanden secuencialmente",
-                  rightIcon: renderLoaderIcon("blocks")
+                  description:
+                    "Bloques de datos que se expanden secuencialmente",
+                  rightIcon: renderLoaderIcon("blocks"),
                 },
                 {
                   value: "nodes",
                   label: "Node Connection",
                   description: "Conexión de datos secuencial entre dos nodos",
-                  rightIcon: renderLoaderIcon("nodes")
+                  rightIcon: renderLoaderIcon("nodes"),
                 },
                 {
                   value: "glowring",
                   label: "Neon Glow Ring",
-                  description: "Anillo neon giratorio de dos colores con brillo",
-                  rightIcon: renderLoaderIcon("glowring")
+                  description:
+                    "Anillo neon giratorio de dos colores con brillo",
+                  rightIcon: renderLoaderIcon("glowring"),
                 },
                 {
                   value: "m-dots",
                   label: "Micro Dots",
                   description: "Tres puntitos de 2.5px parpadeantes",
-                  rightIcon: renderLoaderIcon("m-dots")
+                  rightIcon: renderLoaderIcon("m-dots"),
                 },
                 {
                   value: "m-radar",
                   label: "Micro Radar",
                   description: "Círculo con barrido angular de barrido cónico",
-                  rightIcon: renderLoaderIcon("m-radar")
+                  rightIcon: renderLoaderIcon("m-radar"),
                 },
                 {
                   value: "m-sine",
                   label: "Sine Line",
                   description: "Línea de frecuencia con escala horizontal",
-                  rightIcon: renderLoaderIcon("m-sine")
+                  rightIcon: renderLoaderIcon("m-sine"),
                 },
                 {
                   value: "m-orbit",
                   label: "Orbit Dot",
                   description: "Punto central con satélite orbitando",
-                  rightIcon: renderLoaderIcon("m-orbit")
+                  rightIcon: renderLoaderIcon("m-orbit"),
                 },
                 {
                   value: "m-eq",
                   label: "Micro Equalizer",
                   description: "Tres barras finas verticales de frecuencia",
-                  rightIcon: renderLoaderIcon("m-eq")
+                  rightIcon: renderLoaderIcon("m-eq"),
                 },
                 {
                   value: "m-pulse",
                   label: "Pulsing Core",
                   description: "Núcleo con latido nítido y expansión de halo",
-                  rightIcon: renderLoaderIcon("m-pulse")
+                  rightIcon: renderLoaderIcon("m-pulse"),
                 },
                 {
                   value: "m-cross",
                   label: "Cross Rotator",
                   description: "Mini aspa de cruz giratoria",
-                  rightIcon: renderLoaderIcon("m-cross")
+                  rightIcon: renderLoaderIcon("m-cross"),
                 },
                 {
                   value: "m-flip",
                   label: "Flipping Square",
                   description: "Cubo 3D que gira y flipea en perspectiva",
-                  rightIcon: renderLoaderIcon("m-flip")
+                  rightIcon: renderLoaderIcon("m-flip"),
                 },
                 {
                   value: "m-blink",
                   label: "Cursor Blink",
-                  description: "Cursor parpadeante estilo terminal de desarrollo",
-                  rightIcon: renderLoaderIcon("m-blink")
+                  description:
+                    "Cursor parpadeante estilo terminal de desarrollo",
+                  rightIcon: renderLoaderIcon("m-blink"),
                 },
                 {
                   value: "m-breathe",
                   label: "Breathe Ring",
                   description: "Anillo en pulsación de escala y opacidad",
-                  rightIcon: renderLoaderIcon("m-breathe")
+                  rightIcon: renderLoaderIcon("m-breathe"),
                 },
                 {
                   value: "m-swap",
                   label: "Swapping Dots",
                   description: "Dos puntos cruzándose alternadamente",
-                  rightIcon: renderLoaderIcon("m-swap")
+                  rightIcon: renderLoaderIcon("m-swap"),
                 },
                 {
                   value: "m-sonar",
                   label: "Sonar Ping",
                   description: "Punto con ondas concéntricas expansivas",
-                  rightIcon: renderLoaderIcon("m-sonar")
+                  rightIcon: renderLoaderIcon("m-sonar"),
                 },
                 {
                   value: "m-pie",
                   label: "Pie Fill",
                   description: "Relleno circular secuencial de 4 pasos",
-                  rightIcon: renderLoaderIcon("m-pie")
+                  rightIcon: renderLoaderIcon("m-pie"),
                 },
                 {
                   value: "m-scan",
                   label: "Scan Line",
                   description: "Línea de escaneo láser horizontal en caja",
-                  rightIcon: renderLoaderIcon("m-scan")
+                  rightIcon: renderLoaderIcon("m-scan"),
                 },
                 {
                   value: "m-hour",
                   label: "Micro Hourglass",
                   description: "Reloj de arena clásico giratorio",
-                  rightIcon: renderLoaderIcon("m-hour")
+                  rightIcon: renderLoaderIcon("m-hour"),
                 },
                 {
                   value: "m-yin",
                   label: "Semicircle",
                   description: "Doble semicírculo giratorio",
-                  rightIcon: renderLoaderIcon("m-yin")
+                  rightIcon: renderLoaderIcon("m-yin"),
                 },
                 {
                   value: "m-diamond",
                   label: "Diamond Pulse",
                   description: "Rombo giratorio con cambio de escala y relleno",
-                  rightIcon: renderLoaderIcon("m-diamond")
+                  rightIcon: renderLoaderIcon("m-diamond"),
                 },
                 {
                   value: "m-clock",
                   label: "Clock Hand",
                   description: "Aguja de reloj giratoria con anillo",
-                  rightIcon: renderLoaderIcon("m-clock")
+                  rightIcon: renderLoaderIcon("m-clock"),
                 },
                 {
                   value: "m-expand",
                   label: "Bar Expand",
-                  description: "Punto a línea con expansión horizontal simétrica",
-                  rightIcon: renderLoaderIcon("m-expand")
-                }
+                  description:
+                    "Punto a línea con expansión horizontal simétrica",
+                  rightIcon: renderLoaderIcon("m-expand"),
+                },
               ]}
               triggerVariant="pill"
               triggerSize="md"
@@ -1493,7 +1897,7 @@ export function GeneralSettings({
             />
           }
         />
-        
+
         {/* Chat Font Selector */}
         <SettingItem
           label="Tipografía del Chat"
@@ -1684,7 +2088,6 @@ export function GeneralSettings({
           }
         />
         */}
-
       </div>
     </div>
   );
@@ -1707,9 +2110,7 @@ export function WorkflowSettings({
           : "",
       )}
     >
-      <h2 className="typo-section-title mb-2">
-        Flujo de Trabajo
-      </h2>
+      <h2 className="typo-section-title mb-2">Flujo de Trabajo</h2>
       <p className="typo-caption mb-8">
         Configura cómo interactúas con la aplicación y el comportamiento de las
         herramientas de desarrollo.
@@ -1753,7 +2154,7 @@ export function WorkflowSettings({
                     option === "off"
                       ? !settings?.autoExpandPreviewPanel
                       : !!settings?.autoExpandPreviewPanel &&
-                      (settings?.previewPosition ?? "right") === option;
+                        (settings?.previewPosition ?? "right") === option;
                   return (
                     <button
                       key={option}

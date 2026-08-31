@@ -101,13 +101,20 @@ export async function searchAppFilesWithRipgrep({
           const absolutePath = path.isAbsolute(matchPath)
             ? matchPath
             : path.join(appPath, matchPath);
-          const relativePath = normalizePath(path.relative(appPath, absolutePath));
+          const relativePath = normalizePath(
+            path.relative(appPath, absolutePath),
+          );
           if (relativePath.startsWith("..")) continue;
 
           const lineText = event.data.lines?.text as string;
           const lineNumber = event.data.line_number as number;
           const submatch = event.data.submatches?.[0];
-          if (typeof lineText !== "string" || typeof lineNumber !== "number" || !submatch) continue;
+          if (
+            typeof lineText !== "string" ||
+            typeof lineNumber !== "number" ||
+            !submatch
+          )
+            continue;
 
           const snippet = buildSnippetFromMatch({
             lineText,
@@ -125,7 +132,9 @@ export async function searchAppFilesWithRipgrep({
             });
           } else {
             if (!existing.snippets) existing.snippets = [];
-            const existingLine = existing.snippets.find((s) => s.line === snippet.line);
+            const existingLine = existing.snippets.find(
+              (s) => s.line === snippet.line,
+            );
             if (!existingLine) existing.snippets.push(snippet);
           }
         } catch (error) {

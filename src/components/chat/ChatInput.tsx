@@ -18,6 +18,8 @@ import {
   SendHorizontalIcon,
   Lock,
   Undo,
+  Maximize2,
+  Minimize2,
 } from "@/components/ui/icons";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -112,7 +114,10 @@ export function ChatInput({
   const prevChatIdRef = useRef<number | undefined>(undefined);
   useEffect(() => {
     // Save draft for the chat we're leaving
-    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chatId) {
+    if (
+      prevChatIdRef.current !== undefined &&
+      prevChatIdRef.current !== chatId
+    ) {
       saveDraft(prevChatIdRef.current, inputValue);
     }
     prevChatIdRef.current = chatId;
@@ -136,12 +141,21 @@ export function ChatInput({
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { app } = useLoadApp(appId);
-  const { versions, loading: versionsLoading, revertVersion, refreshVersions } = useVersions(appId);
+  const {
+    versions,
+    loading: versionsLoading,
+    revertVersion,
+    refreshVersions,
+  } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
-  const [pendingMessageQueue, setPendingMessageQueue] = useAtom(pendingMessageQueueByIdAtom);
-  const pendingMessages: PendingQueuedMessage[] = chatId ? (pendingMessageQueue.get(chatId) ?? []) : [];
-  
+  const [pendingMessageQueue, setPendingMessageQueue] = useAtom(
+    pendingMessageQueueByIdAtom,
+  );
+  const pendingMessages: PendingQueuedMessage[] = chatId
+    ? (pendingMessageQueue.get(chatId) ?? [])
+    : [];
+
   const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const navigate = useNavigate();
@@ -153,6 +167,7 @@ export function ChatInput({
   const [isUndoLoading, setIsUndoLoading] = useState(false);
   const [isQuickCommitDismissed, setIsQuickCommitDismissed] = useState(false);
   const [isUndoDialogOpen, setIsUndoDialogOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
@@ -164,7 +179,10 @@ export function ChatInput({
     enabled: !!chatId,
   });
 
-  const currentMode = chatId && chat ? (chat.chatMode || "agent") : (settings?.selectedChatMode || "agent");
+  const currentMode =
+    chatId && chat
+      ? chat.chatMode || "agent"
+      : settings?.selectedChatMode || "agent";
   const lastSelectedModeRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -172,20 +190,28 @@ export function ChatInput({
     if (currentMode !== lastSelectedModeRef.current) {
       const prevMode = lastSelectedModeRef.current;
       lastSelectedModeRef.current = currentMode;
-      
+
       if (currentMode.startsWith("custom-agent::")) {
         const id = parseInt(currentMode.split("::")[1]);
         const agent = customAgents.find((a) => a.id === id);
         if (agent && agent.prompt && !inputValue.trim()) {
           const isTransition = prevMode !== null;
-          const isNewBlankChat = prevMode === null && currentMessages.length === 0;
+          const isNewBlankChat =
+            prevMode === null && currentMessages.length === 0;
           if (isTransition || isNewBlankChat) {
             setInputValue(agent.prompt);
           }
         }
       }
     }
-  }, [currentMode, customAgents, inputValue, setInputValue, settings, currentMessages.length]);
+  }, [
+    currentMode,
+    customAgents,
+    inputValue,
+    setInputValue,
+    settings,
+    currentMessages.length,
+  ]);
 
   // Reset quick commit dismissal state when streaming completes
   const prevStreamingRef = useRef(isStreaming);
@@ -195,6 +221,11 @@ export function ChatInput({
     }
     prevStreamingRef.current = isStreaming;
   }, [isStreaming]);
+
+  // Reset quick commit dismissal state when switching chats
+  useEffect(() => {
+    setIsQuickCommitDismissed(false);
+  }, [chatId]);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
   const [selectedComponents, setSelectedComponents] = useAtom(
@@ -210,7 +241,9 @@ export function ChatInput({
   const setPendingVisualChanges = useSetAtom(pendingVisualChangesAtom);
 
   const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
-  const askUsersForThisChat = pendingAskUsers.filter((a) => a.chatId === chatId);
+  const askUsersForThisChat = pendingAskUsers.filter(
+    (a) => a.chatId === chatId,
+  );
 
   // OpenCode permission requests
   const [pendingOCPermissions, setPendingOCPermissions] = useAtom(
@@ -220,10 +253,10 @@ export function ChatInput({
     (p) => p.chatId === chatId,
   );
 
-
-
   // Get todos for this chat
-  const [agentTodosByChatId, setAgentTodosByChatId] = useAtom(agentTodosByChatIdAtom);
+  const [agentTodosByChatId, setAgentTodosByChatId] = useAtom(
+    agentTodosByChatIdAtom,
+  );
   const chatTodos = chatId ? (agentTodosByChatId.get(chatId) ?? []) : [];
   const { checkProblems } = useCheckProblems(appId);
   const { refreshAppIframe } = useRunApp();
@@ -280,8 +313,6 @@ export function ChatInput({
 
   const { userBudget } = useUserBudgetInfo();
 
-
-
   // Reset hasAutoStartedRef when chatId changes
   useEffect(() => {
     hasAutoStartedRef.current = false;
@@ -328,145 +359,187 @@ export function ChatInput({
   // ── Undo helper ──────────────────────────────────────────────────────────
   // messageOnly = true  → delete messages + restore prompt, but DON'T touch git
   // messageOnly = false → full undo (delete messages + revert git, current behaviour)
-  const performUndo = useCallback(async ({ messageOnly }: { messageOnly: boolean }) => {
-    if (!chatId || !appId) return;
-    setIsUndoLoading(true);
-    try {
-      // Find the LAST assistant message and the user message immediately before it
-      let lastAssistantIdx = -1;
-      for (let i = currentMessages.length - 1; i >= 0; i--) {
-        if (currentMessages[i].role === "assistant") {
-          lastAssistantIdx = i;
-          break;
-        }
-      }
-      if (lastAssistantIdx < 0) {
-        showError("No hay mensaje de asistente para deshacer");
-        setIsUndoLoading(false);
-        return;
-      }
-      const currentMessage = currentMessages[lastAssistantIdx];
-
-      // Walk backwards from the assistant to find the user message that triggered it
-      let userMessage: typeof currentMessage | undefined;
-      for (let i = lastAssistantIdx - 1; i >= 0; i--) {
-        if (currentMessages[i].role === "user") {
-          userMessage = currentMessages[i];
-          break;
-        }
-      }
-      if (!userMessage) {
-        showError("No se encontró el mensaje de usuario para deshacer");
-        setIsUndoLoading(false);
-        return;
-      }
-
-      if (userMessage) {
-        let prompt = userMessage.content;
-        const idx = prompt.indexOf("\n\nAttachments:\n");
-        if (idx !== -1) prompt = prompt.substring(0, idx);
-        const attachmentsToRestore: File[] = [];
-        let aiMessagesJson = userMessage.aiMessagesJson;
-        if (aiMessagesJson) {
-          let parsed = aiMessagesJson;
-          if (typeof parsed === "string") {
-            try {
-              parsed = JSON.parse(parsed);
-            } catch {
-              parsed = null;
-            }
+  const performUndo = useCallback(
+    async ({ messageOnly }: { messageOnly: boolean }) => {
+      if (!chatId || !appId) return;
+      setIsUndoLoading(true);
+      try {
+        // Find the LAST assistant message and the user message immediately before it
+        let lastAssistantIdx = -1;
+        for (let i = currentMessages.length - 1; i >= 0; i--) {
+          if (currentMessages[i].role === "assistant") {
+            lastAssistantIdx = i;
+            break;
           }
-          const aiMessages = Array.isArray(parsed) ? parsed : parsed?.messages;
-          if (aiMessages && Array.isArray(aiMessages)) {
-            const userMsg = aiMessages.find((m: any) => m.role === "user");
-            if (userMsg && Array.isArray(userMsg.content)) {
-              for (let i = 0; i < userMsg.content.length; i++) {
-                const part = userMsg.content[i];
-                if (part.type === "image" && part.image) {
-                  const mimeType = part.mediaType || part.mimeType || "image/png";
-                  const ext = mimeType.split("/")[1] || "png";
-                  try {
-                    const isUrl = part.image.startsWith("http://") || part.image.startsWith("https://");
-                    if (isUrl) {
-                      // CDN URL: fetch the image and create a File
-                      const resp = await fetch(part.image);
-                      const blob = await resp.blob();
-                      attachmentsToRestore.push(new File([blob], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
-                    } else {
-                      // Legacy base64 data
-                      let base64 = part.image;
-                      if (base64.startsWith("data:")) {
-                        base64 = base64.split(",")[1] || "";
+        }
+        if (lastAssistantIdx < 0) {
+          showError("No hay mensaje de asistente para deshacer");
+          setIsUndoLoading(false);
+          return;
+        }
+        const currentMessage = currentMessages[lastAssistantIdx];
+
+        // Walk backwards from the assistant to find the user message that triggered it
+        let userMessage: typeof currentMessage | undefined;
+        for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+          if (currentMessages[i].role === "user") {
+            userMessage = currentMessages[i];
+            break;
+          }
+        }
+        if (!userMessage) {
+          showError("No se encontró el mensaje de usuario para deshacer");
+          setIsUndoLoading(false);
+          return;
+        }
+
+        if (userMessage) {
+          let prompt = userMessage.content;
+          const idx = prompt.indexOf("\n\nAttachments:\n");
+          if (idx !== -1) prompt = prompt.substring(0, idx);
+          const attachmentsToRestore: File[] = [];
+          let aiMessagesJson = userMessage.aiMessagesJson;
+          if (aiMessagesJson) {
+            let parsed = aiMessagesJson;
+            if (typeof parsed === "string") {
+              try {
+                parsed = JSON.parse(parsed);
+              } catch {
+                parsed = null;
+              }
+            }
+            const aiMessages = Array.isArray(parsed)
+              ? parsed
+              : parsed?.messages;
+            if (aiMessages && Array.isArray(aiMessages)) {
+              const userMsg = aiMessages.find((m: any) => m.role === "user");
+              if (userMsg && Array.isArray(userMsg.content)) {
+                for (let i = 0; i < userMsg.content.length; i++) {
+                  const part = userMsg.content[i];
+                  if (part.type === "image" && part.image) {
+                    const mimeType =
+                      part.mediaType || part.mimeType || "image/png";
+                    const ext = mimeType.split("/")[1] || "png";
+                    try {
+                      const isUrl =
+                        part.image.startsWith("http://") ||
+                        part.image.startsWith("https://");
+                      if (isUrl) {
+                        // CDN URL: fetch the image and create a File
+                        const resp = await fetch(part.image);
+                        const blob = await resp.blob();
+                        attachmentsToRestore.push(
+                          new File(
+                            [blob],
+                            `restored-${Date.now()}-${i}.${ext}`,
+                            { type: mimeType },
+                          ),
+                        );
+                      } else {
+                        // Legacy base64 data
+                        let base64 = part.image;
+                        if (base64.startsWith("data:")) {
+                          base64 = base64.split(",")[1] || "";
+                        }
+                        const byteChars = atob(base64);
+                        const byteArr = new Uint8Array(byteChars.length);
+                        for (let j = 0; j < byteChars.length; j++)
+                          byteArr[j] = byteChars.charCodeAt(j);
+                        attachmentsToRestore.push(
+                          new File(
+                            [new Blob([byteArr], { type: mimeType })],
+                            `restored-${Date.now()}-${i}.${ext}`,
+                            { type: mimeType },
+                          ),
+                        );
                       }
-                      const byteChars = atob(base64);
-                      const byteArr = new Uint8Array(byteChars.length);
-                      for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                      attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                    } catch {
+                      /* skip */
                     }
-                  } catch { /* skip */ }
+                  }
                 }
               }
             }
           }
+          window.dispatchEvent(
+            new CustomEvent("vibes:restore-chat-input", {
+              detail: { prompt, attachments: attachmentsToRestore },
+            }),
+          );
         }
-        window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
-      }
 
-      if (messageOnly) {
-        // Message-only undo: delete messages but leave git untouched
-        await revertVersion({
-          versionId: "NONE",
-          currentChatMessageId: { chatId, messageId: userMessage.id },
-          silent: true,
-        });
-      } else {
-        // Full undo: revert git + delete messages
-        const targetHash = currentMessage?.sourceCommitHash || "NONE";
-        if (targetHash !== "NONE") {
-          // Normal undo: revert to the commit before this chat turn
+        if (messageOnly) {
+          // Message-only undo: delete messages but leave git untouched
           await revertVersion({
-            versionId: targetHash,
-            currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+            versionId: "NONE",
+            currentChatMessageId: { chatId, messageId: userMessage.id },
             silent: true,
           });
         } else {
-          // Stream was stopped before any commit — discard uncommitted changes
-          try {
-            await ipc.git.discardAllChanges({ appId });
-          } catch { /* no uncommitted changes to discard */ }
-          // Still delete the messages from this turn
-          if (userMessage) {
+          // Full undo: revert git + delete messages
+          const targetHash = currentMessage?.sourceCommitHash || "NONE";
+          if (targetHash !== "NONE") {
+            // Normal undo: revert to the commit before this chat turn
             await revertVersion({
-              versionId: "NONE",
-              currentChatMessageId: { chatId, messageId: userMessage.id },
+              versionId: targetHash,
+              currentChatMessageId: userMessage
+                ? { chatId, messageId: userMessage.id }
+                : undefined,
               silent: true,
             });
+          } else {
+            // Stream was stopped before any commit — discard uncommitted changes
+            try {
+              await ipc.git.discardAllChanges({ appId });
+            } catch {
+              /* no uncommitted changes to discard */
+            }
+            // Still delete the messages from this turn
+            if (userMessage) {
+              await revertVersion({
+                versionId: "NONE",
+                currentChatMessageId: { chatId, messageId: userMessage.id },
+                silent: true,
+              });
+            }
           }
         }
+        // Clear agent todos for this chat
+        setAgentTodosByChatId((prev) => {
+          const next = new Map(prev);
+          next.delete(chatId);
+          return next;
+        });
+        const chat = await ipc.chat.getChat(chatId);
+        setMessagesById((prev) => {
+          const next = new Map(prev);
+          next.set(chatId, chat.messages);
+          return next;
+        });
+      } catch (error) {
+        console.error("Error during undo:", error);
+        showError("Failed to undo changes");
+      } finally {
+        setIsUndoLoading(false);
       }
-      // Clear agent todos for this chat
-      setAgentTodosByChatId((prev) => {
-        const next = new Map(prev);
-        next.delete(chatId);
-        return next;
-      });
-      const chat = await ipc.chat.getChat(chatId);
-      setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
-    } catch (error) {
-      console.error("Error during undo:", error);
-      showError("Failed to undo changes");
-    } finally {
-      setIsUndoLoading(false);
-    }
-  }, [chatId, appId, currentMessages, revertVersion, setAgentTodosByChatId, setMessagesById]);
+    },
+    [
+      chatId,
+      appId,
+      currentMessages,
+      revertVersion,
+      setAgentTodosByChatId,
+      setMessagesById,
+    ],
+  );
 
   const handleSubmit = async () => {
-    if (
-      (!inputValue.trim() && attachments.length === 0) ||
-      !chatId
-    ) {
+    if ((!inputValue.trim() && attachments.length === 0) || !chatId) {
       return;
     }
+
+    // Exit expanded mode on send
+    setIsExpanded(false);
 
     // If currently streaming, enqueue the message instead of dropping it
     if (isStreaming) {
@@ -492,7 +565,12 @@ export function ChatInput({
     if (quotedMessages.length > 0) {
       const quoteBlock = quotedMessages
         .map((q) => {
-          const roleLabel = q.role === "console" ? "Consola" : q.role === "user" ? "Usuario" : "IA";
+          const roleLabel =
+            q.role === "console"
+              ? "Consola"
+              : q.role === "user"
+                ? "Usuario"
+                : "IA";
           // Prefix EVERY line with > to form a proper markdown blockquote
           const quotedLines = q.content
             .split("\n")
@@ -512,7 +590,6 @@ export function ChatInput({
     if (chatId) clearDraft(chatId);
 
     let currentChatId = chatId;
-
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -534,21 +611,28 @@ export function ChatInput({
     //   1. versions.length <= 1: only the initial 'Init vibes app' commit exists (no scaffold yet)
     //   2. No prior messages exist in any loaded chat (covers PHP/Python/Go projects without package.json)
     // New chats in existing apps must NOT re-scaffold. The backend also has its own guard.
-    const isAppEmpty = app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true;
-    const isNewApp = !versionsLoading && versions.length <= 1 && currentMessages.length === 0 && isAppEmpty;
+    const isAppEmpty = app
+      ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md")
+          .length === 0
+      : true;
+    const isNewApp =
+      !versionsLoading &&
+      versions.length <= 1 &&
+      currentMessages.length === 0 &&
+      isAppEmpty;
     if (currentChatId && appId && currentMessages.length === 0 && isNewApp) {
       setIsStreaming(true);
-      
+
       const CREATION_PHASES = [
         "Preparando la estructura base del proyecto…",
         "Instalando dependencias necesarias…",
         "Aplicando configuración y estilos…",
-        "Inicializando el entorno de desarrollo…"
+        "Inicializando el entorno de desarrollo…",
       ];
-      
+
       const fakeUserMsgId = -Date.now();
       const fakeAstMsgId = fakeUserMsgId - 1;
-      
+
       const fakeUserMsg: any = {
         id: fakeUserMsgId,
         chatId: currentChatId,
@@ -556,7 +640,7 @@ export function ChatInput({
         content: currentInput,
         createdAt: new Date(),
       };
-      
+
       const createFakeAstMsg = (label: string): any => ({
         id: fakeAstMsgId,
         chatId: currentChatId,
@@ -567,10 +651,13 @@ export function ChatInput({
 
       setMessagesById((prev) => {
         const next = new Map(prev);
-        next.set(currentChatId, [fakeUserMsg, createFakeAstMsg(CREATION_PHASES[0])]);
+        next.set(currentChatId, [
+          fakeUserMsg,
+          createFakeAstMsg(CREATION_PHASES[0]),
+        ]);
         return next;
       });
-      
+
       let phaseIndex = 0;
       const phaseInterval = setInterval(() => {
         phaseIndex = Math.min(phaseIndex + 1, CREATION_PHASES.length - 1);
@@ -594,9 +681,15 @@ export function ChatInput({
           if (app && app.path) {
             try {
               if (selectedDesign.customContent) {
-                await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: app.path });
+                await ipc.design.writeCustomDesign({
+                  content: selectedDesign.customContent,
+                  appPath: app.path,
+                });
               } else {
-                await ipc.design.addDesign({ brand: selectedDesign.id, appPath: app.path });
+                await ipc.design.addDesign({
+                  brand: selectedDesign.id,
+                  appPath: app.path,
+                });
               }
             } catch (err) {
               console.error("[ChatInput] DESIGN ERROR:", err);
@@ -611,7 +704,12 @@ export function ChatInput({
         setMessagesById((prev) => {
           const next = new Map(prev);
           const msgs = next.get(currentChatId) || [];
-          next.set(currentChatId, msgs.filter((m: any) => m.id !== fakeUserMsgId && m.id !== fakeAstMsgId));
+          next.set(
+            currentChatId,
+            msgs.filter(
+              (m: any) => m.id !== fakeUserMsgId && m.id !== fakeAstMsgId,
+            ),
+          );
           return next;
         });
       }
@@ -634,8 +732,6 @@ export function ChatInput({
     }
     setIsStreaming(false);
   };
-
-
 
   const handleApprove = async () => {
     if (!chatId || !messageId || isApproving || isRejecting || isStreaming)
@@ -701,7 +797,6 @@ export function ChatInput({
 
   return (
     <>
-
       {/* Display loading or error state for proposal */}
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&
@@ -751,12 +846,33 @@ export function ChatInput({
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                   <span className="text-sm text-muted-foreground/70 flex-1 truncate">
-                    {msg.prompt || <em className="text-muted-foreground/40">Sin texto</em>}
+                    {msg.prompt || (
+                      <em className="text-muted-foreground/40">Sin texto</em>
+                    )}
                   </span>
                   {msg.attachments && msg.attachments.length > 0 && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground/50 shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect
+                          x="3"
+                          y="3"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          ry="2"
+                        />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
                       </svg>
                       {msg.attachments.length}
                     </span>
@@ -767,14 +883,27 @@ export function ChatInput({
                       setPendingMessageQueue((prev) => {
                         const next = new Map(prev);
                         const queue = next.get(chatId) ?? [];
-                        next.set(chatId, queue.filter((m) => m.id !== msg.id));
+                        next.set(
+                          chatId,
+                          queue.filter((m) => m.id !== msg.id),
+                        );
                         return next;
                       });
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:text-foreground text-muted-foreground/50 cursor-pointer"
                     title="Eliminar mensaje pendiente"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
@@ -787,8 +916,7 @@ export function ChatInput({
       )}
 
       <div className="p-4" data-testid="chat-input-container">
-        <div className="max-w-3xl mx-auto relative">
-          
+        <div className={`mx-auto relative transition-all duration-300 ease-in-out ${isExpanded ? "max-w-[60rem]" : "max-w-3xl"}`}>
           <div
             className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{
@@ -796,14 +924,17 @@ export function ChatInput({
             }}
           >
             <div
-              className={`relative flex flex-col rounded-lg bg-(--background-lighter) overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
-                }`}
+              className={`relative flex flex-col rounded-lg bg-(--background-lighter) overflow-hidden ${
+                isDraggingOver ? "ring-2 ring-blue-500" : ""
+              }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
               {/* Show todo list if there are todos for this chat */}
-              {chatTodos.length > 0 && <TodoList todos={chatTodos} isStreaming={isStreaming} />}
+              {chatTodos.length > 0 && (
+                <TodoList todos={chatTodos} isStreaming={isStreaming} />
+              )}
               {/* OpenCode permission banner (ask mode) */}
               {ocPermissionsForChat.length > 0 && (
                 <VibesPermissionBanner
@@ -816,7 +947,8 @@ export function ChatInput({
                     });
                     setPendingOCPermissions((prev) =>
                       prev.filter(
-                        (p) => p.requestId !== ocPermissionsForChat[0].requestId,
+                        (p) =>
+                          p.requestId !== ocPermissionsForChat[0].requestId,
                       ),
                     );
                   }}
@@ -837,7 +969,8 @@ export function ChatInput({
                     node={{
                       properties: {
                         question: askUsersForThisChat[0].question,
-                        options: askUsersForThisChat[0].options?.join("|") || "",
+                        options:
+                          askUsersForThisChat[0].options?.join("|") || "",
                         context: askUsersForThisChat[0].context || "",
                         requestId: askUsersForThisChat[0].requestId,
                       },
@@ -846,8 +979,7 @@ export function ChatInput({
                 </div>
               )}
               {/* Only render ChatInputActions if proposal is loaded */}
-              {
-                proposal &&
+              {proposal &&
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&
                 !isPlanMode &&
@@ -872,6 +1004,7 @@ export function ChatInput({
 
               {appId && chatId && !isStreaming && !isQuickCommitDismissed && (
                 <GitQuickCommit
+                  key={`${appId}-${chatId}`}
                   appId={appId}
                   chatId={chatId}
                   onDismiss={() => setIsQuickCommitDismissed(true)}
@@ -911,16 +1044,31 @@ export function ChatInput({
               {/* Use the DragDropOverlay component */}
               <DragDropOverlay isDraggingOver={isDraggingOver} />
 
-              <LexicalChatInput
-                value={inputValue}
-                onChange={setInputValue}
-                onSubmit={handleSubmit}
-                onPaste={handlePaste}
-                placeholder="Pídele a vibes que haga..."
-                excludeCurrentApp={true}
-                disableSendButton={disableSendButton}
-                compact={workspaceMode}
-              />
+              {/* Textarea area with expand toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsExpanded((v) => !v)}
+                  className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  title={isExpanded ? "Reducir editor" : "Expandir editor"}
+                >
+                  {isExpanded ? (
+                    <Minimize2 size={13} />
+                  ) : (
+                    <Maximize2 size={13} />
+                  )}
+                </button>
+                <LexicalChatInput
+                  value={inputValue}
+                  onChange={setInputValue}
+                  onSubmit={handleSubmit}
+                  onPaste={handlePaste}
+                  placeholder="Pídele a vibes que haga..."
+                  excludeCurrentApp={true}
+                  disableSendButton={disableSendButton}
+                  compact={workspaceMode}
+                  expanded={isExpanded}
+                />
+              </div>
 
               {/* Bottom controls bar */}
               <div className="px-3 py-5 flex items-center border-t border-border/50">
@@ -932,8 +1080,26 @@ export function ChatInput({
                   <ChatInputControls
                     showContextFilesPicker={false}
                     chatId={chatId}
-                    showTemplatePicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
-                    showDesignPicker={currentMessages.length === 0 && !versionsLoading && versions.length <= 1 && (app ? app.files.filter((f) => f !== ".gitignore" && f !== "README.md").length === 0 : true)}
+                    showTemplatePicker={
+                      currentMessages.length === 0 &&
+                      !versionsLoading &&
+                      versions.length <= 1 &&
+                      (app
+                        ? app.files.filter(
+                            (f) => f !== ".gitignore" && f !== "README.md",
+                          ).length === 0
+                        : true)
+                    }
+                    showDesignPicker={
+                      currentMessages.length === 0 &&
+                      !versionsLoading &&
+                      versions.length <= 1 &&
+                      (app
+                        ? app.files.filter(
+                            (f) => f !== ".gitignore" && f !== "README.md",
+                          ).length === 0
+                        : true)
+                    }
                   />
                 </div>
 
@@ -941,7 +1107,7 @@ export function ChatInput({
                   {/* Undo button — circular, icon-only */}
                   {!isStreaming &&
                     !!currentMessages.length &&
-                    currentMessages.some(m => m.role === "assistant") && (
+                    currentMessages.some((m) => m.role === "assistant") && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -960,13 +1126,18 @@ export function ChatInput({
                               className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
                               title="Deshacer"
                             >
-                              {isUndoLoading ? <Loader2 size={16} className="animate-spin" /> : <Undo size={16} />}
+                              {isUndoLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Undo size={16} />
+                              )}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent>Deshacer</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}
+
                   <UndoConfirmDialog
                     isOpen={isUndoDialogOpen}
                     onOpenChange={setIsUndoDialogOpen}
@@ -981,7 +1152,6 @@ export function ChatInput({
                     uncommittedFiles={uncommittedFiles}
                     isLoading={isUndoLoading}
                   />
-
 
                   {isStreaming ? (
                     <button
@@ -1008,7 +1178,6 @@ export function ChatInput({
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </>
@@ -1043,7 +1212,6 @@ function SuggestionButton({
     </TooltipProvider>
   );
 }
-
 
 function RefactorFileButton({ path }: { path: string }) {
   const chatId = useAtomValue(selectedChatIdAtom);
@@ -1117,7 +1285,6 @@ function KeepGoingButton() {
 
 export function mapActionToButton(action: SuggestedAction) {
   switch (action.id) {
-
     case "refactor-file":
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":
@@ -1263,7 +1430,6 @@ function ChatInputActions({
       <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
         {isDetailsVisible && (
           <div className="p-3 border-t border-border bg-muted/50 text-sm">
-
             {proposal.sqlQueries?.length > 0 && (
               <div className="mb-3">
                 <h4 className="font-semibold mb-1">Consultas SQL</h4>

@@ -33,7 +33,11 @@ import { runTypeChecksTool } from "./tools/run_type_checks";
 import { gitOperationsTool } from "./tools/git_operations";
 import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
 import { runCommandTool } from "./tools/run_command";
-import { startProcessTool, stopProcessTool, listProcessesTool } from "./tools/process_management";
+import {
+  startProcessTool,
+  stopProcessTool,
+  listProcessesTool,
+} from "./tools/process_management";
 import { waitForHttpTool } from "./tools/wait_for_http";
 import { httpFetchTool } from "./tools/http_fetch";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
@@ -48,7 +52,6 @@ import {
 } from "./tools/types";
 import { AgentToolConsent } from "@/lib/schemas";
 import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
-import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   fileEditorTool,
   deleteFileTool,
@@ -249,26 +252,23 @@ async function processArgPlaceholders<T extends Record<string, any>>(
 
   let firebaseClientCode = "";
   if (hasFirebase && ctx.firebaseProjectId) {
-    const app = await getRemoteDb().query.apps.findFirst({
-      where: eq(remoteSchema.apps.id, ctx.appId),
-    });
-    if (app?.firebaseConfig) {
-      firebaseClientCode = await getFirebaseConfigCode({
-        appId: ctx.appId,
-        projectId: ctx.firebaseProjectId,
-        config: app.firebaseConfig,
-      });
-    }
+    firebaseClientCode = ""; // firebase_config eliminado: ya no se genera código de cliente desde la DB
   }
 
   const processValue = (value: any): any => {
     if (typeof value === "string") {
       let result = value;
       if (supabaseClientCode) {
-        result = result.replace(/\$\$SUPABASE_CLIENT_CODE\$\$/g, supabaseClientCode);
+        result = result.replace(
+          /\$\$SUPABASE_CLIENT_CODE\$\$/g,
+          supabaseClientCode,
+        );
       }
       if (firebaseClientCode) {
-        result = result.replace(/\$\$FIREBASE_CLIENT_CODE\$\$/g, firebaseClientCode);
+        result = result.replace(
+          /\$\$FIREBASE_CLIENT_CODE\$\$/g,
+          firebaseClientCode,
+        );
       }
       return result;
     }
@@ -305,12 +305,16 @@ function convertToolResultForAiSdk(
     parts.push(`Hint: ${result.hint}`);
   }
   if (result.isError && result.retryable) {
-    parts.push("This error is retryable. Please try again with corrected input.");
+    parts.push(
+      "This error is retryable. Please try again with corrected input.",
+    );
   }
   // Truncate long error messages to avoid bloating the conversation context
   let value = parts.join("\n");
   if (result.isError && value.length > 500) {
-    value = value.slice(0, 500) + "\n[error truncated — use read_file to see actual file content]";
+    value =
+      value.slice(0, 500) +
+      "\n[error truncated — use read_file to see actual file content]";
   }
   return { type: "text", value };
 }
@@ -413,8 +417,6 @@ export function buildAgentToolSet(
           if (!allowed) {
             throw new Error(`User denied permission for ${tool.name}`);
           }
-
-
 
           let result;
           let retries = 2;

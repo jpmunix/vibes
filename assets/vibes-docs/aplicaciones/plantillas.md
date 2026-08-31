@@ -14,14 +14,14 @@ Antes de crear una app, puedes elegir la plantilla desde el selector que aparece
 
 Vibes incluye plantillas para los frameworks más populares:
 
-| Framework | Descripción |
-|---|---|
-| **React** | Aplicación SPA con Vite |
-| **Next.js** | Full-stack con server-side rendering |
-| **Vue** | Aplicación SPA con Vite |
-| **Svelte** | Aplicación con SvelteKit |
-| **Astro** | Sitio estático con islas de interactividad |
-| **HTML/CSS/JS** | Proyecto vanilla sin framework |
+| Framework       | Descripción                                |
+| --------------- | ------------------------------------------ |
+| **React**       | Aplicación SPA con Vite                    |
+| **Next.js**     | Full-stack con server-side rendering       |
+| **Vue**         | Aplicación SPA con Vite                    |
+| **Svelte**      | Aplicación con SvelteKit                   |
+| **Astro**       | Sitio estático con islas de interactividad |
+| **HTML/CSS/JS** | Proyecto vanilla sin framework             |
 
 ## ¿Qué incluye una plantilla?
 

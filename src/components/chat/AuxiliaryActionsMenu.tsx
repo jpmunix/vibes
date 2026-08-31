@@ -1,8 +1,25 @@
 import { useRef } from "react";
 import { Plus } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
-import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+/** Accepted file types: images + plain text formats */
+const ACCEPTED_FILE_TYPES = [
+  "image/*",
+  ".md", ".txt", ".html", ".htm", ".csv", ".json", ".xml",
+  ".yaml", ".yml", ".log", ".ini", ".cfg", ".conf", ".toml",
+  ".env", ".gitignore",
+  ".ts", ".tsx", ".js", ".jsx", ".py", ".css", ".scss",
+  ".sh", ".bash", ".zsh",
+  ".sql", ".graphql", ".gql",
+  ".rs", ".go", ".java", ".kt", ".swift", ".c", ".cpp", ".h",
+  ".rb", ".php", ".lua", ".r", ".m",
+].join(",");
 
 interface AuxiliaryActionsMenuProps {
   onFileSelect: (
@@ -19,10 +36,8 @@ export function AuxiliaryActionsMenu({
   onFileSelect,
 }: AuxiliaryActionsMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supportsImages = useSelectedModelSupportsImages();
 
   const handleClick = () => {
-    if (!supportsImages) return;
     fileInputRef.current?.click();
   };
 
@@ -42,20 +57,17 @@ export function AuxiliaryActionsMenu({
               <Button
                 variant="ghost"
                 size="sm"
-                className="has-[>svg]:px-2 hover:bg-muted bg-primary/10 text-primary cursor-pointer rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="has-[>svg]:px-2 hover:bg-muted bg-primary/10 text-primary cursor-pointer rounded-xl"
                 data-testid="auxiliary-actions-menu"
                 onClick={handleClick}
-                disabled={!supportsImages}
               >
                 <Plus size={20} />
               </Button>
             </span>
           </TooltipTrigger>
-          {!supportsImages && (
-            <TooltipContent>
-              <p>El modelo actual no soporta imágenes</p>
-            </TooltipContent>
-          )}
+          <TooltipContent>
+            <p>Adjuntar imágenes o archivos de texto</p>
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <input
@@ -63,6 +75,7 @@ export function AuxiliaryActionsMenu({
         ref={fileInputRef}
         className="hidden"
         multiple
+        accept={ACCEPTED_FILE_TYPES}
         data-testid="attach-chat-context-file-input"
         onChange={handleFileChange}
       />

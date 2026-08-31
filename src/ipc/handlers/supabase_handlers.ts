@@ -188,41 +188,57 @@ export function registerSupabaseHandlers() {
   });
 
   // Set app project - links a Vibes app to a Supabase project
-  createTypedHandler(supabaseContracts.setAppProject, async (_, params, context) => {
-    const userId = context.userId;
-    if (!userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { projectId, appId, parentProjectId, organizationSlug } = params;
-    await db
-      .update(remoteSchema.apps)
-      .set({
-        supabaseProjectId: projectId,
-        supabaseParentProjectId: parentProjectId,
-        supabaseOrganizationSlug: organizationSlug,
-      })
-      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
+  createTypedHandler(
+    supabaseContracts.setAppProject,
+    async (_, params, context) => {
+      const userId = context.userId;
+      if (!userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { projectId, appId, parentProjectId, organizationSlug } = params;
+      await db
+        .update(remoteSchema.apps)
+        .set({
+          supabaseProjectId: projectId,
+          supabaseParentProjectId: parentProjectId,
+          supabaseOrganizationSlug: organizationSlug,
+        })
+        .where(
+          and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, userId),
+          ),
+        );
 
-    logger.info(
-      `Associated app ${appId} with Supabase project ${projectId} (organization: ${organizationSlug})${parentProjectId ? ` and parent project ${parentProjectId}` : ""}`,
-    );
-  });
+      logger.info(
+        `Associated app ${appId} with Supabase project ${projectId} (organization: ${organizationSlug})${parentProjectId ? ` and parent project ${parentProjectId}` : ""}`,
+      );
+    },
+  );
 
   // Unset app project - removes the link between a Vibes app and a Supabase project
-  createTypedHandler(supabaseContracts.unsetAppProject, async (_, params, context) => {
-    const userId = context.userId;
-    if (!userId) throw new Error("Unauthorized");
-    const db = getRemoteDb();
-    const { app } = params;
-    await db
-      .update(remoteSchema.apps)
-      .set({
-        supabaseProjectId: null,
-        supabaseParentProjectId: null,
-        supabaseOrganizationSlug: null,
-      })
-      .where(and(eq(remoteSchema.apps.id, app), eq(remoteSchema.apps.userId, userId)));
-    logger.info(`Removed Supabase project association for app ${app}`);
-  });
+  createTypedHandler(
+    supabaseContracts.unsetAppProject,
+    async (_, params, context) => {
+      const userId = context.userId;
+      if (!userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { app } = params;
+      await db
+        .update(remoteSchema.apps)
+        .set({
+          supabaseProjectId: null,
+          supabaseParentProjectId: null,
+          supabaseOrganizationSlug: null,
+        })
+        .where(
+          and(
+            eq(remoteSchema.apps.id, app),
+            eq(remoteSchema.apps.userId, userId),
+          ),
+        );
+      logger.info(`Removed Supabase project association for app ${app}`);
+    },
+  );
 
   // ─── Database Viewer Handlers ───
 
@@ -230,7 +246,10 @@ export function registerSupabaseHandlers() {
   async function getAppSupabaseInfo(appId: number, userId: string) {
     const db = getRemoteDb();
     const app = await db.query.apps.findFirst({
-      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, userId),
+      ),
     });
     if (!app) throw new Error("App not found");
     if (!app.supabaseProjectId)
@@ -250,16 +269,22 @@ export function registerSupabaseHandlers() {
     if (val === null || val === undefined) return "NULL";
     if (typeof val === "number") return String(val);
     if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
-    if (typeof val === "object") return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
+    if (typeof val === "object")
+      return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
     return `'${String(val).replace(/'/g, "''")}'`;
   }
 
   // List tables with schema
-  createTypedHandler(supabaseContracts.listTables, async (_, { appId }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
+  createTypedHandler(
+    supabaseContracts.listTables,
+    async (_, { appId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
 
-    const query = `
+      const query = `
       WITH table_counts AS (
         SELECT
           schemaname,
@@ -299,84 +324,137 @@ export function registerSupabaseHandlers() {
       ORDER BY c.table_name;
     `;
 
-    const resultStr = await executeSupabaseSql({
-      supabaseProjectId: projectId,
-      query,
-      organizationSlug,
-    });
-    const rows = JSON.parse(resultStr);
+      const resultStr = await executeSupabaseSql({
+        supabaseProjectId: projectId,
+        query,
+        organizationSlug,
+      });
+      const rows = JSON.parse(resultStr);
 
-    return {
-      tables: (Array.isArray(rows) ? rows : []).map((row: any) => ({
-        name: row.table_name,
-        rowCount: Number(row.row_count) || 0,
-        columns: (typeof row.columns === "string" ? JSON.parse(row.columns) : row.columns || []).map((col: any) => ({
-          name: col.name,
-          type: col.type,
-          nullable: col.nullable,
-          defaultValue: col.default_value ?? null,
-          isPrimaryKey: col.is_primary_key ?? false,
+      return {
+        tables: (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          name: row.table_name,
+          rowCount: Number(row.row_count) || 0,
+          columns: (typeof row.columns === "string"
+            ? JSON.parse(row.columns)
+            : row.columns || []
+          ).map((col: any) => ({
+            name: col.name,
+            type: col.type,
+            nullable: col.nullable,
+            defaultValue: col.default_value ?? null,
+            isPrimaryKey: col.is_primary_key ?? false,
+          })),
         })),
-      })),
-    };
-  });
+      };
+    },
+  );
 
   // Query table with pagination
-  createTypedHandler(supabaseContracts.queryTable, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { appId, table, page = 1, pageSize = 50, orderBy, orderDir = "asc", filters } = params;
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
+  createTypedHandler(
+    supabaseContracts.queryTable,
+    async (_, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const {
+        appId,
+        table,
+        page = 1,
+        pageSize = 50,
+        orderBy,
+        orderDir = "asc",
+        filters,
+      } = params;
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
 
-    let whereClause = "";
-    if (filters && filters.length > 0) {
-      const conditions = filters.map((f) => {
-        const col = quoteIdent(f.column);
-        if (f.operator === "IS NULL") return `${col} IS NULL`;
-        if (f.operator === "IS NOT NULL") return `${col} IS NOT NULL`;
-        return `${col} ${f.operator} ${escapeValue(f.value)}`;
+      let whereClause = "";
+      if (filters && filters.length > 0) {
+        const conditions = filters.map((f) => {
+          const col = quoteIdent(f.column);
+          if (f.operator === "IS NULL") return `${col} IS NULL`;
+          if (f.operator === "IS NOT NULL") return `${col} IS NOT NULL`;
+          return `${col} ${f.operator} ${escapeValue(f.value)}`;
+        });
+        whereClause = `WHERE ${conditions.join(" AND ")}`;
+      }
+
+      const orderClause = orderBy
+        ? `ORDER BY ${quoteIdent(orderBy)} ${orderDir === "desc" ? "DESC" : "ASC"}`
+        : "";
+      const offset = (page - 1) * pageSize;
+
+      // Count query
+      const countQuery = `SELECT COUNT(*) as total FROM ${quoteIdent(table)} ${whereClause};`;
+      const countResultStr = await executeSupabaseSql({
+        supabaseProjectId: projectId,
+        query: countQuery,
+        organizationSlug,
       });
-      whereClause = `WHERE ${conditions.join(" AND ")}`;
-    }
+      const countResult = JSON.parse(countResultStr);
+      const totalCount = Number(
+        Array.isArray(countResult) && countResult[0]?.total
+          ? countResult[0].total
+          : 0,
+      );
 
-    const orderClause = orderBy
-      ? `ORDER BY ${quoteIdent(orderBy)} ${orderDir === "desc" ? "DESC" : "ASC"}`
-      : "";
-    const offset = (page - 1) * pageSize;
+      // Data query
+      const dataQuery = `SELECT * FROM ${quoteIdent(table)} ${whereClause} ${orderClause} LIMIT ${pageSize} OFFSET ${offset};`;
+      const dataResultStr = await executeSupabaseSql({
+        supabaseProjectId: projectId,
+        query: dataQuery,
+        organizationSlug,
+      });
+      const dataResult = JSON.parse(dataResultStr);
+      const rows = Array.isArray(dataResult) ? dataResult : [];
+      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
-    // Count query
-    const countQuery = `SELECT COUNT(*) as total FROM ${quoteIdent(table)} ${whereClause};`;
-    const countResultStr = await executeSupabaseSql({
-      supabaseProjectId: projectId,
-      query: countQuery,
-      organizationSlug,
-    });
-    const countResult = JSON.parse(countResultStr);
-    const totalCount = Number(
-      Array.isArray(countResult) && countResult[0]?.total
-        ? countResult[0].total
-        : 0,
-    );
-
-    // Data query
-    const dataQuery = `SELECT * FROM ${quoteIdent(table)} ${whereClause} ${orderClause} LIMIT ${pageSize} OFFSET ${offset};`;
-    const dataResultStr = await executeSupabaseSql({
-      supabaseProjectId: projectId,
-      query: dataQuery,
-      organizationSlug,
-    });
-    const dataResult = JSON.parse(dataResultStr);
-    const rows = Array.isArray(dataResult) ? dataResult : [];
-    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-
-    return { rows, totalCount, columns };
-  });
+      return { rows, totalCount, columns };
+    },
+  );
 
   // Execute raw SQL
-  createTypedHandler(supabaseContracts.executeQuery, async (_, { appId, query }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
+  createTypedHandler(
+    supabaseContracts.executeQuery,
+    async (_, { appId, query }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
 
-    try {
+      try {
+        const resultStr = await executeSupabaseSql({
+          supabaseProjectId: projectId,
+          query,
+          organizationSlug,
+        });
+        const result = JSON.parse(resultStr);
+        const rows = Array.isArray(result) ? result : [];
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        return { rows, columns, rowCount: rows.length };
+      } catch (err: any) {
+        return { rows: [], columns: [], rowCount: 0, error: err.message };
+      }
+    },
+  );
+
+  // Insert row
+  createTypedHandler(
+    supabaseContracts.insertRow,
+    async (_, { appId, table, data }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
+
+      const columns = Object.keys(data);
+      const colList = columns.map(quoteIdent).join(", ");
+      const valList = columns.map((c) => escapeValue(data[c])).join(", ");
+
+      const query = `INSERT INTO ${quoteIdent(table)} (${colList}) VALUES (${valList}) RETURNING *;`;
       const resultStr = await executeSupabaseSql({
         supabaseProjectId: projectId,
         query,
@@ -384,79 +462,68 @@ export function registerSupabaseHandlers() {
       });
       const result = JSON.parse(resultStr);
       const rows = Array.isArray(result) ? result : [];
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-      return { rows, columns, rowCount: rows.length };
-    } catch (err: any) {
-      return { rows: [], columns: [], rowCount: 0, error: err.message };
-    }
-  });
 
-  // Insert row
-  createTypedHandler(supabaseContracts.insertRow, async (_, { appId, table, data }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
-
-    const columns = Object.keys(data);
-    const colList = columns.map(quoteIdent).join(", ");
-    const valList = columns.map((c) => escapeValue(data[c])).join(", ");
-
-    const query = `INSERT INTO ${quoteIdent(table)} (${colList}) VALUES (${valList}) RETURNING *;`;
-    const resultStr = await executeSupabaseSql({
-      supabaseProjectId: projectId,
-      query,
-      organizationSlug,
-    });
-    const result = JSON.parse(resultStr);
-    const rows = Array.isArray(result) ? result : [];
-
-    return { success: true, row: rows[0] };
-  });
+      return { success: true, row: rows[0] };
+    },
+  );
 
   // Update row
-  createTypedHandler(supabaseContracts.updateRow, async (_, { appId, table, primaryKey, data }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
+  createTypedHandler(
+    supabaseContracts.updateRow,
+    async (_, { appId, table, primaryKey, data }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
 
-    const setClause = Object.entries(data)
-      .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
-      .join(", ");
+      const setClause = Object.entries(data)
+        .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
+        .join(", ");
 
-    const whereClause = Object.entries(primaryKey)
-      .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
-      .join(" AND ");
-
-    const query = `UPDATE ${quoteIdent(table)} SET ${setClause} WHERE ${whereClause};`;
-    await executeSupabaseSql({
-      supabaseProjectId: projectId,
-      query,
-      organizationSlug,
-    });
-
-    return { success: true };
-  });
-
-  // Delete rows
-  createTypedHandler(supabaseContracts.deleteRows, async (_, { appId, table, primaryKeys }, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
-
-    let deletedCount = 0;
-    for (const pk of primaryKeys) {
-      const whereClause = Object.entries(pk)
+      const whereClause = Object.entries(primaryKey)
         .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
         .join(" AND ");
 
-      const query = `DELETE FROM ${quoteIdent(table)} WHERE ${whereClause};`;
+      const query = `UPDATE ${quoteIdent(table)} SET ${setClause} WHERE ${whereClause};`;
       await executeSupabaseSql({
         supabaseProjectId: projectId,
         query,
         organizationSlug,
       });
-      deletedCount++;
-    }
 
-    return { deletedCount };
-  });
+      return { success: true };
+    },
+  );
+
+  // Delete rows
+  createTypedHandler(
+    supabaseContracts.deleteRows,
+    async (_, { appId, table, primaryKeys }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const { projectId, organizationSlug } = await getAppSupabaseInfo(
+        appId,
+        context.userId,
+      );
+
+      let deletedCount = 0;
+      for (const pk of primaryKeys) {
+        const whereClause = Object.entries(pk)
+          .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
+          .join(" AND ");
+
+        const query = `DELETE FROM ${quoteIdent(table)} WHERE ${whereClause};`;
+        await executeSupabaseSql({
+          supabaseProjectId: projectId,
+          query,
+          organizationSlug,
+        });
+        deletedCount++;
+      }
+
+      return { deletedCount };
+    },
+  );
 
   testOnlyHandle(
     "supabase:fake-connect-and-set-project",
@@ -503,7 +570,12 @@ export function registerSupabaseHandlers() {
           supabaseProjectId: fakeProjectId,
           supabaseOrganizationSlug: fakeOrgId,
         })
-        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
+        .where(
+          and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, userId),
+          ),
+        );
       logger.info(
         `Set fake Supabase project ${fakeProjectId} for app ${appId} during testing.`,
       );

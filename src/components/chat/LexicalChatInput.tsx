@@ -57,7 +57,15 @@ const CustomMenuItem = forwardRef<
   const isApp = item.data?.type === "app";
   const isSlash = item.data?.type === "slash-command";
   const isArtifact = item.data?.type === "artifact";
-  const label = isPrompt ? "Prompt" : isApp ? "App" : isSlash ? "Comando" : isArtifact ? "Plan/Artifact" : "Archivo";
+  const label = isPrompt
+    ? "Prompt"
+    : isApp
+      ? "App"
+      : isSlash
+        ? "Comando"
+        : isArtifact
+          ? "Plan/Artifact"
+          : "Archivo";
   const value = (item as any)?.value;
 
   return (
@@ -88,7 +96,9 @@ const CustomMenuItem = forwardRef<
             </span>
           )}
         </span>
-        <span className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}>
+        <span
+          className={`text-[10px] tracking-wider text-muted-foreground/50 shrink-0 ml-2 ${isSlash ? "lowercase" : "uppercase"}`}
+        >
           {isSlash ? `/${value}` : label}
         </span>
       </div>
@@ -139,9 +149,11 @@ function getLeafNodes(node: LexicalNode): LexicalNode[] {
 function KeyboardHandlersPlugin({
   onSubmit,
   disableSendButton,
+  expanded,
 }: {
   onSubmit: () => void;
   disableSendButton: boolean;
+  expanded?: boolean;
 }) {
   const [editor] = useLexicalComposerContext();
 
@@ -163,6 +175,13 @@ function KeyboardHandlersPlugin({
 
         // Support Ctrl+Enter (or Cmd+Enter) for line break
         if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
+          return true;
+        }
+
+        // In expanded mode, Enter always inserts a line break (never sends)
+        if (expanded) {
           event.preventDefault();
           editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
           return true;
@@ -219,7 +238,9 @@ function KeyboardHandlersPlugin({
           }
         });
 
-        if (isLastLine) {
+        // In expanded mode, ArrowDown on last line does NOT create a new line
+        // (standard cursor behaviour)
+        if (isLastLine && !expanded) {
           event.preventDefault();
           editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false);
           return true;
@@ -233,7 +254,7 @@ function KeyboardHandlersPlugin({
       unregisterEnter();
       unregisterArrowDown();
     };
-  }, [editor, onSubmit, disableSendButton]);
+  }, [editor, onSubmit, disableSendButton, expanded]);
 
   return null;
 }
@@ -301,10 +322,14 @@ function ExternalValueSyncPlugin({
 
       // Build nodes from internal value, turning @app:Name and @prompt:<id> into mention nodes
       let lastIndex = 0;
-      
+
       // Parse slash command at the very start if present
       const knownSlashCommands = [
-        "agent", "build", "plan", "ask", "explore",
+        "agent",
+        "build",
+        "plan",
+        "ask",
+        "explore",
         ...(customAgents || []).map((a) => a.slashCommand),
       ];
       for (const cmd of knownSlashCommands) {
@@ -369,6 +394,8 @@ interface LexicalChatInputProps {
   disableSendButton: boolean;
   /** When true, start with 1-line height (max 8 lines) for a more compact appearance */
   compact?: boolean;
+  /** When true, the input is in expanded/maximized mode (15 visible lines, Enter inserts newline) */
+  expanded?: boolean;
 }
 
 function onError(error: Error) {
@@ -385,6 +412,7 @@ export function LexicalChatInput({
   disabled = false,
   disableSendButton,
   compact = false,
+  expanded = false,
 }: LexicalChatInputProps) {
   const { prompts } = usePrompts();
   const [shouldClear, setShouldClear] = useState(false);
@@ -419,11 +447,31 @@ export function LexicalChatInput({
     }));
 
     const nativeSlashCommands = [
-      { value: "agent", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
-      { value: "build", type: "slash-command", description: "Agente de desarrollo estándar (Build)" },
-      { value: "plan", type: "slash-command", description: "Planificador interactivo" },
-      { value: "ask", type: "slash-command", description: "Explorador de código (solo lectura)" },
-      { value: "explore", type: "slash-command", description: "Explorador de código (solo lectura)" },
+      {
+        value: "agent",
+        type: "slash-command",
+        description: "Agente de desarrollo estándar (Build)",
+      },
+      {
+        value: "build",
+        type: "slash-command",
+        description: "Agente de desarrollo estándar (Build)",
+      },
+      {
+        value: "plan",
+        type: "slash-command",
+        description: "Planificador interactivo",
+      },
+      {
+        value: "ask",
+        type: "slash-command",
+        description: "Explorador de código (solo lectura)",
+      },
+      {
+        value: "explore",
+        type: "slash-command",
+        description: "Explorador de código (solo lectura)",
+      },
     ];
 
     const customSlashCommands = (customAgents || []).map((agent) => ({
@@ -461,7 +509,11 @@ export function LexicalChatInput({
         // If the text starts with a slash command but is immediately followed by text (no space),
         // we inject a space so the backend can parse it correctly (e.g. "/plancuando" -> "/plan cuando").
         const knownSlashCommands = [
-          "agent", "build", "plan", "ask", "explore",
+          "agent",
+          "build",
+          "plan",
+          "ask",
+          "explore",
           ...(customAgents || []).map((a) => a.slashCommand),
         ];
         for (const cmd of knownSlashCommands) {
@@ -478,7 +530,10 @@ export function LexicalChatInput({
         // Check if user has selected or typed a custom agent command, and append its default prompt
         for (const agent of customAgents || []) {
           const cmd = `/${agent.slashCommand}`;
-          if ((textContent === cmd || textContent === `${cmd} `) && agent.prompt) {
+          if (
+            (textContent === cmd || textContent === `${cmd} `) &&
+            agent.prompt
+          ) {
             textContent = `${cmd} ${agent.prompt}`;
             break;
           }
@@ -530,14 +585,16 @@ export function LexicalChatInput({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="relative flex-1">
+      <div className="relative flex-1 cursor-text">
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none ${
-                compact
-                  ? "min-h-[38px] max-h-[192px]"
-                  : "min-h-[96px] max-h-[216px]"
+              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none cursor-text transition-[max-height] duration-300 ease-in-out ${
+                expanded
+                  ? "min-h-[313px] max-h-[313px]"
+                  : compact
+                    ? "min-h-[38px] max-h-[192px]"
+                    : "min-h-[96px] max-h-[216px]"
               }`}
               aria-placeholder={placeholder}
               placeholder={
@@ -564,6 +621,7 @@ export function LexicalChatInput({
         <KeyboardHandlersPlugin
           onSubmit={handleSubmit}
           disableSendButton={disableSendButton}
+          expanded={expanded}
         />
         <ExternalValueSyncPlugin
           value={value}

@@ -3,22 +3,22 @@ import { atom } from "jotai";
 // --- Plan Item Types ---
 
 export interface PlanTask {
-    id: string;
-    text: string;
-    checked: boolean;
-    isDeveloped?: boolean;
+  id: string;
+  text: string;
+  checked: boolean;
+  isDeveloped?: boolean;
 }
 
 export interface PlanStage {
-    id: string;
-    title: string;
-    summary: string;
-    tasks: PlanTask[];
+  id: string;
+  title: string;
+  summary: string;
+  tasks: PlanTask[];
 }
 
 export interface Plan {
-    objective: string;
-    stages: PlanStage[];
+  objective: string;
+  stages: PlanStage[];
 }
 
 // --- Plan State (Scoped by Chat ID) ---

@@ -159,8 +159,10 @@ export const DEFAULT_CHAT_FONT_ID = "jetbrains-mono";
  * Find a font option by its id (falls back to the default font).
  */
 export function getFontById(id: string | undefined): FontOption {
-  return FONT_OPTIONS.find((f) => f.id === id)
-    ?? FONT_OPTIONS.find((f) => f.id === DEFAULT_FONT_ID)!;
+  return (
+    FONT_OPTIONS.find((f) => f.id === id) ??
+    FONT_OPTIONS.find((f) => f.id === DEFAULT_FONT_ID)!
+  );
 }
 
 /**

@@ -1,7 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
-import type { CreateMcpServer, McpServer, McpServerUpdate } from "@/ipc/types/mcp";
+import type {
+  CreateMcpServer,
+  McpServer,
+  McpServerUpdate,
+} from "@/ipc/types/mcp";
 import { showSuccess, showError } from "@/lib/toast";
 
 export function useMcpServers() {
@@ -59,9 +63,10 @@ export function useMcpServers() {
 export function useMcpTools(serverId: number | null) {
   return useQuery({
     queryKey: [...queryKeys.mcp.toolsByServer.all, serverId],
-    queryFn: () => serverId ? ipc.mcp.listTools(serverId) : Promise.resolve([]),
+    queryFn: () =>
+      serverId ? ipc.mcp.listTools(serverId) : Promise.resolve([]),
     enabled: !!serverId,
     staleTime: 1000 * 60 * 5, // Cache for 5 mins as getting tools can take a second to connect
-    retry: 1, 
+    retry: 1,
   });
 }

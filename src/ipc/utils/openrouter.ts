@@ -12,8 +12,13 @@ export function hasOpenRouterApiKey(): boolean {
   const openRouterSettings = settings.providerSettings?.openrouter as any;
 
   // Check multi-key system first
-  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
-    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+  if (
+    openRouterSettings?.selectedKeyId &&
+    openRouterSettings?.keys?.length > 0
+  ) {
+    const selectedKey = openRouterSettings.keys.find(
+      (k: any) => k.id === openRouterSettings.selectedKeyId,
+    );
     if (selectedKey?.key?.value?.trim()) {
       return true;
     }
@@ -55,8 +60,13 @@ export async function openRouterRequest(
 
   let apiKeySecret = openRouterSettings?.apiKey;
 
-  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
-    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+  if (
+    openRouterSettings?.selectedKeyId &&
+    openRouterSettings?.keys?.length > 0
+  ) {
+    const selectedKey = openRouterSettings.keys.find(
+      (k: any) => k.id === openRouterSettings.selectedKeyId,
+    );
     if (selectedKey) {
       apiKeySecret = selectedKey.key;
     }
@@ -65,9 +75,10 @@ export async function openRouterRequest(
   let apiKey: string | undefined;
   if (apiKeySecret?.value) {
     try {
-      apiKey = apiKeySecret.encryptionType === "plaintext"
-        ? apiKeySecret.value
-        : decrypt(apiKeySecret);
+      apiKey =
+        apiKeySecret.encryptionType === "plaintext"
+          ? apiKeySecret.value
+          : decrypt(apiKeySecret);
     } catch (e) {
       logger.error("Failed to decrypt OpenRouter API key:", e);
     }
@@ -88,6 +99,7 @@ export async function openRouterRequest(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "X-OpenRouter-Cache": "true",
       ...extraHeaders,
     },
   });
@@ -125,8 +137,7 @@ export async function openRouterCompletion(
     signal,
   } = options;
 
-  const defaultModel =
-    settings.executorModel || DEFAULT_STANDARD_MODEL;
+  const defaultModel = settings.executorModel || DEFAULT_STANDARD_MODEL;
   const finalModel = model || defaultModel;
 
   const body: any = {
@@ -156,7 +167,6 @@ export async function openRouterCompletion(
 
   const data = await response.json();
 
-
   return data;
 }
 
@@ -174,7 +184,10 @@ export async function* openRouterStreamCompletion(
   const openRouterSettings = settings.providerSettings?.openrouter as any;
 
   let apiKeySecret = openRouterSettings?.apiKey;
-  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+  if (
+    openRouterSettings?.selectedKeyId &&
+    openRouterSettings?.keys?.length > 0
+  ) {
     const selected = openRouterSettings.keys.find(
       (k: any) => k.id === openRouterSettings.selectedKeyId,
     );
@@ -184,9 +197,10 @@ export async function* openRouterStreamCompletion(
   let apiKey: string | undefined;
   if (apiKeySecret?.value) {
     try {
-      apiKey = apiKeySecret.encryptionType === "plaintext"
-        ? apiKeySecret.value
-        : decrypt(apiKeySecret);
+      apiKey =
+        apiKeySecret.encryptionType === "plaintext"
+          ? apiKeySecret.value
+          : decrypt(apiKeySecret);
     } catch (e) {
       logger.error("Failed to decrypt OpenRouter API key (stream):", e);
     }
@@ -233,6 +247,7 @@ export async function* openRouterStreamCompletion(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-OpenRouter-Cache": "true",
         ...(options.title && { "X-Title": options.title }),
         "Content-Length": Buffer.byteLength(body),
       },
@@ -248,20 +263,32 @@ export async function* openRouterStreamCompletion(
           if (!trimmed || trimmed.startsWith(":")) continue; // empty or SSE comment
           if (!trimmed.startsWith("data:")) continue;
           const data = trimmed.slice(5).trim();
-          if (data === "[DONE]") { markDone(); return; }
+          if (data === "[DONE]") {
+            markDone();
+            return;
+          }
           try {
             const parsed = JSON.parse(data);
-            const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
+            const delta: string | undefined =
+              parsed.choices?.[0]?.delta?.content;
             if (delta) pushToken(delta);
-          } catch { /* skip malformed */ }
+          } catch {
+            /* skip malformed */
+          }
         }
       });
       res.on("end", () => markDone());
-      res.on("error", (err) => { logger.error(`[OpenRouterStream] Response error: ${err.message}`); markDone(err); });
+      res.on("error", (err) => {
+        logger.error(`[OpenRouterStream] Response error: ${err.message}`);
+        markDone(err);
+      });
     },
   );
 
-  req.on("error", (err) => { logger.error(`[OpenRouterStream] Request error: ${err.message}`); markDone(err); });
+  req.on("error", (err) => {
+    logger.error(`[OpenRouterStream] Request error: ${err.message}`);
+    markDone(err);
+  });
   req.write(body);
   req.end();
 
@@ -270,7 +297,9 @@ export async function* openRouterStreamCompletion(
     if (queue.length > 0) {
       yield queue.shift()!;
     } else if (!streamDone) {
-      await new Promise<void>((resolve) => { resolveNext = resolve; });
+      await new Promise<void>((resolve) => {
+        resolveNext = resolve;
+      });
     }
   }
 

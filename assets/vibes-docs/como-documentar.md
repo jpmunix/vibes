@@ -2,7 +2,7 @@
 title: Cómo Documentar
 ---
 
-# Guía de Documentación de Vibes 
+# Guía de Documentación de Vibes
 
 Esta guía describe cómo escribir y organizar documentación dentro de Vibes. El sistema de documentación utiliza archivos Markdown enriquecidos con marcas personalizadas que se renderizan como componentes nativos.
 
@@ -35,19 +35,21 @@ Cada directorio necesita un `index.md` con dos partes:
 
 Metadatos de la sección entre líneas `---`:
 
-<!-- @preview -->
----
+## <!-- @preview -->
+
 title: Nombre de la Sección
 icon: rocket
 description: Descripción breve para tooltips
+
 ---
+
 <!-- @/preview -->
 
-| Campo | Obligatorio | Descripción |
-|---|---|---|
-| `title` | ✅ | Título visible en el sidebar |
-| `icon` | ❌ | Nombre del icono Lucide (e.g. `rocket`, `book-open`) |
-| `description` | ❌ | Descripción corta |
+| Campo         | Obligatorio | Descripción                                          |
+| ------------- | ----------- | ---------------------------------------------------- |
+| `title`       | ✅          | Título visible en el sidebar                         |
+| `icon`        | ❌          | Nombre del icono Lucide (e.g. `rocket`, `book-open`) |
+| `description` | ❌          | Descripción corta                                    |
 
 ### 2. Directivas `@section`
 
@@ -72,10 +74,15 @@ Todas las características estándar de Markdown están soportadas y se renderiz
 ### Headings
 
 <!-- @preview -->
+
 # Título principal (h1)
+
 ## Sección (h2) — con borde inferior
+
 ### Subsección (h3)
+
 #### Punto (h4)
+
 <!-- @/preview -->
 
 Todos los headings generan un **anchor link** automático (el `#` que aparece al hacer hover) para poder enlazar directamente a una sección.
@@ -83,12 +90,15 @@ Todos los headings generan un **anchor link** automático (el `#` que aparece al
 ### Texto
 
 <!-- @preview -->
-Texto normal con **negrita**, *cursiva* y `código inline`.
+
+Texto normal con **negrita**, _cursiva_ y `código inline`.
+
 <!-- @/preview -->
 
 ### Listas
 
 <!-- @preview -->
+
 - Elemento con viñeta
 - Otro elemento
   - Sub-elemento indentado
@@ -100,7 +110,9 @@ Texto normal con **negrita**, *cursiva* y `código inline`.
 ### Enlaces
 
 <!-- @preview -->
+
 [Texto del enlace](https://url.com)
+
 <!-- @/preview -->
 
 Todos los enlaces se abren en una nueva ventana.
@@ -110,7 +122,9 @@ Todos los enlaces se abren en una nueva ventana.
 Para añadir imágenes usa la sintaxis estándar de Markdown con cualquier URL pública (CDN, Imgur, GitHub raw, etc.):
 
 <!-- @preview -->
+
 ![Logo de Vibes](https://images.mnstatic.com/Tools/files/ba2815a6a54b6b0ee2d630d691b24835dfde8c90aef37e31292abd064d97ebee.png?width=100)
+
 <!-- @/preview -->
 
 <!-- @info "Las imágenes se renderizan con bordes redondeados y un caption automático usando el texto alternativo." -->
@@ -118,20 +132,24 @@ Para añadir imágenes usa la sintaxis estándar de Markdown con cualquier URL p
 ### Tablas
 
 <!-- @preview -->
+
 | Columna 1 | Columna 2 | Columna 3 |
-|---|---|---|
-| Dato | Dato | Dato |
-| Dato | Dato | Dato |
+| --------- | --------- | --------- |
+| Dato      | Dato      | Dato      |
+| Dato      | Dato      | Dato      |
+
 <!-- @/preview -->
 
 ### Bloques de código
 
 <!-- @preview -->
+
 ```javascript
 function hola() {
   console.log("¡Hola!");
 }
 ```
+
 <!-- @/preview -->
 
 Se muestran con un badge del lenguaje en la cabecera.
@@ -139,7 +157,9 @@ Se muestran con un badge del lenguaje en la cabecera.
 ### Citas (Blockquotes)
 
 <!-- @preview -->
+
 > Esto es una cita con acento visual.
+
 <!-- @/preview -->
 
 ---
@@ -176,12 +196,13 @@ Para callouts con contenido complejo (listas, código, etc.), usa las marcas de 
 
 <!-- @preview -->
 <!-- @tip -->
+
 Puedes combinar **negrita**, `código` y listas dentro de un callout:
 
 - Primer punto importante
 - Segundo punto
-<!-- @/tip -->
-<!-- @/preview -->
+  <!-- @/tip -->
+  <!-- @/preview -->
 
 #### Título personalizado
 
@@ -199,30 +220,35 @@ También funciona con la sintaxis multi-línea:
 
 <!-- @preview -->
 <!-- @warning title="Cambio incompatible" -->
+
 A partir de la versión 9.0:
 
 - La API de plugins cambia de formato
 - Los hooks legacy dejan de funcionar
-<!-- @/warning -->
-<!-- @/preview -->
+  <!-- @/warning -->
+  <!-- @/preview -->
 
-| Tipo | Título por defecto | Color |
-|---|---|---|
-| `@tip` | Consejo | 🟢 Verde |
-| `@info` | Información | 🔵 Azul |
-| `@warning` | Atención | 🟡 Ámbar |
-| `@danger` | Peligro | 🔴 Rojo |
+| Tipo       | Título por defecto | Color    |
+| ---------- | ------------------ | -------- |
+| `@tip`     | Consejo            | 🟢 Verde |
+| `@info`    | Información        | 🔵 Azul  |
+| `@warning` | Atención           | 🟡 Ámbar |
+| `@danger`  | Peligro            | 🔴 Rojo  |
 
 ### Atajos de Teclado
 
 Renderiza combinaciones de teclas como badges estilizados:
 
 <!-- @preview -->
+
 Pulsa <!-- @kbd "Ctrl+S" --> para guardar.
+
 <!-- @/preview -->
 
 <!-- @preview -->
+
 Usa <!-- @kbd "Ctrl+Shift+P" --> para abrir la paleta de comandos.
+
 <!-- @/preview -->
 
 ### Badges de Versión
@@ -230,27 +256,33 @@ Usa <!-- @kbd "Ctrl+Shift+P" --> para abrir la paleta de comandos.
 Indica desde qué versión está disponible una funcionalidad:
 
 <!-- @preview -->
+
 Esta funcionalidad está disponible desde <!-- @version "8.5+" -->
+
 <!-- @/preview -->
 
 ### Preview (Código ↔ Resultado)
 
 Envuelve cualquier bloque de Markdown para crear un panel con toggle entre el código fuente y el resultado renderizado. Por defecto muestra el código:
 
-````markdown
+```markdown
 <!-- @preview -->
+
 | Animal | Sonido |
-|---|---|
-| Gato | Miau |
-| Perro | Guau |
+| ------ | ------ |
+| Gato   | Miau   |
+| Perro  | Guau   |
+
 <!-- @/preview -->
-````
+```
 
 <!-- @preview -->
+
 | Animal | Sonido |
-|---|---|
-| Gato | Miau |
-| Perro | Guau |
+| ------ | ------ |
+| Gato   | Miau   |
+| Perro  | Guau   |
+
 <!-- @/preview -->
 
 Útil para documentar sintaxis mostrando simultáneamente el ejemplo y su resultado visual.
@@ -261,46 +293,58 @@ Envuelve contenido en una sección colapsable con título y chevron. El contenid
 
 Acepta un atributo `level` (1-3) que controla el tamaño del titular, equivalente a `#`, `##`, `###`:
 
-````markdown
+```markdown
 <!-- @collapse "Título grande" -->
+
 Contenido colapsado con nivel 1 (por defecto).
+
 <!-- @/collapse -->
 
 <!-- @collapse "Título mediano" level="2" -->
+
 Contenido colapsado con nivel 2.
+
 <!-- @/collapse -->
 
 <!-- @collapse "Título compacto" level="3" -->
+
 Contenido colapsado con nivel 3.
+
 <!-- @/collapse -->
-````
+```
 
 <!-- @collapse "Nivel 1 (por defecto)" -->
+
 Título equivalente a `#`. Se usa para secciones principales.
+
 <!-- @/collapse -->
 
 <!-- @collapse "Nivel 2" level="2" -->
+
 Título equivalente a `##`. Para sub-secciones.
+
 <!-- @/collapse -->
 
 <!-- @collapse "Nivel 3" level="3" -->
+
 Título equivalente a `###`. Para detalles compactos.
+
 <!-- @/collapse -->
 
 ---
 
 ## Resumen de Marcas
 
-| Marca | Tipo | Renderiza |
-|---|---|---|
-| `<!-- @tip "texto" -->` | Bloque | Callout verde (consejo) |
-| `<!-- @info "texto" -->` | Bloque | Callout azul (información) |
-| `<!-- @warning "texto" -->` | Bloque | Callout amarillo (atención) |
-| `<!-- @danger "texto" -->` | Bloque | Callout rojo (peligro) |
-| `<!-- @tip -->...<!-- @/tip -->` | Multi-línea | Callout con contenido rico |
-| `title="Custom"` | Atributo | Sobreescribe el título del callout |
-| `<!-- @kbd "teclas" -->` | Inline | Badge de atajo de teclado |
-| `<!-- @version "X.Y" -->` | Inline | Badge de versión |
-| `<!-- @preview -->...<!-- @/preview -->` | Multi-línea | Panel código/resultado toggle |
-| `<!-- @collapse "título" -->...<!-- @/collapse -->` | Multi-línea | Sección colapsable con chevron |
-| `level="1\|2\|3"` | Atributo | Tamaño del titular del collapse |
+| Marca                                               | Tipo        | Renderiza                          |
+| --------------------------------------------------- | ----------- | ---------------------------------- |
+| `<!-- @tip "texto" -->`                             | Bloque      | Callout verde (consejo)            |
+| `<!-- @info "texto" -->`                            | Bloque      | Callout azul (información)         |
+| `<!-- @warning "texto" -->`                         | Bloque      | Callout amarillo (atención)        |
+| `<!-- @danger "texto" -->`                          | Bloque      | Callout rojo (peligro)             |
+| `<!-- @tip -->...<!-- @/tip -->`                    | Multi-línea | Callout con contenido rico         |
+| `title="Custom"`                                    | Atributo    | Sobreescribe el título del callout |
+| `<!-- @kbd "teclas" -->`                            | Inline      | Badge de atajo de teclado          |
+| `<!-- @version "X.Y" -->`                           | Inline      | Badge de versión                   |
+| `<!-- @preview -->...<!-- @/preview -->`            | Multi-línea | Panel código/resultado toggle      |
+| `<!-- @collapse "título" -->...<!-- @/collapse -->` | Multi-línea | Sección colapsable con chevron     |
+| `level="1\|2\|3"`                                   | Atributo    | Tamaño del titular del collapse    |

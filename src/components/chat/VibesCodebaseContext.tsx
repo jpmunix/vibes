@@ -29,8 +29,9 @@ export const VibesCodebaseContext: React.FC<VibesCodebaseContextProps> = ({
 
   return (
     <div
-      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-primary" : "border-border"
-        }`}
+      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
+        inProgress ? "border-primary" : "border-border"
+      }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
       aria-expanded={isExpanded}

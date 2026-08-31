@@ -85,21 +85,15 @@ export const ConfigurePanel = () => {
     },
   });
 
-  const handleInstallCmdChange = useCallback(
-    (value: string) => {
-      setInstallCmd(value);
-      setCommandsDirty(true);
-    },
-    [],
-  );
+  const handleInstallCmdChange = useCallback((value: string) => {
+    setInstallCmd(value);
+    setCommandsDirty(true);
+  }, []);
 
-  const handleStartCmdChange = useCallback(
-    (value: string) => {
-      setStartCmd(value);
-      setCommandsDirty(true);
-    },
-    [],
-  );
+  const handleStartCmdChange = useCallback((value: string) => {
+    setStartCmd(value);
+    setCommandsDirty(true);
+  }, []);
 
   const handleSaveCommands = useCallback(() => {
     saveCommandsMutation.mutate();
@@ -303,16 +297,22 @@ export const ConfigurePanel = () => {
           <CardTitle>
             <div className="flex items-center gap-2">
               <Terminal size={18} />
-              <span className="typo-subsection-title">Comandos de arranque</span>
+              <span className="typo-subsection-title">
+                Comandos de arranque
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle size={16} className="text-muted-foreground cursor-help" />
+                  <HelpCircle
+                    size={16}
+                    className="text-muted-foreground cursor-help"
+                  />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
                     Personaliza los comandos de instalación e inicio.
                     <br />
-                    Si se dejan vacíos, se usarán los comandos por defecto de Vite.
+                    Si se dejan vacíos, se usarán los comandos por defecto de
+                    Vite.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -357,11 +357,7 @@ export const ConfigurePanel = () => {
               {saveCommandsMutation.isPending ? "Guardando..." : "Guardar"}
             </Button>
             {(installCmd || startCmd) && (
-              <Button
-                onClick={handleResetCommands}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={handleResetCommands} variant="outline" size="sm">
                 <X size={14} />
                 Usar por defecto
               </Button>

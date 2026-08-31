@@ -43,7 +43,11 @@ const getProposalHandler = async (
     try {
       // Find the latest ASSISTANT message for the chat
       const latestAssistantMessage = await db.query.messages.findFirst({
-        where: and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.role, "assistant"), eq(remoteSchema.messages.userId, context.userId)),
+        where: and(
+          eq(remoteSchema.messages.chatId, chatId),
+          eq(remoteSchema.messages.role, "assistant"),
+          eq(remoteSchema.messages.userId, context.userId),
+        ),
         orderBy: [desc(remoteSchema.messages.createdAt)],
         columns: {
           id: true, // Fetch the ID
@@ -66,8 +70,7 @@ const getProposalHandler = async (
         const proposalTitle = getChatSummaryTag(messageContent);
 
         const proposalWriteFiles = getWriteTags(messageContent);
-        const proposalSearchReplaceFiles =
-          getSearchReplaceTags(messageContent);
+        const proposalSearchReplaceFiles = getSearchReplaceTags(messageContent);
         const proposalRenameFiles = getRenameTags(messageContent);
         const proposalDeleteFiles = getDeleteTags(messageContent);
         const proposalExecuteSqlQueries = getExecuteSqlTags(messageContent);
@@ -296,7 +299,12 @@ const rejectProposalHandler = async (
   await db
     .update(remoteSchema.messages)
     .set({ approvalState: "rejected" })
-    .where(and(eq(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, context.userId)));
+    .where(
+      and(
+        eq(remoteSchema.messages.id, messageId),
+        eq(remoteSchema.messages.userId, context.userId),
+      ),
+    );
 
   logger.log(`Message ${messageId} marked as rejected.`);
 };

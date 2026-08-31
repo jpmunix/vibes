@@ -229,7 +229,6 @@ export const systemContracts = {
     output: z.void(),
   }),
 
-
   // Upload
   uploadToSignedUrl: defineContract({
     channel: "upload-to-signed-url",
@@ -307,12 +306,16 @@ export const systemContracts = {
       chatId: z.number().optional(),
       prompt: z.string().optional(),
       chatMode: z.string().optional(),
-      attachments: z.array(z.object({
-        name: z.string(),
-        type: z.string(),
-        data: z.string(),
-        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
-      })).optional(),
+      attachments: z
+        .array(
+          z.object({
+            name: z.string(),
+            type: z.string(),
+            data: z.string(),
+            attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+          }),
+        )
+        .optional(),
       theme: z.enum(["light", "dark", "system"]).optional(),
       themeIntensity: z.number().optional(),
     }),
@@ -336,15 +339,21 @@ export const systemContracts = {
   getPendingChatPrompt: defineContract({
     channel: "window:get-pending-chat-prompt",
     input: z.number(), // chatId
-    output: z.object({
-      prompt: z.string(),
-      attachments: z.array(z.object({
-        name: z.string(),
-        type: z.string(),
-        data: z.string(),
-        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
-      })).optional(),
-    }).nullable(),
+    output: z
+      .object({
+        prompt: z.string(),
+        attachments: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: z.string(),
+              data: z.string(),
+              attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+            }),
+          )
+          .optional(),
+      })
+      .nullable(),
   }),
 
   // Update checker — fetch remote version from CDN (avoids CORS in renderer)
@@ -473,7 +482,10 @@ export const systemContracts = {
   // Read a single documentation page by relative path
   getDocPage: defineContract({
     channel: "docs:get-page",
-    input: z.object({ relativePath: z.string(), baseDir: z.string().optional() }),
+    input: z.object({
+      relativePath: z.string(),
+      baseDir: z.string().optional(),
+    }),
     output: z.object({
       markdown: z.string(),
       meta: z.object({
@@ -488,15 +500,17 @@ export const systemContracts = {
   searchDocs: defineContract({
     channel: "docs:search",
     input: z.object({ query: z.string(), baseDir: z.string().optional() }),
-    output: z.array(z.object({
-      relativePath: z.string(),
-      title: z.string(),
-      snippet: z.string(),
-      matchStart: z.number(),
-      matchLength: z.number(),
-      anchor: z.string().optional(),
-      sectionTitle: z.string().optional(),
-    })),
+    output: z.array(
+      z.object({
+        relativePath: z.string(),
+        title: z.string(),
+        snippet: z.string(),
+        matchStart: z.number(),
+        matchLength: z.number(),
+        anchor: z.string().optional(),
+        sectionTitle: z.string().optional(),
+      }),
+    ),
   }),
 
   // Documentation window — dedicated docs viewer

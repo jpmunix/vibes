@@ -6,36 +6,37 @@ import { queryKeys } from "@/lib/queryKeys";
 export function useCommitChanges() {
   const queryClient = useQueryClient();
 
-  const { mutateAsync: commitChangesMutation, isPending: isCommitting } = useMutation({
-    mutationFn: async ({
-      appId,
-      message,
-    }: {
-      appId: number;
-      message: string;
-      silent?: boolean;
-    }) => {
-      return ipc.git.commitChanges({ appId, message });
-    },
-    onSuccess: (_, { appId, silent }) => {
-      if (!silent) {
-        showSuccess("Changes committed successfully");
-      }
-      // Invalidate uncommitted files query
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.uncommittedFiles.byApp({ appId }),
-      });
-      // Also invalidate versions query to update version count
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.versions.list({ appId }),
-      });
-    },
-    onError: (error: Error, { silent }) => {
-      if (!silent) {
-        showError(`Failed to commit: ${error.message}`);
-      }
-    },
-  });
+  const { mutateAsync: commitChangesMutation, isPending: isCommitting } =
+    useMutation({
+      mutationFn: async ({
+        appId,
+        message,
+      }: {
+        appId: number;
+        message: string;
+        silent?: boolean;
+      }) => {
+        return ipc.git.commitChanges({ appId, message });
+      },
+      onSuccess: (_, { appId, silent }) => {
+        if (!silent) {
+          showSuccess("Changes committed successfully");
+        }
+        // Invalidate uncommitted files query
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.uncommittedFiles.byApp({ appId }),
+        });
+        // Also invalidate versions query to update version count
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.versions.list({ appId }),
+        });
+      },
+      onError: (error: Error, { silent }) => {
+        if (!silent) {
+          showError(`Failed to commit: ${error.message}`);
+        }
+      },
+    });
 
   return {
     commitChanges: commitChangesMutation,

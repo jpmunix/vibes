@@ -46,9 +46,11 @@ export function ProviderHeader({
           <div
             className={cn(
               "w-2 h-2 rounded-full shrink-0",
-              statusDot === "online" && "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]",
+              statusDot === "online" &&
+                "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]",
               statusDot === "offline" && "bg-red-400",
-              statusDot === "checking" && "bg-muted-foreground/40 animate-pulse",
+              statusDot === "checking" &&
+                "bg-muted-foreground/40 animate-pulse",
             )}
           />
         )}
@@ -82,9 +84,15 @@ export function ProviderHeader({
                   enabled === value
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "hover:bg-primary/10",
-                  value === false && toggleDisabled && "opacity-40 cursor-not-allowed",
+                  value === false &&
+                    toggleDisabled &&
+                    "opacity-40 cursor-not-allowed",
                 )}
-                title={value === false && toggleDisabled ? "No puedes desactivar todos los proveedores" : undefined}
+                title={
+                  value === false && toggleDisabled
+                    ? "No puedes desactivar todos los proveedores"
+                    : undefined
+                }
               >
                 {value ? "Activado" : "Desactivado"}
               </button>

@@ -60,7 +60,8 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
           </button>
         </TooltipTrigger>
         <TooltipContent side="top">
-          {memories.length} {memories.length === 1 ? "directriz" : "directrices"}
+          {memories.length}{" "}
+          {memories.length === 1 ? "directriz" : "directrices"}
         </TooltipContent>
       </Tooltip>
 
@@ -81,7 +82,9 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
                     className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                   >
                     <td className="py-2.5 px-3 align-top whitespace-nowrap w-[1%]">
-                      <span className={`typo-caption font-bold ${TYPE_COLORS[m.type] || "text-muted-foreground"}`}>
+                      <span
+                        className={`typo-caption font-bold ${TYPE_COLORS[m.type] || "text-muted-foreground"}`}
+                      >
                         {TYPE_LABELS[m.type] || m.type}
                       </span>
                     </td>

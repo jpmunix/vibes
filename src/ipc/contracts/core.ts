@@ -144,10 +144,10 @@ export type EventChannel<T> = T extends EventContract<infer C, any> ? C : never;
 type ClientFromContracts<
   T extends Record<string, IpcContract<string, z.ZodType, z.ZodType>>,
 > = {
-    [K in keyof T]: (
-      input: z.infer<T[K]["input"]>,
-    ) => Promise<z.infer<T[K]["output"]>>;
-  };
+  [K in keyof T]: (
+    input: z.infer<T[K]["input"]>,
+  ) => Promise<z.infer<T[K]["output"]>>;
+};
 
 /**
  * Creates a typed client from a contracts object.
@@ -195,10 +195,10 @@ type Capitalize<S extends string> = S extends `${infer F}${infer R}`
 type EventClientFromContracts<
   T extends Record<string, EventContract<string, z.ZodType>>,
 > = {
-    [K in keyof T as `on${Capitalize<string & K>}`]: (
-      handler: (payload: z.infer<T[K]["payload"]>) => void,
-    ) => () => void; // Returns unsubscribe function
-  };
+  [K in keyof T as `on${Capitalize<string & K>}`]: (
+    handler: (payload: z.infer<T[K]["payload"]>) => void,
+  ) => () => void; // Returns unsubscribe function
+};
 
 /**
  * Creates a typed event client from an events object.
@@ -226,7 +226,7 @@ export function createEventClient<
         console.error(
           `[${event.channel}] IPC renderer not available. Make sure this is called from the renderer process.`,
         );
-        return () => { };
+        return () => {};
       }
 
       const listener = (data: unknown) => {

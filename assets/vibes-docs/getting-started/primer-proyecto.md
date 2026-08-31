@@ -13,6 +13,7 @@ En la pantalla principal verás un campo de texto grande con un fondo animado. S
 > "Crea una landing page para una cafetería artesanal con sección de menú, galería de fotos y formulario de contacto"
 
 ![Pantalla principal de Vibes con el campo de texto](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura real de la pantalla Home con el campo de texto" -->
 
 ## Paso 2: El agente trabaja
@@ -31,15 +32,16 @@ Verás una secuencia de carga animada mientras se prepara todo. No tienes que ha
 Una vez que el agente termine la primera iteración, el panel de **vista previa** se abrirá automáticamente (si lo tienes configurado). Ahí verás tu aplicación ejecutándose en tiempo real.
 
 ![Vista previa de la aplicación](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura real de la vista previa con el chat al lado" -->
 
 ## Paso 4: Itera
 
 No tienes que aceptar la primera versión. Sigue hablando con el agente:
 
-- *"Cambia los colores a tonos tierra"*
-- *"Añade animaciones suaves al scroll"*
-- *"El formulario necesita validación"*
+- _"Cambia los colores a tonos tierra"_
+- _"Añade animaciones suaves al scroll"_
+- _"El formulario necesita validación"_
 
 Cada mensaje que envíes hará que el agente edite los archivos necesarios, y la vista previa se actualizará automáticamente.
 

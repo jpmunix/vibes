@@ -6,22 +6,24 @@ import { ipc } from "@/ipc/types";
 
 export function ErrorBoundary({ error }: ErrorComponentProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
   useEffect(() => {
     console.error("An error occurred in the route:", error);
   }, [error]);
 
-  const handleReportBug = async () => {
+  const handleCopyDetails = async () => {
     setIsLoading(true);
     try {
       // Get system debug info
       const debugInfo = await ipc.system.getSystemDebugInfo();
 
-      // Create a formatted email body with the debug info and error information
-      const emailBody = `
+      // Create a formatted details body
+      const detailsBody = `
 == Error Details ==
 - Error Name: ${error?.name || "Unknown"}
 - Error Message: ${error?.message || "Unknown"}
-${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
+${error?.stack ? `\nStack Trace:\n${error.stack}` : ""}
 
 == System Information ==
 - App Version: ${debugInfo.vibesVersion}
@@ -36,16 +38,17 @@ ${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
 ${debugInfo.logs.slice(-500) || "No logs available"}
 `;
 
-      const subject = encodeURIComponent(`[bug] Error en Vibes: ${error?.name || "Unknown"}`);
-      const body = encodeURIComponent(emailBody);
-      const mailtoUrl = `mailto:pablo@minube.com?subject=${subject}&body=${body}`;
-
-      // Open the email client with the pre-filled report
-      await ipc.system.openExternalUrl(mailtoUrl);
+      await navigator.clipboard.writeText(detailsBody);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to prepare bug report:", err);
-      // Fallback to opening a simple email
-      ipc.system.openExternalUrl("mailto:pablo@minube.com?subject=" + encodeURIComponent("[bug] Error en Vibes"));
+      console.error("Failed to copy error details:", err);
+      // Fallback
+      if (error) {
+        await navigator.clipboard.writeText(`Error: ${error.message}\n\nStack:\n${error.stack}`);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +61,12 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
           ¡Lo sentimos, eso no debería haber pasado!
         </h2>
 
-        <p className="typo-caption mb-3">Hubo un error al cargar la aplicación...</p>
+        <p className="typo-caption mb-3">
+          Hubo un error al cargar la aplicación...
+        </p>
 
         {error && (
-          <div className="bg-muted p-4 rounded-md mb-6">
+          <div className="bg-muted p-4 rounded-md mb-6 max-h-[150px] overflow-auto">
             <p className="typo-body mb-1">
               <strong>Nombre del error:</strong> {error.name}
             </p>
@@ -75,8 +80,12 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
           <Button onClick={() => window.location.reload()} variant="default">
             Recargar aplicación
           </Button>
-          <Button onClick={handleReportBug} disabled={isLoading} variant="outline">
-            {isLoading ? "Preparando informe..." : "Informar de un error"}
+          <Button
+            onClick={handleCopyDetails}
+            disabled={isLoading}
+            variant="outline"
+          >
+            {isLoading ? "Copiando..." : isCopied ? "¡Copiado al portapapeles!" : "Copiar detalles del error"}
           </Button>
         </div>
 

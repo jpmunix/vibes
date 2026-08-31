@@ -1,35 +1,90 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertCircle, ArrowRight, Bell, Check, ChevronRight, Home,
-  Loader2, Mail, Plus, Settings, Star, Terminal, User,
+  AlertCircle,
+  ArrowRight,
+  Bell,
+  Check,
+  ChevronRight,
+  Home,
+  Loader2,
+  Mail,
+  Plus,
+  Settings,
+  Star,
+  Terminal,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 /* ─────────────────────────── Section wrapper ─────────────────────────── */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-4">
       <h2 className="text-2xl font-semibold tracking-tight text-foreground border-b border-border pb-2">
@@ -52,7 +107,10 @@ export default function Components() {
         <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container mx-auto flex h-14 items-center justify-between px-6">
             <div className="flex items-center gap-3">
-              <Link to="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
+              <Link
+                to="/"
+                className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+              >
                 <Home size={18} />
                 <span className="font-semibold">Inicio</span>
               </Link>
@@ -86,7 +144,9 @@ export default function Components() {
               <Button disabled>Disabled</Button>
               <Button size="sm">Small</Button>
               <Button size="lg">Large</Button>
-              <Button size="icon"><Plus size={16} /></Button>
+              <Button size="icon">
+                <Plus size={16} />
+              </Button>
               <Button onClick={() => toast.success("¡Toast funciona!")}>
                 <Bell size={16} className="mr-2" /> Toast
               </Button>
@@ -109,10 +169,14 @@ export default function Components() {
               <Card>
                 <CardHeader>
                   <CardTitle>Tarjeta básica</CardTitle>
-                  <CardDescription>Descripción de la tarjeta con texto secundario.</CardDescription>
+                  <CardDescription>
+                    Descripción de la tarjeta con texto secundario.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">Contenido de la tarjeta.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Contenido de la tarjeta.
+                  </p>
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancelar</Button>
@@ -127,7 +191,9 @@ export default function Components() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">Con estilos personalizados usando variables CSS de TW4.</p>
+                  <p className="text-sm">
+                    Con estilos personalizados usando variables CSS de TW4.
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -149,11 +215,19 @@ export default function Components() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message">Mensaje</Label>
-                  <Textarea id="message" placeholder="Escribe algo..." rows={3} />
+                  <Textarea
+                    id="message"
+                    placeholder="Escribe algo..."
+                    rows={3}
+                  />
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
-                    <Switch id="dark" checked={switchOn} onCheckedChange={setSwitchOn} />
+                    <Switch
+                      id="dark"
+                      checked={switchOn}
+                      onCheckedChange={setSwitchOn}
+                    />
                     <Label htmlFor="dark">Modo oscuro</Label>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -189,7 +263,12 @@ export default function Components() {
                 </div>
                 <div className="space-y-2">
                   <Label>Volumen: {sliderValue[0]}%</Label>
-                  <Slider value={sliderValue} onValueChange={setSliderValue} max={100} step={1} />
+                  <Slider
+                    value={sliderValue}
+                    onValueChange={setSliderValue}
+                    max={100}
+                    step={1}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -207,7 +286,10 @@ export default function Components() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button disabled><Loader2 className="mr-2 h-4 w-4 animate-spin" />Cargando</Button>
+                <Button disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cargando
+                </Button>
               </div>
             </div>
           </Section>
@@ -222,7 +304,9 @@ export default function Components() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
-              <AlertDescription>Algo salió mal. Inténtalo de nuevo.</AlertDescription>
+              <AlertDescription>
+                Algo salió mal. Inténtalo de nuevo.
+              </AlertDescription>
             </Alert>
           </Section>
 
@@ -230,14 +314,21 @@ export default function Components() {
           <Section title="Avatares">
             <div className="flex items-center gap-4">
               <Avatar>
-                <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                <AvatarImage
+                  src="https://github.com/shadcn.png"
+                  alt="@shadcn"
+                />
                 <AvatarFallback>SC</AvatarFallback>
               </Avatar>
               <Avatar>
-                <AvatarFallback><User size={18} /></AvatarFallback>
+                <AvatarFallback>
+                  <User size={18} />
+                </AvatarFallback>
               </Avatar>
               <Avatar>
-                <AvatarFallback className="bg-primary text-primary-foreground">JP</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  JP
+                </AvatarFallback>
               </Avatar>
             </div>
           </Section>
@@ -251,13 +342,19 @@ export default function Components() {
                 <TabsTrigger value="settings">Ajustes</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="p-4">
-                <p className="text-sm text-muted-foreground">Contenido de la pestaña general.</p>
+                <p className="text-sm text-muted-foreground">
+                  Contenido de la pestaña general.
+                </p>
               </TabsContent>
               <TabsContent value="analytics" className="p-4">
-                <p className="text-sm text-muted-foreground">Contenido de analíticas.</p>
+                <p className="text-sm text-muted-foreground">
+                  Contenido de analíticas.
+                </p>
               </TabsContent>
               <TabsContent value="settings" className="p-4">
-                <p className="text-sm text-muted-foreground">Contenido de ajustes.</p>
+                <p className="text-sm text-muted-foreground">
+                  Contenido de ajustes.
+                </p>
               </TabsContent>
             </Tabs>
           </Section>
@@ -268,19 +365,24 @@ export default function Components() {
               <AccordionItem value="item-1">
                 <AccordionTrigger>¿Qué es Tailwind CSS 4?</AccordionTrigger>
                 <AccordionContent>
-                  Tailwind CSS v4 usa un motor nuevo basado en Rust, con configuración vía CSS nativo en lugar de archivos JS/TS.
+                  Tailwind CSS v4 usa un motor nuevo basado en Rust, con
+                  configuración vía CSS nativo en lugar de archivos JS/TS.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-2">
-                <AccordionTrigger>¿Es compatible con Shadcn/ui?</AccordionTrigger>
+                <AccordionTrigger>
+                  ¿Es compatible con Shadcn/ui?
+                </AccordionTrigger>
                 <AccordionContent>
-                  Sí. Los componentes Shadcn/ui son compatibles con TW4 usando las nuevas variables CSS --color-*.
+                  Sí. Los componentes Shadcn/ui son compatibles con TW4 usando
+                  las nuevas variables CSS --color-*.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-3">
                 <AccordionTrigger>¿Necesito postcss.config?</AccordionTrigger>
                 <AccordionContent>
-                  No. TW4 usa el plugin de Vite (@tailwindcss/vite) en lugar de PostCSS.
+                  No. TW4 usa el plugin de Vite (@tailwindcss/vite) en lugar de
+                  PostCSS.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -306,13 +408,21 @@ export default function Components() {
                       { name: "Chart", status: "Beta", version: "0.8" },
                     ].map((row) => (
                       <TableRow key={row.name}>
-                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {row.name}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant={row.status === "Estable" ? "default" : "secondary"}>
+                          <Badge
+                            variant={
+                              row.status === "Estable" ? "default" : "secondary"
+                            }
+                          >
                             {row.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{row.version}</TableCell>
+                        <TableCell className="text-right">
+                          {row.version}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -331,7 +441,8 @@ export default function Components() {
                 <DialogHeader>
                   <DialogTitle>¿Estás seguro?</DialogTitle>
                   <DialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará permanentemente.
+                    Esta acción no se puede deshacer. Se eliminará
+                    permanentemente.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -347,15 +458,23 @@ export default function Components() {
             <div className="flex gap-4">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon"><Settings size={16} /></Button>
+                  <Button variant="outline" size="icon">
+                    <Settings size={16} />
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Configuración</p></TooltipContent>
+                <TooltipContent>
+                  <p>Configuración</p>
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon"><Mail size={16} /></Button>
+                  <Button variant="outline" size="icon">
+                    <Mail size={16} />
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Correo electrónico</p></TooltipContent>
+                <TooltipContent>
+                  <p>Correo electrónico</p>
+                </TooltipContent>
               </Tooltip>
             </div>
           </Section>
@@ -383,12 +502,16 @@ export default function Components() {
               ))}
             </div>
             <div className="grid grid-cols-5 gap-3 mt-4">
-              {["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"].map((name) => (
-                <div key={name} className="flex flex-col items-center gap-1">
-                  <div className={`w-full h-8 rounded-md bg-${name}`} />
-                  <span className="text-xs text-muted-foreground">{name}</span>
-                </div>
-              ))}
+              {["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"].map(
+                (name) => (
+                  <div key={name} className="flex flex-col items-center gap-1">
+                    <div className={`w-full h-8 rounded-md bg-${name}`} />
+                    <span className="text-xs text-muted-foreground">
+                      {name}
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
           </Section>
 
@@ -408,7 +531,11 @@ export default function Components() {
                 Heading 4
               </h4>
               <p className="leading-7">
-                Párrafo estándar con <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">código inline</code> y texto normal.
+                Párrafo estándar con{" "}
+                <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
+                  código inline
+                </code>{" "}
+                y texto normal.
               </p>
               <p className="text-sm text-muted-foreground">
                 Texto secundario con color muted-foreground.
@@ -423,7 +550,10 @@ export default function Components() {
           <footer className="border-t border-border pt-8 pb-12 text-center text-sm text-muted-foreground">
             <p>Scaffold React Beta — Tailwind CSS 4 + Shadcn/ui + Vite 6</p>
             <div className="flex items-center justify-center gap-2 mt-2">
-              <Link to="/" className="text-primary hover:underline flex items-center gap-1">
+              <Link
+                to="/"
+                className="text-primary hover:underline flex items-center gap-1"
+              >
                 <ArrowRight size={14} className="rotate-180" /> Volver al inicio
               </Link>
             </div>

@@ -44,7 +44,9 @@ export default defineConfig({
       closeBundle() {
         // Prevent auto-restarts on backend file changes so AI/developer doesn't get interrupted.
         // The developer can type 'rs' in the terminal manually to restart the backend.
-        console.log('\n[Backend Modificado] 🛠️ Backend actualizado. Escribe "rs" en esta terminal y presiona ENTER para reiniciar Electron de forma manual.\n');
+        console.log(
+          '\n[Backend Modificado] 🛠️ Backend actualizado. Escribe "rs" en esta terminal y presiona ENTER para reiniciar Electron de forma manual.\n',
+        );
       },
     },
   ],

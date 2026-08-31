@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
+import {
+  UnifiedSelector,
+  type SelectorOption,
+} from "@/components/ui/UnifiedSelector";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -84,7 +87,8 @@ const CHAT_MODE_OPTIONS: SelectorOption[] = [
   {
     value: "mockup",
     label: "Turbo",
-    description: "Velocidad máxima para desarrollar y editar código al instante",
+    description:
+      "Velocidad máxima para desarrollar y editar código al instante",
     leftIcon: <Zap size={14} />,
   },
   {
@@ -143,21 +147,45 @@ const BRANCH_OPTIONS: SelectorOption[] = [
 ];
 
 const LANGUAGE_OPTIONS: SelectorOption[] = [
-  { value: "es", label: "Español", description: "El agente responderá en español" },
-  { value: "en", label: "English", description: "The agent will respond in English" },
+  {
+    value: "es",
+    label: "Español",
+    description: "El agente responderá en español",
+  },
+  {
+    value: "en",
+    label: "English",
+    description: "The agent will respond in English",
+  },
 ];
 
 const VERBOSITY_OPTIONS: SelectorOption[] = [
-  { value: "low", label: "Conciso", description: "Respuestas breves y directas." },
-  { value: "medium", label: "Equilibrado", description: "Explicaciones moderadas cuando son relevantes." },
-  { value: "high", label: "Detallado", description: "Explicaciones completas y contexto adicional." },
+  {
+    value: "low",
+    label: "Conciso",
+    description: "Respuestas breves y directas.",
+  },
+  {
+    value: "medium",
+    label: "Equilibrado",
+    description: "Explicaciones moderadas cuando son relevantes.",
+  },
+  {
+    value: "high",
+    label: "Detallado",
+    description: "Explicaciones completas y contexto adicional.",
+  },
 ];
 
 const TURNS_OPTIONS: SelectorOption[] = [
   { value: "2", label: "Económico (2)", description: "Contexto mínimo" },
   { value: "3", label: "Por defecto (3)", description: "Equilibrado" },
   { value: "5", label: "Plus (5)", description: "Contexto extendido" },
-  { value: "10", label: "Alto (10)", description: "Para conversaciones complejas" },
+  {
+    value: "10",
+    label: "Alto (10)",
+    description: "Para conversaciones complejas",
+  },
   { value: "100", label: "Máximo (100)", description: "No recomendado" },
 ];
 
@@ -189,10 +217,30 @@ const FRAMEWORK_OPTIONS: SelectorOption[] = [
 ];
 
 const GROUPED_OPTIONS: SelectorOption[] = [
-  { value: "auto", label: "Auto Router", description: "Gestión automática", group: "special" },
-  { value: "claude-sonnet-4", label: "Claude Sonnet 4", description: "200K context", group: "models" },
-  { value: "gpt-4.1", label: "GPT 4.1", description: "128K context", group: "models" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "1M context", group: "models" },
+  {
+    value: "auto",
+    label: "Auto Router",
+    description: "Gestión automática",
+    group: "special",
+  },
+  {
+    value: "claude-sonnet-4",
+    label: "Claude Sonnet 4",
+    description: "200K context",
+    group: "models",
+  },
+  {
+    value: "gpt-4.1",
+    label: "GPT 4.1",
+    description: "128K context",
+    group: "models",
+  },
+  {
+    value: "gemini-2.5-pro",
+    label: "Gemini 2.5 Pro",
+    description: "1M context",
+    group: "models",
+  },
 ];
 
 const API_KEY_OPTIONS: SelectorOption[] = [
@@ -298,11 +346,10 @@ export default function SelectorsPlayground() {
               <ArrowLeft size={18} />
             </button>
             <div>
-              <h1 className="typo-page-title">
-                Selector Playground
-              </h1>
+              <h1 className="typo-page-title">Selector Playground</h1>
               <p className="typo-caption mt-0.5">
-                Todos los selectores unificados — prueba cada variante antes de migrar
+                Todos los selectores unificados — prueba cada variante antes de
+                migrar
               </p>
             </div>
           </div>
@@ -311,7 +358,6 @@ export default function SelectorsPlayground() {
 
       {/* Content */}
       <div className="w-full mx-auto px-8 pt-8 pb-24 space-y-8">
-
         {/* ── 1. Model Picker (with search) ────────────────────────────── */}
         <DemoSection
           title="Model Picker"
@@ -342,7 +388,9 @@ export default function SelectorsPlayground() {
               popoverWidth="w-[320px]"
               triggerVariant="pill"
               triggerSize="md"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
             />
           </DemoItem>
         </DemoSection>
@@ -362,7 +410,8 @@ export default function SelectorsPlayground() {
               triggerSize="sm"
               popoverWidth="w-[280px]"
               triggerClassName={cn(
-                chatMode !== "agent" && "bg-primary/10 hover:bg-primary/20 text-primary border-primary/20",
+                chatMode !== "agent" &&
+                  "bg-primary/10 hover:bg-primary/20 text-primary border-primary/20",
               )}
             />
           </DemoItem>
@@ -375,7 +424,9 @@ export default function SelectorsPlayground() {
               triggerVariant="pill"
               triggerSize="md"
               popoverWidth="w-[280px]"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
             />
           </DemoItem>
         </DemoSection>
@@ -411,7 +462,9 @@ export default function SelectorsPlayground() {
               triggerVariant="pill"
               triggerSize="md"
               popoverWidth="w-[280px]"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
             />
           </DemoItem>
         </DemoSection>
@@ -482,7 +535,9 @@ export default function SelectorsPlayground() {
               triggerVariant="pill"
               triggerSize="md"
               popoverWidth="w-[240px]"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
             />
           </DemoItem>
         </DemoSection>
@@ -501,7 +556,9 @@ export default function SelectorsPlayground() {
               triggerVariant="pill"
               triggerSize="md"
               popoverWidth="w-[280px]"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
             />
           </DemoItem>
         </DemoSection>
@@ -542,7 +599,10 @@ export default function SelectorsPlayground() {
               side="top"
               customTriggerLabel={
                 <span className="flex items-center justify-center">
-                  {FRAMEWORK_OPTIONS.find((o) => o.value === framework)?.leftIcon}
+                  {
+                    FRAMEWORK_OPTIONS.find((o) => o.value === framework)
+                      ?.leftIcon
+                  }
                 </span>
               }
               popoverWidth="w-[240px]"
@@ -600,7 +660,9 @@ export default function SelectorsPlayground() {
               triggerVariant="pill"
               triggerSize="md"
               popoverWidth="w-[280px]"
-              triggerRightIcon={<ChevronDown size={14} className="opacity-70" />}
+              triggerRightIcon={
+                <ChevronDown size={14} className="opacity-70" />
+              }
               footer={
                 <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm typo-badge transition-colors text-left hover:bg-muted cursor-pointer">
                   <Plus size={14} />

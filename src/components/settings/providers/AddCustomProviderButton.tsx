@@ -28,12 +28,21 @@ export function AddCustomProviderButton() {
   const customProviders = settings?.customProviders ?? [];
 
   const handleAdd = async () => {
-    if (!newName.trim()) { showError("El nombre es obligatorio."); return; }
-    if (!newBaseUrl.trim()) { showError("La URL base es obligatoria."); return; }
+    if (!newName.trim()) {
+      showError("El nombre es obligatorio.");
+      return;
+    }
+    if (!newBaseUrl.trim()) {
+      showError("La URL base es obligatoria.");
+      return;
+    }
 
     setIsSaving(true);
     try {
-      const slug = newName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const slug = newName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-");
       const id = `${CUSTOM_PROVIDER_PREFIX}${slug}`;
       if (customProviders.some((p) => p.id === id)) {
         showError("Ya existe un proveedor con ese nombre.");
@@ -49,11 +58,19 @@ export function AddCustomProviderButton() {
         modelsSource: "openai-compatible",
       };
 
-      await updateSettings({ customProviders: [...customProviders, newProvider] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.languageModels.providers });
-      queryClient.invalidateQueries({ queryKey: queryKeys.languageModels.byProviders });
+      await updateSettings({
+        customProviders: [...customProviders, newProvider],
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.languageModels.providers,
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.languageModels.byProviders,
+      });
 
-      setNewName(""); setNewBaseUrl(""); setNewApiKey("");
+      setNewName("");
+      setNewBaseUrl("");
+      setNewApiKey("");
       setShowDialog(false);
       showSuccess(`Proveedor "${newProvider.name}" añadido`);
     } catch (error: any) {
@@ -85,24 +102,59 @@ export function AddCustomProviderButton() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="provider-name" className="typo-label">Nombre</Label>
-              <Input id="provider-name" placeholder="Ej: Mi Proxy LiteLLM" value={newName}
-                onChange={(e) => setNewName(e.target.value)} className="h-10 bg-background typo-input" />
+              <Label htmlFor="provider-name" className="typo-label">
+                Nombre
+              </Label>
+              <Input
+                id="provider-name"
+                placeholder="Ej: Mi Proxy LiteLLM"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="h-10 bg-background typo-input"
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider-url" className="typo-label">URL Base</Label>
-              <Input id="provider-url" placeholder="https://my-proxy.example.com/v1" value={newBaseUrl}
-                onChange={(e) => setNewBaseUrl(e.target.value)} className="h-10 bg-background typo-input font-mono" />
-              <p className="typo-caption">Endpoint compatible con la API de OpenAI (/models y /chat/completions)</p>
+              <Label htmlFor="provider-url" className="typo-label">
+                URL Base
+              </Label>
+              <Input
+                id="provider-url"
+                placeholder="https://my-proxy.example.com/v1"
+                value={newBaseUrl}
+                onChange={(e) => setNewBaseUrl(e.target.value)}
+                className="h-10 bg-background typo-input font-mono"
+              />
+              <p className="typo-caption">
+                Endpoint compatible con la API de OpenAI (/models y
+                /chat/completions)
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider-key" className="typo-label">API Key (opcional)</Label>
-              <Input id="provider-key" type="password" placeholder="sk-..." value={newApiKey}
-                onChange={(e) => setNewApiKey(e.target.value)} className="h-10 bg-background typo-input" />
+              <Label htmlFor="provider-key" className="typo-label">
+                API Key (opcional)
+              </Label>
+              <Input
+                id="provider-key"
+                type="password"
+                placeholder="sk-..."
+                value={newApiKey}
+                onChange={(e) => setNewApiKey(e.target.value)}
+                className="h-10 bg-background typo-input"
+              />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setShowDialog(false)} className="h-10 px-4">Cancelar</Button>
-              <Button onClick={handleAdd} disabled={isSaving || !newName || !newBaseUrl} className="h-10 px-6 font-bold">
+              <Button
+                variant="ghost"
+                onClick={() => setShowDialog(false)}
+                className="h-10 px-4"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAdd}
+                disabled={isSaving || !newName || !newBaseUrl}
+                className="h-10 px-6 font-bold"
+              >
                 {isSaving ? "Guardando..." : "Añadir"}
               </Button>
             </div>

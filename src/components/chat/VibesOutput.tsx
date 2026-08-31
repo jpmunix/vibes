@@ -31,28 +31,42 @@ export const VibesOutput: React.FC<VibesOutputProps> = ({
     error: {
       bg: "bg-red-500/10 dark:bg-red-500/20",
       text: "text-red-600 dark:text-red-400",
-      icon: <XCircle size={16} className="text-red-600 dark:text-red-400 mt-0.5" />,
+      icon: (
+        <XCircle size={16} className="text-red-600 dark:text-red-400 mt-0.5" />
+      ),
       label: "Error",
       borderLeft: "border-l-2 border-red-500",
     },
     warning: {
       bg: "bg-amber-500/10 dark:bg-amber-500/20",
       text: "text-amber-600 dark:text-amber-400",
-      icon: <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5" />,
+      icon: (
+        <AlertTriangle
+          size={16}
+          className="text-amber-600 dark:text-amber-400 mt-0.5"
+        />
+      ),
       label: "Aviso",
       borderLeft: "border-l-2 border-amber-500",
     },
     success: {
       bg: "bg-green-500/10 dark:bg-green-500/20",
       text: "text-green-600 dark:text-green-400",
-      icon: <CheckCircle size={16} className="text-green-600 dark:text-green-400 mt-0.5" />,
+      icon: (
+        <CheckCircle
+          size={16}
+          className="text-green-600 dark:text-green-400 mt-0.5"
+        />
+      ),
       label: "Éxito",
       borderLeft: "border-l-2 border-green-500",
     },
     info: {
       bg: "bg-blue-500/10 dark:bg-blue-500/20",
       text: "text-blue-600 dark:text-blue-400",
-      icon: <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />,
+      icon: (
+        <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
+      ),
       label: "Info",
       borderLeft: "border-l-2 border-blue-500",
     },
@@ -71,7 +85,9 @@ export const VibesOutput: React.FC<VibesOutputProps> = ({
   };
 
   return (
-    <div className={`w-full my-4 py-3 pr-4 pl-3 ${style.bg} ${style.borderLeft}`}>
+    <div
+      className={`w-full my-4 py-3 pr-4 pl-3 ${style.bg} ${style.borderLeft}`}
+    >
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div className="shrink-0">{style.icon}</div>
@@ -83,12 +99,18 @@ export const VibesOutput: React.FC<VibesOutputProps> = ({
             <span className="font-semibold mr-2 uppercase tracking-wide text-xs">
               {style.label}
             </span>
-            {message && <span className="break-words leading-relaxed opacity-90">{message}</span>}
+            {message && (
+              <span className="break-words leading-relaxed opacity-90">
+                {message}
+              </span>
+            )}
           </div>
 
           {/* Detailed Content */}
           {children && (
-            <div className={`text-sm mt-2 opacity-80 whitespace-pre-wrap break-words ${style.text}`}>
+            <div
+              className={`text-sm mt-2 opacity-80 whitespace-pre-wrap break-words ${style.text}`}
+            >
               {children}
             </div>
           )}

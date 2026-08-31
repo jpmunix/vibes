@@ -53,6 +53,7 @@ import {
   Pin,
   PinOff,
   Square,
+  Terminal,
   Database,
   MessageSquare,
   Code,
@@ -71,6 +72,7 @@ import {
   BunnyIcon,
   SupabaseIcon,
   PocketBaseIcon,
+  MessageCircleQuestion,
 } from "@/components/ui/icons";
 import { VibesMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { ChatPreviewThread } from "@/components/chat/ChatPreviewThread";
@@ -81,6 +83,9 @@ import {
   selectedChatIdAtom,
   recentStreamChatIdsAtom,
   isStreamingByIdAtom,
+  pendingAskUsersAtom,
+  pendingAgentConsentsAtom,
+  pendingOpenCodePermissionsAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import type { Message } from "@/ipc/types";
@@ -298,7 +303,6 @@ const ChatContextMenuPortal = memo(function ChatContextMenuPortal({
           <Share2 size={14} className="opacity-60 shrink-0" />
           Compartir chat
         </button>
-
 
         {/* Summarize to new chat */}
         <button
@@ -995,6 +999,18 @@ const AppChats = memo(function AppChats({
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
 
+  // Pending interactions (ask_user, consent, permission) — show question icon
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const pendingConsents = useAtomValue(pendingAgentConsentsAtom);
+  const pendingPermissions = useAtomValue(pendingOpenCodePermissionsAtom);
+  const pendingInteractionChatIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const a of pendingAskUsers) ids.add(a.chatId);
+    for (const c of pendingConsents) ids.add(c.chatId);
+    for (const p of pendingPermissions) ids.add(p.chatId);
+    return ids;
+  }, [pendingAskUsers, pendingConsents, pendingPermissions]);
+
   // A chat is "unread" if it was recently streamed to and user hasn't viewed it
   const isChatUnread = useCallback(
     (chatId: number) => {
@@ -1133,6 +1149,7 @@ const AppChats = memo(function AppChats({
             {sortedChats.map((chat) => {
               const unread = isChatUnread(chat.id);
               const streaming = isStreamingById.get(chat.id) ?? false;
+              const hasPendingInteraction = pendingInteractionChatIds.has(chat.id);
               const isMenuOpen = openMenuId === chat.id;
               const isRenaming = renamingId === chat.id;
               return (
@@ -1182,9 +1199,14 @@ const AppChats = memo(function AppChats({
                         handleChatClickAndMarkRead(appId, chat.id);
                       }}
                     >
-                      {(streaming || unread) && (
+                      {(hasPendingInteraction || streaming || unread) && (
                         <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
-                          {streaming ? (
+                          {hasPendingInteraction ? (
+                            <MessageCircleQuestion
+                              size={13}
+                              className="text-primary animate-pulse"
+                            />
+                          ) : streaming ? (
                             <Loader2
                               size={12}
                               className="animate-spin text-primary"
@@ -1629,7 +1651,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     const TITLE_WEIGHT = 3;
 
     const scored: Array<{
-      chat: typeof archivedChats[number];
+      chat: (typeof archivedChats)[number];
       score: number;
       matchedSnippet?: string;
     }> = [];
@@ -1658,7 +1680,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     // Sort by score descending, then by date descending
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return new Date(b.chat.createdAt).getTime() - new Date(a.chat.createdAt).getTime();
+      return (
+        new Date(b.chat.createdAt).getTime() -
+        new Date(a.chat.createdAt).getTime()
+      );
     });
 
     return scored.map(({ chat, matchedSnippet }) => ({
@@ -2192,6 +2217,32 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                         Directrices
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                      onClick={() => {
+                        closeMenu();
+                        ipc.app
+                          .openAppFile({ appId: app.id, filePath: "." })
+                          .catch(showError);
+                      }}
+                    >
+                      <FolderOpen size={14} className="opacity-60 shrink-0" />
+                      Abrir directorio
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                      onClick={() => {
+                        closeMenu();
+                        ipc.app
+                          .openTerminal({ appId: app.id })
+                          .catch(showError);
+                      }}
+                    >
+                      <Terminal size={14} className="opacity-60 shrink-0" />
+                      Abrir en terminal
+                    </button>
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
                       <button
@@ -2401,6 +2452,25 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           Vista previa del chat archivado
                         </span>
                       </div>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer shrink-0"
+                        onClick={async () => {
+                          await handleUnarchive(previewChatId);
+                          setPreviewChatId(null);
+                          setPreviewChatMessages([]);
+                          setPreviewChatTitle(null);
+                        }}
+                        disabled={unarchivingId === previewChatId}
+                        title="Restaurar chat"
+                      >
+                        {unarchivingId === previewChatId ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ArchiveRestore size={14} />
+                        )}
+                        Restaurar
+                      </button>
                     </div>
                     {/* Preview content */}
                     <div className="flex-1 min-h-0">
@@ -2426,7 +2496,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                           className="w-full bg-secondary/50 border border-border rounded-xl pl-9 pr-8 py-1.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50"
                           placeholder="Buscar chats archivados..."
                           value={archivedSearchQuery}
-                          onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                          onChange={(e) =>
+                            setArchivedSearchQuery(e.target.value)
+                          }
                           autoFocus
                         />
                         {archivedSearchQuery && (
@@ -2446,7 +2518,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       {loadingArchived ? (
                         <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
                           <Loader2 size={16} className="animate-spin" />
-                          <span className="text-sm">Cargando archivados...</span>
+                          <span className="text-sm">
+                            Cargando archivados...
+                          </span>
                         </div>
                       ) : archivedChats.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
@@ -2482,7 +2556,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                             <div
                               key={chat.id}
                               className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
-                              onClick={() => handlePreviewChat(chat.id, chat.title)}
+                              onClick={() =>
+                                handlePreviewChat(chat.id, chat.title)
+                              }
                             >
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-sm truncate font-medium text-foreground">
@@ -2529,13 +2605,19 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 </div>
                                 <span className="text-xs text-muted-foreground/55 mt-1.5">
                                   Archivado ·{" "}
-                                  {formatDistanceToNow(safeDate(chat.createdAt), {
-                                    addSuffix: true,
-                                    locale: es,
-                                  })}
+                                  {formatDistanceToNow(
+                                    safeDate(chat.createdAt),
+                                    {
+                                      addSuffix: true,
+                                      locale: es,
+                                    },
+                                  )}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className="flex items-center gap-1 shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <button
                                   type="button"
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
@@ -2544,7 +2626,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   title="Restaurar"
                                 >
                                   {unarchivingId === chat.id ? (
-                                    <Loader2 size={15} className="animate-spin" />
+                                    <Loader2
+                                      size={15}
+                                      className="animate-spin"
+                                    />
                                   ) : (
                                     <ArchiveRestore size={15} strokeWidth={2} />
                                   )}
@@ -2854,6 +2939,18 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const sidebarAction = useAtomValue(sidebarActionAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { theme, intensity } = useTheme();
+
+  // Pending interactions (ask_user, consent, permission) — show question icon in pinned chats
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const pendingConsents = useAtomValue(pendingAgentConsentsAtom);
+  const pendingPermissions = useAtomValue(pendingOpenCodePermissionsAtom);
+  const pendingInteractionChatIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const a of pendingAskUsers) ids.add(a.chatId);
+    for (const c of pendingConsents) ids.add(c.chatId);
+    for (const p of pendingPermissions) ids.add(p.chatId);
+    return ids;
+  }, [pendingAskUsers, pendingConsents, pendingPermissions]);
 
   const handleOpenGit = useCallback(
     (appId: number) => {
@@ -3460,10 +3557,26 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         }
         if (selectedChatId === chatId) {
           setSelectedChatId(null);
-          navigate({
-            to: "/",
-            search: selectedAppId ? { appId: selectedAppId } : {},
-          });
+        }
+
+        // If no chats remain in this workspace, auto-create a new empty one
+        if (selectedAppId) {
+          const remaining = await ipc.chat.getChats(selectedAppId);
+          if (remaining.length === 0) {
+            const newChatId = await ipc.chat.createChat(selectedAppId);
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+            navigate({
+              to: "/",
+              search: { appId: selectedAppId, chatId: newChatId },
+            });
+          } else if (selectedChatId === chatId) {
+            navigate({
+              to: "/",
+              search: { appId: selectedAppId },
+            });
+          }
+        } else if (selectedChatId === chatId) {
+          navigate({ to: "/" });
         }
       } catch (e) {
         showError(e);
@@ -3738,11 +3851,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   {pinnedChats.map((pinned) => {
                     const isActive = selectedChatId === pinned.id;
                     const streaming = isStreamingById.get(pinned.id) ?? false;
+                    const hasPendingInteraction = pendingInteractionChatIds.has(pinned.id);
                     const isRenaming = pinnedRenamingId === pinned.id;
                     const isMenuOpen = pinnedMenuId === pinned.id;
                     const isPinnedUnread = isActive
                       ? pinned.isRead === false
-                      : (recentStreamChatIds.has(pinned.id) || pinned.isRead === false);
+                      : recentStreamChatIds.has(pinned.id) ||
+                        pinned.isRead === false;
                     return (
                       <div
                         key={pinned.id}
@@ -3814,9 +3929,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                               });
                             }}
                           >
-                            {(streaming || isPinnedUnread) && (
+                            {(hasPendingInteraction || streaming || isPinnedUnread) && (
                               <div className="absolute left-2 top-[10px] flex items-center justify-center w-4 h-4 shrink-0">
-                                {streaming ? (
+                                {hasPendingInteraction ? (
+                                  <MessageCircleQuestion
+                                    size={13}
+                                    className="text-primary animate-pulse"
+                                  />
+                                ) : streaming ? (
                                   <Loader2
                                     size={12}
                                     className="animate-spin text-primary"
@@ -3913,9 +4033,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                   (() => {
                     const pin = pinnedChats.find((c) => c.id === pinnedMenuId);
                     if (!pin) return null;
-                    const isUnread = selectedChatId === pinnedMenuId
-                      ? pin.isRead === false
-                      : (recentStreamChatIds.has(pinnedMenuId) || pin.isRead === false);
+                    const isUnread =
+                      selectedChatId === pinnedMenuId
+                        ? pin.isRead === false
+                        : recentStreamChatIds.has(pinnedMenuId) ||
+                          pin.isRead === false;
                     return (
                       <ChatContextMenuPortal
                         chatId={pinnedMenuId}
@@ -3932,15 +4054,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         onRename={(chatId, title) => {
                           setPinnedRenamingId(chatId);
                           setPinnedRenameValue(title);
-                          setTimeout(
-                            () => {
-                              if (pinnedRenameInputRef.current) {
-                                pinnedRenameInputRef.current.focus();
-                                pinnedRenameInputRef.current.select();
-                              }
-                            },
-                            50,
-                          );
+                          setTimeout(() => {
+                            if (pinnedRenameInputRef.current) {
+                              pinnedRenameInputRef.current.focus();
+                              pinnedRenameInputRef.current.select();
+                            }
+                          }, 50);
                         }}
                         onArchive={handleArchiveChatClick}
                         onDelete={handleDeleteChatClick}

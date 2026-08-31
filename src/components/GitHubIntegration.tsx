@@ -4,7 +4,6 @@ import { Github } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import { showSuccess, showError } from "@/lib/toast";
 
-
 export function GitHubIntegration() {
   const { settings, updateSettings } = useSettings();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -39,9 +38,7 @@ export function GitHubIntegration() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Github className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h3 className="typo-label flex items-center gap-2">
-            GitHub
-          </h3>
+          <h3 className="typo-label flex items-center gap-2">GitHub</h3>
         </div>
         <p className="typo-caption mt-1">
           Conectado como{" "}

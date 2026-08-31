@@ -160,7 +160,18 @@ export const supabaseContracts = {
         .array(
           z.object({
             column: z.string(),
-            operator: z.enum(["=", "!=", ">", "<", ">=", "<=", "LIKE", "ILIKE", "IS NULL", "IS NOT NULL"]),
+            operator: z.enum([
+              "=",
+              "!=",
+              ">",
+              "<",
+              ">=",
+              "<=",
+              "LIKE",
+              "ILIKE",
+              "IS NULL",
+              "IS NOT NULL",
+            ]),
             value: z.string().optional(),
           }),
         )

@@ -28,7 +28,10 @@ export function readSession(): SessionData | null {
       if (fs.existsSync(legacyPath)) {
         const legacy = JSON.parse(fs.readFileSync(legacyPath, "utf-8"));
         if (legacy.userId && legacy.sessionToken?.value) {
-          const session = { userId: legacy.userId, sessionToken: legacy.sessionToken.value };
+          const session = {
+            userId: legacy.userId,
+            sessionToken: legacy.sessionToken.value,
+          };
           writeSession(session);
           return session;
         }

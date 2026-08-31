@@ -33,10 +33,10 @@ export const NODE_VERSION = "22.14.0";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface NodeRuntimeResult {
-    /** Absolute path to the `node` binary */
-    nodeBinDir: string;
-    /** How Node was found */
-    source: "system" | "portable";
+  /** Absolute path to the `node` binary */
+  nodeBinDir: string;
+  /** How Node was found */
+  source: "system" | "portable";
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -53,49 +53,49 @@ export interface NodeRuntimeResult {
  * @returns The bin directory and source of the Node.js installation
  */
 export async function ensureNodeRuntime(
-    onProgress?: (msg: string) => void,
+  onProgress?: (msg: string) => void,
 ): Promise<NodeRuntimeResult> {
-    // Phase 0: Fix PATH for macOS GUI apps (reads login shell PATH)
-    try {
-        fixPath();
-    } catch (e) {
-        logger.warn("fix-path failed (non-fatal):", e);
-    }
+  // Phase 0: Fix PATH for macOS GUI apps (reads login shell PATH)
+  try {
+    fixPath();
+  } catch (e) {
+    logger.warn("fix-path failed (non-fatal):", e);
+  }
 
-    // Phase 1: Inject well-known Node install dirs into PATH
-    injectKnownNodePaths();
+  // Phase 1: Inject well-known Node install dirs into PATH
+  injectKnownNodePaths();
 
-    // Phase 2: Check if node is now accessible
-    const systemNode = findNodeInPath();
-    if (systemNode) {
-        logger.info(`System Node.js found: ${systemNode}`);
-        return { nodeBinDir: path.dirname(systemNode), source: "system" };
-    }
+  // Phase 2: Check if node is now accessible
+  const systemNode = findNodeInPath();
+  if (systemNode) {
+    logger.info(`System Node.js found: ${systemNode}`);
+    return { nodeBinDir: path.dirname(systemNode), source: "system" };
+  }
 
-    // Phase 3: Check for existing portable runtime
-    const portableBinDir = getPortableBinDir();
-    const portableNodeBin = path.join(portableBinDir, "node");
-    if (fs.existsSync(portableNodeBin)) {
-        prependToPath(portableBinDir);
-        logger.info(`Portable Node.js found at: ${portableBinDir}`);
-        return { nodeBinDir: portableBinDir, source: "portable" };
-    }
-
-    // Phase 4: Download portable Node.js
-    logger.info("No Node.js found — downloading portable runtime...");
-    onProgress?.("Instalando Node.js...");
-
-    const success = await downloadAndExtractNode(onProgress);
-    if (success && fs.existsSync(portableNodeBin)) {
-        prependToPath(portableBinDir);
-        logger.info(`Portable Node.js installed at: ${portableBinDir}`);
-        return { nodeBinDir: portableBinDir, source: "portable" };
-    }
-
-    // If download failed, return the best we have (bin dir will be added to PATH
-    // but node won't be there — downstream code will handle gracefully)
-    logger.error("Failed to provision Node.js runtime");
+  // Phase 3: Check for existing portable runtime
+  const portableBinDir = getPortableBinDir();
+  const portableNodeBin = path.join(portableBinDir, "node");
+  if (fs.existsSync(portableNodeBin)) {
+    prependToPath(portableBinDir);
+    logger.info(`Portable Node.js found at: ${portableBinDir}`);
     return { nodeBinDir: portableBinDir, source: "portable" };
+  }
+
+  // Phase 4: Download portable Node.js
+  logger.info("No Node.js found — downloading portable runtime...");
+  onProgress?.("Instalando Node.js...");
+
+  const success = await downloadAndExtractNode(onProgress);
+  if (success && fs.existsSync(portableNodeBin)) {
+    prependToPath(portableBinDir);
+    logger.info(`Portable Node.js installed at: ${portableBinDir}`);
+    return { nodeBinDir: portableBinDir, source: "portable" };
+  }
+
+  // If download failed, return the best we have (bin dir will be added to PATH
+  // but node won't be there — downstream code will handle gracefully)
+  logger.error("Failed to provision Node.js runtime");
+  return { nodeBinDir: portableBinDir, source: "portable" };
 }
 
 /**
@@ -103,8 +103,8 @@ export async function ensureNodeRuntime(
  * Can be used to check whether a portable runtime exists.
  */
 export function getPortableNodeBinDir(): string | null {
-    const binDir = getPortableBinDir();
-    return fs.existsSync(path.join(binDir, "node")) ? binDir : null;
+  const binDir = getPortableBinDir();
+  return fs.existsSync(path.join(binDir, "node")) ? binDir : null;
 }
 
 // ─── Internal: Path Scanning ────────────────────────────────────────────────
@@ -115,96 +115,104 @@ export function getPortableNodeBinDir(): string | null {
  * Windows paths are included but only activated on win32.
  */
 function injectKnownNodePaths(): void {
-    const HOME = process.env.HOME || process.env.USERPROFILE || `/home/${process.env.USER}`;
-    const dirsToAdd: string[] = [];
+  const HOME =
+    process.env.HOME || process.env.USERPROFILE || `/home/${process.env.USER}`;
+  const dirsToAdd: string[] = [];
 
-    // ─── Homebrew ────────────────────────────────────────────────────
-    // Apple Silicon: /opt/homebrew/bin
-    // Intel macOS:   /usr/local/bin (also used by official Node installer)
-    if (process.platform === "darwin") {
-        dirsToAdd.push("/opt/homebrew/bin");
+  // ─── Homebrew ────────────────────────────────────────────────────
+  // Apple Silicon: /opt/homebrew/bin
+  // Intel macOS:   /usr/local/bin (also used by official Node installer)
+  if (process.platform === "darwin") {
+    dirsToAdd.push("/opt/homebrew/bin");
+  }
+  dirsToAdd.push("/usr/local/bin");
+
+  // ─── NVM ─────────────────────────────────────────────────────────
+  const nvmDir = path.join(HOME, ".nvm/versions/node");
+  try {
+    if (fs.existsSync(nvmDir)) {
+      const versions = fs.readdirSync(nvmDir);
+      // Sort descending so latest version is first in PATH
+      versions.sort((a, b) => {
+        const numA = a.replace("v", "").split(".").map(Number);
+        const numB = b.replace("v", "").split(".").map(Number);
+        for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+          if ((numA[i] || 0) !== (numB[i] || 0))
+            return (numB[i] || 0) - (numA[i] || 0);
+        }
+        return 0;
+      });
+      const nvmBins = versions.map((v) => path.join(nvmDir, v, "bin"));
+      dirsToAdd.push(...nvmBins);
+      if (versions.length > 0) {
+        logger.info(
+          `Found ${nvmBins.length} NVM versions (latest: ${versions[0]})`,
+        );
+      }
     }
-    dirsToAdd.push("/usr/local/bin");
+  } catch (e) {
+    logger.warn("Could not scan NVM dirs:", e);
+  }
 
-    // ─── NVM ─────────────────────────────────────────────────────────
-    const nvmDir = path.join(HOME, ".nvm/versions/node");
+  // ─── fnm ─────────────────────────────────────────────────────────
+  const fnmDir = path.join(HOME, ".fnm/aliases/default/bin");
+  if (fs.existsSync(fnmDir)) {
+    dirsToAdd.push(fnmDir);
+  }
+
+  // ─── Volta ───────────────────────────────────────────────────────
+  const voltaDir = path.join(HOME, ".volta/bin");
+  if (fs.existsSync(voltaDir)) {
+    dirsToAdd.push(voltaDir);
+  }
+
+  // ─── mise (formerly rtx) ─────────────────────────────────────────
+  const miseDir = path.join(HOME, ".local/share/mise/shims");
+  if (fs.existsSync(miseDir)) {
+    dirsToAdd.push(miseDir);
+  }
+
+  // ─── asdf ────────────────────────────────────────────────────────
+  const asdfDir = path.join(HOME, ".asdf/shims");
+  if (fs.existsSync(asdfDir)) {
+    dirsToAdd.push(asdfDir);
+  }
+
+  // ─── nodenv ──────────────────────────────────────────────────────
+  const nodenvDir = path.join(HOME, ".nodenv/shims");
+  if (fs.existsSync(nodenvDir)) {
+    dirsToAdd.push(nodenvDir);
+  }
+
+  // ─── Windows (prepared for future) ───────────────────────────────
+  if (process.platform === "win32") {
+    const programFiles = process.env.PROGRAMFILES || "C:\\Program Files";
+    dirsToAdd.push(path.join(programFiles, "nodejs"));
+    const appData = process.env.APPDATA;
+    if (appData) {
+      dirsToAdd.push(path.join(appData, "nvm"));
+      // fnm on Windows
+      dirsToAdd.push(path.join(appData, "fnm_multishells"));
+    }
+  }
+
+  // ─── Portable runtime (our own) ──────────────────────────────────
+  dirsToAdd.push(getPortableBinDir());
+
+  // Prepend all found dirs to PATH
+  const validDirs = dirsToAdd.filter((d) => {
     try {
-        if (fs.existsSync(nvmDir)) {
-            const versions = fs.readdirSync(nvmDir);
-            // Sort descending so latest version is first in PATH
-            versions.sort((a, b) => {
-                const numA = a.replace("v", "").split(".").map(Number);
-                const numB = b.replace("v", "").split(".").map(Number);
-                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
-                    if ((numA[i] || 0) !== (numB[i] || 0)) return (numB[i] || 0) - (numA[i] || 0);
-                }
-                return 0;
-            });
-            const nvmBins = versions.map(v => path.join(nvmDir, v, "bin"));
-            dirsToAdd.push(...nvmBins);
-            if (versions.length > 0) {
-                logger.info(`Found ${nvmBins.length} NVM versions (latest: ${versions[0]})`);
-            }
-        }
-    } catch (e) {
-        logger.warn("Could not scan NVM dirs:", e);
+      return fs.existsSync(d);
+    } catch {
+      return false;
     }
+  });
 
-    // ─── fnm ─────────────────────────────────────────────────────────
-    const fnmDir = path.join(HOME, ".fnm/aliases/default/bin");
-    if (fs.existsSync(fnmDir)) {
-        dirsToAdd.push(fnmDir);
-    }
-
-    // ─── Volta ───────────────────────────────────────────────────────
-    const voltaDir = path.join(HOME, ".volta/bin");
-    if (fs.existsSync(voltaDir)) {
-        dirsToAdd.push(voltaDir);
-    }
-
-    // ─── mise (formerly rtx) ─────────────────────────────────────────
-    const miseDir = path.join(HOME, ".local/share/mise/shims");
-    if (fs.existsSync(miseDir)) {
-        dirsToAdd.push(miseDir);
-    }
-
-    // ─── asdf ────────────────────────────────────────────────────────
-    const asdfDir = path.join(HOME, ".asdf/shims");
-    if (fs.existsSync(asdfDir)) {
-        dirsToAdd.push(asdfDir);
-    }
-
-    // ─── nodenv ──────────────────────────────────────────────────────
-    const nodenvDir = path.join(HOME, ".nodenv/shims");
-    if (fs.existsSync(nodenvDir)) {
-        dirsToAdd.push(nodenvDir);
-    }
-
-    // ─── Windows (prepared for future) ───────────────────────────────
-    if (process.platform === "win32") {
-        const programFiles = process.env.PROGRAMFILES || "C:\\Program Files";
-        dirsToAdd.push(path.join(programFiles, "nodejs"));
-        const appData = process.env.APPDATA;
-        if (appData) {
-            dirsToAdd.push(path.join(appData, "nvm"));
-            // fnm on Windows
-            dirsToAdd.push(path.join(appData, "fnm_multishells"));
-        }
-    }
-
-    // ─── Portable runtime (our own) ──────────────────────────────────
-    dirsToAdd.push(getPortableBinDir());
-
-    // Prepend all found dirs to PATH
-    const validDirs = dirsToAdd.filter(d => {
-        try { return fs.existsSync(d); } catch { return false; }
-    });
-
-    if (validDirs.length > 0) {
-        const currentPath = process.env.PATH || "";
-        process.env.PATH = [...validDirs, currentPath].join(path.delimiter);
-        logger.debug(`Injected ${validDirs.length} dirs into PATH`);
-    }
+  if (validDirs.length > 0) {
+    const currentPath = process.env.PATH || "";
+    process.env.PATH = [...validDirs, currentPath].join(path.delimiter);
+    logger.debug(`Injected ${validDirs.length} dirs into PATH`);
+  }
 }
 
 /**
@@ -212,23 +220,23 @@ function injectKnownNodePaths(): void {
  * Returns the absolute path to the binary, or null if not found.
  */
 function findNodeInPath(): string | null {
-    const pathDirs = (process.env.PATH || "").split(path.delimiter);
-    const nodeBin = process.platform === "win32" ? "node.exe" : "node";
+  const pathDirs = (process.env.PATH || "").split(path.delimiter);
+  const nodeBin = process.platform === "win32" ? "node.exe" : "node";
 
-    for (const dir of pathDirs) {
-        if (!dir) continue;
-        const candidate = path.join(dir, nodeBin);
-        try {
-            if (fs.existsSync(candidate)) {
-                // Verify it's actually executable
-                fs.accessSync(candidate, fs.constants.X_OK);
-                return candidate;
-            }
-        } catch {
-            // Not executable or can't access — continue
-        }
+  for (const dir of pathDirs) {
+    if (!dir) continue;
+    const candidate = path.join(dir, nodeBin);
+    try {
+      if (fs.existsSync(candidate)) {
+        // Verify it's actually executable
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return candidate;
+      }
+    } catch {
+      // Not executable or can't access — continue
     }
-    return null;
+  }
+  return null;
 }
 
 // ─── Internal: Portable Runtime ─────────────────────────────────────────────
@@ -237,7 +245,7 @@ function findNodeInPath(): string | null {
  * Get the base directory where the portable Node.js runtime lives.
  */
 function getPortableBaseDir(): string {
-    return path.join(app.getPath("userData"), "node-runtime");
+  return path.join(app.getPath("userData"), "node-runtime");
 }
 
 /**
@@ -245,80 +253,82 @@ function getPortableBaseDir(): string {
  * Layout: node-runtime/node-v{VERSION}-{platform}-{arch}/bin/
  */
 function getPortableBinDir(): string {
-    const platform = process.platform === "win32" ? "win" : process.platform;
-    const archMap: Record<string, string> = {
-        x64: "x64",
-        arm64: "arm64",
-        ia32: "x86",
-    };
-    const arch = archMap[process.arch] || process.arch;
-    const dirName = `node-v${NODE_VERSION}-${platform}-${arch}`;
+  const platform = process.platform === "win32" ? "win" : process.platform;
+  const archMap: Record<string, string> = {
+    x64: "x64",
+    arm64: "arm64",
+    ia32: "x86",
+  };
+  const arch = archMap[process.arch] || process.arch;
+  const dirName = `node-v${NODE_VERSION}-${platform}-${arch}`;
 
-    // On Unix, the binary is inside a bin/ subdirectory
-    // On Windows, it's at the root of the extracted folder
-    if (process.platform === "win32") {
-        return path.join(getPortableBaseDir(), dirName);
-    }
-    return path.join(getPortableBaseDir(), dirName, "bin");
+  // On Unix, the binary is inside a bin/ subdirectory
+  // On Windows, it's at the root of the extracted folder
+  if (process.platform === "win32") {
+    return path.join(getPortableBaseDir(), dirName);
+  }
+  return path.join(getPortableBaseDir(), dirName, "bin");
 }
 
 /**
  * Get the download URL for the Node.js archive.
  */
 function getDownloadUrl(): string {
-    const platform = process.platform;
-    const arch = process.arch;
+  const platform = process.platform;
+  const arch = process.arch;
 
-    if (platform === "darwin") {
-        return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-${arch}.tar.gz`;
-    }
-    if (platform === "linux") {
-        return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${arch}.tar.xz`;
-    }
-    if (platform === "win32") {
-        const winArch = arch === "arm64" ? "arm64" : "x64";
-        return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-${winArch}.zip`;
-    }
+  if (platform === "darwin") {
+    return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-${arch}.tar.gz`;
+  }
+  if (platform === "linux") {
+    return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${arch}.tar.xz`;
+  }
+  if (platform === "win32") {
+    const winArch = arch === "arm64" ? "arm64" : "x64";
+    return `https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-${winArch}.zip`;
+  }
 
-    throw new Error(`Unsupported platform: ${platform}-${arch}`);
+  throw new Error(`Unsupported platform: ${platform}-${arch}`);
 }
 
 /**
  * Download and extract the Node.js portable runtime.
  */
 async function downloadAndExtractNode(
-    onProgress?: (msg: string) => void,
+  onProgress?: (msg: string) => void,
 ): Promise<boolean> {
-    const url = getDownloadUrl();
-    const baseDir = getPortableBaseDir();
+  const url = getDownloadUrl();
+  const baseDir = getPortableBaseDir();
 
-    try {
-        // Ensure the base directory exists
-        fs.mkdirSync(baseDir, { recursive: true });
+  try {
+    // Ensure the base directory exists
+    fs.mkdirSync(baseDir, { recursive: true });
 
-        logger.info(`Downloading Node.js from: ${url}`);
-        onProgress?.("Instalando Node.js...");
+    logger.info(`Downloading Node.js from: ${url}`);
+    onProgress?.("Instalando Node.js...");
 
-        const response = await fetch(url);
-        if (!response.ok || !response.body) {
-            logger.error(`Download failed: ${response.status} ${response.statusText}`);
-            return false;
-        }
-
-        if (process.platform === "win32") {
-            // Windows: download zip and extract
-            return await downloadAndExtractZip(response, baseDir);
-        } else if (url.endsWith(".tar.xz")) {
-            // Linux: .tar.xz
-            return await downloadAndExtractTarXz(response, baseDir);
-        } else {
-            // macOS: .tar.gz
-            return await downloadAndExtractTarGz(response, baseDir);
-        }
-    } catch (error: any) {
-        logger.error("Failed to download/extract Node.js:", error.message);
-        return false;
+    const response = await fetch(url);
+    if (!response.ok || !response.body) {
+      logger.error(
+        `Download failed: ${response.status} ${response.statusText}`,
+      );
+      return false;
     }
+
+    if (process.platform === "win32") {
+      // Windows: download zip and extract
+      return await downloadAndExtractZip(response, baseDir);
+    } else if (url.endsWith(".tar.xz")) {
+      // Linux: .tar.xz
+      return await downloadAndExtractTarXz(response, baseDir);
+    } else {
+      // macOS: .tar.gz
+      return await downloadAndExtractTarGz(response, baseDir);
+    }
+  } catch (error: any) {
+    logger.error("Failed to download/extract Node.js:", error.message);
+    return false;
+  }
 }
 
 /**
@@ -326,28 +336,32 @@ async function downloadAndExtractNode(
  * Uses native tar command for reliability.
  */
 async function downloadAndExtractTarGz(
-    response: Response,
-    extractDir: string,
+  response: Response,
+  extractDir: string,
 ): Promise<boolean> {
-    const { execFileSync } = await import("node:child_process");
-    const tmpFile = path.join(extractDir, `node-download-${Date.now()}.tar.gz`);
+  const { execFileSync } = await import("node:child_process");
+  const tmpFile = path.join(extractDir, `node-download-${Date.now()}.tar.gz`);
 
+  try {
+    // Save to temp file
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
+
+    // Extract using system tar (more reliable than JS tar libraries)
+    execFileSync("tar", ["xzf", tmpFile, "-C", extractDir], {
+      timeout: 120_000,
+    });
+
+    logger.info("Node.js tar.gz extracted successfully");
+    return true;
+  } finally {
+    // Clean up temp file
     try {
-        // Save to temp file
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
-
-        // Extract using system tar (more reliable than JS tar libraries)
-        execFileSync("tar", ["xzf", tmpFile, "-C", extractDir], {
-            timeout: 120_000,
-        });
-
-        logger.info("Node.js tar.gz extracted successfully");
-        return true;
-    } finally {
-        // Clean up temp file
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+      fs.unlinkSync(tmpFile);
+    } catch {
+      /* ignore */
     }
+  }
 }
 
 /**
@@ -355,28 +369,32 @@ async function downloadAndExtractTarGz(
  * Uses native tar command which handles xz natively.
  */
 async function downloadAndExtractTarXz(
-    response: Response,
-    extractDir: string,
+  response: Response,
+  extractDir: string,
 ): Promise<boolean> {
-    const { execFileSync } = await import("node:child_process");
-    const tmpFile = path.join(extractDir, `node-download-${Date.now()}.tar.xz`);
+  const { execFileSync } = await import("node:child_process");
+  const tmpFile = path.join(extractDir, `node-download-${Date.now()}.tar.xz`);
 
+  try {
+    // Save to temp file
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
+
+    // Extract using system tar (handles xz natively on modern Linux)
+    execFileSync("tar", ["xJf", tmpFile, "-C", extractDir], {
+      timeout: 120_000,
+    });
+
+    logger.info("Node.js tar.xz extracted successfully");
+    return true;
+  } finally {
+    // Clean up temp file
     try {
-        // Save to temp file
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
-
-        // Extract using system tar (handles xz natively on modern Linux)
-        execFileSync("tar", ["xJf", tmpFile, "-C", extractDir], {
-            timeout: 120_000,
-        });
-
-        logger.info("Node.js tar.xz extracted successfully");
-        return true;
-    } finally {
-        // Clean up temp file
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+      fs.unlinkSync(tmpFile);
+    } catch {
+      /* ignore */
     }
+  }
 }
 
 /**
@@ -384,31 +402,41 @@ async function downloadAndExtractTarXz(
  * Uses PowerShell's Expand-Archive for zero-dependency extraction.
  */
 async function downloadAndExtractZip(
-    response: Response,
-    extractDir: string,
+  response: Response,
+  extractDir: string,
 ): Promise<boolean> {
-    const { execFileSync } = await import("node:child_process");
-    const tmpFile = path.join(extractDir, `node-download-${Date.now()}.zip`);
+  const { execFileSync } = await import("node:child_process");
+  const tmpFile = path.join(extractDir, `node-download-${Date.now()}.zip`);
 
+  try {
+    // Save to temp file
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
+
+    // Extract using PowerShell (available on all modern Windows)
+    execFileSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `Expand-Archive -Path '${tmpFile}' -DestinationPath '${extractDir}' -Force`,
+      ],
+      {
+        timeout: 120_000,
+      },
+    );
+
+    logger.info("Node.js zip extracted successfully");
+    return true;
+  } finally {
+    // Clean up temp file
     try {
-        // Save to temp file
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tmpFile, Buffer.from(arrayBuffer));
-
-        // Extract using PowerShell (available on all modern Windows)
-        execFileSync("powershell", [
-            "-NoProfile", "-NonInteractive",
-            "-Command", `Expand-Archive -Path '${tmpFile}' -DestinationPath '${extractDir}' -Force`,
-        ], {
-            timeout: 120_000,
-        });
-
-        logger.info("Node.js zip extracted successfully");
-        return true;
-    } finally {
-        // Clean up temp file
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+      fs.unlinkSync(tmpFile);
+    } catch {
+      /* ignore */
     }
+  }
 }
 
 // ─── Internal: Helpers ──────────────────────────────────────────────────────
@@ -417,8 +445,8 @@ async function downloadAndExtractZip(
  * Prepend a directory to process.env.PATH (idempotent).
  */
 function prependToPath(dir: string): void {
-    const currentPath = process.env.PATH || "";
-    if (!currentPath.split(path.delimiter).includes(dir)) {
-        process.env.PATH = `${dir}${path.delimiter}${currentPath}`;
-    }
+  const currentPath = process.env.PATH || "";
+  if (!currentPath.split(path.delimiter).includes(dir)) {
+    process.env.PATH = `${dir}${path.delimiter}${currentPath}`;
+  }
 }

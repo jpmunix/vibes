@@ -16,6 +16,7 @@ La forma más directa: escribe lo que quieres crear en el campo de texto de la p
 4. Arranca el servidor de desarrollo
 
 ![Crear app desde Home](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura del campo de texto de Home con un prompt de ejemplo" -->
 
 ## Desde el menú de Apps

@@ -20,11 +20,18 @@ import { chatInputValueAtom } from "@/atoms/chatAtoms";
 import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
 import { ipc } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
-import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
+import {
+  getColorById,
+  adjustChroma,
+  DEFAULT_LIGHT_COLOR,
+  DEFAULT_DARK_COLOR,
+} from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
 
 const OpenRouterSetupWizard = lazy(() =>
-  import("@/components/onboarding/OpenRouterSetupWizard").then(m => ({ default: m.OpenRouterSetupWizard }))
+  import("@/components/onboarding/OpenRouterSetupWizard").then((m) => ({
+    default: m.OpenRouterSetupWizard,
+  })),
 );
 
 // Routes that can be restored on startup
@@ -59,25 +66,32 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     if (restoredRef.current) return;
     restoredRef.current = true;
 
-    ipc.misc.getPreference({ key: PREF_LAST_VIEW }).then((raw) => {
-      // Initialize the ref with the DB value to prevent redundant writes
-      if (raw) lastSavedViewRef.current = raw;
-      initializedRef.current = true; // unblock persist effect
+    ipc.misc
+      .getPreference({ key: PREF_LAST_VIEW })
+      .then((raw) => {
+        // Initialize the ref with the DB value to prevent redundant writes
+        if (raw) lastSavedViewRef.current = raw;
+        initializedRef.current = true; // unblock persist effect
 
-      // Only restore if we're still at the root (hasn't navigated yet)
-      if (routerState.location.pathname !== "/") return;
+        // Only restore if we're still at the root (hasn't navigated yet)
+        if (routerState.location.pathname !== "/") return;
 
-      let targetRoute = raw;
-      if (raw === "/todos" || raw === "/notas") {
-        targetRoute = "/";
-      }
+        let targetRoute = raw;
+        if (raw === "/todos" || raw === "/notas") {
+          targetRoute = "/";
+        }
 
-      if (targetRoute && RESTORABLE_ROUTES.includes(targetRoute) && targetRoute !== "/") {
-        navigate({ to: targetRoute as any, replace: true });
-      }
-    }).catch(() => {
-      initializedRef.current = true; // unblock even on error
-    });
+        if (
+          targetRoute &&
+          RESTORABLE_ROUTES.includes(targetRoute) &&
+          targetRoute !== "/"
+        ) {
+          navigate({ to: targetRoute as any, replace: true });
+        }
+      })
+      .catch(() => {
+        initializedRef.current = true; // unblock even on error
+      });
   }, []);
 
   // Persist current view to remote DB on route change (only if actually changed)
@@ -97,7 +111,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     lastSavedViewRef.current = base;
 
     // Persist to remote DB preference (Bunny Edge SQL)
-    ipc.misc.setPreference({ key: PREF_LAST_VIEW, value: base }).catch(() => {});
+    ipc.misc
+      .setPreference({ key: PREF_LAST_VIEW, value: base })
+      .catch(() => {});
   }, [routerState.location.pathname]);
 
   useEffect(() => {
@@ -122,21 +138,38 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       };
     }
 
-    return () => { };
+    return () => {};
   }, [settings?.zoomLevel]);
 
   // Apply user's primary color on startup
   useEffect(() => {
     if (settings) {
-      const lightColor = getColorById(settings.primaryColorLight || DEFAULT_LIGHT_COLOR);
-      const darkColor = getColorById(settings.primaryColorDark || DEFAULT_DARK_COLOR);
+      const lightColor = getColorById(
+        settings.primaryColorLight || DEFAULT_LIGHT_COLOR,
+      );
+      const darkColor = getColorById(
+        settings.primaryColorDark || DEFAULT_DARK_COLOR,
+      );
       const lightFactor = (settings.primaryChromaLight ?? 100) / 100;
       const darkFactor = (settings.primaryChromaDark ?? 100) / 100;
       const root = document.documentElement;
-      if (lightColor) root.style.setProperty("--primary-color-light", adjustChroma(lightColor.light, lightFactor));
-      if (darkColor) root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
+      if (lightColor)
+        root.style.setProperty(
+          "--primary-color-light",
+          adjustChroma(lightColor.light, lightFactor),
+        );
+      if (darkColor)
+        root.style.setProperty(
+          "--primary-color-dark",
+          adjustChroma(darkColor.dark, darkFactor),
+        );
     }
-  }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
+  }, [
+    settings?.primaryColorLight,
+    settings?.primaryColorDark,
+    settings?.primaryChromaLight,
+    settings?.primaryChromaDark,
+  ]);
   // Global keyboard listener for refresh events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -179,7 +212,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         }
       },
     );
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribe?.();
+    };
   }, []);
 
   return (
@@ -193,7 +228,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SidebarProvider>
             <TitleBar />
             {/* Layout: TitleBar (fixed 44px, Electron only) → TopNavbar (40px) → [SecondarySidebar + Content] */}
-            <div className={`flex flex-col w-full ${isElectron ? "h-[calc(100vh-44px)] mt-11" : "h-screen"}`}>
+            <div
+              className={`flex flex-col w-full ${isElectron ? "h-[calc(100vh-44px)] mt-11" : "h-screen"}`}
+            >
               <TopNavbar />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <SecondarySidebar />

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { resolveDisplayNames } from "@/ipc/utils/model_id_humanizer";
 
 interface FetchedModel {
   id: string;
@@ -60,7 +61,9 @@ export function ProviderSwitchDialog({
 
       try {
         const normalizedUrl = provider.apiBaseUrl.replace(/\/+$/, "");
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
         if (provider.apiKey?.value) {
           headers["Authorization"] = `Bearer ${provider.apiKey.value}`;
         }
@@ -79,13 +82,18 @@ export function ProviderSwitchDialog({
           throw new Error("Formato de respuesta inválido");
         }
 
+        const ids = data.data.map((m: any) => m.id as string);
+        const displayNames = resolveDisplayNames(ids);
+
         const fetched: FetchedModel[] = data.data
           .map((m: any) => ({
             id: m.id,
             name: m.id,
-            displayName: humanize(m.id),
+            displayName: displayNames.get(m.id) ?? m.id,
           }))
-          .sort((a: FetchedModel, b: FetchedModel) => a.displayName.localeCompare(b.displayName));
+          .sort((a: FetchedModel, b: FetchedModel) =>
+            a.displayName.localeCompare(b.displayName),
+          );
 
         setModels(fetched);
 
@@ -122,9 +130,7 @@ export function ProviderSwitchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>
-            Configurar "{provider.name}"
-          </DialogTitle>
+          <DialogTitle>Configurar "{provider.name}"</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -151,7 +157,8 @@ export function ProviderSwitchDialog({
           <div className="flex flex-col items-center gap-3 py-10">
             <AlertCircle className="h-6 w-6 text-muted-foreground" />
             <p className="typo-caption text-center max-w-xs">
-              No se encontraron modelos en este endpoint. Asegúrate de que la URL y la key son correctas.
+              No se encontraron modelos en este endpoint. Asegúrate de que la
+              URL y la key son correctas.
             </p>
             <Button
               variant="outline"
@@ -165,7 +172,8 @@ export function ProviderSwitchDialog({
         ) : (
           <div className="space-y-5">
             <p className="typo-caption">
-              Se han detectado <strong>{models.length} modelos</strong>. Asigna un modelo a cada slot:
+              Se han detectado <strong>{models.length} modelos</strong>. Asigna
+              un modelo a cada slot:
             </p>
 
             <ModelSlot
@@ -247,18 +255,4 @@ function ModelSlot({
       </Select>
     </div>
   );
-}
-
-// ─── Utils ───
-
-/** Convert model ID to human-readable name */
-function humanize(modelId: string): string {
-  let name = modelId;
-  // Strip provider prefix
-  const slash = name.lastIndexOf("/");
-  if (slash !== -1) name = name.substring(slash + 1);
-  // Replace separators, title-case
-  return name
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }

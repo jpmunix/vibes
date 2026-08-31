@@ -57,8 +57,8 @@ export async function generateAutoCommitMessage({
       return fallbackMessage;
     }
 
-    // Get diffs for up to 5 files (quality over quantity)
-    const filesToAnalyze = allFiles.slice(0, 5);
+    // Get diffs for up to 30 files (aligned with streaming handler)
+    const filesToAnalyze = allFiles.slice(0, 30);
     const diffsPromises = filesToAnalyze.map(async (file) => {
       if (file.status === "deleted") {
         return `File: ${file.path} (eliminado)`;
@@ -82,7 +82,7 @@ export async function generateAutoCommitMessage({
           return `File: ${file.path} (${file.status})`;
         }
         // Enough context for the AI to understand what changed
-        return `File: ${file.path} (${file.status})\n${diff.slice(0, 1000)}`;
+        return `File: ${file.path} (${file.status})\n${diff.slice(0, 3000)}`;
       } catch {
         return `File: ${file.path} (${file.status})`;
       }
@@ -92,15 +92,21 @@ export async function generateAutoCommitMessage({
     const diffsContext = diffs.join("\n\n");
 
     // Use the editable prompt from settings
-    const systemPrompt = await getSystemPrompt("auto_commit_message", settings.userId);
+    const systemPrompt = await getSystemPrompt(
+      "auto_commit_message",
+      settings.userId,
+    );
 
-    const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
-
+    // Separate system/user messages for better model comprehension
+    // (aligned with the streaming handler in github_handlers.ts)
     const data = await openRouterCompletion({
       model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 80,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Cambios:\n${diffsContext}` },
+      ],
+      temperature: 0.7,
+      max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
       title: "Vibes - Auto Commit Message",
     });
 

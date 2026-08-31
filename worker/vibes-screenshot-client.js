@@ -7,10 +7,13 @@
   async function captureScreenshot(options = {}) {
     // We now prefer native screenshot via parent Electron process
     // This is much more reliable than html-to-image
-    window.parent.postMessage({
-      type: "vibes-request-native-screenshot",
-      rect: options
-    }, "*");
+    window.parent.postMessage(
+      {
+        type: "vibes-request-native-screenshot",
+        rect: options,
+      },
+      "*",
+    );
     return null; // Response will come asynchronously via parent
   }
 
@@ -20,11 +23,11 @@
       selectionOverlay = null;
       selectionRect = null;
     }
-    window.removeEventListener('keydown', handleEsc);
+    window.removeEventListener("keydown", handleEsc);
   }
 
   function handleEsc(e) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       cleanupSelection();
     }
   }
@@ -32,26 +35,26 @@
   function startSelection() {
     if (selectionOverlay) return;
 
-    selectionOverlay = document.createElement('div');
+    selectionOverlay = document.createElement("div");
     Object.assign(selectionOverlay.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      zIndex: '1000000',
-      cursor: 'crosshair',
-      userSelect: 'none'
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100vw",
+      height: "100vh",
+      backgroundColor: "rgba(0,0,0,0.4)",
+      zIndex: "1000000",
+      cursor: "crosshair",
+      userSelect: "none",
     });
 
-    selectionRect = document.createElement('div');
+    selectionRect = document.createElement("div");
     Object.assign(selectionRect.style, {
-      position: 'absolute',
-      border: '2px solid #7f22fe',
-      backgroundColor: 'rgba(127, 34, 254, 0.1)',
-      display: 'none',
-      pointerEvents: 'none'
+      position: "absolute",
+      border: "2px solid #7f22fe",
+      backgroundColor: "rgba(127, 34, 254, 0.1)",
+      display: "none",
+      pointerEvents: "none",
     });
 
     selectionOverlay.appendChild(selectionRect);
@@ -61,11 +64,11 @@
       isSelecting = true;
       startX = e.clientX;
       startY = e.clientY;
-      selectionRect.style.display = 'block';
-      selectionRect.style.left = startX + 'px';
-      selectionRect.style.top = startY + 'px';
-      selectionRect.style.width = '0px';
-      selectionRect.style.height = '0px';
+      selectionRect.style.display = "block";
+      selectionRect.style.left = startX + "px";
+      selectionRect.style.top = startY + "px";
+      selectionRect.style.width = "0px";
+      selectionRect.style.height = "0px";
     };
 
     selectionOverlay.onmousemove = (e) => {
@@ -78,10 +81,10 @@
       const width = Math.abs(startX - currentX);
       const height = Math.abs(startY - currentY);
 
-      selectionRect.style.left = left + 'px';
-      selectionRect.style.top = top + 'px';
-      selectionRect.style.width = width + 'px';
-      selectionRect.style.height = height + 'px';
+      selectionRect.style.left = left + "px";
+      selectionRect.style.top = top + "px";
+      selectionRect.style.width = width + "px";
+      selectionRect.style.height = height + "px";
     };
 
     selectionOverlay.onmouseup = async (e) => {
@@ -108,21 +111,26 @@
       }, 50);
     };
 
-    window.addEventListener('keydown', handleEsc);
+    window.addEventListener("keydown", handleEsc);
     document.body.appendChild(selectionOverlay);
   }
 
   function sendResponse(success, dataUrl, error = null) {
-    window.parent.postMessage({
-      type: "vibes-screenshot-response",
-      success,
-      dataUrl,
-      error
-    }, "*");
+    window.parent.postMessage(
+      {
+        type: "vibes-screenshot-response",
+        success,
+        dataUrl,
+        error,
+      },
+      "*",
+    );
   }
 
   async function handleScreenshotRequest(options = {}) {
-    console.debug("[vibes-screenshot] Requesting native screenshot from parent...");
+    console.debug(
+      "[vibes-screenshot] Requesting native screenshot from parent...",
+    );
     captureScreenshot(options);
   }
 
@@ -136,4 +144,3 @@
     }
   });
 })();
-

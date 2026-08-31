@@ -29,6 +29,10 @@ export function useSelectedModelSupportsImages(): boolean {
   return useMemo(() => {
     if (!settings || !modelsByProviders) return true;
 
+    // If the vision preprocessor is enabled, always allow images
+    // (they will be converted to text by the sidecar model)
+    if (settings.visionPreprocessorEnabled !== false) return true;
+
     // 1. Resolve which model is active (dynamic selectedModel vs static custom agent model)
     let activeProvider = settings.selectedModel?.provider || "openrouter";
     let activeModelName = settings.selectedModel?.name;
@@ -38,19 +42,28 @@ export function useSelectedModelSupportsImages(): boolean {
     let matchedAgent: any = null;
     if (trimmedInput.startsWith("/")) {
       const firstWord = trimmedInput.split(" ")[0].slice(1).toLowerCase();
-      matchedAgent = customAgents?.find((a) => a.slashCommand.toLowerCase() === firstWord);
+      matchedAgent = customAgents?.find(
+        (a) => a.slashCommand.toLowerCase() === firstWord,
+      );
     }
 
     // Otherwise, check if the current chat mode itself is a custom agent
     if (!matchedAgent) {
-      const currentMode = chatId && chat ? (chat.chatMode || "agent") : (settings.selectedChatMode || "agent");
+      const currentMode =
+        chatId && chat
+          ? chat.chatMode || "agent"
+          : settings.selectedChatMode || "agent";
       if (currentMode.startsWith("custom-agent::")) {
         const id = parseInt(currentMode.split("::")[1]);
         matchedAgent = customAgents?.find((a) => a.id === id);
       }
     }
 
-    if (matchedAgent && matchedAgent.modelSource === "static" && matchedAgent.model) {
+    if (
+      matchedAgent &&
+      matchedAgent.modelSource === "static" &&
+      matchedAgent.model
+    ) {
       const parsed = parseModelString(matchedAgent.model, activeProvider);
       activeProvider = parsed.provider;
       activeModelName = parsed.name;
@@ -62,12 +75,21 @@ export function useSelectedModelSupportsImages(): boolean {
     if (!providerModels) return true;
 
     // If it was the settings model, check customModelId first
-    const isSettingsModel = activeProvider === settings.selectedModel?.provider && activeModelName === settings.selectedModel?.name;
-    const customFoundModel = isSettingsModel && settings.selectedModel.customModelId
-      ? providerModels.find((m) => m.type === "custom" && m.id === settings.selectedModel.customModelId)
-      : null;
+    const isSettingsModel =
+      activeProvider === settings.selectedModel?.provider &&
+      activeModelName === settings.selectedModel?.name;
+    const customFoundModel =
+      isSettingsModel && settings.selectedModel.customModelId
+        ? providerModels.find(
+            (m) =>
+              m.type === "custom" &&
+              m.id === settings.selectedModel.customModelId,
+          )
+        : null;
 
-    const model = customFoundModel || providerModels.find((m) => m.apiName === activeModelName);
+    const model =
+      customFoundModel ||
+      providerModels.find((m) => m.apiName === activeModelName);
 
     if (model?.inputModalities) {
       return model.inputModalities.includes("image");
@@ -75,7 +97,16 @@ export function useSelectedModelSupportsImages(): boolean {
 
     // Default to true for models that don't explicitly specify their modalities.
     return true;
-  }, [settings?.selectedModel, modelsByProviders, chatId, chat?.chatMode, settings?.selectedChatMode, inputValue, customAgents]);
+  }, [
+    settings?.selectedModel,
+    settings?.visionPreprocessorEnabled,
+    modelsByProviders,
+    chatId,
+    chat?.chatMode,
+    settings?.selectedChatMode,
+    inputValue,
+    customAgents,
+  ]);
 }
 
 /**

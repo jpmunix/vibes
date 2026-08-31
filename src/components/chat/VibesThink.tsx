@@ -18,8 +18,8 @@ export const VibesThink: React.FC<VibesThinkProps> = ({ children }) => {
   const tokenSavingsMatch =
     typeof children === "string"
       ? children.match(
-        /^dyad-token-savings\?original-tokens=([0-9.]+)&smart-context-tokens=([0-9.]+)$/,
-      )
+          /^dyad-token-savings\?original-tokens=([0-9.]+)&smart-context-tokens=([0-9.]+)$/,
+        )
       : null;
 
   // If it's token savings format, render VibesTokenSavings component

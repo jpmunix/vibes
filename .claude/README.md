@@ -6,8 +6,8 @@ This directory contains Claude Code configuration for the Vibes project.
 
 Slash commands are invoked with `/vibes:<command>`. Available commands:
 
-| Command                 | Description                                                    | Uses                                |
-| ----------------------- | -------------------------------------------------------------- | ----------------------------------- |
+| Command                  | Description                                                    | Uses                                |
+| ------------------------ | -------------------------------------------------------------- | ----------------------------------- |
 | `/vibes:plan-to-issue`   | Convert a plan to a GitHub issue                               | -                                   |
 | `/vibes:fix-issue`       | Fix a GitHub issue                                             | `pr-push`                           |
 | `/vibes:pr-fix`          | Fix PR issues from CI failures or review comments              | `pr-fix:comments`, `pr-fix:actions` |

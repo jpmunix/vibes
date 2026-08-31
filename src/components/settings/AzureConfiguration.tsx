@@ -168,10 +168,7 @@ export function AzureConfiguration({
           />
         </div>
         <div>
-          <label
-            htmlFor="azure-api-key"
-            className="block typo-label mb-1"
-          >
+          <label htmlFor="azure-api-key" className="block typo-label mb-1">
             Clave API
           </label>
           <Input

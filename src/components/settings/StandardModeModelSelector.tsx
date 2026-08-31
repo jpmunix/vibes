@@ -11,45 +11,43 @@ const DEFAULT_MODEL = DEFAULT_STANDARD_MODEL;
  * Applies to: app titles, debate summaries, todo analysis.
  */
 export function StandardModeModelSelector() {
-    const { settings, updateSettings } = useSettings();
-    const { data: openRouterModels, isLoading } =
-        useLanguageModelsForProvider("openrouter");
+  const { settings, updateSettings } = useSettings();
+  const { data: openRouterModels, isLoading } =
+    useLanguageModelsForProvider("openrouter");
 
-    const currentValue =
-        !settings?.standardModeModel || settings?.standardModeModel === ""
-            ? DEFAULT_MODEL
-            : settings?.standardModeModel;
+  const currentValue =
+    !settings?.standardModeModel || settings?.standardModeModel === ""
+      ? DEFAULT_MODEL
+      : settings?.standardModeModel;
 
-    const handleChange = async (value: string) => {
-        await updateSettings(
-            { standardModeModel: value },
-            { showToast: true },
-        );
-    };
+  const handleChange = async (value: string) => {
+    await updateSettings({ standardModeModel: value }, { showToast: true });
+  };
 
-    const defaultModelInList = openRouterModels?.find(
-        (m) => m.apiName === DEFAULT_MODEL,
-    );
+  const defaultModelInList = openRouterModels?.find(
+    (m) => m.apiName === DEFAULT_MODEL,
+  );
 
-    return (
-        <SettingsModelSelector
-            variant="pill"
-            selectedModel={currentValue}
-            onModelSelect={handleChange}
-            models={(openRouterModels || []).filter(
-                (m) => m.apiName !== DEFAULT_MODEL,
-            )}
-            loading={isLoading}
-            placeholder="Selecciona un modelo"
-            disableEnabledFilter
-            specialOptions={[
-                {
-                    value: DEFAULT_MODEL,
-                    label:
-                        defaultModelInList?.displayName || "Gemini 2.5 Flash Lite (recomendado)",
-                    description: defaultModelInList ? undefined : "Modelo predeterminado",
-                },
-            ]}
-        />
-    );
+  return (
+    <SettingsModelSelector
+      variant="pill"
+      selectedModel={currentValue}
+      onModelSelect={handleChange}
+      models={(openRouterModels || []).filter(
+        (m) => m.apiName !== DEFAULT_MODEL,
+      )}
+      loading={isLoading}
+      placeholder="Selecciona un modelo"
+      disableEnabledFilter
+      specialOptions={[
+        {
+          value: DEFAULT_MODEL,
+          label:
+            defaultModelInList?.displayName ||
+            "Gemini 2.5 Flash Lite (recomendado)",
+          description: defaultModelInList ? undefined : "Modelo predeterminado",
+        },
+      ]}
+    />
+  );
 }

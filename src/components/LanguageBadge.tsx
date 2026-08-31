@@ -19,7 +19,13 @@ const LANG_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export function LanguageBadge({ language }: { language?: string | null }) {
-  if (!language || language === "unknown" || language === "javascript" || language === "typescript") return null;
+  if (
+    !language ||
+    language === "unknown" ||
+    language === "javascript" ||
+    language === "typescript"
+  )
+    return null;
 
   const config = LANG_CONFIG[language];
   if (!config) return null;

@@ -77,7 +77,11 @@ function PendingIcon({ className }: { className?: string }) {
 
 function HeaderCompletedIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className="w-[18px] h-[18px] flex-shrink-0">
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className="w-[18px] h-[18px] flex-shrink-0"
+    >
       <circle cx="8" cy="8" r="8" className="fill-primary" />
       <path
         d="M5 8.2L7.2 10.4L11 5.6"
@@ -126,7 +130,6 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
     }
   }, [allDone]);
 
-
   if (!todos.length) return null;
 
   const progress = total > 0 ? (completed / total) * 100 : 0;
@@ -155,9 +158,26 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
               ) : inProgressTask ? (
                 <InProgressIcon className="w-[18px] h-[18px]" />
               ) : (
-                <svg viewBox="0 0 16 16" fill="none" className="w-[18px] h-[18px] flex-shrink-0">
-                  <circle cx="8" cy="8" r="6.5" className="stroke-muted-foreground/40" strokeWidth="1.5" />
-                  <text x="8" y="11" textAnchor="middle" className="fill-muted-foreground/60" fontSize="8" fontWeight="600">
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="w-[18px] h-[18px] flex-shrink-0"
+                >
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="6.5"
+                    className="stroke-muted-foreground/40"
+                    strokeWidth="1.5"
+                  />
+                  <text
+                    x="8"
+                    y="11"
+                    textAnchor="middle"
+                    className="fill-muted-foreground/60"
+                    fontSize="8"
+                    fontWeight="600"
+                  >
                     {completed}
                   </text>
                 </svg>
@@ -169,7 +189,9 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
           ) : inProgressTask ? (
             <>
               <InProgressIcon className="w-[18px] h-[18px]" />
-              <span className="typo-caption truncate">{inProgressTask.content}</span>
+              <span className="typo-caption truncate">
+                {inProgressTask.content}
+              </span>
               <span className="typo-micro text-muted-foreground tabular-nums flex-shrink-0">
                 ({completed}/{total})
               </span>
@@ -215,8 +237,10 @@ export function TodoList({ todos, isStreaming }: TodoListProps) {
               {getStatusIcon(todo.status)}
               <span
                 className={cn(
-                  todo.status === "completed" && "line-through decoration-muted-foreground/40",
-                  todo.status === "in_progress" && "text-foreground font-medium",
+                  todo.status === "completed" &&
+                    "line-through decoration-muted-foreground/40",
+                  todo.status === "in_progress" &&
+                    "text-foreground font-medium",
                 )}
               >
                 {todo.content}

@@ -93,7 +93,8 @@ export function AdminOpenCode() {
         <div className="mb-8">
           <h2 className="typo-section-title">OpenCode</h2>
           <p className="typo-caption mt-1">
-            Diagnóstico y limpieza de sesiones huérfanas en el servidor de OpenCode
+            Diagnóstico y limpieza de sesiones huérfanas en el servidor de
+            OpenCode
           </p>
         </div>
 
@@ -150,9 +151,25 @@ export function AdminOpenCode() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <StatCard label="Total en OpenCode" value={stats.totalInOpenCode} />
-            <StatCard label="Vinculadas a Vibes" value={stats.knownInVibes} color="text-emerald-500" />
-            <StatCard label="Huérfanas" value={stats.orphaned} color={stats.orphaned > 0 ? "text-amber-500" : "text-muted-foreground"} />
-            <StatCard label="Eliminadas" value={stats.deleted} color={stats.deleted > 0 ? "text-rose-500" : "text-muted-foreground"} />
+            <StatCard
+              label="Vinculadas a Vibes"
+              value={stats.knownInVibes}
+              color="text-emerald-500"
+            />
+            <StatCard
+              label="Huérfanas"
+              value={stats.orphaned}
+              color={
+                stats.orphaned > 0 ? "text-amber-500" : "text-muted-foreground"
+              }
+            />
+            <StatCard
+              label="Eliminadas"
+              value={stats.deleted}
+              color={
+                stats.deleted > 0 ? "text-rose-500" : "text-muted-foreground"
+              }
+            />
           </div>
         )}
 
@@ -174,8 +191,9 @@ export function AdminOpenCode() {
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3">
             <Search className="size-8 opacity-30" />
             <p className="typo-caption text-center max-w-md">
-              Pulsa "Analizar sesiones" para comparar las sesiones de OpenCode con los chats registrados en Vibes
-              y generar un informe de sincronización.
+              Pulsa "Analizar sesiones" para comparar las sesiones de OpenCode
+              con los chats registrados en Vibes y generar un informe de
+              sincronización.
             </p>
           </div>
         )}
@@ -186,11 +204,23 @@ export function AdminOpenCode() {
 
 // ── Stat card ──
 
-function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
   return (
     <div className="p-4 rounded-xl border border-border bg-muted/30">
       <p className="typo-micro text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-semibold mt-1 ${color || "text-foreground"}`}>{value}</p>
+      <p
+        className={`text-2xl font-semibold mt-1 ${color || "text-foreground"}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

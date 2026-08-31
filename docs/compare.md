@@ -137,8 +137,8 @@ Finalización (iterativo, hasta 25 steps)
 
 ### 3.1 Modo "Construir" - Tags XML Soportados
 
-| Tag                     | Función                               | Ejemplo de uso                     |
-| ----------------------- | ------------------------------------- | ---------------------------------- |
+| Tag                      | Función                               | Ejemplo de uso                     |
+| ------------------------ | ------------------------------------- | ---------------------------------- |
 | `<vibes-write>`          | Crear o sobrescribir archivo completo | Crear nuevo componente             |
 | `<vibes-search-replace>` | Buscar y reemplazar texto             | Fix typo, cambiar import           |
 | `<vibes-rename>`         | Renombrar archivo                     | Reorganizar estructura             |

@@ -64,7 +64,7 @@ export function registerVisualEditingHandlers() {
 
         // Group changes by file and line
         for (const change of changes) {
-          logger.debug('[visual-editing] Processing change:', {
+          logger.debug("[visual-editing] Processing change:", {
             componentId: change.componentId,
             file: change.relativePath,
             line: change.lineNumber,
@@ -77,8 +77,11 @@ export function registerVisualEditingHandlers() {
           const tailwindClasses = stylesToTailwind(change.styles);
           const changePrefixes = extractClassPrefixes(tailwindClasses);
 
-          logger.debug('[visual-editing] Generated Tailwind classes:', tailwindClasses);
-          logger.debug('[visual-editing] Class prefixes:', changePrefixes);
+          logger.debug(
+            "[visual-editing] Generated Tailwind classes:",
+            tailwindClasses,
+          );
+          logger.debug("[visual-editing] Class prefixes:", changePrefixes);
 
           fileChanges.get(change.relativePath)!.set(change.lineNumber, {
             classes: tailwindClasses,
@@ -97,7 +100,10 @@ export function registerVisualEditingHandlers() {
           const content = await fsPromises.readFile(filePath, "utf-8");
           const transformedContent = transformContent(content, lineChanges);
 
-          logger.debug('[visual-editing] Content changed:', transformedContent !== content);
+          logger.debug(
+            "[visual-editing] Content changed:",
+            transformedContent !== content,
+          );
 
           // Only write if content actually changed
           if (transformedContent !== content) {
@@ -107,7 +113,10 @@ export function registerVisualEditingHandlers() {
         }
 
         // Stage and optionally commit all changes
-        if (modifiedFiles.length > 0 && fs.existsSync(path.join(appPath, ".git"))) {
+        if (
+          modifiedFiles.length > 0 &&
+          fs.existsSync(path.join(appPath, ".git"))
+        ) {
           for (const filepath of modifiedFiles) {
             await gitAdd({
               path: appPath,
@@ -241,13 +250,7 @@ export function registerVisualEditingHandlers() {
   createTypedHandler(
     visualEditingContracts.quickEdit,
     async (_event, params, context) => {
-      const {
-        appId,
-        componentName,
-        relativePath,
-        lineNumber,
-        prompt,
-      } = params;
+      const { appId, componentName, relativePath, lineNumber, prompt } = params;
 
       try {
         // Resolve the app path
@@ -264,7 +267,8 @@ export function registerVisualEditingHandlers() {
         const appPath = getVibesAppPath(app.path);
 
         // Delegate to the OpenCode visual-edit subagent
-        const { handleVisualQuickEdit } = await import("../../../../ipc/handlers/opencode_adapter");
+        const { handleVisualQuickEdit } =
+          await import("../../../../ipc/handlers/opencode_adapter");
         const result = await handleVisualQuickEdit({
           appPath,
           componentFile: relativePath,

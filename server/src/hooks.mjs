@@ -44,8 +44,6 @@ transports:{file:{level:false},console:{level:false}}};return l;};
 const log=mk(); export default log;
 `;
 
-
-
 export function resolve(specifier, context, nextResolve) {
   if (SHIMMED.has(specifier)) {
     return { url: "vibes-shim://" + specifier, shortCircuit: true };

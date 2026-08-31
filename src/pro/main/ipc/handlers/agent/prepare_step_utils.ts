@@ -128,7 +128,7 @@ function isToolResultError(res: unknown): boolean {
  */
 export function prepareStepMessages<
   TMessage extends ModelMessage,
-  T extends { messages: TMessage[];[key: string]: unknown },
+  T extends { messages: TMessage[]; [key: string]: unknown },
 >(
   options: T,
   pendingUserMessages: UserMessageContentPart[][],
@@ -193,10 +193,12 @@ export function prepareStepMessages<
         const msg = messages[i];
         if (msg.role === "tool" && Array.isArray(msg.content)) {
           const content = msg.content as any[];
-          const foundSameError = content.some(part =>
-            part.type === "tool-result" &&
-            (part.toolName === failedToolName || part.toolCallId === failedToolName) &&
-            isToolResultError(part.result)
+          const foundSameError = content.some(
+            (part) =>
+              part.type === "tool-result" &&
+              (part.toolName === failedToolName ||
+                part.toolCallId === failedToolName) &&
+              isToolResultError(part.result),
           );
 
           if (foundSameError) {
@@ -210,7 +212,8 @@ export function prepareStepMessages<
       }
     }
 
-    let instruction = "The previous tool execution failed. You MUST correct the parameters and retry immediately. Do not explain, just call the tool again.";
+    let instruction =
+      "The previous tool execution failed. You MUST correct the parameters and retry immediately. Do not explain, just call the tool again.";
 
     // Smart Fallback — trigger immediately on first failure for search_replace
     if (consecutiveFailures >= 1) {

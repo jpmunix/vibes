@@ -32,7 +32,6 @@ export const AppBaseSchema = z.object({
   startCommand: z.string().nullable(),
   isFavorite: z.any(),
   firebaseProjectId: z.string().nullable().optional(),
-  firebaseConfig: z.any().nullable().optional(),
   bunnyConfig: z.any().nullable().optional(),
   pocketbaseConfig: z.any().nullable().optional(),
   primaryLanguage: z.string().nullable().optional(),
@@ -82,7 +81,6 @@ export const ApplyTemplateParamsSchema = z.object({
 export const ApplyTemplateResultSchema = z.object({
   success: z.boolean(),
 });
-
 
 /**
  * Schema for delete app params.
@@ -568,6 +566,12 @@ export const appContracts = {
     channel: "get-archived-apps",
     input: z.void(),
     output: z.array(ListedAppSchema),
+  }),
+
+  openTerminal: defineContract({
+    channel: "open-terminal",
+    input: AppIdParamsSchema,
+    output: z.void(),
   }),
 } as const;
 

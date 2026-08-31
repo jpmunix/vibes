@@ -1,12 +1,15 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const file = path.join(__dirname, 'src/components/admin_window/UserPreferencesEditor.tsx');
-let content = fs.readFileSync(file, 'utf8');
+const file = path.join(
+  __dirname,
+  "src/components/admin_window/UserPreferencesEditor.tsx",
+);
+let content = fs.readFileSync(file, "utf8");
 
 // 1. Add NestedCategory component at the top
 content = content.replace(
-  '// ── Category grouping ───────────────────────────────────────────────────────',
+  "// ── Category grouping ───────────────────────────────────────────────────────",
   `// ── Nested Category ─────────────────────────────────────────────────────────
 
 function NestedCategory({ title, entries, onSave, onDelete, allModels }: any) {
@@ -41,35 +44,35 @@ function NestedCategory({ title, entries, onSave, onDelete, allModels }: any) {
     );
 }
 
-// ── Category grouping ───────────────────────────────────────────────────────`
+// ── Category grouping ───────────────────────────────────────────────────────`,
 );
 
 // 2. Add React prefix to useState since it's imported as { useState } maybe? No, we can just use useState. But it's safer to use React.useState or import React. Let's just fix the import if necessary, but actually we can just use React.useState if React is imported.
 // Wait, React is usually imported in these files, let's just use `useState` because it's imported at the top!
-content = content.replace('React.useState(true)', 'useState(true)');
+content = content.replace("React.useState(true)", "useState(true)");
 
 // 3. Restore CATEGORY_ORDER and CATEGORY_LABELS
 content = content.replace(
   '    other: { icon: Package, label: "Otros" },',
-  '    prompts: { icon: Bot, label: "Prompts y Contexto" },\n    other: { icon: Package, label: "Otros" },'
+  '    prompts: { icon: Bot, label: "Prompts y Contexto" },\n    other: { icon: Package, label: "Otros" },',
 );
 content = content.replace(
   'const CATEGORY_ORDER: string[] = ["models", "keys", "appearance", "behavior", "internal", "other"];',
-  'const CATEGORY_ORDER: string[] = ["models", "keys", "appearance", "behavior", "prompts", "internal", "other"];'
+  'const CATEGORY_ORDER: string[] = ["models", "keys", "appearance", "behavior", "prompts", "internal", "other"];',
 );
 
 // 4. Update categorizeKey
 content = content.replace(
-  'function categorizeKey(key: string): string {',
+  "function categorizeKey(key: string): string {",
   `function categorizeKey(key: string): string {
-    if (key.startsWith("prompt:")) return "prompts";`
+    if (key.startsWith("prompt:")) return "prompts";`,
 );
 
 // 5. Update fetchPrefs mapping
 content = content.replace(
-  '                category: (p as any).displayCategory || categorizeKey(p.key),',
+  "                category: (p as any).displayCategory || categorizeKey(p.key),",
   `                category: categorizeKey(p.key),
-                subCategory: (p as any).displayCategory === "Prompts y Contexto" ? undefined : (p as any).displayCategory,`
+                subCategory: (p as any).displayCategory === "Prompts y Contexto" ? undefined : (p as any).displayCategory,`,
 );
 
 // 6. Update entries mapping inside !isCollapsed
@@ -117,4 +120,4 @@ const newEntriesMapping = `                                {(() => {
 content = content.replace(oldEntriesMapping, newEntriesMapping);
 
 fs.writeFileSync(file, content);
-console.log('Patched nesting successfully');
+console.log("Patched nesting successfully");

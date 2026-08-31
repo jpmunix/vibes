@@ -23,8 +23,15 @@ export function useModelAliases() {
   });
 
   const { mutate: setAlias } = useMutation({
-    mutationFn: async ({ modelId, alias }: { modelId: string; alias: string }) => {
-      const current = queryClient.getQueryData<ModelAliases>(["model_aliases"]) || {};
+    mutationFn: async ({
+      modelId,
+      alias,
+    }: {
+      modelId: string;
+      alias: string;
+    }) => {
+      const current =
+        queryClient.getQueryData<ModelAliases>(["model_aliases"]) || {};
       const updated = { ...current, [modelId]: alias };
 
       // Optimistic update
@@ -40,7 +47,8 @@ export function useModelAliases() {
 
   const { mutate: removeAlias } = useMutation({
     mutationFn: async (modelId: string) => {
-      const current = queryClient.getQueryData<ModelAliases>(["model_aliases"]) || {};
+      const current =
+        queryClient.getQueryData<ModelAliases>(["model_aliases"]) || {};
       const updated = { ...current };
       delete updated[modelId];
 
@@ -55,7 +63,10 @@ export function useModelAliases() {
   });
 
   /** Resolve a display name: returns alias if set, otherwise the original displayName */
-  const resolveDisplayName = (modelApiName: string, originalDisplayName: string): string => {
+  const resolveDisplayName = (
+    modelApiName: string,
+    originalDisplayName: string,
+  ): string => {
     return aliases[modelApiName] || originalDisplayName;
   };
 

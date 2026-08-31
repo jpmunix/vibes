@@ -27,7 +27,11 @@ import {
 import { readSettings } from "../../main/settings";
 import { addLog } from "../../lib/log_store";
 import { startProxy } from "../utils/start_proxy_server";
-import { getAppPort, getProxyPort, findFreeAppPort } from "../../../shared/ports";
+import {
+  getAppPort,
+  getProxyPort,
+  findFreeAppPort,
+} from "../../../shared/ports";
 
 const logger = log.scope("app_execution");
 
@@ -38,7 +42,10 @@ class LogBuffer {
   private buffers = new Map<number, AppOutput[]>();
   private timeouts = new Map<number, NodeJS.Timeout>();
   /** Track the event sender per app so we can broadcast in web mode (no BrowserWindow) */
-  private senders = new Map<number, { send: (ch: string, ...args: any[]) => void }>();
+  private senders = new Map<
+    number,
+    { send: (ch: string, ...args: any[]) => void }
+  >();
   private readonly FLUSH_INTERVAL_MS = 200;
   private readonly MAX_BATCH_SIZE = 100;
 
@@ -53,13 +60,19 @@ class LogBuffer {
     if (buffer.length >= this.MAX_BATCH_SIZE) {
       this.flush(appId);
     } else if (!this.timeouts.has(appId)) {
-      const timeout = setTimeout(() => this.flush(appId), this.FLUSH_INTERVAL_MS);
+      const timeout = setTimeout(
+        () => this.flush(appId),
+        this.FLUSH_INTERVAL_MS,
+      );
       this.timeouts.set(appId, timeout);
     }
   }
 
   /** Register the event sender for an app so logs can be routed in web mode */
-  registerSender(appId: number, sender: { send: (ch: string, ...args: any[]) => void }) {
+  registerSender(
+    appId: number,
+    sender: { send: (ch: string, ...args: any[]) => void },
+  ) {
     this.senders.set(appId, sender);
   }
 
@@ -91,7 +104,11 @@ class LogBuffer {
       // Web mode: use the registered sender (Socket.IO)
       const sender = this.senders.get(appId);
       if (sender) {
-        try { sender.send("app:logs-batch", payload); } catch { /* sender may be gone */ }
+        try {
+          sender.send("app:logs-batch", payload);
+        } catch {
+          /* sender may be gone */
+        }
       }
     }
   }
@@ -104,7 +121,10 @@ export const logBuffer = new LogBuffer();
 let proxyWorker: Worker | null = null;
 
 /** Track proxy URLs per app to enable re-emission when the app is already running */
-export const proxyUrlByApp = new Map<number, { proxyUrl: string; originalUrl: string }>();
+export const proxyUrlByApp = new Map<
+  number,
+  { proxyUrl: string; originalUrl: string }
+>();
 
 /** Track apps that have already attempted auto-recovery for missing modules */
 export const autoRecoveryAttempted = new Set<number>();
@@ -113,7 +133,11 @@ export const autoRecoveryAttempted = new Set<number>();
 export const actualPortByApp = new Map<number, number>();
 
 // Needed, otherwise electron in MacOS/Linux will not be able to find node/pnpm.
-try { fixPath(); } catch { /* safe to ignore in server/web mode */ }
+try {
+  fixPath();
+} catch {
+  /* safe to ignore in server/web mode */
+}
 
 // ─── URL rewriting for cloud mode ───────────────────────────────────
 // In cloud mode, dev servers bind to 0.0.0.0 but the remote browser
@@ -126,11 +150,14 @@ function rewriteDevServerUrl(url: string): string {
     const host = parsed.hostname;
     if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
       // Use the hostname the user connected to (the API server's hostname)
-      const serverHost = process.env.VIBES_PUBLIC_HOST || require("os").hostname();
+      const serverHost =
+        process.env.VIBES_PUBLIC_HOST || require("os").hostname();
       parsed.hostname = serverHost;
       return parsed.toString().replace(/\/$/, ""); // strip trailing slash
     }
-  } catch { /* malformed URL, return as-is */ }
+  } catch {
+    /* malformed URL, return as-is */
+  }
   return url;
 }
 
@@ -148,9 +175,18 @@ export async function checkPortOpen(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     socket.setTimeout(200);
-    socket.on("connect", () => { socket.destroy(); resolve(true); });
-    socket.on("timeout", () => { socket.destroy(); resolve(false); });
-    socket.on("error", () => { socket.destroy(); resolve(false); });
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
     socket.connect(port, "127.0.0.1");
   });
 }
@@ -222,13 +258,18 @@ export async function getCommand({
   const port = await findFreeAppPort(appId);
   // Store the actual port for polling-based readiness detection
   actualPortByApp.set(appId, port);
-  const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
+  const install = (
+    installCommand?.trim() || "npm install --legacy-peer-deps"
+  ).replace(/\{port\}/g, String(port));
   // In cloud mode, bind to 0.0.0.0 so the dev server is accessible from external browsers
   const IS_CLOUD = process.env.VIBES_CLOUD_MODE === "1";
   const defaultStart = IS_CLOUD
     ? `npm run dev -- --port ${port} --host 0.0.0.0`
     : `npm run dev -- --port ${port}`;
-  const start = (startCommand?.trim() || defaultStart).replace(/\{port\}/g, String(port));
+  const start = (startCommand?.trim() || defaultStart).replace(
+    /\{port\}/g,
+    String(port),
+  );
   return `${install} && ${start}`;
 }
 
@@ -258,11 +299,21 @@ export async function executeApp({
 
   if (runtimeMode === "docker") {
     await executeAppInDocker({
-      appPath, appId, event, isNeon, installCommand, startCommand,
+      appPath,
+      appId,
+      event,
+      isNeon,
+      installCommand,
+      startCommand,
     });
   } else {
     await executeAppLocalNode({
-      appPath, appId, event, isNeon, installCommand, startCommand,
+      appPath,
+      appId,
+      event,
+      isNeon,
+      installCommand,
+      startCommand,
     });
   }
 }
@@ -299,9 +350,15 @@ async function executeAppLocalNode({
   if (!spawnedProcess.pid) {
     let errorOutput = "";
     let spawnErr: any | null = null;
-    spawnedProcess.stderr?.on("data", (data) => (errorOutput += data.toString()));
+    spawnedProcess.stderr?.on(
+      "data",
+      (data) => (errorOutput += data.toString()),
+    );
     await new Promise<void>((resolve) => {
-      spawnedProcess.once("error", (err) => { spawnErr = err; resolve(); });
+      spawnedProcess.once("error", (err) => {
+        spawnErr = err;
+        resolve();
+      });
     });
 
     const details = [
@@ -310,8 +367,12 @@ async function executeAppLocalNode({
       spawnErr?.errno ? `errno=${spawnErr.errno}` : null,
       spawnErr?.syscall ? `syscall=${spawnErr.syscall}` : null,
       spawnErr?.path ? `path=${spawnErr.path}` : null,
-      spawnErr?.spawnargs ? `spawnargs=${JSON.stringify(spawnErr.spawnargs)}` : null,
-    ].filter(Boolean).join(", ");
+      spawnErr?.spawnargs
+        ? `spawnargs=${JSON.stringify(spawnErr.spawnargs)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     logger.error(
       `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"}`,
@@ -333,7 +394,13 @@ async function executeAppLocalNode({
   logBuffer.registerSender(appId, event.sender);
 
   listenToProcess({
-    process: spawnedProcess, appId, isNeon, event, appPath, installCommand, startCommand,
+    process: spawnedProcess,
+    appId,
+    isNeon,
+    event,
+    appPath,
+    installCommand,
+    startCommand,
   });
 }
 
@@ -373,7 +440,9 @@ function listenToProcess({
         message: `[vibes-proxy-server]started=[${targetUrl}] original=[${targetUrl}]`,
         appId,
       });
-      logger.info(`[App ${appId}] Cloud mode: serving dev server directly at ${targetUrl} (no proxy)`);
+      logger.info(
+        `[App ${appId}] Cloud mode: serving dev server directly at ${targetUrl} (no proxy)`,
+      );
       return;
     }
 
@@ -397,7 +466,9 @@ function listenToProcess({
           });
         },
         onUpstreamRecovered: () => {
-          logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
+          logger.info(
+            `[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`,
+          );
           safeSend(event.sender, "app:output", {
             type: "stdout",
             message: `[vibes-proxy-server]upstream-recovered`,
@@ -412,39 +483,68 @@ function listenToProcess({
 
   // Poll for port open status
   const pollingInterval = setInterval(async () => {
-    if (proxyStarted) { clearInterval(pollingInterval); return; }
+    if (proxyStarted) {
+      clearInterval(pollingInterval);
+      return;
+    }
     if (runningApps.get(appId)?.process?.pid !== spawnedProcess.pid) {
-      clearInterval(pollingInterval); return;
+      clearInterval(pollingInterval);
+      return;
     }
     const appPort = actualPortByApp.get(appId) ?? getAppPort(appId);
     const isOpen = await checkPortOpen(appPort);
     if (isOpen && !proxyStarted) {
-      logger.info(`[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`);
+      logger.info(
+        `[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`,
+      );
       clearInterval(pollingInterval);
-      await startProxyForApp(rewriteDevServerUrl(`http://localhost:${appPort}`));
+      await startProxyForApp(
+        rewriteDevServerUrl(`http://localhost:${appPort}`),
+      );
     }
   }, 3000);
 
   // Log output
   spawnedProcess.stdout?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
-    logger.debug(`App ${appId} (PID: ${spawnedProcess.pid}) stdout: ${message}`);
+    logger.debug(
+      `App ${appId} (PID: ${spawnedProcess.pid}) stdout: ${message}`,
+    );
 
-    addLog({ level: "info", type: "server", message, timestamp: Date.now(), appId });
+    addLog({
+      level: "info",
+      type: "server",
+      message,
+      timestamp: Date.now(),
+      appId,
+    });
 
     if (isNeon && message.includes("created or renamed from another")) {
       spawnedProcess.stdin?.write(`\r\n`);
-      logger.info(`App ${appId} (PID: ${spawnedProcess.pid}) wrote enter to stdin to automatically respond to drizzle push input`);
+      logger.info(
+        `App ${appId} (PID: ${spawnedProcess.pid}) wrote enter to stdin to automatically respond to drizzle push input`,
+      );
     }
 
     const inputRequestPattern = /\s*›\s*\([yY]\/[nN]\)\s*$/;
     const isInputRequest = inputRequestPattern.test(message);
     if (isInputRequest) {
-      safeSend(event.sender, "app:output", { type: "input-requested", message, appId });
+      safeSend(event.sender, "app:output", {
+        type: "input-requested",
+        message,
+        appId,
+      });
     } else {
-      logBuffer.add(appId, { type: "stdout", message, appId, timestamp: Date.now() });
+      logBuffer.add(appId, {
+        type: "stdout",
+        message,
+        appId,
+        timestamp: Date.now(),
+      });
       // Match localhost, 0.0.0.0, or 127.0.0.1 URLs emitted by dev servers
-      const urlMatch = message.match(/(https?:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):\d+\/?)/);
+      const urlMatch = message.match(
+        /(https?:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):\d+\/?)/,
+      );
       if (urlMatch) {
         await startProxyForApp(rewriteDevServerUrl(urlMatch[1]));
       }
@@ -454,21 +554,39 @@ function listenToProcess({
   spawnedProcess.stderr?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
     stderrBuffer += message;
-    logger.error(`App ${appId} (PID: ${spawnedProcess.pid}) stderr: ${message}`);
-    addLog({ level: "error", type: "server", message, timestamp: Date.now(), appId });
-    logBuffer.add(appId, { type: "stderr", message, appId, timestamp: Date.now() });
+    logger.error(
+      `App ${appId} (PID: ${spawnedProcess.pid}) stderr: ${message}`,
+    );
+    addLog({
+      level: "error",
+      type: "server",
+      message,
+      timestamp: Date.now(),
+      appId,
+    });
+    logBuffer.add(appId, {
+      type: "stderr",
+      message,
+      appId,
+      timestamp: Date.now(),
+    });
   });
 
   spawnedProcess.on("close", (code, signal) => {
     clearInterval(pollingInterval);
-    logger.log(`App ${appId} (PID: ${spawnedProcess.pid}) process closed with code ${code}, signal ${signal}.`);
+    logger.log(
+      `App ${appId} (PID: ${spawnedProcess.pid}) process closed with code ${code}, signal ${signal}.`,
+    );
     removeAppIfCurrentProcess(appId, spawnedProcess);
 
-    const stopMessage = code === 0 || code === null
-      ? `[vibes] Servidor detenido${signal ? ` (señal: ${signal})` : ""}`
-      : `[vibes] Servidor detenido con código de salida ${code}${signal ? `, señal: ${signal}` : ""}`;
+    const stopMessage =
+      code === 0 || code === null
+        ? `[vibes] Servidor detenido${signal ? ` (señal: ${signal})` : ""}`
+        : `[vibes] Servidor detenido con código de salida ${code}${signal ? `, señal: ${signal}` : ""}`;
     const stopEntry = {
-      level: (code === 0 || code === null ? "info" : "error") as "info" | "error",
+      level: (code === 0 || code === null ? "info" : "error") as
+        | "info"
+        | "error",
       type: "server" as const,
       message: stopMessage,
       timestamp: Date.now(),
@@ -476,17 +594,25 @@ function listenToProcess({
     };
     addLog(stopEntry);
     // Use logBuffer for consistent broadcasting (works in both Electron + web mode)
-    logBuffer.add(appId, { type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() });
+    logBuffer.add(appId, {
+      type: "stderr" as const,
+      message: stopMessage,
+      appId,
+      timestamp: Date.now(),
+    });
     logBuffer.flush(appId);
 
     if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
       const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;
-      const nextServerRunningPattern = /Another next dev server is already running.*?Run kill (\d+) to stop it/is;
+      const nextServerRunningPattern =
+        /Another next dev server is already running.*?Run kill (\d+) to stop it/is;
       const portConflictMatch = stderrBuffer.match(nextServerRunningPattern);
 
       if (portConflictMatch) {
         const pidToKill = parseInt(portConflictMatch[1], 10);
-        logger.info(`[AutoRecovery] App ${appId} crashed due to port conflict. Attempting to tree-kill PID ${pidToKill}...`);
+        logger.info(
+          `[AutoRecovery] App ${appId} crashed due to port conflict. Attempting to tree-kill PID ${pidToKill}...`,
+        );
         autoRecoveryAttempted.add(appId);
         safeSend(event.sender, "app:output", {
           type: "stderr",
@@ -496,32 +622,59 @@ function listenToProcess({
 
         treeKill(pidToKill, "SIGKILL", (err) => {
           if (err) {
-            logger.warn(`[AutoRecovery] Failed to kill process ${pidToKill}:`, err);
+            logger.warn(
+              `[AutoRecovery] Failed to kill process ${pidToKill}:`,
+              err,
+            );
           } else {
-            logger.info(`[AutoRecovery] Successfully killed process ${pidToKill}. Restarting app...`);
+            logger.info(
+              `[AutoRecovery] Successfully killed process ${pidToKill}. Restarting app...`,
+            );
           }
           setTimeout(() => {
-            executeApp({ appPath, appId, event, isNeon, installCommand, startCommand }).catch((e) => {
-              logger.error(`[AutoRecovery] Failed to recover app ${appId} after killing port conflict:`, e);
+            executeApp({
+              appPath,
+              appId,
+              event,
+              isNeon,
+              installCommand,
+              startCommand,
+            }).catch((e) => {
+              logger.error(
+                `[AutoRecovery] Failed to recover app ${appId} after killing port conflict:`,
+                e,
+              );
             });
           }, 1000);
         });
       } else if (missingModulePattern.test(stderrBuffer)) {
-        logger.info(`[AutoRecovery] App ${appId} crashed with missing module error. Attempting auto-recovery...`);
+        logger.info(
+          `[AutoRecovery] App ${appId} crashed with missing module error. Attempting auto-recovery...`,
+        );
         autoRecoveryAttempted.add(appId);
         safeSend(event.sender, "app:output", {
           type: "stderr",
-          message: "[vibes] Módulo faltante detectado. Reinstalando dependencias automáticamente...",
+          message:
+            "[vibes] Módulo faltante detectado. Reinstalando dependencias automáticamente...",
           appId,
         });
-        handleMissingModuleRecovery({ appId, appPath, event, isNeon, installCommand, startCommand });
+        handleMissingModuleRecovery({
+          appId,
+          appPath,
+          event,
+          isNeon,
+          installCommand,
+          startCommand,
+        });
       }
     }
   });
 
   spawnedProcess.on("error", (err) => {
     clearInterval(pollingInterval);
-    logger.error(`Error in app ${appId} (PID: ${spawnedProcess.pid}) process: ${err.message}`);
+    logger.error(
+      `Error in app ${appId} (PID: ${spawnedProcess.pid}) process: ${err.message}`,
+    );
     removeAppIfCurrentProcess(appId, spawnedProcess);
   });
 }
@@ -546,15 +699,26 @@ async function handleMissingModuleRecovery({
   try {
     const nodeModulesPath = path.join(appPath, "node_modules");
     if (fs.existsSync(nodeModulesPath)) {
-      logger.info(`[AutoRecovery] Removing node_modules for app ${appId} at ${nodeModulesPath}`);
+      logger.info(
+        `[AutoRecovery] Removing node_modules for app ${appId} at ${nodeModulesPath}`,
+      );
       await fsPromises.rm(nodeModulesPath, { recursive: true, force: true });
-      logger.info(`[AutoRecovery] Successfully removed node_modules for app ${appId}`);
+      logger.info(
+        `[AutoRecovery] Successfully removed node_modules for app ${appId}`,
+      );
     }
 
     await cleanUpPort(getAppPort(appId));
 
     logger.info(`[AutoRecovery] Re-executing app ${appId}...`);
-    await executeApp({ appPath, appId, event, isNeon, installCommand, startCommand });
+    await executeApp({
+      appPath,
+      appId,
+      event,
+      isNeon,
+      installCommand,
+      startCommand,
+    });
   } catch (error) {
     logger.error(`[AutoRecovery] Failed to recover app ${appId}:`, error);
     safeSend(event.sender, "app:output", {
@@ -588,26 +752,38 @@ async function executeAppInDocker({
   try {
     await new Promise<void>((resolve, reject) => {
       const checkDocker = spawn("docker", ["--version"], { stdio: "pipe" });
-      checkDocker.on("close", (code) => { code === 0 ? resolve() : reject(new Error("Docker is not available")); });
-      checkDocker.on("error", () => { reject(new Error("Docker is not available")); });
+      checkDocker.on("close", (code) => {
+        code === 0 ? resolve() : reject(new Error("Docker is not available"));
+      });
+      checkDocker.on("error", () => {
+        reject(new Error("Docker is not available"));
+      });
     });
   } catch {
-    throw new Error("Docker is required but not available. Please install Docker Desktop and ensure it's running.");
+    throw new Error(
+      "Docker is required but not available. Please install Docker Desktop and ensure it's running.",
+    );
   }
 
   // Stop and remove any existing container
   try {
     await new Promise<void>((resolve) => {
-      const stopContainer = spawn("docker", ["stop", containerName], { stdio: "pipe" });
+      const stopContainer = spawn("docker", ["stop", containerName], {
+        stdio: "pipe",
+      });
       stopContainer.on("close", () => {
-        const removeContainer = spawn("docker", ["rm", containerName], { stdio: "pipe" });
+        const removeContainer = spawn("docker", ["rm", containerName], {
+          stdio: "pipe",
+        });
         removeContainer.on("close", () => resolve());
         removeContainer.on("error", () => resolve());
       });
       stopContainer.on("error", () => resolve());
     });
   } catch (error) {
-    logger.info(`Docker container ${containerName} not found. Ignoring error: ${error}`);
+    logger.info(
+      `Docker container ${containerName} not found. Ignoring error: ${error}`,
+    );
   }
 
   // Create Dockerfile if it doesn't exist
@@ -630,11 +806,19 @@ async function executeAppInDocker({
   );
 
   let buildError = "";
-  buildProcess.stderr?.on("data", (data) => { buildError += data.toString(); });
+  buildProcess.stderr?.on("data", (data) => {
+    buildError += data.toString();
+  });
 
   await new Promise<void>((resolve, reject) => {
-    buildProcess.on("close", (code) => { code === 0 ? resolve() : reject(new Error(`Docker build failed: ${buildError}`)); });
-    buildProcess.on("error", (err) => { reject(new Error(`Docker build process error: ${err.message}`)); });
+    buildProcess.on("close", (code) => {
+      code === 0
+        ? resolve()
+        : reject(new Error(`Docker build failed: ${buildError}`));
+    });
+    buildProcess.on("error", (err) => {
+      reject(new Error(`Docker build process error: ${err.message}`));
+    });
   });
 
   // Run Docker container
@@ -642,13 +826,22 @@ async function executeAppInDocker({
   const process = spawn(
     "docker",
     [
-      "run", "--rm", "--name", containerName,
-      "-p", `${port}:${port}`,
-      "-v", `${appPath}:/app`,
-      "-v", `vibes-npm-${appId}:/root/.npm`,
-      "-w", "/app",
+      "run",
+      "--rm",
+      "--name",
+      containerName,
+      "-p",
+      `${port}:${port}`,
+      "-v",
+      `${appPath}:/app`,
+      "-v",
+      `vibes-npm-${appId}:/root/.npm`,
+      "-w",
+      "/app",
       `vibes-app-${appId}`,
-      "sh", "-c", await getCommand({ appId, installCommand, startCommand }),
+      "sh",
+      "-c",
+      await getCommand({ appId, installCommand, startCommand }),
     ],
     { stdio: "pipe", detached: false },
   );
@@ -658,7 +851,10 @@ async function executeAppInDocker({
     let spawnErr: any = null;
     process.stderr?.on("data", (data) => (errorOutput += data.toString()));
     await new Promise<void>((resolve) => {
-      process.once("error", (err) => { spawnErr = err; resolve(); });
+      process.once("error", (err) => {
+        spawnErr = err;
+        resolve();
+      });
     });
 
     const details = [
@@ -667,10 +863,16 @@ async function executeAppInDocker({
       spawnErr?.errno ? `errno=${spawnErr.errno}` : null,
       spawnErr?.syscall ? `syscall=${spawnErr.syscall}` : null,
       spawnErr?.path ? `path=${spawnErr.path}` : null,
-      spawnErr?.spawnargs ? `spawnargs=${JSON.stringify(spawnErr.spawnargs)}` : null,
-    ].filter(Boolean).join(", ");
+      spawnErr?.spawnargs
+        ? `spawnargs=${JSON.stringify(spawnErr.spawnargs)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
-    logger.error(`Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"}`);
+    logger.error(
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"}`,
+    );
     throw new Error(
       `Failed to spawn Docker container for app ${appId}.\nDetails: ${details || "n/a"}\nSTDERR:\n${errorOutput || "(empty)"}`,
     );
@@ -684,7 +886,15 @@ async function executeAppInDocker({
     containerName,
   });
 
-  listenToProcess({ process, appId, isNeon, event, appPath, installCommand, startCommand });
+  listenToProcess({
+    process,
+    appId,
+    isNeon,
+    event,
+    appPath,
+    installCommand,
+    startCommand,
+  });
 }
 
 // ─── Directory copy helper ──────────────────────────────────────────
@@ -698,7 +908,10 @@ export async function copyDir(
   await fsPromises.cp(source, destination, {
     recursive: true,
     filter: (src: string) => {
-      if (options?.excludeNodeModules && path.basename(src) === "node_modules") {
+      if (
+        options?.excludeNodeModules &&
+        path.basename(src) === "node_modules"
+      ) {
         return false;
       }
       if (filter) {

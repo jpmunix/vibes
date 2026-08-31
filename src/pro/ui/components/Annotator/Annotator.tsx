@@ -9,41 +9,41 @@ import { chatInputValueAtom } from "@/atoms/chatAtoms";
 type Point = [number, number];
 type Shape =
   | {
-    id: string;
-    type: "line";
-    points: Point[];
-    color: string;
-    size: number;
-    isComplete: boolean;
-  }
+      id: string;
+      type: "line";
+      points: Point[];
+      color: string;
+      size: number;
+      isComplete: boolean;
+    }
   | {
-    id: string;
-    type: "rect";
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    color: string;
-    strokeWidth: number;
-    isComplete: boolean;
-  }
+      id: string;
+      type: "rect";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+      strokeWidth: number;
+      isComplete: boolean;
+    }
   | {
-    id: string;
-    type: "text";
-    x: number;
-    y: number;
-    text: string;
-    fontSize: number;
-    color: string;
-  }
+      id: string;
+      type: "text";
+      x: number;
+      y: number;
+      text: string;
+      fontSize: number;
+      color: string;
+    }
   | {
-    id: string;
-    type: "arrow";
-    points: [number, number, number, number];
-    color: string;
-    strokeWidth: number;
-    isComplete: boolean;
-  };
+      id: string;
+      type: "arrow";
+      points: [number, number, number, number];
+      color: string;
+      strokeWidth: number;
+      isComplete: boolean;
+    };
 
 // Custom Image Hook
 const useImage = (url: string) => {
@@ -69,7 +69,9 @@ export const Annotator = ({
   handleAnnotatorClick: () => void;
 }) => {
   const image = useImage(screenshotUrl);
-  const [tool, setTool] = useState<"select" | "draw" | "rect" | "text" | "arrow">("draw");
+  const [tool, setTool] = useState<
+    "select" | "draw" | "rect" | "text" | "arrow"
+  >("draw");
   const [color, setColor] = useState<string>("#ef4444");
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -386,7 +388,12 @@ export const Annotator = ({
     } else if (tool === "arrow" && lastShape && lastShape.type === "arrow") {
       const updatedShape = {
         ...lastShape,
-        points: [lastShape.points[0], lastShape.points[1], adjustedPoint.x, adjustedPoint.y] as [number, number, number, number],
+        points: [
+          lastShape.points[0],
+          lastShape.points[1],
+          adjustedPoint.x,
+          adjustedPoint.y,
+        ] as [number, number, number, number],
       };
       const newShapes = shapes.slice(0, -1).concat(updatedShape);
       setShapes(newShapes);
@@ -394,10 +401,18 @@ export const Annotator = ({
   };
 
   const handleMouseUp = () => {
-    if ((tool === "draw" || tool === "rect" || tool === "arrow") && isDrawing.current) {
+    if (
+      (tool === "draw" || tool === "rect" || tool === "arrow") &&
+      isDrawing.current
+    ) {
       isDrawing.current = false;
       const lastShape = shapes[shapes.length - 1];
-      if (lastShape && (lastShape.type === "line" || lastShape.type === "rect" || lastShape.type === "arrow")) {
+      if (
+        lastShape &&
+        (lastShape.type === "line" ||
+          lastShape.type === "rect" ||
+          lastShape.type === "arrow")
+      ) {
         const completedShape = { ...lastShape, isComplete: true };
         const newShapes = shapes.slice(0, -1).concat(completedShape);
         setShapes(newShapes);

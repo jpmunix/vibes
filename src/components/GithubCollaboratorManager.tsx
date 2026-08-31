@@ -133,8 +133,9 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
         </div>
       </CardHeader>
       <div
-        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-          }`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
+          isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+        }`}
       >
         <CardContent className="space-y-4">
           {/* Invite Form */}

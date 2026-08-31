@@ -1,5 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, FileCode, FileText } from "@/components/ui/icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  FileCode,
+  FileText,
+} from "@/components/ui/icons";
 
 interface VibesCodeSearchResultProps {
   node?: any;

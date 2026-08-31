@@ -43,7 +43,9 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
   }, [isFullscreen]);
 
   if (loading) {
-    return <div className="text-center py-4 typo-caption">Cargando archivos...</div>;
+    return (
+      <div className="text-center py-4 typo-caption">Cargando archivos...</div>
+    );
   }
 
   if (!app) {

@@ -42,7 +42,7 @@ export const settingsContracts = {
         name: z.string(),
         path: z.string(),
         enabled: z.boolean(),
-      })
+      }),
     ),
   }),
 

@@ -4,18 +4,32 @@ const path = require("node:path");
 if (!globalThis.__vibesIpcRegistry) globalThis.__vibesIpcRegistry = new Map();
 
 const ipcMain = {
-  handle(ch, fn) { globalThis.__vibesIpcRegistry.set(ch, fn); },
-  removeHandler(ch) { globalThis.__vibesIpcRegistry.delete(ch); },
-  on() { return ipcMain; },
-  once() { return ipcMain; },
-  removeListener() { return ipcMain; },
-  removeAllListeners() { return ipcMain; },
+  handle(ch, fn) {
+    globalThis.__vibesIpcRegistry.set(ch, fn);
+  },
+  removeHandler(ch) {
+    globalThis.__vibesIpcRegistry.delete(ch);
+  },
+  on() {
+    return ipcMain;
+  },
+  once() {
+    return ipcMain;
+  },
+  removeListener() {
+    return ipcMain;
+  },
+  removeAllListeners() {
+    return ipcMain;
+  },
 };
 
 const app = {
   getPath(n) {
-    if (n === "userData") return process.env.VIBES_USER_DATA || path.resolve("./userData");
-    if (n === "sessionData") return process.env.VIBES_SESSION_DATA || path.resolve("./sessionData");
+    if (n === "userData")
+      return process.env.VIBES_USER_DATA || path.resolve("./userData");
+    if (n === "sessionData")
+      return process.env.VIBES_SESSION_DATA || path.resolve("./sessionData");
     return path.resolve("./" + n);
   },
   getAppPath: () => path.resolve("."),
@@ -36,7 +50,11 @@ module.exports = {
     showMessageBox: async () => ({ response: 0 }),
     showErrorBox() {},
   },
-  shell: { openPath: async () => "", openExternal: async () => {}, showItemInFolder() {} },
+  shell: {
+    openPath: async () => "",
+    openExternal: async () => {},
+    showItemInFolder() {},
+  },
   BrowserWindow: { getAllWindows: () => [], fromWebContents: () => null },
   Menu: { buildFromTemplate: () => ({}) },
   safeStorage: {

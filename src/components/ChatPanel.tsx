@@ -1,9 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import {
-  chatMessagesByIdAtom,
-  isStreamingByIdAtom,
-} from "../atoms/chatAtoms";
+import { chatMessagesByIdAtom, isStreamingByIdAtom } from "../atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 
 import { type ComponentProps } from "react";
@@ -14,13 +17,10 @@ import { ChatError } from "./chat/ChatError";
 import { CrossChatNotification } from "./chat/CrossChatNotification";
 import { MessagePreviewModal } from "./chat/MessagePreviewModal";
 
-
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import { useCustomAgents, getUltimateBaseAgent } from "@/hooks/useCustomAgents";
-
-
 
 interface ChatPanelProps {
   chatId?: number;
@@ -48,18 +48,17 @@ export function ChatPanel({
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
 
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
-  
+
   // Track streaming state in a ref so we can read it inside fetchChatMessages without causing re-renders
   const isStreamingRef = useRef(false);
   useEffect(() => {
-    isStreamingRef.current = chatId ? (isStreamingById.get(chatId) ?? false) : false;
+    isStreamingRef.current = chatId
+      ? (isStreamingById.get(chatId) ?? false)
+      : false;
   }, [isStreamingById, chatId]);
 
   const { settings, updateSettings } = useSettings();
   const { customAgents } = useCustomAgents();
-
-
-
 
   // When entering a chat that is NOT actively streaming, reset "plan" mode
   // to the user's default. Plan mode is only forced on the Home screen for
@@ -91,32 +90,43 @@ export function ChatPanel({
     if (isStreamingById.get(chatId) ?? false) return;
 
     const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-    const isPlan = settings.selectedChatMode === "plan" || 
-      (settings.selectedChatMode?.startsWith("custom-agent::") && 
-       getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan");
+    const isPlan =
+      settings.selectedChatMode === "plan" ||
+      (settings.selectedChatMode?.startsWith("custom-agent::") &&
+        getUltimateBaseAgent(settings.selectedChatMode, customAgents) ===
+          "plan");
 
     if (isPlan && currentMessages.length > 0) {
       // Plan mode was carried over from a previous session into an existing chat — reset it
       hasResetModeRef.current = chatId;
       const defaultMode = settings.defaultChatMode || "agent";
-      const resetTo = defaultMode === "plan" || (defaultMode.startsWith("custom-agent::") && getUltimateBaseAgent(defaultMode, customAgents) === "plan") ? "agent" : defaultMode;
+      const resetTo =
+        defaultMode === "plan" ||
+        (defaultMode.startsWith("custom-agent::") &&
+          getUltimateBaseAgent(defaultMode, customAgents) === "plan")
+          ? "agent"
+          : defaultMode;
       updateSettings({ selectedChatMode: resetTo as any });
     } else if (!isPlan) {
       // User entered the chat in agent/build mode — mark as processed so that if they
       // manually switch to plan later, this effect won't fire and revert it.
       hasResetModeRef.current = chatId;
     }
-  }, [chatId, settings, isStreamingById, updateSettings, messagesById, customAgents]);
+  }, [
+    chatId,
+    settings,
+    isStreamingById,
+    updateSettings,
+    messagesById,
+    customAgents,
+  ]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-
-
   // Scroll-related state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
-
 
   // Refs for scroll tracking
   const distanceFromBottomRef = useRef<number>(0);
@@ -184,8 +194,6 @@ export function ChatPanel({
     });
   }, []);
 
-
-
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {
       // No chat selected yet — keep skeleton visible while chatId resolves.
@@ -194,26 +202,39 @@ export function ChatPanel({
     }
     try {
       const chat = await ipc.chat.getChat(chatId);
-      const dbLastAssistantForLog = [...chat.messages].reverse().find(m => m.role === "assistant");
-      console.log(`[TRACE:fetchChat] chatId=${chatId} dbMsgs=${chat.messages.length} dbLastAssistant.id=${dbLastAssistantForLog?.id} dbContent=${dbLastAssistantForLog?.content?.length ?? 0}ch isStreaming=${isStreamingRef.current}`);
+      const dbLastAssistantForLog = [...chat.messages]
+        .reverse()
+        .find((m) => m.role === "assistant");
+      console.log(
+        `[TRACE:fetchChat] chatId=${chatId} dbMsgs=${chat.messages.length} dbLastAssistant.id=${dbLastAssistantForLog?.id} dbContent=${dbLastAssistantForLog?.content?.length ?? 0}ch isStreaming=${isStreamingRef.current}`,
+      );
 
       setMessagesById((prev) => {
         // Protect against overwriting fresh local state with slightly stale DB state
         if (chatId) {
           const currentMessages = prev.get(chatId) ?? [];
-          const localLastAssistantForLog = [...currentMessages].reverse().find(m => m.role === "assistant");
-          
+          const localLastAssistantForLog = [...currentMessages]
+            .reverse()
+            .find((m) => m.role === "assistant");
+
           // If we are actively streaming right now, do not overwrite local messages
           if (isStreamingRef.current) {
-            console.log(`[TRACE:fetchChat:SKIP] reason=isStreaming localMsgs=${currentMessages.length} localLastAssistant.id=${localLastAssistantForLog?.id} localContent=${localLastAssistantForLog?.content?.length ?? 0}ch`);
+            console.log(
+              `[TRACE:fetchChat:SKIP] reason=isStreaming localMsgs=${currentMessages.length} localLastAssistant.id=${localLastAssistantForLog?.id} localContent=${localLastAssistantForLog?.content?.length ?? 0}ch`,
+            );
             return prev;
           }
 
           // If we have optimistic messages (negative IDs) or we already have more messages
           // than the DB has, it means our local UI is ahead of what was just fetched.
-          const hasOptimisticMessages = currentMessages.some(m => m.id < 0);
-          if (hasOptimisticMessages || currentMessages.length > chat.messages.length) {
-            console.log(`[TRACE:fetchChat:SKIP] reason=optimistic/ahead hasOptimistic=${hasOptimisticMessages} localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length}`);
+          const hasOptimisticMessages = currentMessages.some((m) => m.id < 0);
+          if (
+            hasOptimisticMessages ||
+            currentMessages.length > chat.messages.length
+          ) {
+            console.log(
+              `[TRACE:fetchChat:SKIP] reason=optimistic/ahead hasOptimistic=${hasOptimisticMessages} localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length}`,
+            );
             return prev;
           }
 
@@ -221,19 +242,29 @@ export function ChatPanel({
           // while the stream has already delivered real content to the atom.
           // If the local assistant message has MORE content than the DB version for the
           // same message ID, keep the local (streamed) version.
-          const dbLastAssistant = [...chat.messages].reverse().find(m => m.role === "assistant");
-          const localLastAssistant = [...currentMessages].reverse().find(m => m.role === "assistant");
+          const dbLastAssistant = [...chat.messages]
+            .reverse()
+            .find((m) => m.role === "assistant");
+          const localLastAssistant = [...currentMessages]
+            .reverse()
+            .find((m) => m.role === "assistant");
           if (
-            dbLastAssistant && localLastAssistant &&
+            dbLastAssistant &&
+            localLastAssistant &&
             dbLastAssistant.id === localLastAssistant.id &&
-            (localLastAssistant.content?.length ?? 0) > (dbLastAssistant.content?.length ?? 0)
+            (localLastAssistant.content?.length ?? 0) >
+              (dbLastAssistant.content?.length ?? 0)
           ) {
-            console.log(`[TRACE:fetchChat:SKIP] reason=localRicher localContent=${localLastAssistant.content?.length ?? 0}ch dbContent=${dbLastAssistant.content?.length ?? 0}ch id=${dbLastAssistant.id}`);
+            console.log(
+              `[TRACE:fetchChat:SKIP] reason=localRicher localContent=${localLastAssistant.content?.length ?? 0}ch dbContent=${dbLastAssistant.content?.length ?? 0}ch id=${dbLastAssistant.id}`,
+            );
             // Local atom has richer content → the DB save hasn't caught up yet, keep local
             return prev;
           }
 
-          console.log(`[TRACE:fetchChat:APPLY] overwriting atom with DB. localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length} localLastContent=${localLastAssistantForLog?.content?.length ?? 0}ch dbLastContent=${dbLastAssistantForLog?.content?.length ?? 0}ch`);
+          console.log(
+            `[TRACE:fetchChat:APPLY] overwriting atom with DB. localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length} localLastContent=${localLastAssistantForLog?.content?.length ?? 0}ch dbLastContent=${dbLastAssistantForLog?.content?.length ?? 0}ch`,
+          );
         }
 
         const next = new Map(prev);
@@ -304,7 +335,9 @@ export function ChatPanel({
           await fetchChatMessages();
         } else {
           // Stream finished (completed/failed/cancelled) — one final DB refresh
-          console.log(`[Recovery] Chat ${chatId}: backend stream finished (${task?.status ?? "not found"}) — stopping poll`);
+          console.log(
+            `[Recovery] Chat ${chatId}: backend stream finished (${task?.status ?? "not found"}) — stopping poll`,
+          );
           await fetchChatMessages();
           if (pollTimer) {
             clearInterval(pollTimer);
@@ -323,7 +356,9 @@ export function ChatPanel({
         if (cancelled) return;
 
         if (task?.status === "running") {
-          console.log(`[Recovery] Chat ${chatId}: backend stream still running — starting poll`);
+          console.log(
+            `[Recovery] Chat ${chatId}: backend stream still running — starting poll`,
+          );
           // Fetch immediately once we know it is running, so the user doesn't wait
           await fetchChatMessages();
           if (!cancelled && !pollTimer) {
@@ -331,7 +366,9 @@ export function ChatPanel({
           }
         } else {
           // Stream finished — one-time DB refresh
-          console.log(`[Recovery] Chat ${chatId}: backend stream ${task?.status ?? "not found"} — refreshing from DB`);
+          console.log(
+            `[Recovery] Chat ${chatId}: backend stream ${task?.status ?? "not found"} — refreshing from DB`,
+          );
           await fetchChatMessages();
         }
       } catch (err) {
@@ -348,7 +385,6 @@ export function ChatPanel({
       if (pollTimer) clearInterval(pollTimer);
     };
   }, [chatId, isStreaming, isLoadingMessages, fetchChatMessages]);
-
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,
   // load more in chunks when scrolling up. Prevents render storms on long chats.
@@ -385,7 +421,9 @@ export function ChatPanel({
   const hasMoreMessages = messages.length > visibleCount;
 
   const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => Math.min(prev + LOAD_MORE_COUNT, messages.length));
+    setVisibleCount((prev) =>
+      Math.min(prev + LOAD_MORE_COUNT, messages.length),
+    );
   }, [messages.length]);
 
   // Scroll to bottom when streaming completes to ensure footer content is visible
@@ -434,8 +472,15 @@ export function ChatPanel({
       setShowScrollButton(false);
       scrollToBottom("instant");
     };
-    window.addEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
-    return () => window.removeEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
+    window.addEventListener(
+      "vibes:scroll-to-bottom" as any,
+      handleScrollRequest,
+    );
+    return () =>
+      window.removeEventListener(
+        "vibes:scroll-to-bottom" as any,
+        handleScrollRequest,
+      );
   }, []);
 
   const isPlanMode = useMemo(() => {
@@ -443,90 +488,101 @@ export function ChatPanel({
     if (!settings?.selectedChatMode) return false;
     if (settings.selectedChatMode === "plan") return true;
     if (settings.selectedChatMode.startsWith("custom-agent::")) {
-      return getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan";
+      return (
+        getUltimateBaseAgent(settings.selectedChatMode, customAgents) === "plan"
+      );
     }
     return false;
   }, [settings?.selectedChatMode, preservePlanMode, customAgents]);
 
   return (
     <>
-    <div className="flex flex-col h-full">
-      <div className="relative">
-        <ChatHeader
-          isPreviewOpen={isPreviewOpen}
-          onTogglePreview={onTogglePreview}
-          workspaceMode={workspaceMode}
-        />
-      </div>
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 flex flex-col min-w-0">
-          <div
-            className="flex-1 relative overflow-hidden font-chat"
-            onClick={(e) => {
-              // Focus chat input when clicking empty space in the chat panel
-              const target = e.target as HTMLElement;
-              // Don't steal focus from interactive elements or text selections
-              const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"], pre, code, [data-testid="favorite-button"]');
-              const hasSelection = window.getSelection()?.toString();
-              if (!isInteractive && !hasSelection) {
-                const editable = document.querySelector('[data-testid="chat-input-container"] [contenteditable="true"]') as HTMLElement;
-                editable?.focus();
-              }
-            }}
-          >
-            <>
-              {/* Mount MessagesList behind the skeleton; it renders natively (no virtualization) */}
-              <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
-                <MessagesList
-                  messages={progressiveMessages}
-                  messagesEndRef={messagesEndRef}
-                  ref={messagesContainerRef}
-                  hasMoreMessages={hasMoreMessages}
-                  onLoadMore={handleLoadMore}
-                />
-              </div>
-              {/* Skeleton overlay — covers MessagesList while it renders */}
-              {isLoadingMessages && (
-                <div className="absolute inset-0 z-10 bg-background">
-                  <ChatMessagesSkeleton />
-                </div>
-              )}
-            </>
-
-            {/* Cross-chat notification: alerts when ANOTHER chat has pending questions/permissions */}
-            <CrossChatNotification />
-
-            {/* Scroll to bottom button */}
-            {showScrollButton && progressiveMessages.length > 0 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
-                <Button
-                  onClick={handleScrollButtonClick}
-                  size="icon"
-                  className="rounded-full shadow-lg hover:shadow-xl transition-[background-color,box-shadow] border border-border/50 bg-background hover:bg-accent"
-                  variant="outline"
-                  title={"Ir al final"}
-                >
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <ChatError error={error} onDismiss={() => setError(null)} />
-
-
-          <ChatInput
-            chatId={chatId}
-            autoStart={autoStart}
-            isPlanMode={isPlanMode}
+      <div className="flex flex-col h-full">
+        <div className="relative">
+          <ChatHeader
+            isPreviewOpen={isPreviewOpen}
+            onTogglePreview={onTogglePreview}
             workspaceMode={workspaceMode}
           />
         </div>
-      </div>
-    </div>
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0">
+            <div
+              className="flex-1 relative overflow-hidden font-chat"
+              onClick={(e) => {
+                // Focus chat input when clicking empty space in the chat panel
+                const target = e.target as HTMLElement;
+                // Don't steal focus from interactive elements or text selections
+                const isInteractive = target.closest(
+                  'button, a, input, textarea, select, [role="button"], [contenteditable="true"], pre, code, [data-testid="favorite-button"]',
+                );
+                const hasSelection = window.getSelection()?.toString();
+                if (!isInteractive && !hasSelection) {
+                  const editable = document.querySelector(
+                    '[data-testid="chat-input-container"] [contenteditable="true"]',
+                  ) as HTMLElement;
+                  editable?.focus();
+                }
+              }}
+            >
+              <>
+                {/* Mount MessagesList behind the skeleton; it renders natively (no virtualization) */}
+                <div
+                  className={
+                    isLoadingMessages
+                      ? "opacity-0"
+                      : "opacity-100 animate-in fade-in duration-150"
+                  }
+                >
+                  <MessagesList
+                    messages={progressiveMessages}
+                    messagesEndRef={messagesEndRef}
+                    ref={messagesContainerRef}
+                    hasMoreMessages={hasMoreMessages}
+                    onLoadMore={handleLoadMore}
+                  />
+                </div>
+                {/* Skeleton overlay — covers MessagesList while it renders */}
+                {isLoadingMessages && (
+                  <div className="absolute inset-0 z-10 bg-background">
+                    <ChatMessagesSkeleton />
+                  </div>
+                )}
+              </>
 
-    {/* In-app message preview modal (replaces openMessageWindow) */}
-    <MessagePreviewModal />
+              {/* Cross-chat notification: alerts when ANOTHER chat has pending questions/permissions */}
+              <CrossChatNotification />
+
+              {/* Scroll to bottom button */}
+              {showScrollButton && progressiveMessages.length > 0 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+                  <Button
+                    onClick={handleScrollButtonClick}
+                    size="icon"
+                    className="rounded-full shadow-lg hover:shadow-xl transition-[background-color,box-shadow] border border-border/50 bg-background hover:bg-accent"
+                    variant="outline"
+                    title={"Ir al final"}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <ChatError error={error} onDismiss={() => setError(null)} />
+
+            <ChatInput
+              chatId={chatId}
+              autoStart={autoStart}
+              isPlanMode={isPlanMode}
+              workspaceMode={workspaceMode}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* In-app message preview modal (replaces openMessageWindow) */}
+      <MessagePreviewModal />
     </>
   );
 }
@@ -538,7 +594,10 @@ function ChatMessagesSkeleton() {
       <div className="max-w-3xl mx-auto flex flex-col gap-5 pt-6">
         {/* User message skeleton */}
         <div className="flex justify-end">
-          <div className="w-[55%] h-11 rounded-2xl bg-muted/60 animate-pulse" style={{ animationDelay: "0ms" }} />
+          <div
+            className="w-[55%] h-11 rounded-2xl bg-muted/60 animate-pulse"
+            style={{ animationDelay: "0ms" }}
+          />
         </div>
 
         {/* Assistant message skeleton */}
@@ -547,26 +606,56 @@ function ChatMessagesSkeleton() {
             <div className="w-7 h-7 rounded-full bg-muted/60 animate-pulse" />
             <div className="w-16 h-3.5 rounded bg-muted/60 animate-pulse" />
           </div>
-          <div className="w-[85%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "75ms" }} />
-          <div className="w-[72%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "150ms" }} />
-          <div className="w-[60%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "225ms" }} />
-          <div className="w-[40%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "300ms" }} />
+          <div
+            className="w-[85%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "75ms" }}
+          />
+          <div
+            className="w-[72%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "150ms" }}
+          />
+          <div
+            className="w-[60%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "225ms" }}
+          />
+          <div
+            className="w-[40%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "300ms" }}
+          />
         </div>
 
         {/* Second user message skeleton */}
         <div className="flex justify-end">
-          <div className="w-[40%] h-11 rounded-2xl bg-muted/60 animate-pulse" style={{ animationDelay: "200ms" }} />
+          <div
+            className="w-[40%] h-11 rounded-2xl bg-muted/60 animate-pulse"
+            style={{ animationDelay: "200ms" }}
+          />
         </div>
 
         {/* Second assistant message skeleton */}
         <div className="flex flex-col gap-2.5 pl-1">
           <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-7 h-7 rounded-full bg-muted/60 animate-pulse" style={{ animationDelay: "250ms" }} />
-            <div className="w-16 h-3.5 rounded bg-muted/60 animate-pulse" style={{ animationDelay: "250ms" }} />
+            <div
+              className="w-7 h-7 rounded-full bg-muted/60 animate-pulse"
+              style={{ animationDelay: "250ms" }}
+            />
+            <div
+              className="w-16 h-3.5 rounded bg-muted/60 animate-pulse"
+              style={{ animationDelay: "250ms" }}
+            />
           </div>
-          <div className="w-[90%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "325ms" }} />
-          <div className="w-[78%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "400ms" }} />
-          <div className="w-[65%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "475ms" }} />
+          <div
+            className="w-[90%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "325ms" }}
+          />
+          <div
+            className="w-[78%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "400ms" }}
+          />
+          <div
+            className="w-[65%] h-3.5 rounded bg-muted/50 animate-pulse"
+            style={{ animationDelay: "475ms" }}
+          />
         </div>
       </div>
     </div>

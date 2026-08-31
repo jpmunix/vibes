@@ -148,7 +148,8 @@ function stripLineNumberPrefixes(lines: string[]): {
   const lineNumRegex = /^\s*\d+\s*[:|]\s?/;
   // Only strip if ALL non-empty lines have the prefix (to avoid false positives)
   const nonEmptyLines = lines.filter((l) => l.trim() !== "");
-  if (nonEmptyLines.length === 0) return { stripped: lines, hadPrefixes: false };
+  if (nonEmptyLines.length === 0)
+    return { stripped: lines, hadPrefixes: false };
 
   const allHavePrefix = nonEmptyLines.every((l) => lineNumRegex.test(l));
   if (!allHavePrefix) return { stripped: lines, hadPrefixes: false };
@@ -239,10 +240,7 @@ function buildContextRichError(
 
   // Extract up to 10 lines of context around the best match
   const contextStart = Math.max(0, diagnostic.startLine - 3);
-  const contextEnd = Math.min(
-    resultLines.length,
-    diagnostic.endLine + 3,
-  );
+  const contextEnd = Math.min(resultLines.length, diagnostic.endLine + 3);
   const snippetLines = resultLines
     .slice(contextStart, contextEnd)
     .map((l, i) => `${contextStart + i + 1}: ${l}`);
@@ -588,10 +586,7 @@ export function applySearchReplace(
         logger.debug(
           `Matched via block-level fuzzy match (${blockResult.passName})`,
         );
-      } else if (
-        blockResult.error &&
-        blockResult.error.includes("ambiguous")
-      ) {
+      } else if (blockResult.error && blockResult.error.includes("ambiguous")) {
         // Propagate ambiguity error from block-fuzzy — it's more informative
         matchResult = blockResult;
       }
@@ -599,9 +594,12 @@ export function applySearchReplace(
 
     if (!matchResult.error && matchResult.passName) {
       if (
-        !["exact", "trailing-whitespace", "edge-whitespace", "unicode"].includes(
-          matchResult.passName,
-        )
+        ![
+          "exact",
+          "trailing-whitespace",
+          "edge-whitespace",
+          "unicode",
+        ].includes(matchResult.passName)
       ) {
         strategiesUsed.add(matchResult.passName);
       }
@@ -676,9 +674,9 @@ export function applySearchReplace(
       const finalIndent =
         relativeLevel < 0
           ? matchedIndent.slice(
-            0,
-            Math.max(0, matchedIndent.length + relativeLevel),
-          )
+              0,
+              Math.max(0, matchedIndent.length + relativeLevel),
+            )
           : matchedIndent + currentIndent.slice(searchBaseLevel);
 
       return finalIndent + line.trim();

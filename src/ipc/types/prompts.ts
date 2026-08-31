@@ -26,7 +26,6 @@ export const PromptCategoryDtoSchema = z.object({
 
 export type PromptCategoryDto = z.infer<typeof PromptCategoryDtoSchema>;
 
-
 export type PromptDto = z.infer<typeof PromptDtoSchema>;
 
 export const CreatePromptParamsDtoSchema = z.object({

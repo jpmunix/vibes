@@ -5,7 +5,8 @@ export default {
   out: "./drizzle-remote",
   dialect: "sqlite",
   dbCredentials: {
-    url: "libsql://01KJ783WM1SD8X465A3VPAGHG6-minube-vibes.lite.bunnydb.net/",
-    token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJwIjp7InJvIjpudWxsLCJydyI6eyJucyI6WyJtaW51YmUtdmliZXMiXSwidGFncyI6bnVsbH0sInJvYSI6bnVsbCwicndhIjpudWxsLCJkZGwiOm51bGx9LCJpYXQiOjE3NzE5MTc0MDl9.m-5EAVWjKG0kPM72fPFpeAg25seNnUY65gtSzTJlhnD697C1mmCRoXZWkmcreHoV9vTRw22supEVIp342D_2CA"
+    url: "libsql://01KWFQXHYHXBKNBY6HXGZ4CK6X-vibes.lite.bunnydb.net/",
+    token:
+      "eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJwIjp7InJvIjpudWxsLCJydyI6eyJucyI6WyJ2aWJlcyJdLCJ0YWdzIjpudWxsfSwicm9hIjpudWxsLCJyd2EiOm51bGwsImRkbCI6bnVsbH0sImlhdCI6MTc4MjkzOTgzMX0.GhgK8Ck_uRUx7cl6ekpynAtoXcF0yKeJl6LtVfGBaLGHqkabHTkHX6f2uDnSc5wE9Qsd7t9QT3PqrempxcQLCg",
   },
 } satisfies Config;

@@ -73,8 +73,8 @@ export function UndoConfirmDialog({
             Hay cambios sin commitear
           </DialogTitle>
           <DialogDescription>
-            Si deshaces todo, estos cambios en el código se perderán.
-            Puedes deshacer solo el mensaje y dejar el código como está.
+            Si deshaces todo, estos cambios en el código se perderán. Puedes
+            deshacer solo el mensaje y dejar el código como está.
           </DialogDescription>
         </DialogHeader>
 

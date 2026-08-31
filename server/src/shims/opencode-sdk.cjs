@@ -7,11 +7,13 @@
 // resolution is transparent.
 
 let _sdk = null;
-const _ready = import("@opencode-ai/sdk").then((m) => {
-  _sdk = m;
-}).catch((err) => {
-  console.error("[opencode-sdk shim] Failed to load real SDK:", err.message);
-});
+const _ready = import("@opencode-ai/sdk")
+  .then((m) => {
+    _sdk = m;
+  })
+  .catch((err) => {
+    console.error("[opencode-sdk shim] Failed to load real SDK:", err.message);
+  });
 
 // Lazy wrappers — each awaits the import before forwarding
 async function createOpencode(...args) {
@@ -22,7 +24,9 @@ async function createOpencode(...args) {
 
 function createOpencodeClient(...args) {
   if (!_sdk?.createOpencodeClient) {
-    throw new Error("@opencode-ai/sdk not loaded yet — call createOpencode first");
+    throw new Error(
+      "@opencode-ai/sdk not loaded yet — call createOpencode first",
+    );
   }
   return _sdk.createOpencodeClient(...args);
 }

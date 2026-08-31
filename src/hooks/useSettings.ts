@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAtom } from "jotai";
 import { userSettingsAtom, envVarsAtom } from "@/atoms/appAtoms";
-import { preferencesMapAtom, preferencesHydratedAtom } from "@/atoms/preferenceAtoms";
+import {
+  preferencesMapAtom,
+  preferencesHydratedAtom,
+} from "@/atoms/preferenceAtoms";
 import { ipc } from "@/ipc/types";
 import { type UserSettings } from "@/lib/schemas";
 import { useAppVersion } from "./useAppVersion";
@@ -22,7 +25,9 @@ export function useSettings() {
       const [userSettings, fetchedEnvVars, allPrefs] = await Promise.all([
         ipc.settings.getUserSettings(),
         ipc.misc.getEnvVars(),
-        ipc.misc.hydratePreferences().catch(() => ({} as Record<string, string>)),
+        ipc.misc
+          .hydratePreferences()
+          .catch(() => ({}) as Record<string, string>),
       ]);
 
       setSettingsAtom(userSettings);
@@ -39,7 +44,13 @@ export function useSettings() {
     } finally {
       setLoading(false);
     }
-  }, [setSettingsAtom, setEnvVarsAtom, setPrefsMap, setPrefsHydrated, appVersion]);
+  }, [
+    setSettingsAtom,
+    setEnvVarsAtom,
+    setPrefsMap,
+    setPrefsHydrated,
+    appVersion,
+  ]);
 
   useEffect(() => {
     // Only run once on mount, dependencies are stable getters/setters
@@ -62,7 +73,9 @@ export function useSettings() {
         }
       },
     );
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribe?.();
+    };
   }, [setSettingsAtom]);
 
   // ── Cross-window preference changes ──────────────────────────────────
@@ -84,10 +97,15 @@ export function useSettings() {
         }
       },
     );
-    return () => { unsubscribe?.(); };
+    return () => {
+      unsubscribe?.();
+    };
   }, [setPrefsMap]);
 
-  const updateSettings = async (newSettings: Partial<UserSettings>, options?: { showToast?: boolean }) => {
+  const updateSettings = async (
+    newSettings: Partial<UserSettings>,
+    options?: { showToast?: boolean },
+  ) => {
     setLoading(true);
     try {
       const updatedSettings = await ipc.settings.setUserSettings(newSettings);
@@ -97,7 +115,8 @@ export function useSettings() {
       // Convert the updated settings to the preferences map format
       for (const [key, value] of Object.entries(newSettings)) {
         if (value !== undefined) {
-          const serialized = typeof value === "string" ? value : JSON.stringify(value);
+          const serialized =
+            typeof value === "string" ? value : JSON.stringify(value);
           setPrefsMap((prev) => ({ ...prev, [key]: serialized }));
         }
       }
@@ -128,5 +147,3 @@ export function useSettings() {
     },
   };
 }
-
-

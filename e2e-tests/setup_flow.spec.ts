@@ -129,6 +129,8 @@ testSetup.describe("Setup Flow", () => {
 
     // After configuring a provider, the setup banner should be gone
     // and the vibes.start() animation should be visible
-    await expect(po.page.getByText("vibes.start()")).toBeVisible({ timeout: 5000 });
+    await expect(po.page.getByText("vibes.start()")).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

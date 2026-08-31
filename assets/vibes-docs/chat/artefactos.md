@@ -15,6 +15,7 @@ Cuando le pides al agente que elabore un plan, una estrategia o un documento ext
 Cuando un chat tiene artefactos disponibles, aparece un **badge azul** en la barra superior del chat:
 
 ![Indicador de artefactos](https://images.mnstatic.com/Tools/files/af1143cdcdb15e885f5a0ccd196e83009d58fbf4698b08a60ec38dfd19d4de19.jpg)
+
 <!-- @info title="📸 Captura pendiente" "Reemplazar con captura mostrando el badge azul de artefactos en la cabecera del chat" -->
 
 Al hacer click se despliega un listado con:

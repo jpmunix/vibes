@@ -40,11 +40,14 @@ import type { ChatSummary } from "@/lib/schemas";
 let cachedCustomAgents: Array<{ slashCommand: string }> = [];
 
 // Pre-populate the cache on load
-ipc.customAgents.list().then((list) => {
-  cachedCustomAgents = list;
-}).catch((e) => {
-  console.error("Failed to pre-populate custom agents cache:", e);
-});
+ipc.customAgents
+  .list()
+  .then((list) => {
+    cachedCustomAgents = list;
+  })
+  .catch((e) => {
+    console.error("Failed to pre-populate custom agents cache:", e);
+  });
 
 export function getRandomNumberId() {
   return Math.floor(Math.random() * 1_000_000_000_000_000);
@@ -67,7 +70,6 @@ function updateMapAtom<K, V>(
     return next;
   });
 }
-
 
 export function useStreamChat({
   hasChatId = true,
@@ -95,16 +97,26 @@ export function useStreamChat({
   const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
 
   const queryClient = useQueryClient();
-  const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
-  let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
+  const chatRouteMatch = useMatch({
+    from: "/chat",
+    strict: false,
+    shouldThrow: false,
+  });
+  let chatId: number | undefined =
+    hasChatId && chatRouteMatch
+      ? (chatRouteMatch as any).search?.id
+      : undefined;
 
   // Keep cache updated when the hook mounts
   useEffect(() => {
-    ipc.customAgents.list().then((list) => {
-      cachedCustomAgents = list;
-    }).catch((e) => {
-      console.error("Failed to refresh custom agents cache:", e);
-    });
+    ipc.customAgents
+      .list()
+      .then((list) => {
+        cachedCustomAgents = list;
+      })
+      .catch((e) => {
+        console.error("Failed to refresh custom agents cache:", e);
+      });
   }, []);
 
   // For atom lookups (isStreaming, error), prefer selectedChatIdAtom which is
@@ -156,13 +168,17 @@ export function useStreamChat({
       if (undoRedo) {
         const removeListener = window.electron.on(
           "chat:undo-redo:content",
-          (_: any, data: { chatId: number; prompt: string; attachments?: any[] }) => {
+          (
+            _: any,
+            data: { chatId: number; prompt: string; attachments?: any[] },
+          ) => {
             if (data.chatId === chatId) {
               const attachmentsToRestore: File[] = [];
               if (data.attachments && data.attachments.length > 0) {
                 data.attachments.forEach((part: any, i: number) => {
                   try {
-                    const mimeType = part.mediaType || part.mimeType || "image/png";
+                    const mimeType =
+                      part.mediaType || part.mimeType || "image/png";
                     const ext = mimeType.split("/")[1] || "png";
                     let base64 = part.image;
                     if (base64.startsWith("data:")) {
@@ -170,19 +186,31 @@ export function useStreamChat({
                     }
                     const byteChars = atob(base64);
                     const byteArr = new Uint8Array(byteChars.length);
-                    for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
-                    attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                    for (let j = 0; j < byteChars.length; j++)
+                      byteArr[j] = byteChars.charCodeAt(j);
+                    attachmentsToRestore.push(
+                      new File(
+                        [new Blob([byteArr], { type: mimeType })],
+                        `restored-${Date.now()}-${i}.${ext}`,
+                        { type: mimeType },
+                      ),
+                    );
                   } catch (e) {
                     console.error("Failed to restore attachment", e);
                   }
                 });
               }
 
-              window.dispatchEvent(new CustomEvent('vibes:restore-chat-input', {
-                detail: { prompt: data.prompt, attachments: attachmentsToRestore }
-              }));
+              window.dispatchEvent(
+                new CustomEvent("vibes:restore-chat-input", {
+                  detail: {
+                    prompt: data.prompt,
+                    attachments: attachmentsToRestore,
+                  },
+                }),
+              );
             }
-          }
+          },
         );
 
         // Clean up listener after a short timeout (it should happen quickly)
@@ -190,13 +218,13 @@ export function useStreamChat({
       }
 
       if (
-        (!prompt.trim() && (!attachments || attachments.length === 0) && !undoRedo) ||
+        (!prompt.trim() &&
+          (!attachments || attachments.length === 0) &&
+          !undoRedo) ||
         !chatId
       ) {
         return;
       }
-
-
 
       // Prevent duplicate streams - check module-level set to avoid race conditions
       if (pendingStreamChatIds.has(chatId)) {
@@ -266,11 +294,17 @@ export function useStreamChat({
       let optimisticPrompt = prompt;
 
       // Trigger a background (non-blocking) promise to refresh the cache
-      ipc.customAgents.list().then((list) => {
-        cachedCustomAgents = list;
-      }).catch((e) => {
-        console.error("Failed to update custom agents cache in background:", e);
-      });
+      ipc.customAgents
+        .list()
+        .then((list) => {
+          cachedCustomAgents = list;
+        })
+        .catch((e) => {
+          console.error(
+            "Failed to update custom agents cache in background:",
+            e,
+          );
+        });
 
       // Optimistic UI update: instantly show the user message and a loading assistant message
       setMessagesById((prev) => {
@@ -325,7 +359,9 @@ export function useStreamChat({
             role: "user",
             content: optimisticPrompt,
             createdAt: new Date().toISOString(),
-            ...(optimisticAiMessagesJson && { aiMessagesJson: optimisticAiMessagesJson }),
+            ...(optimisticAiMessagesJson && {
+              aiMessagesJson: optimisticAiMessagesJson,
+            }),
           } as any);
         }
 
@@ -342,10 +378,13 @@ export function useStreamChat({
         return next;
       });
 
-
       let hasIncrementedStreamCount = false;
       // RAF throttling: batch onChunk updates to max 1 per animation frame
-      let pendingChunkMessages: typeof undefined | Parameters<Parameters<typeof ipc.chatStream.start>[1]["onChunk"]>[0]["messages"] = undefined;
+      let pendingChunkMessages:
+        | typeof undefined
+        | Parameters<
+            Parameters<typeof ipc.chatStream.start>[1]["onChunk"]
+          >[0]["messages"] = undefined;
       let chunkRafId: number | null = null;
       try {
         ipc.chatStream.start(
@@ -358,8 +397,16 @@ export function useStreamChat({
             undoRedo,
             priorMessages,
             chatMode: (() => {
-              const cachedChat = queryClient.getQueryData<any>(["chat", chatId]);
-              return chatModeOverride || cachedChat?.chatMode || settings?.selectedChatMode || "agent";
+              const cachedChat = queryClient.getQueryData<any>([
+                "chat",
+                chatId,
+              ]);
+              return (
+                chatModeOverride ||
+                cachedChat?.chatMode ||
+                settings?.selectedChatMode ||
+                "agent"
+              );
             })(),
           },
           {
@@ -378,7 +425,11 @@ export function useStreamChat({
               if (!chunkRafId) {
                 chunkRafId = requestAnimationFrame(() => {
                   if (pendingChunkMessages) {
-                    updateMapAtom(setMessagesById, chatId, pendingChunkMessages!);
+                    updateMapAtom(
+                      setMessagesById,
+                      chatId,
+                      pendingChunkMessages!,
+                    );
                     pendingChunkMessages = undefined;
                   }
                   chunkRafId = null;
@@ -403,9 +454,12 @@ export function useStreamChat({
                 settings?.enableChatCompletionNotifications === true;
               const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
-                currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
+                currentLookup !== undefined &&
+                currentLookup !== null &&
+                currentLookup !== chatId;
               if (
-                (notificationsEnabled || settings?.enableNotificationSound !== false) &&
+                (notificationsEnabled ||
+                  settings?.enableNotificationSound !== false) &&
                 (!document.hasFocus() || isViewingDifferentChat)
               ) {
                 const app = queryClient.getQueryData<App | null>(
@@ -422,15 +476,18 @@ export function useStreamChat({
                     ? rawTitle.slice(0, 80) + "…"
                     : rawTitle
                   : "Respuesta completada";
-                sendAppNotification({ title: appName, body, settings });
+                sendAppNotification({ title: appName, body, settings, chatId, appId: selectedAppId ?? undefined });
               }
 
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
 
               // Store selected memories for the chat UI indicator
-              if (response.selectedMemories && response.selectedMemories.length > 0) {
-                setSelectedMemories(prev => {
+              if (
+                response.selectedMemories &&
+                response.selectedMemories.length > 0
+              ) {
+                setSelectedMemories((prev) => {
                   const next = new Map(prev);
                   next.set(chatId, response.selectedMemories!);
                   return next;
@@ -440,9 +497,11 @@ export function useStreamChat({
               // If the backend sent back the user's prompt (cancel with no content),
               // restore it to the input box so the user doesn't lose their message
               if (response.restoredPrompt) {
-                window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", {
-                  detail: { prompt: response.restoredPrompt },
-                }));
+                window.dispatchEvent(
+                  new CustomEvent("vibes:restore-chat-input", {
+                    detail: { prompt: response.restoredPrompt },
+                  }),
+                );
               }
 
               const finalizeEnd = async () => {
@@ -478,8 +537,12 @@ export function useStreamChat({
                       error: response.extraFilesError,
                     });
                   }
-                  queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
-                  queryClient.invalidateQueries({ queryKey: ["chatArtifacts", chatId] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["proposal", chatId],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["chatArtifacts", chatId],
+                  });
                   refetchUserBudget();
 
                   queryClient.invalidateQueries({
@@ -508,14 +571,25 @@ export function useStreamChat({
                   const lastMsg = queue[queue.length - 1];
 
                   // Convert FileAttachment[] → ChatAttachment[] (base64 data URLs) for IPC
-                  const toAttachment = (a: NonNullable<import("@/atoms/chatAtoms").PendingQueuedMessage["attachments"]>[number]) =>
-                    new Promise<import("@/ipc/types").ChatAttachment>((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onload = () =>
-                        resolve({ name: a.file.name, type: a.file.type, data: reader.result as string, attachmentType: a.type });
-                      reader.onerror = () => reject(reader.error);
-                      reader.readAsDataURL(a.file);
-                    });
+                  const toAttachment = (
+                    a: NonNullable<
+                      import("@/atoms/chatAtoms").PendingQueuedMessage["attachments"]
+                    >[number],
+                  ) =>
+                    new Promise<import("@/ipc/types").ChatAttachment>(
+                      (resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () =>
+                          resolve({
+                            name: a.file.name,
+                            type: a.file.type,
+                            data: reader.result as string,
+                            attachmentType: a.type,
+                          });
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsDataURL(a.file);
+                      },
+                    );
 
                   const convertedPrior = await Promise.all(
                     priorMessages.map(async (m) => ({
@@ -534,7 +608,8 @@ export function useStreamChat({
                     prompt: lastMsg.prompt,
                     chatId,
                     attachments: lastAttachments,
-                    priorMessages: convertedPrior.length > 0 ? convertedPrior : undefined,
+                    priorMessages:
+                      convertedPrior.length > 0 ? convertedPrior : undefined,
                   });
                 }, 0);
 
@@ -559,7 +634,9 @@ export function useStreamChat({
 
               const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
-                currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
+                currentLookup !== undefined &&
+                currentLookup !== null &&
+                currentLookup !== chatId;
 
               const finalizeError = async () => {
                 if (isViewingDifferentChat) {
@@ -584,8 +661,14 @@ export function useStreamChat({
                   if (!msgs) return prev;
                   const updated = [...msgs];
                   const last = updated[updated.length - 1];
-                  if (last?.role === "assistant" && (!last.content || !last.content.trim())) {
-                    updated[updated.length - 1] = { ...last, content: `${PERSISTED_ERROR_PREFIX}${errorMessage}` };
+                  if (
+                    last?.role === "assistant" &&
+                    (!last.content || !last.content.trim())
+                  ) {
+                    updated[updated.length - 1] = {
+                      ...last,
+                      content: `${PERSISTED_ERROR_PREFIX}${errorMessage}`,
+                    };
                   }
                   const next = new Map(prev);
                   next.set(chatId, updated);
@@ -657,13 +740,15 @@ export function useStreamChat({
     setError: (value: string | null) =>
       setErrorById((prev) => {
         const next = new Map(prev);
-        if (lookupChatId !== undefined && lookupChatId !== null) next.set(lookupChatId, value);
+        if (lookupChatId !== undefined && lookupChatId !== null)
+          next.set(lookupChatId, value);
         return next;
       }),
     setIsStreaming: (value: boolean) =>
       setIsStreamingById((prev) => {
         const next = new Map(prev);
-        if (lookupChatId !== undefined && lookupChatId !== null) next.set(lookupChatId, value);
+        if (lookupChatId !== undefined && lookupChatId !== null)
+          next.set(lookupChatId, value);
         return next;
       }),
   };

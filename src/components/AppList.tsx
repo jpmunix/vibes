@@ -1,5 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, X, FolderX, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "@/components/ui/icons";
+import {
+  Loader2,
+  X,
+  FolderX,
+  Archive,
+  ArchiveRestore,
+  ChevronDown,
+  ChevronRight,
+} from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -121,7 +129,8 @@ export function AppList({ show }: { show?: boolean }) {
   );
 
   const nonFavoriteApps = useMemo(
-    () => apps.filter((app) => !app.isFavorite && app.localPathExists !== false),
+    () =>
+      apps.filter((app) => !app.isFavorite && app.localPathExists !== false),
     [apps],
   );
 
@@ -245,7 +254,11 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
-  const handleDeleteAppClick = (appId: number, appName: string, e: React.MouseEvent) => {
+  const handleDeleteAppClick = (
+    appId: number,
+    appName: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     setDeleteAppId(appId);
     setDeleteAppName(appName);
@@ -280,10 +293,14 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
-  const handleArchiveApp = async (appId: number, appName: string, e: React.MouseEvent) => {
+  const handleArchiveApp = async (
+    appId: number,
+    appName: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     // Optimistic: remove from atom immediately (no flash)
-    setApps(prev => prev.filter(a => a.id !== appId));
+    setApps((prev) => prev.filter((a) => a.id !== appId));
     if (selectedAppId === appId) {
       setSelectedAppId(null);
       navigate({ to: "/", search: {} });
@@ -304,8 +321,8 @@ export function AppList({ show }: { show?: boolean }) {
     try {
       await ipc.app.archiveApp({ appId, archived: false });
       // Optimistic: move app from archived list back into main atom
-      const restored = archivedApps.find(a => a.id === appId);
-      if (restored) setApps(prev => [restored, ...prev]);
+      const restored = archivedApps.find((a) => a.id === appId);
+      if (restored) setApps((prev) => [restored, ...prev]);
       queryClient.invalidateQueries({ queryKey: ["archived-apps"] });
     } catch (error) {
       showError(error);
@@ -444,131 +461,151 @@ export function AppList({ show }: { show?: boolean }) {
             className={`overflow-y-auto overflow-x-hidden ${selectionMode ? "h-[calc(100vh-112px-52px)]" : "h-[calc(100vh-112px)]"}`}
             data-testid="app-list-container"
           >
-
-        {/* ── Selection mode header bar ── */}
-        {selectionMode && (
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
-            <FolderX size={15} className="text-primary shrink-0" />
-            <span className="typo-caption font-semibold text-primary">Seleccionar para cerrar</span>
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                type="button"
-                className="typo-micro text-muted-foreground hover:text-primary cursor-pointer transition-colors px-1.5 py-0.5 rounded"
-                onClick={selectedIds.size === apps.length ? deselectAll : selectAll}
-              >
-                {selectedIds.size === apps.length ? "Ninguna" : "Todas"}
-              </button>
-              <button
-                type="button"
-                className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
-                onClick={exitSelectionMode}
-                title="Cancelar"
-              >
-                <X size={14} className="text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-        )}
-        
-        <SidebarGroupContent>
-          <div className="flex flex-col gap-1.5 px-2">
-            {loading ? (
-              <div className="py-3 px-2 typo-caption opacity-60 text-center">
-                Cargando aplicaciones...
+            {/* ── Selection mode header bar ── */}
+            {selectionMode && (
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+                <FolderX size={15} className="text-primary shrink-0" />
+                <span className="typo-caption font-semibold text-primary">
+                  Seleccionar para cerrar
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="typo-micro text-muted-foreground hover:text-primary cursor-pointer transition-colors px-1.5 py-0.5 rounded"
+                    onClick={
+                      selectedIds.size === apps.length ? deselectAll : selectAll
+                    }
+                  >
+                    {selectedIds.size === apps.length ? "Ninguna" : "Todas"}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
+                    onClick={exitSelectionMode}
+                    title="Cancelar"
+                  >
+                    <X size={14} className="text-muted-foreground" />
+                  </button>
+                </div>
               </div>
-            ) : error ? (
-              <div className="py-3 px-2 typo-caption text-destructive text-center">
-                Error al cargar las aplicaciones
-              </div>
-            ) : apps.length === 0 ? (
-              <div className="py-3 px-2 typo-caption opacity-60 text-center">
-                No se encontraron aplicaciones
-              </div>
-            ) : (
-              <SidebarMenu className="mt-1" data-testid="app-list">
-                {favoriteApps.length > 0 && (
-                  <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones fijadas</div>
-                    {favoriteApps.map(renderAppItem)}
-                  </>
-                )}
-                {nonFavoriteApps.length > 0 && (
-                  <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones</div>
-                    {nonFavoriteApps.map(renderAppItem)}
-                  </>
-                )}
-                {noLocalFilesApps.length > 0 && (
-                  <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Sin archivos locales</div>
-                    {noLocalFilesApps.map(renderAppItem)}
-                  </>
-                )}
-              </SidebarMenu>
             )}
 
-            {/* ── Archived apps collapsible ── */}
-            <div className="mt-3">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-medium text-muted-foreground/60 tracking-wide hover:text-muted-foreground/80 transition-colors cursor-pointer"
-                onClick={() => setArchivedOpen(v => !v)}
-              >
-                {archivedOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                <Archive size={12} className="opacity-60" />
-                Archivadas
-                {archivedApps.length > 0 && (
-                  <span className="ml-auto text-[10px] text-muted-foreground/40">
-                    {archivedApps.length}
-                  </span>
-                )}
-              </button>
-
-              {archivedOpen && (
-                <div className="mt-1 pl-2">
-                  {archivedApps.length === 0 ? (
-                    <div className="py-3 px-2 typo-caption opacity-40 text-center">
-                      Sin apps archivadas
-                    </div>
-                  ) : (
-                    archivedApps.map((app) => (
-                      <div
-                        key={app.id}
-                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
-                      >
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
-                          <span className="text-xs text-muted-foreground/45 mt-0.5">
-                            {formatDistanceToNow(safeDate(app.createdAt), { addSuffix: true, locale: es })}
-                          </span>
+            <SidebarGroupContent>
+              <div className="flex flex-col gap-1.5 px-2">
+                {loading ? (
+                  <div className="py-3 px-2 typo-caption opacity-60 text-center">
+                    Cargando aplicaciones...
+                  </div>
+                ) : error ? (
+                  <div className="py-3 px-2 typo-caption text-destructive text-center">
+                    Error al cargar las aplicaciones
+                  </div>
+                ) : apps.length === 0 ? (
+                  <div className="py-3 px-2 typo-caption opacity-60 text-center">
+                    No se encontraron aplicaciones
+                  </div>
+                ) : (
+                  <SidebarMenu className="mt-1" data-testid="app-list">
+                    {favoriteApps.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">
+                          Aplicaciones fijadas
                         </div>
-                        <button
-                          type="button"
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
-                          onClick={() => handleUnarchiveApp(app.id)}
-                          disabled={unarchivingId === app.id}
-                          title="Restaurar"
-                        >
-                          {unarchivingId === app.id
-                            ? <Loader2 size={15} className="animate-spin" />
-                            : <ArchiveRestore size={15} strokeWidth={2} />
-                          }
-                        </button>
-                      </div>
-                    ))
+                        {favoriteApps.map(renderAppItem)}
+                      </>
+                    )}
+                    {nonFavoriteApps.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">
+                          Aplicaciones
+                        </div>
+                        {nonFavoriteApps.map(renderAppItem)}
+                      </>
+                    )}
+                    {noLocalFilesApps.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">
+                          Sin archivos locales
+                        </div>
+                        {noLocalFilesApps.map(renderAppItem)}
+                      </>
+                    )}
+                  </SidebarMenu>
+                )}
+
+                {/* ── Archived apps collapsible ── */}
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 w-full text-xs font-medium text-muted-foreground/60 tracking-wide hover:text-muted-foreground/80 transition-colors cursor-pointer"
+                    onClick={() => setArchivedOpen((v) => !v)}
+                  >
+                    {archivedOpen ? (
+                      <ChevronDown size={12} />
+                    ) : (
+                      <ChevronRight size={12} />
+                    )}
+                    <Archive size={12} className="opacity-60" />
+                    Archivadas
+                    {archivedApps.length > 0 && (
+                      <span className="ml-auto text-[10px] text-muted-foreground/40">
+                        {archivedApps.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {archivedOpen && (
+                    <div className="mt-1 pl-2">
+                      {archivedApps.length === 0 ? (
+                        <div className="py-3 px-2 typo-caption opacity-40 text-center">
+                          Sin apps archivadas
+                        </div>
+                      ) : (
+                        archivedApps.map((app) => (
+                          <div
+                            key={app.id}
+                            className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                          >
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm truncate font-medium text-muted-foreground">
+                                {app.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground/45 mt-0.5">
+                                {formatDistanceToNow(safeDate(app.createdAt), {
+                                  addSuffix: true,
+                                  locale: es,
+                                })}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                              onClick={() => handleUnarchiveApp(app.id)}
+                              disabled={unarchivingId === app.id}
+                              title="Restaurar"
+                            >
+                              {unarchivingId === app.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <ArchiveRestore size={15} strokeWidth={2} />
+                              )}
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
           {/* ── Bulk selection bottom toolbar ── */}
           {selectionMode && (
             <div className="bulk-toolbar">
               <span className="bulk-toolbar-count">
-                {selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}
+                {selectedIds.size} seleccionada
+                {selectedIds.size !== 1 ? "s" : ""}
               </span>
               <Button
                 variant="ghost"
@@ -600,15 +637,19 @@ export function AppList({ show }: { show?: boolean }) {
       />
 
       {/* Close Folder Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
-        setIsDeleteDialogOpen(open);
-        if (!open) setDeleteFiles(false);
-      }}>
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeleteFiles(false);
+        }}
+      >
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>¿Cerrar aplicación "{deleteAppName}"?</DialogTitle>
             <DialogDescription>
-              La aplicación se desvinculará de Vibes. Los archivos en disco se conservarán.
+              La aplicación se desvinculará de Vibes. Los archivos en disco se
+              conservarán.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -620,7 +661,10 @@ export function AppList({ show }: { show?: boolean }) {
               disabled={isDeleting}
               className="rounded border-border"
             />
-            <label htmlFor="delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+            <label
+              htmlFor="delete-files-check"
+              className="typo-caption text-muted-foreground cursor-pointer"
+            >
               Eliminar también los archivos del disco
             </label>
           </div>
@@ -656,22 +700,26 @@ export function AppList({ show }: { show?: boolean }) {
       </Dialog>
 
       {/* ── Bulk Close Confirmation Dialog ── */}
-      <Dialog open={isBulkDialogOpen} onOpenChange={(open) => {
-        if (!isBulkDeleting) {
-          setIsBulkDialogOpen(open);
-          if (!open) setBulkDeleteFiles(false);
-        }
-      }}>
+      <Dialog
+        open={isBulkDialogOpen}
+        onOpenChange={(open) => {
+          if (!isBulkDeleting) {
+            setIsBulkDialogOpen(open);
+            if (!open) setBulkDeleteFiles(false);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>
-              ¿Cerrar {selectedIds.size} aplicación{selectedIds.size !== 1 ? "es" : ""}?
+              ¿Cerrar {selectedIds.size} aplicación
+              {selectedIds.size !== 1 ? "es" : ""}?
             </DialogTitle>
             <DialogDescription>
               {selectedIds.size === 1
                 ? "La aplicación se desvinculará de Vibes."
-                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
-              {" "}Los archivos en disco se conservarán.
+                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}{" "}
+              Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
 
@@ -693,7 +741,10 @@ export function AppList({ show }: { show?: boolean }) {
               disabled={isBulkDeleting}
               className="rounded border-border"
             />
-            <label htmlFor="bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+            <label
+              htmlFor="bulk-delete-files-check"
+              className="typo-caption text-muted-foreground cursor-pointer"
+            >
               Eliminar también los archivos del disco
             </label>
           </div>
@@ -740,15 +791,19 @@ export function AppList({ show }: { show?: boolean }) {
       </Dialog>
 
       {/* Empty App Creation Dialog */}
-      <Dialog open={isEmptyAppDialogOpen} onOpenChange={(open) => {
-        setIsEmptyAppDialogOpen(open);
-        if (!open) setEmptyAppName("");
-      }}>
+      <Dialog
+        open={isEmptyAppDialogOpen}
+        onOpenChange={(open) => {
+          setIsEmptyAppDialogOpen(open);
+          if (!open) setEmptyAppName("");
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Crear workspace</DialogTitle>
             <DialogDescription>
-              Se creará un workspace con el scaffold por defecto, listo para editar.
+              Se creará un workspace con el scaffold por defecto, listo para
+              editar.
             </DialogDescription>
           </DialogHeader>
 
@@ -787,7 +842,11 @@ export function AppList({ show }: { show?: boolean }) {
               </Button>
               <Button
                 type="submit"
-                disabled={!emptyAppName.trim() || !!emptyAppNameCheck?.exists || isCreatingEmptyApp}
+                disabled={
+                  !emptyAppName.trim() ||
+                  !!emptyAppNameCheck?.exists ||
+                  isCreatingEmptyApp
+                }
               >
                 {isCreatingEmptyApp && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

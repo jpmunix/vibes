@@ -161,9 +161,7 @@ export function removeAppIfCurrentProcess(
 export function stopAllRunningApps(): void {
   if (runningApps.size === 0) return;
 
-  logger.info(
-    `[Shutdown] Stopping ${runningApps.size} running app(s)...`,
-  );
+  logger.info(`[Shutdown] Stopping ${runningApps.size} running app(s)...`);
 
   for (const [appId, appInfo] of runningApps.entries()) {
     try {

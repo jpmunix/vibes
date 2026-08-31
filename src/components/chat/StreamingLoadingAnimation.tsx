@@ -72,20 +72,27 @@ const BASE_COLOR_TO_HEX: Record<string, string> = {
 
 function resolveColor(textClass?: string): string {
   if (!textClass) return "#a855f7"; // fallback purple
-  
+
   const cleanText = textClass.trim();
-  if (cleanText.startsWith("#") || cleanText.startsWith("rgb") || cleanText.startsWith("hsl")) {
+  if (
+    cleanText.startsWith("#") ||
+    cleanText.startsWith("rgb") ||
+    cleanText.startsWith("hsl")
+  ) {
     return cleanText;
   }
 
   if (TEXT_CLASS_TO_HEX[cleanText]) {
     return TEXT_CLASS_TO_HEX[cleanText];
   }
-  
+
   // Split by whitespace and search for matching sub-tokens (e.g. "text-cyan-500 dark:text-cyan-400")
   const tokens = cleanText.split(/\s+/);
   for (const token of tokens) {
-    const baseColorClass = token.replace(/^(dark|light|hover|focus|active):/, "");
+    const baseColorClass = token.replace(
+      /^(dark|light|hover|focus|active):/,
+      "",
+    );
     if (TEXT_CLASS_TO_HEX[baseColorClass]) {
       return TEXT_CLASS_TO_HEX[baseColorClass];
     }
@@ -99,7 +106,7 @@ function resolveColor(textClass?: string): string {
       }
     }
   }
-  
+
   return "#a855f7"; // fallback purple
 }
 
@@ -115,7 +122,10 @@ function OrbitalLoader({ color, size = 24 }: { color: string; size?: number }) {
   const particleSize = 2;
 
   return (
-    <div className="relative flex items-center justify-center overflow-hidden shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center overflow-hidden shrink-0"
+      style={{ width: size, height: size }}
+    >
       {/* Glow backdrop */}
       <motion.div
         className="absolute rounded-full"
@@ -193,13 +203,18 @@ function OrbitalLoader({ color, size = 24 }: { color: string; size?: number }) {
   );
 }
 
-
 /**
  * Elapsed timer that appears after a short delay.
  * Shows how long the current phase has been processing.
  * Resets when resetKey changes (e.g., label changes from "Pensando" to "Leyendo archivo...").
  */
-function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey?: string }) {
+function ElapsedTimer({
+  delayMs = 3000,
+  resetKey,
+}: {
+  delayMs?: number;
+  resetKey?: string;
+}) {
   const [elapsed, setElapsed] = useState(0);
   const [visible, setVisible] = useState(false);
   const startRef = useRef(Date.now());
@@ -251,7 +266,13 @@ const GLITCH_CHARS = "░▒▓█▄▀─│┌┐└┘├┤┬┴┼·•�
  * substitutions that quickly resolve to the real character.
  * Inspired by the thinking-stream effect but designed for tool command output.
  */
-function GlitchTypewriter({ text, className }: { text: string; className?: string }) {
+function GlitchTypewriter({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const [revealCount, setRevealCount] = useState(0);
   const [glitchIndices, setGlitchIndices] = useState<Set<number>>(new Set());
   const prevTextRef = useRef(text);
@@ -259,7 +280,10 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
 
   // When text changes (new excerpt), animate the new characters in
   useEffect(() => {
-    const prevLen = prevTextRef.current === text ? 0 : Math.min(prevTextRef.current.length, text.length);
+    const prevLen =
+      prevTextRef.current === text
+        ? 0
+        : Math.min(prevTextRef.current.length, text.length);
     prevTextRef.current = text;
     setRevealCount(prevLen);
 
@@ -283,7 +307,11 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
 
       // Add random glitch positions in the "frontier" zone
       const newGlitch = new Set<number>();
-      for (let i = Math.max(0, current - 4); i < Math.min(current + 3, totalChars); i++) {
+      for (
+        let i = Math.max(0, current - 4);
+        i < Math.min(current + 3, totalChars);
+        i++
+      ) {
         if (Math.random() > 0.5) newGlitch.add(i);
       }
       setGlitchIndices(newGlitch);
@@ -314,20 +342,28 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
       if (i >= revealCount) {
         // Not yet revealed — show nothing or a dim placeholder
         chars.push(
-          <span key={i} style={{ opacity: 0 }}>{text[i]}</span>
+          <span key={i} style={{ opacity: 0 }}>
+            {text[i]}
+          </span>,
         );
       } else if (glitchIndices.has(i)) {
         // Glitch zone — show random char that will resolve next frame
-        const glitchChar = GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+        const glitchChar =
+          GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
         chars.push(
-          <span key={i} style={{ opacity: 0.3 }}>{glitchChar}</span>
+          <span key={i} style={{ opacity: 0.3 }}>
+            {glitchChar}
+          </span>,
         );
       } else {
         // Fully revealed
         chars.push(
-          <span key={i} style={{ opacity: Math.min(1, 0.4 + (revealCount - i) * 0.08) }}>
+          <span
+            key={i}
+            style={{ opacity: Math.min(1, 0.4 + (revealCount - i) * 0.08) }}
+          >
             {text[i]}
-          </span>
+          </span>,
         );
       }
     }
@@ -335,7 +371,12 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
   }, [text, revealCount, glitchIndices]);
 
   return (
-    <span className={className} style={{ fontFamily: "var(--font-mono, 'SF Mono', 'Fira Code', monospace)" }}>
+    <span
+      className={className}
+      style={{
+        fontFamily: "var(--font-mono, 'SF Mono', 'Fira Code', monospace)",
+      }}
+    >
       {rendered}
     </span>
   );
@@ -350,7 +391,15 @@ function GlitchTypewriter({ text, className }: { text: string; className?: strin
  * When a tool is active (not just thinking), shows a glitch-typewriter effect
  * on the right with the tool's inner content (commands, paths, etc.).
  */
-export function ActiveLoader({ style, color, size }: { style: string; color: string; size?: number }) {
+export function ActiveLoader({
+  style,
+  color,
+  size,
+}: {
+  style: string;
+  color: string;
+  size?: number;
+}) {
   const loaderElement = (() => {
     switch (style) {
       case "aurora":
@@ -443,112 +492,127 @@ export function ActiveLoader({ style, color, size }: { style: string; color: str
   );
 }
 
-export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAnimation({
-  variant,
-  label,
-  dotColorClass,
-  labelColorClass,
-  contentExcerpt,
-}: StreamingLoadingAnimationProps) {
-  const { settings } = useSettings();
-  const loaderStyle = settings?.loaderStyle || "orbital";
-  const latestExcerptRef = useRef(contentExcerpt);
-  latestExcerptRef.current = contentExcerpt;
-  const [displayedExcerpt, setDisplayedExcerpt] = useState(contentExcerpt);
+export const StreamingLoadingAnimation = React.memo(
+  function StreamingLoadingAnimation({
+    variant,
+    label,
+    dotColorClass,
+    labelColorClass,
+    contentExcerpt,
+  }: StreamingLoadingAnimationProps) {
+    const { settings } = useSettings();
+    const loaderStyle = settings?.loaderStyle || "orbital";
+    const latestExcerptRef = useRef(contentExcerpt);
+    latestExcerptRef.current = contentExcerpt;
+    const [displayedExcerpt, setDisplayedExcerpt] = useState(contentExcerpt);
 
-  useEffect(() => {
-    // Throttle the excerpt updates so the user can actually read the text
-    // instead of it flashing by token by token.
-    const interval = setInterval(() => {
-      setDisplayedExcerpt((prev) =>
-        prev !== latestExcerptRef.current ? latestExcerptRef.current : prev
+    useEffect(() => {
+      // Throttle the excerpt updates so the user can actually read the text
+      // instead of it flashing by token by token.
+      const interval = setInterval(() => {
+        setDisplayedExcerpt((prev) =>
+          prev !== latestExcerptRef.current ? latestExcerptRef.current : prev,
+        );
+      }, 800); // Slightly faster than before (800ms vs 1s) for better tool feedback
+
+      return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+      // If the streaming finishes or changes state abruptly, clear the excerpt
+      if (!contentExcerpt) {
+        setDisplayedExcerpt(undefined);
+      }
+    }, [contentExcerpt]);
+
+    const resolvedColor = resolveColor(labelColorClass);
+
+    if (variant === "initial") {
+      return (
+        <div className="flex items-center gap-2.5 pt-3 pb-1.5 overflow-hidden min-w-0">
+          <div
+            className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}
+          >
+            <ActiveLoader style={loaderStyle} color={resolvedColor} size={14} />
+          </div>
+          <AnimatePresence mode="wait">
+            {label && (
+              <motion.span
+                key={label}
+                className={`text-xs font-medium shrink-0 whitespace-nowrap ${labelColorClass || "text-muted-foreground"}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.25 }}
+              >
+                {label}
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <span className="shrink-0">
+            <ElapsedTimer delayMs={3000} resetKey={label} />
+          </span>
+          <AnimatePresence mode="popLayout">
+            {displayedExcerpt && (
+              <motion.div
+                key={displayedExcerpt}
+                className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                <GlitchTypewriter
+                  text={displayedExcerpt}
+                  className="text-[11px] text-muted-foreground/45"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       );
-    }, 800); // Slightly faster than before (800ms vs 1s) for better tool feedback
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // If the streaming finishes or changes state abruptly, clear the excerpt
-    if (!contentExcerpt) {
-      setDisplayedExcerpt(undefined);
     }
-  }, [contentExcerpt]);
 
-  const resolvedColor = resolveColor(labelColorClass);
-
-  if (variant === "initial") {
+    // streaming variant — compact inline
     return (
-      <div className="flex items-center gap-2.5 pt-3 pb-1.5 overflow-hidden min-w-0">
-        <div className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}>
-          <ActiveLoader style={loaderStyle} color={resolvedColor} size={14} />
+      <div className="mt-3 ml-1 flex items-center gap-2.5">
+        <div
+          className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}
+        >
+          <ActiveLoader style={loaderStyle} color={resolvedColor} size={12} />
         </div>
         <AnimatePresence mode="wait">
           {label && (
             <motion.span
               key={label}
-              className={`text-xs font-medium shrink-0 whitespace-nowrap ${labelColorClass || "text-muted-foreground"}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.25 }}
+              className={`text-xs ${labelColorClass || "text-muted-foreground"}`}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 0.85, x: 0 }}
+              exit={{ opacity: 0, x: 4 }}
+              transition={{ duration: 0.2 }}
             >
               {label}
             </motion.span>
           )}
         </AnimatePresence>
-        <span className="shrink-0">
-          <ElapsedTimer delayMs={3000} resetKey={label} />
-        </span>
-        <AnimatePresence mode="popLayout">
-          {displayedExcerpt && (
-            <motion.div
-              key={displayedExcerpt}
-              className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -4 }}
-              transition={{ duration: 0.2 }}
-            >
-              <GlitchTypewriter
-                text={displayedExcerpt}
-                className="text-[11px] text-muted-foreground/45"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <ElapsedTimer delayMs={3000} resetKey={label} />
       </div>
     );
-  }
+  },
+);
 
-  // streaming variant — compact inline
+export function AuroraLoader({
+  color,
+  size = 24,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="mt-3 ml-1 flex items-center gap-2.5">
-      <div className={`shrink-0 flex items-center justify-center ${labelColorClass || "text-muted-foreground"}`}>
-        <ActiveLoader style={loaderStyle} color={resolvedColor} size={12} />
-      </div>
-      <AnimatePresence mode="wait">
-        {label && (
-          <motion.span
-            key={label}
-            className={`text-xs ${labelColorClass || "text-muted-foreground"}`}
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 0.85, x: 0 }}
-            exit={{ opacity: 0, x: 4 }}
-            transition={{ duration: 0.2 }}
-          >
-            {label}
-          </motion.span>
-        )}
-      </AnimatePresence>
-      <ElapsedTimer delayMs={3000} resetKey={label} />
-    </div>
-  );
-});
-
-export function AuroraLoader({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <div className="relative flex items-center justify-center overflow-hidden shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center overflow-hidden shrink-0"
+      style={{ width: size, height: size }}
+    >
       <div
         className="rounded-full"
         style={{
@@ -627,10 +691,18 @@ export function WaveLoader({ color }: { color: string }) {
   );
 }
 
-
-export function JellyBlobLoader({ color, size = 24 }: { color: string; size?: number }) {
+export function JellyBlobLoader({
+  color,
+  size = 24,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       <motion.div
         className="rounded-full"
         style={{
@@ -658,12 +730,21 @@ export function JellyBlobLoader({ color, size = 24 }: { color: string; size?: nu
   );
 }
 
-export function SparkLoader({ color, size = 24 }: { color: string; size?: number }) {
+export function SparkLoader({
+  color,
+  size = 24,
+}: {
+  color: string;
+  size?: number;
+}) {
   const centerSize = 4;
   const sparkSize = 2.5;
 
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       {/* Center glowing core */}
       <motion.div
         className="rounded-full absolute"
@@ -745,14 +826,28 @@ export function EqualizerLoader({ color }: { color: string }) {
   );
 }
 
-export function InfinityLoader({ color, size = 24 }: { color: string; size?: number }) {
+export function InfinityLoader({
+  color,
+  size = 24,
+}: {
+  color: string;
+  size?: number;
+}) {
   const rx = size * 0.33;
-  const ry = size * 0.20;
+  const ry = size * 0.2;
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute opacity-10">
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="absolute opacity-10"
+      >
         <path
-          d={`M ${size/2 - rx} ${size/2} C ${size/2 - rx} ${size/2 - ry * 1.8}, ${size/2} ${size/2 + ry * 1.8}, ${size/2} ${size/2} C ${size/2} ${size/2 - ry * 1.8}, ${size/2 + rx} ${size/2 + ry * 1.8}, ${size/2 + rx} ${size/2} C ${size/2 + rx} ${size/2 - ry * 1.8}, ${size/2} ${size/2 + ry * 1.8}, ${size/2} ${size/2} C ${size/2} ${size/2 - ry * 1.8}, ${size/2 - rx} ${size/2 + ry * 1.8}, ${size/2 - rx} ${size/2}`}
+          d={`M ${size / 2 - rx} ${size / 2} C ${size / 2 - rx} ${size / 2 - ry * 1.8}, ${size / 2} ${size / 2 + ry * 1.8}, ${size / 2} ${size / 2} C ${size / 2} ${size / 2 - ry * 1.8}, ${size / 2 + rx} ${size / 2 + ry * 1.8}, ${size / 2 + rx} ${size / 2} C ${size / 2 + rx} ${size / 2 - ry * 1.8}, ${size / 2} ${size / 2 + ry * 1.8}, ${size / 2} ${size / 2} C ${size / 2} ${size / 2 - ry * 1.8}, ${size / 2 - rx} ${size / 2 + ry * 1.8}, ${size / 2 - rx} ${size / 2}`}
           fill="none"
           stroke={color}
           strokeWidth="0.75"
@@ -767,7 +862,17 @@ export function InfinityLoader({ color, size = 24 }: { color: string; size?: num
           boxShadow: `0 0 6px ${color}, 0 0 10px ${color}60`,
         }}
         animate={{
-          x: [0, rx * 0.707, rx, rx * 0.707, 0, -rx * 0.707, -rx, -rx * 0.707, 0],
+          x: [
+            0,
+            rx * 0.707,
+            rx,
+            rx * 0.707,
+            0,
+            -rx * 0.707,
+            -rx,
+            -rx * 0.707,
+            0,
+          ],
           y: [0, ry, 0, -ry, 0, ry, 0, -ry, 0],
         }}
         transition={{
@@ -785,7 +890,17 @@ export function InfinityLoader({ color, size = 24 }: { color: string; size?: num
           boxShadow: `0 0 4px ${color}`,
         }}
         animate={{
-          x: [0, rx * 0.707, rx, rx * 0.707, 0, -rx * 0.707, -rx, -rx * 0.707, 0],
+          x: [
+            0,
+            rx * 0.707,
+            rx,
+            rx * 0.707,
+            0,
+            -rx * 0.707,
+            -rx,
+            -rx * 0.707,
+            0,
+          ],
           y: [0, ry, 0, -ry, 0, ry, 0, -ry, 0],
         }}
         transition={{
@@ -798,7 +913,6 @@ export function InfinityLoader({ color, size = 24 }: { color: string; size?: num
     </div>
   );
 }
-
 
 export function PixelGridLoader({ color }: { color: string }) {
   return (
@@ -815,7 +929,11 @@ export function PixelGridLoader({ color }: { color: string }) {
           animate={{
             opacity: [0.15, 1, 0.15],
             scale: [0.85, 1.15, 0.85],
-            boxShadow: [`0 0 0px ${color}00`, `0 0 4px ${color}b0`, `0 0 0px ${color}00`],
+            boxShadow: [
+              `0 0 0px ${color}00`,
+              `0 0 4px ${color}b0`,
+              `0 0 0px ${color}00`,
+            ],
           }}
           transition={{
             duration: 1.1,
@@ -831,7 +949,10 @@ export function PixelGridLoader({ color }: { color: string }) {
 
 export function BracketsLoader({ color }: { color: string }) {
   return (
-    <div className="flex items-center gap-[4px] shrink-0 font-mono font-bold text-sm select-none" style={{ color }}>
+    <div
+      className="flex items-center gap-[4px] shrink-0 font-mono font-bold text-sm select-none"
+      style={{ color }}
+    >
       <motion.span
         className="leading-none"
         animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
@@ -842,7 +963,12 @@ export function BracketsLoader({ color }: { color: string }) {
       <motion.span
         className="leading-none"
         animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 1.5, repeat: Infinity, delay: 0.75, ease: "easeInOut" }}
+        transition={{
+          duration: 1.5,
+          repeat: Infinity,
+          delay: 0.75,
+          ease: "easeInOut",
+        }}
       >
         &#125;
       </motion.span>
@@ -852,11 +978,18 @@ export function BracketsLoader({ color }: { color: string }) {
 
 export function TerminalCursorLoader({ color }: { color: string }) {
   return (
-    <div className="flex items-center shrink-0 font-mono font-bold text-sm select-none" style={{ color }}>
+    <div
+      className="flex items-center shrink-0 font-mono font-bold text-sm select-none"
+      style={{ color }}
+    >
       <span className="leading-none">&gt;</span>
       <motion.span
         animate={{ opacity: [1, 0, 1] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "steps(1, start)" }}
+        transition={{
+          duration: 0.8,
+          repeat: Infinity,
+          ease: "steps(1, start)",
+        }}
         className="ml-[1px] leading-none"
       >
         _
@@ -888,9 +1021,18 @@ export function ServerLightsLoader({ color }: { color: string }) {
   );
 }
 
-export function MorphingCoreLoader({ color, size = 16 }: { color: string; size?: number }) {
+export function MorphingCoreLoader({
+  color,
+  size = 16,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       <motion.div
         style={{ width: size - 4, height: size - 4, background: color }}
         animate={{
@@ -909,7 +1051,10 @@ export function MorphingCoreLoader({ color, size = 16 }: { color: string; size?:
 
 export function MatrixRainLoader({ color }: { color: string }) {
   return (
-    <div className="relative shrink-0 font-mono font-bold text-[10px] select-none overflow-hidden h-[18px] w-4" style={{ color }}>
+    <div
+      className="relative shrink-0 font-mono font-bold text-[10px] select-none overflow-hidden h-[18px] w-4"
+      style={{ color }}
+    >
       <motion.div
         className="absolute left-0 right-0 flex flex-col items-center leading-[9px]"
         animate={{ y: [0, -18] }}
@@ -924,9 +1069,18 @@ export function MatrixRainLoader({ color }: { color: string }) {
   );
 }
 
-export function GlowingSphereLoader({ color, size = 16 }: { color: string; size?: number }) {
+export function GlowingSphereLoader({
+  color,
+  size = 16,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       {/* Outer pulsing glow aura */}
       <motion.div
         className="absolute rounded-full"
@@ -968,7 +1122,6 @@ export function GlowingSphereLoader({ color, size = 16 }: { color: string; size?
   );
 }
 
-
 export function AiVoiceLoader({ color }: { color: string }) {
   return (
     <div className="flex items-center gap-[2px] shrink-0 h-4 px-1 select-none">
@@ -1003,10 +1156,18 @@ export function AiVoiceLoader({ color }: { color: string }) {
 export function NetworkPacketLoader({ color }: { color: string }) {
   return (
     <div className="relative w-8 h-[10px] flex items-center shrink-0 select-none">
-      <div className="w-full h-[1px] rounded-full opacity-20" style={{ background: color }} />
+      <div
+        className="w-full h-[1px] rounded-full opacity-20"
+        style={{ background: color }}
+      />
       <motion.div
         className="absolute rounded-[1px]"
-        style={{ width: 5, height: 3, background: color, boxShadow: `0 0 3px ${color}` }}
+        style={{
+          width: 5,
+          height: 3,
+          background: color,
+          boxShadow: `0 0 3px ${color}`,
+        }}
         animate={{ left: ["0%", "80%"], opacity: [0, 1, 1, 0] }}
         transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
       />
@@ -1014,10 +1175,22 @@ export function NetworkPacketLoader({ color }: { color: string }) {
   );
 }
 
-export function SonarRippleLoader({ color, size = 20 }: { color: string; size?: number }) {
+export function SonarRippleLoader({
+  color,
+  size = 20,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <div className="rounded-full absolute" style={{ width: 3, height: 3, background: color }} />
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <div
+        className="rounded-full absolute"
+        style={{ width: 3, height: 3, background: color }}
+      />
       {[0, 1].map((i) => (
         <motion.div
           key={i}
@@ -1067,8 +1240,14 @@ export function DataBlocksLoader({ color }: { color: string }) {
 export function NodeConnectionLoader({ color }: { color: string }) {
   return (
     <div className="relative flex items-center justify-between w-[26px] h-4 shrink-0 select-none px-[2px]">
-      <div className="w-2 h-2 rounded-full z-10" style={{ background: color, boxShadow: `0 0 3px ${color}` }} />
-      <div className="w-2 h-2 rounded-full z-10" style={{ background: color, boxShadow: `0 0 3px ${color}` }} />
+      <div
+        className="w-2 h-2 rounded-full z-10"
+        style={{ background: color, boxShadow: `0 0 3px ${color}` }}
+      />
+      <div
+        className="w-2 h-2 rounded-full z-10"
+        style={{ background: color, boxShadow: `0 0 3px ${color}` }}
+      />
       <motion.div
         className="absolute top-1/2 -translate-y-1/2 h-[1.2px] rounded-full"
         style={{ background: color, left: 5 }}
@@ -1086,9 +1265,18 @@ export function NodeConnectionLoader({ color }: { color: string }) {
   );
 }
 
-export function NeonGlowRingLoader({ color, size = 20 }: { color: string; size?: number }) {
+export function NeonGlowRingLoader({
+  color,
+  size = 20,
+}: {
+  color: string;
+  size?: number;
+}) {
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       <motion.div
         className="absolute rounded-full border-2 border-t-transparent border-b-transparent"
         style={{
@@ -1110,17 +1298,25 @@ export function NeonGlowRingLoader({ color, size = 20 }: { color: string; size?:
   );
 }
 
-export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorClass }: { labelColorClass?: string }) {
+export const LoaderShowcase = React.memo(function LoaderShowcase({
+  labelColorClass,
+}: {
+  labelColorClass?: string;
+}) {
   const color = resolveColor(labelColorClass);
   return (
     <div className="mt-3 pt-3 border-t border-border/25 space-y-3 select-none">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-bold">Demos de Loader:</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-bold">
+        Demos de Loader:
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
             <OrbitalLoader color={color} size={14} />
           </div>
-          <span className="text-xs text-muted-foreground">Original: Orbital</span>
+          <span className="text-xs text-muted-foreground">
+            Original: Orbital
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
@@ -1186,7 +1382,9 @@ export const LoaderShowcase = React.memo(function LoaderShowcase({ labelColorCla
           <div className="w-6 h-6 flex items-center justify-center">
             <MorphingCoreLoader color={color} size={16} />
           </div>
-          <span className="text-xs text-muted-foreground">Morphing AI Core</span>
+          <span className="text-xs text-muted-foreground">
+            Morphing AI Core
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 flex items-center justify-center">
@@ -1460,195 +1658,189 @@ export function LoaderStyles() {
   return <style dangerouslySetInnerHTML={{ __html: MICRO_LOADER_CSS }} />;
 }
 
-
 export function MicroDotsLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-dots shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
+    <div
+      className="micro-loader m-dots shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
     >
-      <div /><div /><div />
+      <div />
+      <div />
+      <div />
     </div>
   );
 }
 
 export function RadarSweepLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-radar shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-radar shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function SineLineLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-sine shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-sine shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function OrbitDotLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-orbit shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-orbit shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function MicroEqualizerLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-eq shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
+    <div
+      className="micro-loader m-eq shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
     >
-      <div /><div /><div />
+      <div />
+      <div />
+      <div />
     </div>
   );
 }
 
 export function PulsingCoreLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-pulse shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-pulse shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function CrossRotatorLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-cross shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-cross shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function FlippingSquareLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-flip shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-flip shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function CursorBlinkLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-blink shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-blink shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function BreatheRingLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-breathe shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-breathe shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function SwappingDotsLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-swap shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
+    <div
+      className="micro-loader m-swap shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
     >
-      <div /><div />
+      <div />
+      <div />
     </div>
   );
 }
 
 export function SonarPingLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-sonar shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-sonar shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function PieFillLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-pie shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-pie shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function ScanLineLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-scan shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-scan shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function MinimalHourglassLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-hour shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-hour shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function YinYangMicroLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-yin shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-yin shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function DiamondPulseLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-diamond shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-diamond shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function ClockHandLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-clock shrink-0" 
-      style={{ '--m-color': color } as React.CSSProperties}
-    >
-    </div>
+    <div
+      className="micro-loader m-clock shrink-0"
+      style={{ "--m-color": color } as React.CSSProperties}
+    ></div>
   );
 }
 
 export function ExpandingBarLoader({ color }: { color: string }) {
   return (
-    <div 
-      className="micro-loader m-expand shrink-0" 
-      style={{ '--m-color': color, '--m-color-dim': `${color}40` } as React.CSSProperties}
+    <div
+      className="micro-loader m-expand shrink-0"
+      style={
+        {
+          "--m-color": color,
+          "--m-color-dim": `${color}40`,
+        } as React.CSSProperties
+      }
     />
   );
 }

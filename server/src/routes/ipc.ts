@@ -67,13 +67,21 @@ export function registerIpcRoutes(app: FastifyInstance, io: SocketIOServer) {
         // In Electron this happens at login; in web mode the auth middleware
         // gives us userId but the cache may not be warm yet.
         if (userId) {
-          const { preferencesCache } = await import("../../../src/main/preferences-cache.ts");
-          if (!preferencesCache.isHydrated || preferencesCache.currentUserId !== userId) {
+          const { preferencesCache } =
+            await import("../../../src/main/preferences-cache.ts");
+          if (
+            !preferencesCache.isHydrated ||
+            preferencesCache.currentUserId !== userId
+          ) {
             try {
               await preferencesCache.hydrate(userId);
-              app.log.info(`[IPC] Auto-hydrated preferences for user ${userId}`);
+              app.log.info(
+                `[IPC] Auto-hydrated preferences for user ${userId}`,
+              );
             } catch (hydrateErr: any) {
-              app.log.warn(`[IPC] Failed to auto-hydrate preferences: ${hydrateErr.message}`);
+              app.log.warn(
+                `[IPC] Failed to auto-hydrate preferences: ${hydrateErr.message}`,
+              );
             }
           }
         }

@@ -29,14 +29,12 @@ import {
   saveCommitHash,
 } from "./message_persistence";
 
-
 import { readSettings } from "@/main/settings";
 import { getVibesAppPath } from "@/paths/paths";
 import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
 import { getProviderOptions, getAiHeaders } from "@/ipc/utils/provider_options";
-
 
 import {
   AgentToolName,
@@ -67,7 +65,10 @@ import {
   type InjectedMessage,
 } from "./prepare_step_utils";
 import { TOOL_DEFINITIONS } from "./tool_definitions";
-import { parseAiMessagesJson, stripImagePartsFromHistory } from "@/ipc/utils/ai_messages_utils";
+import {
+  parseAiMessagesJson,
+  stripImagePartsFromHistory,
+} from "@/ipc/utils/ai_messages_utils";
 import { addIntegrationTool } from "./tools/add_integration";
 
 import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
@@ -153,7 +154,10 @@ export async function handleAgentStream(
     where: eq(remoteSchema.chats.id, req.chatId),
     with: {
       messages: {
-        orderBy: (messages, { asc }) => [asc(messages.createdAt), asc(messages.id)],
+        orderBy: (messages, { asc }) => [
+          asc(messages.createdAt),
+          asc(messages.id),
+        ],
       },
       app: true,
     },
@@ -209,8 +213,10 @@ export async function handleAgentStream(
       supabaseProjectId: chat.app.supabaseProjectId,
       supabaseOrganizationSlug: chat.app.supabaseOrganizationSlug,
       firebaseProjectId: chat.app.firebaseProjectId,
-      bunnyConfig: (chat.app.bunnyConfig as AgentContext["bunnyConfig"]) ?? null,
-      pocketbaseConfig: (chat.app.pocketbaseConfig as AgentContext["pocketbaseConfig"]) ?? null,
+      bunnyConfig:
+        (chat.app.bunnyConfig as AgentContext["bunnyConfig"]) ?? null,
+      pocketbaseConfig:
+        (chat.app.pocketbaseConfig as AgentContext["pocketbaseConfig"]) ?? null,
       messageId: placeholderMessageId,
       isSharedModulesChanged: false,
       todos: [],
@@ -261,9 +267,7 @@ export async function handleAgentStream(
     // Build tool set (agent tools + MCP tools)
     // In read-only mode, only include read-only tools and skip MCP tools
     // (since we can't determine if MCP tools modify state)
-    logger.log(
-      `[AGENT] Building tool set (readOnly: ${readOnly})`,
-    );
+    logger.log(`[AGENT] Building tool set (readOnly: ${readOnly})`);
     const agentTools = buildAgentToolSet(ctx, { readOnly });
     const mcpTools = readOnly ? {} : await getMcpTools(event, ctx);
     const allTools: ToolSet = { ...agentTools, ...mcpTools };
@@ -277,33 +281,30 @@ export async function handleAgentStream(
     const messageHistory: ModelMessage[] = messageOverride
       ? messageOverride
       : chat.messages
-        .filter((msg) => msg.content || msg.aiMessagesJson)
-        .flatMap((msg) => {
-          const parsedMessages = parseAiMessagesJson(msg);
+          .filter((msg) => msg.content || msg.aiMessagesJson)
+          .flatMap((msg) => {
+            const parsedMessages = parseAiMessagesJson(msg);
 
-          // Phase 3: Resume - Annotate incomplete messages to help model recover context
-          if (
-            (msg as any).status === "incomplete" &&
-            msg.role === "assistant"
-          ) {
-            const lastMsg = parsedMessages[parsedMessages.length - 1];
+            // Phase 3: Resume - Annotate incomplete messages to help model recover context
             if (
-              lastMsg &&
-              lastMsg.role === "assistant"
+              (msg as any).status === "incomplete" &&
+              msg.role === "assistant"
             ) {
-              if (typeof lastMsg.content === "string") {
-                lastMsg.content +=
-                  "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]";
-              } else if (Array.isArray(lastMsg.content)) {
-                (lastMsg.content as any[]).push({
-                  type: "text",
-                  text: "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]"
-                });
+              const lastMsg = parsedMessages[parsedMessages.length - 1];
+              if (lastMsg && lastMsg.role === "assistant") {
+                if (typeof lastMsg.content === "string") {
+                  lastMsg.content +=
+                    "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]";
+                } else if (Array.isArray(lastMsg.content)) {
+                  (lastMsg.content as any[]).push({
+                    type: "text",
+                    text: "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]",
+                  });
+                }
               }
             }
-          }
-          return parsedMessages;
-        });
+            return parsedMessages;
+          });
 
     // Strip image parts from historical user messages to prevent
     // re-sending images from previous turns (causes 404 on non-vision models).
@@ -323,8 +324,15 @@ export async function handleAgentStream(
     // Anti-continuation: wrap last user message to prevent the model from
     // continuing/completing the user's text instead of responding as assistant.
     const framedMessageHistory = cleanedHistory.map((m, i, arr) => {
-      if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
-        return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
+      if (
+        i === arr.length - 1 &&
+        m.role === "user" &&
+        typeof m.content === "string"
+      ) {
+        return {
+          ...m,
+          content: `<user_request>\n${m.content}\n</user_request>`,
+        };
       }
       return m;
     });
@@ -366,15 +374,23 @@ export async function handleAgentStream(
         const lastStep = response.usage;
         const totalTokens = accumulated?.totalTokens ?? lastStep?.totalTokens;
         const inputTokens = accumulated?.inputTokens ?? lastStep?.inputTokens;
-        const outputTokens = accumulated?.outputTokens ?? lastStep?.outputTokens ?? (lastStep as any)?.completionTokens;
-        const cachedInputTokens = accumulated?.cachedInputTokens ?? lastStep?.cachedInputTokens;
+        const outputTokens =
+          accumulated?.outputTokens ??
+          lastStep?.outputTokens ??
+          (lastStep as any)?.completionTokens;
+        const cachedInputTokens =
+          accumulated?.cachedInputTokens ?? lastStep?.cachedInputTokens;
         const stepCount = response.steps?.length ?? 1;
         logger.log(
           `Token usage (${stepCount} steps):`,
-          "Total:", totalTokens,
-          "Input:", inputTokens,
-          "Output:", outputTokens,
-          "Cached:", cachedInputTokens,
+          "Total:",
+          totalTokens,
+          "Input:",
+          inputTokens,
+          "Output:",
+          outputTokens,
+          "Cached:",
+          cachedInputTokens,
           "Cache hit ratio:",
           cachedInputTokens ? (cachedInputTokens ?? 0) / (inputTokens ?? 0) : 0,
         );
@@ -384,8 +400,9 @@ export async function handleAgentStream(
         finalCachedTokens = cachedInputTokens;
 
         // Derive effective output tokens
-        let effectiveOutputTokens = outputTokens
-          || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
+        let effectiveOutputTokens =
+          outputTokens ||
+          (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
 
         // Only use text-based estimation as a last resort when we have NO data at all
         if (!effectiveOutputTokens) {
@@ -398,31 +415,33 @@ export async function handleAgentStream(
         );
 
         try {
-          void logAiQuery({
-            queryType: "local-agent-stream",
-            model: selectedModel.name,
-            promptSnippet: req.prompt.slice(0, 100),
-            payload: {
-              system: systemPrompt.slice(0, 500),
-              messages: cleanedHistory,
-              tools: Object.keys(allTools),
+          void logAiQuery(
+            {
+              queryType: "local-agent-stream",
+              model: selectedModel.name,
+              promptSnippet: req.prompt.slice(0, 100),
+              payload: {
+                system: systemPrompt.slice(0, 500),
+                messages: cleanedHistory,
+                tools: Object.keys(allTools),
+              },
+              response: {
+                fullResponse: fullResponse || "[empty at onFinish]",
+                text: response.text,
+                steps: response.steps?.length ?? 0,
+                finishReason: response.finishReason,
+              },
+              inputTokens: inputTokens,
+              outputTokens: effectiveOutputTokens,
             },
-            response: {
-              fullResponse: fullResponse || "[empty at onFinish]",
-              text: response.text,
-              steps: response.steps?.length ?? 0,
-              finishReason: response.finishReason,
-            },
-            inputTokens: inputTokens,
-            outputTokens: effectiveOutputTokens,
-          }, settings.userId as string);
+            settings.userId as string,
+          );
         } catch (e) {
           logger.error("Failed to log local agent AI query in onFinish", e);
         }
 
         if (typeof totalTokens === "number") {
           await markCompleted(placeholderMessageId, totalTokens);
-
         }
       },
       onError: (error: any) => {
@@ -436,13 +455,19 @@ export async function handleAgentStream(
         const statusCode = nestedError?.statusCode ?? nestedError?.status ?? "";
         const fullErrorText = `AI error${statusCode ? ` (${statusCode})` : ""}: ${errorMessage}`;
         logger.error("Local agent stream error:", fullErrorText);
-        logger.error("Local agent stream error (raw):", JSON.stringify(error, null, 2));
+        logger.error(
+          "Local agent stream error (raw):",
+          JSON.stringify(error, null, 2),
+        );
         safeSend(event.sender, "chat:response:error", {
           chatId: req.chatId,
           error: fullErrorText,
         });
         // Persist error text in DB so it survives reload
-        void updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${fullErrorText}`);
+        void updateMessageContent(
+          placeholderMessageId,
+          `${PERSISTED_ERROR_PREFIX}${fullErrorText}`,
+        );
       },
     });
 
@@ -530,7 +555,9 @@ export async function handleAgentStream(
                       file_editor: 0,
                     };
                   }
-                  ctx.fileEditTracker[path][entry.toolName as FileEditToolName]++;
+                  ctx.fileEditTracker[path][
+                    entry.toolName as FileEditToolName
+                  ]++;
                 }
               }
 
@@ -565,7 +592,11 @@ export async function handleAgentStream(
           logger.log(
             `[AGENT] Tool call: ${part.toolName} (id: ${part.toolCallId})`,
           );
-          if (FILE_EDIT_TOOL_NAMES.includes(part.toolName as any) || part.toolName === "execute_sql" || part.toolName === "add_dependency") {
+          if (
+            FILE_EDIT_TOOL_NAMES.includes(part.toolName as any) ||
+            part.toolName === "execute_sql" ||
+            part.toolName === "add_dependency"
+          ) {
             hasStateModifyingToolCalls = true;
           }
           break;
@@ -604,10 +635,14 @@ export async function handleAgentStream(
 
     // If the model produced zero output, send an error instead of an empty bubble
     if (!fullResponse.trim()) {
-      const zeroOutputError = "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.";
+      const zeroOutputError =
+        "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.";
       logger.error("[AGENT] Model produced no output — sending error to user");
       // Persist error text in DB so it survives reload
-      await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${zeroOutputError}`);
+      await updateMessageContent(
+        placeholderMessageId,
+        `${PERSISTED_ERROR_PREFIX}${zeroOutputError}`,
+      );
       await markFailed(placeholderMessageId);
       safeSend(event.sender, "chat:response:error", {
         chatId: req.chatId,
@@ -619,10 +654,19 @@ export async function handleAgentStream(
     // Check if the model failed to use any state-modifying tools when we expected it to
     // But skip the warning if the response contains interactive content (e.g. integration prompts, user questions)
     const INTERACTIVE_TAGS = ["vibes-add-integration", "vibes-ask-user"];
-    const hasInteractiveContent = INTERACTIVE_TAGS.some(tag => fullResponse.includes(`<${tag}`));
-    const isSummarize = req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) || req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+    const hasInteractiveContent = INTERACTIVE_TAGS.some((tag) =>
+      fullResponse.includes(`<${tag}`),
+    );
+    const isSummarize =
+      req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
+      req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
 
-    if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent && !isSummarize) {
+    if (
+      !readOnly &&
+      !hasStateModifyingToolCalls &&
+      !hasInteractiveContent &&
+      !isSummarize
+    ) {
       // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
       const noOpWarning = `\n<vibes-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</vibes-output>\n`;
       fullResponse += noOpWarning;
@@ -633,11 +677,18 @@ export async function handleAgentStream(
     // Emit typecheck summary badge if any file edits were type-checked
     if (ctx.typecheckResults.length > 0) {
       // Track only the final status for each file, but count how many times it was checked
-      const fileToLastResult = new Map<string, { status: "ok" | "error"; errors: string[]; editCount: number }>();
+      const fileToLastResult = new Map<
+        string,
+        { status: "ok" | "error"; errors: string[]; editCount: number }
+      >();
 
       for (const entry of ctx.typecheckResults) {
         if (!fileToLastResult.has(entry.file)) {
-          fileToLastResult.set(entry.file, { status: entry.status, errors: [...entry.errors], editCount: 1 });
+          fileToLastResult.set(entry.file, {
+            status: entry.status,
+            errors: [...entry.errors],
+            editCount: 1,
+          });
         } else {
           const current = fileToLastResult.get(entry.file)!;
           current.status = entry.status;
@@ -646,7 +697,9 @@ export async function handleAgentStream(
         }
       }
 
-      const hasErrors = Array.from(fileToLastResult.values()).some(g => g.status === "error");
+      const hasErrors = Array.from(fileToLastResult.values()).some(
+        (g) => g.status === "error",
+      );
       const lines = Array.from(fileToLastResult.entries()).map(([file, g]) => {
         const countStr = g.editCount > 1 ? ` (${g.editCount} pasadas)` : "";
         if (g.status === "ok") {
@@ -672,14 +725,18 @@ export async function handleAgentStream(
       let priceIn = "";
       let priceOut = "";
       try {
-        const { fetchOpenRouterModels } = await import("@/ipc/utils/openrouter_models_service");
+        const { fetchOpenRouterModels } =
+          await import("@/ipc/utils/openrouter_models_service");
         const models = await fetchOpenRouterModels();
-        const modelData = models.find(m => m.name === selectedModel.name);
+        const modelData = models.find((m) => m.name === selectedModel.name);
         priceIn = modelData?.pricingInput || "";
         priceOut = modelData?.pricingOutput || "";
-      } catch { /* pricing unavailable — non-OpenRouter or cache miss */ }
+      } catch {
+        /* pricing unavailable — non-OpenRouter or cache miss */
+      }
 
-      const webSearchCount = (fullResponse.match(/<vibes-web-crawl\b/g) || []).length;
+      const webSearchCount = (fullResponse.match(/<vibes-web-crawl\b/g) || [])
+        .length;
       const tokenXml = `<vibes-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
       fullResponse += tokenXml + "\n";
       updateResponseInDb(placeholderMessageId, fullResponse);
@@ -759,7 +816,10 @@ export async function handleAgentStream(
     });
 
     // Persist error text in DB and mark as failed
-    await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${catchErrorText}`);
+    await updateMessageContent(
+      placeholderMessageId,
+      `${PERSISTED_ERROR_PREFIX}${catchErrorText}`,
+    );
     await markFailed(placeholderMessageId);
 
     return false; // Error - don't consume quota
