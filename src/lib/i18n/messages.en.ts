@@ -925,6 +925,8 @@ export const messagesEn: Messages = {
     modelo_estrategaDesc: "Prompt assistant, handoff summaries and memory compaction",
     modelo_ejecutor: "Executor model",
     modelo_ejecutorDesc: "Chat/app titles, Git commit messages and fast mockups agent",
+    modelo_de_respaldo: "Fallback model",
+    modelo_de_respaldoDesc: "Provider the agent switches to when the main model exhausts its retries on transient errors (5xx, timeout, rate limit). One switch per task; off = no fallback.",
     preprocesador_de_vision: "Vision Preprocessor",
     preprocesador_de_visionDesc: "Transparently translates images to text when using a model without vision capabilities",
     modelo_de_vision: "Vision Model",

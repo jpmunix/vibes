@@ -53,7 +53,7 @@ import {
   waitForRuntimeQuestionResponse,
   RUNTIME_QUESTION_TIMEOUT_MS,
 } from "./question_state";
-import { resolveRuntimeModelTarget } from "./model_resolver";
+import { resolveRuntimeModelTarget, resolveRuntimeFallbackTarget } from "./model_resolver";
 import { safeSend } from "../utils/safe_sender";
 import { readSettings } from "../../main/settings";
 import { randomUUID } from "node:crypto";
@@ -296,6 +296,9 @@ let runtimeInstance: Runtime | null = null;
 // recrear el runtime ni tocar sesiones en curso. Es una copia del default del
 // paquete para no pisar DEFAULT_LOOP_CONFIG compartido.
 let loopConfigMutable: LoopConfig = { ...DEFAULT_LOOP_CONFIG };
+// #215: último fallbackModel string persistido (para detectar cambios y no
+// recrear el provider si el usuario no lo cambió).
+let lastFbString: string | undefined = undefined;
 
 /**
  * Lazily builds the shared Runtime. Throws if settings can't produce a
@@ -347,7 +350,7 @@ export function getRuntime(): Runtime {
  * Valores undefined / fuera de rango → se cae al default de vibes-core.
  */
 export function applyAgentLoopLimits(
-  settings: { agentMaxIterations?: number; agentMaxWallClockMinutes?: number } | null | undefined,
+  settings: { agentMaxIterations?: number; agentMaxWallClockMinutes?: number; fallbackModel?: string } | null | undefined,
 ): void {
   const maxIterations =
     typeof settings?.agentMaxIterations === "number" &&
@@ -363,18 +366,43 @@ export function applyAgentLoopLimits(
       ? Math.floor(settings.agentMaxWallClockMinutes) * 60 * 1000
       : DEFAULT_LOOP_CONFIG.maxWallClockMs;
 
+  // #215: resolver el modelo de respaldo (fallbackModel) de la UI a un
+  // ModelProvider concreto. Si el string es inválido o no resoluble → sin fallback.
+  // Guardamos el string persistido en lastFbString para NO recrear el provider
+  // si el usuario no cambió el modelo (evita ruido en log y trabajo innecesario).
+  const fbString = settings?.fallbackModel;
+  let fbProvider: ModelProvider | undefined;
+  if (fbString) {
+    const fbTarget = resolveRuntimeFallbackTarget(
+      fbString,
+      readSettings() as Parameters<typeof resolveRuntimeFallbackTarget>[1],
+    );
+    if (fbTarget) {
+      fbProvider = createOpenAICompatibleProvider({
+        id: `vibes:fb:${fbTarget.defaultModel}`,
+        baseUrl: fbTarget.baseUrl,
+        defaultModel: fbTarget.defaultModel,
+        apiKey: fbTarget.apiKey,
+      });
+    }
+  }
+
   // Solo mutamos si cambia (evita ruido en el log y trabajo innecesario).
+  const fallbackChanged = lastFbString !== fbString;
   if (
     maxIterations === loopConfigMutable.maxIterations &&
-    maxWallClockMs === loopConfigMutable.maxWallClockMs
+    maxWallClockMs === loopConfigMutable.maxWallClockMs &&
+    !fallbackChanged
   ) {
     return;
   }
 
   loopConfigMutable.maxIterations = maxIterations;
   loopConfigMutable.maxWallClockMs = maxWallClockMs;
+  loopConfigMutable.fallbackModel = fbProvider;
+  lastFbString = fbString;
   logger.info(
-    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h)`,
+    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"}`,
   );
 }
 
@@ -385,10 +413,12 @@ export function applyAgentLoopLimits(
 export function getAgentLoopLimits(): {
   maxIterations: number;
   maxWallClockMs: number;
+  fallbackModel?: ModelProvider;
 } {
   return {
     maxIterations: loopConfigMutable.maxIterations,
     maxWallClockMs: loopConfigMutable.maxWallClockMs,
+    fallbackModel: loopConfigMutable.fallbackModel,
   };
 }
 

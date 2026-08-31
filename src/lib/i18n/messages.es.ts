@@ -949,6 +949,8 @@ export const messagesEs: Messages = {
     modelo_estrategaDesc: "Asistente de prompts, resúmenes de traspaso y compactación de memoria",
     modelo_ejecutor: "Modelo ejecutor",
     modelo_ejecutorDesc: "Títulos de chats/apps, mensajes de commit en Git y agente rápido de mockups",
+    modelo_de_respaldo: "Modelo de respaldo",
+    modelo_de_respaldoDesc: "Provider al que cambia el agente cuando el modelo principal agota sus reintentos por error transitorio (5xx, timeout, límite). Un solo cambio por tarea; apagado = sin respaldo.",
     preprocesador_de_vision: "Preprocesador de Visión",
     preprocesador_de_visionDesc: "Traduce imágenes a texto de forma transparente cuando usas un modelo sin capacidades de visión",
     modelo_de_vision: "Modelo de Visión",

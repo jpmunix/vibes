@@ -548,6 +548,11 @@ export const UserSettingsSchema = z
     // CALIENTE mutando el LoopConfig del runtime (no se recrea).
     agentMaxIterations: z.number().min(1).max(100_000).optional(),
     agentMaxWallClockMinutes: z.number().min(1).max(60 * 24 * 7).optional(),
+    // #215: modelo de respaldo del loop (fallbackModel), en formato
+    // "provider::model" (mismo que strategistModel/executorModel). undefined =
+    // sin fallback. Se resuelve a ModelProvider en runtime_host al aplicar
+    // settings → runtime (hot-reload sobre loopConfigMutable.fallbackModel).
+    fallbackModel: z.string().optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     // ── Inference hyperparameters (user-tunable from chat input) ──
     inferenceTemperature: z.number().min(0).max(2).optional(),

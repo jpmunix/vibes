@@ -21,6 +21,7 @@ vi.mock("../utils/read_env", () => ({
 import {
   resolveRuntimeModelTarget,
   resolveRuntimeModelTargetFromSettings,
+  resolveRuntimeFallbackTarget,
 } from "./model_resolver";
 import { readSettings } from "../../main/settings";
 import { getEnvVar } from "../utils/read_env";
@@ -176,5 +177,60 @@ describe("resolveRuntimeModelTarget — env var fallback", () => {
     const target = resolveRuntimeModelTarget();
     expect(getEnvVar).toHaveBeenCalledWith("OPENROUTER_API_KEY");
     expect(target?.apiKey).toBe("env-or-key");
+  });
+});
+
+describe("resolveRuntimeFallbackTarget — #215 fallbackModel", () => {
+  it("openrouter native string (provider::model) → target", () => {
+    const target = resolveRuntimeFallbackTarget(
+      "openrouter::anthropic/claude-4",
+      settings({ providerSettings: { openrouter: { apiKey: { value: "or-key" } } } }),
+    );
+    expect(target?.baseUrl).toBe("https://openrouter.ai/api/v1");
+    expect(target?.apiKey).toBe("or-key");
+    expect(target?.defaultModel).toBe("anthropic/claude-4");
+  });
+
+  it("ollama::model → localhost /v1", () => {
+    const target = resolveRuntimeFallbackTarget(
+      "ollama::qwen3",
+      settings({ ollamaBaseUrl: "http://localhost:11434" }),
+    );
+    expect(target?.baseUrl).toBe("http://localhost:11434/v1");
+    expect(target?.defaultModel).toBe("qwen3");
+  });
+
+  it("custom::<id>::<model> → provider custom, apiBaseUrl", () => {
+    const target = resolveRuntimeFallbackTarget(
+      "custom::mybox::llama3",
+      settings({
+        customProviders: [
+          { id: "custom::mybox", apiBaseUrl: "http://10.0.0.5:8000/v1", apiKey: { value: "k2" } },
+        ],
+      }),
+    );
+    expect(target?.baseUrl).toBe("http://10.0.0.5:8000/v1");
+    expect(target?.apiKey).toBe("k2");
+    expect(target?.defaultModel).toBe("llama3");
+  });
+
+  it("vendor/model (OpenRouter-style, sin ::) → provider vendor", () => {
+    const target = resolveRuntimeFallbackTarget(
+      "anthropic/claude-4-opus",
+      settings({ providerSettings: { openrouter: { apiKey: { value: "or-key" } } } }),
+    );
+    expect(target?.baseUrl).toBe("https://openrouter.ai/api/v1");
+    expect(target?.defaultModel).toBe("anthropic/claude-4-opus");
+  });
+
+  it("string vacío → null (sin fallback)", () => {
+    expect(resolveRuntimeFallbackTarget("", settings())).toBeNull();
+    expect(resolveRuntimeFallbackTarget("   ", settings())).toBeNull();
+  });
+
+  it("provider sin credenciales → null", () => {
+    expect(
+      resolveRuntimeFallbackTarget("openrouter::m", settings()),
+    ).toBeNull();
   });
 });

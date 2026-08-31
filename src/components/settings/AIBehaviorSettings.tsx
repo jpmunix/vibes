@@ -9,6 +9,7 @@ import { StrategistModelSelector } from "./StrategistModelSelector";
 import { ExecutorModelSelector } from "./ExecutorModelSelector";
 import { VisionModelSelector } from "./VisionModelSelector";
 import { AgentPermissionsSettings } from "./AgentPermissionsSettings";
+import { FallbackModelSelector } from "./FallbackModelSelector";
 import { Switch } from "@/components/ui/switch";
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -210,6 +211,14 @@ export function AIBehaviorSettings({
             label={t("settingsItems.modelo_estratega")}
             description={t("settingsItems.modelo_estrategaDesc")}
             control={<StrategistModelSelector />}
+          />
+
+          {/* #215: modelo de respaldo (fallbackModel) del loop — se activa al
+              agotar retries del modelo principal. Configurable desde Ajustes > Agente. */}
+          <SettingRow
+            label={t("settingsItems.modelo_de_respaldo")}
+            description={t("settingsItems.modelo_de_respaldoDesc")}
+            control={<FallbackModelSelector />}
           />
 
           {/* ── Modelo Ejecutor ── */}

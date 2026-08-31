@@ -28,6 +28,11 @@ vi.mock("../../main/settings", () => ({
 
 vi.mock("./model_resolver", () => ({
   resolveRuntimeModelTarget: vi.fn(() => undefined),
+  resolveRuntimeFallbackTarget: vi.fn(() => null),
+}));
+
+vi.mock("@vibes/providers/openai-compatible", () => ({
+  createOpenAICompatibleProvider: vi.fn((opts: any) => ({ id: opts.id })),
 }));
 
 import {
@@ -121,5 +126,36 @@ describe("applyAgentLoopLimits (165) — hot-reload de límites del loop", () =>
     expect(getAgentLoopLimits().maxIterations).toBe(300);
     // El wall-clock se mantiene (no se toca).
     expect(getAgentLoopLimits().maxWallClockMs).toBe(DEFAULT_MS);
+  });
+});
+
+describe("applyAgentLoopLimits — #215 fallbackModel", () => {
+  it("sin fallbackModel → fallbackModel undefined", () => {
+    applyAgentLoopLimits({});
+    expect(getAgentLoopLimits().fallbackModel).toBeUndefined();
+  });
+
+  it("con fallbackModel resoluble → provider aplicado", async () => {
+    const { resolveRuntimeFallbackTarget } = vi.mocked(
+      await import("./model_resolver"),
+    );
+    resolveRuntimeFallbackTarget.mockReturnValue({
+      protocol: "openai-compatible",
+      baseUrl: "http://localhost:11434/v1",
+      apiKey: "",
+      defaultModel: "qwen3",
+    });
+    applyAgentLoopLimits({ fallbackModel: "ollama::qwen3" });
+    expect(getAgentLoopLimits().fallbackModel).toBeDefined();
+    expect(getAgentLoopLimits().fallbackModel?.id).toBe("vibes:fb:qwen3");
+  });
+
+  it("con fallbackModel no resoluble → sin fallback (undefined)", async () => {
+    const { resolveRuntimeFallbackTarget } = vi.mocked(
+      await import("./model_resolver"),
+    );
+    resolveRuntimeFallbackTarget.mockReturnValue(null);
+    applyAgentLoopLimits({ fallbackModel: "openrouter::no-key" });
+    expect(getAgentLoopLimits().fallbackModel).toBeUndefined();
   });
 });
