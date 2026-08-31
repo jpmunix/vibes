@@ -15,7 +15,7 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 import { CrossChatNotification } from "./chat/CrossChatNotification";
-import { MessagePreviewModal } from "./chat/MessagePreviewModal";
+import { MessageStatsModal } from "./chat/MessageStatsModal";
 
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "@/components/ui/icons";
@@ -581,8 +581,8 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* In-app message preview modal (replaces openMessageWindow) */}
-      <MessagePreviewModal />
+      {/* In-app message stats modal (replaces preview conversation) */}
+      <MessageStatsModal />
     </>
   );
 }

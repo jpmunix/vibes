@@ -126,6 +126,14 @@ npm run e2e:shard   # playwright test --shard
 
 **Cuándo usarlos:** Si se toca `src/hooks/useSessionTokens.ts`, `src/components/chat/ContextGauge.tsx` o los umbrales del gauge (constantes `GAUGE_WARN_PCT_REMAINING` / `GAUGE_COMPACT_PCT_USED`). Cambiar los umbrales o el parseo de tags requiere actualizar estos tests.
 
+### Estadísticas del mensaje (card #221) — modal stats al click del nombre del modelo
+
+| Archivo | Líneas | Qué cubre |
+|---|---|---|
+| [messageStats.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat/messageStats.test.ts) | 10 | **Helpers puros de `messageStats.ts`** (patrón del repo: sin montar React). `extractMessageTokenBreakdown` (parseo de tag `<vibes-token-usage>`: input/output/cached/web-searches/cost directo, fallback price-input/output, uso de `msg.totalTokens` sin tag, estimación chars/4 como último recurso, suma multi-tag), `computeMessageCost` (coste directo manda, cálculo por precios de catálogo, null sin datos), `computeSessionTokens` (suma entre assistant messages, ignora user), `computeSessionCost` (suma coste entre messages, null sin pricing), `buildMessageStats` (derivación de `startedAtMs = createdAt - durationMs`, null si falta durationMs). |
+
+**Cuándo usarlos:** Si se toca `src/components/chat/messageStats.ts`, `src/components/chat/MessageStatsModal.tsx` o se cambia el trigger del nombre del modelo en `ChatMessage.tsx`. Cambiar el parseo del tag `<vibes-token-usage>` o el cálculo de coste requiere actualizar estos tests.
+
 ---
 
 ## Tests E2E (Playwright) — 103 specs + 244 snapshots
