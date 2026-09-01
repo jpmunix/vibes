@@ -63,8 +63,10 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
     [gauge.pctUsed],
   );
 
-  // Sin tokens (ni reales ni estimados) no hay nada que mostrar.
-  if (totalTokens <= 0) return null;
+  // Sin modelo resuelto (contextWindow === null) no hay ventana que medir:
+  // el gauge se oculta en vez de mostrar "?" — menos ruido en la UI.
+  // Sin tokens (ni reales ni estimados) tampoco hay nada que mostrar.
+  if (contextWindow === null || totalTokens <= 0) return null;
 
   const color = LEVEL_COLOR[gauge.level];
 
