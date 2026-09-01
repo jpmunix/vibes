@@ -151,6 +151,7 @@ const config: ForgeConfig = {
       options: {
         name: activeFlavor.name,
         productName: activeFlavor.productName,
+        bin: activeFlavor.executableName,
         mimeType: ["x-scheme-handler/dyad"],
         icon: `./assets/${activeFlavor.iconFolder}/logo.png`,
       },

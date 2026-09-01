@@ -7,6 +7,12 @@ import { vibesAliases } from "./vite.vibes-aliases.mts";
 // W1 (Fase 1): aliases para consumir el runtime vibes-core desde su fuente
 // TypeScript. Ver vite.vibes-aliases.mts para el detalle de los aliases.
 export default defineConfig({
+  // Inyecta el flavor en build time: en la app empaquetada no existe la env var
+  // en runtime, así que el main debe saber el flavor desde el bundle (mismo
+  // mecanismo que el renderer con VITE_APP_FLAVOR).
+  define: {
+    "process.env.VIBES_FLAVOR": JSON.stringify(process.env.VIBES_FLAVOR || ""),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -16,8 +16,10 @@
   "scripts": {
     "start": "NODE_OPTIONS=--max-old-space-size=2048 electron-forge start",
     "start:dev": "NODE_OPTIONS=--max-old-space-size=2048 VIBES_FLAVOR=development electron-forge start",
+    "start:alpha": "NODE_OPTIONS=--max-old-space-size=2048 VIBES_FLAVOR=alpha electron-forge start",
     "distribute": "npm run clean && electron-forge make && mkdir -p /media/munix/NAS/MinubeVibes/linux && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux/ \\;",
     "distribute:dev": "npm run clean && VIBES_FLAVOR=development electron-forge make && mkdir -p /media/munix/NAS/MinubeVibes/linux-dev && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux-dev/ \\;",
+    "distribute:alpha": "npm run clean && VIBES_FLAVOR=alpha electron-forge make && mkdir -p /media/munix/NAS/MinubeVibes/linux-alpha && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux-alpha/ \\;",
     "make:linux": "electron-forge make --platform linux --arch x64",
     "make:mac": "electron-forge make --platform darwin --arch x64",
     "make:mac-arm64": "electron-forge make --platform darwin --arch arm64",

@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/dialog";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
-import { useI18n } from "@/lib/i18n";
 
 function getFileStatusIcon(status: string) {
   switch (status) {

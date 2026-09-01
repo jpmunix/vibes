@@ -24,6 +24,14 @@ export const FLAVORS: Record<string, FlavorConfig> = {
     iconFolder: "icons/flavors/development",
     userDataFolder: "vibes-dev",
   },
+  alpha: {
+    id: "alpha",
+    name: "vibes-alpha",
+    productName: "Vibes Alpha",
+    executableName: "vibes-alpha",
+    iconFolder: "icons/flavors/alpha",
+    userDataFolder: "vibes-alpha",
+  },
 };
 
 export function getActiveFlavor(): FlavorConfig {
