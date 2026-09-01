@@ -233,7 +233,8 @@ export const TokenCountResultSchema = z.object({
   mentionedAppsTokens: z.number(),
   inputTokens: z.number(),
   systemPromptTokens: z.number(),
-  contextWindow: z.number(),
+  /** null = ventana de contexto desconocida (modelo sin datos) — nunca un default falso (#223). */
+  contextWindow: z.number().nullable(),
 });
 
 export type TokenCountResult = z.infer<typeof TokenCountResultSchema>;

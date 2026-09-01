@@ -151,6 +151,7 @@ export const messagesEs: Messages = {
     contextGaugeTitle: "Contexto de la sesión",
     contextUsed: "Usado",
     contextLimit: "Límite",
+    contextLimitUnknown: "Desconocido",
     contextRemaining: "Restante",
     contextInput: "Entrada",
     contextOutput: "Salida",

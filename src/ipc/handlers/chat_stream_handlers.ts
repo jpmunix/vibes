@@ -1509,9 +1509,11 @@ This conversation includes one or more image attachments. When the user uploads 
           estimatedInputTokens += toolOverhead;
 
           let finalMaxOutputTokens = requestedMaxOutput;
-          // If requested max tokens + input exceeds context, we cap it
-          // We always want at least 4k for output if possible.
+          // #223: si el contextWindow es desconocido (null), NO capar —
+          // capar contra un default falso recortaría la salida de modelos
+          // grandes. Sentinela estilo opencode (overflow.ts).
           if (
+            contextWindow !== null &&
             finalMaxOutputTokens &&
             estimatedInputTokens + finalMaxOutputTokens > contextWindow
           ) {

@@ -1072,6 +1072,12 @@ export class PageObject {
       .fill("test-model");
     await this.page.getByRole("textbox", { name: "Model ID*" }).press("Tab");
     await this.page.getByRole("textbox", { name: "Name*" }).fill("test-model");
+    // #223: con el nuevo comportamiento, un modelo sin contextWindow → gauge
+    // "desconocido" (?), sin umbrales. El test del gauge necesita una ventana
+    // conocida: declaramos 128000 explícito en el custom model del E2E.
+    await this.page
+      .getByRole("textbox", { name: "Context Window" })
+      .fill("128000");
     await this.page.getByRole("button", { name: "Add Model" }).click();
   }
 

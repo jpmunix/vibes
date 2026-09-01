@@ -48,12 +48,14 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
     chatId ? chatId : null,
     "",
   );
-  const contextWindow = tokenCountResult?.contextWindow ?? 128_000;
+  // #223: contextWindow real del modelo activo (null = desconocido — el
+  // catálogo models.dev no lo resolvió). NUNCA un default falso.
+  const contextWindow: number | null = tokenCountResult?.contextWindow ?? null;
   const { totalTokens, totalInput, totalOutput, totalCached, estimated } =
     useSessionTokens(chatId);
 
   const gauge = useMemo(
-    () => computeGauge({ totalTokens, contextWindow }),
+    () => computeGauge({ totalTokens, contextWindow: contextWindow ?? 0 }),
     [totalTokens, contextWindow],
   );
   const dashOffset = useMemo(
@@ -133,7 +135,7 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
                     : "text-muted-foreground"
               }`}
             >
-              {gauge.pctUsed}%
+              {contextWindow === null ? "?" : `${gauge.pctUsed}%`}
             </span>
           </button>
         </TooltipTrigger>
@@ -150,16 +152,20 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
             <div className="flex justify-between gap-3">
               <span className="text-muted-foreground">{t("chat.contextLimit")}</span>
               <span className="font-medium tabular-nums">
-                {formatTokenCount(contextWindow)}
+                {contextWindow === null
+                  ? t("chat.contextLimitUnknown")
+                  : formatTokenCount(contextWindow)}
               </span>
             </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">{t("chat.contextRemaining")}</span>
-              <span className="font-medium tabular-nums">
-                {estimated ? "~" : ""}
-                {formatTokenCount(Math.max(0, contextWindow - totalTokens))}
-              </span>
-            </div>
+            {contextWindow !== null && (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">{t("chat.contextRemaining")}</span>
+                <span className="font-medium tabular-nums">
+                  {estimated ? "~" : ""}
+                  {formatTokenCount(Math.max(0, contextWindow - totalTokens))}
+                </span>
+              </div>
+            )}
             {!estimated && (
               <>
                 <div className="h-px bg-border/60 my-0.5" />

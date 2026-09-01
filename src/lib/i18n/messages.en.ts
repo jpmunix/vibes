@@ -132,6 +132,7 @@ export const messagesEn: Messages = {
     contextGaugeTitle: "Session context",
     contextUsed: "Used",
     contextLimit: "Limit",
+    contextLimitUnknown: "Unknown",
     contextRemaining: "Remaining",
     contextInput: "Input",
     contextOutput: "Output",
