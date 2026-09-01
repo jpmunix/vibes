@@ -41,6 +41,7 @@
       "@vibes/workspace": ["../vibes-core/packages/workspace/src/index.ts"],
       "@vibes/bridge": ["../vibes-core/packages/bridge/src/index.ts"],
       "@vibes/providers/sqlite": ["../vibes-core/packages/providers/src/sqlite/index.ts"],
+      "@vibes/providers/libsql": ["../vibes-core/packages/providers/src/libsql/index.ts"],
       "@vibes/providers/openai-compatible": ["../vibes-core/packages/providers/src/openai-compatible/index.ts"],
       "@vibes/providers/openrouter": ["../vibes-core/packages/providers/src/openrouter/index.ts"]
     }

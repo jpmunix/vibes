@@ -32,9 +32,9 @@ import type {
 } from "@vibes/runtime";
 import { DEFAULT_LOOP_CONFIG } from "@vibes/runtime";
 import {
-  createSqliteStorageProvider,
-  SqliteTodoHandler,
-} from "@vibes/providers/sqlite";
+  createLibSqlStorageProvider,
+  LibSqlTodoHandler,
+} from "@vibes/providers/libsql";
 import { permissionResolver } from "./permission_resolver";
 import type { PermissionsConfig } from "../../lib/schemas";
 import { createRuntimeBuilder } from "@vibes/runtime-impl";
@@ -310,11 +310,12 @@ export function getRuntime(): Runtime {
   const storagePath = path.join(app.getPath("userData"), "runtime-sessions.db");
 
   // Bug 76: build the SQLite provider explicitly so the same instance can back
-  // both the storage and the TodoHandler. The builder's .sqliteStorage() builds
-  // an internal provider we can't reach, and the loop needs a TodoHandler to
-  // persist session-scoped todo lists (ctx.todo) — without it todowrite throws
-  // 'Todo handler not configured' and the model dumps the list as plain text.
-  const storageProvider = createSqliteStorageProvider({ path: storagePath });
+  // both the storage and the TodoHandler. Uses @libsql/client (WASM) to strip
+  // the native better-sqlite3 dependency from the packaged app. The builder's
+  // .sqliteStorage() builds an internal provider we can't reach, and the loop
+  // needs a TodoHandler to persist session-scoped todo lists (ctx.todo) —
+  // without it todowrite throws 'Todo handler not configured'.
+  const storageProvider = createLibSqlStorageProvider({ path: storagePath });
 
   runtimeInstance = createRuntimeBuilder("vibes")
     .workspaceRoot(path.dirname(app.getPath("userData"))) // sessions override per-app via workspaceRoot
@@ -324,7 +325,7 @@ export function getRuntime(): Runtime {
     .tools(createBuiltInRegistry())
     .permissionGate(createVibesPermissionGate())
     .questionHandler(createVibesQuestionHandler())
-    .todoHandler(new SqliteTodoHandler(storageProvider))
+    .todoHandler(new LibSqlTodoHandler(storageProvider))
     .loopConfig(loopConfigMutable)
     .logger(vibesRuntimeLogger)
     .build();

@@ -186,8 +186,7 @@
   "overrides": {
     "@vercel/sdk": {
       "@modelcontextprotocol/sdk": "$@modelcontextprotocol/sdk"
-    },
-    "better-sqlite3": "npm:noop@0.1.0"
+    }
   },
   "engines": {
     "node": ">=20"

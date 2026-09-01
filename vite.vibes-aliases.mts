@@ -25,6 +25,10 @@ export const vibesAliases: Record<string, string> = {
     VIBES_CORE,
     "providers/src/sqlite/index.ts",
   ),
+  "@vibes/providers/libsql": path.join(
+    VIBES_CORE,
+    "providers/src/libsql/index.ts",
+  ),
   "@vibes/providers/openai-compatible": path.join(
     VIBES_CORE,
     "providers/src/openai-compatible/index.ts",
