@@ -1500,7 +1500,7 @@ export const messagesEs: Messages = {
     guidelines: "Directrices",
     openDirectory: "Abrir directorio",
     openInTerminal: "Abrir en terminal",
-    folders: "Folders",
+    folders: "Carpetas",
     stopServer: "Detener servidor",
     closeWorkspace: "Cerrar workspace",
     noChats: "Sin chats",
