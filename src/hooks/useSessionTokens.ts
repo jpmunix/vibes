@@ -42,14 +42,27 @@ export interface MessageTokenUsage {
 }
 
 export interface SessionTokenSummary {
-  /** Sum of input tokens across all assistant messages. */
+  /** Sum of input tokens across all assistant messages (acumulado histórico). */
   totalInput: number;
-  /** Sum of output tokens across all assistant messages. */
+  /** Sum of output tokens across all assistant messages (coste). */
   totalOutput: number;
   /** Sum of cached tokens across all assistant messages. */
   totalCached: number;
   /** Sum of total (input + output) tokens across all assistant messages. */
   totalTokens: number;
+  /**
+   * #230: contexto real del último turno (input del último mensaje assistant
+   * con tag, no la suma). Cada `input` ya es el contexto acumulado que el
+   * runtime mandó en ese turno — sumarlos cuenta el mismo contexto N veces.
+   * El gauge y el % de ventana deben usar este campo, no totalTokens.
+   * Cero si ningún mensaje tiene dato real aún.
+   */
+  contextTokens: number;
+  /**
+   * #230: output del último turno (para que el gauge muestre los mismos
+   * números que el log del runtime: Total input / Total output por turno).
+   */
+  contextOutput: number;
   /** Per-message breakdown (assistant messages only, with usage). */
   perMessage: Array<{
     messageId: number;
@@ -69,6 +82,8 @@ export const EMPTY_SESSION_TOKENS: SessionTokenSummary = {
   totalOutput: 0,
   totalCached: 0,
   totalTokens: 0,
+  contextTokens: 0,
+  contextOutput: 0,
   perMessage: [],
   hasUsage: false,
   estimated: false,
@@ -133,6 +148,8 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
   const perMessage: SessionTokenSummary["perMessage"] = [];
   let hasUsage = false;
   let hasAnyReal = false;
+  let lastRealInput: number | null = null;
+  let lastRealOutput: number | null = null;
 
   for (const msg of messages) {
     if (msg.role !== "assistant") continue;
@@ -145,6 +162,8 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
       totalCached += usage.cached;
       hasUsage = true;
       hasAnyReal = true;
+      lastRealInput = usage.input;
+      lastRealOutput = usage.output;
       perMessage.push({
         messageId: msg.id,
         usage,
@@ -157,6 +176,8 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
     if (typeof msg.totalTokens === "number" && msg.totalTokens > 0) {
       totalInput += msg.totalTokens;
       hasAnyReal = true;
+      lastRealInput = msg.totalTokens;
+      lastRealOutput = null;
       perMessage.push({
         messageId: msg.id,
         usage: {
@@ -188,6 +209,11 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
   }
 
   const estimated = !hasAnyReal;
+  // #230: contexto real del último turno (input + output del último mensaje
+  // con tag, o su totalTokens). Es el contexto real que vio el runtime en el
+  // último turno — no la suma de todos los turnos.
+  const contextTokens = lastRealInput ?? 0;
+  const contextOutput = lastRealOutput ?? 0;
 
   if (perMessage.length > 0) {
     return {
@@ -195,6 +221,8 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
       totalOutput,
       totalCached,
       totalTokens: totalInput + totalOutput,
+      contextTokens,
+      contextOutput,
       perMessage,
       hasUsage,
       estimated: !hasAnyReal,
@@ -207,6 +235,8 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
     totalOutput: 0,
     totalCached: 0,
     totalTokens: 0,
+    contextTokens: 0,
+    contextOutput: 0,
     perMessage: [],
     hasUsage: false,
     estimated: false,

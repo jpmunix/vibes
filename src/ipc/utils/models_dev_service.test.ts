@@ -235,3 +235,41 @@ describe("clearModelsDevCache", () => {
     expect(Object.keys(cat.providers).length).toBeGreaterThanOrEqual(150);
   });
 });
+
+// ─── getCachedModelCaps (#230) ────────────────────────────────────────────
+
+describe("getCachedModelCaps", () => {
+  it("devuelve null sin caché en memoria (cold-start, no fetch)", async () => {
+    const { getCachedModelCaps } = await import("./models_dev_service");
+    // Memoria vacía (beforeEach ya resetea) — sin fetch, sin disco.
+    expect(getCachedModelCaps("anthropic", "claude-sonnet-4-20250514")).toBeNull();
+  });
+
+  it("devuelve contextWindow + maxOutput cuando la caché está poblada", async () => {
+    // Puebla la caché en memoria con el fixture (6 providers, live OK).
+    await resolveCatalog({ fetch: okFetch() });
+    const { getCachedModelCaps, findModel } = await import("./models_dev_service");
+
+    // Buscamos el primer modelo del fixture con context > 0.
+    const cat = await resolveCatalog({ fetch: okFetch() });
+    const firstProvider = Object.keys(cat.providers)[0]!;
+    const firstModelId = Object.keys(cat.providers[firstProvider]!.models)[0]!;
+    const hit = findModel(cat, firstProvider, firstModelId);
+    const expectedContext = hit.model?.limit?.context ?? null;
+    const expectedOutput = hit.model?.limit?.output ?? undefined;
+
+    expect(expectedContext).toBeTruthy();
+    const caps = getCachedModelCaps(firstProvider, firstModelId);
+    expect(caps).not.toBeNull();
+    expect(caps!.contextWindow).toBe(expectedContext);
+    if (expectedOutput !== undefined) {
+      expect(caps!.maxOutput).toBe(expectedOutput);
+    }
+  });
+
+  it("devuelve null para un provider/modelo que no existe en la caché", async () => {
+    await resolveCatalog({ fetch: okFetch() });
+    const { getCachedModelCaps } = await import("./models_dev_service");
+    expect(getCachedModelCaps("nonexistent", "fake-model")).toBeNull();
+  });
+});

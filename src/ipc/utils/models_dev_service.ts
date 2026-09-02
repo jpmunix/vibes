@@ -87,6 +87,34 @@ function isCacheFresh(cached: CachedCatalog | null): boolean {
   return Date.now() - cached.fetchedAt < CACHE_TTL_MS;
 }
 
+/**
+ * #230: variante SÍNCRONA de resolución de capacidades del modelo para el hot
+ * path del runtime. El getter `ModelProvider.caps` del runtime no puede ser
+ * async, así que leemos SOLO la caché en memoria (nunca fetch live ni disco).
+ * Si no hay caché fresca devuelve null y el runtime usa su fallback
+ * conservador.
+ *
+ * Orden: provider exacto → metadata canónica → global normalizado (mismo
+ * lookup que findModel pero solo sobre la caché viva).
+ */
+export function getCachedModelCaps(
+  providerId: string,
+  modelId: string,
+): { contextWindow: number; maxOutput?: number } | null {
+  const cached = memoryCache;
+  if (!cached || !isCacheFresh(cached)) return null;
+  const hit = findModel(cached.catalog, providerId, modelId);
+  const cw =
+    hit.model?.limit?.context ??
+    hit.meta?.limit?.context ??
+    (hit.model as { contextWindow?: number })?.contextWindow ??
+    null;
+  if (!cw) return null;
+  const maxOutput =
+    hit.model?.limit?.output ?? hit.meta?.limit?.output ?? undefined;
+  return { contextWindow: cw, maxOutput };
+}
+
 // ─── Fuentes ──────────────────────────────────────────────────────────────
 
 /**

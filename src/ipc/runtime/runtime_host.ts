@@ -58,6 +58,7 @@ import { safeSend } from "../utils/safe_sender";
 import { readSettings } from "../../main/settings";
 import { randomUUID } from "node:crypto";
 import type { Question, AskUserResponse } from "@vibes/shared";
+import { getCachedModelCaps } from "../utils/models_dev_service";
 
 const logger = log.scope("runtime_host");
 
@@ -157,6 +158,29 @@ export const delegatingModelProvider: ModelProvider = {
   },
   countTokens(text: string, model: string): Promise<number> {
     return resolveCachedProvider().countTokens(text, model);
+  },
+  /**
+   * #230: expone las capacidades del modelo activo al runtime (ventana de
+   * contexto real). Sin esto, el loop del runtime ve caps undefined y cae al
+   * fallback conservador (32k), disparando compactaciones prematuras con un
+   * contexto normal. P1: la carcasa alimenta caps por el contrato público
+   * del runtime (ModelProvider.caps) — el runtime no conoce la fuente.
+   */
+  get caps(): ModelProvider["caps"] {
+    // Lectura síncrona de la caché del catálogo (nunca fetch) — el mismo
+    // contextWindow que muestra el gauge. Sin caché → undefined → el runtime
+    // usa su fallback conservador (no rompe nada).
+    const settings = readSettings();
+    const selected = settings?.selectedModel;
+    if (!selected?.provider || !selected?.name) return undefined;
+    const caps = getCachedModelCaps(selected.provider, selected.name);
+    if (!caps) return undefined;
+    return {
+      contextWindow: caps.contextWindow,
+      // maxOutput obligatorio en el contrato; sin dato de catálogo usamos el
+      // mismo fallback conservador que el loop (outputTokenBudget).
+      maxOutput: caps.maxOutput ?? DEFAULT_LOOP_CONFIG.outputTokenBudget,
+    };
   },
 };
 

@@ -150,6 +150,51 @@ describe("computeSessionTokens", () => {
     expect(summary.totalTokens).toBe(0);
     expect(summary.perMessage).toEqual([]);
   });
+
+  // ─── #230: contextTokens / contextOutput (gauge vs log) ──────────────
+
+  it("#230: contextTokens = input del último turno, NO la suma acumulada", () => {
+    const messages = [
+      msg(1, "assistant", tag(`input="100000" output="1000"`)),
+      msg(2, "assistant", tag(`input="193000" output="500"`)),
+    ];
+    const summary = computeSessionTokens(messages);
+    // totalInput sigue siendo acumulado (coste, compat): 293k
+    expect(summary.totalInput).toBe(293000);
+    // contextTokens = 193k (el contexto real del último turno = el del log)
+    expect(summary.contextTokens).toBe(193000);
+    expect(summary.contextOutput).toBe(500);
+  });
+
+  it("#230: contextTokens usa totalTokens del último mensaje si no hay tag", () => {
+    const messages = [
+      msg(1, "assistant", "respuesta sin tag (legacy)"),
+      msg(2, "assistant", "otra respuesta"),
+    ];
+    messages[0].totalTokens = 100000;
+    messages[1].totalTokens = 193000;
+    const summary = computeSessionTokens(messages);
+    expect(summary.contextTokens).toBe(193000);
+  });
+
+  it("#230: contextTokens es 0 si no hay datos reales (solo estimación)", () => {
+    const messages = [
+      msg(1, "user", "hola"),
+      msg(2, "assistant", "respuesta sin tag ni totalTokens"),
+    ];
+    const summary = computeSessionTokens(messages);
+    // totalTokens tiene la estimación chars/4, pero contextTokens es 0
+    expect(summary.contextTokens).toBe(0);
+    expect(summary.totalTokens).toBeGreaterThan(0);
+  });
+
+  it("#230: contextOutput es 0 cuando el último mensaje usa totalTokens (sin tag)", () => {
+    const messages = [msg(1, "assistant", "respuesta runtime")];
+    messages[0].totalTokens = 50000;
+    const summary = computeSessionTokens(messages);
+    expect(summary.contextTokens).toBe(50000);
+    expect(summary.contextOutput).toBe(0);
+  });
 });
 
 describe("computeGauge", () => {
