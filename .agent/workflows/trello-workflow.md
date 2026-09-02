@@ -36,7 +36,7 @@ técnico, decisiones, referencias a archivos — para el agente dentro de 6 mese
 | **Backlog** | Deudas + roadmap post-MVP (fases 2-5) | El agente la lee para priorizar |
 | **Ideas** | Ideas sueltas, NO planificadas (fuera del flujo, no se priorizan) | munix las apunta; el agente no las toca |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
-| **Doing** | En curso ahora mismo | El agente (1-2 cards máximo) |
+| **Doing** | En curso ahora mismo | El agente (5 cards máximo) |
 | **Review** | Terminada, esperando revisión de munix (incluye las pruebas manuales) | **Solo munix** la mueve (el agente deja la evidencia y avisa) |
 | **Done** | Cerrada y verificada | El agente la mueve tras OK de munix |
 
@@ -44,8 +44,9 @@ técnico, decisiones, referencias a archivos — para el agente dentro de 6 mese
 > se documentan en la card con `🚧 [Atasco]` y las pruebas manuales las hace munix
 > dentro de `Review` antes de dar el OK.
 
-**Regla de oro:** el agente NO trabaja en más de 1-2 cards a la vez. Si está en
-`Doing`, no coge otra hasta cerrar o dejar la actual atascada (con `🚧 [Atasco]`).
+**Regla de oro:** el agente NO trabaja en más de 5 cards a la vez. Si está en
+`Doing`, no coge otra hasta cerrar, dejar la actual atascada (con `🚧 [Atasco]`),
+o tener OK explícito de munix para sobrepasar la cuota.
 
 ---
 
@@ -531,7 +532,7 @@ Arqueología de los cambios de estructura (para que un agente futuro entienda el
 ## ⚠️ Reglas duras (anti-patterns)
 
 - ❌ **NO** mover una card a Done sin OK de munix + evidencia.
-- ❌ **NO** trabajar en más de 1-2 cards a la vez.
+- ❌ **NO** trabajar en más de 5 cards a la vez.
 - ❌ **NO** crear cards duplicadas (los scripts son idempotentes, pero el agente debe mirar antes).
 - ❌ **NO** borrar/archivar cards sin decirle a munix (archivar = perder evidencia).
   - 📌 Para archivar usa el flag `--archive` de `update-card.mjs` (pone `closed=true`):

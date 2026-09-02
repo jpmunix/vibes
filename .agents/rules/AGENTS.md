@@ -166,7 +166,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 | **Ideas** | Ideas sueltas NO planificadas (fuera del flujo) | Solo munix |
 | **Bitácoras** | Resúmenes ejecutivos de auditorías, inventarios y snapshots del proyecto (no es del flujo de trabajo normal) | El agente al entregar; munix la revisa |
 | **To-do** | Pendiente inmediato (ops, próximo trabajo) | munix la llena; el agente la consume |
-| **Doing** | En curso (máx 1-2) | El agente |
+| **Doing** | En curso (máx 5) | El agente |
 | **Review** | Terminada, esperando OK de munix | **Solo munix** (el agente deja la evidencia en la card y avisa; **nunca** mueve a Review) |
 | **Done** | Cerrada y verificada | El agente tras OK explícito de munix |
 
@@ -186,7 +186,7 @@ El protocolo completo vive en [`.agent/workflows/trello-workflow.md`](file:///ho
 
 - ❌ **NUNCA** mover a `Done` sin OK explícito de munix + evidencia (tests verdes / verificación manual).
 - ❌ **NUNCA** mover la card a `Review`: el agente termina, deja el comentario `✅ [Review]` con evidencia y avisa; **el movimiento a Review lo hace solo munix**. Si munix pide cambios, la card **vuelve a `Doing`** (la mueve munix o el agente con su OK) y el agente la retoma — **el desarrollo nunca ocurre estando la card en `Review`** (kanban: Review es inspección, no iteración).
-- ❌ **NUNCA** trabajar en más de 1-2 cards a la vez (si estás en Doing, no coges otra).
+- ❌ **NUNCA** trabajar en más de 5 cards a la vez (si estás en Doing, no coges otra hasta cerrar, dejar atascada con `🚧 [Atasco]`, o tener OK explícito de munix para sobrepasar la cuota).
 - ❌ **NUNCA** crear cards duplicadas (los scripts son idempotentes; mirar antes con list-cards).
 - ❌ **NUNCA** archivar/borrar cards sin decírselo a munix (archivar = perder evidencia).
 - ❌ **NUNCA** renombrar listas ni cambiar la estructura del board sin OK (es en piedra). Incluida `Ideas` (2026-08-11: solo munix la llena; el agente no la toca). `Blocked` y `Manual tests` fueron **eliminadas** (2026-08-25).
