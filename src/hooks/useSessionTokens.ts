@@ -296,6 +296,38 @@ export function computeGauge(input: {
   return { pctUsed, pctRemaining, level, showWarning, showCompact };
 }
 
+/**
+ * #230 (regresión): decide los números que pinta el gauge.
+ *
+ * - Con dato REAL (tag `<vibes-token-usage>` o `msg.totalTokens` del runtime):
+ *   `contextTokens`/`contextOutput` (el contexto del último turno — el mismo
+ *   número que loguea el runtime). NO sumar: cada input ya es el contexto
+ *   acumulado del turno.
+ * - Solo estimación chars/4 (`estimated=true`): `contextTokens` es 0 por
+ *   diseño y el gauge quedaría mudo. Usamos `totalTokens` (la suma estimada)
+ *   para que la rueda SIGA pintando en chats nuevos/legacy sin tag.
+ *
+ * Pure function — exported para tests sin montar React.
+ */
+export function resolveGaugeTokens(summary: SessionTokenSummary): {
+  tokens: number;
+  output: number;
+  estimated: boolean;
+} {
+  if (summary.estimated) {
+    return {
+      tokens: summary.totalTokens,
+      output: 0,
+      estimated: true,
+    };
+  }
+  return {
+    tokens: summary.contextTokens,
+    output: summary.contextOutput,
+    estimated: false,
+  };
+}
+
 /** Formats a token count as compact human-readable ("12.4k", "1.2M"). */
 export function formatTokenCount(count: number): string {
   if (count >= 1_000_000) {

@@ -9,6 +9,7 @@ import { Minimize2 } from "@/components/ui/icons";
 import { useI18n } from "@/lib/i18n";
 import {
   useSessionTokens,
+  resolveGaugeTokens,
   computeGauge,
   computeDonutDashOffset,
   DONUT_CIRCUMFERENCE,
@@ -51,16 +52,21 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
   // #223: contextWindow real del modelo activo (null = desconocido — el
   // catálogo models.dev no lo resolvió). NUNCA un default falso.
   const contextWindow: number | null = tokenCountResult?.contextWindow ?? null;
-  const {
-    totalCached,
-    contextTokens,
-    contextOutput,
-    estimated,
-  } = useSessionTokens(chatId);
+  const sessionTokens = useSessionTokens(chatId);
+
+  // #230: contextTokens real cuando hay dato (tag/totalTokens), totalTokens
+  // estimado como fallback para que el gauge no quede mudo en chats sin tag.
+  const { tokens: effectiveTokens, output: effectiveOutput, estimated } =
+    resolveGaugeTokens(sessionTokens);
+  const totalCached = sessionTokens.totalCached;
 
   const gauge = useMemo(
-    () => computeGauge({ totalTokens: contextTokens, contextWindow: contextWindow ?? 0 }),
-    [contextTokens, contextWindow],
+    () =>
+      computeGauge({
+        totalTokens: effectiveTokens,
+        contextWindow: contextWindow ?? 0,
+      }),
+    [effectiveTokens, contextWindow],
   );
   const dashOffset = useMemo(
     () => computeDonutDashOffset(gauge.pctUsed),
@@ -70,7 +76,7 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
   // Sin modelo resuelto (contextWindow === null) no hay ventana que medir:
   // el gauge se oculta en vez de mostrar "?" — menos ruido en la UI.
   // Sin tokens (ni reales ni estimados) tampoco hay nada que mostrar.
-  if (contextWindow === null || contextTokens <= 0) return null;
+  if (contextWindow === null || effectiveTokens <= 0) return null;
 
   const color = LEVEL_COLOR[gauge.level];
 
@@ -152,7 +158,7 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
               <span className="text-muted-foreground">{t("chat.contextUsed")}</span>
               <span className="font-medium tabular-nums">
                 {estimated ? "~" : ""}
-                {formatTokenCount(contextTokens)}
+                {formatTokenCount(effectiveTokens)}
               </span>
             </div>
             <div className="flex justify-between gap-3">
@@ -168,7 +174,7 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
                 <span className="text-muted-foreground">{t("chat.contextRemaining")}</span>
                 <span className="font-medium tabular-nums">
                   {estimated ? "~" : ""}
-                  {formatTokenCount(Math.max(0, contextWindow - contextTokens))}
+                  {formatTokenCount(Math.max(0, contextWindow - effectiveTokens))}
                 </span>
               </div>
             )}
@@ -177,11 +183,11 @@ export function InputContextGauge({ chatId }: { chatId?: number }) {
                 <div className="h-px bg-border/60 my-0.5" />
                 <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>{t("chat.contextInput")}</span>
-                  <span className="tabular-nums">{formatTokenCount(contextTokens)}</span>
+                  <span className="tabular-nums">{formatTokenCount(effectiveTokens)}</span>
                 </div>
                 <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>{t("chat.contextOutput")}</span>
-                  <span className="tabular-nums">{formatTokenCount(contextOutput)}</span>
+                  <span className="tabular-nums">{formatTokenCount(effectiveOutput)}</span>
                 </div>
                 {totalCached > 0 && (
                   <div className="flex justify-between gap-3 text-muted-foreground">

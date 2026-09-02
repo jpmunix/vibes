@@ -4,6 +4,8 @@ import {
   computeGauge,
   formatTokenCount,
   extractMessageTokenUsage,
+  resolveGaugeTokens,
+  EMPTY_SESSION_TOKENS,
   GAUGE_COMPACT_PCT_USED,
   GAUGE_WARN_PCT_REMAINING,
   DONUT_CIRCUMFERENCE,
@@ -18,6 +20,12 @@ import {
  */
 
 const tag = (attrs: string) => `<vibes-token-usage ${attrs}></vibes-token-usage>`;
+
+const msg = (id: number, role: "user" | "assistant", content: string) => ({
+  id,
+  role,
+  content,
+} as any);
 
 describe("extractMessageTokenUsage", () => {
   it("parses input/output/cached from a single tag", () => {
@@ -61,11 +69,6 @@ describe("extractMessageTokenUsage", () => {
 });
 
 describe("computeSessionTokens", () => {
-  const msg = (id: number, role: "user" | "assistant", content: string) => ({
-    id,
-    role,
-    content,
-  } as any);
 
   it("sums tokens from assistant messages only", () => {
     const messages = [
@@ -194,6 +197,36 @@ describe("computeSessionTokens", () => {
     const summary = computeSessionTokens(messages);
     expect(summary.contextTokens).toBe(50000);
     expect(summary.contextOutput).toBe(0);
+  });
+});
+
+describe("resolveGaugeTokens (#230 regresión gauge mudo)", () => {
+  it("usa contextTokens cuando hay dato real (no estimado)", () => {
+    const summary = computeSessionTokens([
+      msg(1, "assistant", tag(`input="193000" output="500"`)),
+    ]);
+    expect(summary.estimated).toBe(false);
+    const resolved = resolveGaugeTokens(summary);
+    expect(resolved).toEqual({ tokens: 193000, output: 500, estimated: false });
+  });
+
+  it("usa totalTokens (suma estimada) cuando solo hay estimación chars/4", () => {
+    const summary = computeSessionTokens([
+      msg(1, "assistant", "respuesta legacy sin tag ni totalTokens"),
+    ]);
+    // contextTokens = 0 por diseño (#230) pero hay estimación > 0
+    expect(summary.estimated).toBe(true);
+    expect(summary.contextTokens).toBe(0);
+    expect(summary.totalTokens).toBeGreaterThan(0);
+    const resolved = resolveGaugeTokens(summary);
+    expect(resolved.tokens).toBe(summary.totalTokens);
+    expect(resolved.output).toBe(0);
+    expect(resolved.estimated).toBe(true);
+  });
+
+  it("devuelve 0/0 cuando no hay nada que mostrar (chat vacío)", () => {
+    const resolved = resolveGaugeTokens(EMPTY_SESSION_TOKENS);
+    expect(resolved).toEqual({ tokens: 0, output: 0, estimated: false });
   });
 });
 
