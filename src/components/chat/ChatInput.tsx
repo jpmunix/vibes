@@ -46,7 +46,10 @@ import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
 import { Proposal, SuggestedAction, FileChange, SqlQuery } from "@/lib/schemas";
 
-import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import {
+  isPreviewOpenAtom,
+  justCreatedAppAtom,
+} from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
 // Telemetry removed
@@ -142,6 +145,8 @@ export function ChatInput({
 
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
+  const justCreatedApp = useAtomValue(justCreatedAppAtom);
+  const setJustCreatedApp = useSetAtom(justCreatedAppAtom);
   const { app } = useLoadApp(appId);
   const {
     versions,
@@ -173,6 +178,40 @@ export function ChatInput({
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+
+  // ── Reset "just created app" flag ────────────────────────────────────────
+  // The DesignPicker stays visible exactly once, for the freshly-created app.
+  // Reset when the user starts interacting: types a message, switches chat,
+  // or switches app. Otherwise it would keep showing in unrelated contexts.
+  useEffect(() => {
+    if (!justCreatedApp) return;
+    if (currentMessages.length > 0) {
+      setJustCreatedApp(false);
+    }
+  }, [currentMessages.length, justCreatedApp, setJustCreatedApp]);
+
+  // ChatInput props are chatId?: number and appId?: number | null — keep refs
+  // aligned with that union so the assignment doesn't fail the typecheck.
+  const prevAppIdRef = useRef<number | null | undefined>(undefined);
+  const prevChatIdForFlagRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!justCreatedApp) return;
+    if (
+      prevAppIdRef.current !== undefined &&
+      prevAppIdRef.current !== appId
+    ) {
+      setJustCreatedApp(false);
+      return;
+    }
+    if (
+      prevChatIdForFlagRef.current !== undefined &&
+      prevChatIdForFlagRef.current !== chatId
+    ) {
+      setJustCreatedApp(false);
+    }
+    prevAppIdRef.current = appId;
+    prevChatIdForFlagRef.current = chatId;
+  }, [appId, chatId, justCreatedApp, setJustCreatedApp]);
 
   const { customAgents } = useCustomAgents();
   const { data: chat } = useQuery({
@@ -1092,16 +1131,7 @@ export function ChatInput({
                           ).length === 0
                         : true)
                     }
-                    showDesignPicker={
-                      currentMessages.length === 0 &&
-                      !versionsLoading &&
-                      versions.length <= 1 &&
-                      (app
-                        ? app.files.filter(
-                            (f) => f !== ".gitignore" && f !== "README.md",
-                          ).length === 0
-                        : true)
-                    }
+                    showDesignPicker={justCreatedApp}
                   />
                 </div>
 
