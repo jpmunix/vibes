@@ -97,6 +97,7 @@ import {
   artifactsSidebarOpenAtom,
   selectedArtifactPathAtom,
 } from "@/atoms/uiAtoms";
+import { justCreatedAppAtom } from "@/atoms/viewAtoms";
 import { useChats } from "@/hooks/useChats";
 import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
@@ -1510,7 +1511,7 @@ interface WorkspaceAppItemProps {
   onOpenCode: (appId: number) => void;
   onStopServer: (appId: number) => void;
   onArchiveApp: (appId: number, appName: string) => void;
-  onOpenFolders: (appId: number) => void;
+  onOpenSettings: (appId: number) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -1535,7 +1536,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onOpenCode,
   onStopServer,
   onArchiveApp,
-  onOpenFolders,
+  onOpenSettings,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
@@ -1544,7 +1545,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const { isServerRunning } = useAppServerStatus(app.id);
-  const { dateLocale, t } = useI18n();
+  const { dateLocale, t, tPlural } = useI18n();
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
   const { settings } = useSettings();
@@ -2250,17 +2251,6 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <Terminal size={14} className="opacity-60 shrink-0" />
                       {t("workspaceMenu.openInTerminal")}
                     </button>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                      onClick={() => {
-                        closeMenu();
-                        onOpenFolders(app.id);
-                      }}
-                    >
-                      <FolderOpen size={14} className="opacity-60 shrink-0" />
-                      {t("workspaceMenu.folders")}
-                    </button>
                     <div className="my-1 mx-2 border-t border-border/50" />
                     {isServerRunning && (
                       <button
@@ -2303,6 +2293,19 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               >
                 <Settings size={14} className="opacity-60 shrink-0" />
                 {t("workspaceMenu.integrations")}
+              </button>
+
+              {/* ── Ajustes ── */}
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                onClick={() => {
+                  closeMenu();
+                  onOpenSettings(app.id);
+                }}
+              >
+                <Settings size={14} className="opacity-60 shrink-0" />
+                {t("workspaceMenu.settings")}
               </button>
             </div>
           </>,
@@ -2879,7 +2882,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 {selectedChatId &&
                                 plan.chatId === selectedChatId ? (
                                   <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
-                                    Adjuntado
+                                    {t("workspace.attachedToChat")}
                                   </span>
                                 ) : null}
                               </div>
@@ -2888,7 +2891,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                   ? `Chat: ${plan.chatTitle}`
                                   : plan.chatId
                                     ? `Chat #${plan.chatId}`
-                                    : "Sin chat asociado"}
+                                    : t("workspace.noAssociatedChat")}
                               </span>
                               {plan.createdAt ? (
                                 <span className="text-[11px] text-muted-foreground/40 mt-0.5">
@@ -2899,7 +2902,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                                 </span>
                               ) : (
                                 <span className="text-[11px] text-muted-foreground/30 mt-0.5 italic">
-                                  Sin fecha registrada
+                                  {t("workspace.noDateRecorded")}
                                 </span>
                               )}
                             </div>
@@ -2919,11 +2922,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               {appPlans.length > 0 && !previewPlanPath && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
                   <span className="text-xs text-muted-foreground/50">
-                    {appPlans.length}{" "}
-                    {appPlans.length !== 1 ? "planes" : "plan"}
+                    {tPlural("workspace.planCount", appPlans.length)}
                   </span>
                   <span className="text-xs text-muted-foreground/35">
-                    Click para ver el plan
+                    {t("workspace.clickToViewPlan")}
                   </span>
                 </div>
               )}
@@ -2985,9 +2987,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     [theme, intensity],
   );
 
-  const handleOpenFolders = useCallback(
+  const handleOpenSettings = useCallback(
     (appId: number) => {
-      navigate({ to: "/app-folders", search: { appId } });
+      navigate({ to: "/app-settings", search: { appId } });
     },
     [navigate],
   );
@@ -3149,6 +3151,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { createApp } = useCreateApp();
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+  const setJustCreatedApp = useSetAtom(justCreatedAppAtom);
 
   const lastActionRef2 = useRef<number>(0);
   useEffect(() => {
@@ -3176,6 +3179,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           name: emptyAppName.trim(),
           empty: true,
         });
+
+        // Signal ChatInput to show the DesignPicker exactly once for this
+        // newly-created empty project. Reset by the user typing a message,
+        // switching apps, or switching chats.
+        setJustCreatedApp(true);
 
         setSelectedAppId(result.app.id);
         setEmptyAppName("");
@@ -4221,7 +4229,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         onCloseApp={handleCloseAppClick}
                         onOpenGit={handleOpenGit}
                         onOpenCode={handleOpenCode}
-                        onOpenFolders={handleOpenFolders}
+                        onOpenSettings={handleOpenSettings}
                         onStopServer={handleStopServer}
                         selectedChatId={selectedChatId}
                         selectedAppId={selectedAppId}

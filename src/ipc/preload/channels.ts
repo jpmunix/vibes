@@ -16,6 +16,7 @@ import {
 import { agentContracts, agentEvents } from "../types/agent";
 import { appContracts } from "../types/app";
 import { appFolderContracts } from "../types/app_folders";
+import { agentsMdFileContracts } from "../types/agents_md_files";
 import { bunnyContracts } from "../types/bunny";
 import { pocketbaseContracts } from "../types/pocketbase";
 import { backupContracts } from "../types/backup";
@@ -77,6 +78,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(settingsContracts),
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(appFolderContracts),
+  ...getInvokeChannels(agentsMdFileContracts),
   ...getInvokeChannels(chatContracts),
 
   ...getInvokeChannels(agentContracts),

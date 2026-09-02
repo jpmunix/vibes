@@ -167,7 +167,7 @@ export function HomeChatInput({
                 <div className="flex items-center ml-2.5">
                   <ChatInputControls
                     showContextFilesPicker={false}
-                    showTemplatePicker={true}
+                    showTemplatePicker={false}
                     showDesignPicker={true}
                   />
                 </div>

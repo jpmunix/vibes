@@ -1,7 +1,7 @@
 import { app, dialog } from "electron";
 import path from "node:path";
 import { promises as fsPromises } from "node:fs";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import log from "electron-log";
 
 import { getRemoteDb } from "../../db/remote";
@@ -51,7 +51,7 @@ export function registerAppFoldersHandlers() {
         .select()
         .from(remoteSchema.appFolders)
         .where(eq(remoteSchema.appFolders.appId, params.appId))
-        .orderBy(remoteSchema.appFolders.isPrimary, remoteSchema.appFolders.id);
+        .orderBy(desc(remoteSchema.appFolders.isPrimary), remoteSchema.appFolders.id);
 
       return {
         folders: rows.map((r) => ({

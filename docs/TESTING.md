@@ -37,7 +37,7 @@ npm run e2e:shard   # playwright test --shard
 
 ---
 
-## Tests Unitarios / Integration (Vitest) — 31 archivos
+## Tests Unitarios / Integration (Vitest) — 33 archivos
 
 ### Runtime swap (B6) — Frontera Vibes ↔ vibes-core
 
@@ -139,6 +139,17 @@ npm run e2e:shard   # playwright test --shard
 | [messageStats.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat/messageStats.test.ts) | 10 | **Helpers puros de `messageStats.ts`** (patrón del repo: sin montar React). `extractMessageTokenBreakdown` (parseo de tag `<vibes-token-usage>`: input/output/cached/web-searches/cost directo, fallback price-input/output, uso de `msg.totalTokens` sin tag, estimación chars/4 como último recurso, suma multi-tag), `computeMessageCost` (coste directo manda, cálculo por precios de catálogo, null sin datos), `computeSessionTokens` (suma entre assistant messages, ignora user), `computeSessionCost` (suma coste entre messages, null sin pricing), `buildMessageStats` (derivación de `startedAtMs = createdAt - durationMs`, null si falta durationMs). |
 
 **Cuándo usarlos:** Si se toca `src/components/chat/messageStats.ts`, `src/components/chat/MessageStatsModal.tsx` o se cambia el trigger del nombre del modelo en `ChatMessage.tsx`. Cambiar el parseo del tag `<vibes-token-usage>` o el cálculo de coste requiere actualizar estos tests.
+
+---
+
+### Settings del workspace (card #234) — página /app-settings con AGENTS.md detectados
+
+| Archivo | Líneas | Qué cubre |
+|---|---|---|
+| [agents_md_context.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/agents_md_context.test.ts) | 13 | **Existente, sigue siendo la base.** `findAgentsMdFiles(rootDir)` (depth 2, case-insensitive, ignora `node_modules`/`.git`/`dist`/`build`/etc., tolera dirs inexistentes) y `buildAgentsMdBlock` (concatena con header `## /relative/path`, salta vacíos/whitespace, vacío→""). Sin esto la página #234 no podría mostrar nada fiable. |
+| [agents_md_files_handlers.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/agents_md_files_handlers.test.ts) | 6 | **Card #234 — handler `list-agents-md-files`.** Verifica el agrupamiento por carpeta (`folderId`/`folderLabel`/`folderPath`/`isPrimary` correctos), traducción de paths absolutos a relativos a la carpeta (un `AGENTS.md` raíz → `"AGENTS.md"`; anidado → `"packages/AGENTS.md"`), carpeta sin archivos → `files: []`, y exactamente un `isPrimary=true` cuando hay 3 carpetas. Schema contract: rechaza `{appId}` ausente, acepta numérico. Smoke: el módulo carga y exporta `registerAgentsMdFilesHandlers`. **Mock-heavy a propósito:** el handler real depende de `ipcMain` y Drizzle (mismo precedente que `app_folders_handlers.ts`, sin unit test por la misma razón); aquí se ejercita la lógica de agregación directamente. |
+
+**Cuándo usarlos:** Si se toca `src/ipc/handlers/agents_md_context.ts` (cambia la lógica de escación que consume el system prompt) o `src/ipc/handlers/agents_md_files_handlers.ts` (cambia el agrupamiento por carpeta de la página de settings). Cambiar la profundidad de `findAgentsMdFiles` o las carpetas ignoradas requiere actualizar los dos tests; romper `buildAgentsMdBlock` (consumidor preexistente en `chat_stream_handlers`) rompe `agents_md_context.test.ts` antes de romper producción. Si la página /app-settings pasa a leer de un snapshot cacheado o de un builder reactivo, sustituir el segundo test por uno que ejercite el wrapper (mismo patrón que el resto del repo).
 
 ---
 
