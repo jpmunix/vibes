@@ -1,0 +1,4 @@
+
+> vibes@10.0.0~alpha.1 ts:main /home/munix/Desarrollo/GitRepo/Vibes
+> npx tsgo -p tsconfig.app.json --noEmit --incremental
+

@@ -1,0 +1,120 @@
+
+> vibes@10.0.0~alpha.1 ts:main /home/munix/Desarrollo/GitRepo/Vibes
+> npx tsgo -p tsconfig.app.json --noEmit --incremental
+
+e2e-tests/helpers/test_helper.ts(10,3): error TS2305: Module '"@/prompts/system_prompt"' has no exported member 'BUILD_SYSTEM_POSTFIX'.
+e2e-tests/helpers/test_helper.ts(11,3): error TS2305: Module '"@/prompts/system_prompt"' has no exported member 'BUILD_SYSTEM_PREFIX'.
+src/app/layout.tsx(205,32): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/components/AppList.tsx(99,12): error TS2678: Type '"apps:new"' is not comparable to type 'SidebarAction'.
+src/components/AppList.tsx(102,12): error TS2678: Type '"apps:import"' is not comparable to type 'SidebarAction'.
+src/components/AppList.tsx(106,12): error TS2678: Type '"apps:search"' is not comparable to type 'SidebarAction'.
+src/components/AppList.tsx(109,12): error TS2678: Type '"apps:bulk-close"' is not comparable to type 'SidebarAction'.
+src/components/BugScreenshotDialog.tsx(33,26): error TS2554: Expected 1 arguments, but got 0.
+src/components/ErrorBoundary.tsx(35,29): error TS2339: Property 'pnpmVersion' does not exist on type '{ nodeVersion: string | null; nodePath: string | null; telemetryId: string; telemetryConsent: string; telemetryUrl: string; vibesVersion: string; platform: string; architecture: string; logs: string; selectedLanguageModel: string; }'.
+src/components/GitHubConnector.tsx(1445,21): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/GitHubConnector.tsx(1488,21): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/GithubBranchManager.tsx(410,11): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/GithubBranchManager.tsx(483,19): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/MemoryPanel.tsx(300,13): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/MemoryPanel.tsx(312,13): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/SetupBanner.tsx(154,9): error TS2322: Type '{ isVisible: boolean; setIsVisible: Dispatch<SetStateAction<boolean>>; }' is not assignable to type 'IntrinsicAttributes & { isVisible: boolean; }'.
+  Property 'setIsVisible' does not exist on type 'IntrinsicAttributes & { isVisible: boolean; }'. Did you mean 'isVisible'?
+src/components/SupabaseConnector.tsx(307,19): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/TemplatePicker.tsx(106,7): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/VercelConnector.tsx(545,21): error TS2322: Type '"outline"' is not assignable to type '"default" | "ghost" | "inline" | "minimal" | "pill" | "pillSoft" | undefined'.
+src/components/admin_window/AdminListApps.tsx(431,15): error TS2345: Argument of type '{ id: number; userId: string; name: string; path: string; createdAt: number; updatedAt: number; primaryLanguage: string | null; projectType: string | null; githubOrg: string | null; githubRepo: string | null; }[]' is not assignable to parameter of type 'SetStateAction<AdminApp[]>'.
+  Type '{ id: number; userId: string; name: string; path: string; createdAt: number; updatedAt: number; primaryLanguage: string | null; projectType: string | null; githubOrg: string | null; githubRepo: string | null; }[]' is not assignable to type 'AdminApp[]'.
+    Property 'lastMessageAt' is missing in type '{ id: number; userId: string; name: string; path: string; createdAt: number; updatedAt: number; primaryLanguage: string | null; projectType: string | null; githubOrg: string | null; githubRepo: string | null; }' but required in type 'AdminApp'.
+src/components/admin_window/AdminWindowApp.tsx(24,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/appItem.tsx(122,19): error TS2322: Type '{ size: number; className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/components/chat/ChatMessage.tsx(149,20): error TS2367: This comparison appears to be unintentional because the types '"assistant" | "user"' and '"system"' have no overlap.
+src/components/chat/MessagesList.tsx(167,13): error TS2339: Property 'todo' does not exist on type '{ readonly settings: ClientFromContracts<{ readonly getUserSettings: IpcContract<"get-user-settings", ZodVoid, ZodObject<{ isTestMode: ZodOptional<ZodBoolean>; enableProSaverMode: ZodOptional<ZodBoolean>; ... 117 more ...; showCostDisplay: ZodOptional<...>; }, $loose>>; ... 5 more ...; readonly deleteGlobalSkill: Ip...'.
+src/components/chat/MessagesList.tsx(169,18): error TS7006: Parameter 'todos' implicitly has an 'any' type.
+src/components/chat/MessagesList.tsx(170,38): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/components/chat/MessagesList.tsx(175,19): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/components/chat/MessagesList.tsx(249,19): error TS2339: Property 'todo' does not exist on type '{ readonly settings: ClientFromContracts<{ readonly getUserSettings: IpcContract<"get-user-settings", ZodVoid, ZodObject<{ isTestMode: ZodOptional<ZodBoolean>; enableProSaverMode: ZodOptional<ZodBoolean>; ... 117 more ...; showCostDisplay: ZodOptional<...>; }, $loose>>; ... 5 more ...; readonly deleteGlobalSkill: Ip...'.
+src/components/chat/MessagesList.tsx(251,19): error TS2339: Property 'todo' does not exist on type '{ readonly settings: ClientFromContracts<{ readonly getUserSettings: IpcContract<"get-user-settings", ZodVoid, ZodObject<{ isTestMode: ZodOptional<ZodBoolean>; enableProSaverMode: ZodOptional<ZodBoolean>; ... 117 more ...; showCostDisplay: ZodOptional<...>; }, $loose>>; ... 5 more ...; readonly deleteGlobalSkill: Ip...'.
+src/components/chat/StreamingLoadingAnimation.tsx(957,11): error TS2322: Type '"steps(1, start)"' is not assignable to type 'Easing[] | Easing | undefined'.
+src/components/code_window/CodeWindowApp.tsx(21,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/database/DatabaseWindowApp.tsx(18,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/docs_window/DocsWindowApp.tsx(34,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/docs_window/DocsWindowApp.tsx(147,31): error TS2554: Expected 1 arguments, but got 0.
+src/components/git_window/GitWindowApp.tsx(18,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/memory_window/MemoryWindowApp.tsx(21,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/playground_window/PlaygroundWindowApp.tsx(103,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/preview_panel/ActionHeader.tsx(75,3): error TS2353: Object literal may only specify known properties, and 'database' does not exist in type 'Record<PreviewMode, MenuGroup>'.
+src/components/preview_panel/ActionHeader.tsx(168,47): error TS2322: Type 'Error' is not assignable to type 'string | number'.
+src/components/preview_panel/ActionHeader.tsx(189,23): error TS7053: Element implicitly has an 'any' type because expression of type '"code" | "configure" | "database" | "preview" | "problems" | "publish" | "versions"' can't be used to index type 'Record<PreviewMode, MenuGroup>'.
+  Property 'database' does not exist on type 'Record<PreviewMode, MenuGroup>'.
+src/components/preview_panel/ConfigurePanel.tsx(86,52): error TS2322: Type 'Error' is not assignable to type 'string | number'.
+src/components/preview_panel/ConfigurePanel.tsx(147,51): error TS2322: Type 'Error' is not assignable to type 'string | number'.
+src/components/preview_panel/NaturalEditingPanel.tsx(43,8): error TS2882: Cannot find module or type declarations for side-effect import of './NaturalEditingPanel.css'.
+src/components/preview_panel/NaturalEditingPanel.tsx(1170,27): error TS2304: Cannot find name 't'.
+src/components/preview_panel/NaturalEditingPanel.tsx(1220,28): error TS2304: Cannot find name 't'.
+src/components/preview_panel/PreviewIframe.tsx(1653,15): error TS2322: Type '(e?: MouseEvent | undefined) => void' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'e' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is missing the following properties from type 'MouseEvent': layerX, layerY, offsetX, offsetY, and 16 more.
+src/components/preview_panel/VisualEditingChangesDialog.tsx(87,58): error TS2322: Type 'unknown' is not assignable to type 'string | number'.
+src/components/preview_panel/VisualEditingChangesDialog.tsx(171,54): error TS2322: Type 'unknown' is not assignable to type 'string | number'.
+src/components/release_notes_window/ReleaseNotesWindowApp.tsx(34,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/ui/VibesMarkdownRenderer.tsx(403,9): error TS2367: This comparison appears to be unintentional because the types 'MarkType' and '"preview"' have no overlap.
+src/components/ui/VibesMarkdownRenderer.tsx(405,16): error TS2367: This comparison appears to be unintentional because the types 'MarkType' and '"collapse"' have no overlap.
+src/components/ui/VibesMarkdownRenderer.tsx(495,36): error TS2503: Cannot find namespace 'JSX'.
+src/components/ui/VibesMarkdownRenderer.tsx(497,5): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ 1: string; 2: string; 3: string; 4: string; 5: string; 6: string; }'.
+src/components/ui/VibesMarkdownRenderer.tsx(507,6): error TS2604: JSX element type 'Tag' does not have any construct or call signatures.
+src/components/ui/VibesMarkdownRenderer.tsx(507,6): error TS2786: 'Tag' cannot be used as a JSX component.
+  Its type 'string | number | symbol' is not a valid JSX element type.
+    Type 'number' is not assignable to type 'ElementType'.
+src/components/ui/VibesMarkdownRenderer.tsx(671,25): error TS2339: Property 'children' does not exist on type '{}'.
+src/components/ui/VibesMarkdownRenderer.tsx(672,67): error TS2339: Property 'children' does not exist on type '{}'.
+src/hooks/useGitPanel.ts(258,42): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/useGitPanel.ts(268,41): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/useGitPanel.ts(275,42): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/useGitPanel.ts(289,14): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/usePrompts.ts(19,7): error TS2322: Type '{ id: number | null; categoryId?: number | null | undefined; systemId?: string | null | undefined; title: string; description: string | null; content: string; enabled: boolean; scope: string; ... 4 more ...; updatedAt?: Date | ... 1 more ... | undefined; }[]' is not assignable to type 'PromptItem[]'.
+  Type '{ id: number | null; categoryId?: number | null | undefined; systemId?: string | null | undefined; title: string; description: string | null; content: string; enabled: boolean; scope: string; ... 4 more ...; updatedAt?: Date | ... 1 more ... | undefined; }' is not assignable to type 'PromptItem'.
+    Types of property 'id' are incompatible.
+      Type 'number | null' is not assignable to type 'number'.
+        Type 'null' is not assignable to type 'number'.
+src/hooks/usePrompts.ts(30,7): error TS2322: Type '{ id: number | null; categoryId?: number | null | undefined; systemId?: string | null | undefined; title: string; description: string | null; content: string; enabled: boolean; scope: string; ... 4 more ...; updatedAt?: Date | ... 1 more ... | undefined; }' is not assignable to type 'PromptItem'.
+  Types of property 'id' are incompatible.
+    Type 'number | null' is not assignable to type 'number'.
+      Type 'null' is not assignable to type 'number'.
+src/hooks/useStreamChat.ts(101,5): error TS2322: Type 'string' is not assignable to type 'undefined'.
+src/hooks/useStreamChat.ts(169,39): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/useStreamChat.ts(610,21): error TS2322: Type '{ name: string; type: string; data: string; attachmentType: "chat-context" | "upload-to-codebase"; }[] | undefined' is not assignable to type 'FileAttachment[] | undefined'.
+  Type '{ name: string; type: string; data: string; attachmentType: "chat-context" | "upload-to-codebase"; }[]' is not assignable to type 'FileAttachment[]'.
+    Property 'file' is missing in type '{ name: string; type: string; data: string; attachmentType: "chat-context" | "upload-to-codebase"; }' but required in type 'FileAttachment'.
+src/hooks/useUserBudgetInfo.ts(15,25): error TS2339: Property 'getUserBudget' does not exist on type 'ClientFromContracts<{ readonly minimizeWindow: IpcContract<"window:minimize", ZodVoid, ZodVoid>; readonly maximizeWindow: IpcContract<"window:maximize", ZodVoid, ZodVoid>; ... 41 more ...; readonly openReleaseNotesWindow: IpcContract<...>; }>'.
+src/ipc/handlers/language_model_handlers.ts(144,16): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "language_models"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/language_model_handlers.ts(166,11): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ apiName: string | Placeholder<string, any> | SQL<unknown>; builtinProviderId?: string | Placeholder<string, any> | SQL<unknown> | null | undefined; ... 8 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/language_model_handlers.ts(193,16): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "language_models"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/language_model_handlers.ts(210,16): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "language_models"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/mcp_handlers.ts(198,9): error TS1117: An object literal cannot have multiple properties with the same name.
+src/ipc/handlers/mcp_handlers.ts(261,13): error TS2322: Type '{ [x: string]: string | undefined; TZ?: string | undefined; }' is not assignable to type 'Record<string, string>'.
+  'string' index signatures are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/ipc/runtime/attachments_media.ts(44,15): error TS2304: Cannot find name 'ChatAttachment'.
+src/ipc/runtime/attachments_media.ts(167,17): error TS2304: Cannot find name 'ChatAttachment'.
+src/ipc/types/index.ts(239,3): error TS2305: Module '"./system"' has no exported member 'DoesReleaseNoteExistParams'.
+src/ipc/utils/lightweight_model_routing.contract.test.ts(93,9): error TS2698: Spread types may only be created from object types.
+src/ipc/utils/lightweight_model_routing.contract.test.ts(97,9): error TS2698: Spread types may only be created from object types.
+src/ipc/utils/lightweight_model_routing.contract.test.ts(101,9): error TS2698: Spread types may only be created from object types.
+src/ipc/utils/lightweight_model_routing.contract.test.ts(105,9): error TS2698: Spread types may only be created from object types.
+src/ipc/utils/vision_preprocessor.ts(220,11): error TS2353: Object literal may only specify known properties, and 'maxTokens' does not exist in type 'CallSettings & { system?: string | SystemModelMessage[] | SystemModelMessage | undefined; } & { messages: ModelMessage[]; prompt?: undefined; } & { ...; }'.
+src/ipc/utils/vision_preprocessor.ts(256,11): error TS2322: Type '{ role: "assistant"; providerOptions?: SharedV3ProviderOptions | undefined; content: string; } | { role: "system"; providerOptions?: SharedV3ProviderOptions | undefined; content: string; } | { ...; } | { ...; }' is not assignable to type 'ModelMessage'.
+  Type '{ role: "tool"; providerOptions?: SharedV3ProviderOptions | undefined; content: string; }' is not assignable to type 'ModelMessage'.
+    Types of property 'content' are incompatible.
+      Type 'string' is not assignable to type 'ToolContent'.
+src/renderer.tsx(35,15): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+ ELIFECYCLE  Command failed with exit code 2.
