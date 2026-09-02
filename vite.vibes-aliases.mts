@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 
 /**
  * Aliases compartidos para consumir el runtime vibes-core desde su fuente
@@ -16,8 +17,69 @@ import path from "path";
  * No usamos deps "file:" en package.json porque vibes-core declara sus
  * dependencias internas con el protocolo "workspace:*" (pnpm), que npm no
  * entiende y rompería `npm install` aquí.
+ *
+/**
+ * Paquetes requeridos para considerar válido un directorio de packages de vibes-core.
  */
-export const VIBES_CORE = path.resolve(__dirname, "../vibes-core/packages");
+export const REQUIRED_VIBES_PACKAGES = [
+  "shared",
+  "runtime",
+  "runtime-impl",
+  "tools",
+  "workspace",
+  "bridge",
+  "providers",
+] as const;
+
+/**
+ * Normaliza y valida un directorio candidato a packages de vibes-core.
+ */
+export function isValidVibesCorePackages(dirPath: string): boolean {
+  if (!fs.existsSync(dirPath)) return false;
+  return REQUIRED_VIBES_PACKAGES.every((pkg) =>
+    fs.existsSync(path.join(dirPath, pkg, "package.json")),
+  );
+}
+
+/**
+ * Resuelve la ruta al directorio `packages` de vibes-core con resolución en cascada:
+ *   1. `VIBES_CORE_DIR` (env) — acepta tanto raíz de vibes-core como subdirectorio packages.
+ *   2. `../core/packages` — estructura contenedor: /vibes-<card>/{vibes,core}.
+ *   3. `../vibes-core/packages` — estructura plana / repo principal.
+ */
+export function resolveVibesCore(
+  baseDir: string = __dirname,
+  envCoreDir: string | undefined = process.env.VIBES_CORE_DIR,
+): string {
+  const candidates: string[] = [];
+
+  if (envCoreDir) {
+    const resolvedEnv = path.resolve(baseDir, envCoreDir);
+    // Si apuntaron a la raíz de vibes-core en vez de packages:
+    if (path.basename(resolvedEnv) !== "packages") {
+      candidates.push(path.join(resolvedEnv, "packages"));
+    }
+    candidates.push(resolvedEnv);
+  }
+
+  candidates.push(path.resolve(baseDir, "../core/packages"));
+  candidates.push(path.resolve(baseDir, "../vibes-core/packages"));
+
+  for (const candidate of candidates) {
+    if (isValidVibesCorePackages(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    `[resolveVibesCore] No se pudo encontrar un árbol válido de @vibes/* (packages con [${REQUIRED_VIBES_PACKAGES.join(
+      ", ",
+    )}]). ` +
+      `Candidatos comprobados:\n${candidates.map((c) => ` - ${c}`).join("\n")}`,
+  );
+}
+
+export const VIBES_CORE = resolveVibesCore();
 
 export const vibesAliases: Record<string, string> = {
   // subpaths primero (más específicos)

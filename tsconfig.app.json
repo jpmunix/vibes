@@ -30,20 +30,26 @@
       "@/*": ["./src/*"],
       // W1 (Fase 1): resolución de @vibes/* contra el fuente TypeScript de
       // vibes-core. Paridad con los aliases de vite.main.config.mts.
-      "@vibes/runtime-impl": ["../vibes-core/packages/runtime-impl/src/index.ts"],
-      "@vibes/runtime": ["../vibes-core/packages/runtime/src/index.ts"],
-      "@vibes/shared": ["../vibes-core/packages/shared/src/index.ts"],
-      "@vibes/tools": ["../vibes-core/packages/tools/src/index.ts"],
+      // Cascada: primero estructura contenedor (../core/packages, worktree
+      // dentro de /vibes-<card>/{vibes,core}), luego estructura plana
+      // (../vibes-core/packages, repo principal). TS prueba candidatos en
+      // orden y coge el primero que exista; Vite/Vitest usan fs.existsSync
+      // explícito. `VIBES_CORE_DIR` (env) es un tercer override solo a
+      // nivel Vite/Vitest — tsgo lo resuelve por la cascada de paths.
+      "@vibes/runtime-impl": ["../core/packages/runtime-impl/src/index.ts", "../vibes-core/packages/runtime-impl/src/index.ts"],
+      "@vibes/runtime": ["../core/packages/runtime/src/index.ts", "../vibes-core/packages/runtime/src/index.ts"],
+      "@vibes/shared": ["../core/packages/shared/src/index.ts", "../vibes-core/packages/shared/src/index.ts"],
+      "@vibes/tools": ["../core/packages/tools/src/index.ts", "../vibes-core/packages/tools/src/index.ts"],
       // Subpath puro (sin side-effects de Node): el catálogo de tools. La UI
       // (renderer) lo importa para labels/metadata sin arrastrar los built-in
       // (node:fs, node:path) al bundle del navegador.
-      "@vibes/tools/catalog": ["../vibes-core/packages/tools/src/catalog.ts"],
-      "@vibes/workspace": ["../vibes-core/packages/workspace/src/index.ts"],
-      "@vibes/bridge": ["../vibes-core/packages/bridge/src/index.ts"],
-      "@vibes/providers/sqlite": ["../vibes-core/packages/providers/src/sqlite/index.ts"],
-      "@vibes/providers/libsql": ["../vibes-core/packages/providers/src/libsql/index.ts"],
-      "@vibes/providers/openai-compatible": ["../vibes-core/packages/providers/src/openai-compatible/index.ts"],
-      "@vibes/providers/openrouter": ["../vibes-core/packages/providers/src/openrouter/index.ts"]
+      "@vibes/tools/catalog": ["../core/packages/tools/src/catalog.ts", "../vibes-core/packages/tools/src/catalog.ts"],
+      "@vibes/workspace": ["../core/packages/workspace/src/index.ts", "../vibes-core/packages/workspace/src/index.ts"],
+      "@vibes/bridge": ["../core/packages/bridge/src/index.ts", "../vibes-core/packages/bridge/src/index.ts"],
+      "@vibes/providers/sqlite": ["../core/packages/providers/src/sqlite/index.ts", "../vibes-core/packages/providers/src/sqlite/index.ts"],
+      "@vibes/providers/libsql": ["../core/packages/providers/src/libsql/index.ts", "../vibes-core/packages/providers/src/libsql/index.ts"],
+      "@vibes/providers/openai-compatible": ["../core/packages/providers/src/openai-compatible/index.ts", "../vibes-core/packages/providers/src/openai-compatible/index.ts"],
+      "@vibes/providers/openrouter": ["../core/packages/providers/src/openrouter/index.ts", "../vibes-core/packages/providers/src/openrouter/index.ts"]
     }
   },
   "include": ["src", "e2e-tests", "shared"],

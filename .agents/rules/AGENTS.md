@@ -303,8 +303,10 @@ Gemelo de §1.16 en [vibes-core/AGENTS.md](file:///home/munix/Desarrollo/GitRepo
 **Esencias:**
 - **Detección SIEMPRE** antes de cualquier operación git: `git rev-parse --git-dir` → si contiene `worktrees`, estás en uno. No es automático que Antigravity meta al agente en un worktree; se detecta cada vez.
 - Desde un worktree: **NUNCA** push, merge, borrar ramas ni tocar el repo principal. Commits locales en la rama del worktree son seguros.
-- **Crear worktree por card:** SOLO si no se está ya en uno, derivado de la rama checkouteada en el repo principal, y **con OK explícito de munix** cada vez.
-- **Prune (3 días):** worktrees sin movimiento en 3 días → reportar a munix y proponer `git worktree remove`; nunca borrar por libre.
+- **Contenedor por card:** para una card que toque los dos repos (carcasa + runtime), el agente crea **un directorio contenedor** dentro de `/home/munix/Desarrollo/GitRepo/` llamado `vibes-<id>-<slug>/` que alberga **dos worktrees hermanados** con la **misma rama** — son git independientes, así que no hay choque: `vibes/` (worktree de Vibes, derivado de `feature/vibes-core`) y `core/` (worktree de vibes-core, derivado de `main`). Si la card solo toca un repo, basta el worktree suelto de ese repo.
+- **Resolución del runtime en cascada:** dentro del contenedor, el `vibes/` resuelve los alias `@vibes/*` con precedencia: 1. `VIBES_CORE_DIR` (env override), 2. `../core/packages` (hermano en contenedor), 3. `../vibes-core/packages` (estructura plana). Cada contenedor es **una copia arrancable completa** (vitest, tsgo y build leen su runtime local sin env adicional). Ver [worktrees.md](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md).
+- **Crear worktree(s) por card:** SOLO si no se está ya en uno, especificando siempre la rama base explícita, y **con OK explícito de munix** cada vez.
+- **Prune (3 días):** worktrees sin movimiento en 3 días → reportar a munix y proponer `git worktree remove`; nunca borrar por libre. El prune cuenta el contenedor como unidad (los dos hermanos comparten el TTL).
 
 📖 **CUÁNDO:** antes de cualquier operación git → [`worktrees.md`](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md) (detección completa, creación por card, comandos de limpieza).
 
@@ -329,24 +331,25 @@ El detalle procedimental de las reglas de dominio vive en docs autocontenidos (`
 
 Cuando munix diga **"sube"**, **"integra el worktree"**, **"haz el push"** o similar para una card que se trabajó en un worktree, el agente ejecuta el **flujo completo de integración** ([`worktrees.md` §Integración](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md)):
 
-1. Merge **fast-forward en la RAMA MADRE** (la rama de la que nació el worktree: `feature/vibes-core` en Vibes, `main` en vibes-core).
-2. Push de la rama madre.
-3. Borrar la rama remota del worktree.
-4. Limpiar rama local + worktree.
+1. **Preflight**: verificación previa de tests en verde en ambos worktrees.
+2. **Merges locales**: `git switch <rama-madre>` y merge **fast-forward en la RAMA MADRE** (en contenedor: primero `core/` → `main` de vibes-core, luego `vibes/` → `feature/vibes-core` de Vibes). Ambos merges locales antes de hacer push en ninguno.
+3. **Pushes encadenados**: push de la rama madre en runtime (`main`) y luego en carcasa (`feature/vibes-core`).
+4. **Limpieza remota y local**: borrar rama remota si existía y limpiar rama local + worktrees del contenedor.
 
-Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El flujo es **manual, paso a paso** (ver [`worktrees.md` §Integración](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md)): desde el repo principal, `git merge --ff-only <rama-worktree>` sobre la rama madre, `git push origin <rama-madre>`, `git push origin --delete <rama-worktree>` (solo si se pusheó en working), `git worktree remove` y `git branch -d`. **Nunca se intentó automatizar con script: los scripts de integración se eliminaron por inútiles** (se colgaban).
+Ese pedido **es autorización implícita** para todo el flujo, incluido el push de integración — no requiere OK adicional por cada paso. El flujo es **manual, paso a paso** (ver [`worktrees.md` §Integración](file:///home/munix/Desarrollo/GitRepo/Vibes/.agent/rules/worktrees.md)). **Nunca se intentó automatizar con script: los scripts de integración se eliminaron por inútiles** (se colgaban).
 
 **Trabajo concurrente (VARIOS worktrees):** munix trabaja en varios worktrees a la vez. Si al integrar el ff-only falla porque la rama madre avanzó con los cambios de **otro worktree ya integrado**, el agente **rebasea automáticamente** la rama del worktree sobre la rama madre (para coger los cambios de los demás) y continúa con el ff-only. **NO se para** por desfase de concurrencia.
 
 **Lo que NO es "sube":** pushear la rama del worktree como rama viva en remoto sin integrarla. La rama del worktree es efímera y **nunca se conserva como rama remota**.
 
 **Reglas duras:**
-- ❌ **NUNCA** integrar desde un worktree (siempre desde el repo principal).
+- ❌ **NUNCA** integrar desde un worktree (siempre desde el repo principal tras `git switch <rama-madre>`).
 - ❌ **NUNCA** merge 3-way sin OK: si el ff-only falla y el rebase automático no es posible o produce **CONFLICTOS**, **parar y avisar** — nunca resolver conflictos a lo bruto ni hacer 3-way.
 - ❌ **NUNCA** dejar la rama del worktree viva en remoto tras integrar.
-- ✅ **SIEMPRE** verificar la rama madre real antes de integrar (no asumir por el nombre del repo).
+- ✅ **SIEMPRE** verificar la rama madre real antes de integrar (`git switch` explícito, no asumir por el HEAD circunstancial).
 - ✅ **SIEMPRE** rebasear automáticamente sobre la rama madre si el ff-only falla por concurrencia (los cambios de otros worktrees se conservan).
 - ✅ **SIEMPRE** commitea los cambios del worktree ANTES de integrar (el rebase y el ff-only trabajan sobre commits).
+- ✅ **SIEMPRE** en contenedor, validar merges locales de ambos repos antes de pushear el primero (runtime antes que carcasa).
 
 ## 2. Cosas que se hablan al post-MVP
 
