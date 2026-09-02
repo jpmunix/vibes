@@ -7,7 +7,6 @@ import {
 } from "@/atoms/preferenceAtoms";
 import { ipc } from "@/ipc/types";
 import { type UserSettings } from "@/lib/schemas";
-import { useAppVersion } from "./useAppVersion";
 import { showSuccess } from "@/lib/toast";
 import { t } from "@/lib/i18n";
 
@@ -18,7 +17,11 @@ export function useSettings() {
   const [, setPrefsHydrated] = useAtom(preferencesHydratedAtom);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const appVersion = useAppVersion();
+  // Load initial data ONCE on mount. We intentionally do not depend on
+  // `appVersion` here — `useAppVersion` resolves asynchronously after mount,
+  // so depending on it would cause loadInitialData() to run a second time
+  // (canceling the first in-flight load) and re-trigger the 5s wait we just
+  // removed. The version is fetched independently for consumers that need it.
   const loadInitialData = useCallback(async () => {
     setLoading(true);
     try {
@@ -50,7 +53,6 @@ export function useSettings() {
     setEnvVarsAtom,
     setPrefsMap,
     setPrefsHydrated,
-    appVersion,
   ]);
 
   useEffect(() => {

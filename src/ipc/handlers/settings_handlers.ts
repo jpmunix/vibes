@@ -157,28 +157,25 @@ export function registerSettingsHandlers() {
         return composeSettingsFromCache(context.userId) as any;
       }
 
-      // If we have a userId but cache isn't hydrated yet (splash hydration still running),
-      // wait for it instead of returning empty defaults.  This prevents the renderer from
-      // getting providerSettings: {} on first render and flashing "configure OpenRouter" banners.
+      // If we have a userId but the cache isn't hydrated yet, trigger hydration
+      // in the background and return local disk settings immediately.
+      // The previous implementation polled for up to 5s on every settings fetch,
+      // which blocked the renderer's `useSettings.loading` for ~5s every time the
+      // user opened Settings (or any page using useSettings) when the cache was
+      // cold. Best-effort hydrate is fire-and-forget here — when it completes,
+      // the next `useSettings.refreshSettings()` (or the backend-initiated
+      // `settings:updated-from-backend` broadcast) will sync the renderer.
       if (context.userId && !preferencesCache.isHydrated) {
-        const MAX_WAIT_MS = 5000;
-        const POLL_MS = 50;
-        const start = Date.now();
-        while (
-          !preferencesCache.isHydrated &&
-          Date.now() - start < MAX_WAIT_MS
-        ) {
-          await new Promise((r) => setTimeout(r, POLL_MS));
+        if (!preferencesCache.currentUserId) {
+          preferencesCache.hydrate(context.userId).catch((err) => {
+            logger.warn(
+              `getUserSettings: background preferences hydration failed: ${err?.message}`,
+            );
+          });
         }
-        if (preferencesCache.isHydrated) {
-          return composeSettingsFromCache(context.userId) as any;
-        }
-        logger.warn(
-          "getUserSettings: preferences cache did not hydrate within timeout, returning disk settings",
-        );
       }
 
-      // Fallback: if cache isn't hydrated yet (pre-auth boot), return local disk
+      // Fallback: return local disk settings immediately (no waiting).
       return readSettings();
     },
   );

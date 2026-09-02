@@ -123,7 +123,7 @@ export function SetupWizard() {
 
   // TEMP (card #227): forzado para trabajar sobre la pantalla de bienvenida.
   // Revertir: poner FORCE_SHOW_WIZARD a false y restaurar el return original.
-  const FORCE_SHOW_WIZARD = true;
+  const FORCE_SHOW_WIZARD = false;
   if (settingsLoading || providersLoading) return null;
   if (!FORCE_SHOW_WIZARD && isAnyProviderSetup()) return null;
 
