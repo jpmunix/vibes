@@ -9,6 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { DESIGN_SYSTEMS_SYSTEM_PROMPT } from "../../prompts/design_systems";
+import { readSettings } from "../../main/settings";
+import { modelCompletion } from "../utils/model_completion";
 
 const execFileAsync = promisify(execFile);
 const logger = log.scope("design_handlers");
@@ -265,44 +267,44 @@ export function registerDesignHandlers() {
   // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
   createTypedHandler(
     designContracts.generateFromScreenshot,
-    async (_, { imageDataUrl, model }) => {
+    async (_, { imageDataUrl, provider, model }) => {
       logger.info(
-        `[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`,
+        `[Design] Generating DESIGN.md from screenshot (provider: ${provider}, model: ${model}, dataUrl length: ${imageDataUrl.length})`,
       );
 
-      const { openRouterCompletion } = await import("../utils/openrouter");
       const SYSTEM_PROMPT = DESIGN_SYSTEMS_SYSTEM_PROMPT;
+      const settings = readSettings();
 
       try {
-        const data = await openRouterCompletion({
-          model,
-          title: "design-screenshot-analysis",
-          temperature: 0.2,
-          max_tokens: 8000,
-          messages: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT,
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Analiza esta captura de pantalla y genera el archivo DESIGN.md completo. Recuerda: SOLO el contenido del archivo, sin texto adicional.",
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: imageDataUrl,
+        const result = await modelCompletion(
+          { provider, model },
+          settings,
+          {
+            temperature: 0.2,
+            maxOutputTokens: 8000,
+            messages: [
+              {
+                role: "system",
+                content: SYSTEM_PROMPT,
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Analiza esta captura de pantalla y genera el archivo DESIGN.md completo. Recuerda: SOLO el contenido del archivo, sin texto adicional.",
                   },
-                },
-              ],
-            },
-          ] as any,
-        });
+                  {
+                    type: "image",
+                    image: imageDataUrl,
+                  },
+                ],
+              },
+            ],
+          },
+        );
 
-        let content = data?.choices?.[0]?.message?.content?.trim() || "";
+        let content = result.text.trim();
 
         // Strip any accidental markdown code fences the model might add
         if (content.startsWith("```")) {

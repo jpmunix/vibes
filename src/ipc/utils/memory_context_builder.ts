@@ -16,7 +16,8 @@ import { readSettings } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
+import { modelCompletion } from "./model_completion";
+import { parseModelReference } from "./model_reference";
 import { shouldInjectMemories } from "./memory_guardian";
 import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
@@ -135,9 +136,9 @@ export async function buildMemoryContext(
       maxSelection: maxSelection.toString(),
     });
 
-    // 2. If we have a prompt AND an API key, use the LLM Router
+    // 2. If we have a prompt, use the configured LLM Router.
     let selectedRows = rows.slice(0, maxSelection); // default: top-N capped
-    if (userPrompt && hasOpenRouterApiKey() && rows.length > 3) {
+    if (userPrompt && rows.length > 3) {
       const routerSelected = await routerSelect(
         rows,
         userPrompt,
@@ -243,8 +244,9 @@ async function routerSelect(
   recentMessages?: { role: string; content: string }[],
 ): Promise<MemoryRow[] | null> {
   try {
-    const baseModel = settings.memoriesRouterModelV2 || DEFAULT_SELECTION_MODEL;
-    const model = baseModel;
+    const model = settings.memoriesRouterModelV2 || DEFAULT_SELECTION_MODEL;
+    const modelReference = parseModelReference(model);
+    if (!modelReference) throw new Error("Invalid memory router model reference");
     const maxSelection = settings.memoriesMaxSelection || DEFAULT_MAX_SELECTION;
 
     // Build structured user message matching the prompt format
@@ -302,20 +304,18 @@ async function routerSelect(
     debugPlayground("Router", model, selectionPrompt, userMessage);
 
     const t0 = Date.now();
-    const data = await openRouterCompletion({
-      model,
+    const result = await modelCompletion(modelReference, settings, {
       messages: [
         { role: "system", content: selectionPrompt },
         { role: "user", content: userMessage },
       ],
       temperature: 0,
-      max_tokens: 200,
-      response_format: { type: "json_object" },
-      title: "Vibes - Memory Router",
+      maxOutputTokens: 200,
+      output: "json",
     });
     const durationMs = Date.now() - t0;
 
-    const rawContent = data.choices?.[0]?.message?.content?.trim();
+    const rawContent = result.text.trim();
     if (!rawContent) {
       logger.info("[Memory] Router returned empty response");
       logPipelineCall({

@@ -836,23 +836,29 @@ ${componentSnippet}
           matchedAgent.modelSource === "static" &&
           matchedAgent.model
         ) {
-          const { parseModelString } = await import("../../lib/schemas");
-          const { provider: staticProv, name: staticName } = parseModelString(
-            matchedAgent.model,
-            activeProvider,
+          const { parseModelReference } = await import(
+            "../utils/model_reference"
           );
-          effectiveModelName = staticName.replace(/^openrouter\//, "");
-          selectedModel = { name: staticName, provider: staticProv };
+          const staticRef = parseModelReference(matchedAgent.model);
+          if (staticRef) {
+            const staticProv = staticRef.provider;
+            const staticName = staticRef.model;
+            effectiveModelName = staticName.replace(/^openrouter\//, "");
+            selectedModel = { name: staticName, provider: staticProv };
+          }
         }
       } else if (agentId === "mockup") {
         const rawExec = settings.executorModel || DEFAULT_EXECUTOR_MODEL;
-        const { parseModelString } = await import("../../lib/schemas");
-        const { provider: execProv, name: execName } = parseModelString(
-          rawExec,
-          activeProvider,
+        const { parseModelReference } = await import(
+          "../utils/model_reference"
         );
-        effectiveModelName = execName.replace(/^openrouter\//, "");
-        selectedModel = { name: effectiveModelName, provider: execProv };
+        const execRef = parseModelReference(rawExec);
+        if (execRef) {
+          const execProv = execRef.provider;
+          const execName = execRef.model;
+          effectiveModelName = execName.replace(/^openrouter\//, "");
+          selectedModel = { name: effectiveModelName, provider: execProv };
+        }
       }
 
       // Check if this is a test prompt

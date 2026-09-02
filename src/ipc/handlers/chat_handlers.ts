@@ -21,7 +21,8 @@ import { safeSend } from "../utils/safe_sender";
 import { BrowserWindow } from "electron";
 import { createTypedHandler, HandlerContext } from "./base";
 import { chatContracts } from "../types/chat";
-import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
+import { modelCompletion } from "../utils/model_completion";
+import { parseModelReference } from "../utils/model_reference";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 import { CONDENSE_CHAT_SYSTEM_PROMPT } from "../../prompts/condense_chat";
 
@@ -431,14 +432,15 @@ function broadcastChatDeleted(chatId: number): void {
       };
 
       logger.info(`generateChatTitle called for chatId=${chatId}`);
-      if (!hasOpenRouterApiKey()) {
-        logger.warn("OpenRouter API key not found, using default title");
-        return { title: "Nuevo chat" };
-      }
       const { readSettings } = await import("../../main/settings");
       const settings = readSettings();
 
       const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+      const modelReference = parseModelReference(model);
+      if (!modelReference) {
+        logger.warn("Invalid executor model reference, using default title");
+        return { title: "Nuevo chat" };
+      }
 
       try {
         let messageContent = prompt ? cleanPromptForTitle(prompt) : "";
@@ -524,11 +526,9 @@ function broadcastChatDeleted(chatId: number): void {
           settings.userId,
         );
 
-        const data = await openRouterCompletion({
-          model,
-          title: "chat-title",
+        const result = await modelCompletion(modelReference, settings, {
           temperature: 0.3,
-          max_tokens: 500, // Changed from 80 to 500 to support reasoning models
+          maxOutputTokens: 500, // Increased to support reasoning models
           messages: [
             {
               role: "system",
@@ -541,8 +541,7 @@ function broadcastChatDeleted(chatId: number): void {
           ],
         });
 
-        const title =
-          data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
+        const title = result.text.trim() || "Nuevo chat";
 
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);
@@ -1090,18 +1089,17 @@ function broadcastChatDeleted(chatId: number): void {
         `[summarizeToNewChat] Cleaned history: ${formattedHistory.length} chars from ${oldChat.messages.length} messages`,
       );
 
-      // 3. Generate summary using openRouterCompletion
-      //    Use strategist model for better reasoning and larger context window.
+      // 3. Generate the summary with the configured strategist model.
       const { readSettings } = await import("../../main/settings");
       const { DEFAULT_STRATEGIST_MODEL } = await import("../../lib/schemas");
       const settings = readSettings();
       const model = settings.strategistModel || DEFAULT_STRATEGIST_MODEL;
+      const modelReference = parseModelReference(model);
+      if (!modelReference) throw new Error("Referencia de modelo estratega inválida");
 
       let generatedSummary = "";
       try {
-        const data = await openRouterCompletion({
-          model,
-          title: "summarize-to-new-chat",
+        const result = await modelCompletion(modelReference, settings, {
           temperature: 0.2,
           messages: [
             {
@@ -1114,7 +1112,7 @@ function broadcastChatDeleted(chatId: number): void {
             },
           ],
         });
-        generatedSummary = data?.choices?.[0]?.message?.content?.trim() || "";
+        generatedSummary = result.text.trim();
 
         // Sanitizar el markdown quitando bloques envolventes ```markdown ... ```
         const mdWrapperRegex = /^```(?:markdown)?\s*([\s\S]*?)```\s*$/i;

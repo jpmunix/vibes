@@ -49,10 +49,15 @@ export interface ModelClient {
   builtinProviderId?: string;
 }
 
+export interface GetModelClientOptions {
+  enableProviderTools?: boolean;
+}
+
 const logger = log.scope("getModelClient");
 export async function getModelClient(
   model: LargeLanguageModel,
   settings: UserSettings,
+  options: GetModelClientOptions = {},
   // files?: File[],
 ): Promise<{
   modelClient: ModelClient;
@@ -150,6 +155,7 @@ export async function getModelClient(
             name: autoModel.name,
           },
           settings,
+          options,
         );
       }
     }
@@ -158,7 +164,7 @@ export async function getModelClient(
       "No API keys available for any model supported by the 'auto' provider.",
     );
   }
-  return getRegularModelClient(model, settings, providerConfig);
+  return getRegularModelClient(model, settings, providerConfig, options);
 }
 
 function getProModelClient({
@@ -210,6 +216,7 @@ function getRegularModelClient(
   model: LargeLanguageModel,
   settings: UserSettings,
   providerConfig: LanguageModelProvider,
+  options: GetModelClientOptions,
 ): {
   modelClient: ModelClient;
   backupModelClients: ModelClient[];
@@ -245,7 +252,8 @@ function getRegularModelClient(
       // the official SDK (@openrouter/ai-sdk-provider) prioritizes encrypted
       // reasoning_details over plain text reasoning, causing [REDACTED] to appear.
       // Switch back to createOpenRouter when this is fixed upstream.
-      const webSearchEnabled = settings.enableWebSearch !== false;
+      const webSearchEnabled =
+        options.enableProviderTools !== false && settings.enableWebSearch !== false;
       const provider = createOpenAICompatible({
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",

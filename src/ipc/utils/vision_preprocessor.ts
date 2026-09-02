@@ -1,5 +1,6 @@
 import { ModelMessage, generateText } from "ai";
-import { UserSettings, parseModelString } from "../../lib/schemas";
+import { UserSettings } from "../../lib/schemas";
+import { parseModelReference } from "./model_reference";
 import { getModelClient } from "./get_model_client";
 import { getAiHeaders } from "./provider_options";
 import * as crypto from "crypto";
@@ -194,8 +195,14 @@ export async function preprocessImages(
     if (!description) {
       logger.info(`🖼️  Vision preprocessor: sending ${imageParts.length} image(s) to ${visionModelStr}`);
       
-      const parsedModel = parseModelString(visionModelStr, "openrouter");
-      const { modelClient } = await getModelClient(parsedModel, settings);
+      const parsedRef = parseModelReference(visionModelStr);
+      if (!parsedRef) {
+        throw new Error(`Invalid vision model reference: ${visionModelStr}`);
+      }
+      const { modelClient } = await getModelClient(
+        { provider: parsedRef.provider, name: parsedRef.model },
+        settings,
+      );
 
       try {
         const result = await generateText({

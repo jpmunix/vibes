@@ -21,6 +21,7 @@ import { readSettings } from "../../main/settings";
 import { getEnvVar } from "../utils/read_env";
 import { PROVIDER_TO_ENV_VAR } from "../shared/language_model_constants";
 import type { UserSettings } from "../../lib/schemas";
+import { parseModelReference } from "../utils/model_reference";
 
 const logger = log.scope("runtime_model_resolver");
 
@@ -225,49 +226,15 @@ function resolveForExplicitModel(
 }
 
 /**
- * #215: parsea un string de modelo tal y como lo escriben los selectores de la
- * UI (strategist/executor) a `{ provider, name }`. Soporta:
- *   - "custom::<providerId>::<model>" → provider = custom::<providerId>
- *   - "ollama::<model>" / "lmstudio::<model>" → locals
- *   - "vendor/model" (OpenRouter-style) → provider = vendor, name = model
- *   - plain "<model>" → openrouter
- * Es el mismo formato que compone useMultiProviderModels.
- */
-function parseModelProviderString(modelString: string): { provider: string; name: string } {
-  if (modelString.startsWith("custom::")) {
-    const rest = modelString.slice("custom::".length);
-    const lastSep = rest.lastIndexOf("::");
-    if (lastSep > 0) {
-      // provider = custom::<id> (con prefijo), igual que model_validator/playground.
-      return {
-        provider: `custom::${rest.slice(0, lastSep)}`,
-        name: rest.slice(lastSep + 2),
-      };
-    }
-    // "custom::<nombre>" sin id de provider — forma legacy; el id es "custom".
-    return { provider: "custom", name: rest };
-  }
-  const sep = modelString.indexOf("::");
-  if (sep > 0) {
-    return { provider: modelString.slice(0, sep), name: modelString.slice(sep + 2) };
-  }
-  const slash = modelString.indexOf("/");
-  if (slash > 0) {
-    return { provider: modelString.slice(0, slash), name: modelString.slice(slash + 1) };
-  }
-  return { provider: "openrouter", name: modelString };
-}
-
-/**
- * #215: resuelve un string de fallbackModel de la UI a un RuntimeModelTarget.
- * Reutiliza resolveForExplicitModel tras parsear el provider. `null` si no
- * resoluble (provider sin credenciales, formato inválido, etc.).
+ * #215/#229: resuelve la referencia persistida de fallback/compactación.
+ * El string se parsea una sola vez en esta frontera; la resolución interna
+ * trabaja exclusivamente con `{ provider, model }`.
  */
 export function resolveRuntimeFallbackTarget(
   modelString: string,
   settings: UserSettings,
 ): RuntimeModelTarget | null {
-  if (!modelString || modelString.trim() === "") return null;
-  const { provider, name } = parseModelProviderString(modelString);
-  return resolveForExplicitModel(provider, name, settings);
+  const reference = parseModelReference(modelString);
+  if (!reference) return null;
+  return resolveForExplicitModel(reference.provider, reference.model, settings);
 }

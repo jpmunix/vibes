@@ -6,7 +6,7 @@ import { selectedChatIdAtom, chatInputValueAtom } from "@/atoms/chatAtoms";
 import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { useQuery } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
-import { parseModelString } from "@/lib/schemas";
+import { parseModelReference } from "@/ipc/utils/model_reference";
 
 /**
  * Returns whether the currently selected model supports image inputs.
@@ -64,9 +64,10 @@ export function useSelectedModelSupportsImages(): boolean {
       matchedAgent.modelSource === "static" &&
       matchedAgent.model
     ) {
-      const parsed = parseModelString(matchedAgent.model, activeProvider);
+      const parsed = parseModelReference(matchedAgent.model, activeProvider);
+      if (!parsed) return true;
       activeProvider = parsed.provider;
-      activeModelName = parsed.name;
+      activeModelName = parsed.model;
     }
 
     if (!activeModelName) return true;

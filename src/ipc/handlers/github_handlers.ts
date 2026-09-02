@@ -47,15 +47,10 @@ import { getVibesAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
-import {
-  openRouterCompletion,
-  hasOpenRouterApiKey,
-  openRouterStreamCompletion,
-} from "../utils/openrouter";
+import { modelCompletion, modelStreamCompletion } from "../utils/model_completion";
+import { parseModelReference } from "../utils/model_reference";
 import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
-import { streamText } from "ai";
-import { getModelClient } from "../utils/get_model_client";
 import { safeSend } from "../utils/safe_sender";
 // createTypedHandler removed as it's now imported above with HandlerContext
 
@@ -1826,12 +1821,10 @@ async function generateSquashCommitMessage({
   aheadCount: number;
   fallbackMessage: string;
 }): Promise<string> {
-  if (!hasOpenRouterApiKey()) {
-    return fallbackMessage;
-  }
-
   const settings = readSettings();
   const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+  const modelReference = parseModelReference(model);
+  if (!modelReference) return fallbackMessage;
 
   // Get the combined diff between remote and local
   const diffContext = await gitDiffRange({
@@ -1850,8 +1843,7 @@ async function generateSquashCommitMessage({
     settings.userId,
   );
 
-  const data = await openRouterCompletion({
-    model,
+  const result = await modelCompletion(modelReference, settings, {
     messages: [
       { role: "system", content: systemPrompt },
       {
@@ -1860,12 +1852,10 @@ async function generateSquashCommitMessage({
       },
     ],
     temperature: 0.7,
-    max_tokens: 10000,
-    title: "Vibes - Squash Commit Message",
+    maxOutputTokens: 10000,
   });
 
-  let generated =
-    data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
+  let generated = result.text.trim() || fallbackMessage;
   generated = generated.replace(/^["'`]+|["'`]+$/g, "");
 
   if (!generated || generated.length > 120) {
@@ -2067,15 +2057,15 @@ export function registerCommitMessageStreamHandler() {
       }
 
       try {
-        if (!hasOpenRouterApiKey()) {
+        const db = getRemoteDb();
+        const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+        const modelReference = parseModelReference(model);
+        if (!modelReference) {
           safeSend(event.sender, "git:commit-message-error", {
-            error: "OpenRouter API key not found",
+            error: "Invalid executor model reference",
           });
           return;
         }
-
-        const db = getRemoteDb();
-        const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
         const app = await db.query.apps.findFirst({
           where: and(
@@ -2129,23 +2119,16 @@ export function registerCommitMessageStreamHandler() {
           settings.userId,
         );
 
-        // NOTE: We intentionally bypass getModelClient here.
-        // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.
-        // When OpenRouter receives a request with `tools`, it does a routing/planning pass before
-        // generating — adding 40-50s of TTFT even for nano models. For commit messages we want a
-        // plain, tool-free completion, so we use openRouterStreamCompletion directly.
-        const stream = openRouterStreamCompletion({
-          model,
+        const streamResult = await modelStreamCompletion(modelReference, settings, {
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Cambios:\n${diffsContext}` },
           ],
           temperature: 0.7,
-          max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
-          title: "Vibes - Commit Message",
+          maxOutputTokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
         });
 
-        for await (const chunk of stream) {
+        for await (const chunk of streamResult.textStream) {
           if (event.sender.isDestroyed()) break;
           safeSend(event.sender, "git:commit-message-token", { token: chunk });
         }

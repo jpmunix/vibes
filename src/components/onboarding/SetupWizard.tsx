@@ -12,7 +12,6 @@ import {
   ExternalLink,
   Key,
   Sparkles,
-  Server,
   Cloud,
   RefreshCw,
 } from "@/components/ui/icons";
@@ -22,16 +21,15 @@ import { ipc } from "@/ipc/types";
 import { CUSTOM_PROVIDER_PREFIX } from "@/ipc/shared/language_model_constants";
 import { VerifiedModelsList } from "@/components/settings/providers/VerifiedModelsList";
 import { useI18n } from "@/lib/i18n";
-// @ts-ignore
-import openrouterLogo from "../../../assets/ai-logos/openrouter-logo.png";
+
 
 type WizardStep = "provider" | "key";
-type ProviderChoice = "openrouter" | "custom" | "ollama";
+type ProviderChoice = "openrouter" | "custom";
 
 /**
  * Full-screen wizard — blocking overlay shown when no provider is configured.
- * Offers 3 paths: OpenRouter (recommended), Custom OpenAI-compatible, Ollama local.
- * Card #160 T10 — replaces OpenRouterSetupWizard.tsx (now de-privileged).
+ * Offers 2 paths: OpenRouter or Custom OpenAI-compatible.
+ * Card #227 — Ollama removed from wizard (configured via Settings only).
  */
 export function SetupWizard() {
   const { t } = useI18n();
@@ -123,13 +121,11 @@ export function SetupWizard() {
     finally { setIsSavingCustom(false); }
   }, [customName, customUrl, customKey, settings, updateSettings, queryClient, t]);
 
-  const handleEnableOllama = useCallback(async () => {
-    await updateSettings({ ollamaEnabled: true });
-    showSuccess("Ollama activado — modelos locales disponibles");
-  }, [updateSettings]);
-
+  // TEMP (card #227): forzado para trabajar sobre la pantalla de bienvenida.
+  // Revertir: poner FORCE_SHOW_WIZARD a false y restaurar el return original.
+  const FORCE_SHOW_WIZARD = true;
   if (settingsLoading || providersLoading) return null;
-  if (isAnyProviderSetup()) return null;
+  if (!FORCE_SHOW_WIZARD && isAnyProviderSetup()) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-md">
@@ -154,21 +150,15 @@ export function SetupWizard() {
               <button
                 type="button"
                 onClick={() => { setChosen("openrouter"); setStep("key"); }}
-                className="w-full text-left bg-card rounded-2xl border-2 border-primary/30 hover:border-primary/60 p-5 space-y-3 transition-colors relative overflow-hidden cursor-pointer group"
+                className="w-full text-left bg-card rounded-2xl border border-border hover:border-primary/30 p-5 space-y-2 transition-colors cursor-pointer group"
               >
-                <span className="absolute top-3 right-3 text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">Recomendado</span>
                 <div className="flex items-center gap-3">
-                  <img loading="lazy" decoding="async" src={openrouterLogo} alt="OpenRouter" className="h-8 w-8 rounded-lg" />
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Cloud className="h-4 w-4 text-muted-foreground" /></div>
                   <div>
                     <h3 className="font-semibold text-sm">OpenRouter</h3>
                     <p className="text-xs text-muted-foreground">300+ modelos en la nube</p>
                   </div>
                 </div>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" /><span>{t("wizard.registerFree")}</span></li>
-                  <li className="flex items-start gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" /><span>{t("wizard.freeModels")}</span></li>
-                  <li className="flex items-start gap-2"><CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" /><span>{t("wizard.payPerUse")}</span></li>
-                </ul>
               </button>
 
               {/* Custom provider */}
@@ -182,21 +172,6 @@ export function SetupWizard() {
                   <div>
                     <h3 className="font-semibold text-sm">Proveedor compatible</h3>
                     <p className="text-xs text-muted-foreground">Cualquier endpoint OpenAI-compatible (vLLM, LiteLLM, proxy…)</p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Ollama local */}
-              <button
-                type="button"
-                onClick={handleEnableOllama}
-                className="w-full text-left bg-card rounded-2xl border border-border hover:border-primary/30 p-5 space-y-2 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Server className="h-4 w-4 text-muted-foreground" /></div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Ollama (local)</h3>
-                    <p className="text-xs text-muted-foreground">Modelos locales sin API key — requiere Ollama instalado</p>
                   </div>
                 </div>
               </button>

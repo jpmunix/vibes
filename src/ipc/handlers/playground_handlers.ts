@@ -1,63 +1,20 @@
 import { createTypedHandler } from "./base";
 import { miscContracts } from "../types/misc";
-import {
-  openRouterCompletion,
-  openRouterStreamCompletion,
-} from "../utils/openrouter";
-import { getModelClient } from "../utils/get_model_client";
-import { generateText, streamText } from "ai";
+import { modelCompletion, modelStreamCompletion } from "../utils/model_completion";
 import { readSettings } from "../../main/settings";
 import { safeSend } from "../utils/safe_sender";
 import log from "electron-log";
 import { PLAYGROUND_EVALUATOR_SYSTEM_PROMPT } from "../../prompts/playground_evaluator";
+import { parseModelReference } from "../utils/model_reference";
 
 const logger = log.scope("playground");
 
 // Active AbortController for cancellation support
 let activeController: AbortController | null = null;
 
-// ── Multi-provider routing ────────────────────────────────────────────────
-// Playground model ids are plain "vendor/name" for OpenRouter and prefixed as
-// "custom::<providerId>::<modelName>" for custom providers, so we can route
-// each model to its correct endpoint.
-
-function resolveModelProvider(model: string): {
-  name: string;
-  provider: string;
-} {
-  if (model.startsWith("custom::")) {
-    // useMultiProviderModels builds "custom::<providerId>::<modelName>" where
-    // providerId is itself "custom::<slug>", so ids look like
-    // "custom::custom::minube::deepseek/..." — the provider is everything up
-    // to the LAST "::".
-    const rest = model.slice("custom::".length);
-    const lastSep = rest.lastIndexOf("::");
-    if (lastSep > 0) {
-      return {
-        provider: rest.slice(0, lastSep),
-        name: rest.slice(lastSep + 2),
-      };
-    }
-  }
-  // Local providers: ollama::<model> / lmstudio::<model>
-  const sep = model.indexOf("::");
-  if (sep > 0) {
-    const provider = model.slice(0, sep);
-    if (provider === "ollama" || provider === "lmstudio") {
-      return { provider, name: model.slice(sep + 2) };
-    }
-  }
-  return { name: model, provider: "openrouter" };
-}
-
 interface PlaygroundMessage {
   role: "user" | "assistant" | "system";
   content: string;
-}
-
-interface PlaygroundCompletionData {
-  choices?: Array<{ message?: { content?: string } }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
 
 async function runPlaygroundCompletion(
@@ -65,43 +22,20 @@ async function runPlaygroundCompletion(
   messages: PlaygroundMessage[],
   opts: {
     temperature: number;
-    title?: string;
     signal?: AbortSignal;
     responseFormat?: { type: "json_object" | "text" };
   },
-): Promise<PlaygroundCompletionData> {
-  const { provider, name } = resolveModelProvider(model);
-
-  if (provider === "openrouter") {
-    return openRouterCompletion({
-      model: name,
-      messages,
-      temperature: opts.temperature,
-      title: opts.title ?? "playground",
-      signal: opts.signal,
-      ...(opts.responseFormat
-        ? { response_format: opts.responseFormat }
-        : {}),
-    });
-  }
-
-  // Custom providers (OpenAI-compatible endpoints).
+) {
+  const reference = parseModelReference(model);
+  if (!reference) throw new Error("Referencia de modelo inválida");
   const settings = readSettings();
-  const { modelClient } = await getModelClient({ name, provider }, settings);
-  const result = await generateText({
-    model: modelClient.model,
+
+  return modelCompletion(reference, settings, {
     messages,
     temperature: opts.temperature,
     ...(opts.signal ? { abortSignal: opts.signal } : {}),
+    ...(opts.responseFormat?.type === "json_object" ? { output: "json" as const } : {}),
   });
-
-  return {
-    choices: [{ message: { content: result.text } }],
-    usage: {
-      prompt_tokens: result.usage.inputTokens,
-      completion_tokens: result.usage.outputTokens,
-    },
-  };
 }
 
 export function registerPlaygroundHandlers() {
@@ -119,23 +53,21 @@ export function registerPlaygroundHandlers() {
       activeController = controller;
 
       try {
-        const data = await runPlaygroundCompletion(
+        const result = await runPlaygroundCompletion(
           model,
           [{ role: "user", content: prompt }],
           {
             temperature: 0.7,
-            title: "playground",
             signal: controller.signal,
           },
         );
 
-        const text =
-          data?.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
+        const text = result.text || JSON.stringify(result.output, null, 2);
 
         return {
           text,
-          inputTokens: data?.usage?.prompt_tokens,
-          outputTokens: data?.usage?.completion_tokens,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
         };
       } catch (error: any) {
         if (error.name === "AbortError" || controller.signal.aborted) {
@@ -207,7 +139,7 @@ Resultados de los modelos:
 ${resultsBlock}`;
 
       try {
-        const data = await runPlaygroundCompletion(
+        const result = await runPlaygroundCompletion(
           model,
           [
             { role: "system", content: systemPrompt },
@@ -215,12 +147,11 @@ ${resultsBlock}`;
           ],
           {
             temperature: 0.3,
-            title: "playground-analysis",
             responseFormat: { type: "json_object" },
           },
         );
 
-        const text = data?.choices?.[0]?.message?.content || "{}";
+        const text = result.text || JSON.stringify(result.output ?? {});
         return { text };
       } catch (error: any) {
         logger.error("Playground analysis failed:", error);
@@ -256,68 +187,40 @@ ${resultsBlock}`;
       };
 
       try {
-        const { provider, name } = resolveModelProvider(model);
+        const reference = parseModelReference(model);
+        if (!reference) throw new Error("Referencia de modelo inválida");
+        const settings = readSettings();
+        const streamResult = await modelStreamCompletion(reference, settings, {
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          abortSignal: controller.signal,
+        });
 
-        if (provider === "openrouter") {
-          const gen = openRouterStreamCompletion({
-            model: name,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            title: "playground",
-            signal: controller.signal,
-          });
-          for await (const delta of gen) {
-            if (controller.signal.aborted) {
-              timedOut = true;
-              break;
-            }
-            fullText += delta;
-            send("playground:stream:chunk", { model, delta });
+        for await (const part of streamResult.fullStream) {
+          if (controller.signal.aborted) {
+            timedOut = true;
+            break;
           }
-          send("playground:stream:end", {
-            model,
-            text: fullText,
-            timeout: timedOut,
-          });
-        } else {
-          const settings = readSettings();
-          const { modelClient } = await getModelClient(
-            { name, provider },
-            settings,
-          );
-          const streamResult = streamText({
-            model: modelClient.model,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            abortSignal: controller.signal,
-          });
-
-          for await (const part of streamResult.fullStream) {
-            if (controller.signal.aborted) {
-              timedOut = true;
-              break;
-            }
-            if (part.type === "text-delta") {
-              fullText += part.text;
-              send("playground:stream:chunk", { model, delta: part.text });
-            } else if (part.type === "reasoning-delta") {
-              if (part.text === "[REDACTED]") continue;
-              send("playground:stream:reasoning", {
-                model,
-                delta: part.text,
-              });
-            }
+          if (part.type === "text-delta") {
+            fullText += part.text;
+            send("playground:stream:chunk", { model, delta: part.text });
+          } else if (part.type === "reasoning-delta") {
+            if (part.text === "[REDACTED]") continue;
+            send("playground:stream:reasoning", {
+              model,
+              delta: part.text,
+            });
           }
-
-          const usage = await streamResult.usage;
-          send("playground:stream:end", {
-            model,
-            text: fullText,
-            inputTokens: usage?.inputTokens,
-            outputTokens: usage?.outputTokens,
-            timeout: timedOut,
-          });
         }
+
+        const usage = await streamResult.usage;
+        send("playground:stream:end", {
+          model,
+          text: fullText,
+          inputTokens: usage?.inputTokens,
+          outputTokens: usage?.outputTokens,
+          timeout: timedOut,
+        });
       } catch (error: any) {
         if (error.name === "AbortError" || controller.signal.aborted) {
           send("playground:stream:end", {

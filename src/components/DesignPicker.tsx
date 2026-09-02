@@ -398,13 +398,17 @@ export const DesignPicker: React.FC = () => {
     async (dataUrl: string) => {
       setScreenshotLoading(true);
       try {
-        const modelName = settings?.selectedModel?.name ?? "";
+        const modelReference = settings?.selectedModel;
+        if (!modelReference?.provider || !modelReference.name) {
+          throw new Error(t("workspace.designUnknownError"));
+        }
         console.log(
-          `[DesignPicker] Generando diseño desde captura con modelo: ${modelName}`,
+          `[DesignPicker] Generando diseño desde captura con modelo: ${modelReference.provider}/${modelReference.name}`,
         );
         const result = await ipc.design.generateFromScreenshot({
           imageDataUrl: dataUrl,
-          model: modelName,
+          provider: modelReference.provider,
+          model: modelReference.name,
         });
         if (result.content) {
           setSelected({

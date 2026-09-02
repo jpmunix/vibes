@@ -119,7 +119,10 @@ function resolveCachedProvider(): ModelProvider {
     const isOpenRouter = target.baseUrl.includes("openrouter.ai");
     provider = createOpenAICompatibleProvider(
       {
-        id: `vibes:${target.defaultModel}`,
+        // Card #229: la identidad observable es el nombre real del modelo
+        // (mismo valor que viaja por el wire vía defaultModel). Nada de
+        // prefijos sintéticos vibes:* que contaminen logs/eventos/snapshot.
+        id: target.defaultModel,
         baseUrl: target.baseUrl,
         defaultModel: target.defaultModel,
         apiKey: target.apiKey,
@@ -143,8 +146,11 @@ function resolveCachedProvider(): ModelProvider {
  * is exactly what the loop prints as `model=<id>` in the `context.snapshot`
  * header — so the log always showed `model=vibes-delegating` no matter what
  * model the user had selected. Making `id` a getter that resolves the cached
- * provider (whose id is `vibes:${defaultModel}`) lets the snapshot show the
- * real model per turn. Exported for tests.
+ * provider lets the snapshot show the real model per turn.
+ *
+ * Card #VIBES-229: la identidad del provider concreto es ahora el nombre real
+ * del modelo (`id === defaultModel`), sin prefijos sintéticos `vibes:*` — el
+ * mismo valor viaja por el wire, por logs y por eventos.
  */
 export const delegatingModelProvider: ModelProvider = {
   get id(): string {
@@ -410,7 +416,8 @@ export function applyAgentLoopLimits(
     );
     if (fbTarget) {
       fbProvider = createOpenAICompatibleProvider({
-        id: `vibes:fb:${fbTarget.defaultModel}`,
+        // Card #229: identidad observable = nombre real del modelo.
+        id: fbTarget.defaultModel,
         baseUrl: fbTarget.baseUrl,
         defaultModel: fbTarget.defaultModel,
         apiKey: fbTarget.apiKey,
@@ -427,7 +434,8 @@ export function applyAgentLoopLimits(
     );
     if (target) {
       compactionProvider = createOpenAICompatibleProvider({
-        id: `vibes:compaction:${target.defaultModel}`,
+        // Card #229: identidad observable = nombre real del modelo.
+        id: target.defaultModel,
         baseUrl: target.baseUrl,
         defaultModel: target.defaultModel,
         apiKey: target.apiKey,

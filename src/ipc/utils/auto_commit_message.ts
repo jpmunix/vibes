@@ -5,10 +5,8 @@
  */
 import log from "electron-log";
 import { readSettings } from "@/main/settings";
-import {
-  openRouterCompletion,
-  hasOpenRouterApiKey,
-} from "@/ipc/utils/openrouter";
+import { modelCompletion } from "@/ipc/utils/model_completion";
+import { parseModelReference } from "@/ipc/utils/model_reference";
 import { gitDiffFile } from "@/ipc/utils/git_utils";
 import { getSystemPrompt } from "@/ipc/utils/prompt_utils";
 import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
@@ -39,12 +37,10 @@ export async function generateAutoCommitMessage({
   fallbackMessage: string;
 }): Promise<string> {
   try {
-    if (!hasOpenRouterApiKey()) {
-      return fallbackMessage;
-    }
-
     const settings = readSettings();
     const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+    const modelReference = parseModelReference(model);
+    if (!modelReference) return fallbackMessage;
 
     // Build a summary of changes with limited diffs
     const allFiles = [
@@ -99,19 +95,16 @@ export async function generateAutoCommitMessage({
 
     // Separate system/user messages for better model comprehension
     // (aligned with the streaming handler in github_handlers.ts)
-    const data = await openRouterCompletion({
-      model,
+    const result = await modelCompletion(modelReference, settings, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Cambios:\n${diffsContext}` },
       ],
       temperature: 0.7,
-      max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
-      title: "Vibes - Auto Commit Message",
+      maxOutputTokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
     });
 
-    let generated =
-      data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
+    let generated = result.text.trim() || fallbackMessage;
 
     // Strip surrounding quotes if the model wrapped the message
     generated = generated.replace(/^["'`]+|["'`]+$/g, "");

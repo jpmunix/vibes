@@ -33,8 +33,14 @@ import {
   FALLBACK_STANDARD_MODEL,
   DEFAULT_ENABLED_MODELS,
 } from "../shared/language_model_constants";
-import { MODEL_PROVIDER_SEPARATOR } from "../../lib/schemas";
-import type { UserSettings } from "../../lib/schemas";
+import {
+  MODEL_PROVIDER_SEPARATOR,
+  type UserSettings,
+} from "../../lib/schemas";
+import {
+  parseModelReference,
+  serializeModelReference,
+} from "./model_reference";
 import {
   resolveCatalog,
   isModelKnown,
@@ -176,45 +182,9 @@ export function validateModelReferences(
     const raw = (next as Record<string, any>)[key];
     if (!raw || typeof raw !== "string") return;
 
-    // Formatos reales en settings (verificados):
-    //  - "vendor/model"            → OpenRouter (sin separador).
-    //  - "ollama::qwen2.5-coder:7b" → cross-provider (PRIMERA :: es el corte;
-    //    los ids de modelo local pueden llevar ":" pero no "::").
-    //  - "custom::cortecs::mi-modelo" → custom provider (DOS ::; el id del
-    //    provider va entre el primero y el segundo, el resto es el apiName).
-    //    Es el formato que compone useMultiProviderModels y que escriben los
-    //    selectores (StrategistModelSelector/ExecutorModelSelector).
-    let provider: string;
-    let name: string;
-    if (raw.startsWith("custom::")) {
-      // El primer separador es el sufijo fijo del prefijo "custom::"; el
-      // SEGUNDO hay que buscarlo a partir de ahí (si busco desde el índice 2
-      // encuentro el primero otra vez).
-      const second = raw.indexOf(
-        MODEL_PROVIDER_SEPARATOR,
-        "custom::".length,
-      );
-      if (second === -1) {
-        // "custom::<nombre>" sin id de provider — forma legacy; tratar como
-        // referencia de DB con nombre completo.
-        provider = "custom";
-        name = raw.slice(MODEL_PROVIDER_SEPARATOR.length);
-      } else {
-        provider = `custom::${raw.slice(
-          MODEL_PROVIDER_SEPARATOR.length,
-          second,
-        )}`;
-        name = raw.slice(second + MODEL_PROVIDER_SEPARATOR.length);
-      }
-    } else if (raw.includes(MODEL_PROVIDER_SEPARATOR)) {
-      const sep = raw.indexOf(MODEL_PROVIDER_SEPARATOR);
-      provider = raw.slice(0, sep);
-      name = raw.slice(sep + MODEL_PROVIDER_SEPARATOR.length);
-    } else {
-      // Sin separador → convención OpenRouter (vendor/model).
-      provider = "openrouter";
-      name = raw;
-    }
+    const reference = parseModelReference(raw);
+    if (!reference) return;
+    const { provider, model: name } = reference;
 
     if (knownForProvider(catalog, customModelNames, provider, name)) {
       // OK. (Los local se consideran conocidos.)
@@ -226,13 +196,10 @@ export function validateModelReferences(
     }
 
     const fb = fallbackFor(catalog, provider, kind, name);
-    // Reconstruir la referencia según el provider de destino:
-    //  - openrouter → el nombre ya es vendor/model (sin separador).
-    //  - cross/local → provider::name (formato de string cross-provider).
-    const newRef =
-      fb.provider === "openrouter"
-        ? fb.name
-        : `${fb.provider}${MODEL_PROVIDER_SEPARATOR}${fb.name}`;
+    const newRef = serializeModelReference({
+      provider: fb.provider,
+      model: fb.name,
+    });
     logger.warn(`[ModelValidator] ${key} "${raw}" no existe → "${newRef}"`);
     (next as Record<string, any>)[key] = newRef;
     migrated.push(`${key} → ${newRef}`);

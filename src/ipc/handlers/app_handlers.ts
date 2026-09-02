@@ -67,7 +67,8 @@ import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 import { AppSearchResult, DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
-import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
+import { modelCompletion } from "../utils/model_completion";
+import { parseModelReference } from "../utils/model_reference";
 import { getSystemPrompt } from "../../ipc/utils/prompt_utils";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
 import { detectProjectLanguage } from "../utils/detect_language";
@@ -2437,14 +2438,12 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
     const settings = readSettings();
-    if (!hasOpenRouterApiKey()) {
-      logger.warn(
-        "OpenRouter API key not found, using cute app name as fallback",
-      );
+    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+    const modelReference = parseModelReference(model);
+    if (!modelReference) {
+      logger.warn("Invalid executor model reference, using cute app name as fallback");
       return { title: generateCuteAppName() };
     }
-
-    const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
     logger.info(
@@ -2452,11 +2451,9 @@ export function registerAppHandlers() {
     );
 
     try {
-      const data = await openRouterCompletion({
-        model,
-        title: "app-title-short",
+      const result = await modelCompletion(modelReference, settings, {
         temperature: 0.7,
-        max_tokens: 30,
+        maxOutputTokens: 30,
         messages: [
           {
             role: "system",
@@ -2469,7 +2466,7 @@ export function registerAppHandlers() {
         ],
       });
 
-      const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+      const rawTitle = result.text.trim();
       if (!rawTitle) {
         const fallback = generateCuteAppName();
         logger.warn(
@@ -2501,14 +2498,12 @@ export function registerAppHandlers() {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
 
-      if (!hasOpenRouterApiKey()) {
-        logger.warn(
-          "OpenRouter API key not found, using cute app name as fallback",
-        );
+      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
+      const modelReference = parseModelReference(model);
+      if (!modelReference) {
+        logger.warn("Invalid executor model reference, using cute app name as fallback");
         return { title: generateCuteAppName() };
       }
-
-      const model = settings.executorModel || DEFAULT_STANDARD_MODEL;
 
       logger.info(
         `[AppNamePro] Generating name for appId=${appId} with model: ${model}`,
@@ -2548,11 +2543,9 @@ export function registerAppHandlers() {
           `[AppNamePro] User prompt: "${userPrompt.slice(0, 100)}${userPrompt.length > 100 ? "..." : ""}"`,
         );
 
-        const data = await openRouterCompletion({
-          model,
-          title: "app-name-pro",
+        const result = await modelCompletion(modelReference, settings, {
           temperature: 0.5,
-          max_tokens: 30,
+          maxOutputTokens: 30,
           messages: [
             {
               role: "system",
@@ -2565,14 +2558,14 @@ export function registerAppHandlers() {
           ],
         });
 
-        const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+        const rawTitle = result.text.trim();
         logger.info(
-          `[AppNamePro] API response: data=${data ? "present" : "null"}, choices=${data?.choices?.length ?? "none"}, content="${rawTitle ?? "<empty>"}", finish_reason=${data?.choices?.[0]?.finish_reason ?? "unknown"}`,
+          `[AppNamePro] Completion returned content="${rawTitle || "<empty>"}"`,
         );
         if (!rawTitle) {
           const fallback = generateCuteAppName();
           logger.warn(
-            `[AppNamePro] API returned empty name, using fallback: "${fallback}". Full response: ${JSON.stringify(data)?.slice(0, 500)}`,
+            `[AppNamePro] Completion returned empty name, using fallback: "${fallback}"`,
           );
           return { title: fallback };
         }

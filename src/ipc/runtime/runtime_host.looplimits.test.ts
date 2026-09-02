@@ -147,7 +147,8 @@ describe("applyAgentLoopLimits — #215 fallbackModel", () => {
     });
     applyAgentLoopLimits({ fallbackModel: "ollama::qwen3" });
     expect(getAgentLoopLimits().fallbackModel).toBeDefined();
-    expect(getAgentLoopLimits().fallbackModel?.id).toBe("vibes:fb:qwen3");
+    // Card #229: identidad observable = nombre real (sin vibes:fb:).
+    expect(getAgentLoopLimits().fallbackModel?.id).toBe("qwen3");
   });
 
   it("con fallbackModel no resoluble → sin fallback (undefined)", async () => {
@@ -191,7 +192,8 @@ describe("applyAgentLoopLimits — #63+#64 compaction", () => {
     });
     applyAgentLoopLimits({ compactionModel: "ollama::qwen3" });
     expect(getAgentLoopLimits().compaction?.summarizerModel).toBeDefined();
-    expect(getAgentLoopLimits().compaction?.summarizerModel?.id).toBe("vibes:compaction:qwen3");
+    // Card #229: identidad observable = nombre real (sin vibes:compaction:).
+    expect(getAgentLoopLimits().compaction?.summarizerModel?.id).toBe("qwen3");
   });
 
   it("con compactionModel no resoluble → sin summarizerModel (undefined)", async () => {

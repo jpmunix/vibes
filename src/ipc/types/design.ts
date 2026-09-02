@@ -52,7 +52,9 @@ export const designContracts = {
     input: z.object({
       /** Base64 data URL of the screenshot (e.g. data:image/png;base64,...) */
       imageDataUrl: z.string(),
-      /** OpenRouter model apiName to use (user's selected chat model) */
+      /** Provider that owns the selected model. */
+      provider: z.string(),
+      /** Exact model name understood by that provider. */
       model: z.string(),
     }),
     output: z.object({
