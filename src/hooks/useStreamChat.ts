@@ -24,7 +24,7 @@ import { useLoadApp } from "./useLoadApp";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useVersions } from "./useVersions";
 import { showExtraFilesToast } from "@/lib/toast";
-import { useMatch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import { useRunApp } from "./useRunApp";
 import { useCountTokens } from "./useCountTokens";
 import { useUserBudgetInfo } from "./useUserBudgetInfo";
@@ -97,15 +97,12 @@ export function useStreamChat({
   const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
 
   const queryClient = useQueryClient();
-  const chatRouteMatch = useMatch({
+  const chatRouteSearch = useSearch({
     from: "/chat",
-    strict: false,
     shouldThrow: false,
   });
   let chatId: number | undefined =
-    hasChatId && chatRouteMatch
-      ? (chatRouteMatch as any).search?.id
-      : undefined;
+    hasChatId ? (chatRouteSearch?.id ?? undefined) : undefined;
 
   // Keep cache updated when the hook mounts
   useEffect(() => {
@@ -600,14 +597,10 @@ export function useStreamChat({
                     })),
                   );
 
-                  const lastAttachments = lastMsg.attachments?.length
-                    ? await Promise.all(lastMsg.attachments.map(toAttachment))
-                    : undefined;
-
                   streamMessageRef.current?.({
                     prompt: lastMsg.prompt,
                     chatId,
-                    attachments: lastAttachments,
+                    attachments: lastMsg.attachments,
                     priorMessages:
                       convertedPrior.length > 0 ? convertedPrior : undefined,
                   });

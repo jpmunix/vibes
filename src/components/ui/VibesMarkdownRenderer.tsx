@@ -50,7 +50,15 @@ const REMARK_PLUGINS = [remarkGfm];
 const TOKEN_PREFIX = "‹VIBES_MARK:";
 const TOKEN_SUFFIX = "›";
 
-type MarkType = "tip" | "info" | "warning" | "danger" | "kbd" | "version";
+type MarkType =
+  | "tip"
+  | "info"
+  | "warning"
+  | "danger"
+  | "kbd"
+  | "version"
+  | "preview"
+  | "collapse";
 
 /**
  * Pre-process markdown to convert custom marks into tokens.
@@ -483,7 +491,11 @@ const DocsLink = ({ node: _node, ...props }: any) => (
 );
 
 /** Headings with auto-generated anchor IDs for deep-linking */
-function DocsHeading({ level, children, ...props }: any) {
+function DocsHeading({
+  level,
+  children,
+  ...props
+}: { level: number; children?: React.ReactNode } & Record<string, any>) {
   const text = extractText(children);
   const id = text
     .toLowerCase()
@@ -492,7 +504,7 @@ function DocsHeading({ level, children, ...props }: any) {
     .replace(/-+/g, "-")
     .trim();
 
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+  const Tag = `h${level}` as React.ElementType;
   const sizeClass =
     {
       1: "text-2xl font-bold mt-8 mb-4",
@@ -666,7 +678,9 @@ const DocsParagraph = ({ children, ...props }: any) => {
 
   // If the entire paragraph is a single block callout, don't wrap in <p>
   if (processed.length === 1 && React.isValidElement(processed[0])) {
-    const fragment = processed[0] as React.ReactElement;
+    const fragment = processed[0] as React.ReactElement<{
+      children?: React.ReactNode;
+    }>;
     // Check if the fragment's children include a CalloutBlock
     if (fragment.props?.children) {
       const innerChildren = React.Children.toArray(fragment.props.children);

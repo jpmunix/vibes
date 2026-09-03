@@ -132,6 +132,8 @@ export function registerLanguageModelHandlers() {
       if (!params?.apiName || !params?.displayName) {
         throw new Error("apiName and displayName are required");
       }
+      if (!context.userId) throw new Error("userId is required");
+      const userId = context.userId;
       const db = getRemoteDb();
       const now = new Date();
 
@@ -141,7 +143,7 @@ export function registerLanguageModelHandlers() {
         .from(remoteSchema.languageModels)
         .where(
           and(
-            eq(remoteSchema.languageModels.userId, context.userId),
+            eq(remoteSchema.languageModels.userId, userId),
             eq(remoteSchema.languageModels.apiName, params.apiName),
           ),
         );
@@ -163,7 +165,7 @@ export function registerLanguageModelHandlers() {
         );
       } else {
         await db.insert(remoteSchema.languageModels).values({
-          userId: context.userId,
+          userId,
           displayName: params.displayName,
           apiName: params.apiName,
           builtinProviderId: params.providerId,
@@ -184,13 +186,15 @@ export function registerLanguageModelHandlers() {
     languageModelContracts.deleteCustomModel,
     async (_event, modelId, context) => {
       if (!modelId) throw new Error("modelId is required");
+      if (!context.userId) throw new Error("userId is required");
+      const userId = context.userId;
       const db = getRemoteDb();
       // modelId is a string — treat as apiName for backwards compat
       await db
         .delete(remoteSchema.languageModels)
         .where(
           and(
-            eq(remoteSchema.languageModels.userId, context.userId),
+            eq(remoteSchema.languageModels.userId, userId),
             eq(remoteSchema.languageModels.apiName, modelId),
           ),
         );
@@ -202,12 +206,14 @@ export function registerLanguageModelHandlers() {
     languageModelContracts.deleteModel,
     async (_event, params, context) => {
       if (!params?.modelApiName) throw new Error("modelApiName is required");
+      if (!context.userId) throw new Error("userId is required");
+      const userId = context.userId;
       const db = getRemoteDb();
       await db
         .delete(remoteSchema.languageModels)
         .where(
           and(
-            eq(remoteSchema.languageModels.userId, context.userId),
+            eq(remoteSchema.languageModels.userId, userId),
             eq(remoteSchema.languageModels.apiName, params.modelApiName),
           ),
         );

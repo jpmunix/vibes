@@ -195,7 +195,6 @@ export function registerMcpHandlers() {
         args: safeParseJsonField(s.args),
         envJson: safeParseJsonField(s.envJson),
         headersJson: safeParseJsonField(s.headersJson),
-        headersJson: safeParseJsonField(s.headersJson),
         url: s.url,
         instructions: s.instructions,
         enabled: s.enabled === 1,
@@ -258,7 +257,7 @@ export function registerMcpHandlers() {
             server.envJson,
           );
           if (customEnv) {
-            envVars = { ...process.env, ...customEnv };
+            envVars = { ...envVars, ...customEnv };
           }
 
           transport = new StdioClientTransport({

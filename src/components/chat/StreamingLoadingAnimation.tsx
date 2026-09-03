@@ -954,7 +954,7 @@ export function TerminalCursorLoader({ color }: { color: string }) {
         transition={{
           duration: 0.8,
           repeat: Infinity,
-          ease: "steps(1, start)",
+          ease: "linear",
         }}
         className="ml-[1px] leading-none"
       >

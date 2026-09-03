@@ -1,15 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
+import type { PromptDto } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 
-export interface PromptItem {
-  id: number;
-  title: string;
-  description: string | null;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+/**
+ * PromptItem = PromptDto (el wire type). El hook usePrompts devuelve
+ * exactamente lo que ipc.prompt.list() trae: PromptDto[].
+ * Los consumidores (library.tsx, PromptsSection) consumen PromptDto directo.
+ */
+export type PromptItem = PromptDto;
 
 export function usePrompts() {
   const queryClient = useQueryClient();

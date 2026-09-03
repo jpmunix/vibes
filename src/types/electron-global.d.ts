@@ -3,3 +3,6 @@ declare global {
     electron: any;
   }
 }
+
+export {};
+

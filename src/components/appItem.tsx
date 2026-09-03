@@ -116,11 +116,12 @@ export function AppItem({
               </span>
               <LanguageBadge language={app.primaryLanguage} />
               {app.localPathExists === false && (
-                <AlertTriangle
-                  size={14}
-                  className="text-red-500 flex-shrink-0 animate-pulse ml-1"
-                  title={t("common.localFilesNotFound")}
-                />
+                <span title={t("common.localFilesNotFound")}>
+                  <AlertTriangle
+                    size={14}
+                    className="text-red-500 flex-shrink-0 animate-pulse ml-1"
+                  />
+                </span>
               )}
             </div>
             <span

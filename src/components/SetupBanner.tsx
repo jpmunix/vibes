@@ -151,7 +151,6 @@ export function SetupBanner() {
       </p>
       <OnboardingBanner
         isVisible={isOnboardingVisible}
-        setIsVisible={setIsOnboardingVisible}
       />
       <div className={bannerClasses}>
         <Accordion

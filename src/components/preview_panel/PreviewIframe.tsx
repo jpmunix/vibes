@@ -1428,7 +1428,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   };
 
   // Function to handle reload
-  const handleReload = (e?: MouseEvent) => {
+  const handleReload = (e?: { shiftKey?: boolean }) => {
     // If Shift is pressed, do a full restart instead
     if (e?.shiftKey) {
       onRestart();

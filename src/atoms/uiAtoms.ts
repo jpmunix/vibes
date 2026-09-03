@@ -26,6 +26,10 @@ export type SidebarAction =
   | "workspace:open-folder"
   | "workspace:search"
   | "workspace:bulk-close"
+  | "apps:new"
+  | "apps:import"
+  | "apps:search"
+  | "apps:bulk-close"
   | null;
 
 export const sidebarActionAtom = atom<{

@@ -217,7 +217,7 @@ export async function preprocessImages(
               ],
             },
           ],
-          maxTokens: 4096,
+          maxOutputTokens: 4096,
         });
 
         description = result.text;
@@ -255,6 +255,7 @@ export async function preprocessImages(
 
     const newMsg: ModelMessage = {
       ...msg,
+      role: "user",
       content: newContent,
     };
     newMessages.push(newMsg);

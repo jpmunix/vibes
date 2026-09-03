@@ -32,7 +32,6 @@ ${error?.stack ? `\nStack Trace:\n${error.stack}` : ""}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
 - Node Version: ${debugInfo.nodeVersion || "Not available"}
-- PNPM Version: ${debugInfo.pnpmVersion || "Not available"}
 - Node Path: ${debugInfo.nodePath || "Not available"}
 - Telemetry ID: ${debugInfo.telemetryId || "Not available"}
 

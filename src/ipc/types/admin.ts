@@ -103,6 +103,7 @@ export const adminContracts = {
           projectType: z.string().nullable(),
           githubOrg: z.string().nullable(),
           githubRepo: z.string().nullable(),
+          lastMessageAt: z.number().nullable(),
         }),
       ),
       users: z.array(AdminUserSchema),

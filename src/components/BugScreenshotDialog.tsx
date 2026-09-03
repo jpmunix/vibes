@@ -30,7 +30,7 @@ export function BugScreenshotDialog({
     onClose();
     setTimeout(async () => {
       try {
-        await ipc.system.takeScreenshot();
+        await ipc.system.takeScreenshot({});
         setIsScreenshotSuccessOpen(true);
       } catch (error) {
         setScreenshotError(

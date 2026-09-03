@@ -82,8 +82,8 @@ export const ConfigurePanel = () => {
       showSuccess(t("configure.startCommandsSaved"));
       setCommandsDirty(false);
     },
-    onError: (error) => {
-      showError(t("configure.saveCommandsError", { error }));
+    onError: (error: Error) => {
+      showError(t("configure.saveCommandsError", { error: error.message }));
     },
   });
 
@@ -143,8 +143,8 @@ export const ConfigurePanel = () => {
       });
       showSuccess(t("configure.envVarsSaved"));
     },
-    onError: (error) => {
-      showError(t("configure.saveEnvVarsError", { error }));
+    onError: (error: Error) => {
+      showError(t("configure.saveEnvVarsError", { error: error.message }));
     },
   });
 

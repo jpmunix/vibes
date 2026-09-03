@@ -22,7 +22,7 @@ import { useI18n } from "@/lib/i18n";
 interface CreateOrEditPromptDialogProps {
   mode: "create" | "edit";
   prompt?: {
-    id: number;
+    id: number | null;
     title: string;
     description: string | null;
     content: string;
@@ -150,7 +150,7 @@ export function CreateOrEditPromptDialog({
       });
     } else if (mode === "edit" && onUpdatePrompt && prompt) {
       await onUpdatePrompt({
-        id: prompt.id,
+        id: prompt.id!,
         title: draft.title.trim(),
         description: draft.description.trim() || undefined,
         content: draft.content,

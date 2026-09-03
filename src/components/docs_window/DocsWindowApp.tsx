@@ -144,7 +144,7 @@ function DocsWindowContent() {
   // Fetch the doc tree
   const { data: docTree, isLoading: treeLoading } = useQuery({
     queryKey: ["docTree"],
-    queryFn: () => ipc.system.getDocTree(),
+    queryFn: () => ipc.system.getDocTree({}),
   });
 
   // Auto-select the first page when tree loads

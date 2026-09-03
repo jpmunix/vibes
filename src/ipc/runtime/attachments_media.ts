@@ -12,6 +12,7 @@
  */
 
 import type { ImageContentPart } from "@vibes/shared";
+import type { ChatAttachment } from "@/ipc/types/chat";
 
 /** Supported image MIME types (UI contract). */
 export const SUPPORTED_IMAGE_TYPES = [

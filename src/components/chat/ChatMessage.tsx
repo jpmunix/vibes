@@ -146,7 +146,7 @@ const ChatMessage = ({
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
-  const isSystem = message.role === "system";
+  const isSystem = (message.role as string) === "system";
 
   // --- User message collapse state ---
   const userContentRef = useRef<HTMLDivElement>(null);

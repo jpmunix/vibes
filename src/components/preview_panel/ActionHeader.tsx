@@ -61,6 +61,7 @@ export type PreviewMode =
   | "preview"
   | "code"
   | "problems"
+  | "database"
   | "configure"
   | "publish"
   | "versions";
@@ -164,8 +165,8 @@ export const ActionHeader = () => {
       await refreshAppIframe();
       showSuccess(t("preview.dataCleared"));
     },
-    onError: (error) => {
-      showError(t("preview.clearDataError", { error }));
+    onError: (error: Error) => {
+      showError(t("preview.clearDataError", { error: error.message }));
     },
   });
 

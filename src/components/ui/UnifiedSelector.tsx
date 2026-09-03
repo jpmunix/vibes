@@ -67,7 +67,7 @@ export interface UnifiedSelectorProps {
    *  - "ghost"    → no border, transparent
    *  - "minimal"  → compact inline, icon-only capable
    */
-  triggerVariant?: "default" | "pill" | "pillSoft" | "ghost" | "minimal" | "inline";
+  triggerVariant?: "default" | "pill" | "pillSoft" | "ghost" | "minimal" | "inline" | "outline";
   triggerSize?: "xs" | "sm" | "md";
   /** Additional classes for the trigger */
   triggerClassName?: string;
@@ -123,6 +123,8 @@ export interface UnifiedSelectorProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  /** Whether the trigger button is disabled */
+  disabled?: boolean;
   /** Whether to disable the font-bold formatting on selected items */
   disableBoldSelection?: boolean;
   /** When true, cmdk does not filter internally (caller filters externally). Used by ModelSelector for instant open. */
@@ -147,6 +149,8 @@ const VARIANT_CLASSES: Record<
   string
 > = {
   default:
+    "border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 rounded-md shadow-none transition-colors",
+  outline:
     "border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 rounded-md shadow-none transition-colors",
   pill: "border-0 bg-primary text-primary-foreground shadow-sm rounded-lg hover:brightness-110 transition-colors duration-200",
   pillSoft:

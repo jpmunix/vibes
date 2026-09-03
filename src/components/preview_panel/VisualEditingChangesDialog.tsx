@@ -84,7 +84,7 @@ export function VisualEditingChangesDialog({
           onReset?.();
         } catch (error) {
           console.error("Failed to save visual editing changes:", error);
-          showError(t("previewPanel.saveChangesError", { error }));
+          showError(t("previewPanel.saveChangesError", { error: error instanceof Error ? error.message : String(error) }));
         } finally {
           setIsSaving(false);
           setAllResponsesReceived(false);
@@ -168,7 +168,7 @@ export function VisualEditingChangesDialog({
       }
     } catch (error) {
       console.error("Failed to save visual editing changes:", error);
-      showError(t("previewPanel.saveChangesError", { error }));
+      showError(t("previewPanel.saveChangesError", { error: error instanceof Error ? error.message : String(error) }));
       setIsSaving(false);
       isWaitingForResponses.current = false;
     }

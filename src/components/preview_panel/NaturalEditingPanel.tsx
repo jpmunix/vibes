@@ -1053,6 +1053,7 @@ function QuickEditChat({
   appId,
 }: QuickEditChatProps) {
   const [prompt, setPrompt] = useState("");
+  const { t } = useI18n();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -80,6 +80,7 @@ export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
 export { promptClient } from "./prompts";
+export { todoClient } from "./todo";
 export { customAgentsClient } from "./custom_agents";
 export { templateClient } from "./templates";
 export { proposalClient } from "./proposals";
@@ -236,7 +237,6 @@ export type {
   NodeSystemInfo,
   SystemDebugInfo,
   SelectNodeFolderResult,
-  DoesReleaseNoteExistParams,
   UserBudgetInfo,
   TelemetryEventPayload,
 } from "./system";
@@ -360,6 +360,7 @@ import { mcpClient, mcpEventClient } from "./mcp";
 import { miscClient, miscEventClient } from "./misc";
 import { neonClient } from "./neon";
 import { promptClient } from "./prompts";
+import { todoClient } from "./todo";
 import { customAgentsClient } from "./custom_agents";
 import { proposalClient } from "./proposals";
 import { settingsClient } from "./settings";
@@ -423,6 +424,7 @@ export const ipc = {
   version: versionClient,
   languageModel: languageModelClient,
   prompt: promptClient,
+  todo: todoClient,
   customAgents: customAgentsClient,
   template: templateClient,
   proposal: proposalClient,

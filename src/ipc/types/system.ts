@@ -141,6 +141,12 @@ export const systemContracts = {
     output: z.object({ version: z.string() }),
   }),
 
+  getUserBudget: defineContract({
+    channel: "system:get-user-budget",
+    input: z.void(),
+    output: UserBudgetInfoSchema,
+  }),
+
   // Node.js
   getNodejsStatus: defineContract({
     channel: "nodejs-status",

@@ -85,7 +85,7 @@ describe("lightweight model routing — card #VIBES-229", () => {
         { id: "custom::legacy-provider", apiBaseUrl: "http://localhost:4322/v1" },
       ],
       providerSettings: { openrouter: { apiKey: { value: "sk-or" } } },
-    } as never;
+    } as any;
 
     // selectedModel (settings) usa ids pelados → defaultModel pelado.
     const fromSelected = [

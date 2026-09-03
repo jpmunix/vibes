@@ -72,14 +72,16 @@ export default function LibraryPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {prompts.map((p) => (
-              <PromptCard
-                key={p.id}
-                prompt={p}
-                onUpdate={updatePrompt}
-                onDelete={deletePrompt}
-              />
-            ))}
+            {prompts
+              .filter((p) => p.id !== null)
+              .map((p) => (
+                <PromptCard
+                  key={p.id}
+                  prompt={p}
+                  onUpdate={updatePrompt}
+                  onDelete={deletePrompt}
+                />
+              ))}
           </div>
         )}
       </div>
@@ -93,7 +95,7 @@ function PromptCard({
   onDelete,
 }: {
   prompt: {
-    id: number;
+    id: number | null;
     title: string;
     description: string | null;
     content: string;
@@ -128,7 +130,7 @@ function PromptCard({
             <DeleteConfirmationDialog
               itemName={prompt.title}
               itemType="Prompt"
-              onDelete={() => onDelete(prompt.id)}
+              onDelete={() => onDelete(prompt.id!)}
             />
           </div>
         </div>
