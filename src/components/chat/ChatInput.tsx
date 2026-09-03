@@ -1121,16 +1121,7 @@ export function ChatInput({
                   <ChatInputControls
                     showContextFilesPicker={false}
                     chatId={chatId}
-                    showTemplatePicker={
-                      currentMessages.length === 0 &&
-                      !versionsLoading &&
-                      versions.length <= 1 &&
-                      (app
-                        ? app.files.filter(
-                            (f) => f !== ".gitignore" && f !== "README.md",
-                          ).length === 0
-                        : true)
-                    }
+                    showTemplatePicker={justCreatedApp}
                     showDesignPicker={justCreatedApp}
                   />
                 </div>

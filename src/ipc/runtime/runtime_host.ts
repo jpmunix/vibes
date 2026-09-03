@@ -59,6 +59,10 @@ import { readSettings } from "../../main/settings";
 import { randomUUID } from "node:crypto";
 import type { Question, AskUserResponse } from "@vibes/shared";
 import { getCachedModelCaps } from "../utils/models_dev_service";
+// Imported lazily at runtime to avoid pulling node:fs into a packaged build
+// path that never instantiates the file logger (app.isPackaged === true).
+// `createFilePerSessionLogger` already manages its own mkdirSync/appendFileSync.
+import { createFilePerSessionLogger } from "@vibes/runtime-impl";
 
 const logger = log.scope("runtime_host");
 
@@ -70,26 +74,67 @@ const logger = log.scope("runtime_host");
  * Adapts the vibes-core `Logger` interface to electron-log.
  * The runtime emits structured diagnostics (llm.request, tool.dispatch,
  * permission.*) at debug level — set VIBES_RUNTIME_LOG_LEVEL=debug to see them.
+ *
+ * 2026-09-03 (munix): cada línea lleva `session=<id>` delante. El core ya
+ * mete `sessionId` en el ctx de cada log legítimo del loop y en la cabecera
+ * del snapshot; aquí lo extraemos y lo prefijamos para poder hacer
+ * `grep "session=<id>"`. NUNCA se loguean cuerpos de prompts ni respuestas
+ * del LLM — solo metadatos del loop.
+ */
+/**
+ * 2026-09-03 (munix): in packaged builds we only tee through electron-log (no
+ * per-session file). In dev (`app.isPackaged === false`) we ALSO write one
+ * append-only NDJSON file per session under /tmp/vibes (overridable via
+ * VIBES_LOG_DIR). The file path stays out of the bundled app — Electron's
+ * production packaging will never reach this branch.
  */
 const runtimeLogScope = log.scope("vibes-runtime");
 const runtimeLogLevel = (process.env.VIBES_RUNTIME_LOG_LEVEL ??
   (app.isPackaged ? "info" : "debug")) as string;
 const runtimeDebugEnabled = runtimeLogLevel === "debug";
 
+const vibesLogDir =
+  process.env["VIBES_LOG_DIR"] ?? (app.isPackaged ? "" : "/tmp/vibes");
+const fileLogger =
+  !app.isPackaged && vibesLogDir !== ""
+    ? createFilePerSessionLogger({ dir: vibesLogDir })
+    : null;
+
+function sessionPrefix(msg: string, ctx?: Record<string, unknown>): string {
+  const fromCtx =
+    typeof ctx?.["sessionId"] === "string" ? (ctx["sessionId"] as string) : "";
+  const fromMsg = /session=([0-9a-f-]{8,})/i.exec(msg)?.[1] ?? "";
+  const sid = fromCtx || fromMsg || "no-session";
+  return `[session=${sid.slice(0, 8)}]`;
+}
+
+function formatRuntimeLog(msg: string, ctx?: Record<string, unknown>): string {
+  const prefix = sessionPrefix(msg, ctx);
+  return ctx ? `${prefix} ${msg} ${JSON.stringify(ctx)}` : `${prefix} ${msg}`;
+}
+
 const vibesRuntimeLogger = {
   debug(msg: string, ctx?: Record<string, unknown>): void {
     if (runtimeDebugEnabled) {
-      runtimeLogScope.info(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+      const line = formatRuntimeLog(msg, ctx);
+      runtimeLogScope.info(line);
+      fileLogger?.debug(msg, ctx);
     }
   },
   info(msg: string, ctx?: Record<string, unknown>): void {
-    runtimeLogScope.info(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+    const line = formatRuntimeLog(msg, ctx);
+    runtimeLogScope.info(line);
+    fileLogger?.info(msg, ctx);
   },
   warn(msg: string, ctx?: Record<string, unknown>): void {
-    runtimeLogScope.warn(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+    const line = formatRuntimeLog(msg, ctx);
+    runtimeLogScope.warn(line);
+    fileLogger?.warn(msg, ctx);
   },
   error(msg: string, ctx?: Record<string, unknown>): void {
-    runtimeLogScope.error(ctx ? `${msg} ${JSON.stringify(ctx)}` : msg);
+    const line = formatRuntimeLog(msg, ctx);
+    runtimeLogScope.error(line);
+    fileLogger?.error(msg, ctx);
   },
 };
 
@@ -224,7 +269,7 @@ export function createVibesPermissionGate(): PermissionGate {
       // 2. Decision is already allow/deny → return it directly.
       if (result.decision !== "ask") {
         logger.info(
-          `[RuntimeHost] Permission ${result.decision} (source=${result.source}) for ${request.toolId} [${request.requestId}]`,
+          `[RuntimeHost session=${request.sessionId.slice(0, 8)}] Permission ${result.decision} (source=${result.source}) for ${request.toolId} [${request.requestId}]`,
         );
         return result.decision;
       }
@@ -234,7 +279,7 @@ export function createVibesPermissionGate(): PermissionGate {
       if (!ctx?.sender) {
         // No window to ask → fail closed.
         logger.warn(
-          `[RuntimeHost] No UI context for permission ${request.requestId} — denying`,
+          `[RuntimeHost session=${request.sessionId.slice(0, 8)}] No UI context for permission ${request.requestId} — denying`,
         );
         return "deny";
       }
@@ -247,7 +292,7 @@ export function createVibesPermissionGate(): PermissionGate {
         toolInput: request.args ?? null,
       });
       logger.info(
-        `[RuntimeHost] Permission ask sent to UI: ${request.toolId} [${request.requestId}] (source=${result.source})`,
+        `[RuntimeHost session=${request.sessionId.slice(0, 8)}] Permission ask sent to UI: ${request.toolId} [${request.requestId}] (source=${result.source})`,
       );
 
       const response = await waitForRuntimePermissionResponse(
@@ -284,7 +329,7 @@ export function createVibesQuestionHandler(): QuestionHandler {
       const ctx = getSessionUIContext(opts.sessionId);
       if (!ctx?.sender) {
         logger.warn(
-          `[RuntimeHost] No UI context for question ${requestId} — cancelling`,
+          `[RuntimeHost session=${opts.sessionId.slice(0, 8)}] No UI context for question ${requestId} — cancelling`,
         );
         const err = new Error("No UI context for question");
         err.name = "QuestionCancelled";
@@ -300,7 +345,7 @@ export function createVibesQuestionHandler(): QuestionHandler {
         toolCallId: opts.toolCallId ?? null,
       });
       logger.info(
-        `[RuntimeHost] Question sent to UI: ${questions.length} question(s) [${requestId}]`,
+        `[RuntimeHost session=${opts.sessionId.slice(0, 8)}] Question sent to UI: ${questions.length} question(s) [${requestId}]`,
       );
 
       // Wait for response
