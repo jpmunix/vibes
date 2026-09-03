@@ -1568,9 +1568,6 @@ export const messagesEs: Messages = {
     clickToRename: "Clic para renombrar",
   },
   appSettings: {
-    title: "Ajustes del workspace",
-    subtitle:
-      "Gestiona las carpetas vinculadas al workspace y revisa qué AGENTS.md se inyectan al modelo en cada sesión.",
     linkedFolders: "Carpetas vinculadas",
     addFolder: "Añadir carpeta",
     noLinked: "Aún no hay carpetas vinculadas.",
@@ -1591,11 +1588,12 @@ export const messagesEs: Messages = {
     agentsMdNoFolders: "Vincula una carpeta para ver los AGENTS.md detectados.",
     agentsMdEmpty: "Sin carpetas vinculadas todavía.",
     agentsMdNoFiles: "Esta carpeta no contiene ningún AGENTS.md.",
-    agentsMdColFile: "Archivo",
-    agentsMdColPath: "Ruta (relativa a la carpeta)",
     removeFolderConfirmTitle: "Desvincular carpeta",
     removeFolderConfirmMessage:
       "¿Seguro que quieres desvincular “{label}”? Esta acción eliminará la carpeta de este workspace. No borra ningún archivo del disco.",
+    viewFile: "Ver archivo",
+    viewFileTitle: "AGENTS.md — {folder}",
+    viewFileEmpty: "El archivo está vacío.",
   },
   visionPrompts: {
     saved: "Prompt de visión guardado",

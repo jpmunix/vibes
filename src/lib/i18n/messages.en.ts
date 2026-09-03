@@ -1544,9 +1544,6 @@ export const messagesEn: Messages = {
     clickToRename: "Click to rename",
   },
   appSettings: {
-    title: "Workspace settings",
-    subtitle:
-      "Manage the folders linked to this workspace and review which AGENTS.md are sent to the model in each session.",
     linkedFolders: "Linked folders",
     addFolder: "Add folder",
     noLinked: "No linked folders yet.",
@@ -1567,11 +1564,12 @@ export const messagesEn: Messages = {
     agentsMdNoFolders: "Link a folder to see detected AGENTS.md.",
     agentsMdEmpty: "No linked folders yet.",
     agentsMdNoFiles: "This folder contains no AGENTS.md.",
-    agentsMdColFile: "File",
-    agentsMdColPath: "Path (relative to folder)",
     removeFolderConfirmTitle: "Unlink folder",
     removeFolderConfirmMessage:
       "Are you sure you want to unlink “{label}”? This removes the folder from this workspace. It does not delete any files from disk.",
+    viewFile: "View file",
+    viewFileTitle: "AGENTS.md — {folder}",
+    viewFileEmpty: "The file is empty.",
   },
   visionPrompts: {
     saved: "Vision prompt saved",

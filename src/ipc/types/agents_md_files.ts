@@ -65,6 +65,21 @@ export const ListAgentsMdFilesResponseSchema = z.object({
   folders: z.array(AgentsMdFolderScanSchema),
 });
 
+/**
+ * Read one AGENTS.md file by absolute path. The handler validates that the
+ * path belongs to one of the app's linked folders (and is an AGENTS.md the
+ * scan would have found), so this channel can't be used as a generic file
+ * reader by a compromised renderer.
+ */
+export const ReadAgentsMdFileParamsSchema = z.object({
+  appId: z.number(),
+  absolutePath: z.string().min(1),
+});
+
+export const ReadAgentsMdFileResponseSchema = z.object({
+  content: z.string().nullable(),
+});
+
 // =============================================================================
 // AGENTS.md Files Contracts
 // =============================================================================
@@ -74,6 +89,11 @@ export const agentsMdFileContracts = {
     channel: "list-agents-md-files",
     input: ListAgentsMdFilesParamsSchema,
     output: ListAgentsMdFilesResponseSchema,
+  }),
+  readAgentsMdFile: defineContract({
+    channel: "read-agents-md-file",
+    input: ReadAgentsMdFileParamsSchema,
+    output: ReadAgentsMdFileResponseSchema,
   }),
 } as const;
 
@@ -92,4 +112,10 @@ export type ListAgentsMdFilesParams = z.infer<
 >;
 export type ListAgentsMdFilesResponse = z.infer<
   typeof ListAgentsMdFilesResponseSchema
+>;
+export type ReadAgentsMdFileParams = z.infer<
+  typeof ReadAgentsMdFileParamsSchema
+>;
+export type ReadAgentsMdFileResponse = z.infer<
+  typeof ReadAgentsMdFileResponseSchema
 >;

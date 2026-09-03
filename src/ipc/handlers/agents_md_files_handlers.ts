@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs/promises";
 import { eq, and, desc } from "drizzle-orm";
 import log from "electron-log";
 
@@ -97,6 +98,59 @@ export function registerAgentsMdFilesHandlers() {
       });
 
       return { folders };
+    },
+  );
+
+  // ─── Read one AGENTS.md file (viewer modal, card #234) ────────────────────
+  createTypedHandler(
+    agentsMdFileContracts.readAgentsMdFile,
+    async (_event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
+      // Same ownership check as listAgentsMdFiles.
+      const app = await db.query.apps.findFirst({
+        where: and(
+          eq(remoteSchema.apps.id, params.appId),
+          eq(remoteSchema.apps.userId, context.userId),
+        ),
+      });
+      if (!app) throw new Error("App not found");
+
+      const folderRows = await db
+        .select()
+        .from(remoteSchema.appFolders)
+        .where(eq(remoteSchema.appFolders.appId, params.appId));
+
+      // Security: the requested path must resolve INSIDE one of the app's
+      // linked folders (prefix check on resolved paths — blocks traversal
+      // like "/etc" or "../../foo") and must be a file the scan itself
+      // would have produced (an AGENTS.md at depth ≤ 2). Otherwise this
+      // channel would be a generic file reader for a compromised renderer.
+      const resolved = path.resolve(params.absolutePath);
+      const owningFolder = folderRows.find((row) => {
+        const folderRoot = path.resolve(row.path);
+        return (
+          resolved === folderRoot ||
+          resolved.startsWith(folderRoot + path.sep)
+        );
+      });
+      if (!owningFolder) throw new Error("Path not in any linked folder");
+
+      const expected = findAgentsMdFiles(path.resolve(owningFolder.path));
+      if (!expected.includes(resolved)) {
+        throw new Error("Not a detected AGENTS.md");
+      }
+
+      try {
+        const content = await fs.readFile(resolved, "utf-8");
+        return { content };
+      } catch (err) {
+        logger.warn(
+          `readAgentsMdFile failed for ${resolved}: ${(err as Error).message}`,
+        );
+        return { content: null };
+      }
     },
   );
 }

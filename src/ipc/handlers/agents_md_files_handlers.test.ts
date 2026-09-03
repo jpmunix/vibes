@@ -185,6 +185,22 @@ describe("agents_md_fileContracts", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("readAgentsMdFile accepts appId + absolutePath", () => {
+    const result = agentsMdFileContracts.readAgentsMdFile.input.safeParse({
+      appId: 42,
+      absolutePath: "/tmp/foo/AGENTS.md",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("readAgentsMdFile rejects an empty absolutePath", () => {
+    const result = agentsMdFileContracts.readAgentsMdFile.input.safeParse({
+      appId: 42,
+      absolutePath: "",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 // Smoke test the handler module can be loaded without throwing — guards

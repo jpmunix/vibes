@@ -10,27 +10,29 @@
  *  - Outer scroll container with `bg-muted/30`, sections in `space-y-12`.
  *  - Sections: rounded-2xl cards with `shadow-sm border p-8`, title
  *    `typo-section-title` + description `typo-caption`.
+ *  - No page header (the navigation already says where you are) and no
+ *    decorative icons or badges — rows are text-only, like every other
+ *    settings section.
  *  - Rows follow the SettingItem pattern (no borders, hover bg).
  *  - Collapsables follow the AgentPermissionsSettings pattern (chevron
  *    rotate-90, content outside the header card).
- *  - Destructive unlink goes through ConfirmationDialog (never bare).
+ *  - Destructive unlink goes through ConfirmationDialog (never bare),
+ *    triggered from a trash icon (not an X).
  */
 import { useSearch } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-  Folder,
-  FolderOpen,
   Loader2,
   Plus,
-  X,
   Pencil,
   Check,
   ChevronRight,
-  FileText,
+  Trash2,
+  X,
 } from "@/components/ui/icons";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -40,7 +42,9 @@ import { appFolderClient, type AppFolder } from "@/ipc/types/app_folders";
 import {
   agentsMdFileClient,
   type AgentsMdFolderScan,
+  type AgentsMdFile,
 } from "@/ipc/types/agents_md_files";
+import { VibesMarkdownRenderer } from "@/components/ui/VibesMarkdownRenderer";
 import { useI18n } from "@/lib/i18n";
 
 export default function AppSettingsPage() {
@@ -120,6 +124,9 @@ export default function AppSettingsPage() {
     renameMutation.mutate({ appId, folderId, label: editLabel.trim() });
   };
 
+  // ── AGENTS.md viewer (modal) ──────────────────────────────────────────────
+  const [viewingFile, setViewingFile] = useState<AgentsMdFile | null>(null);
+
   // ── Unlink confirmation (destructive → always dialog) ────────────────────
   const [pendingRemoval, setPendingRemoval] = useState<AppFolder | null>(null);
 
@@ -127,13 +134,6 @@ export default function AppSettingsPage() {
     <div className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto">
       <div className="w-full mx-auto px-8 pt-4 pb-12 flex-1">
         <div className="space-y-12 pb-24">
-          {/* ── Page header (canonical settings: title + caption, no icons) ── */}
-          <div>
-            <h1 className="typo-section-title mb-2">{t("appSettings.title")}</h1>
-            <p className="typo-caption mb-8">{" "}
-              {t("appSettings.subtitle")}
-            </p>
-          </div>
 
           {/* ── Section: Linked folders ──────────────────────────────────── */}
           <section className="bg-card rounded-2xl shadow-sm border border-border p-8">
@@ -175,7 +175,6 @@ export default function AppSettingsPage() {
             )}
             {!isLoading && !error && folders.length === 0 && (
               <div className="py-12 text-center text-muted-foreground rounded-xl bg-muted/30 border border-dashed border-border">
-                <Folder className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="typo-label">{t("appFolders.noLinked")}</p>
                 <p className="typo-caption mt-1">
                   {t("appSettings.addFolderHint")}
@@ -208,7 +207,11 @@ export default function AppSettingsPage() {
           </section>
 
           {/* ── Section: AGENTS.md discovery ─────────────────────────────── */}
-          <AgentsMdSection appId={appId} hasFolders={folders.length > 0} />
+          <AgentsMdSection
+            appId={appId}
+            hasFolders={folders.length > 0}
+            onViewFile={setViewingFile}
+          />
         </div>
       </div>
 
@@ -231,6 +234,13 @@ export default function AppSettingsPage() {
           setPendingRemoval(null);
         }}
         onCancel={() => setPendingRemoval(null)}
+      />
+
+      {/* AGENTS.md viewer */}
+      <AgentsMdViewerDialog
+        appId={appId}
+        file={viewingFile}
+        onClose={() => setViewingFile(null)}
       />
     </div>
   );
@@ -271,7 +281,6 @@ function FolderRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <Folder className="h-4 w-4 shrink-0 text-muted-foreground/70" />
           {isEditing ? (
             <div className="flex items-center gap-2">
               <Input
@@ -310,23 +319,8 @@ function FolderRow({
               )}
             </>
           )}
-          {folder.isPrimary && (
-            <Badge variant="secondary" className="shrink-0 typo-badge">
-              Primary
-            </Badge>
-          )}
-          {folder.language && (
-            <Badge variant="outline" className="shrink-0 typo-badge">
-              {folder.language}
-            </Badge>
-          )}
-          {folder.projectType && folder.projectType !== "generic" && (
-            <Badge variant="outline" className="shrink-0 typo-badge">
-              {folder.projectType}
-            </Badge>
-          )}
         </div>
-        <div className="typo-mono-xs text-muted-foreground truncate pl-6">
+        <div className="typo-mono-xs text-muted-foreground truncate">
           {folder.path}
         </div>
       </div>
@@ -338,7 +332,7 @@ function FolderRow({
             title={t("appFolders.unlink")}
             aria-label={t("appFolders.unlink")}
           >
-            <X className="h-3.5 w-3.5" />
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
@@ -356,9 +350,11 @@ function FolderRow({
 function AgentsMdSection({
   appId,
   hasFolders,
+  onViewFile,
 }: {
   appId: number;
   hasFolders: boolean;
+  onViewFile: (f: AgentsMdFile) => void;
 }) {
   const { t, tPlural } = useI18n();
   const {
@@ -420,7 +416,6 @@ function AgentsMdSection({
 
       {!hasFolders && (
         <div className="py-12 text-center text-muted-foreground rounded-xl bg-muted/30 border border-dashed border-border">
-          <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
           <p className="typo-label">{t("appSettings.agentsMdNoFolders")}</p>
         </div>
       )}
@@ -437,7 +432,6 @@ function AgentsMdSection({
       )}
       {hasFolders && !isLoading && !error && scans.length === 0 && (
         <div className="py-12 text-center text-muted-foreground rounded-xl bg-muted/30 border border-dashed border-border">
-          <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
           <p className="typo-label">{t("appSettings.agentsMdEmpty")}</p>
         </div>
       )}
@@ -454,13 +448,7 @@ function AgentsMdSection({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                       <span className="typo-label truncate">{scan.folderLabel}</span>
-                      {scan.isPrimary && (
-                        <Badge variant="secondary" className="shrink-0 typo-badge">
-                          Primary
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -486,18 +474,20 @@ function AgentsMdSection({
                     ) : (
                       <div className="pl-4 space-y-0 border-l-2 border-border/40">
                         {scan.files.map((f) => (
-                          <div
+                          <button
                             key={f.absolutePath}
-                            className="flex items-center justify-between gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors"
-                            title={f.absolutePath}
+                            type="button"
+                            onClick={() => onViewFile(f)}
+                            className="group/file w-full flex items-center justify-between gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                            title={t("appSettings.viewFile")}
                           >
-                            <span className="typo-mono-xs font-medium truncate">
+                            <span className="typo-mono-xs font-medium truncate group-hover/file:text-primary transition-colors">
                               AGENTS.md
                             </span>
                             <span className="typo-mono-xs text-muted-foreground truncate">
                               {f.relativePath}
                             </span>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -509,5 +499,127 @@ function AgentsMdSection({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * AGENTS.md viewer modal (card #234).
+ *
+ * Opens when a file row is clicked. Loads the content through the
+ * `read-agents-md-file` IPC channel (which validates the path belongs to a
+ * linked folder) and renders it with the in-house markdown renderer — the
+ * same one the docs window uses.
+ *
+ * Pattern follows MessageStatsModal: plain portal + overlay + Escape to
+ * close. No icons beyond the close button, per the settings rules.
+ */
+function AgentsMdViewerDialog({
+  appId,
+  file,
+  onClose,
+}: {
+  appId: number;
+  file: AgentsMdFile | null;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setContent(null);
+      setLoadError(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    agentsMdFileClient
+      .readAgentsMdFile({ appId, absolutePath: file.absolutePath })
+      .then((res) => {
+        if (cancelled) return;
+        setContent(res.content);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setLoadError((e as Error).message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, appId]);
+
+  // Escape to close (same as MessageStatsModal).
+  useEffect(() => {
+    if (!file) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [file, onClose]);
+
+  if (!file) return null;
+
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      <div
+        className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[680px] h-[85vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-sidebar shrink-0">
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-sm font-semibold truncate">
+              {t("appSettings.viewFileTitle", {
+                folder: file.folderLabel,
+              })}
+            </span>
+            <span className="typo-mono-xs text-muted-foreground/60 truncate">
+              {file.relativePath}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+            onClick={onClose}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              {t("common.loading")}
+            </div>
+          ) : loadError ? (
+            <div className="text-sm text-destructive p-5">
+              {t("common.loadError", { error: loadError })}
+            </div>
+          ) : content === null ? (
+            <div className="p-12 text-center text-muted-foreground typo-caption">
+              {t("appSettings.viewFileEmpty")}
+            </div>
+          ) : (
+            <div className="markdown-body p-6">
+              <VibesMarkdownRenderer content={content} />
+            </div>
+          )}
+        </div>
+      </div>
+    </>,
+    document.body,
   );
 }
