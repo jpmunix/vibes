@@ -6,12 +6,6 @@ import {
   ModelMessage,
   TextPart,
   ImagePart,
-  streamText,
-  ToolSet,
-  TextStreamPart,
-  stepCountIs,
-  hasToolCall,
-  type ToolExecutionOptions,
 } from "ai";
 
 import { notifyStreamStarted, notifyStreamEnded } from "../../main/tray";
@@ -138,7 +132,6 @@ import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
-import { cleanFullResponse } from "../utils/cleanFullResponse";
 import { generateProblemReport } from "../processors/tsc";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { AsyncVirtualFileSystem } from "../../../shared/VirtualFilesystem";
@@ -174,8 +167,6 @@ import {
 } from "../utils/versioned_codebase_context";
 import { getAiMessagesJsonIfWithinLimit } from "../utils/ai_messages_utils";
 
-type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
-
 const logger = log.scope("chat_stream_handlers");
 const disableRemoteEngine =
   process.env.VIBES_DISABLE_REMOTE_ENGINE === "true" ||
@@ -183,9 +174,6 @@ const disableRemoteEngine =
 
 // Track active streams for cancellation
 const activeStreams = new Map<number, AbortController>();
-
-// Track partial responses for cancelled streams
-const partialResponses = new Map<number, string>();
 
 // Smart Mode: remember last classified mode per chat so "context" intents reuse it
 const lastSmartModeForChat = new Map<number, string>();
@@ -253,79 +241,6 @@ function getModelPricingFromCatalog(
 // Ensure the temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
-
-// Helper function to process stream chunks
-async function processStreamChunks({
-  fullStream,
-  fullResponse,
-  abortController,
-  chatId,
-  processResponseChunkUpdate,
-}: {
-  fullStream: AsyncIterableStream<TextStreamPart<ToolSet>>;
-  fullResponse: string;
-  abortController: AbortController;
-  chatId: number;
-  processResponseChunkUpdate: (params: {
-    fullResponse: string;
-  }) => Promise<string>;
-}): Promise<{ fullResponse: string; incrementalResponse: string }> {
-  let incrementalResponse = "";
-  let inThinkingBlock = false;
-
-  for await (const part of fullStream) {
-    let chunk = "";
-    if (
-      inThinkingBlock &&
-      !["reasoning-delta", "reasoning-end", "reasoning-start"].includes(
-        part.type,
-      )
-    ) {
-      chunk = "</think>";
-      inThinkingBlock = false;
-    }
-    if (part.type === "text-delta") {
-      chunk += part.text;
-    } else if (part.type === "reasoning-delta") {
-      // Skip [REDACTED] from OpenRouter encrypted reasoning tokens
-      if (part.text === "[REDACTED]") continue;
-      if (!inThinkingBlock) {
-        chunk = "<think>";
-        inThinkingBlock = true;
-      }
-
-      chunk += escapeVibesTags(part.text);
-    } else if (part.type === "tool-call") {
-      const { serverName, toolName } = parseMcpToolKey(part.toolName);
-      const content = escapeVibesTags(JSON.stringify(part.input));
-      chunk = `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>\n`;
-    } else if (part.type === "tool-result") {
-      const { serverName, toolName } = parseMcpToolKey(part.toolName);
-      const content = escapeVibesTags(part.output);
-      chunk = `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-result>\n`;
-    }
-
-    if (!chunk) {
-      continue;
-    }
-
-    fullResponse += chunk;
-    incrementalResponse += chunk;
-    fullResponse = cleanFullResponse(fullResponse);
-    fullResponse = stripAssistantWrapperTags(fullResponse);
-    fullResponse = await processResponseChunkUpdate({
-      fullResponse,
-    });
-
-    // If the stream was aborted, exit early
-    if (abortController.signal.aborted) {
-      logger.log(`Stream for chat ${chatId} was aborted`);
-      break;
-    }
-  }
-
-  return { fullResponse, incrementalResponse };
 }
 
 function registerChatStreamHandlers() {
@@ -816,7 +731,6 @@ ${componentSnippet}
       vibesRequestId = uuidv4();
 
       let fullResponse = "";
-      let maxTokensUsed: number | undefined;
       // Auto-routing: if provider is "auto-router", analyze task and select best model
       let selectedModel = settings.selectedModel;
 
@@ -1432,293 +1346,6 @@ This conversation includes one or more image attachments. When the user uploads 
             chatMessages.length,
           );
         }
-
-        let visionThought = "";
-
-        const simpleStreamText = async ({
-          chatMessages,
-          modelClient,
-          tools,
-          systemPromptOverride = systemPrompt,
-          vibesDisableFiles = false,
-          files,
-          toolChoice,
-          serviceTier,
-        }: {
-          chatMessages: ModelMessage[];
-          modelClient: ModelClient;
-          files: CodebaseFile[];
-          tools?: ToolSet;
-          systemPromptOverride?: string;
-          vibesDisableFiles?: boolean;
-          toolChoice?: Parameters<typeof streamText>[0]["toolChoice"];
-          serviceTier?: "default" | "batch";
-        }) => {
-          if (isEngineEnabled) {
-            logger.log(
-              "sending AI request to engine with request id:",
-              vibesRequestId,
-            );
-          } else {
-            logger.log("sending AI request");
-          }
-          let versionedFiles: VersionedFiles | undefined;
-          if (isDeepContextEnabled) {
-            versionedFiles = await getVersionedFiles({
-              files,
-              chatMessages,
-              appPath,
-            });
-          }
-          const smartContextMode: SmartContextMode = isDeepContextEnabled
-            ? "deep"
-            : "balanced";
-          const providerOptions = getProviderOptions({
-            vibesAppId: updatedChat.app.id,
-            vibesRequestId,
-            vibesDisableFiles,
-            smartContextMode,
-            files,
-            versionedFiles,
-            mentionedAppsCodebases,
-            builtinProviderId: modelClient.builtinProviderId,
-            settings,
-            serviceTier,
-          });
-
-          logger.log(
-            "Starting direct AI request (no engine):",
-            modelClient.model,
-          );
-
-          // Dynamic maxOutputTokens capping based on estimated input
-          const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
-          const contextWindow = await getContextWindow();
-
-          // Estimate current prompt tokens (1.5x safety buffer for system/overhead)
-          let estimatedInputTokens = Math.round(
-            estimateTokens(systemPromptOverride) * 1.5,
-          );
-          for (const msg of chatMessages.filter((m) => m.content)) {
-            if (typeof msg.content === "string") {
-              estimatedInputTokens += estimateTokens(msg.content);
-            } else if (Array.isArray(msg.content)) {
-              for (const part of msg.content) {
-                if (part.type === "text")
-                  estimatedInputTokens += estimateTokens(part.text);
-              }
-            }
-          }
-
-          // Add overhead for tool definitions (approx 500 tokens per tool)
-          const toolOverhead = tools ? Object.keys(tools).length * 500 : 0;
-          estimatedInputTokens += toolOverhead;
-
-          let finalMaxOutputTokens = requestedMaxOutput;
-          // #223: si el contextWindow es desconocido (null), NO capar —
-          // capar contra un default falso recortaría la salida de modelos
-          // grandes. Sentinela estilo opencode (overflow.ts).
-          if (
-            contextWindow !== null &&
-            finalMaxOutputTokens &&
-            estimatedInputTokens + finalMaxOutputTokens > contextWindow
-          ) {
-            finalMaxOutputTokens = Math.max(
-              4096,
-              contextWindow - estimatedInputTokens - 2000,
-            );
-            logger.log(
-              `Capping maxOutputTokens from ${requestedMaxOutput} to ${finalMaxOutputTokens} to fit in context window of ${contextWindow} (estimated input: ${estimatedInputTokens})`,
-            );
-          }
-
-          // Anti-continuation: wrap last user message to prevent the model from
-          // continuing/completing the user's text instead of responding as assistant.
-          const framedMessages = chatMessages
-            .filter((m: any) => m.content)
-            .map((m, i, arr) => {
-              if (
-                i === arr.length - 1 &&
-                m.role === "user" &&
-                typeof m.content === "string"
-              ) {
-                return {
-                  ...m,
-                  content: `<user_request>\n${m.content}\n</user_request>`,
-                };
-              }
-              return m;
-            });
-
-          let finalMessages = framedMessages;
-
-          if (
-            !modelSupportsVision(selectedModel.name) &&
-            messagesHaveImages(finalMessages)
-          ) {
-            const result = await preprocessImages(
-              finalMessages,
-              currentUserId,
-              settings,
-            );
-            finalMessages = result.messages;
-            if (result.visionDescription) {
-              const shortName = result.visionModelUsed?.split("::").pop() || result.visionModelUsed;
-              visionThought = `<think>\n🖼️ [Visión automática con ${shortName}]\n${result.visionDescription}\n</think>\n\n`;
-            }
-          }
-
-          const streamResult = streamText({
-            headers: getAiHeaders({
-              builtinProviderId: modelClient.builtinProviderId,
-            }),
-            maxOutputTokens: finalMaxOutputTokens,
-            temperature: await getTemperature(settings.selectedModel),
-            // User-tunable hyperparameters from the Inference Tuner
-            topP: settings.inferenceTopP ?? 0.95,
-            maxRetries: 2,
-            model: modelClient.model,
-            stopWhen: [stepCountIs(20), hasToolCall("edit-code")],
-            providerOptions,
-            system: systemPromptOverride,
-            toolChoice,
-            tools,
-            messages: finalMessages,
-            onFinish: async (response: any) => {
-              // Use totalUsage (accumulated across ALL steps) rather than usage (last step only)
-              const accumulated = response.totalUsage;
-              const lastStep = response.usage;
-              const totalTokens =
-                accumulated?.totalTokens ?? lastStep?.totalTokens;
-              // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
-              const promptTokens =
-                accumulated?.inputTokens ??
-                lastStep?.promptTokens ??
-                lastStep?.inputTokens;
-              const completionTokens =
-                accumulated?.outputTokens ??
-                lastStep?.completionTokens ??
-                lastStep?.outputTokens ??
-                (totalTokens && promptTokens
-                  ? totalTokens - promptTokens
-                  : undefined);
-
-              // Log the query to the dedicated AI query log
-
-              if (typeof totalTokens === "number") {
-                // We use the highest total tokens used (we are *not* accumulating)
-                // since we're trying to figure it out if we're near the context limit.
-                maxTokensUsed = Math.max(maxTokensUsed ?? 0, totalTokens);
-
-                // Persist the aggregated token usage on the placeholder assistant message
-                void db
-                  .update(remoteSchema.messages)
-                  .set({ maxTokensUsed: maxTokensUsed })
-                  .where(
-                    eq(
-                      remoteSchema.messages.id,
-                      placeholderAssistantMessage.id,
-                    ),
-                  )
-                  .catch((error) => {
-                    logger.error(
-                      "Failed to save total tokens for assistant message",
-                      error,
-                    );
-                  });
-
-                logger.log(
-                  `Total tokens used (aggregated for message ${placeholderAssistantMessage.id}): ${maxTokensUsed}`,
-                );
-
-                // Log token usage for verbose chat logs
-              } else {
-                logger.log("Total tokens used: unknown");
-              }
-            },
-            onError: (error: any) => {
-              const classified = classifyError(error);
-              const message = classified.userMessage;
-              const requestIdPrefix = isEngineEnabled
-                ? `[Request ID: ${vibesRequestId}] `
-                : "";
-              logger.error(
-                `AI stream text error for request: ${requestIdPrefix} errorMessage=${error?.message || String(error)} error=`,
-                error,
-              );
-
-              const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
-              safeSend(event.sender, "chat:response:error", {
-                chatId: req.chatId,
-                error: fullErrorText,
-              });
-              // Persist error text in DB so it survives reload
-              void db
-                .update(remoteSchema.messages)
-                .set({
-                  content: `${PERSISTED_ERROR_PREFIX}${fullErrorText}`,
-                  status: "failed" as any,
-                })
-                .where(
-                  eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
-                )
-                .catch((err) =>
-                  logger.error(
-                    "Failed to persist error in message content",
-                    err,
-                  ),
-                );
-              // Clean up the abort controller
-              activeStreams.delete(req.chatId);
-            },
-            abortSignal: abortController.signal,
-          });
-          return {
-            fullStream: streamResult.fullStream,
-            usage: streamResult.usage,
-          };
-        };
-
-        let lastDbSaveAt = 0;
-
-        const processResponseChunkUpdate = async ({
-          fullResponse,
-        }: {
-          fullResponse: string;
-        }) => {
-          const finalResponseWithThought = visionThought ? visionThought + fullResponse : fullResponse;
-
-          // Store the current partial response
-          partialResponses.set(req.chatId, finalResponseWithThought);
-          // Save to DB (in case user is switching chats during the stream)
-          const now = Date.now();
-          if (now - lastDbSaveAt >= 150) {
-            await db
-              .update(remoteSchema.messages)
-              .set({ content: finalResponseWithThought })
-              .where(
-                eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
-              );
-
-            lastDbSaveAt = now;
-          }
-
-          // Update the placeholder assistant message content in the messages array
-          const currentMessages = [...updatedChat.messages];
-          if (
-            currentMessages.length > 0 &&
-            currentMessages[currentMessages.length - 1].role === "assistant"
-          ) {
-            currentMessages[currentMessages.length - 1].content = finalResponseWithThought;
-          }
-
-          // Update the assistant message in the database
-          safeSend(event.sender, "chat:response:chunk", {
-            chatId: req.chatId,
-            messages: currentMessages,
-          });
-          return finalResponseWithThought;
-        };
 
         // ── Unified OpenCode pipeline for all modes ─────────────────────
         // agent → "build" (full access, all tools)
@@ -2809,40 +2436,6 @@ export function hasUnclosedVibesWrite(text: string): boolean {
   const hasClosingTag = /<\/vibes-write>/.test(textAfterLastOpen);
 
   return !hasClosingTag;
-}
-
-function escapeVibesTags(text: string): string {
-  // Escape vibes tags in reasoning content
-  // We are replacing the opening tag with a look-alike character
-  // to avoid issues where thinking content includes vibes tags
-  // and are mishandled by:
-  // 1. FE markdown parser
-  // 2. Main process response processor
-  return text
-    .replace(/<vibes/g, "＜vibes")
-    .replace(/<\/vibes/g, "＜/vibes")
-    .replace(/<dyad/g, "＜dyad")
-    .replace(/<\/dyad/g, "＜/dyad")
-    .replace(/<assistant_/g, "＜assistant_")
-    .replace(/<\/assistant_/g, "＜/assistant_")
-    .replace(/<assistant/g, "＜assistant")
-    .replace(/<\/assistant/g, "＜/assistant");
-}
-
-/**
- * Strip Gemini-style/Llama-style wrapper tags from streamed content.
- * - <assistant_response>...</assistant_response> → keeps inner content (the actual response)
- * - <assistant>...</assistant> → keeps inner content (the actual response)
- * - <assistant_thought>...</assistant_thought> → converts to <think>...</think> (already handled by the app)
- */
-function stripAssistantWrapperTags(text: string): string {
-  return text
-    .replace(/<\/?assistant_response>/g, "")
-    .replace(/<\/?assistant>/g, "")
-    .replace(
-      /<assistant_thought>([\s\S]*?)<\/assistant_thought>/g,
-      "<think>$1</think>",
-    );
 }
 
 const CODEBASE_PROMPT_PREFIX = "This is my codebase.";
