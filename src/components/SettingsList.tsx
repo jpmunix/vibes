@@ -152,7 +152,7 @@ export function SettingsList({ show }: { show: boolean }) {
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-grow">
-        <div className="space-y-1 p-4">
+        <div className="space-y-1.5 p-4">
           {settingsSections.map((section) => (
             <button
               key={section.id}
@@ -160,7 +160,7 @@ export function SettingsList({ show }: { show: boolean }) {
               className={cn(
                 "w-full text-left px-3 py-2 rounded-md transition-colors typo-menu-item",
                 activeSection === section.id
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground opacity-100"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                   : "hover:bg-sidebar-accent opacity-75 hover:opacity-100",
               )}
             >

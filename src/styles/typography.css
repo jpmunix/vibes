@@ -112,7 +112,7 @@
 
 .typo-menu-item {
   font-size: calc(13px * var(--scale-sidebar, 1));
-  @apply font-bold;
+  @apply font-medium;
 }
 
 .typo-menu-subitem {
