@@ -495,6 +495,21 @@ export class VibesEventMapper {
     return this.timeline;
   }
 
+  /**
+   * #238: cierra todos los entries de reasoning que sigan abiertos.
+   * Se llama tras terminar el stream (antes de buildLiveContent final) para
+   * evitar que queden tags <vibes-think> abiertos en el fullResponse persistido.
+   * Durante el streaming NO se llama: el tag abierto es intencional (el parser
+   * lo marca inProgress y renderiza el LiveThinkingPanel activo).
+   */
+  closePendingReasoning(): void {
+    for (const entry of this.timeline) {
+      if (entry.type === "reasoning" && !entry.closed) {
+        entry.closed = true;
+      }
+    }
+  }
+
   getFilesChanged(): string[] {
     return Array.from(this.filesChanged);
   }
@@ -606,6 +621,13 @@ export function cleanResponseText(text: string): string {
   cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
   cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
   cleaned = cleaned.replace(/<\/?assistant>/gi, "");
+  // #238: strip orphan think/vibes-think tags (closing without opening or vice versa).
+  // Se ejecuta ANTES del procesamiento de parejas think.../think para no
+  // eliminar los tags validos que produce la conversion de assistant_thought.
+  // Las parejas completas se procesan abajo; lo que llega aqui son tags
+  // sueltos del modelo (inline en content, sin reasoning_content).
+  cleaned = cleaned.replace(/<\/?think>/gi, "");
+  cleaned = cleaned.replace(/<\/?vibes-think>/gi, "");
   cleaned = cleaned.replace(
     /<assistant_thought>([\s\S]*?)<\/assistant_thought>/gi,
     "<think>$1</think>",

@@ -110,6 +110,23 @@ function preprocessUnclosedTags(content: string): {
       }
       inProgressTags.set(tagName, inProgressIndexes);
     }
+
+    // #238: si hay más closing tags que opening tags, hay cierres huérfanos
+    // (el modelo emitió </think> sin apertura, o la apertura ya se strippó).
+    // Los eliminamos para que no se rendericen como texto literal en la UI.
+    const orphanCloseTags = closeCount - openCount;
+    if (orphanCloseTags > 0) {
+      // Quitamos los últimos N closing tags sobrantes (los huérfanos).
+      const closePattern = new RegExp(`</${tagName}>`, "g");
+      let removed = 0;
+      processedContent = processedContent.replace(closePattern, (match) => {
+        if (removed < orphanCloseTags) {
+          removed++;
+          return "";
+        }
+        return match;
+      });
+    }
   }
 
   return { processedContent, inProgressTags };

@@ -519,6 +519,8 @@ export async function handleRuntimeStream(
   }
 
   // ── 6. Final content ───────────────────────────────────────────────────
+  // #238: cerrar reasoning pendiente antes de serializar el contenido final.
+  mapper.closePendingReasoning();
   let finalContent = mapper.buildLiveContent();
 
   // BUGFIX #122: si el loop terminó en error (session.failed), la UI se

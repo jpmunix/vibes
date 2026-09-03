@@ -389,6 +389,18 @@ describe("VibesEventMapper — timeline accumulation", () => {
     m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "orphan" } as any);
     expect(m.getTimeline()).toEqual([{ type: "reasoning", text: "orphan", closed: false }]);
   });
+
+  // #238: closePendingReasoning cierra reasoning abierto al final del stream.
+  it("closePendingReasoning closes open reasoning and buildLiveContent emits full tag", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "reasoning-0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "reasoning-0", text: "sin cerrar" } as any);
+    // Sin reasoning_end — el reasoning queda abierto.
+    m.closePendingReasoning();
+    // Ahora buildLiveContent debe emitir el tag completo (cerrado).
+    const content = m.buildLiveContent();
+    expect(content).toBe("<vibes-think>sin cerrar</vibes-think>\n");
+  });
 });
 
 describe("VibesEventMapper — session.failed (BUGFIX #122)", () => {
@@ -534,6 +546,32 @@ describe("cleanResponseText — parity with adapter", () => {
 
   it("strips wrapper assistant tags", () => {
     expect(cleanResponseText("<assistant_response>hi</assistant_response>")).toBe("hi");
+  });
+
+  // #238: tags think/vibes-think huérfanos (cierre sin apertura, apertura sin cierre).
+  // Usar String.fromCharCode para construir los tags en los tests.
+  const LT = String.fromCharCode(60);
+  const GT = String.fromCharCode(62);
+  const SL = '/';
+  const THINK_OPEN = LT + 'think' + GT;
+  const THINK_CLOSE = LT + SL + 'think' + GT;
+  const VTHINK_OPEN = LT + 'vibes-think' + GT;
+  const VTHINK_CLOSE = LT + SL + 'vibes-think' + GT;
+
+  it("strips orphan closing think tag", () => {
+    expect(cleanResponseText("texto seguro" + THINK_CLOSE)).toBe("texto seguro");
+  });
+
+  it("strips orphan opening think tag", () => {
+    expect(cleanResponseText(THINK_OPEN + "texto")).toBe("texto");
+  });
+
+  it("strips orphan closing vibes-think tag", () => {
+    expect(cleanResponseText("texto" + VTHINK_CLOSE)).toBe("texto");
+  });
+
+  it("strips multiple orphan think tags", () => {
+    expect(cleanResponseText("a" + THINK_CLOSE + "b" + THINK_OPEN + "d")).toBe("abd");
   });
 });
 

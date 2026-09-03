@@ -847,6 +847,21 @@ function preprocessUnclosedTags(content: string): {
       }
       inProgressTags.set(tagName, inProgressIndexes);
     }
+
+    // #238: si hay más closing tags que opening tags, hay cierres huérfanos.
+    // Los eliminamos para que no se rendericen como texto literal en la UI.
+    const orphanCloseTags = closeCount - openCount;
+    if (orphanCloseTags > 0) {
+      const closePattern = new RegExp(`</${tagName}>`, "g");
+      let removed = 0;
+      processedContent = processedContent.replace(closePattern, (match) => {
+        if (removed < orphanCloseTags) {
+          removed++;
+          return "";
+        }
+        return match;
+      });
+    }
   }
 
   return { processedContent, inProgressTags };
