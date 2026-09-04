@@ -107,11 +107,12 @@ export const messagesEn: Messages = {
     sqlQuery: "SQL Query",
     goToMessageStart: "Go to start of message",
     activityStreamWorked: "Worked for {duration}",
+    activityStreamWorkedVague: "worked for a few seconds",
     activityStreamEmpty: "no tool calls",
     activityStreamExpand: "Show tools",
     activityStreamCollapse: "Hide tools",
     activityStreamAborted: "not finished",
-    thoughtWorked: "Thought for {duration}",
+    activityStreamThought: "thought",
     activityStreamCount: {
       one: "{count} tool",
       many: "{count} tools",

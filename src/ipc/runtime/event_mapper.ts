@@ -342,33 +342,38 @@ export function buildVibesToolTag(
   toolId: string,
   detail: string,
   content: string,
+  durationMs?: number,
 ): string {
   const vibesTag = mapRuntimeToolToVibesTag(toolId);
+  // duration-ms solo viaja como atributo si lo conocemos; los mensajes
+  // históricos (sin atributo) renderizan sin la parte temporal.
+  const durAttr =
+    durationMs !== undefined ? ` duration-ms="${Math.max(0, Math.round(durationMs))}"` : "";
   switch (vibesTag) {
     case "vibes-write":
-      return `<vibes-write path="${escapeAttr(detail)}" description="">${content}</vibes-write>`;
+      return `<vibes-write path="${escapeAttr(detail)}" description=""${durAttr}>${content}</vibes-write>`;
     case "vibes-search-replace":
-      return `<vibes-search-replace path="${escapeAttr(detail)}" description="">${content}</vibes-search-replace>`;
+      return `<vibes-search-replace path="${escapeAttr(detail)}" description=""${durAttr}>${content}</vibes-search-replace>`;
     case "vibes-read":
-      return `<vibes-read path="${escapeAttr(detail)}">${content}</vibes-read>`;
+      return `<vibes-read path="${escapeAttr(detail)}"${durAttr}>${content}</vibes-read>`;
     case "vibes-grep":
-      return `<vibes-grep query="${escapeAttr(detail)}">${content}</vibes-grep>`;
+      return `<vibes-grep query="${escapeAttr(detail)}"${durAttr}>${content}</vibes-grep>`;
     case "vibes-run-command":
-      return `<vibes-run-command cmd="${escapeAttr(detail)}">${content}</vibes-run-command>`;
+      return `<vibes-run-command cmd="${escapeAttr(detail)}"${durAttr}>${content}</vibes-run-command>`;
     case "vibes-list-files":
-      return `<vibes-list-files directory="${escapeAttr(detail)}">${content}</vibes-list-files>`;
+      return `<vibes-list-files directory="${escapeAttr(detail)}"${durAttr}>${content}</vibes-list-files>`;
     case "vibes-git":
       // git_log/git_diff comparten el tag de git; el toolId va en operation.
-      return `<vibes-git operation="${escapeAttr(toolId === "git_log" ? "log" : "diff")}">${content}</vibes-git>`;
+      return `<vibes-git operation="${escapeAttr(toolId === "git_log" ? "log" : "diff")}"${durAttr}>${content}</vibes-git>`;
     case "vibes-patch":
-      return `<vibes-patch path="${escapeAttr(detail)}" description="">${content}</vibes-patch>`;
+      return `<vibes-patch path="${escapeAttr(detail)}" description=""${durAttr}>${content}</vibes-patch>`;
     case "vibes-question":
-      return `<vibes-question>${content}</vibes-question>`;
+      return `<vibes-question${durAttr}>${content}</vibes-question>`;
     case "vibes-todo":
-      return `<vibes-todo>${content}</vibes-todo>`;
+      return `<vibes-todo${durAttr}>${content}</vibes-todo>`;
     case "vibes-mcp-tool-call":
     default:
-      return `<vibes-mcp-tool-call tool="${escapeAttr(toolId)}">${content}</vibes-mcp-tool-call>`;
+      return `<vibes-mcp-tool-call tool="${escapeAttr(toolId)}"${durAttr}>${content}</vibes-mcp-tool-call>`;
   }
 }
 
@@ -378,8 +383,8 @@ export function buildVibesToolTag(
 
 export type VibesTimelineEntry =
   | { type: "text"; text: string }
-  | { type: "tool"; tool: string; detail: string; error: boolean; output: string }
-  | { type: "reasoning"; text: string; closed: boolean };
+  | { type: "tool"; tool: string; detail: string; error: boolean; output: string; durationMs?: number }
+  | { type: "reasoning"; text: string; closed: boolean; durationMs?: number };
 
 /**
  * Accumulator that mirrors the adapter's chronological timeline. Feed it
@@ -451,6 +456,9 @@ export class VibesEventMapper {
         const last = this.timeline[this.timeline.length - 1];
         if (last && last.type === "reasoning") {
           last.closed = true;
+          if (event.durationMs !== undefined) {
+            last.durationMs = event.durationMs;
+          }
         }
         break;
       }
@@ -473,6 +481,7 @@ export class VibesEventMapper {
           detail,
           error: !ok,
           output,
+          ...(event.durationMs !== undefined ? { durationMs: event.durationMs } : {}),
         });
         // Track files/directories for summary memory between turns.
         if (ok && detail) {
@@ -531,15 +540,21 @@ export class VibesEventMapper {
     for (const entry of this.timeline) {
       if (entry.type === "tool") {
         const body = entry.error ? "[error]" : entry.output;
-        content += buildVibesToolTag(entry.tool, entry.detail, body) + "\n";
+        content += buildVibesToolTag(entry.tool, entry.detail, body, entry.durationMs) + "\n";
       } else if (entry.type === "reasoning") {
         // 172: razonamiento nativo → <vibes-think>. Si sigue abierto
         // (streaming) emitimos solo el opening tag: el parser lo marca
         // inProgress y lo renderiza como LiveThinkingPanel activo. Si ya se
         // cerró, emitimos el tag completo (badge compacto al terminar).
+        // duration-ms viaja solo si el runtime lo reportó (mensajes
+        // históricos o reasoning sin ts → sin atributo).
         const body = escapeXmlContent(entry.text);
+        const durAttr =
+          entry.closed && entry.durationMs !== undefined
+            ? ` duration-ms="${Math.max(0, Math.round(entry.durationMs))}"`
+            : "";
         content += entry.closed
-          ? `<vibes-think>${body}</vibes-think>\n`
+          ? `<vibes-think${durAttr}>${body}</vibes-think>\n`
           : `<vibes-think>${body}\n`;
       } else {
         content += cleanResponseText(entry.text);

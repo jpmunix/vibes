@@ -1,9 +1,10 @@
 import React, {
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ChevronDown, ChevronUp, Clock } from "@/components/ui/icons";
 import {
   resolveToolMeta,
@@ -18,12 +19,24 @@ import {
 } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 
-export interface FlowActivityItem {
+export interface FlowActivityToolItem {
+  kind: "tool";
   tag: string;
   attributes: Record<string, string>;
   state: ToolBadgeState;
   originalContent: React.ReactNode;
 }
+
+export interface FlowActivityThoughtItem {
+  kind: "thought";
+  /** Markdown del pensamiento (uno o varios bloques <vibes-think> fusionados). */
+  content: string;
+  markdownComponents: Record<string, React.ComponentType<any>>;
+  /** Atributos del primer bloque <vibes-think> del grupo (duration-ms). */
+  attributes: Record<string, string>;
+}
+
+export type FlowActivityItem = FlowActivityToolItem | FlowActivityThoughtItem;
 
 /** Compact a number of milliseconds into a human-friendly "26s"/"1m 12s" form. */
 export function formatActivityDuration(ms: number): string {
@@ -34,6 +47,20 @@ export function formatActivityDuration(ms: number): string {
   return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 }
 
+/**
+ * Parsea el atributo duration-ms (string del worker) → ms, o undefined si el
+ * tag no lo trae (mensajes históricos grabados antes del atributo).
+ */
+export function parseDurationMs(
+  attributes: Record<string, string> | undefined,
+): number | undefined {
+  const raw = attributes?.["duration-ms"];
+  if (raw === undefined) return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
+}
+
 interface FlowActivityStreamProps {
   items: FlowActivityItem[];
   /** True while the agent is still streaming — keeps the panel expanded. */
@@ -41,16 +68,13 @@ interface FlowActivityStreamProps {
 }
 
 /**
- * Flow-mode activity panel.
+ * Flow-mode activity panel (unified: thoughts + tool calls).
  *
- * Duration is measured from component mount (first tool call seen) to the
- * moment streaming stops, using a ref + effect so it survives re-renders and
- * is never reset by the synchronous render loop (which caused the 0s bug).
- *
- * Live: shows elapsed time on each re-render via `Date.now() - mountedAt`.
- *       Updates naturally because streaming triggers frequent re-renders.
- * Stopped: freezes at the moment isStreaming transitions false, then collapses
- *          the panel into a summary pill automatically.
+ * The summary duration is the SUM of the real `duration-ms` attributes carried
+ * by the items — never `Date.now()` math, so toggling expand/collapse can never
+ * change the number. Items without the attribute (historical messages) make the
+ * total incomplete: the summary then falls back to the localized vague
+ * wording ("trabajó por unos segundos") instead of inventing a number.
  */
 export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
   ({ items, isStreaming }) => {
@@ -58,19 +82,6 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
     const panelRef = useRef<HTMLDivElement>(null);
     const [autoScroll, setAutoScroll] = useState(true);
     const [expandedByUser, setExpandedByUser] = useState<boolean | null>(null);
-
-    // Mount time — the true start of the tool-work window.
-    const mountedAtRef = useRef(Date.now());
-    // Frozen end time — captured the moment streaming stops.
-    const [endedAt, setEndedAt] = useState<number | null>(null);
-    const prevStreamingRef = useRef(isStreaming);
-
-    useEffect(() => {
-      if (prevStreamingRef.current && !isStreaming) {
-        setEndedAt(Date.now());
-      }
-      prevStreamingRef.current = isStreaming;
-    }, [isStreaming]);
 
     // Auto-scroll the panel to the bottom while items stream in.
     useLayoutEffect(() => {
@@ -80,22 +91,43 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
 
     if (items.length === 0) return null;
 
-    const finishedItems = items.filter((i) => i.state !== "pending");
+    const toolItems = items.filter(
+      (i): i is FlowActivityToolItem => i.kind === "tool",
+    );
+    const thoughtItems = items.filter(
+      (i): i is FlowActivityThoughtItem => i.kind === "thought",
+    );
+    const finishedTools = toolItems.filter((i) => i.state !== "pending");
+
+    // Sum of the real durations. Items without duration-ms → contribute 0
+    // but flag that the total is incomplete.
+    let totalMs = 0;
+    let hasAnyDuration = false;
+    for (const item of items) {
+      const d = parseDurationMs(item.attributes);
+      if (d !== undefined) {
+        totalMs += d;
+        hasAnyDuration = true;
+      }
+    }
+
     const collapsed =
       expandedByUser !== null ? !expandedByUser : !isStreaming;
 
-    // Live: Date.now() updates every re-render during streaming.
-    // Frozen: endedAt is set once streaming stops.
-    const durationMs = Math.max(
-      0,
-      (endedAt ?? Date.now()) - mountedAtRef.current,
-    );
-    const duration = formatActivityDuration(durationMs);
-
-    const summary =
-      finishedItems.length > 0
-        ? tPlural("chat.activityStreamCount", finishedItems.length)
-        : t("chat.activityStreamEmpty");
+    // Summary label: real duration when known, friendly fallback otherwise.
+    const durationLabel = hasAnyDuration
+      ? t("chat.activityStreamWorked", {
+          duration: formatActivityDuration(totalMs),
+        })
+      : t("chat.activityStreamWorkedVague");
+    const parts: string[] = [durationLabel];
+    if (finishedTools.length > 0) {
+      parts.push(tPlural("chat.activityStreamCount", finishedTools.length));
+    }
+    if (thoughtItems.length > 0) {
+      parts.push(t("chat.activityStreamThought"));
+    }
+    const summary = parts.join(" · ");
 
     return (
       <div className="my-2">
@@ -114,9 +146,7 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
           data-testid="flow-activity-summary"
         >
           <Clock size={11} className="opacity-70" />
-          <span>
-            {t("chat.activityStreamWorked", { duration })} · {summary}
-          </span>
+          <span>{summary}</span>
           {collapsed ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
         </button>
 
@@ -125,16 +155,19 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
             ref={panelRef}
             onScroll={(e) => {
               const el = e.currentTarget;
-              const atBottom =
-                el.scrollHeight - el.scrollTop - el.clientHeight < 12;
+              const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 12;
               setAutoScroll(atBottom);
             }}
             className="mt-1.5 max-h-40 overflow-y-auto rounded-md border border-border/40 bg-muted/20 pl-2 pr-1 py-1"
             data-testid="flow-activity-stream"
           >
-            {items.map((item, idx) => (
-              <FlowActivityRow key={`${item.tag}-${idx}`} item={item} />
-            ))}
+            {items.map((item, idx) =>
+              item.kind === "thought" ? (
+                <FlowThoughtRow key={`thought-${idx}`} item={item} />
+              ) : (
+                <FlowActivityRow key={`tool-${item.tag}-${idx}`} item={item} />
+              ),
+            )}
           </div>
         )}
       </div>
@@ -142,7 +175,28 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
   },
 );
 
-const FlowActivityRow: React.FC<{ item: FlowActivityItem }> = React.memo(
+const REMARK_PLUGINS = [remarkGfm];
+
+/** Fila de pensamiento dentro del panel de actividad. */
+const FlowThoughtRow: React.FC<{ item: FlowActivityThoughtItem }> = React.memo(
+  ({ item }) => {
+    return (
+      <div
+        className="my-1 border-l-[3px] border-[var(--accent-think-border)] px-3 py-1.5 text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[var(--accent-think-text)]"
+        style={{ color: "var(--accent-think-text)" }}
+      >
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          components={item.markdownComponents}
+        >
+          {item.content}
+        </ReactMarkdown>
+      </div>
+    );
+  },
+);
+
+const FlowActivityRow: React.FC<{ item: FlowActivityToolItem }> = React.memo(
   ({ item }) => {
     const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);

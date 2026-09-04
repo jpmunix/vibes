@@ -73,7 +73,6 @@ import {
 } from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
-import { FlowThinkBlock } from "./FlowThinkBlock";
 import {
   FlowActivityStream,
   type FlowActivityItem,
@@ -358,14 +357,6 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   // synchronously so that fast scrolling doesn't create flashes of unparsed content.
   const deferredContent = useDeferredValue(content);
   const activeContent = isStreaming ? deferredContent : content;
-  const turnStartedAtRef = useRef<number | null>(null);
-  if (isStreaming && turnStartedAtRef.current === null) {
-    turnStartedAtRef.current = Date.now();
-  }
-  if (!isStreaming && turnStartedAtRef.current !== null) {
-    // Keep the timestamp for the final static render so collapsed summaries
-    // can still report the actual work duration.
-  }
 
   // Initialize with synchronous parse to avoid flash of content
   const [contentPieces, setContentPieces] = useState<ContentPiece[]>(() => {
@@ -492,29 +483,12 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       return false;
     };
 
-    // Buffer for consecutive flow-mode think blocks (merged into one FlowThinkBlock)
-    let flowThinkBuffer: string[] = [];
-    const flushFlowThinkBuffer = (isActivelyStreaming = false) => {
-      if (flowThinkBuffer.length > 0) {
-        const merged = flowThinkBuffer.join("\n\n");
-        elements.push(
-          <FlowThinkBlock
-            key={`flow-think-merged-${elements.length}`}
-            content={merged}
-            markdownComponents={MARKDOWN_COMPONENTS}
-            isStreaming={isActivelyStreaming}
-            startedAt={turnStartedAtRef.current ?? undefined}
-          />,
-        );
-        flowThinkBuffer = [];
-      }
-    };
-
-    // Buffer for consecutive flow-mode tool traces (rendered as one scrollable panel)
-    let flowTraceBuffer: FlowActivityItem[] = [];
-    const flushFlowTraceBuffer = () => {
-      if (flowTraceBuffer.length === 0) return;
-      const items = flowTraceBuffer;
+    // Unified buffer for flow-mode activity (thoughts + tool traces in
+    // chronological order, rendered as ONE scrollable FlowActivityStream).
+    let flowActivityBuffer: FlowActivityItem[] = [];
+    const flushFlowActivityBuffer = () => {
+      if (flowActivityBuffer.length === 0) return;
+      const items = flowActivityBuffer;
       elements.push(
         <FlowActivityStream
           key={`flow-trace-stream-${elements.length}`}
@@ -522,7 +496,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           isStreaming={isStreaming}
         />,
       );
-      flowTraceBuffer = [];
+      flowActivityBuffer = [];
     };
 
     // Tags that produce visible output in zen/flow mode
@@ -534,24 +508,19 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       "vibes-files-changed",
     ]);
 
-    // Helper: check if there's another flow-mode think tag ahead, skipping invisible pieces.
-    // Invisible pieces = whitespace-only markdown + tool tags that zen mode discards.
-    const isNextPieceFlowThink = (currentIndex: number): boolean => {
+    // Helper: check if there's real prose or a visible zen tag after the given
+    // index (skipping whitespace + invisible tool tags). Used to decide when
+    // the flow activity buffer must be flushed: only real content breaks the run.
+    const hasVisibleProseAfter = (currentIndex: number): boolean => {
       for (let i = currentIndex + 1; i < contentPieces.length; i++) {
         const next = contentPieces[i];
         if (next.type === "markdown") {
-          if (next.content && next.content.trim()) return false; // real prose breaks the run
+          if (next.content && next.content.trim()) return true; // real prose
           continue; // whitespace-only, skip
         }
         if (next.type === "custom-tag") {
-          const nextTag = next.tagInfo.tag;
-          // Think tag with content → yes, merge
-          if (THINK_TAGS.has(nextTag) && next.tagInfo.content?.trim())
-            return true;
-          // Visible zen tag (output, ask-user) → breaks the run
-          if (ZEN_ALLOWED_TAGS.has(nextTag)) return false;
-          // Everything else (tool tags) is invisible in flow mode → skip over
-          continue;
+          if (ZEN_ALLOWED_TAGS.has(next.tagInfo.tag)) return true;
+          continue; // invisible in flow mode, skip
         }
       }
       return false;
@@ -570,20 +539,19 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           // Skip whitespace between compactable tags — don't break the row
           return;
         }
-        // In flow mode, skip whitespace between consecutive think tags (keep them merged)
+        // In flow mode, skip whitespace between buffered activity items (keep them merged)
         if (
           isFlowMode &&
           isZenMode &&
           isWhitespaceOnly &&
-          flowThinkBuffer.length > 0 &&
-          isNextPieceFlowThink(index)
+          flowActivityBuffer.length > 0 &&
+          !hasVisibleProseAfter(index)
         ) {
           return;
         }
-        // Real prose content: flush any pending flow think + trace buffers first
+        // Real prose content: flush any pending flow activity buffer first
         if (piece.content && piece.content.trim()) {
-          flushFlowThinkBuffer();
-          flushFlowTraceBuffer();
+          flushFlowActivityBuffer();
         }
         flushBadgeGroup();
         if (piece.content && piece.content.trim()) {
@@ -605,12 +573,12 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
         // ── Zen / Flow Mode: skip almost all custom tags ──
         // Only keep: vibes-output (errors/warnings), vibes-ask-user (interactive).
-        // Flow mode additionally keeps think tags visible as expanded panels.
+        // Flow mode additionally keeps think tags visible inside the activity panel.
         // Token-usage is discarded. Everything else is discarded.
         if (isZenMode) {
           if (ZEN_ALLOWED_TAGS.has(tag)) {
-            // Non-think tag: flush pending think buffer first
-            flushFlowThinkBuffer();
+            // Non-activity tag: flush pending activity buffer first
+            flushFlowActivityBuffer();
             // Render output/ask-user normally
             elements.push(
               <React.Fragment key={index}>
@@ -622,34 +590,27 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             isThinkTag &&
             piece.tagInfo.content?.trim()
           ) {
-            // Flow mode: accumulate consecutive think tags into the buffer
-            flowThinkBuffer.push(piece.tagInfo.content);
-            // If the next piece is NOT another think tag, flush now —
-            // BUT only if there's actual visible content after us (prose, output, etc.).
-            // If we're just at the end of the parsed content during streaming,
-            // let the final flush handle it (it knows about streaming state).
-            if (!isNextPieceFlowThink(index)) {
-              const hasVisibleContentAfter = contentPieces
-                .slice(index + 1)
-                .some((p) => {
-                  if (p.type === "markdown")
-                    return !!(p.content && p.content.trim());
-                  if (p.type === "custom-tag")
-                    return ZEN_ALLOWED_TAGS.has(p.tagInfo.tag);
-                  return false;
-                });
-              if (hasVisibleContentAfter || !isStreaming) {
-                flushFlowThinkBuffer(); // non-think content follows → think block is done
-              }
-              // else: streaming and nothing visible after → let final flush handle it
+            // Flow mode: merge consecutive think tags into ONE thought item.
+            // Merging with the previous thought item when it is also a thought
+            // keeps multiple <vibes-think> blocks as a single row (bug #1).
+            const last = flowActivityBuffer[flowActivityBuffer.length - 1];
+            if (last && last.kind === "thought") {
+              last.content += "\n\n" + piece.tagInfo.content;
+            } else {
+              flowActivityBuffer.push({
+                kind: "thought",
+                content: piece.tagInfo.content,
+                markdownComponents: MARKDOWN_COMPONENTS,
+                attributes,
+              });
             }
           } else if (
             isFlowMode &&
             shouldCompact(tag) &&
             tag !== "vibes-token-usage"
           ) {
-            flushFlowThinkBuffer();
-            flowTraceBuffer.push({
+            flowActivityBuffer.push({
+              kind: "tool",
               tag,
               attributes,
               state,
@@ -667,7 +628,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             !isStreaming &&
             chatId
           ) {
-            flushFlowThinkBuffer();
+            flushFlowActivityBuffer();
             elements.push(
               <div key={`fix-errors-${index}`} className="mt-3 w-full flex">
                 <FixAllErrorsButton
@@ -745,8 +706,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       }
     });
 
-    flushFlowThinkBuffer(isStreaming);
-    flushFlowTraceBuffer();
+    flushFlowActivityBuffer();
     flushBadgeGroup();
 
     // Append per-message artifact buttons for any .vibes/*.md files mentioned or written

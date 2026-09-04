@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatActivityDuration } from "./FlowActivityStream";
+import { formatActivityDuration, parseDurationMs } from "./FlowActivityStream";
 
 describe("formatActivityDuration", () => {
   it("formats sub-minute durations as Ns", () => {
@@ -17,5 +17,22 @@ describe("formatActivityDuration", () => {
 
   it("clamps negative durations to 0s", () => {
     expect(formatActivityDuration(-100)).toBe("0s");
+  });
+});
+
+describe("parseDurationMs", () => {
+  it("parses the duration-ms attribute from the worker payload", () => {
+    expect(parseDurationMs({ "duration-ms": "1234" })).toBe(1234);
+    expect(parseDurationMs({ "duration-ms": "0" })).toBe(0);
+  });
+
+  it("returns undefined when the attribute is missing (historical messages)", () => {
+    expect(parseDurationMs({})).toBeUndefined();
+    expect(parseDurationMs(undefined)).toBeUndefined();
+  });
+
+  it("rejects garbage values instead of inventing a duration", () => {
+    expect(parseDurationMs({ "duration-ms": "abc" })).toBeUndefined();
+    expect(parseDurationMs({ "duration-ms": "-5" })).toBeUndefined();
   });
 });

@@ -311,6 +311,62 @@ describe("VibesEventMapper — timeline accumulation", () => {
     expect(content).toContain('<vibes-read path="a.ts">file contents</vibes-read>');
   });
 
+  it("propaga durationMs de tool.finished al atributo duration-ms del tag", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc1",
+      toolId: "read_file",
+      args: { path: "a.ts" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc1",
+      toolId: "read_file",
+      result: { ok: true, output: "file contents" },
+      durationMs: 1234,
+    } as any);
+    const content = m.buildLiveContent();
+    expect(content).toContain('<vibes-read path="a.ts" duration-ms="1234">');
+  });
+
+  it("sin durationMs el tag no lleva el atributo (compatibilidad histórica)", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc1",
+      toolId: "read_file",
+      args: { path: "a.ts" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc1",
+      toolId: "read_file",
+      result: { ok: true, output: "file contents" },
+    } as any);
+    const content = m.buildLiveContent();
+    expect(content).toContain('<vibes-read path="a.ts">');
+    expect(content).not.toContain("duration-ms");
+  });
+
+  it("propaga durationMs de llm.reasoning_end al tag vibes-think", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "r0", ts: 1000 } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "r0", text: "hmm" } as any);
+    m.handle({ type: "llm.reasoning_end", blockId: "r0", durationMs: 8200 } as any);
+    const content = m.buildLiveContent();
+    expect(content).toBe('<vibes-think duration-ms="8200">hmm</vibes-think>\n');
+  });
+
+  it("reasoning sin durationMs → tag sin atributo (compatibilidad histórica)", () => {
+    const m = new VibesEventMapper();
+    m.handle({ type: "llm.reasoning_start", blockId: "r0" } as any);
+    m.handle({ type: "llm.reasoning_delta", blockId: "r0", text: "hmm" } as any);
+    m.handle({ type: "llm.reasoning_end", blockId: "r0" } as any);
+    const content = m.buildLiveContent();
+    expect(content).toBe("<vibes-think>hmm</vibes-think>\n");
+  });
+
   it("tracks written files for the files-changed summary", () => {
     const m = new VibesEventMapper();
     m.handle({
