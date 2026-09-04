@@ -1,4 +1,10 @@
-import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useDeferredValue,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -68,7 +74,10 @@ import {
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 import { LiveThinkingPanel } from "./LiveThinkingPanel";
 import { FlowThinkBlock } from "./FlowThinkBlock";
-import { FlowActivityTrace } from "./FlowActivityTrace";
+import {
+  FlowActivityStream,
+  type FlowActivityItem,
+} from "./FlowActivityStream";
 import {
   Dialog,
   DialogContent,
@@ -349,6 +358,14 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   // synchronously so that fast scrolling doesn't create flashes of unparsed content.
   const deferredContent = useDeferredValue(content);
   const activeContent = isStreaming ? deferredContent : content;
+  const turnStartedAtRef = useRef<number | null>(null);
+  if (isStreaming && turnStartedAtRef.current === null) {
+    turnStartedAtRef.current = Date.now();
+  }
+  if (!isStreaming && turnStartedAtRef.current !== null) {
+    // Keep the timestamp for the final static render so collapsed summaries
+    // can still report the actual work duration.
+  }
 
   // Initialize with synchronous parse to avoid flash of content
   const [contentPieces, setContentPieces] = useState<ContentPiece[]>(() => {
@@ -486,10 +503,26 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             content={merged}
             markdownComponents={MARKDOWN_COMPONENTS}
             isStreaming={isActivelyStreaming}
+            startedAt={turnStartedAtRef.current ?? undefined}
           />,
         );
         flowThinkBuffer = [];
       }
+    };
+
+    // Buffer for consecutive flow-mode tool traces (rendered as one scrollable panel)
+    let flowTraceBuffer: FlowActivityItem[] = [];
+    const flushFlowTraceBuffer = () => {
+      if (flowTraceBuffer.length === 0) return;
+      const items = flowTraceBuffer;
+      elements.push(
+        <FlowActivityStream
+          key={`flow-trace-stream-${elements.length}`}
+          items={items}
+          isStreaming={isStreaming}
+        />,
+      );
+      flowTraceBuffer = [];
     };
 
     // Tags that produce visible output in zen/flow mode
@@ -547,9 +580,10 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         ) {
           return;
         }
-        // Real prose content: flush any pending flow think buffer first
+        // Real prose content: flush any pending flow think + trace buffers first
         if (piece.content && piece.content.trim()) {
           flushFlowThinkBuffer();
+          flushFlowTraceBuffer();
         }
         flushBadgeGroup();
         if (piece.content && piece.content.trim()) {
@@ -614,19 +648,15 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
             shouldCompact(tag) &&
             tag !== "vibes-token-usage"
           ) {
-            // Enhanced Flow Mode: Render a quiet inline text-only status line
             flushFlowThinkBuffer();
-            elements.push(
-              <FlowActivityTrace
-                key={`flow-trace-${index}`}
-                tag={tag}
-                attributes={attributes}
-                state={state}
-                originalContent={renderModalContent(piece.tagInfo, {
-                  isStreaming,
-                })}
-              />,
-            );
+            flowTraceBuffer.push({
+              tag,
+              attributes,
+              state,
+              originalContent: renderModalContent(piece.tagInfo, {
+                isStreaming,
+              }),
+            });
           }
           // All other tags: skip entirely — no DOM, no badges, no modals
 
@@ -716,6 +746,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     });
 
     flushFlowThinkBuffer(isStreaming);
+    flushFlowTraceBuffer();
     flushBadgeGroup();
 
     // Append per-message artifact buttons for any .vibes/*.md files mentioned or written

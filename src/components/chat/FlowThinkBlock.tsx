@@ -1,119 +1,87 @@
-import React, { useRef, useLayoutEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { t } from "@/lib/i18n";
-import { CodeHighlight } from "./CodeHighlight";
-import { ChevronDown, ChevronUp } from "@/components/ui/icons";
-
-/** Height threshold for collapsing flow-mode think blocks (~4 lines at text-xs) */
-const FLOW_THINK_COLLAPSE_HEIGHT = 120;
+import { ChevronDown, ChevronUp, Clock } from "@/components/ui/icons";
+import { useI18n } from "@/lib/i18n";
+import { formatActivityDuration } from "./FlowActivityStream";
 
 const REMARK_PLUGINS = [remarkGfm];
 
 interface FlowThinkBlockProps {
   content: string;
   markdownComponents: Record<string, React.ComponentType<any>>;
-  /** When true the block stays expanded (used during streaming) */
+  /** While true the thought remains expanded; it collapses when streaming ends. */
   isStreaming?: boolean;
+  /** Epoch ms for the beginning of the current streamed turn. */
+  startedAt?: number;
 }
 
 /**
- * Self-contained collapsible block for think/thought tags in Flow mode.
- * Uses a hard toggle (no animations) to prevent scroll jumps and keep the
- * user's viewport perfectly anchored.
+ * Thought block for Flow mode. It stays readable while the model is thinking,
+ * then folds into the same compact summary pattern as tool activity. The
+ * elapsed time is measured with refs/effects so re-renders cannot reset it.
  */
 export const FlowThinkBlock: React.FC<FlowThinkBlockProps> = ({
   content,
   markdownComponents,
-  isStreaming,
+  isStreaming = false,
+  startedAt,
 }) => {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isLong, setIsLong] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
+  const [expandedByUser, setExpandedByUser] = useState<boolean | null>(null);
+  const startedAtRef = useRef(startedAt ?? Date.now());
+  const [endedAt, setEndedAt] = useState<number | null>(null);
+  const previousStreamingRef = useRef(isStreaming);
 
-  // Measure the real content height including collapsed margins
-  useLayoutEffect(() => {
-    if (!contentRef.current) return;
-    const h = contentRef.current.scrollHeight;
-    setIsLong(h > FLOW_THINK_COLLAPSE_HEIGHT);
-  }, [content]);
+  // The parser may provide the turn timestamp after this block first mounts.
+  // Keep the ref aligned so the summary measures the whole turn, not mount latency.
+  if (startedAt !== undefined && startedAtRef.current !== startedAt) {
+    startedAtRef.current = startedAt;
+  }
 
-  // Streaming keeps the block expanded; collapse when streaming ends.
-  const isCollapsed = isLong && !expanded && !isStreaming;
+  useEffect(() => {
+    if (previousStreamingRef.current && !isStreaming) {
+      setEndedAt(Date.now());
+    }
+    previousStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
+  const expanded =
+    expandedByUser !== null ? expandedByUser : isStreaming;
+  const duration = formatActivityDuration(
+    Math.max(0, (endedAt ?? Date.now()) - startedAtRef.current),
+  );
 
   return (
-    <div style={{ position: "relative", margin: "12px 0" }}>
-      <div
-        ref={contentRef}
-        style={{
-          maxHeight: isCollapsed
-            ? `${FLOW_THINK_COLLAPSE_HEIGHT}px`
-            : undefined,
-          overflow: isCollapsed ? "hidden" : undefined,
-          WebkitMaskImage: isCollapsed
-            ? "linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)"
-            : undefined,
-          maskImage: isCollapsed
-            ? "linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)"
-            : undefined,
-          borderLeft: "3px solid var(--accent-think-border)",
-          padding: "6px 12px",
-          color: "var(--accent-think-text)",
-        }}
-        className="text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[inherit]"
+    <div className="my-2">
+      <button
+        type="button"
+        onClick={() => setExpandedByUser(!expanded)}
+        className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground/60 hover:text-foreground transition-colors select-none cursor-pointer"
+        title={
+          expanded
+            ? t("chat.activityStreamCollapse")
+            : t("chat.activityStreamExpand")
+        }
+        data-testid="flow-think-summary"
       >
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          components={markdownComponents}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-      {isLong && !isStreaming && (
-        <button
-          onClick={() => {
-            // In a flex-col-reverse scroll container, expanding an element above the
-            // anchor pushes the viewport up. We compensate by adjusting scrollTop
-            // on the scroll container after React re-renders.
-            const scrollContainer = contentRef.current?.closest(
-              '[data-testid="messages-list"]',
-            ) as HTMLElement | null;
-            const prevScrollTop = scrollContainer?.scrollTop ?? 0;
-            const prevScrollHeight = scrollContainer?.scrollHeight ?? 0;
+        <Clock size={11} className="opacity-70" />
+        <span>{t("chat.thoughtWorked", { duration })}</span>
+        {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+      </button>
 
-            setExpanded((prev) => {
-              // Use a rAF to adjust scroll after React commits the DOM change
-              requestAnimationFrame(() => {
-                if (!scrollContainer) return;
-                const delta = scrollContainer.scrollHeight - prevScrollHeight;
-                // In column-reverse, scrollTop is 0 at bottom and negative upward.
-                // When content grows, we need to offset by the delta to stay in place.
-                scrollContainer.scrollTop = prevScrollTop - delta;
-              });
-              return !prev;
-            });
-          }}
-          className="flex items-center gap-1 mt-1 text-xs cursor-pointer transition-colors"
-          style={{ color: "var(--accent-think-text)", opacity: 0.7 }}
-          onMouseEnter={(e) => {
-            (e.currentTarget.style.opacity as any) = "1";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget.style.opacity as any) = "0.7";
-          }}
+      {expanded && (
+        <div
+          className="mt-1.5 border-l-[3px] border-[var(--accent-think-border)] px-3 py-1.5 text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[var(--accent-think-text)]"
+          style={{ color: "var(--accent-think-text)" }}
         >
-          {expanded ? (
-            <>
-              <ChevronUp size={12} />
-              <span>{t("chat.less")}</span>
-            </>
-          ) : (
-            <>
-              <ChevronDown size={12} />
-              <span>{t("chat.more")}</span>
-            </>
-          )}
-        </button>
+          <ReactMarkdown
+            remarkPlugins={REMARK_PLUGINS}
+            components={markdownComponents}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
       )}
     </div>
   );
