@@ -308,12 +308,13 @@ describe("handleRuntimeStream contract — return shape", () => {
     );
 
     expect(Object.keys(result).sort()).toEqual(
-      ["cachedTokens", "costUsd", "fullResponse", "inputTokens", "outputTokens", "reasoningTokens", "success"].sort(),
+      ["cachedTokens", "costUsd", "fullResponse", "inputTokens", "lastStepInput", "outputTokens", "reasoningTokens", "success"].sort(),
     );
     expect(result.success).toBe(true);
     expect(result.fullResponse).toContain("Hello from mock model.");
     expect(result.inputTokens).toBe(10);
     expect(result.outputTokens).toBe(5);
+    expect(result.lastStepInput).toBe(10); // the mock emits llm.completed with input=10
     expect(result.costUsd).toBeNull(); // v1 has no cost accounting (post-MVP)
     expect(calls.length).toBeGreaterThan(0);
   });

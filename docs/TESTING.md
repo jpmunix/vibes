@@ -140,6 +140,14 @@ npm run e2e:shard   # playwright test --shard
 
 **Cuándo usarlos:** Si se toca `src/components/chat/messageStats.ts`, `src/components/chat/MessageStatsModal.tsx` o se cambia el trigger del nombre del modelo en `ChatMessage.tsx`. Cambiar el parseo del tag `<vibes-token-usage>` o el cálculo de coste requiere actualizar estos tests.
 
+### Normalización de contenido de mensaje (card #243) — filtrado de tool-calls DSML/GLM en render
+
+| Archivo | Líneas | Qué cubre |
+|---|---|---|
+| [normalizeMessageContent.test.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/components/chat/normalizeMessageContent.test.ts) | 7 | **Helpers puros de `normalizeMessageContent.ts`** (patrón del repo: sin montar React). Compone `normalizeLegacyTags` (dyad-* → vibes-*) + `stripDsmlToolCallBlocks` (exportado por `@vibes/providers/openai-compatible`) antes de que el contenido llegue al parser de la UI. Cubre: null/undefined → string vacío; texto plano y tags `<b>` sin cambios; legacy `dyad-*` → `vibes-*`; eliminación de bloques DSML DeepSeek (barra fullwidth `｜`) y GLM (barra normal `\|`) conservando la prosa; composición legacy+DSML en el mismo mensaje; no rompe tags `think` inline ni un `<` suelto en prosa. **Card #243:** algunos modelos emiten su formato interno de tool-calls como TEXTO en content; el provider (vibes-core) ya lo filtra en streaming, y este test fija que la carcasa lo filtra además en render para los mensajes ya persistidos (ver TESTING.md de vibes-core para el filtro del provider). |
+
+**Cuándo usarlos:** Si se toca `src/components/chat/normalizeMessageContent.ts`, el `useMemo normalizedMessageContent` o los tres puntos de render (`VibesMarkdownParser`/`UserMessageContent`) en `ChatMessage.tsx`, o si cambia el contrato de `stripDsmlToolCallBlocks` en el provider del runtime.
+
 ---
 
 ### Settings del workspace (card #234) — página /app-settings con AGENTS.md detectados

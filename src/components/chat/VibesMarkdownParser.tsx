@@ -2119,7 +2119,13 @@ function renderModalContent(
     }
 
     case "vibes-token-usage": {
-      const inp = parseInt(attributes.input || "0", 10);
+      // #243: `billable-input` = input acumulado del turno (lo que se factura).
+      // `input` = último step (contexto del gauge). La modal muestra el input
+      // total del turno → billable-input, con fallback a `input` (legacy).
+      const inp = parseInt(
+        attributes["billable-input"] || attributes.input || "0",
+        10,
+      );
       const out = parseInt(attributes.output || "0", 10);
       const cached = parseInt(attributes.cached || "0", 10);
       const webSearches = parseInt(attributes["web-searches"] || "0", 10);

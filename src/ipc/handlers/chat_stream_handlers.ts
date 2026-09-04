@@ -1765,6 +1765,7 @@ This conversation includes one or more image attachments. When the user uploads 
             reasoningTokens: ocReasoningTokens,
             cachedTokens: ocCachedTokens,
             costUsd: ocCostUsd,
+            lastStepInput: ocLastStepInput,
           } = await handleRuntimeStream(event, req, abortController, {
             placeholderMessageId: placeholderAssistantMessage.id,
             appPath: updatedChat.app.path,
@@ -1864,13 +1865,29 @@ This conversation includes one or more image attachments. When the user uploads 
               return;
             }
 
-            // Has partial content — save it with a "cancelled" visual indicator
+            // #243: el bridge YA incrustó un <vibes-token-usage> en openCodeResponse
+            // (input del último step + billable-input). Lo purgamos para NO apilar
+            // dos tags (el parser los suma → doble conteo), y reemitimos un único
+            // tag con la semántica completa (cached/cost/price que solo el handler
+            // conoce). input = último step (contexto del gauge); billable-input =
+            // suma del turno (coste).
+            const billableAttr =
+              ocInputTokens !== ocLastStepInput
+                ? ` billable-input="${ocInputTokens}"`
+                : "";
             fullResponse =
-              openCodeResponse + "\n\n<vibes-cancelled></vibes-cancelled>\n";
+              openCodeResponse.replace(
+                /<vibes-token-usage[^>]*>[\s\S]*?<\/vibes-token-usage>/g,
+                "",
+              ) + "\n\n<vibes-cancelled></vibes-cancelled>\n";
             const openCodeDurationMs = Date.now() - streamStartedAt;
-
             const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
-            const ocTotalTokens = ocInputTokens + ocBillableOutput;
+            // #243: `totalTokens` que se envía al frontend es el CONTEXTO real del
+            // turno (input del último step + output) — lo que pinta el gauge. El
+            // acumulado facturable (suma de inputs de todos los steps) vive en el
+            // `billable-input` del tag y en la telemetría (`ocBillableTotal`).
+            const ocTotalTokens = ocLastStepInput + ocBillableOutput;
+            const ocBillableTotal = ocInputTokens + ocBillableOutput;
 
             if (ocTotalTokens > 0) {
               const webSearchCount = (
@@ -1890,8 +1907,8 @@ This conversation includes one or more image attachments. When the user uploads 
               }
               const tokenXml =
                 directCost !== null
-                  ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
-                  : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+                  ? `<vibes-token-usage input="${ocLastStepInput}"${billableAttr} output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+                  : `<vibes-token-usage input="${ocLastStepInput}"${billableAttr} output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
             }
 
@@ -1954,7 +1971,7 @@ This conversation includes one or more image attachments. When the user uploads 
               model: effectiveModelName,
               responseLength: fullResponse.length,
               success: false,
-              totalTokens: ocTotalTokens,
+              totalTokens: ocBillableTotal,
               cancelled: true,
             });
 
@@ -1981,12 +1998,29 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // ── Normal (non-cancelled) response ─────────────────────────────
           // Persist the response to the database
-          fullResponse = openCodeResponse;
+          // #243: el bridge YA incrustó un <vibes-token-usage> en openCodeResponse
+          // (input del último step + billable-input). Lo purgamos para NO apilar
+          // dos tags (el parser los suma → doble conteo) y reemitimos un único
+          // tag con la semántica completa (cached/cost/price). input = último step
+          // (contexto del gauge); billable-input = suma del turno (coste).
+          const billableAttr =
+            ocInputTokens !== ocLastStepInput
+              ? ` billable-input="${ocInputTokens}"`
+              : "";
+          fullResponse = openCodeResponse.replace(
+            /<vibes-token-usage[^>]*>[\s\S]*?<\/vibes-token-usage>/g,
+            "",
+          );
           const openCodeDurationMs = Date.now() - streamStartedAt;
           // Reasoning tokens (thinking) are billed at the same rate as output tokens.
           // They MUST be included in the billable output count for correct cost calculation.
           const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
-          const ocTotalTokens = ocInputTokens + ocBillableOutput;
+          // #243: `totalTokens` que se envía al frontend es el CONTEXTO real del
+          // turno (input del último step + output) — lo que pinta el gauge. El
+          // acumulado facturable (suma de inputs de todos los steps) vive en el
+          // `billable-input` del tag y en la telemetría (`ocBillableTotal`).
+          const ocTotalTokens = ocLastStepInput + ocBillableOutput;
+          const ocBillableTotal = ocInputTokens + ocBillableOutput;
 
           // Append token usage badge to the response (like legacy agent does)
           if (ocTotalTokens > 0) {
@@ -2008,8 +2042,8 @@ This conversation includes one or more image attachments. When the user uploads 
             }
             const tokenXml =
               directCost !== null
-                ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
-                : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+                ? `<vibes-token-usage input="${ocLastStepInput}"${billableAttr} output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+                : `<vibes-token-usage input="${ocLastStepInput}"${billableAttr} output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
           }
 
@@ -2081,7 +2115,7 @@ This conversation includes one or more image attachments. When the user uploads 
             model: effectiveModelName,
             responseLength: fullResponse.length,
             success,
-            totalTokens: ocTotalTokens,
+            totalTokens: ocBillableTotal,
           });
 
           // ── Memory extraction (fire-and-forget, never blocks UI) ─────────

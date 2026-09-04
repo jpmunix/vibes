@@ -597,9 +597,24 @@ export function buildTurnSummaryTag(params: {
   return `<vibes-context-summary>\n${lines.join("\n")}\n</vibes-context-summary>`;
 }
 
-/** Builds the `<vibes-token-usage>` tag from runtime usage. */
-export function buildTokenUsageTag(input: number, output: number): string {
-  return `<vibes-token-usage input="${input}" output="${output}"></vibes-token-usage>`;
+/**
+ * Builds the `<vibes-token-usage>` tag from runtime usage.
+ *
+ * #243: `input` = input del ÚLTIMO step LLM (el contexto real del próximo
+ * request — lo que mide el gauge). `billableInput` opcional = input total
+ * facturable del turno (suma de los steps) — solo para coste; se emite como
+ * atributo `billable-input` cuando es distinto del input del último step.
+ */
+export function buildTokenUsageTag(
+  input: number,
+  output: number,
+  billableInput?: number,
+): string {
+  const billableAttr =
+    billableInput !== undefined && billableInput !== input
+      ? ` billable-input="${billableInput}"`
+      : "";
+  return `<vibes-token-usage input="${input}" output="${output}"${billableAttr}></vibes-token-usage>`;
 }
 
 /** Builds the `<vibes-cancelled>` tag appended on cancellation. */

@@ -437,6 +437,21 @@ describe("closing tags", () => {
       '<vibes-token-usage input="10" output="5"></vibes-token-usage>',
     );
   });
+  it("#243: billable-input is emitted when it differs from input", () => {
+    expect(buildTokenUsageTag(500, 100, 12000)).toBe(
+      '<vibes-token-usage input="500" output="100" billable-input="12000"></vibes-token-usage>',
+    );
+  });
+  it("#243: billable-input is omitted when equal to input (single step)", () => {
+    expect(buildTokenUsageTag(1000, 50, 1000)).toBe(
+      '<vibes-token-usage input="1000" output="50"></vibes-token-usage>',
+    );
+  });
+  it("#243: billable-input omitted when not provided", () => {
+    expect(buildTokenUsageTag(10, 5, undefined)).toBe(
+      '<vibes-token-usage input="10" output="5"></vibes-token-usage>',
+    );
+  });
   it("cancelled tag", () => {
     expect(buildCancelledTag()).toBe("<vibes-cancelled></vibes-cancelled>");
   });

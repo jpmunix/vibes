@@ -96,6 +96,8 @@ export type RuntimeStreamResult = {
   reasoningTokens: number;
   cachedTokens: number;
   costUsd: number | null;
+  /** #243: input del ÚLTIMO step LLM del turno — contexto real del próximo request. */
+  lastStepInput: number;
 };
 
 /**
@@ -237,6 +239,7 @@ export async function handleRuntimeStream(
     reasoningTokens: 0,
     cachedTokens: 0,
     costUsd: null,
+    lastStepInput: 0,
   };
 
   // ── 0. Pre-flight: resolve the model target early so we fail fast ──────
@@ -457,7 +460,16 @@ export async function handleRuntimeStream(
     sendChunk(mapper.buildLiveContent());
   };
 
-  const rawUnsubscribe = session.subscribe((e: RuntimeEvent) => mapper.handle(e));
+  const rawUnsubscribe = session.subscribe((e: RuntimeEvent) => {
+    // #230/#243: el input del ÚLTIMO step (LlmCompleted.usage.input) es el
+    // contexto real del próximo request. `session.run()` solo devuelve el
+    // ACUMULADO del turno (state.usage) — sumar todos los steps cuenta el
+    // mismo contexto N veces. El gauge usa este lastStepInput.
+    if (e.type === "llm.completed" && e.usage && e.usage.input > 0) {
+      lastStepInput = e.usage.input;
+    }
+    mapper.handle(e);
+  });
   const bridgeUnsubscribe = attachBridge(
     (handler) => session.subscribe(handler),
     {
@@ -504,6 +516,9 @@ export async function handleRuntimeStream(
   // ── 5. Run ─────────────────────────────────────────────────────────────
   let result: Awaited<ReturnType<typeof session.run>> | undefined;
   let runError: Error | null = null;
+  // #243: input del ÚLTIMO step (contexto real del próximo request), capturado
+  // del evento llm.completed. session.run() solo devuelve el acumulado.
+  let lastStepInput = 0;
   try {
     result = await session.run(abortController.signal);
   } catch (err) {
@@ -550,7 +565,9 @@ export async function handleRuntimeStream(
   }
 
   if (result) {
-    finalContent += buildTokenUsageTag(result.usage.input, result.usage.output);
+    const lastInput = lastStepInput > 0 ? lastStepInput : result.usage.input;
+    const billable = result.usage.input;
+    finalContent += buildTokenUsageTag(lastInput, result.usage.output, billable);
   }
 
   const aborted =
@@ -613,6 +630,8 @@ export async function handleRuntimeStream(
     cachedTokens: usage.cacheRead,
     // No cost accounting in vibes-core v1 (post-MVP).
     costUsd: null,
+    // #243: input del ÚLTIMO step — el contexto real del próximo request.
+    lastStepInput: lastStepInput > 0 ? lastStepInput : usage.input,
   };
 }
 

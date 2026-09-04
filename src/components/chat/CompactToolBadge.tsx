@@ -687,7 +687,12 @@ export function getToolDetail(
       return hasErr ? "con errores" : "sin errores";
     }
     case "vibes-token-usage": {
-      const inp = parseInt(attributes.input || "0", 10);
+      // #243: `billable-input` = input acumulado del turno (coste/total). `input`
+      // = último step (gauge). El badge muestra el input total del turno.
+      const inp = parseInt(
+        attributes["billable-input"] || attributes.input || "0",
+        10,
+      );
       const out = parseInt(attributes.output || "0", 10);
       const cached = parseInt(attributes.cached || "0", 10);
       const webSearches = parseInt(attributes["web-searches"] || "0", 10);

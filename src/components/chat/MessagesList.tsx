@@ -34,7 +34,6 @@ import { ipc } from "@/ipc/types";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/hooks/useSettings";
-import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { PromoMessage } from "./PromoMessage";
 import { useCountTokens } from "@/hooks/useCountTokens";
 import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
@@ -57,7 +56,6 @@ interface FooterContext {
   tokenCountResult: ReturnType<typeof useCountTokens>["result"];
   appId: number | null;
   settings: ReturnType<typeof useSettings>["settings"];
-  userBudget: ReturnType<typeof useUserBudgetInfo>["userBudget"];
   renderSetupBanner: () => React.ReactNode;
   isSelectingModel: boolean;
   autoRouterModelInfo: ReturnType<
@@ -139,7 +137,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const [todoId, setTodoId] = useState<number | null>(null);
     const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
-    const { userBudget } = useUserBudgetInfo();
     const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
     const isSelectingModelById = useAtomValue(isSelectingModelByIdAtom);
     const isSelectingModel = selectedChatId

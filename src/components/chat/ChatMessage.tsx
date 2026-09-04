@@ -11,7 +11,7 @@ import {
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
-import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
+import { normalizeMessageContent } from "./normalizeMessageContent";
 import { ErrorBubble } from "./ErrorBubble";
 import {
   CheckCircle,
@@ -381,8 +381,7 @@ const ChatMessage = ({
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
   const normalizedMessageContent = useMemo(() => {
-    if (!message.content) return "";
-    return normalizeLegacyTags(message.content);
+    return normalizeMessageContent(message.content);
   }, [message.content]);
 
   // Extract the real current action from the streaming content
@@ -737,7 +736,7 @@ const ChatMessage = ({
                       suppressHydrationWarning
                     >
                       <VibesMarkdownParser
-                        content={message.content}
+                        content={normalizedMessageContent}
                         forceFullMode={forceFullMode}
                       />
                     </div>
@@ -781,7 +780,7 @@ const ChatMessage = ({
                             suppressHydrationWarning
                           >
                             <VibesMarkdownParser
-                              content={message.content}
+                              content={normalizedMessageContent}
                               forceFullMode={forceFullMode}
                               isGitMessage={
                                 message.model === "vibes/git-assistant"
@@ -836,7 +835,7 @@ const ChatMessage = ({
                           suppressHydrationWarning
                         >
                           <UserMessageContent
-                            content={message.content}
+                            content={normalizedMessageContent}
                             aiMessagesJson={message.aiMessagesJson}
                             hideImages={isUserLongMessage && !isUserExpanded}
                           />

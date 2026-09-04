@@ -111,7 +111,14 @@ export function extractMessageTokenBreakdown(
   let match: RegExpExecArray | null;
   while ((match = regex.exec(content)) !== null) {
     const attrs = match[1];
-    const inp = parseInt(getTagAttr(attrs, "input") || "0", 10);
+    // #243: `billable-input` = input acumulado del turno (lo que se factura y lo
+    // que la modal mostraba antes). `input` = último step (contexto del gauge).
+    // La modal/estadística usa el input total del turno → billable-input, con
+    // fallback a `input` en tags legacy (pre-#243) que no lo traen.
+    const inp = parseInt(
+      getTagAttr(attrs, "billable-input") || getTagAttr(attrs, "input") || "0",
+      10,
+    );
     const out = parseInt(getTagAttr(attrs, "output") || "0", 10);
     const cache = parseInt(getTagAttr(attrs, "cached") || "0", 10);
     const web = parseInt(getTagAttr(attrs, "web-searches") || "0", 10);

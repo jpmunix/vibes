@@ -62,7 +62,13 @@ function extractMessageCost(content: string): {
     }
 
     // ── Path 2: legacy — compute from token counts × price per token ───────
-    const inp = parseInt(getAttr(attrs, "input") || "0", 10);
+    // #243: `billable-input` = input acumulado del turno (suma de steps) → es lo
+    // que se factura. `input` = último step (contexto del gauge). Para el coste
+    // mandan los tokens facturables; `input` solo como fallback legacy.
+    const inp = parseInt(
+      getAttr(attrs, "billable-input") || getAttr(attrs, "input") || "0",
+      10,
+    );
     const out = parseInt(getAttr(attrs, "output") || "0", 10);
     const cached = parseInt(getAttr(attrs, "cached") || "0", 10);
     const webSearches = parseInt(getAttr(attrs, "web-searches") || "0", 10);
