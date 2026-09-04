@@ -618,8 +618,8 @@ const ChatMessage = ({
         {/* Content area */}
         <div className={isUser ? "flex justify-stretch" : "flex justify-start"}>
           <div className={isUser ? "relative flex flex-col items-stretch w-full" : "min-w-0 w-full"}>
-            {isUser && !isSelectingModel && message.content && (
-              <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background/90 backdrop-blur-sm border border-border/40 shadow-sm px-2 py-1 rounded-lg z-20">
+            {isUser && !isSelectingModel && message.content && !isStuck && (
+              <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-20">
                   {isStuck && (
                     <button
                       onClick={handleScrollToNaturalTop}

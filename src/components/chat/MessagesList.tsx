@@ -355,7 +355,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                     <div
                       key={message.id}
                       className={
-                        message.role === "user" ? "sticky top-0 z-10" : ""
+                        message.role === "user"
+                          ? "sticky top-0 z-10 bg-background"
+                          : ""
                       }
                     >
                       <div className={message.role === "user" ? "" : "px-4"}>
