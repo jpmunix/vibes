@@ -1,6 +1,8 @@
 # Auditoría de la pantalla de Ajustes — Ideas de reorganización
 
 > **Alcance:** investigación a fondo, **sin tocar código**. Informe para discusión.
+>
+> > **⚠️ Corrección (2026-08-27):** este informe mezclaba el estado **real** (layout actual) con el estado **propuesto**. En §1.2/§1.3/§2.2 y el TL;DR, la auditoría decía que los 6 items (modo de chat, git, vista previa, notificaciones, sonido, búsqueda web) estaban **duplicados dentro de `GeneralSettings`**. Eso era FALSO: la auditoría original describió el layout PROPUESTO (items colgando de `GeneralSettings`) como si fuera el actual. El layout REAL es: esos 6 items viven **solo** en la card independiente `WorkflowSettings` (`settings.tsx:1472-1640`); `GeneralSettings` (`settings.tsx:813-1470`) termina en `ancho_de_burbuja` (línea 1436) y NO contiene los 6 items. Tablas y textos reescritos para reflejar la realidad verificada contra el código. El único ítem duplicado real es el bloque "Tamaño de fuente" (UI/sidebar/chat/ancho), que existe 2 veces: como `<SettingItem>`s colapsables en `GeneralSettings` y como selectors inline en el bloque "Tipografía del chat" de `AIBehaviorSettings`. La propuesta de reorganización (§3) se mantiene válida (eliminar `WorkflowSettings`, mover sus 6 items bajo `GeneralSettings > Flujo de trabajo`, etc.), pero NO elimina duplicados — los 6 items no están duplicados hoy.
 > **Pantalla:** `src/pages/settings.tsx` + `src/components/settings/*` + `src/components/SettingsList.tsx` + `src/lib/i18n/messages.es.ts`.
 > **Método:** lectura directa de los 11 archivos críticos (página, sidebar, los 6 componentes que renderizan cards, i18n), grep cruzando keys duplicadas y secciones fantasma.
 
