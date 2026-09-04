@@ -676,6 +676,18 @@ const ChatMessage = ({
                         : "w-full py-1"
                   }
                 >
+                  {/* Soft background fade below the bubble — same color as chat bg, fading to transparent.
+                      Only visible while the bubble is sticky/pinned at the top so the assistant text scrolling
+                      underneath fades out gracefully. */}
+                  {isUser && (
+                    <div
+                      aria-hidden="true"
+                      className={
+                        "absolute left-0 right-0 -bottom-3 h-3 pointer-events-none z-0 bg-gradient-to-b from-[var(--background)] to-transparent transition-opacity duration-200 " +
+                        (isStuck ? "opacity-100" : "opacity-0")
+                      }
+                    />
+                  )}
                   {/* === System messages === */}
                   {isSystem && !isSelectingModel && (
                     <div
