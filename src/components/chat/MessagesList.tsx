@@ -23,7 +23,6 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
-import { userAtom } from "@/atoms/authAtoms";
 import { useAtomValue } from "jotai";
 import { CheckCircle2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
@@ -142,7 +141,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const isSelectingModel = selectedChatId
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
-    const user = useAtomValue(userAtom);
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -364,7 +362,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                         <MemoizedChatMessage
                           message={message}
                           isLastMessage={isLastMessage}
-                          user={user}
                         />
                       </div>
                       {shouldShowAutoRouter && (

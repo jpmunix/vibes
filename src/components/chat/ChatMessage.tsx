@@ -25,19 +25,17 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  User as UserIcon,
   Quote,
   Share2,
   Image as ImageIcon,
   ArrowUp,
   type LucideIcon,
 } from "@/components/ui/icons";
-import { formatDistanceToNow, format, type Locale } from "date-fns";
+import { format, type Locale } from "date-fns";
 import { useI18n } from "@/lib/i18n";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import {
   useEffect,
   useLayoutEffect,
@@ -67,8 +65,6 @@ import {
   messagePreviewAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
-import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import { VibesAvatar } from "@/components/ui/VibesAvatar";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -78,7 +74,6 @@ const USER_COLLAPSE_HEIGHT = 120;
 interface ChatMessageProps {
   message: Message;
   isLastMessage: boolean;
-  user?: VibesUser | null;
   forceFullMode?: boolean;
 }
 // Hoisted to module level — pure function, no component state needed
@@ -113,11 +108,9 @@ const formatDurationMs = (ms: number): string => {
 const ChatMessage = ({
   message,
   isLastMessage,
-  user,
   forceFullMode,
 }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions: liveVersions } = useVersions(appId);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
@@ -133,7 +126,6 @@ const ChatMessage = ({
     ? (errorById.get(selectedChatId) ?? null)
     : null;
   const messagesById = useAtomValue(chatMessagesByIdAtom);
-  const userAtomValue = useAtomValue(userAtom);
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
@@ -238,9 +230,7 @@ const ChatMessage = ({
     return undefined;
   }, [isLastMessage, selectedMemories, message]);
 
-  const activeUser = user || userAtomValue;
-
-  // Detect persisted errors (content starts with $$VIBES_ERROR$$)
+  // Detect persisted errors (content starts with $VIBES_ERROR$)
   const persistedError =
     isAssistant && message.content?.startsWith(PERSISTED_ERROR_PREFIX)
       ? message.content.slice(PERSISTED_ERROR_PREFIX.length)
@@ -622,52 +612,11 @@ const ChatMessage = ({
         className="mt-4 mb-4 w-full mx-auto group"
         style={{ maxWidth: "var(--bubble-width, 65%)" }}
       >
-        <div
-          className={`flex items-start gap-3 ${isUser ? "flex-row-reverse relative" : "flex-row"}`}
-          style={isUser ? { marginLeft: "100px" } : undefined}
-        >
-          {isUser && (
-            <div className="absolute -top-4 left-0 right-0 h-4 bg-background pointer-events-none" />
-          )}
-          {/* Avatar (hidden for system messages) */}
-          {!isSystem && (
-            <div
-              className={`flex-shrink-0 mt-1 ${isUser ? "bg-background rounded-full relative z-10 shadow-sm" : ""}`}
-            >
-              {isUser ? (
-                <SimpleAvatar
-                  src={
-                    activeUser?.photoUrl ||
-                    (activeUser as any)?.photoURL ||
-                    undefined
-                  }
-                  className="h-7 w-7"
-                  fallbackText={(
-                    activeUser?.displayName?.[0] ||
-                    activeUser?.email?.[0] ||
-                    "U"
-                  ).toUpperCase()}
-                />
-              ) : (
-                <VibesAvatar className="h-7 w-7" />
-              )}
-            </div>
-          )}
-
-          {/* Message bubble */}
-          <div
-            className={
-              isSystem
-                ? "flex-1 w-full flex justify-center"
-                : isAssistant
-                  ? "flex-1 min-w-0"
-                  : "flex-shrink min-w-0"
-            }
-          >
-            {/* Wrapper relative only for user, so the copy button can float outside */}
-            <div className={isUser ? "relative" : ""}>
-              {isUser && !isSelectingModel && message.content && (
-                <div className="absolute right-full mr-3 bottom-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
+        {/* Content area */}
+        <div className={isUser ? "flex justify-stretch" : "flex justify-start"}>
+          <div className={isUser ? "relative flex flex-col items-stretch w-full" : "min-w-0 w-full"}>
+            {isUser && !isSelectingModel && message.content && (
+              <div className="absolute right-2 -top-2 -translate-y-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
                   {isStuck && (
                     <button
                       onClick={handleScrollToNaturalTop}
@@ -712,9 +661,7 @@ const ChatMessage = ({
                   </button>
                 </div>
               )}
-              <div
-                className={isUser ? "bg-background rounded-lg shadow-sm" : ""}
-              >
+              <div>
                 <div
                   onClick={undefined}
                   className={`rounded-lg ${
@@ -723,10 +670,11 @@ const ChatMessage = ({
                       : isAssistant
                         ? isErrorMessage
                           ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                          : `px-4 py-3 bg-background-lightest dark:bg-secondary/30 border border-border/60 dark:border-secondary/40`
+                          : // Assistant normal: sin card/burbuja — texto plano
+                            "py-2"
                         : isFixError
-                          ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
-                          : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 w-fit"
+                          ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-full cursor-pointer"
+                          : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 rounded-lg w-full"
                   }`}
                 >
                   {/* === System messages === */}
@@ -1102,11 +1050,8 @@ const ChatMessage = ({
                   ) : null}
                 </div>
               </div>
-            </div>
-            {/* end relative wrapper */}
           </div>
-          {/* Invisible spacer to balance avatar width — keeps content centered */}
-          {!isSystem && <div className="w-7 flex-shrink-0" />}
+          {/* end content area */}
         </div>
       </div>
     </div>
