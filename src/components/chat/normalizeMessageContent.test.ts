@@ -66,6 +66,28 @@ describe("normalizeMessageContent", () => {
     expect(output).not.toContain(FW);
   });
 
+  it("elimina el bloque [Previous Turn Context Summary] al final y conserva la prosa", () => {
+    const input =
+      "Listo, card restaurada.\n\n" +
+      "[Previous Turn Context Summary]\n" +
+      "Read: /home/munix/ChatMessage.tsx\n" +
+      "Modified: /home/munix/ChatMessage.tsx, walkthrough.md";
+    const output = normalizeMessageContent(input);
+    expect(output).toContain("Listo, card restaurada.");
+    expect(output).not.toContain("[Previous Turn Context Summary]");
+    expect(output).not.toContain("Read:");
+    expect(output).not.toContain("Modified:");
+    // No debe dejar el sangrado \n\n sobrante antes del corte.
+    expect(output).toBe("Listo, card restaurada.\n");
+  });
+
+  it("no toca el texto cuando no hay marcador de summary", () => {
+    const input = "Respuesta normal sin memoria de turno.";
+    expect(normalizeMessageContent(input)).toBe(
+      "Respuesta normal sin memoria de turno.",
+    );
+  });
+
   it("no rompe <|think|> tags ni < suelto en prosa", () => {
     const input = "Pensando… <|think|>estoy razonando<|endthink|> hecho. a < b";
     const output = normalizeMessageContent(input);

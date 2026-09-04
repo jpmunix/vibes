@@ -609,14 +609,17 @@ const ChatMessage = ({
   return (
     <div ref={containerRef} className="flex justify-center">
       <div
-        className="mt-4 mb-4 w-full mx-auto group"
+        className="mt-3 mb-1 w-full mx-auto group relative"
         style={{ maxWidth: "var(--bubble-width, 65%)" }}
       >
+        {isUser && (
+          <div className="absolute -top-3 left-0 right-0 h-3 bg-background pointer-events-none z-10" />
+        )}
         {/* Content area */}
         <div className={isUser ? "flex justify-stretch" : "flex justify-start"}>
           <div className={isUser ? "relative flex flex-col items-stretch w-full" : "min-w-0 w-full"}>
             {isUser && !isSelectingModel && message.content && (
-              <div className="absolute right-2 -top-2 -translate-y-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
+              <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background/90 backdrop-blur-sm border border-border/40 shadow-sm px-2 py-1 rounded-lg z-20">
                   {isStuck && (
                     <button
                       onClick={handleScrollToNaturalTop}
@@ -663,19 +666,15 @@ const ChatMessage = ({
               )}
               <div>
                 <div
-                  onClick={undefined}
-                  className={`rounded-lg ${
-                    isSystem
-                      ? "px-4 py-2 bg-muted/30 border border-muted/50 text-xs text-muted-foreground w-fit max-w-[80%]"
-                      : isAssistant
-                        ? isErrorMessage
-                          ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                          : // Assistant normal: sin card/burbuja — texto plano
-                            "py-2"
-                        : isFixError
-                          ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-full cursor-pointer"
-                          : "px-4 pt-2 pb-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20 rounded-lg w-full"
-                  }`}
+                  className={
+                    isUser
+                      ? isFixError
+                        ? "rounded-xl w-full px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 cursor-pointer"
+                        : "rounded-xl w-full px-4 py-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20"
+                      : isErrorMessage
+                        ? "rounded-xl w-full px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
+                        : "w-full py-1"
+                  }
                 >
                   {/* === System messages === */}
                   {isSystem && !isSelectingModel && (

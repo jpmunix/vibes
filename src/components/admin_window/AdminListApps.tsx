@@ -12,6 +12,8 @@ import {
   ChevronRight,
   MessageSquare,
   Share2,
+  Copy,
+  Check,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -287,10 +289,11 @@ function AdminMessageRow({
   user?: UserInfo;
 }) {
   const isUser = message.role === "user";
-  const { dateLocale } = useI18n();
+  const { dateLocale, t } = useI18n();
   const isAssistant = message.role === "assistant";
   const isZen = viewMode === "zen";
   const forceFullMode = viewMode === "completo";
+  const [userCopied, setUserCopied] = useState(false);
 
   // In zen mode, strip tool blocks from assistant messages
   const zenContent = useMemo(() => {
@@ -306,84 +309,99 @@ function AdminMessageRow({
       .trim();
   }, [message.content, isZen, isUser]);
 
+  // Copy user message content (hook de portapapeles local al panel admin, sin quote)
+  const handleCopyUserMessage = useCallback(async () => {
+    let text = message.content ?? "";
+    const m1 = text.indexOf("\n\nAttachments:\n");
+    if (m1 !== -1) text = text.substring(0, m1);
+    const m2 = text.indexOf("\n\nSelected components:\n");
+    if (m2 !== -1) text = text.substring(0, m2);
+    const m3 = text.indexOf("\n\nFile to upload to codebase:");
+    if (m3 !== -1) text = text.substring(0, m3);
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      setUserCopied(true);
+      setTimeout(() => setUserCopied(false), 2000);
+    } catch {
+      toast.error("No se pudo copiar");
+    }
+  }, [message.content]);
+
   if (isZen && !isUser && !zenContent) return null;
+
+  const isFixError = isUser && message.content?.startsWith("Fix error:");
+
+  const cardClass = isUser
+    ? isFixError
+      ? "rounded-xl w-full px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
+      : "rounded-xl w-full px-4 py-3 bg-primary/15 dark:bg-primary/15 border border-primary/25 dark:border-primary/20"
+    : "w-full";
+
+  const content = isUser ? (
+    <UserMessageContent
+      content={message.content}
+      aiMessagesJson={message.aiMessagesJson ?? null}
+    />
+  ) : isZen ? (
+    <VanillaMarkdownParser content={zenContent!} />
+  ) : (
+    <VibesMarkdownParser
+      content={message.content}
+      forceFullMode={forceFullMode}
+    />
+  );
 
   return (
     <div className="flex justify-center">
       <div
-        className="mt-4 mb-4 w-full mx-auto group"
-        style={{ maxWidth: "var(--bubble-width, 65%)" }}
+        className={`mt-4 mb-4 w-full mx-auto group ${
+          isUser ? "px-4" : ""
+        }`}
       >
-        <div
-          className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
-          style={isUser ? { marginLeft: "100px" } : undefined}
-        >
-          {/* Avatar */}
-          <div className="flex-shrink-0 mt-1">
-            {isUser ? (
-              <SimpleAvatar
-                src={user?.photoUrl || undefined}
-                className="h-7 w-7"
-                fallbackText={(
-                  user?.displayName?.[0] ||
-                  user?.email?.[0] ||
-                  "U"
-                ).toUpperCase()}
-              />
-            ) : (
-              <VibesAvatar className="h-7 w-7" />
-            )}
+        <div className="relative flex flex-col items-stretch w-full">
+          {/* User message hover actions (top-right) */}
+          {isUser && message.content && (
+            <div className="absolute right-4 -top-2 -translate-y-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-10">
+              <button
+                onClick={handleCopyUserMessage}
+                title={userCopied ? "¡Copiado!" : "Copiar"}
+                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                aria-label={t("chatActions.copyMessage")}
+              >
+                {userCopied ? (
+                  <Check size={13} className="text-primary" />
+                ) : (
+                  <Copy size={13} />
+                )}
+              </button>
+            </div>
+          )}
+
+          <div className={cardClass}>
+            <div className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words">
+              {content}
+            </div>
           </div>
 
-          {/* Message bubble */}
-          <div
-            className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}
-          >
-            <div
-              className={`rounded-lg ${
-                isAssistant
-                  ? "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
-                  : "px-4 pt-2 pb-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
-              }`}
-            >
-              <div className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words">
-                {isUser ? (
-                  <UserMessageContent
-                    content={message.content}
-                    aiMessagesJson={message.aiMessagesJson ?? null}
-                  />
-                ) : isZen ? (
-                  <VanillaMarkdownParser content={zenContent!} />
-                ) : (
-                  <VibesMarkdownParser
-                    content={message.content}
-                    forceFullMode={forceFullMode}
-                  />
-                )}
-              </div>
+          {/* Footer — model + time (assistant only) */}
+          {isAssistant && (
+            <div className="mt-2 flex items-center gap-2 text-xs px-1">
+              {message.model && (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                  <span className="typo-micro">{message.model}</span>
+                </div>
+              )}
+              {message.createdAt && (
+                <span className="typo-micro text-muted-foreground flex items-center gap-1">
+                  <Clock size={10} />
+                  {message.durationMs != null && message.durationMs > 0
+                    ? `${formatDuration(message.durationMs)} · ${formatDate(message.createdAt, dateLocale())}`
+                    : formatDate(message.createdAt, dateLocale())}
+                </span>
+              )}
             </div>
-            {/* Footer — model + time (assistant only) */}
-            {isAssistant && (
-              <div className="mt-2 flex items-center gap-2 text-xs px-1">
-                {message.model && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                    <span className="typo-micro">{message.model}</span>
-                  </div>
-                )}
-                {message.createdAt && (
-                  <span className="typo-micro text-muted-foreground flex items-center gap-1">
-                    <Clock size={10} />
-                    {message.durationMs != null && message.durationMs > 0
-                      ? `${formatDuration(message.durationMs)} · ${formatDate(message.createdAt, dateLocale())}`
-                      : formatDate(message.createdAt, dateLocale())}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          {/* Invisible spacer to balance avatar width — keeps content centered */}
-          <div className="w-7 flex-shrink-0" />
+          )}
         </div>
       </div>
     </div>
