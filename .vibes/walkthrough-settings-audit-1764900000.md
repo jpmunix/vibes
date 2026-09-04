@@ -2,7 +2,12 @@
 
 > **Alcance:** investigación a fondo, **sin tocar código**. Informe para discusión.
 >
-> > **⚠️ Corrección (2026-08-27):** este informe mezclaba el estado **real** (layout actual) con el estado **propuesto**. En §1.2/§1.3/§2.2 y el TL;DR, la auditoría decía que los 6 items (modo de chat, git, vista previa, notificaciones, sonido, búsqueda web) estaban **duplicados dentro de `GeneralSettings`**. Eso era FALSO: la auditoría original describió el layout PROPUESTO (items colgando de `GeneralSettings`) como si fuera el actual. El layout REAL es: esos 6 items viven **solo** en la card independiente `WorkflowSettings` (`settings.tsx:1472-1640`); `GeneralSettings` (`settings.tsx:813-1470`) termina en `ancho_de_burbuja` (línea 1436) y NO contiene los 6 items. Tablas y textos reescritos para reflejar la realidad verificada contra el código. El único ítem duplicado real es el bloque "Tamaño de fuente" (UI/sidebar/chat/ancho), que existe 2 veces: como `<SettingItem>`s colapsables en `GeneralSettings` y como selectors inline en el bloque "Tipografía del chat" de `AIBehaviorSettings`. La propuesta de reorganización (§3) se mantiene válida (eliminar `WorkflowSettings`, mover sus 6 items bajo `GeneralSettings > Flujo de trabajo`, etc.), pero NO elimina duplicados — los 6 items no están duplicados hoy.
+> > **⚠️ Corrección (2026-08-27):** la versión original de esta auditoría describió el layout PROPUESTO (items de flujo colgando de `GeneralSettings`) como si fuera el actual. Error grueso. El layout REAL verificado contra el código es:
+>
+> - `GeneralSettings` (`settings.tsx:813-1470`) arranca en línea 946 con `<div id="general-settings">` y termina en `ancho_de_burbuja` (línea 1436). NO contiene los 6 items de flujo.
+> - `WorkflowSettings` (`settings.tsx:1472-1647`) arranca inmediatamente después (`<div id="workflow-settings">`) y SÍ contiene los 6 items: modo de chat predeterminado (l. 1496), confirmar cambios en git (l. 1504), expandir vista previa (l. 1522), notificaciones de respuesta (l. 1565), reproducir sonido (l. 1584), búsqueda web (l. 1603).
+>
+> Confusión adicional que hubo que deshacer: el enunciado "desde modo de chat predeterminado en adelante está en una card llamada flujo de trabajo" es la **realidad del layout**. La auditoría previa los había sacado de `WorkflowSettings` para meterlos en `GeneralSettings` como si ya estuvieran allí — no es así. La **propuesta** sí los mueve a `GeneralSettings > Flujo de trabajo` (§3), pero el **estado actual** es que viven solo en `WorkflowSettings`. El único ítem duplicado real es el bloque "Tamaño de fuente" (UI/sidebar/chat/ancho), que existe 2 veces: como `<SettingItem>`s colapsables en `GeneralSettings` y como selectors inline en el bloque "Tipografía del chat" de `AIBehaviorSettings`.
 > **Pantalla:** `src/pages/settings.tsx` + `src/components/settings/*` + `src/components/SettingsList.tsx` + `src/lib/i18n/messages.es.ts`.
 > **Método:** lectura directa de los 11 archivos críticos (página, sidebar, los 6 componentes que renderizan cards, i18n), grep cruzando keys duplicadas y secciones fantasma.
 
@@ -22,53 +27,45 @@ El sidebar (`SettingsList.tsx:16-25`) anuncia **10 secciones**; la página rende
 | 4 | `custom-agents-settings` (→ `settings.sections.customAgents`) | `CustomAgentsSection` | `t("settings.sections.customAgents")` | OK |
 | 5 | `prompts-settings` (→ `settings.sections.prompts`) | `PromptsSection` | `t("settings.sections.prompts")` | OK |
 | 6 | `memory-settings` (→ `settings.sections.guidelines`) | `MemorySettings` (sin card propia: está colgada dentro de la card de memory-settings) | `t("settings.sections.guidelines")` | OK |
-| 7 | `workflow-settings` (→ `settings.sections.workflow`) | `WorkflowSettings` inline en `settings.tsx:1472-1647` | `t("settings.sections.workflow")` | **6 items duplicados con General** |
+| 7 | `workflow-settings` (→ `settings.sections.workflow`) | `WorkflowSettings` inline en `settings.tsx:1472-1647` | `t("settings.sections.workflow")` | Card independiente; los 6 items viven SOLO aquí, NO duplicados |
 | 8 | `integrations` (→ `settings.sections.integrations`) | `Integrations` (envuelve GitHub + Vercel + Supabase + Neon en un único card) | `t("settings.sections.integrations")` | OK |
 | 9 | `tools-mcp` (→ `settings.sections.mcp`) | `McpServersSettings` | `t("settings.sections.mcp")` | OK |
 | 10 | `tools-skills` (→ `settings.sections.skills`) | `SkillsSettings` | `t("settings.sections.skills")` | OK |
 | — | **(no aparece en sidebar)** | `embeddings-settings` se consulta en `settings.tsx:660` | — | **Fantasma — drift muerto** |
 
-### 1.2 `GeneralSettings` — el bloque más caótico
+### 1.2 `GeneralSettings` — dominio único con 5 categorías visuales planas (sin sub-bloques)
 
-22 `<SettingItem>`s seguidos en `settings.tsx:957-1465`, sin un solo divider, sin un solo subtítulo. Mezcla **5 categorías funcionales** que el ojo del usuario tiene que inferir por proximidad:
+`GeneralSettings` arranca en `settings.tsx:946` con `<div id="general-settings">` y termina en línea 1436 con el `SettingItem` de `ancho_de_burbuja`. NO contiene los 6 items de flujo/notificaciones/búsqueda — esos viven en `WorkflowSettings` (§1.3). Items reales:
 
 | # | Item | Categoría lógica |
 |---|---|---|
-| 957 | Idioma | Idioma |
-| 962 | Apariencia (claro/oscuro) | Apariencia |
-| 989 / 1062 | Variante tema claro (10 opciones) / oscuro (10 opciones) | Apariencia |
-| 1137 | Color primario | Apariencia |
-| 1206 | Estilo de animación de carga (escaparate de 39 loaders en grid) | Apariencia |
-| 1245 | Tipografía de la interfaz | Tipografía |
-| 1269 | Tipografía del chat | Tipografía |
-| 1293 | Vista del chat | Vista |
-| 1350 | Tamaño de fuente → Interfaz | Tipografía |
-| 1378 | Tamaño de fuente → Sidebar | Tipografía |
-| 1406 | Tamaño de fuente → Chat | Tipografía |
-| 1436 | Ancho de burbuja | Vista |
-| **1495** | **Modo de chat predeterminado** | **Flujo de trabajo** |
-| **1503** | **Confirmar cambios en git** | **Flujo de trabajo** |
-| **1521** | **Expandir vista previa** | **Flujo de trabajo** |
-| **1564** | **Notificaciones de respuesta** | **Notificaciones** |
-| **1583** | **Reproducir sonido** | **Notificaciones** |
-| **1602** | **Búsqueda web** | **Búsqueda** |
+| 958 | Idioma | Idioma |
+| 963 | Apariencia (claro/oscuro) | Apariencia |
+| 990 / 1063 | Variante tema claro / oscuro | Apariencia |
+| 1138 | Color primario | Apariencia |
+| 1207 | Estilo de animación de carga (escaparate de 39 loaders en grid) | Apariencia |
+| 1246 | Tipografía de la interfaz | Tipografía |
+| 1270 | Tipografía del chat | Tipografía |
+| 1294 | Vista del chat (Max/Flow/Zen) | Vista |
+| 1330 | Tamaño de fuente — bloque colapsable con `<h3>` (Interfaz/Sidebar/Chat) | Tipografía |
+| 1437 | Ancho de burbuja | Vista |
 
-El título de la card solo dice "General". Nada indica dónde acaba el tema y empieza el flujo.
+**Separación visual real:** el único sub-header `<h3 className="typo-label">` es "Tamaño de fuente" (líneas 1330-1358, colapsable con chevron). El resto — Apariencia → variantes de tema → color → loader → tipografías → vista — son `<SettingItem>` planos seguidos sin subtítulos ni divisores (los loaders van en un `<Dialog>` aparte, no inline). El ojo no distingue dónde acaba "Tema" y dónde empieza "Tipografía".
 
-### 1.3 `WorkflowSettings` — copia literal de parte de `GeneralSettings`
+### 1.3 `WorkflowSettings` — card independiente (sin duplicados hoy)
 
-Comparando línea a línea los `<SettingItem>`:
+`WorkflowSettings` (`settings.tsx:1472-1640`) es una **card independiente en el DOM** con su propio `<h2>` "Flujo de trabajo" (`settings.sections.workflow`), `<p>` de descripción (`workflowDesc`) y `id="workflow-settings"` — el mismo `id` que la entrada 7 del sidebar (`SettingsList.tsx:26`). Contiene 6 `<SettingItem>`s:
 
-| Key (`settingsItems.*`) | Aparece en `GeneralSettings` | Aparece en `WorkflowSettings` |
-|---|---|---|
-| `modo_de_chat_predeterminado` | línea 1495 | línea 1495 |
-| `confirmar_cambios_en_git` | línea 1503 | línea 1503 |
-| `expandir_vista_previa` | línea 1521 | línea 1521 |
-| `notificaciones_de_respuesta` | línea 1564 | línea 1564 |
-| `reproducir_sonido` | línea 1583 | línea 1583 |
-| `busqueda_web` | línea 1602 | línea 1602 |
+| # | Key (`settingsItems.*`) | Línea | Setting |
+|---|---|---|---|
+| 1 | `modo_de_chat_predeterminado` | 1496 | `DefaultChatModeSelector` |
+| 2 | `confirmar_cambios_en_git` | 1504 | Toggle `autoApproveChanges` |
+| 3 | `expandir_vista_previa` | 1522 | Toggle + pill derecha/izquierda (`vista_previa_posicion_*`) |
+| 4 | `notificaciones_de_respuesta` | 1565 | Toggle `notifyOnResponse` |
+| 5 | `reproducir_sonido` | 1584 | Toggle `enableNotificationSound` |
+| 6 | `busqueda_web` | 1603 | Toggle `enableWebSearch` |
 
-**Los mismos 6 controles viven en dos cards distintos del DOM.** Renderizan con la misma key de i18n, el mismo `SettingItem`, el mismo `TogglePill`/`UnifiedSelector`. Cuando scrolleas, ves los toggles dos veces. Si los cambias, `updateSettings()` aplica al mismo setting desde dos sitios. No hay duplicación de estado (es el mismo), pero sí duplicación visual y conceptual: **mismo problema, dos rutas distintas para llegar**.
+**Estos 6 items NO están duplicados:** `GeneralSettings` termina en `ancho_de_burbuja` (§1.2) y no los renderiza. Cada key `settingsItems.*` de la tabla aparece una sola vez en todo `src/` (los únicos otros hits son `DefaultChatModeSelector.tsx`, con las variantes `*Agent/Plan/Ask`). El grep original de la auditoría las contó dos veces porque sus líneas caían dentro del rango visual 940-1470 del *nuevo layout propuesto*, no del actual.
 
 ---
 
@@ -93,7 +90,7 @@ Comparando línea a línea los `<SettingItem>`:
 | # | Síntoma | Por qué es un problema |
 |---|---|---|
 | O1 | `GeneralSettings` mete 5 dominios sin divisores visuales | El usuario no sabe dónde acaba "Tema" y empieza "Flujo". |
-| O2 | `WorkflowSettings` existe como card aparte pero **duplica 6 items de `GeneralSettings`** | Rompe el principio de "una sola fuente de verdad" visual. |
+| O2 | `WorkflowSettings` existe como card aparte y los 6 items viven **solo** en ella (sin duplicar en `GeneralSettings`), pero conceptualmente son del mismo dominio ("General > Flujo de trabajo") | Hoy NO hay duplicado visual; sí hay fragmentación del dominio "General" en dos cards sin justificación funcional. La propuesta §3 los consolida. |
 | O3 | "Agentes Personalizados" y "Prompts" son dos secciones del sidebar pero internamente son **dos sistemas distintos** que se parecen: ambos dejan al usuario escribir instrucciones que el agente lee. | Sin una descripción al lado del sidebar, nadie sabe cuál es cuál hasta entrar. |
 | O4 | `AgentPermissionsSettings` (subcomponente de "Agente") renderiza **N tools del catálogo de runtime + 5 sub-pills de shell**. Es la pieza más larga de la página. | Está escondida dentro de "Agente" sin un `<h3>` que la separe del bloque de modelos. |
 | O5 | `MemorySettings` (sidebar "Directrices") tiene solo 3 items. | Una card entera con título y descripción para 3 items (toggle + 2 selectors) es demasiado container para tan poco contenido. Se siente huérfana. |
@@ -201,7 +198,7 @@ Cada slice llevaría: contract test del sidebar (`SettingsList.test.tsx` o equiv
 
 ## 7. Resumen ejecutivo (TL;DR)
 
-- **Estado actual:** 11 cards (10 del sidebar + 1 fantasma muerta), `GeneralSettings` con 22 items en 5 dominios sin separación visual, `WorkflowSettings` con 6 items **duplicados literalmente** en `GeneralSettings`, drift de i18n (3 keys con valor "Agente", 2 con valor "Directrices", namespace `sidebar` muerto, `<h2>` y sidebar con strings distintos en 2 cards).
+- **Estado actual:** 11 cards (10 del sidebar + 1 fantasma muerta), `GeneralSettings` con ~10 items reales en 5 categorías planas (Idioma/Apariencia/Tipografía/Vista), `WorkflowSettings` con 6 items propios (Modo de chat predeterminado, git auto-approve, vista previa, notificaciones, sonido, búsqueda web) — **sin duplicar en `GeneralSettings`**, drift de i18n (3 keys con valor "Agente", 2 con valor "Directrices", namespace `sidebar` muerto, `<h2>` y sidebar con strings distintos en 2 cards).
 - **Causa raíz:** la página creció por adicción sin refactor. `WorkflowSettings` y `MemorySettings` parecen restos de reorganizaciones intentadas que se quedaron a medias.
 - **Propuesta:** 8 secciones en sidebar (eliminar `WorkflowSettings` y agrupar MCP/Skills en "Herramientas externas"), sub-bloques `<h3>` dentro de las cards grandes (`GeneralSettings` y `AIBehaviorSettings`), consolidar `MemorySettings` + `CustomAgentsSection` + `PromptsSection` bajo "Prompts y directrices", eliminar namespace `sidebar` muerto y los drifts de keys.
 - **Impacto esperado:** sidebar 20% más corto (10 → 8), cero duplicados visuales, jerarquía visible, sin tocar schemas ni lógica.
