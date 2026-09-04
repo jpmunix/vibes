@@ -146,13 +146,6 @@ export const queryKeys = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // User Budget
-  // ─────────────────────────────────────────────────────────────────────────────
-  userBudget: {
-    info: ["userBudgetInfo"] as const,
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────────
   // Vercel Deployments
   // ─────────────────────────────────────────────────────────────────────────────
   vercel: {
@@ -330,7 +323,6 @@ export type AppQueryKey =
   | QueryKeyOf<
       (typeof queryKeys.languageModels)[keyof typeof queryKeys.languageModels]
     >
-  | QueryKeyOf<(typeof queryKeys.userBudget)[keyof typeof queryKeys.userBudget]>
   | QueryKeyOf<(typeof queryKeys.vercel)[keyof typeof queryKeys.vercel]>
   | QueryKeyOf<
       (typeof queryKeys.appUpgrades)[keyof typeof queryKeys.appUpgrades]

@@ -237,7 +237,6 @@ export type {
   NodeSystemInfo,
   SystemDebugInfo,
   SelectNodeFolderResult,
-  UserBudgetInfo,
   TelemetryEventPayload,
 } from "./system";
 
@@ -339,8 +338,6 @@ export {
   AgentToolSchema,
   AgentToolConsentRequestSchema,
 } from "./agent";
-
-export { UserBudgetInfoSchema } from "./system";
 
 // =============================================================================
 // Aggregated IPC Client

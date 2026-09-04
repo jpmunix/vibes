@@ -27,7 +27,6 @@ import { showExtraFilesToast } from "@/lib/toast";
 import { useSearch } from "@tanstack/react-router";
 import { useRunApp } from "./useRunApp";
 import { useCountTokens } from "./useCountTokens";
-import { useUserBudgetInfo } from "./useUserBudgetInfo";
 import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
@@ -89,7 +88,6 @@ export function useStreamChat({
   const setStreamCountById = useSetAtom(chatStreamCountByIdAtom);
   const { refreshVersions } = useVersions(selectedAppId);
   const { refreshAppIframe } = useRunApp();
-  const { refetchUserBudget } = useUserBudgetInfo();
   const { checkProblems } = useCheckProblems(selectedAppId);
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
@@ -540,7 +538,6 @@ export function useStreamChat({
                   queryClient.invalidateQueries({
                     queryKey: ["chatArtifacts", chatId],
                   });
-                  refetchUserBudget();
 
                   queryClient.invalidateQueries({
                     queryKey: queryKeys.proposals.detail({ chatId }),
@@ -710,7 +707,6 @@ export function useStreamChat({
       setIsPreviewOpen,
       checkProblems,
       selectedAppId,
-      refetchUserBudget,
       settings,
       queryClient,
       setPendingMessageQueue,

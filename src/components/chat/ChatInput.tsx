@@ -87,7 +87,6 @@ import { LexicalChatInput } from "./LexicalChatInput";
 import { AuxiliaryActionsMenu } from "./AuxiliaryActionsMenu";
 import { useChatModeToggle } from "@/hooks/useChatModeToggle";
 import { VisualEditingChangesDialog } from "@/components/preview_panel/VisualEditingChangesDialog";
-import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useCustomAgents } from "@/hooks/useCustomAgents";
 import { queryKeys } from "@/lib/queryKeys";
@@ -351,8 +350,6 @@ export function ChatInput({
 
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
   const disableSendButton = false;
-
-  const { userBudget } = useUserBudgetInfo();
 
   // Reset hasAutoStartedRef when chatId changes
   useEffect(() => {

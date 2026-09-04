@@ -57,18 +57,6 @@ export const SaveBackupResultSchema = z.object({
   url: z.string().optional(),
 });
 
-export const UserBudgetInfoSchema = z
-  .object({
-    usedCredits: z.number(),
-    totalCredits: z.number(),
-    budgetResetDate: z.date(),
-    redactedUserId: z.string(),
-    isTrial: z.boolean(),
-  })
-  .nullable();
-
-export type UserBudgetInfo = z.infer<typeof UserBudgetInfoSchema>;
-
 export const TelemetryEventPayloadSchema = z.object({
   eventName: z.string(),
   properties: z.record(z.string(), z.any()).optional(),
@@ -139,12 +127,6 @@ export const systemContracts = {
     channel: "get-app-version",
     input: z.void(),
     output: z.object({ version: z.string() }),
-  }),
-
-  getUserBudget: defineContract({
-    channel: "system:get-user-budget",
-    input: z.void(),
-    output: UserBudgetInfoSchema,
   }),
 
   // Node.js
