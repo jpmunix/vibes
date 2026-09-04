@@ -396,14 +396,15 @@ export function registerWindowHandlers() {
       gitWindow.webContents.on("before-input-event", (_e, input) => {
         if (input.type !== "keyDown") return;
         const ctrl = input.control || input.meta;
+        // Ctrl+Shift+R or F5 → hard reload (re-load URL with same query)
         if (
           (ctrl && input.shift && input.key.toLowerCase() === "r") ||
           input.key === "F5"
         ) {
-          gitWindow.webContents.reloadIgnoringCache();
+          loadGitUrl();
         }
         if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
-          gitWindow.webContents.reload();
+          loadGitUrl();
         }
         if (
           input.key === "F12" ||
@@ -421,14 +422,18 @@ export function registerWindowHandlers() {
         themeIntensity != null ? `&intensity=${themeIntensity}` : "";
       const queryParam = `?window=git&appId=${appId}${commitParam}${themeParam}${intensityParam}`;
 
-      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        gitWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
-      } else {
-        gitWindow.loadFile(
-          path.join(__dirname, "../renderer/main_window/index.html"),
-          { search: queryParam },
-        );
-      }
+      const loadGitUrl = () => {
+        if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+          gitWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+        } else {
+          gitWindow.loadFile(
+            path.join(__dirname, "../renderer/main_window/index.html"),
+            { search: queryParam },
+          );
+        }
+      };
+
+      loadGitUrl();
 
       gitWindows.set(appId, gitWindow);
 
@@ -546,20 +551,40 @@ export function registerWindowHandlers() {
         menu.popup();
       });
 
+      const chatIdParam = chatId ? `&chatId=${chatId}` : "";
+      const pendingParam = prompt && chatId ? `&hasPendingPrompt=true` : "";
+      const chatModeParam = chatMode ? `&chatMode=${chatMode}` : "";
+      const themeParam = theme ? `&theme=${theme}` : "";
+      const intensityParam = themeIntensity
+        ? `&intensity=${themeIntensity}`
+        : "";
+      const queryParam = `?window=chat&appId=${appId}${chatIdParam}${pendingParam}${chatModeParam}${themeParam}${intensityParam}`;
+
+      const loadChatUrl = () => {
+        if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+          chatWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+        } else {
+          chatWindow.loadFile(
+            path.join(__dirname, "../renderer/main_window/index.html"),
+            { search: queryParam },
+          );
+        }
+      };
+
       // Re-register keyboard shortcuts lost by removeMenu()
       chatWindow.webContents.on("before-input-event", (_e, input) => {
         if (input.type !== "keyDown") return;
         const ctrl = input.control || input.meta;
-        // Ctrl+Shift+R or F5 → hard reload
+        // Ctrl+Shift+R or F5 → hard reload (re-load URL with same query)
         if (
           (ctrl && input.shift && input.key.toLowerCase() === "r") ||
           input.key === "F5"
         ) {
-          chatWindow.webContents.reloadIgnoringCache();
+          loadChatUrl();
         }
-        // Ctrl+R → normal reload
+        // Ctrl+R → normal reload (re-load URL with same query)
         if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
-          chatWindow.webContents.reload();
+          loadChatUrl();
         }
         // F12 or Ctrl+Shift+I → toggle DevTools
         if (
@@ -570,23 +595,7 @@ export function registerWindowHandlers() {
         }
       });
 
-      const chatIdParam = chatId ? `&chatId=${chatId}` : "";
-      const pendingParam = prompt && chatId ? `&hasPendingPrompt=true` : "";
-      const chatModeParam = chatMode ? `&chatMode=${chatMode}` : "";
-      const themeParam = theme ? `&theme=${theme}` : "";
-      const intensityParam = themeIntensity
-        ? `&intensity=${themeIntensity}`
-        : "";
-      const queryParam = `?window=chat&appId=${appId}${chatIdParam}${pendingParam}${chatModeParam}${themeParam}${intensityParam}`;
-
-      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        chatWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
-      } else {
-        chatWindow.loadFile(
-          path.join(__dirname, "../renderer/main_window/index.html"),
-          { search: queryParam },
-        );
-      }
+      loadChatUrl();
 
       chatWindows.set(appId, chatWindow);
 
