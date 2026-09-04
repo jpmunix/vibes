@@ -265,8 +265,13 @@ interface ErrorBubbleProps {
   rawError: string;
   /** Callback para reintentar el stream (solo para errores recuperables) */
   onRetry?: () => void;
-  /** Callback para crear un nuevo chat */
-  onNewChat?: () => void;
+  /**
+   * Callback para crear un nuevo chat. Puede devolver el id del chat
+   * directamente (número o `Promise<number>`); si lo hace, ErrorBubble
+   * navega a `/chat?id=<id>` automáticamente. Devolver `void` mantiene la
+   * responsabilidad de navegación en el padre.
+   */
+  onNewChat?: () => void | number | Promise<number | void>;
 }
 
 export function ErrorBubble({
@@ -317,9 +322,22 @@ export function ErrorBubble({
           }
           break;
 
-        case "new_chat":
-          onNewChat?.();
+        case "new_chat": {
+          // El padre devuelve el id del chat nuevo (o una promesa del id);
+          // ErrorBubble se encarga de navegar. Así ChatMessage no necesita
+          // usar useRouter — solo monta ErrorBubble donde hay provider.
+          const result = onNewChat?.();
+          if (result && typeof (result as Promise<unknown>).then === "function") {
+            (result as Promise<unknown>).then((id) => {
+              if (typeof id === "number") {
+                navigate({ to: "/chat", search: { id } });
+              }
+            });
+          } else if (typeof result === "number") {
+            navigate({ to: "/chat", search: { id: result } });
+          }
           break;
+        }
       }
     },
     [navigate, onRetry, onNewChat],

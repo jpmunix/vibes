@@ -457,6 +457,32 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "context-debug") {
+  // Context debug (temporal) — ventana aparte con el JSON raw del contexto
+  // por iteración. Singleton global, sin appId/chatId.
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensityParam,
+    );
+  }
+
+  const debugRoot = createRoot(document.getElementById("root")!);
+  debugRoot.render(<SecondaryWindowSkeleton />);
+
+  import("./components/context_debug/ContextDebugWindowApp").then(
+    ({ ContextDebugWindowApp }) => {
+      debugRoot.render(
+        <StrictMode>
+          <ContextDebugWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   // Main window — render immediately with eager imports.
   // AuthGate handles the loading skeleton internally (shows MainWindowSkeleton

@@ -37,7 +37,7 @@ import { eq } from "drizzle-orm";
 import type { ChatStreamParams } from "@/ipc/types";
 import type { Message, RuntimeEvent } from "@vibes/shared";
 import { attachBridge } from "@vibes/bridge";
-import { getRuntime } from "./runtime_host";
+import { getRuntime, getContextDebugSender } from "./runtime_host";
 import {
   VibesEventMapper,
   buildTokenUsageTag,
@@ -467,6 +467,23 @@ export async function handleRuntimeStream(
     // mismo contexto N veces. El gauge usa este lastStepInput.
     if (e.type === "llm.completed" && e.usage && e.usage.input > 0) {
       lastStepInput = e.usage.input;
+    }
+    // Context debug (temporal): si la ventana de debug está abierta, reenviar
+    // el payload COMPLETO de cada context.built (systemPrompt + messages +
+    // model) a ESA ventana, no al sender del chat (que solo pinta la UI).
+    if (e.type === "context.built") {
+      const debugWc = getContextDebugSender();
+      if (debugWc && (e.systemPrompt || e.messages)) {
+        safeSend(debugWc, "context:debug", {
+          chatId: req.chatId,
+          sessionId: e.sessionId,
+          iteration: e.iteration,
+          tokens: e.tokens,
+          model: e.model,
+          systemPrompt: e.systemPrompt,
+          messages: e.messages,
+        });
+      }
     }
     mapper.handle(e);
   });

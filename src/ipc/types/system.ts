@@ -80,6 +80,26 @@ export const ForceCloseDetectedPayloadSchema = z.object({
   recentLogs: z.string().optional(),
 });
 
+/**
+ * Context debug (temporal): una entrada por iteración del loop. Lleva el
+ * payload COMPLETO del contexto que el LLM recibe: systemPrompt (con tools
+ * descriptas) + messages (historial con tool_calls/tool_results embebidos).
+ * `messages` es z.any() a propósito — la shape exacta vive en @vibes/shared
+ * (MessageContentPart) y no conviene duplicarla en el schema IPC; es datos de
+ * nuestro propio main, sin input de usuario.
+ */
+export const ContextDebugEntrySchema = z.object({
+  chatId: z.number(),
+  sessionId: z.string(),
+  iteration: z.number(),
+  tokens: z.number(),
+  model: z.string().optional(),
+  systemPrompt: z.string().optional(),
+  messages: z.array(z.any()).optional(),
+});
+
+export type ContextDebugEntry = z.infer<typeof ContextDebugEntrySchema>;
+
 // =============================================================================
 // System Contracts
 // =============================================================================
@@ -512,6 +532,17 @@ export const systemContracts = {
     }),
     output: z.void(),
   }),
+
+  // Context debug window (temporal) — ventana aparte que muestra el JSON raw
+  // del contexto que el LLM recibe en cada iteración. Singleton global.
+  openContextDebugWindow: defineContract({
+    channel: "window:open-context-debug",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -532,6 +563,15 @@ export const systemEvents = {
   consoleLogToChat: defineEvent({
     channel: "console-log-to-chat",
     payload: z.object({ appId: z.number(), formattedLog: z.string() }),
+  }),
+
+  // Context debug (temporal): una entrada por iteración con el payload completo
+  // del contexto que el LLM recibe. messages es z.any() a propósito: la shape de
+  // MessageContentPart vive en @vibes/shared y no conviene duplicarla en el
+  // schema IPC; es datos de nuestro propio main, sin input de usuario.
+  contextDebugEntry: defineEvent({
+    channel: "context:debug",
+    payload: ContextDebugEntrySchema,
   }),
 } as const;
 

@@ -71,6 +71,26 @@ import { useSettings } from "@/hooks/useSettings";
 /** Height threshold (px) above which user messages collapse (~6 lines of text) */
 const USER_COLLAPSE_HEIGHT = 120;
 
+// ── Scroll math for the column-reverse chat container ─────────────────
+// The scroll container uses `flex flex-col-reverse`, so `scrollTop=0` is the
+// newest message (bottom) and going up (older messages) makes scrollTop
+// negative, down to `-(scrollHeight - clientHeight)`.
+//
+// When a user bubble is sticky it is pinned visually at the top of the
+// viewport, so reading its boundingRect gives ~0. Instead we read its
+// natural flow position via `offsetTop` (unaffected by sticky), then convert
+// to the inverted scroll value. We clamp to `[-maxScroll, 0]` so an oversized
+// offset can never overshoot into the chat start/clamp range.
+export const computeStickyScrollTop = (
+  elementOffsetTop: number,
+  containerScrollHeight: number,
+  containerClientHeight: number,
+): number => {
+  const maxScroll = Math.max(0, containerScrollHeight - containerClientHeight);
+  const target = elementOffsetTop - maxScroll;
+  return Math.min(0, Math.max(-maxScroll, target));
+};
+
 interface ChatMessageProps {
   message: Message;
   isLastMessage: boolean;
@@ -187,21 +207,40 @@ const ChatMessage = ({
     };
   }, [isUser]);
 
+  // ── Scroll math for the column-reverse chat container ─────────────────
+  // The scroll container uses `flex flex-col-reverse`, so `scrollTop=0` is the
+  // newest message (bottom) and going up (older messages) makes scrollTop
+  // negative, down to `-(scrollHeight - clientHeight)`.
+  //
+  // When a user bubble is sticky it is pinned visually at the top of the
+  // viewport, so reading its boundingRect gives ~0. Instead we read its
+  // natural flow position via `offsetTop` (unaffected by sticky), then convert
+  // to the inverted scroll value. We clamp to `[-maxScroll, 0]` so an oversized
+  // offset can never overshoot into the chat start/clamp range.
   const handleScrollToNaturalTop = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const scrollContainer = el.closest('[data-testid="messages-list"]');
+    const scrollContainer = el.closest(
+      '[data-testid="messages-list"]',
+    ) as HTMLElement | null;
     if (!scrollContainer) return;
 
+    // Walk up offsetParents (positioned ancestors) until we hit the scroll
+    // container, accumulating the element's natural flow offset. Sticky does
+    // not change offsetTop, so this is the true position of the message start.
     let offset = 0;
     let current: HTMLElement | null = el;
-    while (current && scrollContainer.contains(current) && current !== scrollContainer) {
+    while (current && current !== scrollContainer) {
       offset += current.offsetTop;
       current = current.offsetParent as HTMLElement | null;
     }
 
-    const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
-    const targetScrollTop = -maxScroll + offset;
+    const targetScrollTop = computeStickyScrollTop(
+      offset,
+      scrollContainer.scrollHeight,
+      scrollContainer.clientHeight,
+    );
+
     scrollContainer.scrollTo({
       top: targetScrollTop,
       behavior: "smooth",
@@ -612,13 +651,10 @@ const ChatMessage = ({
         className="mt-3 mb-1 w-full mx-auto group relative"
         style={{ maxWidth: "var(--bubble-width, 65%)" }}
       >
-        {isUser && (
-          <div className="absolute -top-3 left-0 right-0 h-3 bg-background pointer-events-none z-10" />
-        )}
         {/* Content area */}
         <div className={isUser ? "flex justify-stretch" : "flex justify-start"}>
           <div className={isUser ? "relative flex flex-col items-stretch w-full" : "min-w-0 w-full"}>
-            {isUser && !isSelectingModel && message.content && !isStuck && (
+            {isUser && !isSelectingModel && message.content && (
               <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-background border border-border/40 shadow-sm px-2 py-1 rounded-lg z-20">
                   {isStuck && (
                     <button
@@ -676,18 +712,6 @@ const ChatMessage = ({
                         : "w-full py-1"
                   }
                 >
-                  {/* Soft background fade below the bubble — same color as chat bg, fading to transparent.
-                      Only visible while the bubble is sticky/pinned at the top so the assistant text scrolling
-                      underneath fades out gracefully. */}
-                  {isUser && (
-                    <div
-                      aria-hidden="true"
-                      className={
-                        "absolute left-0 right-0 -bottom-3 h-3 pointer-events-none z-0 bg-gradient-to-b from-[var(--background)] to-transparent transition-opacity duration-200 " +
-                        (isStuck ? "opacity-100" : "opacity-0")
-                      }
-                    />
-                  )}
                   {/* === System messages === */}
                   {isSystem && !isSelectingModel && (
                     <div
@@ -723,13 +747,13 @@ const ChatMessage = ({
                             }
                           }}
                           onNewChat={() => {
-                            if (appId) {
-                              ipc.chat
-                                .createChat(appId)
-                                .then((newChatId: number) => {
-                                  window.location.hash = `/chat?id=${newChatId}`;
-                                });
-                            }
+                            if (!appId) return;
+                            // Devolvemos el id del chat nuevo; ErrorBubble se
+                            // encarga de navegar a `/chat?id=<id>`. Esto deja
+                            // a ChatMessage libre de useRouter, así puede
+                            // renderizarse fuera de un RouterProvider (por
+                            // ejemplo, en preview threads) sin reventar.
+                            return ipc.chat.createChat(appId);
                           }}
                         />
                       ) : (

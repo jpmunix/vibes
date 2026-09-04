@@ -525,12 +525,14 @@ export function getAgentLoopLimits(): {
   maxWallClockMs: number;
   fallbackModel?: ModelProvider;
   compaction?: LoopConfig["compaction"];
+  debugContext?: boolean;
 } {
   return {
     maxIterations: loopConfigMutable.maxIterations,
     maxWallClockMs: loopConfigMutable.maxWallClockMs,
     fallbackModel: loopConfigMutable.fallbackModel,
     compaction: loopConfigMutable.compaction,
+    debugContext: loopConfigMutable.debugContext,
   };
 }
 
@@ -552,4 +554,57 @@ export async function shutdownRuntime(): Promise<void> {
 /** Visible for tests/diagnostics. */
 export function hasRuntimeInstance(): boolean {
   return runtimeInstance !== null;
+}
+
+// ============================================================================
+// Context debug (temporal) — ventana aparte para auditar la construcción de
+// contexto iteración a iteración (system prompt + messages con tools, raw).
+//
+// Diseño: ABRIR la ventana = debug ON, CERRAR la ventana = debug OFF. El flag
+// loopConfig.debugContext se muta en caliente (el loop lo lee por referencia en
+// cada iteración), así que no hay que recrear el runtime ni tocar sesiones en
+// curso. La ventana de debug se registra aquí (main) para que runtime_bridge
+// sepa a qué WebContents reenviar los eventos context.built con payload (van al
+// chat, no a event.sender de la ventana del chat).
+// ============================================================================
+
+// WebContents de la ventana de debug (null si está cerrada). Se gestiona desde
+// window_handlers (que crea la BrowserWindow); aquí solo se guarda/relee.
+let contextDebugSender: Electron.WebContents | null = null;
+
+/** Registra/des-registra el WebContents de la ventana de debug. */
+export function setContextDebugWindow(
+  wc: Electron.WebContents | null,
+): void {
+  contextDebugSender = wc && !wc.isDestroyed() ? wc : null;
+  // La ventana abierta/cerrada DEBE estar en sintonía con el flag: abrir = ON,
+  // cerrar = OFF. Así el usuario nunca tiene el debug activo con la ventana
+  // cerrada (ni al revés), sin un toggle separado que se desincronice.
+  setDebugContext(contextDebugSender !== null);
+}
+
+/** true si hay ventana de debug abierta (= debug activo). */
+export function isContextDebugEnabled(): boolean {
+  return contextDebugSender !== null;
+}
+
+/**
+ * WebContents de la ventana de debug (null si está cerrada/destroyed).
+ * runtime_bridge lo usa para reenviar los eventos context.built con payload.
+ */
+export function getContextDebugSender(): Electron.WebContents | null {
+  if (!contextDebugSender) return null;
+  if (contextDebugSender.isDestroyed()) return null;
+  return contextDebugSender;
+}
+
+/**
+ * Muta EN CALIENTE loopConfig.debugContext. Cuando es true, el loop rellena
+ * systemPrompt + messages en cada evento context.built. undefined/false =
+ * comportamiento previo (solo tokens + itemRefs), sin overhead.
+ */
+export function setDebugContext(enabled: boolean): void {
+  if (loopConfigMutable.debugContext === enabled) return;
+  loopConfigMutable.debugContext = enabled;
+  logger.info(`[RuntimeHost] Context debug ${enabled ? "ON" : "OFF"}`);
 }

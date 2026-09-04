@@ -14,7 +14,7 @@ async function main(): Promise<void> {
     const result = await client.execute(sql);
     return result.rows;
   };
-  const quoteIdentifier = (value: string): string => `\"${value.replaceAll("\"", "\"\"")}\"`;
+  const quoteIdentifier = (value: string): string => `"${value.replaceAll("\"", "\"\"")}"`;
 
   try {
     const tables = await rows(`

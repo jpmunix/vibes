@@ -45,6 +45,7 @@ import {
   selectedArtifactPathAtom,
 } from "@/atoms/uiAtoms";
 import { Button } from "@/components/ui/button";
+import { ContextDebugButton } from "@/components/ContextDebugButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -272,6 +273,7 @@ export default function WorkspacePage() {
               )) && <ServerControlButton appId={appId} />}
             <GitChangesButton appId={appId} />
             <WorkspaceArtifactsDropdown appId={appId} chatId={selectedChatId} />
+            <ContextDebugButton />
 
             {/* Session cost — separated with a delicate divider */}
             {settings?.showCostDisplay && hasPricing && (

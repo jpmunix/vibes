@@ -1,0 +1,82 @@
+[
+  {
+    "id": "6a9713380b4385ff49203ef6",
+    "idShort": 227,
+    "title": "#227 - Deuda UI — homogenización y pulido visual (card única, rama feature/vibes-core)",
+    "name": "#227 - Deuda UI — homogenización y pulido visual (card única, rama feature/vibes-core)",
+    "list": "Doing",
+    "labels": [
+      "deuda",
+      "ui"
+    ],
+    "url": "https://trello.com/c/FlZ0YlyE/227-227-deuda-ui-homogenizaci%C3%B3n-y-pulido-visual-card-%C3%BAnica-rama-feature-vibes-core",
+    "checklists": [
+      {
+        "id": "6a971339238ba1a74d9b3fe2",
+        "name": "Criterios de aceptación",
+        "items": [
+          {
+            "id": "6a9713399ea799a8c9da3aad",
+            "name": "Bootstrap — card creada en Doing (rama feature/vibes-core@14c80bfd)",
+            "state": "complete"
+          },
+          {
+            "id": "6a9726683203a16c1ea3bab3",
+            "name": "i18n: 'Folders' del menu de proyecto (vista workspace) no traducido — añadir a diccionarios",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889ec035d4bc75559a896",
+            "name": "SetupWizard: forzar wizard visible temporalmente para poder trabajar la UI",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889edc5512b1613df1927",
+            "name": "SetupWizard: quitar logo OpenRouter de la tarjeta + quitar badge \"recomendado\" (homogeneizar)",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889eda9730c95ebbe96a6",
+            "name": "SetupWizard: eliminar tarjeta Ollama + handleEnableOllama + imports asociados",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889ee3cceaf12990237bf",
+            "name": "SetupWizard: desactivar el forzado temporal de la ventana de bienvenida (revertir)",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889ef27b9e2d4652116b0",
+            "name": "Settings: quitar polling 5s de settings_handlers + estabilizar useSettings (appVersion de deps)",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889ef3a74404935f926db",
+            "name": "ChatInput: DesignPicker solo se pinta cuando se crea una app vacía (justCreatedAppAtom + WorkspaceList)",
+            "state": "complete"
+          },
+          {
+            "id": "6a9889f03bea97a07dae46de",
+            "name": "ChatInput/HomeChatInput: TemplatePicker oculto (showTemplatePicker=false en home, justCreatedApp en chat)",
+            "state": "complete"
+          },
+          {
+            "id": "6a995b065a2db991f838bbd5",
+            "name": "Logging runtime per-session: file-per-session logger (VIBES_LOG_DIR) + sesión en logs del loop (vibes-core) y prefijo session= en runtime_host (carcasa)",
+            "state": "complete"
+          },
+          {
+            "id": "6a995b07081cd3e3c8bc0db5",
+            "name": "CLI run/serve: silenciar streaming de texto en consola + wire logger per-session",
+            "state": "complete"
+          },
+          {
+            "id": "6a995b08a3aa484a3e24c4b0",
+            "name": "Dev-server/log.ts/routes.ts: sesión y console-tool-logger con prefijo",
+            "state": "complete"
+          }
+        ]
+      }
+    ]
+  }
+]

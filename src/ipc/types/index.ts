@@ -236,6 +236,7 @@ export type { PocketBaseConfig } from "./pocketbase";
 export type {
   NodeSystemInfo,
   SystemDebugInfo,
+  ContextDebugEntry,
   SelectNodeFolderResult,
   TelemetryEventPayload,
 } from "./system";

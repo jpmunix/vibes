@@ -11,6 +11,7 @@ import { readSettings, writeSettings } from "../../main/settings";
 import { isAdmin } from "../../lib/admin";
 import { getActiveFlavor } from "../../flavors";
 import { t } from "../../lib/i18n";
+import { setContextDebugWindow } from "../runtime/runtime_host";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -115,6 +116,7 @@ export function registerWindowHandlers() {
   let playgroundWindow: BrowserWindow | null = null;
   let docsWindow: BrowserWindow | null = null;
   let releaseNotesWindow: BrowserWindow | null = null;
+  let contextDebugWindow: BrowserWindow | null = null;
 
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -1813,6 +1815,139 @@ export function registerWindowHandlers() {
       });
 
       logger.info("Opened release notes window");
+    },
+  );
+
+  // Context debug window (temporal) — JSON raw del contexto por iteración.
+  // Singleton global: una ventana para toda la app. Abrir = debug ON, cerrar = OFF.
+  createTypedHandler(
+    systemContracts.openContextDebugWindow,
+    async (_event, { theme, themeIntensity }) => {
+      if (contextDebugWindow && !contextDebugWindow.isDestroyed()) {
+        contextDebugWindow.focus();
+        return;
+      }
+
+      const iconPath = path.join(
+        app.getAppPath(),
+        `assets/${getActiveFlavor().iconFolder}/logo.png`,
+      );
+      const icon = nativeImage.createFromPath(iconPath);
+
+      const savedDebug = getSavedWindowBounds("context-debug", {
+        width: 1100,
+        height: 750,
+      });
+
+      const debugSettings = readSettings();
+      const debugTitle = t(
+        "contextDebug.windowTitle",
+        debugSettings.chatLanguage ?? "es",
+      );
+
+      contextDebugWindow = new BrowserWindow({
+        icon: iconPath,
+        show: false,
+        width: savedDebug.width,
+        height: savedDebug.height,
+        x: savedDebug.x,
+        y: savedDebug.y,
+        minWidth: 600,
+        minHeight: 400,
+        skipTaskbar: false,
+        title: debugTitle,
+        autoHideMenuBar: true,
+        titleBarStyle: "hidden",
+        titleBarOverlay: false,
+        ...(process.platform === "darwin"
+          ? { trafficLightPosition: { x: 10, y: 8 } }
+          : {}),
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          preload: path.join(__dirname, "preload.js"),
+        },
+      });
+
+      if (!icon.isEmpty()) {
+        contextDebugWindow.setIcon(icon);
+      }
+
+      if (savedDebug.isMaximized) {
+        contextDebugWindow.maximize();
+      }
+      contextDebugWindow.show();
+
+      contextDebugWindow.on("page-title-updated", (e) => {
+        e.preventDefault();
+      });
+
+      contextDebugWindow.removeMenu();
+
+      // Right-click → Inspect Element
+      contextDebugWindow.webContents.on("context-menu", (_e, params) => {
+        const menu = new Menu();
+        menu.append(
+          new MenuItem({
+            label: "Inspect Element",
+            click: () => {
+              contextDebugWindow?.webContents.inspectElement(params.x, params.y);
+            },
+          }),
+        );
+        menu.popup();
+      });
+
+      // Keyboard shortcuts (lost by removeMenu())
+      contextDebugWindow.webContents.on("before-input-event", (_e, input) => {
+        if (input.type !== "keyDown") return;
+        const ctrl = input.control || input.meta;
+        if (
+          (ctrl && input.shift && input.key.toLowerCase() === "r") ||
+          input.key === "F5"
+        ) {
+          contextDebugWindow?.webContents.reloadIgnoringCache();
+        }
+        if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+          contextDebugWindow?.webContents.reload();
+        }
+        if (
+          input.key === "F12" ||
+          (ctrl && input.shift && input.key.toLowerCase() === "i")
+        ) {
+          contextDebugWindow?.webContents.toggleDevTools();
+        }
+      });
+
+      const themeParam = theme ? `&theme=${theme}` : "";
+      const intensityParam =
+        themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+      const queryParam = `?window=context-debug${themeParam}${intensityParam}`;
+
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+        contextDebugWindow.loadURL(
+          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`,
+        );
+      } else {
+        contextDebugWindow.loadFile(
+          path.join(__dirname, "../renderer/main_window/index.html"),
+          { search: queryParam },
+        );
+      }
+
+      // Registrar el WebContents en runtime_host: activa el flag debugContext.
+      setContextDebugWindow(contextDebugWindow.webContents);
+
+      contextDebugWindow.on("close", () =>
+        saveSecondaryWindowState("context-debug", contextDebugWindow!),
+      );
+      contextDebugWindow.on("closed", () => {
+        contextDebugWindow = null;
+        // Cerrar la ventana = debug OFF.
+        setContextDebugWindow(null);
+      });
+
+      logger.info("Opened context debug window");
     },
   );
 }
