@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { WindowsControls } from "@/components/WindowsControls";
-import { Terminal } from "@/components/ui/icons";
+import { Terminal, FolderOpen } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import type { ContextDebugEntry } from "@/ipc/types";
 import { useI18n } from "@/lib/i18n";
@@ -150,6 +150,22 @@ function ContextDebugPanel() {
     return () => unsub();
   }, []);
 
+  // Restaurar el histórico persistido en disco al abrir la ventana: munix
+  // entra y se encuentra con las iteraciones previas (sobrevive a cierres y
+  // reinicios). Una sola carga al montar.
+  useEffect(() => {
+    let alive = true;
+    ipc.system.loadContextDebugEntries().then((loaded) => {
+      if (!alive || !loaded || loaded.length === 0) return;
+      setEntries(
+        loaded.map((e) => ({ ...e, receivedAt: Date.now() })),
+      );
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Auto-scroll al final cuando llega una nueva entrada (si está activado).
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -157,7 +173,17 @@ function ContextDebugPanel() {
     }
   }, [entries, autoScroll]);
 
-  const clear = useCallback(() => setEntries([]), []);
+  // Clear borra el buffer en memoria Y el log de disco (fuente de verdad).
+  const clear = useCallback(async () => {
+    setEntries([]);
+    await ipc.system.clearContextDebugLog();
+  }, []);
+
+  // Abre el log de contexto en el editor/visor predeterminado del sistema para
+  // el análisis largo (grep, buscar, leer entero sin la limitación de la UI).
+  const openFile = useCallback(async () => {
+    await ipc.system.openContextDebugLog();
+  }, []);
 
   const n = entries.length;
   const lastEntry = entries[n - 1];
@@ -185,6 +211,15 @@ function ContextDebugPanel() {
           )}
         </div>
         <div className="flex items-center gap-1 no-app-region-drag">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={openFile}
+          >
+            <FolderOpen size={13} className="mr-1" />
+            {t("contextDebug.openFile")}
+          </Button>
           {n > 0 && (
             <Button
               variant="ghost"

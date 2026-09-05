@@ -38,6 +38,7 @@ import type { ChatStreamParams } from "@/ipc/types";
 import type { Message, RuntimeEvent } from "@vibes/shared";
 import { attachBridge } from "@vibes/bridge";
 import { getRuntime, getContextDebugSender } from "./runtime_host";
+import { appendContextDebugEntry } from "./context_debug_log";
 import {
   VibesEventMapper,
   buildTokenUsageTag,
@@ -468,13 +469,14 @@ export async function handleRuntimeStream(
     if (e.type === "llm.completed" && e.usage && e.usage.input > 0) {
       lastStepInput = e.usage.input;
     }
-    // Context debug (temporal): si la ventana de debug está abierta, reenviar
-    // el payload COMPLETO de cada context.built (systemPrompt + messages +
-    // model) a ESA ventana, no al sender del chat (que solo pinta la UI).
+    // Context debug (temporal): cada context.built con payload (systemPrompt
+    // + messages + model, presentes solo con debugContext ON = ventana
+    // abierta) se PERSISTE a disco (JSONL, fuente de verdad que sobrevive a
+    // reinicios) y, si la ventana está abierta, se reenvía en vivo a esa
+    // ventana. appendContextDebugEntry es fire-and-forget (no tumba el loop).
     if (e.type === "context.built") {
-      const debugWc = getContextDebugSender();
-      if (debugWc && (e.systemPrompt || e.messages)) {
-        safeSend(debugWc, "context:debug", {
+      if (e.systemPrompt || e.messages) {
+        appendContextDebugEntry({
           chatId: req.chatId,
           sessionId: e.sessionId,
           iteration: e.iteration,
@@ -483,6 +485,18 @@ export async function handleRuntimeStream(
           systemPrompt: e.systemPrompt,
           messages: e.messages,
         });
+        const debugWc = getContextDebugSender();
+        if (debugWc) {
+          safeSend(debugWc, "context:debug", {
+            chatId: req.chatId,
+            sessionId: e.sessionId,
+            iteration: e.iteration,
+            tokens: e.tokens,
+            model: e.model,
+            systemPrompt: e.systemPrompt,
+            messages: e.messages,
+          });
+        }
       }
     }
     mapper.handle(e);

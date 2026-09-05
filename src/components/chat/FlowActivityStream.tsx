@@ -5,7 +5,7 @@ import React, {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ChevronDown, ChevronUp, Clock } from "@/components/ui/icons";
+import { ChevronDown, ChevronUp } from "@/components/ui/icons";
 import {
   resolveToolMeta,
   getToolDetail,
@@ -78,10 +78,63 @@ interface FlowActivityStreamProps {
  */
 export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
   ({ items, isStreaming }) => {
-    const { t, tPlural } = useI18n();
+    const { t } = useI18n();
     const panelRef = useRef<HTMLDivElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const [autoScroll, setAutoScroll] = useState(true);
     const [expandedByUser, setExpandedByUser] = useState<boolean | null>(null);
+    // Capturamos la transición true→false: si en ese momento el usuario aún
+    // no había tocado el botón (expandedByUser === null), colapsamos el
+    // módulo al cerrarse el stream. Sin esto, el módulo se queda expandido
+    // "porque sí" cuando termina el turno (munix: "no se colapsa").
+    const [collapsedByStream, setCollapsedByStream] = useState(false);
+    const previousStreamingRef = useRef(isStreaming);
+    useLayoutEffect(() => {
+      if (previousStreamingRef.current && !isStreaming) {
+        setCollapsedByStream(true);
+      }
+      previousStreamingRef.current = isStreaming;
+    }, [isStreaming]);
+
+    // When the user expands a collapsed panel, the module grows ~200px and
+    // the chat scroll position (typically pinned to the bottom) can leave the
+    // summary button hidden behind the next bubble. Bring the module itself
+    // into view with `block: "nearest"` — doesn't yank the chat if it's
+    // already visible, only nudges when it's actually off-screen.
+    const [justExpanded, setJustExpanded] = useState(false);
+    useLayoutEffect(() => {
+      if (!justExpanded) return;
+      const btn = rootRef.current;
+      if (!btn) return;
+      const scroller = btn.closest(
+        '[data-testid="messages-list"]',
+      ) as HTMLElement | null;
+      if (!scroller) return;
+
+      // getBoundingClientRect measures the ACTUAL rendered position in screen
+      // coords, which is immune to both the sticky user bubble and the
+      // flex-col-reverse inversion. We only nudge the list when the summary
+      // button is genuinely outside the scroller viewport — in content that
+      // doesn't overflow (a short chat) this is a no-op, so no weird jump.
+      const sRect = scroller.getBoundingClientRect();
+      const bRect = btn.getBoundingClientRect();
+      const margin = 8;
+      let delta = 0;
+      if (bRect.top < sRect.top) {
+        // Button is above the visible area (towards older content): scroll up.
+        delta = bRect.top - sRect.top - margin;
+      } else if (bRect.bottom > sRect.bottom) {
+        // Button is below (towards newer content): scroll to bottom.
+        delta = bRect.bottom - sRect.bottom + margin;
+      }
+      if (delta !== 0) {
+        scroller.scrollTo({
+          top: scroller.scrollTop + delta,
+          behavior: "smooth",
+        });
+      }
+      setJustExpanded(false);
+    }, [justExpanded]);
 
     // Auto-scroll the panel to the bottom while items stream in.
     useLayoutEffect(() => {
@@ -90,14 +143,6 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
     }, [items, autoScroll]);
 
     if (items.length === 0) return null;
-
-    const toolItems = items.filter(
-      (i): i is FlowActivityToolItem => i.kind === "tool",
-    );
-    const thoughtItems = items.filter(
-      (i): i is FlowActivityThoughtItem => i.kind === "thought",
-    );
-    const finishedTools = toolItems.filter((i) => i.state !== "pending");
 
     // Sum of the real durations. Items without duration-ms → contribute 0
     // but flag that the total is incomplete.
@@ -112,32 +157,35 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
     }
 
     const collapsed =
-      expandedByUser !== null ? !expandedByUser : !isStreaming;
+      collapsedByStream ||
+      (expandedByUser === null ? !isStreaming : !expandedByUser);
 
-    // Summary label: real duration when known, friendly fallback otherwise.
-    const durationLabel = hasAnyDuration
+    // Summary label: duration only — no tool counts, no "pensamiento" suffix
+    // (munix: los literales sobran tanto con tiempo real como sin él).
+    const summary = hasAnyDuration
       ? t("chat.activityStreamWorked", {
           duration: formatActivityDuration(totalMs),
         })
       : t("chat.activityStreamWorkedVague");
-    const parts: string[] = [durationLabel];
-    if (finishedTools.length > 0) {
-      parts.push(tPlural("chat.activityStreamCount", finishedTools.length));
-    }
-    if (thoughtItems.length > 0) {
-      parts.push(t("chat.activityStreamThought"));
-    }
-    const summary = parts.join(" · ");
 
     return (
-      <div className="my-2">
+      <div ref={rootRef} className="my-2">
         <button
           type="button"
           onClick={() => {
+            // First time the user touches it: pin the explicit choice so the
+            // stream transition doesn't override them.
+            if (expandedByUser === null) {
+              setExpandedByUser(true);
+              setCollapsedByStream(false);
+              return;
+            }
+            const willExpand = collapsed;
             setExpandedByUser(collapsed);
             setAutoScroll(true);
+            if (willExpand) setJustExpanded(true);
           }}
-          className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground/60 hover:text-foreground transition-colors select-none cursor-pointer"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground/70 hover:text-foreground transition-colors select-none cursor-pointer"
           title={
             collapsed
               ? t("chat.activityStreamExpand")
@@ -145,9 +193,8 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
           }
           data-testid="flow-activity-summary"
         >
-          <Clock size={11} className="opacity-70" />
           <span>{summary}</span>
-          {collapsed ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+          {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
 
         {!collapsed && (
@@ -158,7 +205,7 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
               const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 12;
               setAutoScroll(atBottom);
             }}
-            className="mt-1.5 max-h-40 overflow-y-auto rounded-md border border-border/40 bg-muted/20 pl-2 pr-1 py-1"
+            className="mt-1.5 max-h-60 overflow-y-auto rounded-md border border-border/40 bg-muted/20 pl-2 pr-1 py-1"
             data-testid="flow-activity-stream"
           >
             {items.map((item, idx) =>

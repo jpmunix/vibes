@@ -12,6 +12,11 @@ import { isAdmin } from "../../lib/admin";
 import { getActiveFlavor } from "../../flavors";
 import { t } from "../../lib/i18n";
 import { setContextDebugWindow } from "../runtime/runtime_host";
+import {
+  readContextDebugEntries,
+  clearContextDebugLog,
+  openContextDebugLog,
+} from "../runtime/context_debug_log";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -1948,6 +1953,31 @@ export function registerWindowHandlers() {
       });
 
       logger.info("Opened context debug window");
+    },
+  );
+
+  // Context debug — persistencia (temporal). La ventana restaura el histórico
+  // desde disco al abrir, limpia el log a mano, o lo abre en el editor para
+  // un análisis largo.
+  createTypedHandler(
+    systemContracts.loadContextDebugEntries,
+    async () => {
+      return readContextDebugEntries();
+    },
+  );
+
+  createTypedHandler(
+    systemContracts.clearContextDebugLog,
+    async () => {
+      await clearContextDebugLog();
+      logger.info("Context debug log cleared");
+    },
+  );
+
+  createTypedHandler(
+    systemContracts.openContextDebugLog,
+    async () => {
+      return openContextDebugLog();
     },
   );
 }

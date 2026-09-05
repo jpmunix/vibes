@@ -543,6 +543,27 @@ export const systemContracts = {
     }),
     output: z.void(),
   }),
+
+  // Context debug — persistencia (temporal). La fuente de verdad vive en
+  // disco (JSONL en userData); la ventana es un viewer que restaura el
+  // histórico al abrir y sigue capturando en vivo.
+  loadContextDebugEntries: defineContract({
+    channel: "context-debug:load",
+    input: z.void(),
+    output: z.array(ContextDebugEntrySchema),
+  }),
+
+  clearContextDebugLog: defineContract({
+    channel: "context-debug:clear",
+    input: z.void(),
+    output: z.void(),
+  }),
+
+  openContextDebugLog: defineContract({
+    channel: "context-debug:open-file",
+    input: z.void(),
+    output: z.boolean(),
+  }),
 } as const;
 
 // =============================================================================
