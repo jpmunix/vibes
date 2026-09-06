@@ -525,14 +525,39 @@ body[data-scroll-locked] .app-region-drag {
   color: var(--foreground);
 }
 
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
+}
+
 .prose pre {
   @apply bg-muted text-foreground p-4 rounded-lg font-mono text-sm;
   white-space: pre-wrap;
   word-break: break-all;
 }
 
+.prose table {
+  font-size: 1em;
+}
+
+.prose thead th {
+  font-size: 1em;
+}
+
+.prose tbody td {
+  font-size: 1em;
+}
+
 .prose code {
-  @apply bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight;
+  @apply bg-muted text-foreground border border-border/50 px-1.5 py-0.5 rounded-md leading-tight;
+  font-family: inherit;
+  font-size: 0.9em;
 }
 
 .prose pre code {

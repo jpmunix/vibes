@@ -266,7 +266,6 @@ const customBlockquote = ({ children, ...props }: any) => {
           borderRadius: "0 6px 6px 0",
           color: "var(--accent-teal-quote-text)",
           fontStyle: "normal",
-          fontSize: "13px",
         }}
       >
         {strippedChildren}

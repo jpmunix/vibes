@@ -557,7 +557,7 @@ export const CodeHighlight = memo(
       <>
         {filePathDetected ? (
           <code
-            className={`${className || ""} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
+            className={`${className || ""} not-prose bg-muted text-foreground border border-border/50 px-1.5 py-0.5 rounded-md leading-tight cursor-pointer hover:bg-accent hover:underline transition-colors`}
             onClick={() => {
               const cleanPath = code
                 .trim()
@@ -571,7 +571,7 @@ export const CodeHighlight = memo(
           </code>
         ) : (
           <code
-            className={`${className || ""} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight`}
+            className={`${className || ""} not-prose bg-muted text-foreground border border-border/50 px-1.5 py-0.5 rounded-md leading-tight`}
             {...props}
           >
             {children}
