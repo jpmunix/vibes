@@ -1289,20 +1289,19 @@ export function GeneralSettings({
           }
           />
 
-          {/* Vista del chat: Max / Flow / Zen */}
+          {/* Vista del chat: Flow / Zen (Max queda oculto en la UI pero
+              el valor "full" sigue existiendo en el schema: quien lo tenía
+              se muestra y se comporta como Flow) */}
           <SettingItem
             label={t("settingsItems.vista_del_chat")}
             description={
-              (settings?.chatRenderMode ?? "zen") === "zen"
+              settings?.chatRenderMode === "zen"
                 ? t("agentSection.chatViewZen")
-                : settings?.chatRenderMode === "flow"
-                  ? t("agentSection.chatViewFlow")
-                  : t("agentSection.chatViewFull")
+                : t("agentSection.chatViewFlow")
             }
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
                 {[
-                  { value: "full" as const, label: "Max" },
                   { value: "flow" as const, label: "Flow" },
                   { value: "zen" as const, label: "Zen" },
                 ].map((option) => (
@@ -1313,7 +1312,9 @@ export function GeneralSettings({
                     }
                     className={cn(
                       "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                      (settings?.chatRenderMode ?? "zen") === option.value
+                      (settings?.chatRenderMode === "zen"
+                        ? "zen"
+                        : "flow") === option.value
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "hover:bg-primary/10",
                     )}

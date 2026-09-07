@@ -384,7 +384,7 @@ describe("VibesEventMapper — timeline accumulation", () => {
     expect(m.getFilesChanged()).toEqual(["a.ts"]);
   });
 
-  it("marks failed tools as errors", () => {
+  it("marks failed tools as errors and surfaces the real error message", () => {
     const m = new VibesEventMapper();
     m.handle({
       type: "tool.started",
@@ -396,7 +396,30 @@ describe("VibesEventMapper — timeline accumulation", () => {
       type: "tool.finished",
       toolCallId: "tc1",
       toolId: "shell",
-      result: { ok: false, error: new Error("boom") },
+      result: {
+        ok: false,
+        error: new Error('Command "bad" failed with exit code 1'),
+      },
+    } as any);
+    const content = m.buildLiveContent();
+    // El mensaje real (result.error.message) debe llegar al tag, no el literal.
+    expect(content).toContain('Command "bad" failed with exit code 1');
+    expect(content).not.toContain("[error]");
+  });
+
+  it("falls back to [error] when a failed tool carries no error message", () => {
+    const m = new VibesEventMapper();
+    m.handle({
+      type: "tool.started",
+      toolCallId: "tc1",
+      toolId: "shell",
+      args: { cmd: "bad" },
+    } as any);
+    m.handle({
+      type: "tool.finished",
+      toolCallId: "tc1",
+      toolId: "shell",
+      result: { ok: false, error: { name: "ToolError", message: "" } },
     } as any);
     expect(m.buildLiveContent()).toContain("[error]");
   });

@@ -539,7 +539,12 @@ export class VibesEventMapper {
     let content = "";
     for (const entry of this.timeline) {
       if (entry.type === "tool") {
-        const body = entry.error ? "[error]" : entry.output;
+        // Si la tool falló, el timeline ya guardó el mensaje real del error en
+        // `output` (línea 477: result.error?.message, p. ej. `Command "sh -c ..."
+        // failed with exit code...`). Mostrarlo tal cual — no reemplazarlo por un
+        // placeholder sin contexto. El literal "[error]" es solo fallback si por
+        // lo que sea el mensaje llegó vacío.
+        const body = entry.error ? entry.output || "[error]" : entry.output;
         content += buildVibesToolTag(entry.tool, entry.detail, body, entry.durationMs) + "\n";
       } else if (entry.type === "reasoning") {
         // 172: razonamiento nativo → <vibes-think>. Si sigue abierto

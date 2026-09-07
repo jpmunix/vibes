@@ -16,6 +16,10 @@
  * - Sin límite de tamaño ni de entradas: munix lo limpia a mano (clear) o lo
  *   abre en su editor.
  *
+ * Adicionalmente, se puede exportar a un `.json` con un array JSON válido
+ * (no JSONL) para abrir en cualquier viewer/parser JSON sin tener que
+ * interpretar JSONL.
+ *
  * P1: vive en Vibes (carcasa), no en vibes-core. El runtime no toca disco para
  * esto; solo emite el evento y la carcasa decide si lo persiste.
  */
@@ -23,7 +27,7 @@
 import { app, shell } from "electron";
 import log from "electron-log";
 import * as path from "node:path";
-import { appendFile, readFile, rm } from "node:fs/promises";
+import { appendFile, readFile, rm, writeFile } from "node:fs/promises";
 import type { ContextDebugEntry } from "../types/system";
 
 const logger = log.scope("context-debug-log");
@@ -78,6 +82,45 @@ export async function readContextDebugEntries(): Promise<
   return out;
 }
 
+/** Ruta del JSON exportado (array válido, prettified). */
+function getContextDebugJsonPath(): string {
+  return path.join(app.getPath("userData"), "context-debug.json");
+}
+
+/**
+ * Exporta el histórico completo a un archivo `.json` con un ARRAY JSON válido
+ * (no JSONL): `[ {...}, {...} ]` prettificado con 2 espacios. Ese archivo sí
+ * se puede abrir con cualquier parser/viewer de JSON. Devuelve la ruta.
+ */
+export async function exportContextDebugJson(): Promise<string | null> {
+  const entries = await readContextDebugEntries();
+  const jsonPath = getContextDebugJsonPath();
+  try {
+    await writeFile(jsonPath, JSON.stringify(entries, null, 2), "utf8");
+    return jsonPath;
+  } catch (err) {
+    logger.warn(
+      `[ContextDebugLog] export failed: ${(err as Error).message}`,
+    );
+    return null;
+  }
+}
+
+/**
+ * Exporta a `.json` válido y lo abre con el visor/editor predeterminado del
+ * sistema. Devuelve true si se abrió, false si no (o si no hay entradas).
+ */
+export async function openContextDebugJson(): Promise<boolean> {
+  const jsonPath = await exportContextDebugJson();
+  if (!jsonPath) return false;
+  try {
+    const err = await shell.openPath(jsonPath);
+    return !err;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Borra el log de disco (botón "Clear" de la ventana). El archivo se crea de
  * nuevo al próxima entrada. `force` no hace falta (rm sin force falla suave si
@@ -90,19 +133,5 @@ export async function clearContextDebugLog(): Promise<void> {
     logger.warn(
       `[ContextDebugLog] clear failed: ${(err as Error).message}`,
     );
-  }
-}
-
-/**
- * Abre el log con el editor/visor predeterminado del sistema (shell.openPath).
- * Para el análisis largo: munix puede grep/leer el archivo entero sin
- * dependencias de la UI. Devuelve true si se abrió, false si no.
- */
-export async function openContextDebugLog(): Promise<boolean> {
-  try {
-    const err = await shell.openPath(getContextDebugLogPath());
-    return !err;
-  } catch {
-    return false;
   }
 }

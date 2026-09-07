@@ -15,7 +15,7 @@ import { setContextDebugWindow } from "../runtime/runtime_host";
 import {
   readContextDebugEntries,
   clearContextDebugLog,
-  openContextDebugLog,
+  openContextDebugJson,
 } from "../runtime/context_debug_log";
 
 // eslint-disable-next-line no-var
@@ -1977,7 +1977,7 @@ export function registerWindowHandlers() {
   createTypedHandler(
     systemContracts.openContextDebugLog,
     async () => {
-      return openContextDebugLog();
+      return openContextDebugJson();
     },
   );
 }

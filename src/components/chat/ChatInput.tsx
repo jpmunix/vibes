@@ -852,7 +852,10 @@ export function ChatInput({
       )}
       {/* Pending messages queue — shown while streaming */}
       {pendingMessages.length > 0 && (
-        <div className="px-4 pb-2 max-w-3xl mx-auto w-full">
+        <div
+          className="px-4 pb-2 mx-auto w-full"
+          style={{ maxWidth: "var(--bubble-width, 65%)" }}
+        >
           <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
             <div className="px-3 py-1.5 border-b border-border/30 flex items-center gap-2">
               <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
@@ -954,7 +957,10 @@ export function ChatInput({
       )}
 
       <div className="p-4" data-testid="chat-input-container">
-        <div className={`mx-auto relative transition-[max-width] duration-300 ease-in-out ${isExpanded ? "max-w-[60rem]" : "max-w-3xl"}`}>
+        <div
+          className="mx-auto relative w-full"
+          style={{ maxWidth: "var(--bubble-width, 65%)" }}
+        >
           <div
             className="rounded-lg p-[1.5px] transition-opacity duration-300"
             style={{

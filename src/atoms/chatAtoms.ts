@@ -1,5 +1,6 @@
 import type { FileAttachment, Message, AgentTodo } from "@/ipc/types";
 import { atom } from "jotai";
+import { userSettingsAtom } from "./appAtoms";
 
 // Per-chat atoms implemented with maps keyed by chatId
 export const chatMessagesByIdAtom = atom<Map<number, Message[]>>(new Map());
@@ -101,19 +102,25 @@ export const autoRouterModelInfoByChatIdAtom = atom<
 // Auto-router model selection loading state per chat
 export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
 
+// Effective chat render mode: "full" (legacy "Max") is hidden from chat
+// settings but kept in the schema — normalize it to "flow" here so every
+// consumer gets the fallback in one place. "zen" (and unset) pass through.
+export const effectiveChatRenderModeAtom = atom((get) => {
+  const mode = get(userSettingsAtom)?.chatRenderMode;
+  if (mode === "zen") return "zen" as const;
+  return "flow" as const;
+});
+
 // Chat render mode: true when "zen" OR "flow" mode is active (minimal DOM, no tool badges).
 // Derived from userSettingsAtom for cheap reads in hot rendering paths.
-import { userSettingsAtom } from "./appAtoms";
 export const isZenModeAtom = atom((get) => {
-  const settings = get(userSettingsAtom);
-  const mode = settings?.chatRenderMode;
+  const mode = get(effectiveChatRenderModeAtom);
   return mode === "zen" || mode === "flow";
 });
 
 // Flow mode: zen-like but shows AI thinking content inline (not collapsed as brain badges).
 export const isFlowModeAtom = atom((get) => {
-  const settings = get(userSettingsAtom);
-  return settings?.chatRenderMode === "flow";
+  return get(effectiveChatRenderModeAtom) === "flow";
 });
 
 // OpenCode native permission requests (pending user approval in-chat)

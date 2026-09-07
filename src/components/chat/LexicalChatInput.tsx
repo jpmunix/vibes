@@ -592,7 +592,7 @@ export function LexicalChatInput({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none cursor-text transition-[max-height] duration-300 ease-in-out ${
+              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none cursor-text transition-[min-height,max-height] duration-300 ease-in-out ${
                 expanded
                   ? "min-h-[313px] max-h-[313px]"
                   : compact

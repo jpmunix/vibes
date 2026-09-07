@@ -57,7 +57,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   memoriesRouterModelV2: "mistralai/devstral-small",
   memoriesMaxSelection: 5,
   enableWebSearch: true,
-  chatRenderMode: "zen",
+  chatRenderMode: "flow",
   selectedFont: "bricolage-grotesque",
   selectedChatFont: "jetbrains-mono",
   fontScaleUI: 1,

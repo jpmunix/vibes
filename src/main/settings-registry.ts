@@ -82,7 +82,7 @@ export const SETTINGS_REGISTRY: Record<
   memoriesRouterModelV2: { reset: { kind: "kv", default: DEFAULT_SETTINGS.memoriesRouterModelV2 } },
   memoriesMaxSelection: { reset: { kind: "kv", default: 5 } },
   enableWebSearch: { reset: { kind: "kv", default: true } },
-  chatRenderMode: { reset: { kind: "kv", default: "zen" } },
+  chatRenderMode: { reset: { kind: "kv", default: "flow" } },
   selectedFont: { reset: { kind: "kv", default: DEFAULT_SETTINGS.selectedFont } },
   selectedChatFont: { reset: { kind: "kv", default: DEFAULT_SETTINGS.selectedChatFont } },
   fontScaleUI: { reset: { kind: "kv", default: 1 } },
