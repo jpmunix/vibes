@@ -136,7 +136,15 @@ function preprocessUnclosedTags(content: string): {
  * Parse the content to extract custom tags and markdown sections into a unified array
  */
 function parseCustomTags(content: string): ContentPiece[] {
-  const { processedContent, inProgressTags } = preprocessUnclosedTags(content);
+  // Mismo strip que el parseCustomTags del componente (VibesMarkdownParser):
+  // los bloques completos <vibes-context-summary> son metadata interna entre
+  // turnos, invisible por contrato. Aquí llegan durante streaming si el modelo
+  // reproduce tags del summary hidratado; los eliminamos antes de parsear.
+  const stripped = content.replace(
+    /<vibes-context-summary(?:\s[^>]*)?>[\s\S]*?<\/vibes-context-summary>/gi,
+    "",
+  );
+  const { processedContent, inProgressTags } = preprocessUnclosedTags(stripped);
 
   const tagPattern = new RegExp(
     `<(${VIBES_CUSTOM_TAGS.join("|")})\\s*([^>]*)>(.*?)<\\/\\1>`,

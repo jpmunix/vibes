@@ -652,29 +652,62 @@ export function buildCancelledTag(): string {
  */
 export function cleanResponseText(text: string): string {
   let cleaned = text.replace(/\[REDACTED\]/gi, "");
-  cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
-  cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
-  cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
-  cleaned = cleaned.replace(/<\/?assistant>/gi, "");
-  // #238: strip orphan think/vibes-think tags (closing without opening or vice versa).
-  // Se ejecuta ANTES del procesamiento de parejas think.../think para no
-  // eliminar los tags validos que produce la conversion de assistant_thought.
-  // Las parejas completas se procesan abajo; lo que llega aqui son tags
-  // sueltos del modelo (inline en content, sin reasoning_content).
-  cleaned = cleaned.replace(/<\/?think>/gi, "");
-  cleaned = cleaned.replace(/<\/?vibes-think>/gi, "");
+
+  // ─── Pase 1: convertir wrappers completos a su contenido ─────────────────
+  // `<thinking detail="x">foo</thinking>` → `foo` y
+  // `<redacted>foo</redacted>` → `foo`. Esto "aplana" los wrappers ANTES de
+  // procesar huérfanos, así un `<thinking>` huérfano sin pareja se queda
+  // como texto literal sin perder nada semántico importante.
+  cleaned = cleaned.replace(/<thinking(?:\s[^>]*)?>([\s\S]*?)<\/thinking>/gi, "$1");
+  cleaned = cleaned.replace(/<redacted(?:\s[^>]*)?>([\s\S]*?)<\/redacted>/gi, "$1");
+
+  // ─── Pase 2: extraer `<assistant_thought>…</assistant_thought>` ─────────
+  // #238 + bug del loader mintiendo "Escribiendo":
+  // El modelo a veces emite un `` HUÉRFANO inline mezclado con un
+  // `<assistant_thought>…</assistant_thought>` en el mismo string. Si
+  // strippeamos huérfanos ANTES de convertir el assistant_thought, el
+  // bloque válido se pierde y el cierre huérfano sobrevive (es lo que
+  // pasaba en la captura: el modelo escupía `…getConflictFileDiff,` seguido
+  // de `` inline y el cierre huérfano se pintaba como texto literal).
+  //
+  // Truco: extraemos el contenido del `<assistant_thought>` a un placeholder
+  // ASCII imposible de confundir con un tag HTML (no contiene `<` ni `>`).
+  // Así el pase 3 (strip de huérfanos) puede ejecutarse sin riesgo de
+  // comerse los pares válidos; en el pase 4 restauramos a
+  // `<think>…</think>`.
+  // Ojo: los corchetes del placeholder hay que ESCAPARLOS en el RegExp del
+  // pase 4 (son regex specials). Usamos `\[\[#[^#]*#\]\]`.
+  const OPEN_PH = "[[[#VTHINK_OPEN#]]]";
+  const CLOSE_PH = "[[[#VTHINK_CLOSE#]]]";
+  const OPEN_PH_RE = "\\[\\[#[^#]*VTHINK_OPEN[^#]*#\\]\\]";
+  const CLOSE_PH_RE = "\\[\\[#[^#]*VTHINK_CLOSE[^#]*#\\]\\]";
   cleaned = cleaned.replace(
     /<assistant_thought>([\s\S]*?)<\/assistant_thought>/gi,
-    "<think>$1</think>",
+    `${OPEN_PH}$1${CLOSE_PH}`,
   );
+
+  // ─── Pase 3: strippear wrappers sueltos / huérfanos / assistant_* ─────────
+  cleaned = cleaned.replace(/<\/?thinking(?:\s[^>]*)?>/gi, "");
+  cleaned = cleaned.replace(/<\/?redacted(?:\s[^>]*)?>/gi, "");
+  cleaned = cleaned.replace(/<\/?assistant_response>/gi, "");
+  cleaned = cleaned.replace(/<\/?assistant>/gi, "");
+  cleaned = cleaned.replace(/<\/?think>/gi, "");
+  cleaned = cleaned.replace(/<\/?vibes-think>/gi, "");
+  cleaned = cleaned.replace(/<\/?assistant_thought>/gi, "");
+
+  // ─── Pase 4: restaurar placeholders como `<think>…</think>` válidos ──────
+  // El placeholder es LITERAL (`[[[#VTHINK_OPEN#]]]`), así que la regex
+  // tiene que serlo también — escapamos los corchetes con `\[` y `\]`.
   cleaned = cleaned.replace(
-    /<think>([\s\S]*?)<\/think>/gi,
+    /\[\[\[#VTHINK_OPEN#\]\]\]([\s\S]*?)\[\[\[#VTHINK_CLOSE#\]\]\]/g,
     (_match, inner: string) => {
       const stripped = inner.replace(/<[^>]*>/g, "").trim();
       if (!stripped) return "";
       return `<think>${stripped}</think>`;
     },
   );
+
+  // ─── Pase 5: tool-call wrappers y normalize newlines ─────────────────────
   cleaned = cleaned.replace(/<\/?invoke(?:\s[^>]*)?>[\s\S]*?(?:<\/invoke>)?/gi, "");
   cleaned = cleaned.replace(/<\/?parameter(?:\s[^>]*)?>[\s\S]*?(?:<\/parameter>)?/gi, "");
   cleaned = cleaned.replace(/<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi, "");

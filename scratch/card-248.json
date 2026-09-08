@@ -1,0 +1,33 @@
+[
+  {
+    "id": "6a9e9c9e769d34113602ae6d",
+    "idShort": 248,
+    "title": "#248 - Contexto: guillotina del NaiveContextEngine + chat = sesión (revertir DP-4)",
+    "name": "#248 - Contexto: guillotina del NaiveContextEngine + chat = sesión (revertir DP-4)",
+    "list": "Doing",
+    "labels": [
+      "deuda",
+      "runtime",
+      "compactacion"
+    ],
+    "url": "https://trello.com/c/3oHsLFKa/248-248-contexto-guillotina-del-naivecontextengine-chat-sesi%C3%B3n-revertir-dp-4",
+    "checklists": [
+      {
+        "id": "6a9e9c9f3194e0b109ad6d12",
+        "name": "Criterios de aceptación",
+        "items": [
+          {
+            "id": "6a9e9ca0a0aa18b73796a7ea",
+            "name": "Criterio 1: el turno largo ya NO se destripa a 3 mensajes — el compactor dispara por budget real o la guillotina resumen en vez de descartar",
+            "state": "incomplete"
+          },
+          {
+            "id": "6a9e9ca0afb61df21449ae79",
+            "name": "Criterio 2: un chat = una sesión persistente (resume/fork) — al decir 'sigue', el modelo conserva el contexto completo del turno anterior",
+            "state": "incomplete"
+          }
+        ]
+      }
+    ]
+  }
+]

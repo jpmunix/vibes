@@ -621,8 +621,12 @@ describe("cleanResponseText — parity with adapter", () => {
     expect(cleanResponseText("a [REDACTED]b")).toBe("a b");
   });
 
-  it("removes <thinking> blocks", () => {
-    expect(cleanResponseText("before <thinking>secret</thinking> after")).toBe("before  after");
+  it("flattens <thinking> blocks to their inner content (no borrar entero)", () => {
+    // El bloque `<thinking>secret</thinking>` se aplana a su contenido en
+    // vez de borrarse entero: si el modelo metió contexto útil en el
+    // thinking (no es solo metadata), lo conservamos. Mismo patrón que
+    // `<redacted>`.
+    expect(cleanResponseText("before <thinking>secret</thinking> after")).toBe("before secret after");
   });
 
   it("converts assistant_thought to think", () => {
@@ -666,6 +670,63 @@ describe("cleanResponseText — parity with adapter", () => {
 
   it("strips multiple orphan think tags", () => {
     expect(cleanResponseText("a" + THINK_CLOSE + "b" + THINK_OPEN + "d")).toBe("abd");
+  });
+
+  // #238+loader: el modelo a veces emite el cierre huérfano inline mezclado
+  // con un bloque <assistant_thought> en el mismo string. Antes del fix, el
+  // pase de huérfanos ANTES de la conversión de assistant_thought dejaba el
+  // cierre huérfano sobreviviendo como texto literal en la UI (es lo que
+  // pasaba en la captura: el modelo escupía `…getConflictFileDiff,` seguido
+  // de `` inline y el cierre huérfano se pintaba como texto literal).
+  //
+  // El fix: convertir el assistant_thought a un placeholder ASCII no-tag,
+  // strippear huérfanos, restaurar. El par válido recién creado NO se ve
+  // afectado por el strip porque está escondido tras el placeholder.
+  it("handles orphan closing think mixed with assistant_thought (bug del loader)", () => {
+    const LT = String.fromCharCode(60);
+    const GT = String.fromCharCode(62);
+    const SL = String.fromCharCode(47);
+    const orphanClose = LT + SL + "think" + GT;
+    const assistantThought =
+      LT + "assistant_thought" + GT +
+      "cogiendo datos" +
+      LT + SL + "assistant_thought" + GT;
+    const input = "algo, " + orphanClose + assistantThought;
+    const out = cleanResponseText(input);
+    // El par válido `` debe existir (la UI lo renderiza como bloque de
+    // pensamiento). Lo importante es que el cierre huérfano del think
+    // anterior NO sobrevive como texto literal: la cadena "algo, </think>"
+    // debe haber desaparecido.
+    expect(out).not.toContain("</think>algo");
+    expect(out).not.toContain(", </think>");
+    expect(out).toContain("cogiendo datos");
+  });
+
+  it("strips <thinking> blocks with attributes (e.g. detail=...)", () => {
+    // El bloque `<thinking detail="x">secreto</thinking>` se aplana a su
+    // contenido (no se borra entero como antes) para no perder contexto que
+    // el modelo pudiera haber metido dentro. Igual que los wrappers
+    // `<redacted>` se aplanan, y que `<thinking>` simple se aplana.
+    const LT = String.fromCharCode(60);
+    const GT = String.fromCharCode(62);
+    const SL = String.fromCharCode(47);
+    const block =
+      LT + 'thinking detail="x"' + GT +
+      "secreto" +
+      LT + SL + "thinking" + GT;
+    expect(cleanResponseText("a " + block + " b")).toBe("a secreto b");
+  });
+
+  it("strips orphan opening/closing of <thinking>", () => {
+    const LT = String.fromCharCode(60);
+    const GT = String.fromCharCode(62);
+    const SL = String.fromCharCode(47);
+    const THINK_ATTR_OPEN = LT + 'thinking foo="bar"' + GT;
+    const THINK_ATTR_CLOSE = LT + SL + "thinking" + GT;
+    // Apertura huérfana con atributos: el tag desaparece, el texto sobrevive.
+    expect(cleanResponseText("a " + THINK_ATTR_OPEN + "texto b")).toBe("a texto b");
+    // Cierre huérfano con atributos: el tag desaparece, el texto sobrevive.
+    expect(cleanResponseText("a " + THINK_ATTR_CLOSE + " b")).toBe("a  b");
   });
 });
 

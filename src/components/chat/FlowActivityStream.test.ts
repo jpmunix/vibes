@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatActivityDuration, parseDurationMs } from "./FlowActivityStream";
+import {
+  formatActivityDuration,
+  parseDurationMs,
+  computeFlowActivityCollapsed,
+} from "./FlowActivityStream";
 
 describe("formatActivityDuration", () => {
   it("formats sub-minute durations as Ns", () => {
@@ -34,5 +38,62 @@ describe("parseDurationMs", () => {
   it("rejects garbage values instead of inventing a duration", () => {
     expect(parseDurationMs({ "duration-ms": "abc" })).toBeUndefined();
     expect(parseDurationMs({ "duration-ms": "-5" })).toBeUndefined();
+  });
+});
+
+describe("computeFlowActivityCollapsed", () => {
+  const base = {
+    collapsedByStream: false,
+    isStreaming: true,
+    expandedByUser: null,
+  };
+
+  it("keeps the panel expanded during streaming when there is no prose after", () => {
+    expect(
+      computeFlowActivityCollapsed({ ...base, hasProseAfter: false }),
+    ).toBe(false);
+  });
+
+  it("collapses when prose arrives during streaming (the bug: module scroll stays open)", () => {
+    expect(
+      computeFlowActivityCollapsed({ ...base, hasProseAfter: true }),
+    ).toBe(true);
+  });
+
+  it("collapses when the stream ends without prose after", () => {
+    expect(
+      computeFlowActivityCollapsed({ ...base, isStreaming: false }),
+    ).toBe(true);
+  });
+
+  it("respects an explicit user expansion even when prose arrives", () => {
+    expect(
+      computeFlowActivityCollapsed({
+        ...base,
+        hasProseAfter: true,
+        expandedByUser: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("respects an explicit user collapse during streaming", () => {
+    expect(
+      computeFlowActivityCollapsed({
+        ...base,
+        expandedByUser: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("collapsedByStream wins over a user expansion when the stream truly ends", () => {
+    // The sticky flag is set by the layout effect on the true→false transition.
+    expect(
+      computeFlowActivityCollapsed({
+        ...base,
+        isStreaming: false,
+        collapsedByStream: true,
+        expandedByUser: true,
+      }),
+    ).toBe(true);
   });
 });

@@ -485,7 +485,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     // Unified buffer for flow-mode activity (thoughts + tool traces in
     // chronological order, rendered as ONE scrollable FlowActivityStream).
     let flowActivityBuffer: FlowActivityItem[] = [];
-    const flushFlowActivityBuffer = () => {
+    const flushFlowActivityBuffer = (hasProseAfter = false) => {
       if (flowActivityBuffer.length === 0) return;
       const items = flowActivityBuffer;
       elements.push(
@@ -493,6 +493,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           key={`flow-trace-stream-${elements.length}`}
           items={items}
           isStreaming={isStreaming}
+          hasProseAfter={hasProseAfter}
         />,
       );
       flowActivityBuffer = [];
@@ -550,7 +551,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         }
         // Real prose content: flush any pending flow activity buffer first
         if (piece.content && piece.content.trim()) {
-          flushFlowActivityBuffer();
+          flushFlowActivityBuffer(true);
         }
         flushBadgeGroup();
         if (piece.content && piece.content.trim()) {
@@ -577,7 +578,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         if (isZenMode) {
           if (ZEN_ALLOWED_TAGS.has(tag)) {
             // Non-activity tag: flush pending activity buffer first
-            flushFlowActivityBuffer();
+            flushFlowActivityBuffer(true);
             // Render output/ask-user normally
             elements.push(
               <React.Fragment key={index}>
@@ -858,10 +859,24 @@ function preprocessUnclosedTags(content: string): {
 }
 
 /**
- * Parse the content to extract custom tags and markdown sections into a unified array
+ * Parse the content to extract custom tags and markdown sections into a unified array.
+ *
+ * `#retroactividad`: los bloques completos `<vibes-context-summary>…</vibes-context-summary>`
+ * se ELIMINAN del content antes de parsear. Son metadata interna que el runtime
+ * usa para hidratación de turnos (ver `runtime_bridge.convertHistoryToRuntimeMessages`)
+ * y NO debe pintarse en la UI: el tag es invisible por contrato. Si llega un chat
+ * persistido viejo con varios bloques de esos, los limpiamos retroactivo sin
+ * tocar la DB — solo afecta al render.
  */
 function parseCustomTags(content: string): ContentPiece[] {
-  const { processedContent, inProgressTags } = preprocessUnclosedTags(content);
+  // Strip bloques completos de <vibes-context-summary(?:\s[^>]*)?>[\s\S]*?<\/vibes-context-summary>
+  // (con atributos opcionales). Solo bloques completos: los huérfanos ya los
+  // maneja `preprocessUnclosedTags` y `cleanResponseText`.
+  const stripped = content.replace(
+    /<vibes-context-summary(?:\s[^>]*)?>[\s\S]*?<\/vibes-context-summary>/gi,
+    "",
+  );
+  const { processedContent, inProgressTags } = preprocessUnclosedTags(stripped);
 
   const tagPattern = new RegExp(
     `<(${VIBES_CUSTOM_TAGS.join("|")})\\s*([^>]*)>(.*?)<\\/\\1>`,

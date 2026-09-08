@@ -1,4 +1,5 @@
 import React, {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -61,10 +62,58 @@ export function parseDurationMs(
   return n;
 }
 
+export interface FlowActivityCollapseState {
+  /** Colapso pegajoso activado al terminar el stream (transición true→false). */
+  collapsedByStream: boolean;
+  /** Hay prosa / tag visible después del panel (el agente ya pasó a texto). */
+  hasProseAfter?: boolean;
+  /** El stream sigue activo. */
+  isStreaming: boolean;
+  /**
+   * Decisión explícita del usuario (null = no ha tocado el botón todavía).
+   * Si el usuario expandió a mano, el colapso automático (por prosa o por fin
+   * de stream) NO debe pisarle la elección.
+   */
+  expandedByUser: boolean | null;
+}
+
+/**
+ * Decide si el panel de actividad (FlowActivityStream) debe mostrarse
+ * colapsado (resumen compacto) o expandido (con su scroll interno).
+ *
+ * Reglas:
+ * - `collapsedByStream` gana siempre (estado pegajoso del fin de stream).
+ * - Si el usuario ha expandido explícitamente (`expandedByUser === true`),
+ *   se respeta su elección: nunca se colapsa por prosa ni por nada automático.
+ * - Si el usuario lo colapsó a mano (`expandedByUser === false`), colapsado.
+ * - Sin intervención del usuario: colapsado si el stream terminó (`!isStreaming`)
+ *   o si ya hay prosa detrás durante el stream (`hasProseAfter`).
+ */
+export function computeFlowActivityCollapsed({
+  collapsedByStream,
+  hasProseAfter,
+  isStreaming,
+  expandedByUser,
+}: FlowActivityCollapseState): boolean {
+  if (expandedByUser === true) return collapsedByStream;
+  if (collapsedByStream) return true;
+  if (expandedByUser === false) return true;
+  // Sin intervención del usuario: colapsar al terminar el stream o al llegar prosa.
+  return !isStreaming || hasProseAfter === true;
+}
+
 interface FlowActivityStreamProps {
   items: FlowActivityItem[];
   /** True while the agent is still streaming — keeps the panel expanded. */
   isStreaming: boolean;
+  /**
+   * True when there is visible content (prose / a visible zen tag) rendered
+   * AFTER this activity panel. When the agent moves on from tools to prose,
+   * the panel should collapse to its compact summary so the chat stays clean
+   * — even though isStreaming may still be true. Only applies while the
+   * user hasn't explicitly expanded the panel.
+   */
+  hasProseAfter?: boolean;
 }
 
 /**
@@ -77,7 +126,7 @@ interface FlowActivityStreamProps {
  * wording ("trabajó por unos segundos") instead of inventing a number.
  */
 export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
-  ({ items, isStreaming }) => {
+  ({ items, isStreaming, hasProseAfter }) => {
     const { t } = useI18n();
     const panelRef = useRef<HTMLDivElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -142,8 +191,6 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
       panelRef.current.scrollTop = panelRef.current.scrollHeight;
     }, [items, autoScroll]);
 
-    if (items.length === 0) return null;
-
     // Sum of the real durations. Items without duration-ms → contribute 0
     // but flag that the total is incomplete.
     let totalMs = 0;
@@ -156,17 +203,45 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
       }
     }
 
-    const collapsed =
-      collapsedByStream ||
-      (expandedByUser === null ? !isStreaming : !expandedByUser);
+    // Ticker fake en vivo: mientras el stream corre y las tools aún no tienen
+    // duración estampada (duration-ms), mostramos un contador que sube cada
+    // segundo. Cuando la tanda se cierra (totalMs > 0) el contador se congela
+    // y el summary pasa a mostrar el tiempo real estampado.
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    useEffect(() => {
+      if (!isStreaming || hasAnyDuration) return;
+      const id = window.setInterval(() => {
+        setElapsedSeconds((s) => s + 1);
+      }, 1000);
+      return () => window.clearInterval(id);
+    }, [isStreaming, hasAnyDuration]);
 
-    // Summary label: duration only — no tool counts, no "pensamiento" suffix
-    // (munix: los literales sobran tanto con tiempo real como sin él).
+    if (items.length === 0) return null;
+
+    // Colapso si: terminó el stream, o el usuario lo colapsó, o ya hay prosa
+    // detrás durante el stream (el agente pasó de tools a texto y el módulo
+    // de actividad debe plegarse para dejar limpio el chat). Si el usuario
+    // expandió explícitamente (expandedByUser === true), se respeta su
+    // elección y NO se colapsa aunque haya prosa después.
+    const collapsed = computeFlowActivityCollapsed({
+      collapsedByStream,
+      hasProseAfter,
+      isStreaming,
+      expandedByUser,
+    });
+
+    // Summary: si hay duración real estampada en los items → la mostramos
+    // (gold-master). Si no y el stream sigue → ticker fake en vivo. Si no hay
+    // nada y el stream terminó → texto vago (mensaje histórico sin metadatos).
     const summary = hasAnyDuration
       ? t("chat.activityStreamWorked", {
           duration: formatActivityDuration(totalMs),
         })
-      : t("chat.activityStreamWorkedVague");
+      : isStreaming
+        ? t("chat.activityStreamWorking", {
+            duration: formatActivityDuration(elapsedSeconds * 1000),
+          })
+        : t("chat.activityStreamWorkedVague");
 
     return (
       <div ref={rootRef} className="my-2">

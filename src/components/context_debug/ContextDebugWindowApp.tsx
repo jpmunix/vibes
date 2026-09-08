@@ -186,7 +186,7 @@ function IterationBlock({
         <div className="border-t border-border/60">
           {/* Payload — messages JSON sin truncar */}
           {entry.messages !== undefined && (
-            <details className="group border-b border-border/50" open>
+            <details className="group border-b border-border/50">
               <summary className="px-3 py-1.5 text-[12px] uppercase tracking-wide text-muted-foreground cursor-pointer hover:bg-muted/40 select-none flex items-center gap-2">
                 <span className="flex-1">
                   {t("contextDebug.messages")}{" "}
@@ -204,7 +204,7 @@ function IterationBlock({
           {/* Respuesta — lo que el modelo añadió (aparece en el contexto de la
               iteración siguiente). Sin siguiente iteración → aún no hay. */}
           {answerJson && (
-            <details className="group" open>
+            <details className="group">
               <summary className="px-3 py-1.5 text-[12px] uppercase tracking-wide text-muted-foreground cursor-pointer hover:bg-muted/40 select-none flex items-center gap-2">
                 <span className="flex-1">
                   {t("contextDebug.answer")}{" "}
@@ -385,7 +385,7 @@ function ContextDebugPanel() {
             entry={entry}
             index={i}
             total={n}
-            defaultOpen={i === n - 1}
+            defaultOpen={false}
             zebra={i % 2 === 1}
             answer={computeAnswerDelta(entries, i)}
           />

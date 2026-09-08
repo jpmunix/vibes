@@ -26,6 +26,83 @@ export function stripPreviousTurnSummary(text: string): string {
 }
 
 /**
+ * Elimina bloques completos `<vibes-context-summary>…</vibes-context-summary>`
+ * del contenido visible. Son metadata interna que el runtime inyecta al final
+ * de cada turno (memoria entre turnos; la lee
+ * `runtime_bridge.convertHistoryToRuntimeMessages` directamente de la DB para
+ * la hidratación del siguiente turno) y NO deben pintarse en la UI.
+ *
+ * El LLM a veces los reproduce en su respuesta (porque el summary hidratado
+ * viaja en su prompt como "[Previous Turn Context Summary]"), y quedan
+ * persistidos en el content del mensaje. Como la hidratación del runtime lee
+ * el content CRUDO de la DB (antes de cualquier limpieza de render), podemos
+ * quitarlos aquí sin romper la memoria entre turnos: retroactividad pura
+ * sobre chats viejos, sin migración de DB.
+ *
+ * Solo afecta al render. Se deja además un strip defensivo en los
+ * `parseCustomTags` (worker + componente) para usos del parser con content
+ * crudo desde otros sitios.
+ */
+export function stripContextSummaryTags(text: string): string {
+  let out = text;
+  // 1) Bloques completos (con o sin atributos).
+  out = out.replace(
+    /<vibes-context-summary(?:\s[^>]*)?>[\s\S]*?<\/vibes-context-summary>/gi,
+    "",
+  );
+  // 2) Tags sueltos de apertura/cierre que hayan quedado (el modelo a veces
+  //    reproduce solo el cierre, p.ej. `</vibes-context-summary>` doble, o la
+  //    apertura sin su cierre). Son metadata: nunca deben verse en la UI.
+  out = out.replace(/<\/?vibes-context-summary(?:\s[^>]*)?>/gi, "");
+  return out;
+}
+
+/**
+ * Elimina tags de pensamiento huérfanos o sueltos que el modelo o los deltas
+ * hayan dejado en el contenido.
+ *
+ * Durante el streaming o al formatear deltas con tools intermedias, los modelos
+ * (especialmente DeepSeek u otros con inline thinking) emiten cierres como
+ * `</think>`, `</thought>` o `</vibes-think>` sin apertura correspondiente en
+ * ese bloque de texto (o tras ser separado por una tool).
+ *
+ * ¡CRÍTICO!: Enmascaramos los bloques de tool (`<vibes-...>...</vibes-...>`)
+ * primero para que si el agente leyó código que contiene `<think>` (p.ej.
+ * version_handlers.ts con regexes de think), ese `<think>` dentro del código
+ * no cuente como apertura y deje escapar el `</think>` huérfano de la prosa.
+ */
+export function stripOrphanThinkTags(text: string): string {
+  // 1) Enmascarar custom tags de Vibes (<vibes-...>...</vibes-...>) para no
+  // contaminar el conteo con fragmentos de código leídos/editados.
+  const toolBlocks: string[] = [];
+  let masked = text.replace(
+    /<(vibes-[\w-]+)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi,
+    (m) => {
+      const idx = toolBlocks.length;
+      toolBlocks.push(m);
+      return `___VIBES_TOOL_BLOCK_${idx}___`;
+    },
+  );
+
+  // 2) Convertir pares válidos de pensamiento a <vibes-think>
+  masked = masked.replace(
+    /<(?:think|thought|thinking|vibes-think)(?:\s[^>]*)?>([\s\S]*?)<\/(?:think|thought|thinking|vibes-think)>/gi,
+    "<vibes-think>$1</vibes-think>",
+  );
+
+  // 3) Eliminar cualquier apertura o cierre de think huérfano que haya quedado en la prosa
+  masked = masked.replace(/<\/?(?:think|thought|thinking)(?:\s[^>]*)?>/gi, "");
+
+  // 4) Restaurar los bloques de tools intactos
+  const out = masked.replace(
+    /___VIBES_TOOL_BLOCK_(\d+)___/g,
+    (_, i) => toolBlocks[Number(i)],
+  );
+
+  return out;
+}
+
+/**
  * Normaliza el contenido de un mensaje ANTES de parsearlo para la UI.
  *
  * 1. `normalizeLegacyTags` — shim backward-compat (dyad-* → vibes-*).
@@ -34,13 +111,21 @@ export function stripPreviousTurnSummary(text: string): string {
  *    plano en el stream y que NO deben pintarse en el chat.
  * 3. `stripPreviousTurnSummary` — elimina la réplica en texto plano de la
  *    memoria de turno `[Previous Turn Context Summary]` (ver arriba).
+ * 4. `stripContextSummaryTags` — elimina los tags crudos `<vibes-context-summary>`
+ *    que el modelo reproduce (retroactivo, ver arriba).
+ * 5. `stripOrphanThinkTags` — elimina `</think>` y tags de cierre huérfanos para
+ *    que jamás se pinten como texto literal en la vista del usuario.
  *
  * El mismo filtro DSML se aplica en el provider (vibes-core) para los mensajes
  * nuevos en streaming; aquí cubre además los mensajes ya persistidos.
  */
 export function normalizeMessageContent(content: string | null | undefined): string {
   if (!content) return "";
-  return stripPreviousTurnSummary(stripDsmlToolCallBlocks(normalizeLegacyTags(content)));
+  return stripOrphanThinkTags(
+    stripContextSummaryTags(
+      stripPreviousTurnSummary(stripDsmlToolCallBlocks(normalizeLegacyTags(content))),
+    ),
+  );
 }
 
 /** Versión pensada para valores que pueden no ser string. */

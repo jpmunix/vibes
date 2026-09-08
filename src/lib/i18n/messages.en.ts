@@ -108,6 +108,7 @@ export const messagesEn: Messages = {
     goToMessageStart: "Go to start of message",
     activityStreamWorked: "Worked for {duration}",
     activityStreamWorkedVague: "Worked for a few seconds",
+    activityStreamWorking: "Working… {duration}",
     activityStreamExpand: "Show tools",
     activityStreamCollapse: "Hide tools",
     activityStreamAborted: "not finished",

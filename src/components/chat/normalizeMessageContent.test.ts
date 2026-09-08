@@ -96,4 +96,75 @@ describe("normalizeMessageContent", () => {
     expect(output).toContain("estoy razonando");
     expect(output).toContain("a < b");
   });
+
+  it("elimina bloques completos <vibes-context-summary> (retroactivo, sin tocar DB)", () => {
+    const block =
+      "<vibes-context-summary>\n" +
+      "Read: a.ts, b.ts\n" +
+      "Listed: src\n" +
+      "Modified: c.ts\n" +
+      "</vibes-context-summary>";
+    const input = "Listo, restaurado.\n\n" + block;
+    const output = normalizeMessageContent(input);
+    expect(output).toContain("Listo, restaurado.");
+    expect(output).not.toContain("vibes-context-summary");
+    expect(output).not.toContain("Read: a.ts");
+    expect(output).not.toContain("Modified: c.ts");
+  });
+
+  it("elimina tags sueltos de apertura/cierre de vibes-context-summary (doble cierre)", () => {
+    const orphanClose = "</vibes-context-summary></vibes-context-summary>";
+    const input = "Respuesta limpia.\n\n" + orphanClose;
+    const output = normalizeMessageContent(input);
+    expect(output).not.toContain("vibes-context-summary");
+    expect(output).toContain("Respuesta limpia.");
+  });
+
+  it("elimina bloques con atributos y respeta el texto alrededor", () => {
+    const input =
+      "Antes " +
+      '<vibes-context-summary files="3">datos</vibes-context-summary>' +
+      " después";
+    expect(normalizeMessageContent(input)).toBe("Antes  después");
+  });
+
+  it("elimina tags </think> huérfanos sin apertura previa", () => {
+    const input = "Texto normal.</think>";
+    expect(normalizeMessageContent(input)).toBe("Texto normal.");
+  });
+
+  it("elimina tags </vibes-think> o </thought> huérfanos", () => {
+    const input = '<vibes-grep query="version_handlers"></vibes-grep>\n</think>\nExplicación.';
+    const output = normalizeMessageContent(input);
+    expect(output).not.toContain("</think>");
+    expect(output).toContain("Explicación.");
+  });
+
+  it("preserva pares válidos <think>...</think> convirtiéndolos a <vibes-think>", () => {
+    const input = "<think>razonando</think>\nRespuesta.";
+    const output = normalizeMessageContent(input);
+    expect(output).toContain("<vibes-think>razonando</vibes-think>");
+    expect(output).toContain("Respuesta.");
+  });
+
+  it("elimina cierre huérfano incluso si hay un think previo ya cerrado", () => {
+    const input = "<think>razonando</think>\nRespuesta.\n</think>";
+    const output = normalizeMessageContent(input);
+    expect(output).toBe("<vibes-think>razonando</vibes-think>\nRespuesta.\n");
+  });
+
+  it("elimina cierre huérfano de think cuando el tool tag leyó código con un <think> dentro", () => {
+    const input =
+      'Voy a mirar la función de undo en `ChatInput.tsx`.\n\n' +
+      '<vibes-read path="/version_handlers.ts">\n' +
+      '  let cleaned = msg.content.replace(/<think>[\\s\\S]*?<\\/think>/g, "");\n' +
+      '</vibes-read>\n\n' +
+      'Voy a leer la función `performUndo` completa.\n' +
+      '</think>';
+    const output = normalizeMessageContent(input);
+    expect(output).not.toContain("</think>");
+    expect(output).toContain("Voy a leer la función `performUndo` completa.");
+    expect(output).toContain("let cleaned = msg.content.replace");
+  });
 });
+

@@ -463,22 +463,40 @@ const ChatMessage = ({
       "vibes-vision",
       "vibes-context-summary",
     ];
+    // Tags que indican razonamiento inline (piensa inline en el content en
+    // vez de usar reasoning_content). Tienen prioridad sobre cualquier tool
+    // cerrada: si el modelo está pensando, el loader dice "Pensando", no
+    // hereda el pendingLabel de la última tool (eso era el bug: el loader
+    // decía "Escribiendo 9s" mientras el texto que entraba era think).
+    const THINK_TAGS_FOR_LABEL = new Set([
+      "think",
+      "thought",
+      "vibes-think",
+    ]);
 
+    // Tracking por tipo: el último tag ABIERTO (openCount > closeCount) y, por
+    // separado, el último bloque de pensamiento inline que esté abierto o
+    // cuyo cierre sea el último evento de razonamiento en el content.
     let lastOpenTag: string | null = null;
     let lastOpenIndex: number = -1;
     let lastAttrs: string = "";
+    // Para pensamiento inline: detectamos tanto tags abiertos como ``
+    // sueltos (el modelo a veces emite solo el cierre tras un assistant_thought
+    // ya convertido en runtime_bridge). Si el cierre está al final, sabemos
+    // que el modelo acaba de pensar.
+    let lastThinkBlockStart: number = -1;
+    let lastThinkBlockEnd: number = -1;
 
-    // Iterate through all tags to find the one that was opened last and is still open
     for (const tagName of VIBES_CUSTOM_TAGS) {
       const openTagPattern = new RegExp(`<${tagName}\\b([^>]*)>`, "g");
       const closeTagPattern = new RegExp(`</${tagName}>`, "g");
 
-      let match;
       const openings: {
         index: number;
         attrs: string;
         fullMatchLength: number;
       }[] = [];
+      let match;
       while ((match = openTagPattern.exec(normalizedMessageContent)) !== null) {
         openings.push({
           index: match.index,
@@ -491,12 +509,49 @@ const ChatMessage = ({
       const closeCount = (normalizedMessageContent.match(closeTagPattern) || [])
         .length;
 
-      // If we have more opening tags than closing tags, this tag is in progress
-      if (openCount > closeCount) {
-        // Find the specific opening tag that is unclosed
-        // We assume the unclosed tags are the LAST ONES (e.g., if there are 3 open and 2 closed, the 3rd is unclosed)
-        const unclosedOpening = openings[openCount - 1]; // Simply pick the last opening of this type
+      // Tracking de pensamiento: abierto O bloque completo cuyo cierre sea el
+      // más reciente. Si hay un bloque think válido reciente, el modelo está
+      // (o acaba de estar) pensando → "Pensando" gana sobre cualquier tool.
+      if (THINK_TAGS_FOR_LABEL.has(tagName)) {
+        if (openCount > closeCount) {
+          // Hay un think abierto: apunta al inicio del contenido interior.
+          const open = openings[openCount - 1];
+          const start = open.index + open.fullMatchLength;
+          if (start > lastThinkBlockStart) {
+            lastThinkBlockStart = start;
+            lastThinkBlockEnd = -1;
+          }
+        } else if (openCount > 0 && openCount === closeCount) {
+          // Bloques completos: coge el último cierre. El bloque se considera
+          // "reciente" si su cierre está en el último tercio del content.
+          const closeMatches = [
+            ...normalizedMessageContent.matchAll(
+              new RegExp(`</${tagName}>`, "g"),
+            ),
+          ];
+          const lastClose = closeMatches[closeMatches.length - 1];
+          if (lastClose) {
+            const endIdx = lastClose.index + lastClose[0].length;
+            const contentLen = normalizedMessageContent.length;
+            // Consideramos "pensamiento activo" si el cierre está en el último
+            // 50% del content (no hay tool abierta posterior) o si el content
+            // termina justo después del cierre con solo whitespace.
+            const tail = normalizedMessageContent.slice(endIdx).trim();
+            const isRecent =
+              endIdx >= contentLen * 0.5 || tail.length === 0;
+            if (isRecent && endIdx > lastThinkBlockEnd) {
+              lastThinkBlockEnd = endIdx;
+              // Para el excerpt usamos lo que hay desde el inicio del bloque.
+              const open = openings[openCount - 1];
+              lastThinkBlockStart = open.index + open.fullMatchLength;
+            }
+          }
+        }
+      }
 
+      // Si hay más aperturas que cierres (tool activa), apunta al último.
+      if (openCount > closeCount) {
+        const unclosedOpening = openings[openCount - 1];
         if (unclosedOpening && unclosedOpening.index > lastOpenIndex) {
           lastOpenIndex = unclosedOpening.index;
           lastOpenTag = tagName;
@@ -505,6 +560,31 @@ const ChatMessage = ({
           lastOpenIndex += unclosedOpening.fullMatchLength;
         }
       }
+    }
+
+    // Si hay pensamiento reciente (abierto o recién cerrado sin tool abierta
+    // posterior), gana sobre la última tool. El loader dice "Pensando"
+    // mientras el modelo escupe razonamiento, no "Escribiendo".
+    if (
+      lastThinkBlockStart !== -1 &&
+      (lastThinkBlockEnd === -1 || lastThinkBlockEnd >= lastOpenIndex)
+    ) {
+      const ongoingContent = normalizedMessageContent.slice(lastThinkBlockStart);
+      const cleanText = ongoingContent
+        .replace(/<\/?think>/gi, "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/[#*_`~>\-|]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const excerpt = cleanText
+        ? cleanText.split(" ").slice(-20).join(" ")
+        : undefined;
+      return {
+        label: "Pensando",
+        dotColorClass: "bg-violet-400",
+        labelColorClass: "text-violet-400",
+        contentExcerpt: excerpt,
+      };
     }
 
     if (lastOpenTag !== null && lastOpenTag !== undefined) {
