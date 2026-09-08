@@ -565,6 +565,9 @@ export const UserSettingsSchema = z
     toolOutputMaxKb: z.number().min(1).max(1024).optional(),
     compactionKeepRecentTokens: z.number().min(1000).max(200_000).optional(),
     compactionSerializeMaxChars: z.number().min(200).max(50_000).optional(),
+    // #255: umbral absoluto en tokens para disparar compactación.
+    // undefined = auto (75% de la ventana del modelo vía triggerRatio).
+    compactionTriggerTokens: z.number().min(10_000).max(2_000_000).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     // ── Inference hyperparameters (user-tunable from chat input) ──
     inferenceTemperature: z.number().min(0).max(2).optional(),

@@ -43,6 +43,7 @@ import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
 import { validateModelSettings } from "./ipc/utils/model_validator";
+import { startModelRevalidation } from "./ipc/utils/model_revalidation";
 import { stopAllRunningApps } from "./ipc/utils/process_manager";
 import { serializePendingBuffers } from "./ipc/utils/memory_extractor";
 
@@ -393,6 +394,16 @@ export async function onReady() {
   updateSplash(splash, stepOffset + 4, TOTAL_STEPS, "Validando modelos...");
   await validateModelSettings().catch((err) =>
     logger.warn("Model validation failed (non-fatal):", err),
+  );
+
+  // Step N+4b: Arm hot re-validation (card #242).
+  // La pasada de arriba es solo el arranque. Sin esto, romper un slot DESPUÉS
+  // de arrancar (desactivar un proveedor en Ajustes, borrar un custom provider,
+  // dejar un modelo a null desde el panel de admin) no se detectaba hasta el
+  // siguiente reinicio: la app seguía como si nada y la modal nunca salía.
+  // No fatal: si falla el armado, la validación de arranque sigue funcionando.
+  await startModelRevalidation().catch((err: unknown) =>
+    logger.warn("Hot model re-validation could not be armed (non-fatal):", err),
   );
 
   // Step N+5: Show main window and close splash

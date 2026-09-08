@@ -438,6 +438,8 @@ export function applyAgentLoopLimits(
     compactionKeepRecentTokens?: number;
     /** #248: cap de serialización de tool outputs para el summarizer (chars). */
     compactionSerializeMaxChars?: number;
+    /** #255: umbral absoluto en tokens que dispara la compactación. */
+    compactionTriggerTokens?: number;
   } | null | undefined,
 ): void {
   const maxIterations =
@@ -513,7 +515,8 @@ export function applyAgentLoopLimits(
     loopConfigMutable.compaction?.maxRoundsKept === settings?.compactionMaxRoundsKept &&
     loopConfigMutable.toolOutput?.maxBytes === toolOutput?.maxBytes &&
     loopConfigMutable.compaction?.keepRecentTokens === settings?.compactionKeepRecentTokens &&
-    loopConfigMutable.compaction?.serializeOutputMaxChars === settings?.compactionSerializeMaxChars
+    loopConfigMutable.compaction?.serializeOutputMaxChars === settings?.compactionSerializeMaxChars &&
+    loopConfigMutable.compaction?.triggerTokens === settings?.compactionTriggerTokens
   ) {
     return;
   }
@@ -544,10 +547,17 @@ export function applyAgentLoopLimits(
     settings.compactionSerializeMaxChars >= 200
       ? { serializeOutputMaxChars: Math.floor(settings.compactionSerializeMaxChars) }
       : {}),
+    ...(typeof settings?.compactionTriggerTokens === "number" &&
+    Number.isFinite(settings.compactionTriggerTokens) &&
+    settings.compactionTriggerTokens >= 10_000
+      ? { triggerTokens: Math.floor(settings.compactionTriggerTokens) }
+      : settings?.compactionTriggerTokens === undefined
+        ? { triggerTokens: undefined }
+        : {}),
   };
   lastFbString = fbString;
   logger.info(
-    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"} toolOutputMaxBytes=${toolOutput?.maxBytes ?? "default"} keepRecentTokens=${loopConfigMutable.compaction.keepRecentTokens ?? "default"}`,
+    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"} toolOutputMaxBytes=${toolOutput?.maxBytes ?? "default"} keepRecentTokens=${loopConfigMutable.compaction.keepRecentTokens ?? "default"} triggerTokens=${loopConfigMutable.compaction.triggerTokens ?? "auto"}`,
   );
 }
 

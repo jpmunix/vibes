@@ -8,7 +8,6 @@ import { isElectron } from "@/lib/transport";
 import { useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { showWarning } from "@/lib/toast";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -27,6 +26,8 @@ import {
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
+import { invalidModelSlotsAtom } from "@/atoms/modelValidationAtoms";
+import { ModelReassignmentModal } from "@/components/settings/ModelReassignmentModal";
 
 const SetupWizard = lazy(() =>
   import("@/components/onboarding/SetupWizard").then((m) => ({
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const setChatInput = useSetAtom(chatInputValueAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
+  const setInvalidModelSlots = useSetAtom(invalidModelSlotsAtom);
 
   const navigate = useNavigate();
   const routerState = useRouterState();
@@ -197,25 +199,37 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     setConsoleEntries([]);
   }, [selectedAppId]);
 
-  // ── Model migration toast ──────────────────────────────────────────────
-  // When the boot-time validator replaces stale OpenRouter models, notify
-  // the user so they're aware — especially for hidden settings they
-  // wouldn't otherwise check (standardModeModel, memory models, etc.)
+  // ── Model validation listener (Card #242) ───────────────────────────────
+  // Replaces silent migration with blocking reassignment modal
   useEffect(() => {
+    // Initial fetch on app start
+    ipc.languageModel
+      .checkModelSlotsValidity()
+      .then((res) => {
+        if (res && Array.isArray(res.invalidSlots)) {
+          setInvalidModelSlots(res.invalidSlots);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Layout] Failed to check model slots validity:", err);
+      });
+
+    // Re-validación en caliente (card #242): el main process vuelve a validar
+    // cuando cambian los ajustes o los proveedores y emite el resultado. Sin
+    // esto, un slot roto por un cambio en Ajustes solo se detectaba al reiniciar
+    // la app.
     const unsubscribe = window.electron?.ipcRenderer?.on(
-      "models:migrated" as any,
-      (data: { changes: string[] }) => {
-        if (data?.changes?.length) {
-          showWarning(
-            `Algunos modelos de IA ya no están disponibles en OpenRouter y fueron reemplazados automáticamente:\n\n${data.changes.join("\n")}`,
-          );
+      "models:validation-status" as any,
+      (data: { isValid: boolean; invalidSlots: any[] }) => {
+        if (data && Array.isArray(data.invalidSlots)) {
+          setInvalidModelSlots(data.invalidSlots);
         }
       },
     );
     return () => {
       unsubscribe?.();
     };
-  }, []);
+  }, [setInvalidModelSlots]);
 
   return (
     <>
@@ -225,6 +239,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Suspense fallback={null}>
             <SetupWizard />
           </Suspense>
+          {/*
+            Blocking modal for broken model slots (card #242).
+            Se auto-oculta si no hay ningún provider configurado — en ese caso
+            manda el wizard de arriba y no deben solaparse.
+          */}
+          <ModelReassignmentModal />
           <SidebarProvider>
             <TitleBar />
             {/* Layout: TitleBar (fixed 44px, Electron only) → TopNavbar (40px) → [SecondarySidebar + Content] */}

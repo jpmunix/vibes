@@ -70,11 +70,11 @@ export function SetupWizard() {
       const data = await response.json();
       if (data?.data) {
         setVerifyResult({ ok: true });
-        const keyId = `key_${Date.now()}`;
+        // Single-key model
         await updateSettings({
           providerSettings: {
             ...settings?.providerSettings,
-            openrouter: { keys: [{ id: keyId, key: { value: apiKey.trim() } }], selectedKeyId: keyId },
+            openrouter: { apiKey: { value: apiKey.trim() } },
           },
         });
         showSuccess(t("wizard.configured"));

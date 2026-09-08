@@ -508,22 +508,45 @@ export async function handleRuntimeStream(
         chunkTimer = setTimeout(() => {
           chunkTimer = null;
           lastChunkAt = Date.now();
-          sendChunk(mapper.buildLiveContent());
+          const snapshot = mapper.buildLiveContent();
+          (mapper as unknown as { debugSnapshot?: (l: string, s: string) => void })
+            .debugSnapshot?.("pushChunk-throttled", snapshot);
+          sendChunk(snapshot);
         }, CHUNK_THROTTLE_MS);
       }
       return;
     }
     lastChunkAt = now;
-    sendChunk(mapper.buildLiveContent());
+    const snapshot = mapper.buildLiveContent();
+    (mapper as unknown as { debugSnapshot?: (l: string, s: string) => void })
+      .debugSnapshot?.("pushChunk-immediate", snapshot);
+    sendChunk(snapshot);
   };
 
   const rawUnsubscribe = session.subscribe((e: RuntimeEvent) => {
-    // #230/#243: el input del ÚLTIMO step (LlmCompleted.usage.input) es el
-    // contexto real del próximo request. `session.run()` solo devuelve el
-    // ACUMULADO del turno (state.usage) — sumar todos los steps cuenta el
-    // mismo contexto N veces. El gauge usa este lastStepInput.
+    // #230/#243: el input del ÚLTIMO step es el contexto real del próximo
+    // request. `session.run()` solo devuelve el ACUMULADO del turno
+    // (state.usage) — sumar todos los steps cuenta el mismo contexto N veces.
+    //
+    // BUGFIX (#255): antes esto dependía SOLO de llm.completed.usage.input,
+    // que llega del wire del provider. Si el provider/stream no lo mandaba
+    // (usage ausente o prompt_tokens 0 en el chunk final), lastStepInput se
+    // quedaba en 0 y el fallback de abajo lo sustituía por result.usage.input
+    // — el ACUMULADO del turno (3.2M en turnos de 75 steps). El gauge entonces
+    // pintaba el facturable como si fuera contexto real.
+    //
+    // Fuentes del contexto real del step, por fiabilidad:
+    //   1. context.built.tokens — lo emite el loop SIEMPRE, justo antes de
+    //      llamar al modelo, con la estimación exacta del contexto construido.
+    //   2. llm.completed.usage.input — lo que el provider reporta haber
+    //      mandado (solo si viene en el wire; no siempre).
+    // Se sobreescribe con el evento más reciente de cualquiera de los dos;
+    // ambos representan el MISMO step (context.built precede al llm.completed
+    // de ese step), así que el último en llegar gana sin ambigüedad.
     if (e.type === "llm.completed" && e.usage && e.usage.input > 0) {
       lastStepInput = e.usage.input;
+    } else if (e.type === "context.built" && typeof e.tokens === "number" && e.tokens > 0) {
+      lastStepInput = e.tokens;
     }
     // Context debug (temporal): cada context.built con payload (systemPrompt
     // + messages + model, presentes solo con debugContext ON = ventana
@@ -624,6 +647,8 @@ export async function handleRuntimeStream(
   // #238: cerrar reasoning pendiente antes de serializar el contenido final.
   mapper.closePendingReasoning();
   let finalContent = mapper.buildLiveContent();
+  (mapper as unknown as { debugSnapshot?: (l: string, s: string) => void })
+    .debugSnapshot?.("final", finalContent);
 
   // BUGFIX #122: si el loop terminó en error (session.failed), la UI se
   // quedaba en blanco porque finalContent era "". Exponemos el error para que
@@ -652,7 +677,14 @@ export async function handleRuntimeStream(
   }
 
   if (result) {
-    const lastInput = lastStepInput > 0 ? lastStepInput : result.usage.input;
+    // BUGFIX (#255): NUNCA usar result.usage.input como input del tag. Ese es
+    // el ACUMULADO facturable del turno (suma de todos los steps) — meterlo
+    // como `input` hace que el gauge pinte 3.2M cuando el contexto real del
+    // último step eran 120K. Si no hay lastStepInput (turno sin steps o sin
+    // eventos), emitimos input=0: el parser lo trata como "sin dato" y el
+    // gauge se queda mudo en vez de mentir. El billable (coste real) SÍ va
+    // como atributo separado billable-input.
+    const lastInput = lastStepInput > 0 ? lastStepInput : 0;
     const billable = result.usage.input;
     finalContent += buildTokenUsageTag(lastInput, result.usage.output, billable);
   }
@@ -717,8 +749,12 @@ export async function handleRuntimeStream(
     cachedTokens: usage.cacheRead,
     // No cost accounting in vibes-core v1 (post-MVP).
     costUsd: null,
-    // #243: input del ÚLTIMO step — el contexto real del próximo request.
-    lastStepInput: lastStepInput > 0 ? lastStepInput : usage.input,
+    // #243/#255: input del ÚLTIMO step — el contexto real del próximo
+    // request. NUNCA cae al acumulado del turno (usage.input) — eso ya viaja
+    // como inputTokens (coste). Si no hubo step (lastStepInput = 0), el
+    // handler de chat_stream usa este valor para decidir si emite billable;
+    // 0 es correcto ("no hay contexto de step que reportar").
+    lastStepInput,
   };
 }
 

@@ -106,6 +106,8 @@ interface FlowActivityStreamProps {
   items: FlowActivityItem[];
   /** True while the agent is still streaming — keeps the panel expanded. */
   isStreaming: boolean;
+  /** Timestamp (ms) when the first item of this activity run appeared. */
+  startedAtMs?: number;
   /**
    * True when there is visible content (prose / a visible zen tag) rendered
    * AFTER this activity panel. When the agent moves on from tools to prose,
@@ -119,14 +121,13 @@ interface FlowActivityStreamProps {
 /**
  * Flow-mode activity panel (unified: thoughts + tool calls).
  *
- * The summary duration is the SUM of the real `duration-ms` attributes carried
- * by the items — never `Date.now()` math, so toggling expand/collapse can never
- * change the number. Items without the attribute (historical messages) make the
- * total incomplete: the summary then falls back to the localized vague
- * wording ("trabajó por unos segundos") instead of inventing a number.
+ * The summary uses the shared turn-start clock while the response is live,
+ * then freezes that elapsed time when prose arrives or streaming ends. The
+ * per-item `duration-ms` values remain metadata and a fallback for historical
+ * messages that have no trustworthy start timestamp.
  */
 export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
-  ({ items, isStreaming, hasProseAfter }) => {
+  ({ items, isStreaming, startedAtMs, hasProseAfter }) => {
     const { t } = useI18n();
     const panelRef = useRef<HTMLDivElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -191,8 +192,9 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
       panelRef.current.scrollTop = panelRef.current.scrollHeight;
     }, [items, autoScroll]);
 
-    // Sum of the real durations. Items without duration-ms → contribute 0
-    // but flag that the total is incomplete.
+    // Duración real de las tools/thoughts: se conserva como metadato y fallback
+    // para mensajes históricos. No debe gobernar el contador visible durante un
+    // bloque vivo: una tool de 1s puede pertenecer a un bloque que lleva 2m.
     let totalMs = 0;
     let hasAnyDuration = false;
     for (const item of items) {
@@ -203,43 +205,73 @@ export const FlowActivityStream: React.FC<FlowActivityStreamProps> = React.memo(
       }
     }
 
-    // Ticker fake en vivo: mientras el stream corre y las tools aún no tienen
-    // duración estampada (duration-ms), mostramos un contador que sube cada
-    // segundo. Cuando la tanda se cierra (totalMs > 0) el contador se congela
-    // y el summary pasa a mostrar el tiempo real estampado.
-    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    // Reloj de vida de la tanda. El parser conserva startedAtMs desde el primer
+    // item para que el resumen no empiece tarde al hacer flush con la prosa.
+    const activityStartedAtRef = useRef(startedAtMs ?? Date.now());
+    const activityStartKeyRef = useRef(startedAtMs);
+    if (activityStartKeyRef.current !== startedAtMs) {
+      activityStartKeyRef.current = startedAtMs;
+      activityStartedAtRef.current = startedAtMs ?? Date.now();
+    }
+    const previousActivityActiveRef = useRef(isStreaming && !hasProseAfter);
+    const activityIsActive = isStreaming && !hasProseAfter;
+    const [elapsedSeconds, setElapsedSeconds] = useState(() =>
+      Math.max(
+        0,
+        Math.round((Date.now() - activityStartedAtRef.current) / 1000),
+      ),
+    );
+
+    useLayoutEffect(() => {
+      const wasActive = previousActivityActiveRef.current;
+      if (wasActive && !activityIsActive) {
+        setElapsedSeconds(
+          Math.max(
+            0,
+            Math.round((Date.now() - activityStartedAtRef.current) / 1000),
+          ),
+        );
+      }
+      previousActivityActiveRef.current = activityIsActive;
+    }, [activityIsActive]);
+
     useEffect(() => {
-      if (!isStreaming || hasAnyDuration) return;
-      const id = window.setInterval(() => {
-        setElapsedSeconds((s) => s + 1);
-      }, 1000);
+      if (!activityIsActive) return;
+      const updateElapsed = () => {
+        setElapsedSeconds(
+          Math.max(
+            0,
+            Math.round((Date.now() - activityStartedAtRef.current) / 1000),
+          ),
+        );
+      };
+      updateElapsed();
+      const id = window.setInterval(updateElapsed, 1000);
       return () => window.clearInterval(id);
-    }, [isStreaming, hasAnyDuration]);
+    }, [activityIsActive]);
 
     if (items.length === 0) return null;
 
-    // Colapso si: terminó el stream, o el usuario lo colapsó, o ya hay prosa
-    // detrás durante el stream (el agente pasó de tools a texto y el módulo
-    // de actividad debe plegarse para dejar limpio el chat). Si el usuario
-    // expandió explícitamente (expandedByUser === true), se respeta su
-    // elección y NO se colapsa aunque haya prosa después.
     const collapsed = computeFlowActivityCollapsed({
       collapsedByStream,
       hasProseAfter,
       isStreaming,
       expandedByUser,
     });
+    const measuredDurationMs = elapsedSeconds * 1000;
+    const displayDurationMs =
+      measuredDurationMs > 0 ? measuredDurationMs : totalMs;
 
-    // Summary: si hay duración real estampada en los items → la mostramos
-    // (gold-master). Si no y el stream sigue → ticker fake en vivo. Si no hay
-    // nada y el stream terminó → texto vago (mensaje histórico sin metadatos).
-    const summary = hasAnyDuration
-      ? t("chat.activityStreamWorked", {
-          duration: formatActivityDuration(totalMs),
+    // Mientras este bloque sigue activo: ticker en presente. Cuando hay prosa
+    // detrás o el stream terminó: tiempo congelado en pasado. El duration-ms
+    // individual solo evita dejar vacío un mensaje histórico sin reloj local.
+    const summary = activityIsActive
+      ? t("chat.activityStreamWorking", {
+          duration: formatActivityDuration(displayDurationMs),
         })
-      : isStreaming
-        ? t("chat.activityStreamWorking", {
-            duration: formatActivityDuration(elapsedSeconds * 1000),
+      : hasAnyDuration || displayDurationMs > 0
+        ? t("chat.activityStreamWorked", {
+            duration: formatActivityDuration(displayDurationMs),
           })
         : t("chat.activityStreamWorkedVague");
 

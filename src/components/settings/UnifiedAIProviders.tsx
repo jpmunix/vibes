@@ -7,6 +7,7 @@ import { OpenRouterProviderSection } from "./providers/OpenRouterProviderSection
 import { OllamaProviderSection } from "./providers/OllamaProviderSection";
 import { CustomProviderSection } from "./providers/CustomProviderSection";
 import { AddCustomProviderButton } from "./providers/AddCustomProviderButton";
+import { ProvidersDebtSection } from "./providers/ProvidersDebtSection";
 
 /**
  * Unified AI Providers settings — single card with all provider sub-sections.
@@ -62,6 +63,9 @@ export function UnifiedAIProviders({
 
         {/* Add custom provider button */}
         <AddCustomProviderButton />
+
+        {/* Deuda — opciones aparcadas de OpenRouter (card principal, sin colapsible) */}
+        <ProvidersDebtSection />
       </div>
     </div>
   );

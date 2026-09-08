@@ -40,6 +40,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
+import { hasInvalidModelSlotsAtom } from "@/atoms/modelValidationAtoms";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
@@ -349,7 +350,8 @@ export function ChatInput({
   useChatModeToggle();
 
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
-  const disableSendButton = false;
+  const hasInvalidModelSlots = useAtomValue(hasInvalidModelSlotsAtom);
+  const disableSendButton = hasInvalidModelSlots;
 
   // Reset hasAutoStartedRef when chatId changes
   useEffect(() => {
@@ -358,6 +360,11 @@ export function ChatInput({
 
   // Auto-start the chat when autoStart is true
   useEffect(() => {
+    // Card #242: este efecto llama a streamMessage() DIRECTO, sin pasar por
+    // handleSubmit. Sin este guard, un chat con autoStart dispararía contra un
+    // modelo inexistente pese a tener el input bloqueado.
+    if (hasInvalidModelSlots) return;
+
     if (autoStart && chatId && !isStreaming && !hasAutoStartedRef.current) {
       const messages = messagesById.get(chatId) ?? [];
 
@@ -380,7 +387,14 @@ export function ChatInput({
         });
       }
     }
-  }, [autoStart, chatId, messagesById, isStreaming, streamMessage]);
+  }, [
+    autoStart,
+    chatId,
+    messagesById,
+    isStreaming,
+    streamMessage,
+    hasInvalidModelSlots,
+  ]);
 
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {
@@ -548,6 +562,8 @@ export function ChatInput({
           next.delete(chatId);
           return next;
         });
+        // El undo ya terminó; la recarga de estado no debe prolongar el loader.
+        setIsUndoLoading(false);
         const chat = await ipc.chat.getChat(chatId);
         setMessagesById((prev) => {
           const next = new Map(prev);
@@ -568,10 +584,14 @@ export function ChatInput({
       revertVersion,
       setAgentTodosByChatId,
       setMessagesById,
+      t,
     ],
   );
 
   const handleSubmit = async () => {
+    if (hasInvalidModelSlots) {
+      return;
+    }
     if ((!inputValue.trim() && attachments.length === 0) || !chatId) {
       return;
     }
@@ -1195,7 +1215,11 @@ export function ChatInput({
                         disableSendButton
                       }
                       className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
-                      title={t("chat.sendMessage")}
+                      title={
+                        hasInvalidModelSlots
+                          ? t("models.validation.chatBlocked")
+                          : t("chat.sendMessage")
+                      }
                     >
                       <SendHorizontalIcon size={18} />
                     </button>

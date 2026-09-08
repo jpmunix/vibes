@@ -17,6 +17,7 @@ import {
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
+import { preprocessUnclosedCustomTags } from "../../shared/preprocessUnclosedCustomTags";
 
 import { VibesWrite } from "./VibesWrite";
 import { VibesRename } from "./VibesRename";
@@ -325,6 +326,8 @@ interface VibesMarkdownParserProps {
   content: string;
   isStreaming?: boolean;
   chatId?: number;
+  /** Timestamp del inicio del mensaje/turno, compartido por actividad y loader. */
+  startedAtMs?: number;
   forceFullMode?: boolean;
   isGitMessage?: boolean;
 }
@@ -336,6 +339,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   content,
   isStreaming: forceStreaming,
   chatId: forceChatId,
+  startedAtMs,
   forceFullMode,
   isGitMessage,
 }: VibesMarkdownParserProps) {
@@ -493,6 +497,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           key={`flow-trace-stream-${elements.length}`}
           items={items}
           isStreaming={isStreaming}
+          startedAtMs={startedAtMs}
           hasProseAfter={hasProseAfter}
         />,
       );
@@ -789,73 +794,15 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 });
 
 /**
- * Pre-process content to handle unclosed custom tags
- * Adds closing tags at the end of the content for any unclosed custom tags
- * Assumes the opening tags are complete and valid
- * Returns the processed content and a map of in-progress tags
+ * Pre-process content to handle unclosed custom tags.
+ * Delegamos en el helper compartido: ignora strings con aspecto de tags dentro
+ * de bloques completos, elimina cierres huérfanos y marca aperturas activas.
  */
 function preprocessUnclosedTags(content: string): {
   processedContent: string;
   inProgressTags: Map<string, Set<number>>;
 } {
-  let processedContent = content;
-  // Map to track which tags are in progress and their positions
-  const inProgressTags = new Map<string, Set<number>>();
-
-  // For each tag type, check if there are unclosed tags
-  for (const tagName of VIBES_CUSTOM_TAGS) {
-    // Count opening and closing tags
-    const openTagPattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>`, "g");
-    const closeTagPattern = new RegExp(`</${tagName}>`, "g");
-
-    // Track the positions of opening tags
-    const openingMatches: RegExpExecArray[] = [];
-    let match;
-
-    // Reset regex lastIndex to start from the beginning
-    openTagPattern.lastIndex = 0;
-
-    while ((match = openTagPattern.exec(processedContent)) !== null) {
-      openingMatches.push({ ...match });
-    }
-
-    const openCount = openingMatches.length;
-    const closeCount = (processedContent.match(closeTagPattern) || []).length;
-
-    // If we have more opening than closing tags
-    const missingCloseTags = openCount - closeCount;
-    if (missingCloseTags > 0) {
-      // Add the required number of closing tags at the end
-      processedContent += Array(missingCloseTags)
-        .fill(`</${tagName}>`)
-        .join("");
-
-      // Mark the last N tags as in progress where N is the number of missing closing tags
-      const inProgressIndexes = new Set<number>();
-      const startIndex = openCount - missingCloseTags;
-      for (let i = startIndex; i < openCount; i++) {
-        inProgressIndexes.add(openingMatches[i].index);
-      }
-      inProgressTags.set(tagName, inProgressIndexes);
-    }
-
-    // #238: si hay más closing tags que opening tags, hay cierres huérfanos.
-    // Los eliminamos para que no se rendericen como texto literal en la UI.
-    const orphanCloseTags = closeCount - openCount;
-    if (orphanCloseTags > 0) {
-      const closePattern = new RegExp(`</${tagName}>`, "g");
-      let removed = 0;
-      processedContent = processedContent.replace(closePattern, (match) => {
-        if (removed < orphanCloseTags) {
-          removed++;
-          return "";
-        }
-        return match;
-      });
-    }
-  }
-
-  return { processedContent, inProgressTags };
+  return preprocessUnclosedCustomTags(content, VIBES_CUSTOM_TAGS);
 }
 
 /**

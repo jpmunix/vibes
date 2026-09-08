@@ -186,6 +186,32 @@ export const languageModelContracts = {
     input: z.void(),
     output: z.object({ models: z.array(LocalModelSchema) }),
   }),
+
+  checkModelSlotsValidity: defineContract({
+    channel: "language-models:check-validity",
+    input: z.void(),
+    output: z.object({
+      isValid: z.boolean(),
+      invalidSlots: z.array(
+        z.object({
+          slotKey: z.string(),
+          // Clave i18n, no texto traducido: el backend no decide idioma
+          // (frontera P1 — ver model_validator.ts).
+          labelKey: z.string(),
+          labelParams: z.record(z.string(), z.string()).optional(),
+          currentValue: z.string(),
+          providerId: z.string(),
+          modelName: z.string(),
+          reason: z.enum([
+            "provider_missing",
+            "provider_disabled",
+            "model_not_found",
+            "model_unspecified",
+          ]),
+        }),
+      ),
+    }),
+  }),
 } as const;
 
 // =============================================================================

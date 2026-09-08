@@ -182,6 +182,7 @@ export const VALID_RECEIVE_CHANNELS = [
 
   // Model validator — notifies when stale models are auto-replaced on boot
   "models:migrated",
+  "models:validation-status",
 ] as const;
 
 // =============================================================================

@@ -528,11 +528,7 @@ export function ChatPanel({
               <>
                 {/* Mount MessagesList behind the skeleton; it renders natively (no virtualization) */}
                 <div
-                  className={
-                    isLoadingMessages
-                      ? "opacity-0"
-                      : "opacity-100 animate-in fade-in duration-150"
-                  }
+                  className={isLoadingMessages ? "opacity-0" : "opacity-100"}
                 >
                   <MessagesList
                     messages={progressiveMessages}

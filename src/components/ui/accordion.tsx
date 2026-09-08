@@ -147,11 +147,13 @@ function AccordionContent({ className, children, ...props }: AccordionContentPro
   // Radix parity (aproximado): el contenido no se monta cuando está cerrado.
   if (!item.open) return null;
 
+  // tw-animate-css eliminado: animate-accordion-down/up ya no existen.
+  // El contenido aparece directo (cero paja de animación).
   return (
     <div
       data-slot="accordion-content"
       data-state={item.open ? "open" : "closed"}
-      className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm"
+      className="overflow-hidden text-sm"
       {...props}
     >
       <div className={cn("pt-0 pb-4", className)}>{children}</div>

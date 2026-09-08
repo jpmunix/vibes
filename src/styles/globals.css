@@ -1,5 +1,8 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+/* tw-animate-css ELIMINADO: sus animaciones de entrada (animate-in/fade-in)
+   arrancan en opacity 0 y con animations-paused se quedaban congeladas
+   invisibles hasta el próximo click. Sin el plugin esas clases son no-ops
+   y todo aparece directo, sin paja. */
 @import "./typography.css";
 @import "./themes.css";
 @plugin "@tailwindcss/typography";

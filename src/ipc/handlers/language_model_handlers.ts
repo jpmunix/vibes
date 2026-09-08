@@ -305,4 +305,14 @@ export function registerLanguageModelHandlers() {
       return result;
     },
   );
+
+  createTypedHandler(
+    languageModelContracts.checkModelSlotsValidity,
+    async () => {
+      const { validateModelSettings } = await import(
+        "../utils/model_validator"
+      );
+      return validateModelSettings();
+    },
+  );
 }

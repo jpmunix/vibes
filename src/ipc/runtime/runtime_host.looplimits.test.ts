@@ -295,3 +295,27 @@ describe("applyAgentLoopLimits — #248 caps de contexto", () => {
     expect(getAgentLoopLimits().compaction?.serializeOutputMaxChars).toBe(8000);
   });
 });
+
+describe("applyAgentLoopLimits — #255 compactionTriggerTokens", () => {
+  it("sin compactionTriggerTokens → triggerTokens undefined (usa default triggerRatio)", () => {
+    applyAgentLoopLimits({});
+    expect(getAgentLoopLimits().compaction?.triggerTokens).toBeUndefined();
+  });
+
+  it("compactionTriggerTokens válido → aplicado con floor", () => {
+    applyAgentLoopLimits({ compactionTriggerTokens: 100_000.7 });
+    expect(getAgentLoopLimits().compaction?.triggerTokens).toBe(100_000);
+  });
+
+  it("compactionTriggerTokens por debajo del mínimo (10000) → no aplicado", () => {
+    applyAgentLoopLimits({ compactionTriggerTokens: 5000 });
+    expect(getAgentLoopLimits().compaction?.triggerTokens).toBeUndefined();
+  });
+
+  it("compactionTriggerTokens undefined resetea el valor anterior", () => {
+    applyAgentLoopLimits({ compactionTriggerTokens: 150_000 });
+    expect(getAgentLoopLimits().compaction?.triggerTokens).toBe(150_000);
+    applyAgentLoopLimits({ compactionTriggerTokens: undefined });
+    expect(getAgentLoopLimits().compaction?.triggerTokens).toBeUndefined();
+  });
+});

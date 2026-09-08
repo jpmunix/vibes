@@ -69,13 +69,29 @@ interface CachedModelsFile {
   cacheVersion: number;
 }
 
-const CACHE_VERSION = 3; // Bumped: collision-aware displayName resolution
+/**
+ * Versión del formato de caché. Exportada porque el validador de modelos
+ * (card #242) descarta cachés de versiones antiguas en vez de validar contra
+ * datos obsoletos.
+ */
+export const CACHE_VERSION = 3; // Bumped: collision-aware displayName resolution
 const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 
 // In-memory cache per provider
 const memoryCache = new Map<string, CachedModelsFile>();
 
-function getCacheFilePath(providerId: string): string {
+/**
+ * Ruta del fichero de caché de modelos de un provider.
+ *
+ * ⚠️ FUENTE ÚNICA DEL NAMING (card #242): el validador de modelos
+ * (`model_validator.ts`) también necesita localizar estas cachés. Construir el
+ * nombre por duplicado provocó un bug real: el validador buscaba
+ * `minube-models-cache.json` mientras el fichero escrito aquí era
+ * `custom__minube-models-cache.json` (el providerId ya trae el prefijo
+ * `custom::`). Al no encontrarlo, la validación de custom providers pasaba
+ * siempre en verde. Quien necesite la ruta, la pide aquí.
+ */
+export function getCacheFilePath(providerId: string): string {
   // Sanitize provider ID for filename (replace :: and special chars)
   const sanitized = providerId.replace(/[^a-zA-Z0-9_-]/g, "_");
   return path.join(app.getPath("userData"), `${sanitized}-models-cache.json`);

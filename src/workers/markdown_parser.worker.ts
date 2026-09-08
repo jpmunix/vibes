@@ -1,4 +1,5 @@
 import { unescapeXmlAttr, unescapeXmlContent } from "../../shared/xmlEscape";
+import { preprocessUnclosedCustomTags } from "../shared/preprocessUnclosedCustomTags";
 import {
   WorkerInput,
   WorkerOutput,
@@ -61,75 +62,14 @@ const VIBES_CUSTOM_TAGS = [
 ];
 
 /**
- * Pre-process content to handle unclosed custom tags
- * Adds closing tags at the end of the content for any unclosed custom tags
- * Assumes the opening tags are complete and valid
- * Returns the processed content and a map of in-progress tags
+ * Pre-process content to handle unclosed custom tags mediante el mismo contrato
+ * estructural que usa el parser síncrono.
  */
 function preprocessUnclosedTags(content: string): {
   processedContent: string;
   inProgressTags: Map<string, Set<number>>;
 } {
-  let processedContent = content;
-  // Map to track which tags are in progress and their positions
-  const inProgressTags = new Map<string, Set<number>>();
-
-  // For each tag type, check if there are unclosed tags
-  for (const tagName of VIBES_CUSTOM_TAGS) {
-    // Count opening and closing tags
-    const openTagPattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>`, "g");
-    const closeTagPattern = new RegExp(`</${tagName}>`, "g");
-
-    // Track the positions of opening tags
-    const openingMatches: RegExpExecArray[] = [];
-    let match;
-
-    // Reset regex lastIndex to start from the beginning
-    openTagPattern.lastIndex = 0;
-
-    while ((match = openTagPattern.exec(processedContent)) !== null) {
-      openingMatches.push({ ...match });
-    }
-
-    const openCount = openingMatches.length;
-    const closeCount = (processedContent.match(closeTagPattern) || []).length;
-
-    // If we have more opening than closing tags
-    const missingCloseTags = openCount - closeCount;
-    if (missingCloseTags > 0) {
-      // Add the required number of closing tags at the end
-      processedContent += Array(missingCloseTags)
-        .fill(`</${tagName}>`)
-        .join("");
-
-      // Mark the last N tags as in progress where N is the number of missing closing tags
-      const inProgressIndexes = new Set<number>();
-      const startIndex = openCount - missingCloseTags;
-      for (let i = startIndex; i < openCount; i++) {
-        inProgressIndexes.add(openingMatches[i].index);
-      }
-      inProgressTags.set(tagName, inProgressIndexes);
-    }
-
-    // #238: si hay más closing tags que opening tags, hay cierres huérfanos
-    // (el modelo emitió </think> sin apertura, o la apertura ya se strippó).
-    // Los eliminamos para que no se rendericen como texto literal en la UI.
-    const orphanCloseTags = closeCount - openCount;
-    if (orphanCloseTags > 0) {
-      // Quitamos los últimos N closing tags sobrantes (los huérfanos).
-      const closePattern = new RegExp(`</${tagName}>`, "g");
-      let removed = 0;
-      processedContent = processedContent.replace(closePattern, (match) => {
-        if (removed < orphanCloseTags) {
-          removed++;
-          return "";
-        }
-        return match;
-      });
-    }
-  }
-
-  return { processedContent, inProgressTags };
+  return preprocessUnclosedCustomTags(content, VIBES_CUSTOM_TAGS);
 }
 
 /**

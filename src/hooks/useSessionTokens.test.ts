@@ -198,6 +198,20 @@ describe("computeSessionTokens", () => {
     expect(summary.contextTokens).toBe(50000);
     expect(summary.contextOutput).toBe(0);
   });
+
+  it("#255: sanea contextTokens cuando un tag histórico viene inflado con el acumulado facturable (3.2M)", () => {
+    const shortText = "x".repeat(4000); // 1000 tokens de texto en el chat
+    const messages = [
+      msg(1, "user", "¿qué tal?"),
+      msg(2, "assistant", `${shortText}\n${tag('input="3224095" output="3967"')}`),
+    ];
+    const summary = computeSessionTokens(messages);
+    // totalInput conserva el dato del tag para coste/auditoría
+    expect(summary.totalInput).toBe(3224095);
+    // contextTokens NO es 3.2M: fue saneado a la estimación real del chat
+    expect(summary.contextTokens).toBeLessThan(3224095);
+    expect(summary.contextTokens).toBeGreaterThan(0);
+  });
 });
 
 describe("resolveGaugeTokens (#230 regresión gauge mudo)", () => {

@@ -166,5 +166,37 @@ describe("normalizeMessageContent", () => {
     expect(output).toContain("Voy a leer la función `performUndo` completa.");
     expect(output).toContain("let cleaned = msg.content.replace");
   });
+
+  it("elimina la cola exacta de cierres vibes huérfanos vista durante streaming", () => {
+    const input =
+      'Texto visible\n' +
+      '</vibes-write></vibes-token-usage></vibes-cancelled></vibes-files-changed>';
+    expect(normalizeMessageContent(input)).toBe("Texto visible\n");
+  });
+
+  it("elimina cierres vibes duplicados que crecen entre snapshots", () => {
+    const input =
+      '</vibes-write></vibes-write>' +
+      '<think>pensando</think><think>más</think>' +
+      '</vibes-token-usage></vibes-token-usage>' +
+      '</vibes-cancelled></vibes-cancelled>' +
+      '</vibes-files-changed></vibes-files-changed>';
+    const output = normalizeMessageContent(input);
+    expect(output).toBe(
+      '<vibes-think>pensando</vibes-think><vibes-think>más</vibes-think>',
+    );
+  });
+
+  it("preserva bloques vibes completos válidos y su contenido", () => {
+    const input =
+      '<vibes-token-usage input="10" output="5"></vibes-token-usage>\n' +
+      '<vibes-write path="a.ts">contenido</vibes-write>';
+    expect(normalizeMessageContent(input)).toBe(input);
+  });
+
+  it("preserva una apertura vibes en progreso para el parser de streaming", () => {
+    const input = '<vibes-write path="a.ts">contenido parcial';
+    expect(normalizeMessageContent(input)).toBe(input);
+  });
 });
 

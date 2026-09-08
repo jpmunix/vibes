@@ -159,6 +159,15 @@ const ChatMessage = ({
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
   const isSystem = (message.role as string) === "system";
+  // The optimistic assistant placeholder is stamped when the stream starts.
+  // Reuse that same instant for every activity panel in the turn so consecutive
+  // tool groups never restart their visible clock. Completed historical messages
+  // still fall back to their persisted duration inside FlowActivityStream.
+  const activityStartedAtMs = useMemo(() => {
+    if (!isAssistant || !message.createdAt) return undefined;
+    const timestamp = new Date(message.createdAt).getTime();
+    return Number.isFinite(timestamp) ? timestamp : undefined;
+  }, [isAssistant, message.createdAt]);
 
   // --- User message collapse state ---
   const userContentRef = useRef<HTMLDivElement>(null);
@@ -569,21 +578,12 @@ const ChatMessage = ({
       lastThinkBlockStart !== -1 &&
       (lastThinkBlockEnd === -1 || lastThinkBlockEnd >= lastOpenIndex)
     ) {
-      const ongoingContent = normalizedMessageContent.slice(lastThinkBlockStart);
-      const cleanText = ongoingContent
-        .replace(/<\/?think>/gi, "")
-        .replace(/<[^>]+>/g, "")
-        .replace(/[#*_`~>\-|]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-      const excerpt = cleanText
-        ? cleanText.split(" ").slice(-20).join(" ")
-        : undefined;
       return {
         label: "Pensando",
         dotColorClass: "bg-violet-400",
         labelColorClass: "text-violet-400",
-        contentExcerpt: excerpt,
+        // La banda de streaming solo muestra estados; nunca texto/tokens crudos.
+        contentExcerpt: undefined,
       };
     }
 
@@ -600,27 +600,6 @@ const ChatMessage = ({
         const detail = getToolDetail(lastOpenTag, attributes);
         const activeLabel = meta.pendingLabel ?? meta.label;
 
-        let contentExcerpt: string | undefined = undefined;
-        // Extract a short excerpt from the ongoing tool/thinking content
-        if (lastOpenIndex !== -1) {
-          const ongoingContent = normalizedMessageContent.slice(lastOpenIndex);
-          // Strip basic markdown to get clean text for the excerpt
-          const cleanText = ongoingContent
-            .replace(/<[^>]+>/g, "") // remove inner tags if any
-            .replace(/[#*_`~>\-|]/g, "") // remove basic markdown chars
-            .replace(/\s+/g, " ") // normalize spacing
-            .trim();
-
-          if (cleanText) {
-            // Get roughly the last ~20 words for a more generous peek
-            const words = cleanText.split(" ");
-            const excerpt = words.slice(-20).join(" ");
-            contentExcerpt = words.length > 20 ? `...${excerpt}` : excerpt;
-          } else {
-            contentExcerpt = "...";
-          }
-        }
-
         // For ask-user, don't append the (potentially very long) question as detail
         const skipDetail = lastOpenTag === "vibes-ask-user";
 
@@ -629,7 +608,9 @@ const ChatMessage = ({
             !skipDetail && detail ? `${activeLabel} ${detail}` : activeLabel,
           dotColorClass: getBgColorClass(meta.color),
           labelColorClass: meta.color,
-          contentExcerpt,
+          // Nunca mostrar el body crudo de una tool: puede contener tokens,
+          // código o cierres internos parciales mientras llegan los deltas.
+          contentExcerpt: undefined,
         };
       }
     }
@@ -845,6 +826,7 @@ const ChatMessage = ({
                             <VibesMarkdownParser
                               content={normalizedMessageContent}
                               forceFullMode={forceFullMode}
+                              startedAtMs={activityStartedAtMs}
                               isGitMessage={
                                 message.model === "vibes/git-assistant"
                               }

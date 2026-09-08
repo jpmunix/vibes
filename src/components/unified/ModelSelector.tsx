@@ -117,9 +117,22 @@ export function ModelSelector({
     return [...specials, ...visibleModels.map((m) => toOption(m))];
   }, [specialOptions, visibleModels]);
 
+  // Índice apiName → modelo. renderItem se llama UNA VEZ POR FILA, y antes hacía
+  // un find() lineal sobre visibleModels: O(n²) por apertura (con 400 modelos,
+  // ~160.000 comparaciones de string). Con el Map es O(1) por fila.
+  const modelsByApiName = useMemo(() => {
+    const map = new Map<string, AnyModel>();
+    for (const m of visibleModels) map.set(m.apiName, m);
+    return map;
+  }, [visibleModels]);
+
+  const specialValues = useMemo(
+    () => new Set((specialOptions || []).map((s) => s.value)),
+    [specialOptions],
+  );
+
   const renderItem = useCallback((option: SelectorOption, isSelected: boolean) => {
-    const isSpecial = (specialOptions || []).some((s) => s.value === option.value);
-    if (isSpecial) {
+    if (specialValues.has(option.value)) {
       return (
         <div className="flex flex-col gap-0 flex-1 min-w-0">
           <span className={cn("font-medium", isSelected && "!font-bold")}>{option.label}</span>
@@ -127,7 +140,7 @@ export function ModelSelector({
         </div>
       );
     }
-    const model = visibleModels.find((m) => m.apiName === option.value);
+    const model = modelsByApiName.get(option.value);
     if (!model) return null;
     const sp = getSourceProvider(model);
     const sl = getSourceLabel(model);
@@ -144,7 +157,7 @@ export function ModelSelector({
         </div>
       </div>
     );
-  }, [visibleModels, specialOptions, showProviderBadge]);
+  }, [modelsByApiName, specialValues, showProviderBadge, t]);
 
   return (
     <UnifiedSelector

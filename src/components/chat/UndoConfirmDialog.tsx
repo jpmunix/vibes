@@ -15,6 +15,7 @@ import {
   AlertTriangle,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import type { UncommittedFile } from "@/hooks/useUncommittedFiles";
 
 interface UndoConfirmDialogProps {
@@ -41,21 +42,6 @@ function getStatusIcon(status: UncommittedFile["status"]) {
   }
 }
 
-function getStatusLabel(status: UncommittedFile["status"]) {
-  switch (status) {
-    case "added":
-      return "Añadido";
-    case "modified":
-      return "Modificado";
-    case "deleted":
-      return "Eliminado";
-    case "renamed":
-      return "Renombrado";
-    default:
-      return status;
-  }
-}
-
 export function UndoConfirmDialog({
   isOpen,
   onOpenChange,
@@ -64,23 +50,24 @@ export function UndoConfirmDialog({
   uncommittedFiles,
   isLoading,
 }: UndoConfirmDialogProps) {
+  const { t } = useI18n();
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="!w-fit !max-w-[90vw] min-w-[24rem]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            Hay cambios sin commitear
+            {t("chat.undoUncommittedTitle")}
           </DialogTitle>
           <DialogDescription>
-            Si deshaces todo, estos cambios en el código se perderán. Puedes
-            deshacer solo el mensaje y dejar el código como está.
+            {t("chat.undoUncommittedDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div>
           <p className="text-sm font-medium mb-2">
-            Archivos con cambios ({uncommittedFiles.length})
+            {t("chat.undoChangedFiles", { count: uncommittedFiles.length })}
           </p>
           <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-0.5">
             {uncommittedFiles.map((file) => (
@@ -110,7 +97,7 @@ export function UndoConfirmDialog({
                       "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
                   )}
                 >
-                  {getStatusLabel(file.status)}
+                  {t(`chat.undoStatus.${file.status}`)}
                 </span>
               </div>
             ))}
@@ -123,21 +110,21 @@ export function UndoConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button
             variant="default"
             onClick={onUndoMessageOnly}
             disabled={isLoading}
           >
-            Solo deshacer mensaje
+            {t("chat.undoMessageOnly")}
           </Button>
           <Button
             variant="destructive"
             onClick={onUndoAll}
             disabled={isLoading}
           >
-            Deshacer todo
+            {t("chat.undoAll")}
           </Button>
         </DialogFooter>
       </DialogContent>

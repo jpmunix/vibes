@@ -314,6 +314,33 @@ export function AIBehaviorSettings({
             }
           />
 
+          <SettingRow
+            label={t("settingsItems.umbral_de_compactacion")}
+            description={t("settingsItems.umbral_de_compactacionDesc")}
+            control={
+              <UnifiedSelector
+                value={settings?.compactionTriggerTokens ? String(settings.compactionTriggerTokens) : "auto"}
+                onChange={(value) =>
+                  updateSettings({
+                    compactionTriggerTokens: value === "auto" ? undefined : Number(value),
+                  })
+                }
+                options={[
+                  { value: "auto", label: t("settingsItems.umbral_de_compactacionAuto") },
+                  { value: "60000", label: "60K" },
+                  { value: "100000", label: "100K" },
+                  { value: "150000", label: "150K" },
+                  { value: "250000", label: "250K" },
+                  { value: "500000", label: "500K" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[180px]"
+                data-testid="agent-compaction-trigger-selector"
+              />
+            }
+          />
+
           {/* ── Modelo Ejecutor ── */}
           <SettingRow
             label={t("settingsItems.modelo_ejecutor")}

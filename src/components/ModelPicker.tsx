@@ -21,6 +21,12 @@ function getProviderLabel(provider: string, customProviders?: any[]): string {
   return cp?.name || provider;
 }
 
+/**
+ * Referencia estable para "sin custom providers". Sin esto, `settings.customProviders ?? []`
+ * crea un array nuevo en cada render e invalida el useMemo de filtrado/orden.
+ */
+const EMPTY_CUSTOM_PROVIDERS: any[] = [];
+
 interface ModelPickerProps { chatId?: number; }
 
 export function ModelPicker({ chatId }: ModelPickerProps) {
@@ -56,16 +62,22 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
   const { isLoading: providersLoading } = useLanguageModelProviders();
   const loading = modelsLoading || providersLoading;
 
-  if (!settings) return null;
-  const selectedModel = settings.selectedModel;
+  // OJO: nada de `if (!settings) return null` aquí — abajo hay useMemo y un
+  // early return antes de ellos cambia el número de hooks entre renders
+  // (settings llega async), que es violación de las reglas de hooks.
+  // El guard va al final, justo antes del return del JSX.
+  const selectedModel = settings?.selectedModel;
+  const selectedModelName = selectedModel?.name;
+  const selectedModelProvider = selectedModel?.provider;
 
   const searchLower = useMemo(() => search.toLowerCase(), [search]);
-  const customProviders = settings.customProviders ?? [];
+  // Referencia estable: `?? []` inline creaba un array nuevo por render.
+  const customProviders = settings?.customProviders ?? EMPTY_CUSTOM_PROVIDERS;
 
   // ── Derive filtered/sorted models (memoized: no recompute on every render frame)
   const { sortedModels, filteredCount, totalCount, availableProvidersForPanel, selectedApiName } = useMemo(() => {
     if (!allModels) {
-      return { sortedModels: [] as Array<{ provider: string; model: LanguageModel }>, filteredCount: 0, totalCount: 0, availableProvidersForPanel: [] as Array<{ id: string; label: string }>, selectedApiName: selectedModel.name as string };
+      return { sortedModels: [] as Array<{ provider: string; model: LanguageModel }>, filteredCount: 0, totalCount: 0, availableProvidersForPanel: [] as Array<{ id: string; label: string }>, selectedApiName: (selectedModelName ?? "") as string };
     }
 
     const doesMatch = (m: LanguageModel) => !searchLower || matchesModelSearch(search, m.displayName, m.apiName);
@@ -81,40 +93,53 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
     const uniqueProviders = [...new Set(avail.map((m) => m.provider))];
     const panelProviders = uniqueProviders.map((id) => ({ id, label: getProviderLabel(id, customProviders as any) }));
 
-    const sorted = [...filtered].sort((a, b) => {
-      const isASelected = a.provider === selectedModel.provider && a.model.apiName === selectedModel.name;
-      const isBSelected = b.provider === selectedModel.provider && b.model.apiName === selectedModel.name;
-      if (isASelected) return -1;
-      if (isBSelected) return 1;
-      if (filters.sortBy && filters.sortBy !== "default") {
-        const mult = filters.sortOrder === "asc" ? 1 : -1;
-        if (filters.sortBy === "price_input") {
+    // Precalcular por modelo lo que el comparador necesitaba recalcular en CADA
+    // comparación (n·log n veces): la clave de stats concatenada y el flag de
+    // seleccionado. Con listas grandes esto era trabajo puro tirado a la basura.
+    const decorated = filtered.map(({ provider, model }) => ({
+      provider,
+      model,
+      isSelected: provider === selectedModelProvider && model.apiName === selectedModelName,
+      usage: stats[`${provider}:${model.apiName}`] || 0,
+      isAutoRouter: provider === "auto-router",
+    }));
+
+    const sortBy = filters.sortBy;
+    const mult = filters.sortOrder === "asc" ? 1 : -1;
+
+    decorated.sort((a, b) => {
+      if (a.isSelected) return -1;
+      if (b.isSelected) return 1;
+      if (sortBy && sortBy !== "default") {
+        if (sortBy === "price_input") {
           const pa = a.model.pricingInput ? parseFloat(a.model.pricingInput) : Infinity;
           const pb = b.model.pricingInput ? parseFloat(b.model.pricingInput) : Infinity;
           if (pa !== pb) return (pa - pb) * mult;
-        } else if (filters.sortBy === "price_output") {
+        } else if (sortBy === "price_output") {
           const pa = a.model.pricingOutput ? parseFloat(a.model.pricingOutput) : Infinity;
           const pb = b.model.pricingOutput ? parseFloat(b.model.pricingOutput) : Infinity;
           if (pa !== pb) return (pa - pb) * mult;
-        } else if (filters.sortBy === "context") {
+        } else if (sortBy === "context") {
           const ca = a.model.contextWindow ?? 0;
           const cb = b.model.contextWindow ?? 0;
           if (ca !== cb) return (ca - cb) * mult;
         }
       }
-      const usageA = stats[`${a.provider}:${a.model.apiName}`] || 0;
-      const usageB = stats[`${b.provider}:${b.model.apiName}`] || 0;
-      if (usageA !== usageB) return usageB - usageA;
-      if (a.provider === "auto-router" && b.provider !== "auto-router") return -1;
-      if (a.provider !== "auto-router" && b.provider === "auto-router") return 1;
+      if (a.usage !== b.usage) return b.usage - a.usage;
+      if (a.isAutoRouter && !b.isAutoRouter) return -1;
+      if (!a.isAutoRouter && b.isAutoRouter) return 1;
       return a.model.displayName.localeCompare(b.model.displayName);
     });
 
-    const entry = sorted.find((sm) => sm.provider === selectedModel.provider && (sm.model.apiName === selectedModel.name || sm.model.apiName.endsWith(`::${selectedModel.name}`)));
-    const apiName = entry ? entry.model.apiName : (selectedModel.name as string);
+    const sorted = decorated.map(({ provider, model }) => ({ provider, model }));
+
+    const entry = decorated.find((sm) => sm.provider === selectedModelProvider && (sm.model.apiName === selectedModelName || sm.model.apiName.endsWith(`::${selectedModelName}`)));
+    const apiName = entry ? entry.model.apiName : ((selectedModelName ?? "") as string);
 
     return { sortedModels: sorted, filteredCount: filtered.length, totalCount: totalModelCount, availableProvidersForPanel: panelProviders, selectedApiName: apiName };
-  }, [allModels, searchLower, search, filters, stats, selectedModel, customProviders]);
+    // Deps primitivas (selectedModelName/Provider) en vez del objeto selectedModel,
+    // que cambia de identidad en cada render de settings e invalidaba este memo.
+  }, [allModels, searchLower, search, filters, stats, selectedModelName, selectedModelProvider, customProviders]);
 
   const selectorModels = useMemo(() => sortedModels.map(({ provider, model }) => ({
     ...model,
@@ -130,20 +155,33 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
     onModelSelect({ name: storedName, provider: found.provider as any, customModelId });
   }, [sortedModels, onModelSelect]);
 
-  const rightPanel = useMemo(() => (
-    <ModelFiltersPanel
-      filters={filters}
-      onChange={setFilters}
-      availableProviders={availableProvidersForPanel}
-      filteredCount={filteredCount}
-      totalCount={totalCount}
-    />
-  ), [filters, setFilters, availableProvidersForPanel, filteredCount, totalCount]);
+  // Popover controlado para poder montar el panel de filtros SOLO cuando está
+  // abierto. Antes: `rightPanel` se instanciaba en cada render (aunque el popover
+  // estuviera cerrado) → 3 sliders custom + Select Radix + chips de providers,
+  // trabajo tirado a la basura. Ahora: cerrado = null, abierto = panel.
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const rightPanel = useMemo(() => {
+    if (!pickerOpen) return null;
+    return (
+      <ModelFiltersPanel
+        filters={filters}
+        onChange={setFilters}
+        availableProviders={availableProvidersForPanel}
+        filteredCount={filteredCount}
+        totalCount={totalCount}
+      />
+    );
+  }, [pickerOpen, filters, setFilters, availableProvidersForPanel, filteredCount, totalCount]);
 
   const modelDisplayName = useMemo(() => {
-    const found = (allModels || []).find((m: any) => m.sourceProvider === selectedModel.provider && (m.apiName === selectedModel.name || (m.apiName as string).endsWith(`::${selectedModel.name}`)));
-    return found ? (found as any).displayName : selectedModel.name;
-  }, [allModels, selectedModel]);
+    const found = (allModels || []).find((m: any) => m.sourceProvider === selectedModelProvider && (m.apiName === selectedModelName || (m.apiName as string).endsWith(`::${selectedModelName}`)));
+    return found ? (found as any).displayName : selectedModelName;
+  }, [allModels, selectedModelName, selectedModelProvider]);
+
+  // Guard DESPUÉS de todos los hooks (ver nota arriba): settings llega async y
+  // un return temprano antes de los useMemo rompería el orden de hooks.
+  if (!settings) return null;
 
   return (
     <ModelSelector
@@ -157,6 +195,8 @@ export function ModelPicker({ chatId }: ModelPickerProps) {
       side="top"
       showProviderBadge={false}
       rightPanel={rightPanel}
+      open={pickerOpen}
+      onOpenChange={setPickerOpen}
     />
   );
 }

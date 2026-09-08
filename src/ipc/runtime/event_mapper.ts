@@ -13,6 +13,9 @@
 import type { RuntimeEvent } from "@vibes/shared";
 import { resolveRuntimeToolTag } from "@/lib/tools/toolPresentation";
 import { escapeXmlContent } from "../../../shared/xmlEscape";
+import {
+  stripOrphanVibesClosingTags,
+} from "@/components/chat/normalizeMessageContent";
 
 // ============================================================================
 // Tool → vibes tag
@@ -568,6 +571,24 @@ export class VibesEventMapper {
     return content;
   }
 
+  /**
+   * Traza temporal (se retira tras validar el fix): si buildLiveContent
+   * genera un snapshot con cierres `<vibes-*>` colgados, los pintamos para
+   * distinguir si el culpable es el mapper o el modelo.
+   */
+  private debugSnapshot(label: string, snapshot: string): void {
+    const dangling = snapshot.match(/<\/vibes-[\w-]+>/g);
+    if (!dangling || dangling.length === 0) return;
+    // eslint-disable-next-line no-console
+    console.error(
+      `[buildLiveContent:${label}] cierres vibes colgados`,
+      JSON.stringify({
+        snapshot_tail: snapshot.slice(-200),
+        dangling,
+      }),
+    );
+  }
+
   /** BUGFIX #122: expone el error capturado de session.failed (o null). */
   getFailedError(): string | null {
     return this.failedError;
@@ -713,5 +734,28 @@ export function cleanResponseText(text: string): string {
   cleaned = cleaned.replace(/<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi, "");
   cleaned = cleaned.replace(/<\/?\w+:function_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:function_call>)?/gi, "");
   cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  // ─── Pase 6: cierres vibes-* huérfanos del modelo (card #251 streaming) ──
+  // El modelo puede emitir cierres `</vibes-write>`, `</vibes-token-usage>`,
+  // `</vibes-cancelled>`, `</vibes-files-changed>` sin la apertura equivalente
+  // en el mismo string, especialmente cuando el bridge acumula snapshots y el
+  // contenido se reenvía varias veces. Sin esto, los cierres se persisten en
+  // Bunny y la UI los pinta como texto literal. Mismo contrato que el
+  // preprocesador del parser: enmascara bloques válidos y elimina solo los
+  // cierres que quedan fuera.
+  const beforeVibesStrip = cleaned;
+  cleaned = stripOrphanVibesClosingTags(cleaned);
+  if (cleaned !== beforeVibesStrip) {
+    // Traza temporal (se retira tras validar el fix): confirma que el modelo
+    // emite los cierres y descarta que venga del propio timeline del bridge.
+    // eslint-disable-next-line no-console
+    console.error(
+      "[cleanResponseText] huérfanos vibes eliminados",
+      JSON.stringify({
+        before: beforeVibesStrip.slice(-200),
+        after: cleaned.slice(-200),
+      }),
+    );
+  }
   return cleaned.trim();
 }

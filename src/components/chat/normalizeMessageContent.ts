@@ -103,6 +103,34 @@ export function stripOrphanThinkTags(text: string): string {
 }
 
 /**
+ * Elimina cierres huérfanos de cualquier tag interno `<vibes-*>` sin tocar
+ * bloques completos válidos ni aperturas todavía en progreso durante streaming.
+ *
+ * El stream puede reenviar snapshots acumulativos y dejar una cola como:
+ * `</vibes-write></vibes-token-usage></vibes-cancelled></vibes-files-changed>`.
+ * ReactMarkdown la pinta como texto literal. Para distinguirla de código fuente
+ * leído por una tool, enmascaramos primero todos los bloques completos y solo
+ * eliminamos los cierres que quedan fuera de ellos.
+ */
+export function stripOrphanVibesClosingTags(text: string): string {
+  const completeBlocks: string[] = [];
+  const masked = text.replace(
+    /<(vibes-[\w-]+)(?:\s[^>]*)?>[\s\S]*?<\/\1>/gi,
+    (block) => {
+      const index = completeBlocks.length;
+      completeBlocks.push(block);
+      return `___VIBES_COMPLETE_BLOCK_${index}___`;
+    },
+  );
+
+  const withoutOrphans = masked.replace(/<\/vibes-[\w-]+\s*>/gi, "");
+  return withoutOrphans.replace(
+    /___VIBES_COMPLETE_BLOCK_(\d+)___/g,
+    (_, index) => completeBlocks[Number(index)],
+  );
+}
+
+/**
  * Normaliza el contenido de un mensaje ANTES de parsearlo para la UI.
  *
  * 1. `normalizeLegacyTags` — shim backward-compat (dyad-* → vibes-*).
@@ -113,17 +141,20 @@ export function stripOrphanThinkTags(text: string): string {
  *    memoria de turno `[Previous Turn Context Summary]` (ver arriba).
  * 4. `stripContextSummaryTags` — elimina los tags crudos `<vibes-context-summary>`
  *    que el modelo reproduce (retroactivo, ver arriba).
- * 5. `stripOrphanThinkTags` — elimina `</think>` y tags de cierre huérfanos para
- *    que jamás se pinten como texto literal en la vista del usuario.
+ * 5. `stripOrphanThinkTags` — elimina `</think>` y tags de cierre huérfanos.
+ * 6. `stripOrphanVibesClosingTags` — elimina cualquier cierre interno
+ *    `<vibes-*>` huérfano restante sin tocar bloques válidos ni aperturas activas.
  *
  * El mismo filtro DSML se aplica en el provider (vibes-core) para los mensajes
  * nuevos en streaming; aquí cubre además los mensajes ya persistidos.
  */
 export function normalizeMessageContent(content: string | null | undefined): string {
   if (!content) return "";
-  return stripOrphanThinkTags(
-    stripContextSummaryTags(
-      stripPreviousTurnSummary(stripDsmlToolCallBlocks(normalizeLegacyTags(content))),
+  return stripOrphanVibesClosingTags(
+    stripOrphanThinkTags(
+      stripContextSummaryTags(
+        stripPreviousTurnSummary(stripDsmlToolCallBlocks(normalizeLegacyTags(content))),
+      ),
     ),
   );
 }

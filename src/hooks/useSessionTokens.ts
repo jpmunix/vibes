@@ -212,7 +212,20 @@ export function computeSessionTokens(messages: Message[]): SessionTokenSummary {
   // #230: contexto real del último turno (input + output del último mensaje
   // con tag, o su totalTokens). Es el contexto real que vio el runtime en el
   // último turno — no la suma de todos los turnos.
-  const contextTokens = lastRealInput ?? 0;
+  //
+  // #255: Sanity check defensivo para tags históricos inflados por el bug del
+  // acumulado facturable (donde se guardó 3.2M en mensajes de chats con 75 iteraciones).
+  // Ningún modelo en producción tiene un context window > 2M (Gemini 1.5 Pro llega a 2M).
+  // Si contextTokens supera 2M, es inequívocamente el acumulado facturable corrupto
+  // y lo saneamos a la estimación del chat para que el gauge no pinte 3.2M ni reviente en rojo.
+  let chatTextTokens = 0;
+  for (const m of messages) {
+    if (m.content) chatTextTokens += estimateTokens(m.content);
+  }
+  let contextTokens = lastRealInput ?? 0;
+  if (contextTokens > 2_000_000 && chatTextTokens > 0) {
+    contextTokens = chatTextTokens;
+  }
   const contextOutput = lastRealOutput ?? 0;
 
   if (perMessage.length > 0) {

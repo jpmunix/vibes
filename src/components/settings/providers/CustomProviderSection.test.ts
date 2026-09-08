@@ -46,13 +46,12 @@ describe("isLastConfiguredProvider (guard D5)", () => {
     expect(isLastConfiguredProvider(settings)).toBe(true);
   });
 
-  it("OpenRouter con keys + 1 custom → NO es el último", () => {
+  it("OpenRouter con apiKey + 1 custom → NO es el último", () => {
     const settings = baseSettings({
       ollamaEnabled: false, // fuerza el caso: OpenRouter + custom siguen contando
       providerSettings: {
         openrouter: {
-          keys: [{ id: "k1", key: { value: "sk-or-v1-xxx", encryptionType: "plaintext" } }],
-          selectedKeyId: "k1",
+          apiKey: { value: "sk-or-v1-xxx", encryptionType: "plaintext" },
         },
       },
       customProviders: [

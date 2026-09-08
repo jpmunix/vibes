@@ -1,233 +1,497 @@
 /**
- * Card #87 — Slice D: validator multi-proveedor (boot).
+ * Card #242 — Validación de modelos al arranque (detector puro, sin fallbacks ni mutaciones).
  *
- * Testea `validateModelReferences` (función pura, sin I/O): valida TODAS las
- * referencias de modelos contra el catálogo de models.dev y migra las muertas
- * con un fallback del MISMO provider (o universal de OpenRouter).
+ * Testea `validateModelReferences`: valida TODAS las referencias de modelos contra
+ * catálogo de models.dev, providers locales, y custom providers con sus listas cacheadas.
  *
- * Formato de los IDs (verificado en ProviderSwitchDialog + model_resolver):
- *   - openrouter  → name = "vendor/model" (con /), provider = "openrouter"
- *   - nativo      → name = "claude-opus-4-5" (PELADO), provider = "anthropic"
- *   - cross/local → "ollama::qwen2.5-coder" (separador ::)
- *   - custom      → provider = "custom::id", name = apiName (validado en DB)
+ * ⚠️ En piedra:
+ * Cero reescritura automática de settings. Si un modelo no existe o su provider fue
+ * borrado, se reporta en `invalidSlots` con la razón exacta ('provider_missing' | 'model_not_found').
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import * as fsSync from "fs";
+import * as os from "os";
+import * as nodePath from "path";
 import type { Catalog } from "@opencode-ai/models";
-import { validateModelReferences } from "./model_validator";
+import {
+  validateModelReferences,
+  SLOT_LABEL_KEY_PREFIX,
+  type ValidationDeps,
+} from "./model_validator";
 import type { UserSettings } from "../../lib/schemas";
 import sampleFixture from "./__fixtures__/models-dev-sample.json";
 
 const CATALOG = sampleFixture as unknown as Catalog;
 
-/** ¿Algún elemento de la lista contiene el substring? (Vitest no anida matchers en toContain). */
-const containsAny = (arr: string[], sub: string) => arr.some((e) => e.includes(sub));
-
 const base = (patch: Record<string, unknown> = {}): UserSettings =>
   ({
-    selectedModel: { name: "anthropic/claude-opus-4.6", provider: "openrouter" },
-    executorModel: null,
-    strategistModel: null,
-    enabledOpenRouterModels: [],
+    selectedModel: { name: "aion-labs/aion-2.0", provider: "openrouter" },
+    executorModel: "aion-labs/aion-2.0",
+    strategistModel: "aion-labs/aion-2.0",
+    fallbackModel: null,
+    memoriesSynthesisModelV2: null,
+    memoriesRouterModelV2: null,
     ...patch,
   }) as unknown as UserSettings;
 
-const deps = { catalog: CATALOG, customModelNames: new Set<string>() };
+const deps: ValidationDeps = {
+  catalog: CATALOG,
+  customModelNames: new Set<string>(),
+  configuredProviderIds: new Set<string>(["openrouter", "paretoinference", "box1"]),
+};
 
 // ─── selectedModel ─────────────────────────────────────────────────────────
 
 describe("selectedModel", () => {
-  it("openrouter válido → no migra (preserva name+provider)", () => {
+  it("openrouter válido → isValid = true, sin slots inválidos", () => {
     const s = base({ selectedModel: { name: "aion-labs/aion-2.0", provider: "openrouter" } });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel).toEqual({ name: "aion-labs/aion-2.0", provider: "openrouter" });
-    expect(containsAny(r.migrated, "selectedModel")).toBe(false);
+    expect(r.isValid).toBe(true);
+    expect(r.invalidSlots).toHaveLength(0);
   });
 
-  it("nativo válido (name PELADO) → no migra", () => {
+  it("nativo válido (name pelado en catálogo) → válido", () => {
     const s = base({ selectedModel: { name: "claude-opus-4-5", provider: "anthropic" } });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel?.name).toBe("claude-opus-4-5");
-    expect(r.settings.selectedModel?.provider).toBe("anthropic");
+    expect(r.isValid).toBe(true);
+    expect(r.invalidSlots).toHaveLength(0);
   });
 
-  it("openrouter muerto → fallback universal de OpenRouter", () => {
+  it("openrouter inexistente → reporta slot inválido con model_not_found (NO muta ni asigna fallback)", () => {
     const s = base({ selectedModel: { name: "vendor/model-jetado", provider: "openrouter" } });
     const r = validateModelReferences(s, deps);
-    // El fallback es un vendor/model conocido de OR (google/gemini-3-flash-preview).
-    expect(r.settings.selectedModel?.provider).toBe("openrouter");
-    expect(r.settings.selectedModel?.name).toMatch(/google\//);
-    expect(containsAny(r.migrated, "selectedModel")).toBe(true);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots).toHaveLength(1);
+    expect(r.invalidSlots[0]).toMatchObject({
+      slotKey: "selectedModel",
+      modelName: "vendor/model-jetado",
+      providerId: "openrouter",
+      reason: "model_not_found",
+    });
   });
 
-  it("nativo muerto → fallback del MISMO provider (id pelado)", () => {
-    const s = base({ selectedModel: { name: "modelo-inexistente", provider: "deepseek" } });
+  it("custom provider configurado con modelo existente en caché → válido", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["paretoinference"]),
+      // El mapa SIEMPRE se indexa con la forma canónica `custom::<id>`.
+      providerModelMap: new Map([["custom::paretoinference", new Set(["z-ai"])]]),
+    };
+    const s = base({
+      selectedModel: { name: "z-ai", provider: "custom::paretoinference" },
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
+    expect(r.invalidSlots).toHaveLength(0);
+  });
+
+  it("custom provider no configurado → reporta provider_missing", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["openrouter"]), // paretoinference NO está
+    };
+    const s = base({
+      selectedModel: { name: "z-ai", provider: "custom::paretoinference" },
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots).toHaveLength(1);
+    expect(r.invalidSlots[0].reason).toBe("provider_missing");
+    expect(r.invalidSlots[0].slotKey).toBe("selectedModel");
+  });
+
+  it("custom provider configurado pero modelo ausente en caché local → reporta model_not_found", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["paretoinference"]),
+      providerModelMap: new Map([
+        ["custom::paretoinference", new Set(["otro-modelo"])],
+      ]),
+    };
+    const s = base({
+      selectedModel: { name: "modelo-inexistente", provider: "custom::paretoinference" },
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots).toHaveLength(1);
+    expect(r.invalidSlots[0].reason).toBe("model_not_found");
+  });
+
+  it("local provider (ollama/lmstudio) → siempre válido sin bloquear por red", () => {
+    const s = base({
+      selectedModel: { name: "qwen2.5-coder:7b", provider: "ollama" },
+    });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel?.provider).toBe("deepseek");
-    // id pelado de deepseek (key del catálogo), no un vendor/model.
-    expect(r.settings.selectedModel?.name).not.toContain("/");
-    expect(containsAny(r.migrated, "selectedModel")).toBe(true);
-  });
-
-  it("nativo sin candidatos viables (openai fixture: deprecated/ctx<32k) → fallback universal OR", () => {
-    const s = base({ selectedModel: { name: "modelo-inexistente", provider: "openai" } });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel?.provider).toBe("openrouter");
-  });
-
-  it("nativo deprecated → SOLO aviso (no auto-migra)", () => {
-    const s = base({ selectedModel: { name: "gpt-4", provider: "openai" } });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel?.name).toBe("gpt-4"); // intacto
-    expect(containsAny(r.deprecated, "gpt-4")).toBe(true);
-    expect(containsAny(r.migrated, "selectedModel")).toBe(false);
-  });
-
-  it("custom muerto pero en la DB → no toca", () => {
-    const withCustom = { catalog: CATALOG, customModelNames: new Set(["mi-modelo"]) };
-    const s = base({ selectedModel: { name: "mi-modelo", provider: "custom::box1" } });
-    const r = validateModelReferences(s, withCustom);
-    expect(r.settings.selectedModel?.name).toBe("mi-modelo");
-    expect(containsAny(r.migrated, "selectedModel")).toBe(false);
-  });
-
-  it("custom model de la DB sobre OpenRouter (builtinProviderId=OR) → no toca", () => {
-    // Regresión del fix: el original cargaba solo customs con
-    // builtinProviderId === "openrouter"; ahora cuentan para cualquier provider.
-    const withCustom = { catalog: CATALOG, customModelNames: new Set(["mi-custom-or"]) };
-    const s = base({ selectedModel: { name: "mi-custom-or", provider: "openrouter" } });
-    const r = validateModelReferences(s, withCustom);
-    expect(r.settings.selectedModel?.name).toBe("mi-custom-or");
-    expect(r.settings.selectedModel?.provider).toBe("openrouter");
-    expect(containsAny(r.migrated, "selectedModel")).toBe(false);
+    expect(r.isValid).toBe(true);
+    expect(r.invalidSlots).toHaveLength(0);
   });
 });
 
-// ─── Referencias de string (executor/strategist/memories) ──────────────────
+// ─── Referencias de string (executor, strategist, etc.) ────────────────────
 
-describe("referencias de string", () => {
-  it("custom::id::nombre (doble separador) válido en DB → no migra", () => {
-    // Formato real que escribe useMultiProviderModels / StrategistModelSelector.
-    const withCustom = { catalog: CATALOG, customModelNames: new Set(["mi-modelo"]) };
-    const s = base({ strategistModel: "custom::cortecs::mi-modelo" });
-    const r = validateModelReferences(s, withCustom);
-    expect(r.settings.strategistModel).toBe("custom::cortecs::mi-modelo");
-    expect(containsAny(r.migrated, "strategistModel")).toBe(false);
+describe("referencias de string (executor, strategist, fallback, memories)", () => {
+  it("executorModel con custom::id::modelo válido → no bloquea", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["paretoinference"]),
+      providerModelMap: new Map([["custom::paretoinference", new Set(["z-ai"])]]),
+    };
+    const s = base({
+      executorModel: "custom::paretoinference::z-ai",
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
   });
 
-  it("custom::id::nombre muerto → fallback OR y NO deja el nombre mal parseado", () => {
-    const s = base({ strategistModel: "custom::cortecs::modelo-jetado" });
+  it("executorModel con custom provider ausente → reporta provider_missing", () => {
+    const s = base({
+      executorModel: "custom::inexistente::z-ai",
+    });
     const r = validateModelReferences(s, deps);
-    // El fallback es un vendor/model de openrouter (sin separador ::).
-    expect(r.settings.strategistModel).toMatch(/google\//);
-    expect(r.settings.strategistModel).not.toContain("::");
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots.some((slot) => slot.slotKey === "executorModel" && slot.reason === "provider_missing")).toBe(true);
   });
 
-  it("catálogo vacío → no valida nada (guard anti-falso-positivo)", () => {
-    const empty = { catalog: { providers: {}, models: {} } as Catalog, customModelNames: new Set<string>() };
+  it("strategistModel inválido en OpenRouter → reporta model_not_found", () => {
+    const s = base({
+      strategistModel: "vendor/fantasma",
+    });
+    const r = validateModelReferences(s, deps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots.some((slot) => slot.slotKey === "strategistModel" && slot.reason === "model_not_found")).toBe(true);
+  });
+
+  it("catálogo vacío (offline sin snapshot) → no bloquea", () => {
+    const emptyDeps: ValidationDeps = {
+      catalog: { providers: {}, models: {} } as Catalog,
+      customModelNames: new Set(),
+      configuredProviderIds: new Set(),
+    };
     const s = base({
       selectedModel: { name: "vendor/jetado", provider: "openrouter" },
       executorModel: "otro/jetado",
     });
-    const r = validateModelReferences(s, empty);
-    expect(r.migrated).toEqual([]);
-    expect(r.deprecated).toEqual([]);
-    expect(r.settings.selectedModel?.name).toBe("vendor/jetado");
-  });
-  it("openrouter válido (vendor/model) → no migra", () => {
-    const s = base({ executorModel: "aion-labs/aion-2.0" });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.executorModel).toBe("aion-labs/aion-2.0");
-  });
-
-  it("openrouter muerto → fallback OR (vendor/model)", () => {
-    const s = base({ executorModel: "vendor/model-jetado" });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.executorModel).toMatch(/google\//);
-    expect(containsAny(r.migrated, "executorModel")).toBe(true);
-  });
-
-  it("cross-provider local válido (ollama::...) → no migra (runtime)", () => {
-    const s = base({ executorModel: "ollama::qwen2.5-coder" });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.executorModel).toBe("ollama::qwen2.5-coder");
-  });
-
-  it("cross-provider nativo muerto (anthropic::jetado) → fallback del mismo provider", () => {
-    const s = base({ executorModel: "anthropic::modelo-jetado" });
-    const r = validateModelReferences(s, deps);
-    // El fallback de un nativo con candidatos → anthropic::<id pelado>.
-    expect(r.settings.executorModel).toMatch(/^anthropic::/);
+    const r = validateModelReferences(s, emptyDeps);
+    expect(r.isValid).toBe(true);
+    expect(r.invalidSlots).toHaveLength(0);
   });
 });
 
-// ─── enabledModels (picker) ─────────────────────────────────────────────────
+// ─── Custom Agents ─────────────────────────────────────────────────────────
 
-describe("enabledModels", () => {
-  it("prune modelos muertos + deprecated, conserva los vivos", () => {
-    const s = base({
-      enabledModels: [
-        "aion-labs/aion-2.0", // vivo en el catálogo OR
-        "vendor/model-jetado", // muerto
+describe("customAgents con modelo estático", () => {
+  it("agente con modelo estático de provider inexistente → reporta slot customAgent:ID", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      customAgents: [
+        {
+          id: 42,
+          name: "Agente Auditor",
+          modelSource: "static",
+          model: "custom::borrado::modelo-x",
+        },
       ],
-    });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledModels).toContain("aion-labs/aion-2.0");
-    expect(r.settings.enabledModels).not.toContain("vendor/model-jetado");
+    };
+    const s = base();
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots.some((slot) => slot.slotKey === "customAgent:42" && slot.reason === "provider_missing")).toBe(true);
   });
 
-  it("si todo queda pruned → DEFAULT_ENABLED_MODELS", () => {
-    const s = base({ enabledModels: ["muerto/1", "muerto/2"] });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledModels?.length).toBeGreaterThan(0);
-    expect(r.settings.enabledModels).not.toContain("muerto/1");
-  });
-
-  it("no toca la lista si todos son vivos", () => {
-    const s = base({ enabledModels: ["aion-labs/aion-2.0"] });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledModels).toEqual(["aion-labs/aion-2.0"]);
-    expect(containsAny(r.migrated, "enabledModels")).toBe(false);
-  });
-
-  it("migra la clave legacy enabledOpenRouterModels → enabledModels", () => {
-    const s = base({ enabledOpenRouterModels: ["aion-labs/aion-2.0"] });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledModels).toEqual(["aion-labs/aion-2.0"]);
-    expect(r.settings).not.toHaveProperty("enabledOpenRouterModels");
-    expect(containsAny(r.migrated, "enabledOpenRouterModels → enabledModels")).toBe(
-      true,
-    );
-  });
-
-  it("conserva modelos cross-provider (con ::) aunque no estén en el catálogo OR", () => {
-    const s = base({ enabledModels: ["ollama::qwen2.5-coder", "custom::id::name"] });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings.enabledModels).toContain("ollama::qwen2.5-coder");
-    expect(r.settings.enabledModels).toContain("custom::id::name");
-    expect(containsAny(r.migrated, "enabledModels: removed")).toBe(false);
-  });
-
-  it("elimina la clave muerta selectedModelVariant (variantes extirpadas, card #193)", () => {
-    const s = base({ selectedModelVariant: ":nitro" });
-    const r = validateModelReferences(s, deps);
-    expect(r.settings).not.toHaveProperty("selectedModelVariant");
-    expect(containsAny(r.migrated, "selectedModelVariant")).toBe(true);
+  it("agente con modelSource auto o default_model → no valida slot estático", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      customAgents: [
+        {
+          id: 99,
+          name: "Agente Auto",
+          modelSource: "auto",
+          model: null,
+        },
+      ],
+    };
+    const s = base();
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
   });
 });
 
-// ─── Invariancia general ───────────────────────────────────────────────────
+// ─── Invariancia ───────────────────────────────────────────────────────────
 
 describe("invariantes", () => {
-  it("NO muta el settings original", () => {
-    const s = base({ selectedModel: { name: "vendor/jetado", provider: "openrouter" } });
-    const original = JSON.parse(JSON.stringify(s));
+  it("NO muta el objeto settings original bajo ninguna circunstancia", () => {
+    const s = base({
+      selectedModel: { name: "vendor/jetado", provider: "openrouter" },
+      executorModel: "custom::borrado::algo",
+    });
+    const originalClone = JSON.parse(JSON.stringify(s));
     validateModelReferences(s, deps);
-    expect(s).toEqual(original);
+    expect(s).toEqual(originalClone);
+  });
+});
+
+// ─── Etiquetas: frontera P1 (el backend no traduce) ────────────────────────
+
+describe("labelKey — el backend nombra, la carcasa traduce", () => {
+  it("todo slot inválido emite una clave i18n, nunca texto en español", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      customAgents: [
+        { id: 7, name: "Auditor", modelSource: "static", model: "vendor/roto" },
+      ],
+    };
+    const s = base({
+      selectedModel: { name: "vendor/jetado", provider: "openrouter" },
+      executorModel: "otro/jetado",
+    });
+    const r = validateModelReferences(s, customDeps);
+
+    expect(r.invalidSlots.length).toBeGreaterThan(0);
+    for (const slot of r.invalidSlots) {
+      expect(slot.labelKey.startsWith(SLOT_LABEL_KEY_PREFIX)).toBe(true);
+      // Guard anti-regresión: ni una tilde ni una palabra en español.
+      expect(slot.labelKey).not.toMatch(/[áéíóúñ¿¡]/i);
+      expect(slot.labelKey).not.toContain(" ");
+    }
   });
 
-  it("settings sin selectedModel → no rompe", () => {
+  it("el agente personalizado viaja como parámetro, no interpolado en la clave", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      customAgents: [
+        { id: 7, name: "Auditor", modelSource: "static", model: "vendor/roto" },
+      ],
+    };
+    const r = validateModelReferences(base(), customDeps);
+    const agentSlot = r.invalidSlots.find((s) => s.slotKey === "customAgent:7");
+
+    expect(agentSlot?.labelKey).toBe(`${SLOT_LABEL_KEY_PREFIX}.customAgent`);
+    expect(agentSlot?.labelParams).toEqual({ name: "Auditor" });
+  });
+});
+
+// ─── Nombres de modelo con separadores (hallazgo del vet) ──────────────────
+
+describe("nombres de modelo con / y :", () => {
+  it("custom::id::vendor/model valida contra la caché sin romper el nombre", () => {
+    // Caso real: la caché guarda "deepseek/deepseek-v4-flash" con barra.
+    // parseModelReference usa lastIndexOf(::), así que el nombre se conserva
+    // entero. Este test fija ese comportamiento.
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["custom::minube"]),
+      providerModelMap: new Map([
+        ["custom::minube", new Set(["deepseek/deepseek-v4-flash"])],
+      ]),
+    };
+    const s = base({
+      executorModel: "custom::minube::deepseek/deepseek-v4-flash",
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
+  });
+
+  it("nombre con dos puntos (ollama-style) sobre custom provider", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["custom::minube"]),
+      providerModelMap: new Map([
+        ["custom::minube", new Set(["qwen2.5-coder:7b"])],
+      ]),
+    };
+    const s = base({ executorModel: "custom::minube::qwen2.5-coder:7b" });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
+  });
+
+  it("el mapa se indexa canónicamente: id pelado en deps también resuelve", () => {
+    // configuredProviderIds puede traer la forma pelada; el lookup debe
+    // canonicalizar y encontrar igualmente la entrada.
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["minube"]),
+      providerModelMap: new Map([["custom::minube", new Set(["z-ai"])]]),
+    };
+    const s = base({ executorModel: "custom::minube::z-ai" });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(true);
+  });
+});
+
+// ─── Caché REAL en disco — el test que habría cazado el bug D1 ─────────────
+//
+// Los tests de arriba construyen `providerModelMap` a mano, así que validan la
+// IDEA pero no la REALIDAD. El bug de la card #242 (el validador inventaba el
+// nombre del fichero y nunca encontraba la caché) pasó por verde precisamente
+// por eso. Estos tests escriben ficheros de verdad y ejercitan la lectura.
+
+describe("loadCachedCustomProviderModels — lectura real de disco", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fsSync.mkdtempSync(
+      nodePath.join(os.tmpdir(), `vibes-modelcache-${process.pid}-`),
+    );
+    // `getCacheFilePath` resuelve contra app.getPath("userData").
+    vi.doMock("electron", () => ({
+      app: { getPath: () => tmpDir },
+      BrowserWindow: { getAllWindows: () => [] },
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock("electron");
+    vi.resetModules();
+    fsSync.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** Escribe una caché con el MISMO formato que produce el servicio real. */
+  const writeCache = (fileName: string, models: string[], version = 3) => {
+    fsSync.writeFileSync(
+      nodePath.join(tmpDir, fileName),
+      JSON.stringify({
+        models: models.map((name) => ({ name, displayName: name })),
+        fetchedAt: Date.now(),
+        cacheVersion: version,
+      }),
+      "utf-8",
+    );
+  };
+
+  /** Recarga el validador con el mock de electron activo. */
+  const loadValidator = async () => {
+    vi.resetModules();
+    return await import("./model_validator");
+  };
+
+  it("encuentra la caché escrita por el servicio (nombre con prefijo custom__)", async () => {
+    // Nombre EXACTO verificado en disco de producción.
+    writeCache("custom__minube-models-cache.json", ["z-ai", "deepseek/v4"]);
+
+    const mod = await loadValidator();
+    const s = base({ executorModel: "custom::minube::z-ai" });
+    const r = mod.validateModelReferences(s, {
+      ...deps,
+      configuredProviderIds: new Set(["custom::minube"]),
+      providerModelMap: await mod.loadCachedCustomProviderModels(
+        new Set(["custom::minube"]),
+      ),
+    });
+
+    expect(r.isValid).toBe(true);
+  });
+
+  it("un modelo ausente de la caché real se reporta como model_not_found", async () => {
+    writeCache("custom__minube-models-cache.json", ["z-ai"]);
+
+    const mod = await loadValidator();
+    const map = await mod.loadCachedCustomProviderModels(
+      new Set(["custom::minube"]),
+    );
+    const s = base({ executorModel: "custom::minube::modelo-fantasma" });
+    const r = mod.validateModelReferences(s, {
+      ...deps,
+      configuredProviderIds: new Set(["custom::minube"]),
+      providerModelMap: map,
+    });
+
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots[0].reason).toBe("model_not_found");
+  });
+
+  it("NO lee un fichero con el nombre viejo (sin prefijo) — anti-regresión D1", async () => {
+    // Éste es el nombre que el validador buscaba erróneamente.
+    writeCache("minube-models-cache.json", ["z-ai"]);
+
+    const mod = await loadValidator();
+    const map = await mod.loadCachedCustomProviderModels(
+      new Set(["custom::minube"]),
+    );
+
+    expect(map.size).toBe(0);
+  });
+
+  it("descarta cachés de una cacheVersion antigua (no bloquea con datos obsoletos)", async () => {
+    writeCache("custom__minube-models-cache.json", ["z-ai"], 1);
+
+    const mod = await loadValidator();
+    const map = await mod.loadCachedCustomProviderModels(
+      new Set(["custom::minube"]),
+    );
+
+    expect(map.size).toBe(0);
+  });
+
+  it("deduplica: las dos variantes del mismo provider producen UNA entrada canónica", async () => {
+    writeCache("custom__minube-models-cache.json", ["z-ai"]);
+
+    const mod = await loadValidator();
+    // Tal cual las mete validateModelSettings: con y sin prefijo.
+    const map = await mod.loadCachedCustomProviderModels(
+      new Set(["custom::minube", "minube"]),
+    );
+
+    expect(map.size).toBe(1);
+    expect(map.has("custom::minube")).toBe(true);
+  });
+
+  it("sin fichero de caché → mapa vacío y NO bloquea (decisión en piedra)", async () => {
+    const mod = await loadValidator();
+    const map = await mod.loadCachedCustomProviderModels(
+      new Set(["custom::recien-anadido"]),
+    );
+
+    expect(map.size).toBe(0);
+
+    const s = base({ executorModel: "custom::recien-anadido::lo-que-sea" });
+    const r = mod.validateModelReferences(s, {
+      ...deps,
+      configuredProviderIds: new Set(["custom::recien-anadido"]),
+      providerModelMap: map,
+    });
+    expect(r.isValid).toBe(true);
+  });
+});
+
+// ─── Slots nulos / vacíos: bloqueantes por diseño ─────────────────────────
+
+describe("slots nulos o vacíos son bloqueantes (model_unspecified)", () => {
+  it("strategistModel en null → reporta model_unspecified", () => {
+    const s = base({ strategistModel: null });
+    const r = validateModelReferences(s, deps);
+    expect(r.isValid).toBe(false);
+    expect(
+      r.invalidSlots.some(
+        (slot) =>
+          slot.slotKey === "strategistModel" &&
+          slot.reason === "model_unspecified",
+      ),
+    ).toBe(true);
+  });
+
+  it("executorModel en string vacío o whitespace → reporta model_unspecified", () => {
+    const s = base({ executorModel: "   " });
+    const r = validateModelReferences(s, deps);
+    expect(r.isValid).toBe(false);
+    expect(
+      r.invalidSlots.some(
+        (slot) =>
+          slot.slotKey === "executorModel" &&
+          slot.reason === "model_unspecified",
+      ),
+    ).toBe(true);
+  });
+
+  it("selectedModel sin name o null → reporta model_unspecified", () => {
     const s = base({ selectedModel: null });
     const r = validateModelReferences(s, deps);
-    expect(r.settings.selectedModel).toBeNull();
+    expect(r.isValid).toBe(false);
+    expect(
+      r.invalidSlots.some(
+        (slot) =>
+          slot.slotKey === "selectedModel" &&
+          slot.reason === "model_unspecified",
+      ),
+    ).toBe(true);
   });
 });

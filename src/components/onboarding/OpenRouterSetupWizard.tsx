@@ -61,15 +61,11 @@ export function OpenRouterSetupWizard() {
       if (data?.data) {
         setVerifyResult({ ok: true });
 
-        // Save the key
-        const keyId = `key_${Date.now()}`;
+        // Save the key (single-key model)
         await updateSettings({
           providerSettings: {
             ...settings?.providerSettings,
-            openrouter: {
-              keys: [{ id: keyId, key: { value: apiKey.trim() } }],
-              selectedKeyId: keyId,
-            },
+            openrouter: { apiKey: { value: apiKey.trim() } },
           },
         });
 
