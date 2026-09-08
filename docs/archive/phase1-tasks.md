@@ -462,7 +462,7 @@ Ninguna query nueva: se reutiliza `chats.opencodeSessionId` para guardar el sess
 | **DP-1** | Cómo consume Vibes los paquetes `@vibes/*` | (a) `file:` deps, (b) aliases de Vite al source, (c) publicar en registry | **(a) + alias de dev**. Publicar = Fase 5. |
 | **DP-2** | Attachments/imágenes en el MVP | (a) excluir (texto solo), (b) incluir partes multimodales en `MessageContentPart` | **Post-MVP confirmado.** Excluido del MVP. **La frontera:** el runtime acepta imagen si el modelo la soporta (caso optimista — añadir `{ type: 'image', data: ... }` a `MessageContentPart` y que el provider la serialice). Si el modelo no soporta visión, **Vibes** implementa el visionador sintético (convierte imagen → texto antes de mandarla). El runtime **nunca** hace preprocessing de visión. Esto entra en Fase 3 con soporte multimodal en `MessageContentPart` + provider. |
 | **DP-3** | `todo.updated` / `question` tool | OpenCode los emite y Vibes los pinta | **Post-MVP confirmado.** El banner de pregunta y los todos no aparecen con el flag on. Aceptable en pruebas internas. Fase 2. |
-| **DP-4** | Historial a inyectar | Hoy Vibes manda los últimos 20 mensajes | **Mantener 20** como default, configurable en `AgentDefinition` más adelante. |
+| **DP-4** | Historial a inyectar | Hoy Vibes manda los últimos 20 mensajes | **REVERTIDA en Card #248 (2026-09-07):** chat = sesión única persistente (`continueSession` / `truncateSession`). El límite de 20 mensajes queda solo como fallback legacy para chats antiguos sin sesión en SQLite. |
 
 ---
 

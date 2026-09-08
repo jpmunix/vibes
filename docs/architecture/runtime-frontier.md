@@ -94,7 +94,7 @@ flowchart TB
 | "Permitir siempre" persiste en pill | Vibes | Slice 3.6. Cuando el usuario responde "always", `permission_handler.ts` escribe `permissions.tools[toolId] = "allow"`. |
 | `<vibes-*>` tags (write, edit, files-changed, token-usage, cancelled) | Vibes (event_mapper.ts) | El renderer solo entiende tags de Vibes. |
 | `readSettings()`, `permissions` schema | Vibes | Config de UI, no del runtime. Slice 3.2: se lee de `permissions`, no `openCodePermissions2`. |
-| Hydration de historial (DP-4) | Vibes (runtime_bridge.ts) | El runtime no sabe de la DB de chats. |
+| Sesión persistente por chat (#248 Slice C) | Ambos | DP-4 revertida. El runtime mantiene la sesión (`continueSession` / `truncateSession`); Vibes vincula `chats.opencodeSessionId` y solo usa hidratación como fallback legacy. |
 | `attachToSystemPrompt` (context instructions) | Vibes (runtime/prompt_attach.ts) | El runtime recibe el system prompt ya compuesto. |
 | Sub-agentes, sub-tasks | vibes-core (Fase 2+) | Cuando llegue, vivirá en vibes-core como tool del loop. |
 | `ask_user` tool (DP-3, pendiente) | vibes-core (cuando se implemente) | El runtime tiene que emitir el evento `permission.ask` para que la carcasa lo muestre. |

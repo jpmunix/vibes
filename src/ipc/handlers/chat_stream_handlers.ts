@@ -62,6 +62,7 @@ import {
 import {
   handleRuntimeStream,
   cancelRuntimeStream,
+  truncateRuntimeSession,
 } from "../runtime/runtime_bridge";
 
 import fs from "node:fs";
@@ -401,10 +402,8 @@ function registerChatStreamHandlers() {
 
       // Handle redo option: remove the most recent messages if needed
       if (req.redo || req.undoRedo) {
-        // undo/redo: the runtime creates a fresh session per turn (DP-4), so
-        // there is no OpenCode session to revert. The DB messages are handled
-        // below.
-        // revertLastOpenCodeMessage(req.chatId);  // — deprecated (OpenCode removed)
+        // #248 (Slice C / D5): truncate the persistent runtime session's last user turn
+        await truncateRuntimeSession(req.chatId);
         // Get the most recent messages
         const chatMessages = [...chat.messages];
 

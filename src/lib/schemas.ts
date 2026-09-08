@@ -557,6 +557,14 @@ export const UserSettingsSchema = z
     compactionModel: z.string().optional(),
     // #63+#64: rondas recientes conservadas intactas durante compactación.
     compactionMaxRoundsKept: z.number().min(1).max(50).optional(),
+    // #248: caps de contexto configurables desde Ajustes > Agente. undefined
+    // = usar los defaults de vibes-core. (a) toolOutputMaxKb: cap de
+    // ingestión de cada tool output (KB); (b) compactionKeepRecentTokens:
+    // cola reciente preservada por tokens al compactar; (c)
+    // compactionSerializeMaxChars: cap de serialización para el summarizer.
+    toolOutputMaxKb: z.number().min(1).max(1024).optional(),
+    compactionKeepRecentTokens: z.number().min(1000).max(200_000).optional(),
+    compactionSerializeMaxChars: z.number().min(200).max(50_000).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     // ── Inference hyperparameters (user-tunable from chat input) ──
     inferenceTemperature: z.number().min(0).max(2).optional(),

@@ -205,3 +205,93 @@ describe("applyAgentLoopLimits — #63+#64 compaction", () => {
     expect(getAgentLoopLimits().compaction?.summarizerModel).toBeUndefined();
   });
 });
+
+describe("applyAgentLoopLimits — #248 caps de contexto", () => {
+  // NOTA de orden: los tests que asertan `undefined` van ANTES que los que
+  // aplican valores. Motivo: `applyAgentLoopLimits` no limpia un setting una
+  // vez aplicado (quirk conocido, mismo patrón que maxRoundsKept) — un valor
+  // inválido/ausente deja intacto lo ya mutado en loopConfigMutable.
+
+  it("sin settings → toolOutput/keepRecentTokens/serializeOutputMaxChars sin tocar", () => {
+    applyAgentLoopLimits({});
+    expect(getAgentLoopLimits().toolOutput).toBeUndefined();
+    expect(getAgentLoopLimits().compaction?.keepRecentTokens).toBeUndefined();
+    expect(
+      getAgentLoopLimits().compaction?.serializeOutputMaxChars,
+    ).toBeUndefined();
+  });
+
+  it("toolOutputMaxKb inválido (0/negativo/NaN) → toolOutput sin definir (defaults internos de tools)", () => {
+    applyAgentLoopLimits({ toolOutputMaxKb: 0 });
+    expect(getAgentLoopLimits().toolOutput).toBeUndefined();
+    applyAgentLoopLimits({ toolOutputMaxKb: -5 });
+    expect(getAgentLoopLimits().toolOutput).toBeUndefined();
+    applyAgentLoopLimits({ toolOutputMaxKb: Number.NaN });
+    expect(getAgentLoopLimits().toolOutput).toBeUndefined();
+  });
+
+  it("toolOutputMaxKb tipo mal (string) → sin crash, toolOutput sin definir", () => {
+    // @ts-expect-error - probamos la robustez ante un payload corrupto
+    applyAgentLoopLimits({ toolOutputMaxKb: "treinta" });
+    expect(getAgentLoopLimits().toolOutput).toBeUndefined();
+  });
+
+  it("compactionKeepRecentTokens por debajo del mínimo (1000) → no aplicado", () => {
+    applyAgentLoopLimits({ compactionKeepRecentTokens: 500 });
+    expect(getAgentLoopLimits().compaction?.keepRecentTokens).toBeUndefined();
+  });
+
+  it("compactionSerializeMaxChars por debajo del mínimo (200) → no aplicado", () => {
+    applyAgentLoopLimits({ compactionSerializeMaxChars: 100 });
+    expect(
+      getAgentLoopLimits().compaction?.serializeOutputMaxChars,
+    ).toBeUndefined();
+  });
+
+  it("toolOutputMaxKb válido → maxBytes = kb*1024", () => {
+    applyAgentLoopLimits({ toolOutputMaxKb: 30 });
+    expect(getAgentLoopLimits().toolOutput?.maxBytes).toBe(30 * 1024);
+  });
+
+  it("toolOutputMaxKb decimales → floor (29.7 → 29 KB)", () => {
+    applyAgentLoopLimits({ toolOutputMaxKb: 29.7 });
+    expect(getAgentLoopLimits().toolOutput?.maxBytes).toBe(29 * 1024);
+  });
+
+  it("compactionKeepRecentTokens válido → aplicado con floor", () => {
+    applyAgentLoopLimits({ compactionKeepRecentTokens: 20000.9 });
+    expect(getAgentLoopLimits().compaction?.keepRecentTokens).toBe(20000);
+  });
+
+  it("compactionSerializeMaxChars válido → aplicado con floor", () => {
+    applyAgentLoopLimits({ compactionSerializeMaxChars: 2000.9 });
+    expect(getAgentLoopLimits().compaction?.serializeOutputMaxChars).toBe(2000);
+  });
+
+  it("hot-reload: cambiar los tres caps pisa los valores anteriores", () => {
+    applyAgentLoopLimits({
+      toolOutputMaxKb: 30,
+      compactionKeepRecentTokens: 20000,
+      compactionSerializeMaxChars: 2000,
+    });
+    applyAgentLoopLimits({
+      toolOutputMaxKb: 120,
+      compactionKeepRecentTokens: 40000,
+      compactionSerializeMaxChars: 4000,
+    });
+    expect(getAgentLoopLimits().toolOutput?.maxBytes).toBe(120 * 1024);
+    expect(getAgentLoopLimits().compaction?.keepRecentTokens).toBe(40000);
+    expect(getAgentLoopLimits().compaction?.serializeOutputMaxChars).toBe(4000);
+  });
+
+  it("coexistencia: maxRoundsKept (#63+#64) y los caps #248 aplicados juntos", () => {
+    applyAgentLoopLimits({
+      compactionMaxRoundsKept: 10,
+      compactionKeepRecentTokens: 80000,
+      compactionSerializeMaxChars: 8000,
+    });
+    expect(getAgentLoopLimits().compaction?.maxRoundsKept).toBe(10);
+    expect(getAgentLoopLimits().compaction?.keepRecentTokens).toBe(80000);
+    expect(getAgentLoopLimits().compaction?.serializeOutputMaxChars).toBe(8000);
+  });
+});

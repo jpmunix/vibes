@@ -432,6 +432,12 @@ export function applyAgentLoopLimits(
     fallbackModel?: string;
     compactionModel?: string;
     compactionMaxRoundsKept?: number;
+    /** #248: cap de ingestión de tool outputs, en KB. */
+    toolOutputMaxKb?: number;
+    /** #248: cola reciente preservada por tokens al compactar. */
+    compactionKeepRecentTokens?: number;
+    /** #248: cap de serialización de tool outputs para el summarizer (chars). */
+    compactionSerializeMaxChars?: number;
   } | null | undefined,
 ): void {
   const maxIterations =
@@ -488,6 +494,15 @@ export function applyAgentLoopLimits(
     }
   }
 
+  // #248: caps de contexto resueltos (undefined/fuera de rango → default de
+  // vibes-core: no escribirlos y que las tools usen sus defaults internos).
+  const toolOutput =
+    typeof settings?.toolOutputMaxKb === "number" &&
+    Number.isFinite(settings.toolOutputMaxKb) &&
+    settings.toolOutputMaxKb >= 1
+      ? { maxBytes: Math.floor(settings.toolOutputMaxKb) * 1024 }
+      : undefined;
+
   // Solo mutamos si cambia (evita ruido en el log y trabajo innecesario).
   const fallbackChanged = lastFbString !== fbString;
   if (
@@ -495,7 +510,10 @@ export function applyAgentLoopLimits(
     maxWallClockMs === loopConfigMutable.maxWallClockMs &&
     !fallbackChanged &&
     loopConfigMutable.compaction?.summarizerModel === compactionProvider &&
-    loopConfigMutable.compaction?.maxRoundsKept === settings?.compactionMaxRoundsKept
+    loopConfigMutable.compaction?.maxRoundsKept === settings?.compactionMaxRoundsKept &&
+    loopConfigMutable.toolOutput?.maxBytes === toolOutput?.maxBytes &&
+    loopConfigMutable.compaction?.keepRecentTokens === settings?.compactionKeepRecentTokens &&
+    loopConfigMutable.compaction?.serializeOutputMaxChars === settings?.compactionSerializeMaxChars
   ) {
     return;
   }
@@ -503,16 +521,33 @@ export function applyAgentLoopLimits(
   loopConfigMutable.maxIterations = maxIterations;
   loopConfigMutable.maxWallClockMs = maxWallClockMs;
   loopConfigMutable.fallbackModel = fbProvider;
+  // #248: cap de ingestión de tool outputs (undefined = defaults de core).
+  if (toolOutput) {
+    loopConfigMutable.toolOutput = {
+      ...loopConfigMutable.toolOutput,
+      ...toolOutput,
+    };
+  }
   loopConfigMutable.compaction = {
     ...loopConfigMutable.compaction,
     summarizerModel: compactionProvider,
     ...(typeof settings?.compactionMaxRoundsKept === "number"
       ? { maxRoundsKept: Math.floor(settings.compactionMaxRoundsKept) }
       : {}),
+    ...(typeof settings?.compactionKeepRecentTokens === "number" &&
+    Number.isFinite(settings.compactionKeepRecentTokens) &&
+    settings.compactionKeepRecentTokens >= 1000
+      ? { keepRecentTokens: Math.floor(settings.compactionKeepRecentTokens) }
+      : {}),
+    ...(typeof settings?.compactionSerializeMaxChars === "number" &&
+    Number.isFinite(settings.compactionSerializeMaxChars) &&
+    settings.compactionSerializeMaxChars >= 200
+      ? { serializeOutputMaxChars: Math.floor(settings.compactionSerializeMaxChars) }
+      : {}),
   };
   lastFbString = fbString;
   logger.info(
-    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"}`,
+    `[RuntimeHost] Loop limits updated: maxIterations=${maxIterations} maxWallClockMs=${maxWallClockMs} (${(maxWallClockMs / 3_600_000).toFixed(1)}h) fallback=${fbString ?? "none"} toolOutputMaxBytes=${toolOutput?.maxBytes ?? "default"} keepRecentTokens=${loopConfigMutable.compaction.keepRecentTokens ?? "default"}`,
   );
 }
 
@@ -525,6 +560,7 @@ export function getAgentLoopLimits(): {
   maxWallClockMs: number;
   fallbackModel?: ModelProvider;
   compaction?: LoopConfig["compaction"];
+  toolOutput?: LoopConfig["toolOutput"];
   debugContext?: boolean;
 } {
   return {
@@ -532,6 +568,7 @@ export function getAgentLoopLimits(): {
     maxWallClockMs: loopConfigMutable.maxWallClockMs,
     fallbackModel: loopConfigMutable.fallbackModel,
     compaction: loopConfigMutable.compaction,
+    toolOutput: loopConfigMutable.toolOutput,
     debugContext: loopConfigMutable.debugContext,
   };
 }

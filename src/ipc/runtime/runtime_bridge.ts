@@ -358,47 +358,103 @@ export async function handleRuntimeStream(
     options.customSystemPrompt,
   );
 
-  // ── 1. Fresh hydrated session for this turn (DP-4) ─────────────────────
-  // Slice 3.9: if a previous session for this chat is still in the active
-  // map (it shouldn't be — the run() finally block deletes it — but a fast
-  // double-tap can race), purge it before creating the new one. Without
-  // this, every extra turn leaks a session into runtime.sessions because
-  // the map key collides.
-  const previousSessionId = activeSessionByChat.get(req.chatId);
-  if (previousSessionId) {
+  // ── 1. Session resolution: continue existing session (chat = session) or create fresh ──
+  // #248 (Slice C / DP-4 reverted): we maintain ONE persistent session per chat.
+  // If the chat already has an opencodeSessionId and the session exists in the runtime,
+  // we call continueSession to append the new user turn to the existing conversation.
+  // Fallback legacy: if the chat has no session or continueSession fails (e.g. wiped SQLite
+  // or old pre-#248 chat), we create a fresh hydrated session and link its id to the chat.
+  const db = getRemoteDb();
+  let existingSessionId: string | null = null;
+  try {
+    const chatRow = await db.query?.chats?.findFirst?.({
+      where: eq(remoteSchema.chats.id, req.chatId),
+      columns: { opencodeSessionId: true },
+    });
+    existingSessionId = chatRow?.opencodeSessionId ?? null;
+  } catch (err) {
     logger.warn(
-      `[RuntimeBridge] Found leftover session ${previousSessionId} for chat ${req.chatId} before new turn — purging`,
+      `[RuntimeBridge] Failed to load chat ${req.chatId} opencodeSessionId: ${(err as Error).message}`,
+    );
+  }
+
+  // Slice 3.9: if an active session handle is lingering in the map, cancel it.
+  // If it is an orphaned leftover session that is NOT the chat's persistent session,
+  // delete it from storage to prevent leaks.
+  const previousActiveId = activeSessionByChat.get(req.chatId);
+  if (previousActiveId) {
+    logger.warn(
+      `[RuntimeBridge] Found active handle ${previousActiveId} for chat ${req.chatId} before new turn — cancelling prior run`,
     );
     activeSessionByChat.delete(req.chatId);
     try {
-      const runtime = getRuntime();
-      await runtime.cancel(previousSessionId);
-      await runtime.deleteSession(previousSessionId);
+      await runtime.cancel(previousActiveId);
+      if (previousActiveId !== existingSessionId) {
+        await runtime.deleteSession(previousActiveId);
+      }
     } catch (err) {
       logger.warn(
-        `[RuntimeBridge] Purge of leftover session ${previousSessionId} failed: ${(err as Error).message} — continuing`,
+        `[RuntimeBridge] Cleanup of active session ${previousActiveId} failed: ${(err as Error).message} — continuing`,
       );
     }
   }
 
-  const session = await runtime.createSession({
-    prompt: req.prompt,
-    agent: {
-      id: agentId,
-      ...(systemPrompt ? { systemPrompt } : {}),
-      ...(toolsForAgent(agentId)
-        ? { tools: toolsForAgent(agentId) as string[] }
-        : {}),
-    },
-    messages: await convertHistoryToRuntimeMessages(chatMessages, req.prompt),
-    // #196: hand the turn's image attachments over to the runtime as media
-    // parts. The runtime merges them into the seeded user message (image
-    // parts first, then the text prompt) — P1: the runtime only sees
-    // MessageContentPart media and does no vision preprocessing.
-    media: mediaParts,
-    // #95: pass all roots; the runtime picks multi vs single based on length.
-    workspaceRoots,
-  });
+  let session: import("@vibes/runtime").SessionHandle | null = null;
+  if (existingSessionId) {
+    try {
+      session = await runtime.continueSession(existingSessionId, {
+        prompt: req.prompt,
+        media: mediaParts,
+        agent: {
+          id: agentId,
+          ...(systemPrompt ? { systemPrompt } : {}),
+          ...(toolsForAgent(agentId)
+            ? { tools: toolsForAgent(agentId) as string[] }
+            : {}),
+        },
+        workspaceRoots,
+      });
+      logger.info(
+        `[RuntimeBridge] Continued existing session ${existingSessionId} for chat ${req.chatId}`,
+      );
+    } catch (err) {
+      logger.warn(
+        `[RuntimeBridge] Could not continue session ${existingSessionId} for chat ${req.chatId}: ${(err as Error).message} — creating fresh session with hydrated history`,
+      );
+      session = null;
+    }
+  }
+
+  if (!session) {
+    session = await runtime.createSession({
+      prompt: req.prompt,
+      agent: {
+        id: agentId,
+        ...(systemPrompt ? { systemPrompt } : {}),
+        ...(toolsForAgent(agentId)
+          ? { tools: toolsForAgent(agentId) as string[] }
+          : {}),
+      },
+      messages: await convertHistoryToRuntimeMessages(chatMessages, req.prompt),
+      media: mediaParts,
+      workspaceRoots,
+    });
+    // Link session id to chat row so subsequent turns reuse it
+    try {
+      await db
+        .update(remoteSchema.chats)
+        .set({ opencodeSessionId: session.id })
+        .where(eq(remoteSchema.chats.id, req.chatId));
+      logger.info(
+        `[RuntimeBridge] Created and linked session ${session.id} for chat ${req.chatId}`,
+      );
+    } catch (err) {
+      logger.warn(
+        `[RuntimeBridge] Failed to link opencodeSessionId ${session.id} to chat ${req.chatId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
   activeSessionByChat.set(req.chatId, session.id);
   logger.info(
     `[RuntimeBridge] Session ${session.id} for chat ${req.chatId} (agent=${agentId}, workspace=${primaryRoot}, folders=${workspaceRoots.length})`,
@@ -697,29 +753,78 @@ export function getActiveRuntimeSession(chatId: number): string | undefined {
  * `getActiveRuntimeSession` call for the same chat returns undefined.
  */
 export async function deleteRuntimeSession(chatId: number): Promise<void> {
-  const sessionId = activeSessionByChat.get(chatId);
+  const activeSessionId = activeSessionByChat.get(chatId);
   activeSessionByChat.delete(chatId);
-  if (!sessionId) {
-    // No active handle — nothing to cancel. Storage cleanup is best-effort:
-    // we don't know which sessionId corresponds to this chatId, so we
-    // cannot delete the persisted record here. The host is expected to
-    // delete the Vibes-side record; orphan rows will be reaped by a
-    // future GC pass (post-MVP).
+  if (activeSessionId) {
+    try {
+      await getRuntime().cancel(activeSessionId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  let sessionIdToDelete = activeSessionId;
+  if (!sessionIdToDelete) {
+    try {
+      const db = getRemoteDb();
+      const chat = await db.query?.chats?.findFirst?.({
+        where: eq(remoteSchema.chats.id, chatId),
+        columns: { opencodeSessionId: true },
+      });
+      if (chat?.opencodeSessionId) {
+        sessionIdToDelete = chat.opencodeSessionId;
+      }
+    } catch (err) {
+      logger.warn(
+        `[RuntimeBridge] Could not query opencodeSessionId for chat ${chatId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  if (!sessionIdToDelete) {
     logger.info(
-      `[RuntimeBridge] deleteRuntimeSession for chat ${chatId}: no active handle, skipping storage cleanup`,
+      `[RuntimeBridge] deleteRuntimeSession for chat ${chatId}: no active handle or stored sessionId, skipping storage cleanup`,
     );
     return;
   }
+
   try {
-    await getRuntime().deleteSession(sessionId);
+    await getRuntime().deleteSession(sessionIdToDelete);
     logger.info(
-      `[RuntimeBridge] Deleted runtime session ${sessionId} (chat ${chatId})`,
+      `[RuntimeBridge] Deleted runtime session ${sessionIdToDelete} (chat ${chatId})`,
     );
   } catch (err) {
     logger.warn(
-      `[RuntimeBridge] deleteSession failed for ${sessionId}: ${(err as Error).message}`,
+      `[RuntimeBridge] deleteSession failed for ${sessionIdToDelete}: ${(err as Error).message}`,
     );
     throw err;
+  }
+}
+
+/**
+ * #248 (Slice C / D5): truncate the runtime session associated with a chat.
+ * Used by undo/redo in chat_stream_handlers.ts and version_handlers.ts.
+ */
+export async function truncateRuntimeSession(
+  chatId: number,
+  options?: { toMessageIndex?: number },
+): Promise<void> {
+  try {
+    const db = getRemoteDb();
+    const chat = await db.query?.chats?.findFirst?.({
+      where: eq(remoteSchema.chats.id, chatId),
+      columns: { opencodeSessionId: true },
+    });
+    if (chat?.opencodeSessionId) {
+      await getRuntime().truncateSession(chat.opencodeSessionId, options);
+      logger.info(
+        `[RuntimeBridge] Truncated runtime session ${chat.opencodeSessionId} (chat ${chatId})`,
+      );
+    }
+  } catch (err) {
+    logger.warn(
+      `[RuntimeBridge] Failed to truncate session for chat ${chatId}: ${(err as Error).message}`,
+    );
   }
 }
 

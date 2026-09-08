@@ -50,7 +50,7 @@ Todo lo demás (system prompt, hidratación de historial, tools read/write/bash/
 | [chat_stream_handlers.ts](file:///home/munix/Desarrollo/GitRepo/Vibes/src/ipc/handlers/chat_stream_handlers.ts) | Eliminar el ternario `useRuntimeBridge` (L2074-2119). Siempre `handleRuntimeStream`. Eliminar imports de `opencode_adapter` (L129: `handleOpenCodeStream`, `revertLastOpenCodeMessage`, `destroyOpenCodeSession`). |
 
 > [!WARNING]
-> Esto rompe `revertLastOpenCodeMessage` (undo/redo) y `destroyOpenCodeSession` (jump-to-version). Ambos dependen de `chatSessionMap` de OpenCode. En el runtime, cada turno es una sesión fresca (DP-4), así que "undo" = revertir el último mensaje en la DB de Vibes (no en la sesión del runtime). Hay que reimplementar undo/redo sobre la DB de Vibes, pero eso es otra slice. Para empezar a probar: undo/redo no disponible.
+> Esto rompía `revertLastOpenCodeMessage` (undo/redo) y `destroyOpenCodeSession` (jump-to-version) bajo DP-4 (sesiones frescas por turno). **Resuelto en Card #248 (2026-09-07 / Slice C):** se revirtió DP-4 y se adoptó el modelo chat = sesión única persistente (`continueSession`), implementando undo vía `truncateSession` y redo vía `continueSession`.
 
 **Verificación:** la app responde a prompts de texto con el runtime. Contract tests verdes. Smoke test manual: encender app, mandar un prompt en modo `build`, recibir respuesta con tags `<vibes-*>`.
 

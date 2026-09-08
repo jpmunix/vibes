@@ -249,6 +249,71 @@ export function AIBehaviorSettings({
             }
           />
 
+          {/* #248: caps de contexto configurables desde el día uno — la
+              carcasa los inyecta al runtime en caliente vía applyAgentLoopLimits. */}
+          <SettingRow
+            label={t("settingsItems.cap_de_salida_de_tools")}
+            description={t("settingsItems.cap_de_salida_de_toolsDesc")}
+            control={
+              <UnifiedSelector
+                value={String(settings?.toolOutputMaxKb ?? 30)}
+                onChange={(value) => updateSettings({ toolOutputMaxKb: Number(value) })}
+                options={[
+                  { value: "10", label: "10 KB" },
+                  { value: "30", label: "30 KB" },
+                  { value: "60", label: "60 KB" },
+                  { value: "120", label: "120 KB" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-tool-output-cap-selector"
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settingsItems.cola_reciente_por_tokens")}
+            description={t("settingsItems.cola_reciente_por_tokensDesc")}
+            control={
+              <UnifiedSelector
+                value={String(settings?.compactionKeepRecentTokens ?? 20000)}
+                onChange={(value) => updateSettings({ compactionKeepRecentTokens: Number(value) })}
+                options={[
+                  { value: "10000", label: "10K" },
+                  { value: "20000", label: "20K" },
+                  { value: "40000", label: "40K" },
+                  { value: "80000", label: "80K" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-compaction-keep-recent-selector"
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settingsItems.cap_de_serializacion")}
+            description={t("settingsItems.cap_de_serializacionDesc")}
+            control={
+              <UnifiedSelector
+                value={String(settings?.compactionSerializeMaxChars ?? 2000)}
+                onChange={(value) => updateSettings({ compactionSerializeMaxChars: Number(value) })}
+                options={[
+                  { value: "1000", label: "1000" },
+                  { value: "2000", label: "2000" },
+                  { value: "4000", label: "4000" },
+                  { value: "8000", label: "8000" },
+                ]}
+                triggerVariant="pill"
+                triggerSize="md"
+                popoverWidth="w-[160px]"
+                data-testid="agent-compaction-serialize-cap-selector"
+              />
+            }
+          />
+
           {/* ── Modelo Ejecutor ── */}
           <SettingRow
             label={t("settingsItems.modelo_ejecutor")}

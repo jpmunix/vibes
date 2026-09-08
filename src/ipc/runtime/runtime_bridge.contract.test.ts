@@ -47,6 +47,7 @@ const hoisted = vi.hoisted(() => ({
   testRoot: "",
   runtime: null as unknown as import("@vibes/runtime").Runtime,
   responses: [] as unknown[],
+  savedSessionId: null as string | null,
   /**
    * #95: folders to return from the stubbed `app_folders` query. `null`
    * makes the stub throw (degradation path — single-root). An empty array
@@ -67,6 +68,23 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock("../../db/remote", () => ({
   getRemoteDb: () => {
+    const update = () => ({
+      set: (values: any) => ({
+        where: () => {
+          if (values && values.opencodeSessionId) {
+            hoisted.savedSessionId = values.opencodeSessionId;
+          }
+          return Promise.resolve();
+        },
+      }),
+    });
+    const query = {
+      chats: {
+        findFirst: async () => ({
+          opencodeSessionId: hoisted.savedSessionId,
+        }),
+      },
+    };
     // Build a chainable stub that returns the configured appFolders rows.
     // The bridge calls: db.select().from(appFolders).where(...).orderBy(...)
     // When hoisted.appFolders is null (the default for existing tests), the
@@ -76,7 +94,8 @@ vi.mock("../../db/remote", () => ({
     if (rows === null) {
       // Return an object WITHOUT a `select` method → bridge catch degrades.
       return {
-        update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
+        update,
+        query,
       };
     }
     const chain = {
@@ -85,7 +104,8 @@ vi.mock("../../db/remote", () => ({
       orderBy: () => Promise.resolve(rows),
     };
     return {
-      update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
+      update,
+      query,
       select: () => chain,
     };
   },
@@ -282,6 +302,7 @@ function makeOptions(overrides: Partial<RuntimeStreamOptions> = {}): RuntimeStre
 }
 
 beforeEach(async () => {
+  hoisted.savedSessionId = null;
   hoisted.testRoot = await mkdtemp(join(tmpdir(), "vibes-contract-"));
 });
 
@@ -776,10 +797,12 @@ describe("handleRuntimeStream contract — permission denied", () => {
 // Contract: multi-turn on the same chatId (spec B6 #5)
 // ============================================================================
 // DP-4: Vibes owns the history. "Resume" in the bridge means a fresh session
-// per turn, hydrated with the previous exchange — never resumeSession().
+// ============================================================================
+// Contract: multi-turn conversation (#248 Slice C / DP-4 reverted: chat = session)
+// ============================================================================
 
 describe("handleRuntimeStream contract — second turn continues the chat", () => {
-  it("a second request on the same chatId hydrates the first exchange", async () => {
+  it("a second request on the same chatId continues the existing session (chat = session)", async () => {
     hoisted.runtime = buildTestRuntime(
       hoisted.testRoot,
       mockFetch([MOCK_RESPONSES.noTool, MOCK_RESPONSES.noTool]),
@@ -796,8 +819,7 @@ describe("handleRuntimeStream contract — second turn continues the chat", () =
     expect(r1.success).toBe(true);
     expect(r1.fullResponse).toContain("Hello from mock model.");
 
-    // Turn 2 — Vibes would now pass the accumulated history (including the
-    // first exchange) as chatMessages, plus the new user prompt.
+    // Turn 2 — The bridge reuses the same runtime session (chat = session) via opencodeSessionId
     const r2 = await handleRuntimeStream(
       { sender } as any,
       { chatId: 10, prompt: "and again" },
@@ -813,21 +835,52 @@ describe("handleRuntimeStream contract — second turn continues the chat", () =
     );
     expect(r2.success).toBe(true);
 
-    // Two sessions were created (one per turn — per-turn-session design)...
+    // #248 (Slice C / DP-4 reverted): EXACTLY ONE persistent session per chat!
     const sessions = await storage.listSessions();
-    expect(sessions.length).toBe(2);
+    expect(sessions.length).toBe(1);
 
-    // ...and the SECOND session was hydrated with the first exchange.
-    const second = sessions.find((s) => s.prompt === "and again")!;
-    const texts = second.messages.map((m) => ({
+    // ...and the session contains both turns:
+    const session = sessions[0]!;
+    const texts = session.messages.map((m) => ({
       role: m.role,
       text: m.content.map((p) => (p.type === "text" ? p.text : "")).join(""),
     }));
     expect(texts[0]).toEqual({ role: "user", text: "say hi" });
     expect(texts[1]!.text).toContain("Hello from mock model.");
-    // And the new prompt appears exactly once.
-    const newTurns = texts.filter((t) => t.role === "user" && t.text === "and again");
-    expect(newTurns.length).toBe(1);
+    expect(texts[2]).toEqual({ role: "user", text: "and again" });
+    expect(texts[3]!.text).toContain("Hello from mock model.");
+  });
+
+  it("fallback legacy: if chat has no linked session or continue fails, creates fresh hydrated session", async () => {
+    hoisted.runtime = buildTestRuntime(
+      hoisted.testRoot,
+      mockFetch([MOCK_RESPONSES.noTool]),
+    );
+    const { sender } = makeFakeSender();
+
+    // Sin sesión previa en BD (simula chat legacy pre-#248 o base reseteada)
+    hoisted.savedSessionId = null;
+
+    const r = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 99, prompt: "legacy turn" },
+      new AbortController(),
+      makeOptions({
+        chatMessages: [
+          { id: 1, role: "user", content: "prior question" },
+          { id: 2, role: "assistant", content: "prior answer" },
+          { id: 3, role: "user", content: "legacy turn" },
+          { id: 4, role: "assistant", content: "" },
+        ],
+      }),
+    );
+    expect(r.success).toBe(true);
+
+    const sessions = await storage.listSessions();
+    const session = sessions.find((s) => s.prompt === "legacy turn")!;
+    expect(session).toBeDefined();
+    // Hidrata la historia previa de chatMessages
+    expect(session.messages[0]).toEqual({ role: "user", content: [{ type: "text", text: "prior question" }] });
   });
 });
 

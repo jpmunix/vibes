@@ -32,6 +32,16 @@ vi.mock("./runtime_host", () => ({
   getRuntime: () => getRuntimeMock(),
 }));
 
+vi.mock("../../db/remote", () => ({
+  getRemoteDb: () => ({
+    query: {
+      chats: {
+        findFirst: async () => null,
+      },
+    },
+  }),
+}));
+
 import { deleteRuntimeSession, getActiveRuntimeSession } from "./runtime_bridge";
 
 beforeEach(() => {
