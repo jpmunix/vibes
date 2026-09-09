@@ -19,8 +19,8 @@ import type { WebContents } from "electron";
 
 const logger = log.scope("runtime_permission_state");
 
-/** 5 minutes — parity with the OpenCode adapter's pending-permission timeout. */
-export const RUNTIME_PERMISSION_TIMEOUT_MS = 5 * 60 * 1000;
+/** 20 minutes — same as the question timeout. Enough for the user to step away. */
+export const RUNTIME_PERMISSION_TIMEOUT_MS = 20 * 60 * 1000;
 
 /** Renderer answers with the same vocabulary as the OpenCode banner. */
 export type RuntimePermissionResponse = "once" | "always" | "reject";

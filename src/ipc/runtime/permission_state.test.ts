@@ -81,8 +81,8 @@ describe("waitForRuntimePermissionResponse", () => {
     }
   });
 
-  it("default timeout is 5 minutes (parity with adapter)", () => {
-    expect(RUNTIME_PERMISSION_TIMEOUT_MS).toBe(5 * 60 * 1000);
+  it("default timeout is 20 minutes (same as question timeout)", () => {
+    expect(RUNTIME_PERMISSION_TIMEOUT_MS).toBe(20 * 60 * 1000);
   });
 });
 

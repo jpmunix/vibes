@@ -13,8 +13,8 @@ import type { AskUserResponse } from "@vibes/shared";
 
 const logger = log.scope("runtime_question_state");
 
-/** 5 minutes — same timeout as permissions. */
-export const RUNTIME_QUESTION_TIMEOUT_MS = 5 * 60 * 1000;
+/** 20 minutes — enough for the user to step away (no tokens are spent while pending). */
+export const RUNTIME_QUESTION_TIMEOUT_MS = 20 * 60 * 1000;
 
 type PendingEntry = {
   resolve: (response: AskUserResponse) => void;
