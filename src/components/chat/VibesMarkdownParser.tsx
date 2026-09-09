@@ -29,6 +29,7 @@ import { VibesGrep } from "./VibesGrep";
 import { VibesGit } from "./VibesGit";
 import { VibesGitCommit } from "./VibesGitCommit";
 import { VibesAskUser } from "./VibesAskUser";
+import { VibesQuestionCard } from "./VibesQuestionCard";
 import { VibesAddIntegration } from "./VibesAddIntegration";
 import { VibesEdit } from "./VibesEdit";
 import { VibesSearchReplace } from "./VibesSearchReplace";
@@ -508,6 +509,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     const ZEN_ALLOWED_TAGS = new Set([
       "vibes-output",
       "vibes-ask-user",
+      "vibes-question",
       "vibes-cancelled",
       "vibes-git-commit",
       "vibes-files-changed",
@@ -1318,6 +1320,15 @@ function renderCustomTag(
         >
           {content}
         </VibesAskUser>
+      );
+
+    case "vibes-question":
+      return (
+        <VibesQuestionCard
+          question={attributes.question || attributes.prompt}
+          answer={content}
+          durationMs={attributes["duration-ms"]}
+        />
       );
 
     // === Process/command tools (Phase 1) ===

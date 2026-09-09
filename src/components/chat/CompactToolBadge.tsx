@@ -590,6 +590,7 @@ const NON_COMPACTABLE_TAGS = new Set([
   "vibes-command",
   "vibes-add-integration", // Interactive: contains setup buttons (e.g. Supabase)
   "vibes-ask-user", // Interactive: contains question + response options
+  "vibes-question", // Placed user-facing card: question + answered response (#257)
   "vibes-cancelled", // Styled inline cancel indicator — not a tool badge
 ]);
 

@@ -69,6 +69,15 @@ export function extractToolDetail(toolId: string, args: unknown): string {
       return pick("pattern", "cwd");
     case "grep":
       return pick("query", "pattern");
+    case "question": {
+      if (Array.isArray(a.questions)) {
+        return (a.questions as Array<Record<string, unknown>>)
+          .map((q) => (typeof q.question === "string" ? q.question : typeof q.header === "string" ? q.header : ""))
+          .filter(Boolean)
+          .join(" | ");
+      }
+      return pick("question", "prompt");
+    }
     default:
       return pick("path", "cmd", "query", "url");
   }
@@ -370,8 +379,10 @@ export function buildVibesToolTag(
       return `<vibes-git operation="${escapeAttr(toolId === "git_log" ? "log" : "diff")}"${durAttr}>${content}</vibes-git>`;
     case "vibes-patch":
       return `<vibes-patch path="${escapeAttr(detail)}" description=""${durAttr}>${content}</vibes-patch>`;
-    case "vibes-question":
-      return `<vibes-question${durAttr}>${content}</vibes-question>`;
+    case "vibes-question": {
+      const qAttr = detail ? ` question="${escapeAttr(detail)}"` : "";
+      return `<vibes-question${qAttr}${durAttr}>${content}</vibes-question>`;
+    }
     case "vibes-todo":
       return `<vibes-todo${durAttr}>${content}</vibes-todo>`;
     case "vibes-mcp-tool-call":

@@ -40,7 +40,10 @@ import {
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { hasInvalidModelSlotsAtom } from "@/atoms/modelValidationAtoms";
+import {
+  hasInvalidModelSlotsAtom,
+  modelFixDialogOpenAtom,
+} from "@/atoms/modelValidationAtoms";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
@@ -176,6 +179,7 @@ export function ChatInput({
   const [isUndoDialogOpen, setIsUndoDialogOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
+  const setModelFixDialogOpen = useSetAtom(modelFixDialogOpenAtom);
 
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
 
@@ -1109,26 +1113,40 @@ export function ChatInput({
               <DragDropOverlay isDraggingOver={isDraggingOver} />
 
               {/* Textarea area with expand toggle */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsExpanded((v) => !v)}
-                  className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                  title={isExpanded ? t("chat.collapseEditor") : t("chat.expandEditor")}
-                >
-                  {isExpanded ? (
-                    <Minimize2 size={13} />
-                  ) : (
-                    <Maximize2 size={13} />
-                  )}
-                </button>
+              <div
+                className={`relative ${hasInvalidModelSlots ? "cursor-pointer" : ""}`}
+                onClick={
+                  hasInvalidModelSlots
+                    ? () => setModelFixDialogOpen(true)
+                    : undefined
+                }
+              >
+                {!hasInvalidModelSlots && (
+                  <button
+                    onClick={() => setIsExpanded((v) => !v)}
+                    className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                    title={isExpanded ? t("chat.collapseEditor") : t("chat.expandEditor")}
+                  >
+                    {isExpanded ? (
+                      <Minimize2 size={13} />
+                    ) : (
+                      <Maximize2 size={13} />
+                    )}
+                  </button>
+                )}
                 <LexicalChatInput
                   value={inputValue}
                   onChange={setInputValue}
                   onSubmit={handleSubmit}
                   onPaste={handlePaste}
-                  placeholder={t("chat.askVibes")}
+                  placeholder={
+                    hasInvalidModelSlots
+                      ? t("models.validation.chatDisabledPlaceholder")
+                      : t("chat.askVibes")
+                  }
+                  disabled={hasInvalidModelSlots}
                   excludeCurrentApp={true}
-                  disableSendButton={disableSendButton}
+                  disableSendButton={disableSendButton || hasInvalidModelSlots}
                   compact={workspaceMode}
                   expanded={isExpanded}
                 />

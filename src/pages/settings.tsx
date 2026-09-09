@@ -51,8 +51,9 @@ import { MemorySettings } from "@/components/settings/MemorySettings";
 import { PromptsSection } from "@/components/settings/PromptsSection";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
+import { settingsFocusSectionAtom } from "@/atoms/modelValidationAtoms";
 import { DeferredSection, SectionSkeleton } from "@/components/settings/DeferredSection";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { CustomAgentsSection } from "@/components/settings/CustomAgentsSection";
@@ -247,6 +248,9 @@ export default function SettingsPage() {
   const router = useRouter();
   const navigate = useNavigate();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
+  const [settingsFocusSection, setSettingsFocusSection] = useAtom(
+    settingsFocusSectionAtom,
+  );
 
   // Version info for popover
   const [versionInfo, setVersionInfo] = useState<{
@@ -302,6 +306,19 @@ export default function SettingsPage() {
       setTimeout(() => setHighlightedSection(null), 2000);
     }
   };
+
+  // Auto-scroll and highlight section requested externally (e.g. from model validation modal)
+  useEffect(() => {
+    if (settingsFocusSection) {
+      const target = settingsFocusSection;
+      setSettingsFocusSection(null);
+      // Give the DOM a tick to layout
+      const timer = setTimeout(() => {
+        handleSearchResultClick(target);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [settingsFocusSection, setSettingsFocusSection]);
 
   // Clear search
   const clearSearch = () => {

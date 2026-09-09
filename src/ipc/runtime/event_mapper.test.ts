@@ -74,6 +74,20 @@ describe("extractToolDetail", () => {
     );
   });
 
+  it("extracts question text from questions array or prompt", () => {
+    expect(
+      extractToolDetail("question", {
+        questions: [{ question: "¿Quieres continuar?" }],
+      }),
+    ).toBe("¿Quieres continuar?");
+    expect(
+      extractToolDetail("question", {
+        questions: [{ header: "Paso 1" }, { question: "¿Seguro?" }],
+      }),
+    ).toBe("Paso 1 | ¿Seguro?");
+    expect(extractToolDetail("question", { prompt: "¿Ok?" })).toBe("¿Ok?");
+  });
+
   it("falls back to empty string when keys are missing", () => {
     expect(extractToolDetail("read_file", {})).toBe("");
     expect(extractToolDetail("read_file", null)).toBe("");
@@ -278,6 +292,9 @@ describe("buildVibesToolTag — tag shapes", () => {
     expect(buildVibesToolTag("question", "", "ans")).toBe(
       "<vibes-question>ans</vibes-question>",
     );
+    expect(
+      buildVibesToolTag("question", "¿Continuar?", "Sí"),
+    ).toBe('<vibes-question question="¿Continuar?">Sí</vibes-question>');
     expect(buildVibesToolTag("todowrite", "", "list")).toBe(
       "<vibes-todo>list</vibes-todo>",
     );

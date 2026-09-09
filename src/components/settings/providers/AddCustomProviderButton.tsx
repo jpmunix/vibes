@@ -101,6 +101,9 @@ export function AddCustomProviderButton() {
         customProviders: [...customProviders, newProvider],
       });
       queryClient.invalidateQueries({
+        queryKey: ["multi-provider-custom-models"],
+      });
+      queryClient.invalidateQueries({
         queryKey: queryKeys.languageModels.providers,
       });
       queryClient.invalidateQueries({

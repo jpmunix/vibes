@@ -8,8 +8,10 @@ import { isElectron } from "@/lib/transport";
 import { useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   appConsoleEntriesAtom,
   previewModeAtom,
@@ -26,8 +28,14 @@ import {
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
-import { invalidModelSlotsAtom } from "@/atoms/modelValidationAtoms";
+import {
+  invalidModelSlotsAtom,
+  modelFixDialogOpenAtom,
+  dismissedBannerSignatureAtom,
+  getInvalidSlotsSignature,
+} from "@/atoms/modelValidationAtoms";
 import { ModelReassignmentModal } from "@/components/settings/ModelReassignmentModal";
+import { ModelFixReminderBanner } from "@/components/settings/ModelFixReminderBanner";
 
 const SetupWizard = lazy(() =>
   import("@/components/onboarding/SetupWizard").then((m) => ({
@@ -55,6 +63,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const setInvalidModelSlots = useSetAtom(invalidModelSlotsAtom);
+  const setModelFixDialogOpen = useSetAtom(modelFixDialogOpenAtom);
+  const [dismissedBannerSignature, setDismissedBannerSignature] = useAtom(
+    dismissedBannerSignatureAtom,
+  );
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate();
   const routerState = useRouterState();
@@ -200,14 +213,35 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   }, [selectedAppId]);
 
   // ── Model validation listener (Card #242) ───────────────────────────────
-  // Replaces silent migration with blocking reassignment modal
+  // Replaces silent migration with non-blocking reassignment modal + banner
   useEffect(() => {
+    // Load persisted dismissed signature from preferences
+    ipc.misc
+      .getPreference({ key: "modelValidation.bannerDismissedSignature" })
+      .then((savedSig) => {
+        if (savedSig) {
+          setDismissedBannerSignature(savedSig);
+        }
+      })
+      .catch(() => {});
+
+    const handleSlotsUpdate = (slots: any[]) => {
+      setInvalidModelSlots(slots);
+      if (slots.length > 0) {
+        const sig = getInvalidSlotsSignature(slots);
+        // Si no ha sido descartada esta misma combinación, abrir diálogo
+        if (dismissedBannerSignature !== sig) {
+          setModelFixDialogOpen(true);
+        }
+      }
+    };
+
     // Initial fetch on app start
     ipc.languageModel
       .checkModelSlotsValidity()
       .then((res) => {
         if (res && Array.isArray(res.invalidSlots)) {
-          setInvalidModelSlots(res.invalidSlots);
+          handleSlotsUpdate(res.invalidSlots);
         }
       })
       .catch((err) => {
@@ -215,21 +249,37 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       });
 
     // Re-validación en caliente (card #242): el main process vuelve a validar
-    // cuando cambian los ajustes o los proveedores y emite el resultado. Sin
-    // esto, un slot roto por un cambio en Ajustes solo se detectaba al reiniciar
-    // la app.
+    // cuando cambian los ajustes o los proveedores y emite el resultado.
     const unsubscribe = window.electron?.ipcRenderer?.on(
       "models:validation-status" as any,
       (data: { isValid: boolean; invalidSlots: any[] }) => {
         if (data && Array.isArray(data.invalidSlots)) {
-          setInvalidModelSlots(data.invalidSlots);
+          handleSlotsUpdate(data.invalidSlots);
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.languageModels.providers,
+          });
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.languageModels.byProviders,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["multi-provider-custom-models"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["providers"],
+          });
         }
       },
     );
     return () => {
       unsubscribe?.();
     };
-  }, [setInvalidModelSlots]);
+  }, [
+    setInvalidModelSlots,
+    setModelFixDialogOpen,
+    dismissedBannerSignature,
+    setDismissedBannerSignature,
+    queryClient,
+  ]);
 
   return (
     <>
@@ -252,6 +302,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               className={`flex flex-col w-full ${isElectron ? "h-[calc(100vh-44px)] mt-11" : "h-screen"}`}
             >
               <TopNavbar />
+              <ModelFixReminderBanner />
               <div className="flex flex-1 min-h-0 overflow-hidden">
                 <SecondarySidebar />
                 <div

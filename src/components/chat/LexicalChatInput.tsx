@@ -286,6 +286,17 @@ function ClearEditorPlugin({
   return null;
 }
 
+// Plugin to sync disabled prop to Lexical editor editable state
+function EditableSyncPlugin({ disabled }: { disabled: boolean }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
+
+  return null;
+}
+
 // Plugin to sync external value prop into the editor
 function ExternalValueSyncPlugin({
   value,
@@ -626,6 +637,7 @@ export function LexicalChatInput({
           disableSendButton={disableSendButton}
           expanded={expanded}
         />
+        <EditableSyncPlugin disabled={disabled} />
         <ExternalValueSyncPlugin
           value={value}
           promptsById={Object.fromEntries(

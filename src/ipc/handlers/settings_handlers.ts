@@ -270,6 +270,15 @@ export function registerSettingsHandlers() {
         }
       }
 
+      // Re-validar modelos en caliente tras cambio de ajustes (Card #242)
+      import("../utils/model_validator")
+        .then(({ validateModelSettings }) => {
+          validateModelSettings().catch((err: any) => {
+            logger.warn("[Settings] Model revalidation broadcast error:", err);
+          });
+        })
+        .catch(() => {});
+
       return updated as UserSettings;
     },
   );

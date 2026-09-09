@@ -15,6 +15,7 @@ import * as nodePath from "path";
 import type { Catalog } from "@opencode-ai/models";
 import {
   validateModelReferences,
+  buildDisabledProviderIds,
   SLOT_LABEL_KEY_PREFIX,
   type ValidationDeps,
 } from "./model_validator";
@@ -493,5 +494,68 @@ describe("slots nulos o vacíos son bloqueantes (model_unspecified)", () => {
           slot.reason === "model_unspecified",
       ),
     ).toBe(true);
+  });
+});
+
+// ─── buildDisabledProviderIds & provider_disabled ─────────────────────────
+
+describe("buildDisabledProviderIds & provider_disabled", () => {
+  it("buildDisabledProviderIds añade ambas variantes (con y sin custom::)", () => {
+    const disabled = buildDisabledProviderIds({
+      disabledProviders: ["openrouter", "custom::mi-proxy"],
+      ollamaEnabled: true,
+    });
+    expect(disabled.has("openrouter")).toBe(true);
+    expect(disabled.has("custom::mi-proxy")).toBe(true);
+    expect(disabled.has("mi-proxy")).toBe(true);
+    expect(disabled.has("ollama")).toBe(false);
+  });
+
+  it("buildDisabledProviderIds incluye ollama cuando ollamaEnabled es false", () => {
+    const disabled = buildDisabledProviderIds({
+      disabledProviders: [],
+      ollamaEnabled: false,
+    });
+    expect(disabled.has("ollama")).toBe(true);
+  });
+
+  it("provider deshabilitado reporta provider_disabled", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["openrouter"]),
+      disabledProviders: new Set(["openrouter"]),
+    };
+    const s = base({
+      selectedModel: { name: "aion-labs/aion-2.0", provider: "openrouter" },
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots.length).toBeGreaterThanOrEqual(1);
+    expect(
+      r.invalidSlots.find((slot) => slot.slotKey === "selectedModel"),
+    ).toMatchObject({
+      slotKey: "selectedModel",
+      providerId: "openrouter",
+      reason: "provider_disabled",
+    });
+  });
+
+  it("ollama deshabilitado explícitamente reporta provider_disabled en string reference", () => {
+    const customDeps: ValidationDeps = {
+      ...deps,
+      configuredProviderIds: new Set(["ollama"]),
+      disabledProviders: new Set(["ollama"]),
+    };
+    const s = base({
+      executorModel: "ollama::qwen2.5-coder:7b",
+    });
+    const r = validateModelReferences(s, customDeps);
+    expect(r.isValid).toBe(false);
+    expect(r.invalidSlots).toHaveLength(1);
+    expect(r.invalidSlots[0]).toMatchObject({
+      slotKey: "executorModel",
+      providerId: "ollama",
+      reason: "provider_disabled",
+    });
   });
 });
