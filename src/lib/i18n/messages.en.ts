@@ -739,10 +739,13 @@ export const messagesEn: Messages = {
       title: "Model configuration required",
       description:
         "Some settings point to a model or provider that is no longer available. Reassign each one to unblock the chat.",
+      bannerProvidersDisabledOrMissing:
+        "One or more providers for these models are disabled or not configured in Settings. You can reassign them here or re-enable their providers.",
       reasonProviderMissing: "Provider not configured",
       reasonProviderDisabled: "Provider disabled in Settings",
       reasonModelNotFound: "Model not found",
       reasonModelUnspecified: "Model not configured (required)",
+      reasonModelUnspecifiedShort: "No model configured",
       previousValue: "Previous value:",
       selectPlaceholder: "Select a new model...",
       allAssigned: "All set. You can save now.",
@@ -766,8 +769,7 @@ export const messagesEn: Messages = {
         executorModel: "Executor model",
         strategistModel: "Strategist model",
         fallbackModel: "Fallback model",
-        memoriesSynthesisModelV2: "Memory synthesis model",
-        memoriesRouterModelV2: "Memory router model",
+        memoriesRouterModelV2: "Guidelines selection model",
         customAgent: "Custom agent: {name}",
       },
     },

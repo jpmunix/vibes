@@ -52,11 +52,9 @@ const logger = log.scope("model_validator");
 export const LOCAL_PROVIDERS = new Set(["ollama", "lmstudio"]);
 
 export type ModelSlotKey =
-  | "selectedModel"
   | "strategistModel"
   | "executorModel"
   | "fallbackModel"
-  | "memoriesSynthesisModelV2"
   | "memoriesRouterModelV2"
   | `customAgent:${number}`;
 
@@ -377,44 +375,9 @@ export function validateModelReferences(
     }
   };
 
-  // 1. selectedModel (Chat principal)
-  if (!settings.selectedModel?.name?.trim()) {
-    invalidSlots.push({
-      slotKey: "selectedModel",
-      labelKey: `${SLOT_LABEL_KEY_PREFIX}.selectedModel`,
-      currentValue: settings.selectedModel?.name || "null / empty",
-      providerId: settings.selectedModel?.provider || "",
-      modelName: "",
-      reason: "model_unspecified",
-    });
-  } else {
-    const sm = settings.selectedModel;
-    const provider = sm.provider || "openrouter";
-    const check = isModelValidForProvider(
-      catalog,
-      customModelNames,
-      configuredProviderIds,
-      providerModelMap,
-      provider,
-      sm.name,
-      disabledProviders,
-    );
-    if (!check.valid) {
-      invalidSlots.push({
-        slotKey: "selectedModel",
-        labelKey: `${SLOT_LABEL_KEY_PREFIX}.selectedModel`,
-        currentValue:
-          provider === "openrouter"
-            ? sm.name
-            : `${provider}${MODEL_PROVIDER_SEPARATOR}${sm.name}`,
-        providerId: provider,
-        modelName: sm.name,
-        reason: check.reason || "model_not_found",
-      });
-    }
-  }
-
-  // 2. Modelo Ejecutor (tareas ligeras, títulos, mockups, commits) — OBLIGATORIO
+  // 1. Modelo Ejecutor (tareas ligeras, títulos, mockups, commits) — OBLIGATORIO
+  // (selectedModel ya no se valida en esta modal: el usuario lo tiene visible
+  // y accesible directamente en el selector del chat).
   checkSlot(
     "executorModel",
     `${SLOT_LABEL_KEY_PREFIX}.executorModel`,
@@ -436,13 +399,9 @@ export function validateModelReferences(
     { optional: true },
   );
 
-  // 5. Modelos de Memories — OBLIGATORIO si memories están activadas
-  checkSlot(
-    "memoriesSynthesisModelV2",
-    `${SLOT_LABEL_KEY_PREFIX}.memoriesSynthesisModelV2`,
-    settings.memoriesSynthesisModelV2,
-    { optional: true },
-  );
+  // 5. Modelos de Memories / Directrices — OBLIGATORIO si están activadas
+  // (memoriesSynthesisModelV2 retirado: era la pipeline automática de síntesis
+  //  de memorias, desactivada en 7efa5659 — #8.7. Solo sobrevive el router.)
   checkSlot(
     "memoriesRouterModelV2",
     `${SLOT_LABEL_KEY_PREFIX}.memoriesRouterModelV2`,

@@ -30,7 +30,6 @@ const base = (patch: Record<string, unknown> = {}): UserSettings =>
     executorModel: "aion-labs/aion-2.0",
     strategistModel: "aion-labs/aion-2.0",
     fallbackModel: null,
-    memoriesSynthesisModelV2: null,
     memoriesRouterModelV2: null,
     ...patch,
   }) as unknown as UserSettings;
@@ -41,86 +40,36 @@ const deps: ValidationDeps = {
   configuredProviderIds: new Set<string>(["openrouter", "paretoinference", "box1"]),
 };
 
-// ─── selectedModel ─────────────────────────────────────────────────────────
+/// ─── selectedModel (excluido por diseño del validador bloqueante) ──────────
 
-describe("selectedModel", () => {
-  it("openrouter válido → isValid = true, sin slots inválidos", () => {
-    const s = base({ selectedModel: { name: "aion-labs/aion-2.0", provider: "openrouter" } });
+describe("selectedModel — excluido del validador bloqueante", () => {
+  it("selectedModel nulo o con modelo inexistente NO bloquea (el chat tiene su propio selector)", () => {
+    const s = base({
+      selectedModel: null,
+      executorModel: "aion-labs/aion-2.0",
+      strategistModel: "aion-labs/aion-2.0",
+    });
     const r = validateModelReferences(s, deps);
     expect(r.isValid).toBe(true);
     expect(r.invalidSlots).toHaveLength(0);
   });
 
-  it("nativo válido (name pelado en catálogo) → válido", () => {
-    const s = base({ selectedModel: { name: "claude-opus-4-5", provider: "anthropic" } });
+  it("selectedModel con provider inexistente o desactivado NO añade slot inválido", () => {
+    const s = base({
+      selectedModel: { name: "fantasma", provider: "custom::inexistente" },
+      executorModel: "aion-labs/aion-2.0",
+      strategistModel: "aion-labs/aion-2.0",
+    });
     const r = validateModelReferences(s, deps);
     expect(r.isValid).toBe(true);
     expect(r.invalidSlots).toHaveLength(0);
   });
 
-  it("openrouter inexistente → reporta slot inválido con model_not_found (NO muta ni asigna fallback)", () => {
-    const s = base({ selectedModel: { name: "vendor/model-jetado", provider: "openrouter" } });
-    const r = validateModelReferences(s, deps);
-    expect(r.isValid).toBe(false);
-    expect(r.invalidSlots).toHaveLength(1);
-    expect(r.invalidSlots[0]).toMatchObject({
-      slotKey: "selectedModel",
-      modelName: "vendor/model-jetado",
-      providerId: "openrouter",
-      reason: "model_not_found",
-    });
-  });
-
-  it("custom provider configurado con modelo existente en caché → válido", () => {
-    const customDeps: ValidationDeps = {
-      ...deps,
-      configuredProviderIds: new Set(["paretoinference"]),
-      // El mapa SIEMPRE se indexa con la forma canónica `custom::<id>`.
-      providerModelMap: new Map([["custom::paretoinference", new Set(["z-ai"])]]),
-    };
-    const s = base({
-      selectedModel: { name: "z-ai", provider: "custom::paretoinference" },
-    });
-    const r = validateModelReferences(s, customDeps);
-    expect(r.isValid).toBe(true);
-    expect(r.invalidSlots).toHaveLength(0);
-  });
-
-  it("custom provider no configurado → reporta provider_missing", () => {
-    const customDeps: ValidationDeps = {
-      ...deps,
-      configuredProviderIds: new Set(["openrouter"]), // paretoinference NO está
-    };
-    const s = base({
-      selectedModel: { name: "z-ai", provider: "custom::paretoinference" },
-    });
-    const r = validateModelReferences(s, customDeps);
-    expect(r.isValid).toBe(false);
-    expect(r.invalidSlots).toHaveLength(1);
-    expect(r.invalidSlots[0].reason).toBe("provider_missing");
-    expect(r.invalidSlots[0].slotKey).toBe("selectedModel");
-  });
-
-  it("custom provider configurado pero modelo ausente en caché local → reporta model_not_found", () => {
-    const customDeps: ValidationDeps = {
-      ...deps,
-      configuredProviderIds: new Set(["paretoinference"]),
-      providerModelMap: new Map([
-        ["custom::paretoinference", new Set(["otro-modelo"])],
-      ]),
-    };
-    const s = base({
-      selectedModel: { name: "modelo-inexistente", provider: "custom::paretoinference" },
-    });
-    const r = validateModelReferences(s, customDeps);
-    expect(r.isValid).toBe(false);
-    expect(r.invalidSlots).toHaveLength(1);
-    expect(r.invalidSlots[0].reason).toBe("model_not_found");
-  });
-
-  it("local provider (ollama/lmstudio) → siempre válido sin bloquear por red", () => {
+  it("local provider (ollama/lmstudio) → no añade slot inválido", () => {
     const s = base({
       selectedModel: { name: "qwen2.5-coder:7b", provider: "ollama" },
+      executorModel: "aion-labs/aion-2.0",
+      strategistModel: "aion-labs/aion-2.0",
     });
     const r = validateModelReferences(s, deps);
     expect(r.isValid).toBe(true);
@@ -482,19 +431,6 @@ describe("slots nulos o vacíos son bloqueantes (model_unspecified)", () => {
       ),
     ).toBe(true);
   });
-
-  it("selectedModel sin name o null → reporta model_unspecified", () => {
-    const s = base({ selectedModel: null });
-    const r = validateModelReferences(s, deps);
-    expect(r.isValid).toBe(false);
-    expect(
-      r.invalidSlots.some(
-        (slot) =>
-          slot.slotKey === "selectedModel" &&
-          slot.reason === "model_unspecified",
-      ),
-    ).toBe(true);
-  });
 });
 
 // ─── buildDisabledProviderIds & provider_disabled ─────────────────────────
@@ -519,22 +455,23 @@ describe("buildDisabledProviderIds & provider_disabled", () => {
     expect(disabled.has("ollama")).toBe(true);
   });
 
-  it("provider deshabilitado reporta provider_disabled", () => {
+  it("provider deshabilitado reporta provider_disabled en slots internos", () => {
     const customDeps: ValidationDeps = {
       ...deps,
       configuredProviderIds: new Set(["openrouter"]),
       disabledProviders: new Set(["openrouter"]),
     };
     const s = base({
-      selectedModel: { name: "aion-labs/aion-2.0", provider: "openrouter" },
+      executorModel: "openrouter::aion-labs/aion-2.0",
+      strategistModel: "openrouter::aion-labs/aion-2.0",
     });
     const r = validateModelReferences(s, customDeps);
     expect(r.isValid).toBe(false);
     expect(r.invalidSlots.length).toBeGreaterThanOrEqual(1);
     expect(
-      r.invalidSlots.find((slot) => slot.slotKey === "selectedModel"),
+      r.invalidSlots.find((slot) => slot.slotKey === "executorModel"),
     ).toMatchObject({
-      slotKey: "selectedModel",
+      slotKey: "executorModel",
       providerId: "openrouter",
       reason: "provider_disabled",
     });

@@ -32,11 +32,10 @@ const logger = log.scope("model_revalidation");
  */
 export const MODEL_REVALIDATION_KEYS: ReadonlySet<string> = new Set([
   // ── Slots ──────────────────────────────────────────────────────────────
-  "selectedModel",
+  // (selectedModel se gestiona directamente en el selector del chat, no bloquea)
   "strategistModel",
   "executorModel",
   "fallbackModel",
-  "memoriesSynthesisModelV2",
   "memoriesRouterModelV2",
   // ── Contexto de validez ────────────────────────────────────────────────
   // `memoriesEnabled` decide si los slots de memorias son obligatorios.

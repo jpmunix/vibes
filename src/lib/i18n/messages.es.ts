@@ -637,10 +637,13 @@ export const messagesEs: Messages = {
       title: "Configuración de modelos requerida",
       description:
         "Algunos ajustes apuntan a un modelo o proveedor que ya no está disponible. Reasigna cada uno para desbloquear el chat.",
+      bannerProvidersDisabledOrMissing:
+        "Uno o más proveedores de estos modelos están desactivados o no configurados en Ajustes. Puedes reasignarlos aquí o reactivar sus proveedores.",
       reasonProviderMissing: "Proveedor no configurado",
       reasonProviderDisabled: "Proveedor desactivado en Ajustes",
       reasonModelNotFound: "Modelo no encontrado",
       reasonModelUnspecified: "Modelo no configurado (requerido)",
+      reasonModelUnspecifiedShort: "Sin modelo configurado",
       previousValue: "Valor previo:",
       selectPlaceholder: "Seleccionar nuevo modelo...",
       allAssigned: "Todo listo. Puedes guardar.",
@@ -664,8 +667,7 @@ export const messagesEs: Messages = {
         executorModel: "Modelo ejecutor",
         strategistModel: "Modelo estratega",
         fallbackModel: "Modelo de respaldo",
-        memoriesSynthesisModelV2: "Modelo de síntesis de memorias",
-        memoriesRouterModelV2: "Modelo router de memorias",
+        memoriesRouterModelV2: "Modelo de selección de directrices",
         customAgent: "Agente personalizado: {name}",
       },
     },

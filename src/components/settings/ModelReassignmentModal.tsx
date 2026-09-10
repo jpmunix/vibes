@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import {
   invalidModelSlotsAtom,
@@ -19,10 +19,26 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertOctagon, Loader2, CloudOff, ArrowRight } from "@/components/ui/icons";
+import { AlertOctagon, Loader2, CloudOff, ArrowRight, Info } from "@/components/ui/icons";
 import { showSuccess, showError } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+
+/**
+ * Helper para obtener el label legible del proveedor sin sesgos ni prefijos internos
+ */
+function getReadableProviderLabel(provider: string, customProviders?: any[]): string {
+  const cleanId = provider.replace(/^custom::/, "");
+  if (cleanId === "openrouter") return "OpenRouter";
+  if (cleanId === "ollama") return "Ollama";
+  if (cleanId === "lmstudio") return "LM Studio";
+  if (cleanId === "openai") return "OpenAI";
+  if (cleanId === "anthropic") return "Anthropic";
+  if (cleanId === "google") return "Google";
+
+  const cp = customProviders?.find((p: any) => p.id === cleanId || p.id === provider);
+  return cp?.name || cleanId;
+}
 
 /**
  * Diálogo de reasignación / ajuste de modelos rotos (card #242).
@@ -38,7 +54,7 @@ export function ModelReassignmentModal() {
   const [isOpen, setIsOpen] = useAtom(modelFixDialogOpenAtom);
   const setSettingsFocusSection = useSetAtom(settingsFocusSectionAtom);
 
-  const { updateSettings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const { data: allModels, isLoading: modelsLoading } = useMultiProviderModels();
 
   const [slotChoices, setSlotChoices] = useState<Record<string, string>>({});
@@ -150,13 +166,58 @@ export function ModelReassignmentModal() {
     (typeof window !== "undefined" &&
       window.location.hash.includes("/settings"));
 
+  // Detectar si hay slots fallando por proveedor desactivado o no configurado
+  const hasProviderIssues = useMemo(() => {
+    return invalidSlots.some(
+      (s) => s.reason === "provider_disabled" || s.reason === "provider_missing",
+    );
+  }, [invalidSlots]);
+
+  const formatPreviousValue = useCallback(
+    (currentValue: string) => {
+      const trimmed = currentValue?.trim() || "";
+      if (!trimmed) {
+        return (
+          <span className="italic text-muted-foreground/70">
+            {t("models.validation.reasonModelUnspecifiedShort")}
+          </span>
+        );
+      }
+
+      const parsed = parseModelReference(trimmed);
+      if (parsed) {
+        const providerName = getReadableProviderLabel(
+          parsed.provider,
+          settings?.customProviders,
+        );
+        return (
+          <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border/60">
+              {providerName}
+            </span>
+            <span className="truncate font-mono text-[11px] text-foreground/90">
+              {parsed.model}
+            </span>
+          </div>
+        );
+      }
+
+      return (
+        <span className="truncate font-mono text-[11px] text-foreground/90">
+          {trimmed}
+        </span>
+      );
+    },
+    [settings?.customProviders, t],
+  );
+
   if (invalidSlots.length === 0 || isSettingsPage) return null;
 
   const hasNoAvailableModels = !modelsLoading && (!allModels || allModels.length === 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-6 gap-5">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 gap-4 sm:max-w-2xl">
         <DialogHeader className="flex flex-row items-start gap-3.5 text-left sm:text-left space-y-0">
           <div className="p-2.5 bg-destructive/10 rounded-xl text-destructive shrink-0 mt-0.5">
             <AlertOctagon size={22} />
@@ -170,6 +231,15 @@ export function ModelReassignmentModal() {
             </DialogDescription>
           </div>
         </DialogHeader>
+
+        {hasProviderIssues && !hasNoAvailableModels && (
+          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs">
+            <Info size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 leading-relaxed">
+              {t("models.validation.bannerProvidersDisabledOrMissing")}
+            </div>
+          </div>
+        )}
 
         {hasNoAvailableModels ? (
           <div className="flex flex-col items-center justify-center p-6 border border-dashed border-border rounded-xl bg-muted/20 text-center space-y-4">
@@ -221,28 +291,26 @@ export function ModelReassignmentModal() {
               {invalidSlots.map((slot) => (
                 <div
                   key={slot.slotKey}
-                  className="bg-background/60 border border-border/80 rounded-xl p-3.5 space-y-2.5 transition-colors hover:border-border"
+                  className="bg-card/60 border border-border/80 rounded-xl p-4 space-y-3 transition-colors hover:border-border shadow-xs"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="font-semibold text-xs text-foreground">
                       {t(slot.labelKey, slot.labelParams)}
                     </span>
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                      {slot.reason === "provider_missing"
-                        ? t("models.validation.reasonProviderMissing")
-                        : slot.reason === "provider_disabled"
-                          ? t("models.validation.reasonProviderDisabled")
-                          : slot.reason === "model_unspecified"
-                            ? t("models.validation.reasonModelUnspecified")
-                            : t("models.validation.reasonModelNotFound")}
-                    </span>
+                    {slot.reason === "model_unspecified" && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70">
+                        {t("models.validation.reasonModelUnspecifiedShort")}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 overflow-hidden">
-                    <span className="shrink-0">{t("models.validation.previousValue")}</span>
-                    <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px] text-foreground/80 truncate">
-                      {slot.currentValue}
-                    </code>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-2 overflow-hidden">
+                    <span className="shrink-0 text-muted-foreground/80">
+                      {t("models.validation.previousValue")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {formatPreviousValue(slot.currentValue)}
+                    </div>
                   </div>
 
                   <div className="pt-0.5">

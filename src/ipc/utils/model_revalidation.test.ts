@@ -30,8 +30,8 @@ describe("Model Revalidation & Signatures (Card #242)", () => {
 
   it("getInvalidSlotsSignature genera firmas estables e independientes del orden", () => {
     const slotA: InvalidModelSlot = {
-      slotKey: "selectedModel",
-      labelKey: "models.validation.slotSelectedModel",
+      slotKey: "executorModel",
+      labelKey: "models.validation.slots.executorModel",
       currentValue: "openrouter::broken-model",
       providerId: "openrouter",
       modelName: "broken-model",
@@ -39,7 +39,7 @@ describe("Model Revalidation & Signatures (Card #242)", () => {
     };
     const slotB: InvalidModelSlot = {
       slotKey: "strategistModel",
-      labelKey: "models.validation.slotStrategistModel",
+      labelKey: "models.validation.slots.strategistModel",
       currentValue: "",
       providerId: "",
       modelName: "",
@@ -50,7 +50,7 @@ describe("Model Revalidation & Signatures (Card #242)", () => {
     const sig2 = getInvalidSlotsSignature([slotB, slotA]);
 
     expect(sig1).toBe(sig2);
-    expect(sig1).toContain("selectedModel:model_not_found");
+    expect(sig1).toContain("executorModel:model_not_found");
     expect(sig1).toContain("strategistModel:model_unspecified");
   });
 
