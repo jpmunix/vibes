@@ -1264,3 +1264,104 @@ describe("handleRuntimeStream contract — multi-root workspace (#95)", () => {
     createSessionSpy.mockRestore();
   });
 });
+
+// ============================================================================
+// Contract: sampling params (#258)
+// ============================================================================
+// The bridge reads inference settings once per turn and forwards
+// temperature/topP/repetitionPenalty into the AgentDefinition. undefined =
+// the field is omitted (the runtime/provider fall back to their defaults).
+// A throwing readSettings degrades gracefully: the turn still runs, with no
+// sampling params.
+
+import * as settingsModule from "../../main/settings";
+
+describe("handleRuntimeStream contract — sampling params (#258)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("settings con los 3 knobs → el agent de createSession los lleva", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    vi.spyOn(settingsModule, "readSettings").mockReturnValue({
+      inferenceTemperature: 0.2,
+      inferenceTopP: 0.95,
+      inferenceRepetitionPenalty: 1.05,
+    } as any);
+
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 600, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(createSessionSpy).toHaveBeenCalledOnce();
+    const arg = createSessionSpy.mock.calls[0]![0]!;
+    expect(arg.agent).toBeDefined();
+    const agent = arg.agent!;
+    expect(agent.temperature).toBe(0.2);
+    expect(agent.topP).toBe(0.95);
+    expect(agent.repetitionPenalty).toBe(1.05);
+
+    createSessionSpy.mockRestore();
+  });
+
+  it("settings parciales → solo el knob definido viaja en el agent", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    vi.spyOn(settingsModule, "readSettings").mockReturnValue({
+      inferenceTopP: 0.8,
+    } as any);
+
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+
+    await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 601, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(createSessionSpy).toHaveBeenCalledOnce();
+    const arg = createSessionSpy.mock.calls[0]![0]!;
+    expect(arg.agent).toBeDefined();
+    const agent = arg.agent!;
+    expect(agent.topP).toBe(0.8);
+    expect("temperature" in agent).toBe(false);
+    expect("repetitionPenalty" in agent).toBe(false);
+
+    createSessionSpy.mockRestore();
+  });
+
+  it("readSettings lanza → el turno sigue (degradación) y el agent no lleva sampling params", async () => {
+    hoisted.runtime = buildTestRuntime(hoisted.testRoot, mockFetch([MOCK_RESPONSES.noTool]));
+    const { sender } = makeFakeSender();
+    vi.spyOn(settingsModule, "readSettings").mockImplementation(() => {
+      throw new Error("settings unreadable");
+    });
+
+    const createSessionSpy = vi.spyOn(hoisted.runtime, "createSession");
+
+    const result = await handleRuntimeStream(
+      { sender } as any,
+      { chatId: 602, prompt: "say hi" },
+      new AbortController(),
+      makeOptions(),
+    );
+
+    expect(result.success).toBe(true);
+    expect(createSessionSpy).toHaveBeenCalledOnce();
+    const arg = createSessionSpy.mock.calls[0]![0]!;
+    expect(arg.agent).toBeDefined();
+    const agent = arg.agent!;
+    expect("temperature" in agent).toBe(false);
+    expect("topP" in agent).toBe(false);
+    expect("repetitionPenalty" in agent).toBe(false);
+
+    createSessionSpy.mockRestore();
+  });
+});

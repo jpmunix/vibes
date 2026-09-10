@@ -51,6 +51,7 @@ import {
   clearSessionUIContext,
 } from "./permission_state";
 import { getVibesAppPath } from "../../paths/paths";
+import { readSettings } from "../../main/settings";
 import { attachToSystemPrompt } from "./prompt_attach";
 import { attachmentsToImageParts, resolvePersistedImage } from "./attachments_media";
 import { safeSend } from "../utils/safe_sender";
@@ -358,6 +359,28 @@ export async function handleRuntimeStream(
     options.customSystemPrompt,
   );
 
+  // ── #258: sampling params (temperature / topP / repetitionPenalty) ──────
+  // Read the user's inference settings once per turn and forward them to the
+  // runtime via the AgentDefinition. undefined = omit the field; the runtime
+  // and the provider then fall back to their own defaults.
+  let samplingParams: { temperature?: number; topP?: number; repetitionPenalty?: number } = {};
+  try {
+    const s = readSettings();
+    samplingParams = {
+      ...(s.inferenceTemperature !== undefined ? { temperature: s.inferenceTemperature } : {}),
+      ...(s.inferenceTopP !== undefined ? { topP: s.inferenceTopP } : {}),
+      ...(s.inferenceRepetitionPenalty !== undefined
+        ? { repetitionPenalty: s.inferenceRepetitionPenalty }
+        : {}),
+    };
+  } catch (err) {
+    // Settings unreadable → send no sampling params; the turn still works with
+    // provider defaults.
+    logger.warn(
+      `[RuntimeBridge] Failed to read inference settings: ${(err as Error).message} — omitting sampling params`,
+    );
+  }
+
   // ── 1. Session resolution: continue existing session (chat = session) or create fresh ──
   // #248 (Slice C / DP-4 reverted): we maintain ONE persistent session per chat.
   // If the chat already has an opencodeSessionId and the session exists in the runtime,
@@ -411,6 +434,7 @@ export async function handleRuntimeStream(
           ...(toolsForAgent(agentId)
             ? { tools: toolsForAgent(agentId) as string[] }
             : {}),
+          ...samplingParams,
         },
         workspaceRoots,
       });
@@ -434,6 +458,7 @@ export async function handleRuntimeStream(
         ...(toolsForAgent(agentId)
           ? { tools: toolsForAgent(agentId) as string[] }
           : {}),
+        ...samplingParams,
       },
       messages: await convertHistoryToRuntimeMessages(chatMessages, req.prompt),
       media: mediaParts,
