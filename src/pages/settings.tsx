@@ -277,8 +277,10 @@ export default function SettingsPage() {
   }, [fetchVersionInfo]);
 
   useEffect(() => {
-    setActiveSettingsSection("general-settings");
-  }, [setActiveSettingsSection]);
+    if (!settingsFocusSection) {
+      setActiveSettingsSection("general-settings");
+    }
+  }, [setActiveSettingsSection, settingsFocusSection]);
 
   // Track scroll position for sticky header fade
   useEffect(() => {
@@ -297,14 +299,47 @@ export default function SettingsPage() {
     return searchSettings(searchQuery, searchIndex);
   }, [searchQuery, searchIndex]);
 
+  // Scroll to section accounting for sticky header pill (95px offset) + retries until DOM mounted
+  const scrollToAndHighlight = useCallback(
+    (sectionId: string) => {
+      let attempts = 0;
+      const maxAttempts = 30; // 30 * 50ms = 1500ms
+
+      const tryScroll = () => {
+        attempts++;
+        const element = document.getElementById(sectionId);
+        const container = document.getElementById("settings-scroll-container");
+
+        if (element && container) {
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = element.getBoundingClientRect();
+          const targetScrollTop =
+            container.scrollTop + (elementRect.top - containerRect.top) - 140;
+
+          container.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: "smooth",
+          });
+
+          setActiveSettingsSection(sectionId);
+          setHighlightedSection(sectionId);
+
+          setTimeout(() => {
+            setHighlightedSection((curr) => (curr === sectionId ? null : curr));
+          }, 3500);
+        } else if (attempts < maxAttempts) {
+          setTimeout(tryScroll, 50);
+        }
+      };
+
+      tryScroll();
+    },
+    [setActiveSettingsSection],
+  );
+
   // Handle search result click
   const handleSearchResultClick = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      setHighlightedSection(sectionId);
-      setTimeout(() => setHighlightedSection(null), 2000);
-    }
+    scrollToAndHighlight(sectionId);
   };
 
   // Auto-scroll and highlight section requested externally (e.g. from model validation modal)
@@ -312,13 +347,9 @@ export default function SettingsPage() {
     if (settingsFocusSection) {
       const target = settingsFocusSection;
       setSettingsFocusSection(null);
-      // Give the DOM a tick to layout
-      const timer = setTimeout(() => {
-        handleSearchResultClick(target);
-      }, 100);
-      return () => clearTimeout(timer);
+      scrollToAndHighlight(target);
     }
-  }, [settingsFocusSection, setSettingsFocusSection]);
+  }, [settingsFocusSection, setSettingsFocusSection, scrollToAndHighlight]);
 
   // Clear search
   const clearSearch = () => {

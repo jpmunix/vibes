@@ -980,10 +980,21 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="p-4" data-testid="chat-input-container">
+      <div
+        className={`p-4 ${hasInvalidModelSlots ? "cursor-pointer" : ""}`}
+        data-testid="chat-input-container"
+        onClick={
+          hasInvalidModelSlots ? () => setModelFixDialogOpen(true) : undefined
+        }
+      >
         <div
-          className="mx-auto relative w-full"
+          className={`mx-auto relative w-full transition-opacity duration-300 ${
+            hasInvalidModelSlots
+              ? "opacity-50 pointer-events-none select-none"
+              : ""
+          }`}
           style={{ maxWidth: "var(--bubble-width, 65%)" }}
+          aria-disabled={hasInvalidModelSlots || undefined}
         >
           <div
             className="rounded-lg p-[1.5px] transition-opacity duration-300"
@@ -1113,27 +1124,18 @@ export function ChatInput({
               <DragDropOverlay isDraggingOver={isDraggingOver} />
 
               {/* Textarea area with expand toggle */}
-              <div
-                className={`relative ${hasInvalidModelSlots ? "cursor-pointer" : ""}`}
-                onClick={
-                  hasInvalidModelSlots
-                    ? () => setModelFixDialogOpen(true)
-                    : undefined
-                }
-              >
-                {!hasInvalidModelSlots && (
-                  <button
-                    onClick={() => setIsExpanded((v) => !v)}
-                    className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                    title={isExpanded ? t("chat.collapseEditor") : t("chat.expandEditor")}
-                  >
-                    {isExpanded ? (
-                      <Minimize2 size={13} />
-                    ) : (
-                      <Maximize2 size={13} />
-                    )}
-                  </button>
-                )}
+              <div className="relative">
+                <button
+                  onClick={() => setIsExpanded((v) => !v)}
+                  className="absolute top-1.5 right-1.5 z-10 p-1 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  title={isExpanded ? t("chat.collapseEditor") : t("chat.expandEditor")}
+                >
+                  {isExpanded ? (
+                    <Minimize2 size={13} />
+                  ) : (
+                    <Maximize2 size={13} />
+                  )}
+                </button>
                 <LexicalChatInput
                   value={inputValue}
                   onChange={setInputValue}

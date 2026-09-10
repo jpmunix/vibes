@@ -229,8 +229,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       setInvalidModelSlots(slots);
       if (slots.length > 0) {
         const sig = getInvalidSlotsSignature(slots);
-        // Si no ha sido descartada esta misma combinación, abrir diálogo
-        if (dismissedBannerSignature !== sig) {
+        const inSettings =
+          routerState.location.pathname === "/settings" ||
+          (typeof window !== "undefined" &&
+            window.location.hash.includes("/settings"));
+        // Si no ha sido descartada esta misma combinación y NO estamos en Ajustes, abrir diálogo
+        if (dismissedBannerSignature !== sig && !inSettings) {
           setModelFixDialogOpen(true);
         }
       }

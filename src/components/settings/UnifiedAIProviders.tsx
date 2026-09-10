@@ -36,10 +36,10 @@ export function UnifiedAIProviders({
     <div
       id="models-connectivity"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border transition-all duration-500",
         isHighlighted
-          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-          : "",
+          ? "ring-4 ring-primary/80 border-primary shadow-2xl shadow-primary/25 scale-[1.01]"
+          : "border-border",
       )}
     >
       <div className="mb-6">

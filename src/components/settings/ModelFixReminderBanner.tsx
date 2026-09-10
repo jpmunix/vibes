@@ -10,15 +10,22 @@ import {
 } from "@/atoms/modelValidationAtoms";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
+import { useRouterState } from "@tanstack/react-router";
 
 export function ModelFixReminderBanner() {
   const { t } = useI18n();
+  const routerState = useRouterState();
   const showBanner = useAtomValue(showModelFixBannerAtom);
   const invalidSlots = useAtomValue(invalidModelSlotsAtom);
   const setDialogOpen = useSetAtom(modelFixDialogOpenAtom);
   const [, setDismissedSignature] = useAtom(dismissedBannerSignatureAtom);
 
-  if (!showBanner || invalidSlots.length === 0) {
+  const isSettingsPage =
+    routerState.location.pathname === "/settings" ||
+    (typeof window !== "undefined" &&
+      window.location.hash.includes("/settings"));
+
+  if (!showBanner || invalidSlots.length === 0 || isSettingsPage) {
     return null;
   }
 
@@ -42,11 +49,13 @@ export function ModelFixReminderBanner() {
   return (
     <div
       role="alert"
-      className="relative z-30 flex items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200 backdrop-blur-sm transition-all animate-in fade-in slide-in-from-top-1"
+      className="relative z-30 flex items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-500/15 dark:bg-amber-950/60 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-100 backdrop-blur-md shadow-xs transition-all animate-in fade-in slide-in-from-top-1"
     >
       <div className="flex items-center gap-2.5 overflow-hidden">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-        <span className="truncate font-medium">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/25 dark:bg-amber-500/30 text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5" />
+        </span>
+        <span className="truncate font-semibold tracking-tight">
           {t("models.validation.bannerText", { count: invalidSlots.length })}
         </span>
       </div>
@@ -54,9 +63,8 @@ export function ModelFixReminderBanner() {
       <div className="flex items-center gap-2 shrink-0">
         <Button
           size="sm"
-          variant="outline"
           onClick={handleOpenDialog}
-          className="h-7 gap-1 border-amber-500/40 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30 hover:text-white cursor-pointer"
+          className="h-7 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-amber-950 font-bold shadow-xs cursor-pointer text-xs"
         >
           <span>{t("models.validation.bannerReview")}</span>
           <ArrowRight className="h-3 w-3" />
@@ -66,7 +74,7 @@ export function ModelFixReminderBanner() {
           type="button"
           onClick={handleDismiss}
           title={t("models.validation.bannerDismiss")}
-          className="rounded p-1 text-amber-300/70 hover:bg-amber-500/20 hover:text-amber-100 transition-colors cursor-pointer"
+          className="rounded p-1 text-amber-900/70 hover:text-amber-950 hover:bg-amber-500/20 dark:text-amber-300/80 dark:hover:text-amber-100 dark:hover:bg-amber-500/20 transition-colors cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
         </button>

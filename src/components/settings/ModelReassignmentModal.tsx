@@ -22,7 +22,7 @@ import {
 import { AlertOctagon, Loader2, CloudOff, ArrowRight } from "@/components/ui/icons";
 import { showSuccess, showError } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 /**
  * Diálogo de reasignación / ajuste de modelos rotos (card #242).
@@ -144,7 +144,13 @@ export function ModelReassignmentModal() {
     }
   }, [allSlotsAssigned, invalidSlots, slotChoices, updateSettings, setInvalidSlots, setIsOpen, t]);
 
-  if (invalidSlots.length === 0) return null;
+  const routerState = useRouterState();
+  const isSettingsPage =
+    routerState.location.pathname === "/settings" ||
+    (typeof window !== "undefined" &&
+      window.location.hash.includes("/settings"));
+
+  if (invalidSlots.length === 0 || isSettingsPage) return null;
 
   const hasNoAvailableModels = !modelsLoading && (!allModels || allModels.length === 0);
 
