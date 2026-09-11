@@ -1830,6 +1830,7 @@ Escribe aquí cómo debe comportarse el agente cuando use este skill...`,
     connectionSuccess: "Conexión exitosa con el proveedor",
     connectionFailed: "Error al conectar con el proveedor",
     connectionRequired: "Prueba la conexión con el proveedor para continuar",
+    ready: "¡Todo listo! Vibes está configurado para empezar.",
   },
   connectors: {
     vercelConnected: "Conectado al proyecto de Vercel:",

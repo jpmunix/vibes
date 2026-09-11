@@ -1806,6 +1806,7 @@ Write here how the agent should behave when using this skill...`,
     connectionSuccess: "Provider connection successful",
     connectionFailed: "Provider connection failed",
     connectionRequired: "Test provider connection to continue",
+    ready: "All set! Vibes is configured and ready to go.",
   },
   connectors: {
     vercelConnected: "Connected to Vercel project:",
