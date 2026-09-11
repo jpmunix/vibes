@@ -28,6 +28,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { ProviderHeader } from "./ProviderHeader";
 import { VerifiedModelsList } from "./VerifiedModelsList";
 import type { CustomProviderConfig, UserSettings } from "@/lib/schemas";
+import { resolvePresetOrCustom } from "@/lib/providerPresets";
 
 /**
  * ¿Es el provider actual el único configurado?
@@ -70,6 +71,7 @@ export function CustomProviderSection({
   const enabled = !disabledProviders.includes(provider.id);
   const customProviders = settings?.customProviders ?? [];
   const isLastProvider = isLastConfiguredProvider(settings);
+  const preset = resolvePresetOrCustom(provider);
 
   const handleToggle = async (on: boolean) => {
     const current = settings?.disabledProviders ?? [];
@@ -136,6 +138,9 @@ export function CustomProviderSection({
   };
 
   const statusDot = testResult ? (testResult.ok ? "online" : "offline") : null;
+  const subtitle = preset && !preset.isCustom
+    ? `${preset.name} • ${provider.apiBaseUrl}`
+    : provider.apiBaseUrl;
 
   return (
     <>
@@ -147,7 +152,7 @@ export function CustomProviderSection({
           expanded={expanded}
           onToggleExpand={() => setExpanded((e) => !e)}
           statusDot={statusDot as any}
-          subtitle={provider.apiBaseUrl}
+          subtitle={subtitle}
           rightActions={
             <button
               type="button"

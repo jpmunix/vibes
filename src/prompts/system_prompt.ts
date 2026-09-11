@@ -141,6 +141,7 @@ export const constructSystemPrompt = ({
   chatMode = "agent",
   readOnly,
   chatLanguage = "es",
+  displayName,
   settings,
 }: {
   chatMode?: "ask" | "agent" | "plan";
@@ -148,6 +149,8 @@ export const constructSystemPrompt = ({
   readOnly?: boolean;
   /** Language for chat responses */
   chatLanguage?: "es" | "en";
+  /** User's configured name from onboarding/profile */
+  displayName?: string;
   settings?: UserSettings;
 }) => {
   let systemPrompt = getSystemPromptForChatMode({
@@ -164,6 +167,15 @@ export const constructSystemPrompt = ({
     "[[LANGUAGE_INSTRUCTION]]",
     languageInstruction,
   );
+
+  // Card #99: inject configured user name into system instructions
+  if (displayName && displayName.trim()) {
+    const nameBlock =
+      chatLanguage === "es"
+        ? `\n\n# Usuario\nEl nombre del usuario es "${displayName.trim()}". Dirígete a él por su nombre cuando sea natural.`
+        : `\n\n# User\nThe user's name is "${displayName.trim()}". Address them by their name when natural.`;
+    systemPrompt += nameBlock;
+  }
 
   return systemPrompt;
 };

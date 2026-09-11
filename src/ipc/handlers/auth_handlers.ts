@@ -26,6 +26,7 @@ function toUserDto(row: typeof remoteSchema.users.$inferSelect): VibesUserDto {
     email: row.email,
     displayName: row.displayName,
     photoUrl: row.photoUrl ?? null,
+    experienceLevel: row.experienceLevel ?? null,
     createdAt:
       row.createdAt instanceof Date
         ? row.createdAt.getTime()
@@ -219,6 +220,8 @@ export function registerAuthHandlers(): void {
     if (input.displayName !== undefined)
       updates.displayName = input.displayName;
     if (input.photoUrl !== undefined) updates.photoUrl = input.photoUrl;
+    if (input.experienceLevel !== undefined)
+      updates.experienceLevel = input.experienceLevel;
 
     await db
       .update(remoteSchema.users)

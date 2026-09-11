@@ -1511,6 +1511,25 @@ This conversation includes one or more image attachments. When the user uploads 
             contextInstructions.push(prompt.content);
           }
 
+          // Card #99: inyectar nombre configurado del usuario en las instrucciones
+          // del agente (el runtime es agnóstico y no conoce la tabla users).
+          try {
+            const userRow = await db.query.users.findFirst({
+              where: eq(remoteSchema.users.id, currentUserId as string),
+              columns: { displayName: true },
+            });
+            const displayName = userRow?.displayName?.trim();
+            if (displayName) {
+              contextInstructions.push(
+                `# Usuario\nEl nombre del usuario es "${displayName}". Dirígete a él por su nombre cuando sea natural.`,
+              );
+            }
+          } catch (err) {
+            logger.warn(
+              `[ChatStream] No se pudo leer el displayName del usuario: ${(err as Error).message}`,
+            );
+          }
+
           // Verbosidad dinámica (card #182): el selector de Ajustes es la
           // fuente de verdad sobre cuánto habla el agente. Se inyecta SIEMPRE
           // (independiente de overrides) — el núcleo editable no controla la

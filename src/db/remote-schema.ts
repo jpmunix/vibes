@@ -31,6 +31,7 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
   sessionToken: text("session_token"),
+  experienceLevel: text("experience_level"), // 'expert' | 'beginner' | null (Card #99)
   migrationStatus: text("migration_status", {
     enum: ["pending", "in_progress", "completed", "not_needed"],
   })

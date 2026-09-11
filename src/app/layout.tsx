@@ -37,9 +37,9 @@ import {
 import { ModelReassignmentModal } from "@/components/settings/ModelReassignmentModal";
 import { ModelFixReminderBanner } from "@/components/settings/ModelFixReminderBanner";
 
-const SetupWizard = lazy(() =>
-  import("@/components/onboarding/SetupWizard").then((m) => ({
-    default: m.SetupWizard,
+const OnboardingWizard = lazy(() =>
+  import("@/components/onboarding/OnboardingWizard").then((m) => ({
+    default: m.OnboardingWizard,
   })),
 );
 
@@ -291,7 +291,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <DeepLinkProvider>
           {/* Blocking wizard: shown after login if no provider is configured */}
           <Suspense fallback={null}>
-            <SetupWizard />
+            <OnboardingWizard />
           </Suspense>
           {/*
             Blocking modal for broken model slots (card #242).

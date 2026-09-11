@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
-import { Plus, Loader2, RefreshCw, AlertCircle } from "@/components/ui/icons";
+import { Plus, Loader2, RefreshCw, AlertCircle, Sparkles } from "@/components/ui/icons";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,14 @@ import { ipc } from "@/ipc/types";
 import { CUSTOM_PROVIDER_PREFIX } from "@/ipc/shared/language_model_constants";
 import { VerifiedModelsList } from "./VerifiedModelsList";
 import type { CustomProviderConfig } from "@/lib/schemas";
+import { PROVIDER_PRESETS, getPresetById } from "@/lib/providerPresets";
 
 export function AddCustomProviderButton() {
   const { t, tPlural } = useI18n();
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState("custom");
   const [newName, setNewName] = useState("");
   const [newBaseUrl, setNewBaseUrl] = useState("");
   const [newApiKey, setNewApiKey] = useState("");
@@ -37,6 +39,21 @@ export function AddCustomProviderButton() {
   } | null>(null);
 
   const customProviders = settings?.customProviders ?? [];
+
+  const handlePresetChange = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    setVerifyResult(null);
+    const preset = getPresetById(presetId);
+    if (!preset) return;
+
+    if (preset.isCustom) {
+      // Don't overwrite if user was typing custom
+      return;
+    }
+
+    setNewName(preset.defaultName);
+    setNewBaseUrl(preset.defaultBaseUrl);
+  };
 
   const handleVerify = async () => {
     if (!newBaseUrl.trim()) {
@@ -94,6 +111,7 @@ export function AddCustomProviderButton() {
         name: newName.trim(),
         apiBaseUrl: newBaseUrl.trim().replace(/\/+$/, ""),
         ...(newApiKey.trim() ? { apiKey: { value: newApiKey.trim() } } : {}),
+        presetId: selectedPresetId !== "custom" ? selectedPresetId : undefined,
         modelsSource: "openai-compatible",
       };
 
@@ -113,6 +131,7 @@ export function AddCustomProviderButton() {
       setNewName("");
       setNewBaseUrl("");
       setNewApiKey("");
+      setSelectedPresetId("custom");
       setShowDialog(false);
       showSuccess(t("customProvider.addedSuccess", { name: newProvider.name }));
     } catch (error: any) {
@@ -121,6 +140,8 @@ export function AddCustomProviderButton() {
       setIsSaving(false);
     }
   };
+
+  const isSelectedOpenRouter = selectedPresetId === "openrouter";
 
   return (
     <>
@@ -143,6 +164,32 @@ export function AddCustomProviderButton() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Dropdown de 12 Presets + Custom (Card #99 Slice A) */}
+            <div className="space-y-2">
+              <Label htmlFor="provider-preset" className="typo-label flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> {t("customProvider.preset")}
+              </Label>
+              <select
+                id="provider-preset"
+                value={selectedPresetId}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background typo-input cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {PROVIDER_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isSelectedOpenRouter && (
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                <span>{t("customProvider.openrouterHeaderHint")}</span>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="provider-name" className="typo-label">
                 {t("customProvider.name")}

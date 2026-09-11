@@ -1033,6 +1033,23 @@ export function GeneralSettings({
           }
         />
 
+        <SettingItem
+          label={t("settingsItems.rehacerOnboarding")}
+          description={t("settingsItems.rehacerOnboardingDesc")}
+          control={
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => {
+                updateSettings({ hasRunBefore: false });
+              }}
+            >
+              {t("settingsItems.rehacerOnboarding")}
+            </Button>
+          }
+        />
+
         {!isDarkMode ? (
           <SettingItem
             label={t("settingsItems.variante_del_tema_claro")}

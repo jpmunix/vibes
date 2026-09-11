@@ -10,6 +10,7 @@ export const VibesUserSchema = z.object({
   email: z.string(),
   displayName: z.string(),
   photoUrl: z.string().nullable(),
+  experienceLevel: z.string().nullable().optional(),
   createdAt: z.number(),
 });
 
@@ -66,6 +67,7 @@ export const authContracts = {
       userId: z.string(),
       displayName: z.string().optional(),
       photoUrl: z.string().nullable().optional(),
+      experienceLevel: z.string().nullable().optional(),
     }),
     output: VibesUserSchema,
   }),

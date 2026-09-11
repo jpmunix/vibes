@@ -216,6 +216,7 @@ export const CustomProviderConfigSchema = z.object({
   name: z.string(), // Display name: "Mi Proxy LiteLLM"
   apiBaseUrl: z.string(), // "https://my-proxy.example.com/v1"
   apiKey: SecretSchema.optional(),
+  presetId: z.string().optional(), // e.g. "deepseek", "groq", "openai", "custom" (Card #99)
   // How to discover models:
   modelsSource: z
     .enum([

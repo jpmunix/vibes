@@ -9,6 +9,7 @@ export interface VibesUser {
   email: string;
   displayName: string;
   photoUrl: string | null;
+  experienceLevel?: string | null;
   createdAt: number;
 }
 
